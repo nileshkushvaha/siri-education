@@ -224,6 +224,48 @@ final class NotificationMapper
                 'priority' => 1,
             ],
 
+            // ── Booking lifecycle (semantic events from RecordBookingLifecycleAudit;
+            //     the model's generic created/updated rows stay silent) ─────
+            $log === 'bookings' && $event === 'booking_requested' => [
+                'title' => 'New Booking',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-calendar-days',
+                'color' => 'success',
+                'priority' => 2,
+            ],
+
+            $log === 'bookings' && $event === 'booking_confirmed' => [
+                'title' => 'Booking Confirmed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-check-badge',
+                'color' => 'info',
+                'priority' => 1,
+            ],
+
+            $log === 'bookings' && $event === 'booking_cancelled' => [
+                'title' => 'Booking Cancelled',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-x-circle',
+                'color' => 'danger',
+                'priority' => 2,
+            ],
+
+            $log === 'bookings' && $event === 'booking_rescheduled' => [
+                'title' => 'Booking Rescheduled',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-arrow-path',
+                'color' => 'warning',
+                'priority' => 1,
+            ],
+
+            $log === 'bookings' && $event === 'booking_completed' => [
+                'title' => 'Booking Completed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-check-circle',
+                'color' => 'success',
+                'priority' => 1,
+            ],
+
             // ── Everything else: silence ──────────────────────────────────
             default => null,
         };

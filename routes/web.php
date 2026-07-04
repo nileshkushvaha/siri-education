@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Booking\GuestBookingPageController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Profile\SecurityController;
 use App\Http\Controllers\Profile\SessionController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SeoController;
+use App\Http\Controllers\Student\StudentBookingController;
 use App\Http\Controllers\Student\StudentCertificatesController;
 use App\Http\Controllers\Student\StudentCoursesController;
 use App\Http\Controllers\Student\StudentNotificationsController;
@@ -47,6 +49,10 @@ Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
+
+// ── Guest Booking wizard + manage page (public, no auth — consumes /api/v1/guest) ──
+Route::get('/book', [GuestBookingPageController::class, 'create'])->name('booking.create');
+Route::get('/book/manage/{reference}', [GuestBookingPageController::class, 'manage'])->name('booking.manage');
 
 // ── FAQ / Help Center (public — published, public-audience only) ──────
 Route::get('/faqs', [PublicFaqController::class, 'index'])->name('faqs.index');
@@ -175,6 +181,16 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/notifications/read-all', [StudentNotificationsController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/{id}/read', [StudentNotificationsController::class, 'markRead'])->name('notifications.read');
     Route::get('/faqs', [DashboardFaqController::class, 'index'])->name('faqs');
+
+    // ── Student booking (JSON, session-auth — reuses the Booking Engine) ──
+    Route::prefix('bookings')->name('bookings.')->group(function (): void {
+        Route::get('/', [StudentBookingController::class, 'index'])->name('index');
+        Route::get('/teachers', [StudentBookingController::class, 'teachers'])->name('teachers');
+        Route::get('/previous-teachers', [StudentBookingController::class, 'previousTeachers'])->name('previous-teachers');
+        Route::get('/slots', [StudentBookingController::class, 'slots'])->name('slots');
+        Route::post('/', [StudentBookingController::class, 'store'])->name('store');
+        Route::post('/{booking}/pay', [StudentBookingController::class, 'pay'])->name('pay');
+    });
 });
 
 // ── Instructors (public — visibility enforced in the controller) ──────

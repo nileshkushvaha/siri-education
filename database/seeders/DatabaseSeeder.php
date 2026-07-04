@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             DefaultRolesAndUsersSeeder::class,
             CountrySeeder::class,
             StateSeeder::class,
+            BookingTypeSeeder::class,
+            BookingPermissionSeeder::class,
         ]);
     }
 }

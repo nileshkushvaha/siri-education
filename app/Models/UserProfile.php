@@ -50,6 +50,7 @@ class UserProfile extends Model implements HasMedia
         'featured_order',
         'is_instructor_verified',
         'instructor_status',
+        'assignment_priority',
     ];
 
     protected function casts(): array
@@ -64,6 +65,7 @@ class UserProfile extends Model implements HasMedia
             'is_featured' => 'boolean',
             'is_instructor_verified' => 'boolean',
             'instructor_status' => InstructorStatus::class,
+            'assignment_priority' => 'integer',
         ];
     }
 

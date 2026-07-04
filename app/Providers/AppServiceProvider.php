@@ -279,5 +279,18 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($request->ip());
         });
+
+        // Guest booking API (unauthenticated) — reads are cheap, writes are
+        // aggressively throttled as spam protection.
+        RateLimiter::for('guest-availability', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
+        RateLimiter::for('guest-booking-write', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($request->ip()),
+                Limit::perDay(20)->by($request->ip()),
+            ];
+        });
     }
 }

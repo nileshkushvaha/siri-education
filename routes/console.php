@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\PublishScheduledContent;
+use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Models\LoginHistory;
 use App\Models\SchedulerHistory;
 use Illuminate\Console\Scheduling\Schedule;
@@ -38,3 +39,11 @@ app(Schedule::class)
     ->command('activitylog:clean')
     ->weekly()
     ->appendOutputTo(storage_path('logs/activitylog-clean.log'));
+
+// Release unpaid booking reservations whose payment hold has lapsed.
+// Idempotent: only touches pending bookings with reserved_until < now().
+app(Schedule::class)
+    ->command(ReleaseExpiredBookingReservations::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/booking-reservations.log'));

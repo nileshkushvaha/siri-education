@@ -121,6 +121,12 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(UserEducation::class)->orderBy('display_order');
     }
 
+    /** Bookings this user teaches (as host). */
+    public function hostedBookings(): HasMany
+    {
+        return $this->hasMany(Booking::class, 'host_id');
+    }
+
     // ── Accessors ────────────────────────────────────────────────────
 
     public function getFullNameAttribute(): string

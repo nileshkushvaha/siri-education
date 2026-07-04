@@ -1,5 +1,6 @@
 <?php
 
+use App\Booking\Exceptions\BookingException;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureAdminPortal;
 use App\Http\Middleware\EnsureEmailVerifiedIfRequired;
@@ -48,13 +49,21 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
 
         // Show a friendly page for expired/invalid verification links
         $exceptions->render(function (InvalidSignatureException $e, Request $request) {
             if ($request->is('auth/verify-email/*')) {
                 return response()->view('auth.verification-expired', [], 403);
+            }
+        });
+
+        // Domain failures (slot taken, duplicate, no teacher, …) are
+        // client errors on the API and JSON endpoints, not server errors.
+        $exceptions->render(function (BookingException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
             }
         });
     })->create();

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
@@ -20,11 +19,15 @@ use Spatie\Permission\Models\Role;
  *
  * Run after `php artisan shield:generate --all --option=permissions` so the
  * `ViewAny:*` / `Create:*` / etc. permissions referenced below already exist.
+ *
+ * Deliberately does NOT use WithoutModelEvents: User::firstOrCreate() must
+ * fire UserObserver so these accounts get a slug (required for Filament's
+ * Users resource route-model binding) and an auto-created profile, exactly
+ * like any other user. See backfill_missing_user_slugs_and_profiles for
+ * the one-time repair this omission previously required.
  */
 class DefaultRolesAndUsersSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     public function run(): void
     {
         $this->call(SuperAdminSeeder::class);

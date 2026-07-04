@@ -173,6 +173,27 @@ class BlockContentHydratorTest extends TestCase
     }
 
     /** @test */
+    public function test_hydrates_features_block_json_to_form_data(): void
+    {
+        $content = [
+            'eyebrow' => 'Capabilities',
+            'title' => 'Platform Features',
+            'description' => 'Reusable page sections',
+            'features' => [
+                ['title' => 'CMS Blocks', 'description' => 'Rendered dynamically'],
+            ],
+            'columns' => 3,
+        ];
+
+        $result = BlockContentHydrator::hydrate(BlockType::Features, $content);
+
+        $this->assertEquals('Capabilities', $result['eyebrow']);
+        $this->assertEquals('Platform Features', $result['title']);
+        $this->assertCount(1, $result['features']);
+        $this->assertEquals(3, $result['columns']);
+    }
+
+    /** @test */
     public function test_hydrates_testimonials_block_json_to_form_data(): void
     {
         $content = [
@@ -186,6 +207,70 @@ class BlockContentHydratorTest extends TestCase
 
         $this->assertCount(1, $result['testimonials']);
         $this->assertEquals(3, $result['columns']);
+    }
+
+    /** @test */
+    public function test_hydrates_pricing_block_json_to_form_data(): void
+    {
+        $content = [
+            'title' => 'Pricing',
+            'plans' => [
+                ['name' => 'Pro', 'features' => ['Feature one']],
+            ],
+            'columns' => 3,
+        ];
+
+        $result = BlockContentHydrator::hydrate(BlockType::Pricing, $content);
+
+        $this->assertEquals('Pricing', $result['title']);
+        $this->assertCount(1, $result['plans']);
+        $this->assertEquals(3, $result['columns']);
+    }
+
+    /** @test */
+    public function test_hydrates_featured_courses_block_json_to_form_data(): void
+    {
+        $content = [
+            'title' => 'Featured Courses',
+            'courses' => [
+                ['title' => 'Algebra', 'category' => 'Math'],
+            ],
+            'columns' => 3,
+        ];
+
+        $result = BlockContentHydrator::hydrate(BlockType::FeaturedCourses, $content);
+
+        $this->assertEquals('Featured Courses', $result['title']);
+        $this->assertCount(1, $result['courses']);
+        $this->assertEquals(3, $result['columns']);
+    }
+
+    /** @test */
+    public function test_hydrates_featured_teachers_block_json_to_form_data(): void
+    {
+        $result = BlockContentHydrator::hydrate(BlockType::FeaturedTeachers, [
+            'title' => 'Featured Teachers',
+            'limit' => 6,
+            'columns' => 3,
+        ]);
+
+        $this->assertEquals('Featured Teachers', $result['title']);
+        $this->assertEquals(6, $result['limit']);
+        $this->assertEquals(3, $result['columns']);
+    }
+
+    /** @test */
+    public function test_hydrates_newsletter_block_json_to_form_data(): void
+    {
+        $result = BlockContentHydrator::hydrate(BlockType::Newsletter, [
+            'title' => 'Newsletter',
+            'email_label' => 'Email',
+            'button_text' => 'Subscribe',
+        ]);
+
+        $this->assertEquals('Newsletter', $result['title']);
+        $this->assertEquals('Email', $result['email_label']);
+        $this->assertEquals('Subscribe', $result['button_text']);
     }
 
     /** @test */

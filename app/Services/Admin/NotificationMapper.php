@@ -182,6 +182,48 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
+            // ── Public forms (Callback / Feedback / Support / General Inquiry) ──
+            $log === 'forms' && $event === 'callback_requested' => [
+                'title' => 'New Callback Request',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-phone',
+                'color' => 'info',
+                'priority' => 2,
+            ],
+
+            $log === 'forms' && $event === 'feedback_submitted' => [
+                'title' => 'New Feedback Submitted',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-chat-bubble-left-right',
+                'color' => 'info',
+                'priority' => 1,
+            ],
+
+            $log === 'forms' && $event === 'support_requested' => [
+                'title' => 'New Support Request',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-lifebuoy',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
+            $log === 'forms' && $event === 'inquiry_submitted' => [
+                'title' => 'New General Inquiry',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-envelope',
+                'color' => 'info',
+                'priority' => 1,
+            ],
+
+            // ── Newsletter ────────────────────────────────────────────────
+            $log === 'newsletter' && $event === 'newsletter_subscribed' => [
+                'title' => 'New Newsletter Subscriber',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-envelope-open',
+                'color' => 'success',
+                'priority' => 1,
+            ],
+
             // ── FAQs ──────────────────────────────────────────────────────
             $log === 'faqs' && $event === 'published' => [
                 'title' => 'FAQ Published',

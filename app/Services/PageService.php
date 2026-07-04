@@ -50,6 +50,29 @@ class PageService
             ->paginate($perPage);
     }
 
+    public function getPublishedPage(string $slug): ?Page
+    {
+        return Page::query()
+            ->published()
+            ->where('slug', $slug)
+            ->with(['blocks' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+            ->first();
+    }
+
+    public function getPublishedPageById(int|string $id): ?Page
+    {
+        return Page::query()
+            ->published()
+            ->where('id', $id)
+            ->with(['blocks' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+            ->first();
+    }
+
+    public function getHomepage(): ?Page
+    {
+        return $this->getPublishedPage('home');
+    }
+
     /**
      * Get featured pages (for dashboard, etc.)
      */

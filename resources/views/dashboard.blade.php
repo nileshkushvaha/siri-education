@@ -7,7 +7,7 @@
 @endsection
 
 @section('content')
-<div class="min-h-screen bg-[#05080F]">
+<div class="min-h-screen bg-surface-dark">
 
     {{-- ── MAIN CONTENT ────────────────────────────────────────────────── --}}
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -90,7 +90,7 @@
                             </svg>
                         </div>
                         <h3 class="text-slate-300 font-semibold mb-2">No courses yet</h3>
-                        <p class="text-slate-500 text-sm mb-5 max-w-xs">Start your learning journey by enrolling in your first course.</p>
+                        <p class="text-slate-400 text-sm mb-5 max-w-xs">Start your learning journey by enrolling in your first course.</p>
                         <a href="#" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all shadow-lg shadow-indigo-500/20">
                             Browse Courses
                         </a>
@@ -113,7 +113,7 @@
                             </svg>
                         </div>
                         <p class="text-slate-200 font-semibold text-sm mb-0.5">{{ $title }}</p>
-                        <p class="text-slate-500 text-xs">{{ $sub }}</p>
+                        <p class="text-slate-400 text-xs">{{ $sub }}</p>
                     </a>
                     @endforeach
                 </div>
@@ -143,13 +143,13 @@
 
                     <div class="space-y-2 mb-4">
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-500">Profile Complete</span>
+                            <span class="text-slate-400">Profile Complete</span>
                             <span class="text-slate-300 font-medium">30%</span>
                         </div>
                         <div class="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                             <div class="h-full w-[30%] bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"></div>
                         </div>
-                        <p class="text-slate-500 text-xs">Add your photo, bio and preferences to complete your profile</p>
+                        <p class="text-slate-400 text-xs">Add your photo, bio and preferences to complete your profile</p>
                     </div>
 
                     <a href="{{ route('profile.show') }}"
@@ -171,7 +171,7 @@
                                 <div class="flex-1 h-1.5 rounded-full {{ $i === 0 ? 'bg-amber-400' : 'bg-white/[0.08]' }}"></div>
                             @endfor
                         </div>
-                        <p class="text-slate-500 text-xs mt-2">1 / 7 days this week</p>
+                        <p class="text-slate-400 text-xs mt-2">1 / 7 days this week</p>
                     </div>
                 </div>
 
@@ -179,10 +179,10 @@
                 <div class="rounded-2xl border border-white/[0.07] p-5" style="background:rgba(255,255,255,0.03)">
                     <h3 class="text-sm font-semibold text-white mb-4">Recent Activity</h3>
                     <div class="flex flex-col items-center justify-center py-6 text-center">
-                        <svg class="w-8 h-8 text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <p class="text-slate-500 text-xs">No activity yet</p>
+                        <p class="text-slate-400 text-xs">No activity yet</p>
                     </div>
                 </div>
             </div>

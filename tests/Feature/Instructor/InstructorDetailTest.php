@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Booking\Enums\Weekday;
+use App\Models\TeacherAvailability;
+use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserExperience;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -134,30 +137,52 @@ class InstructorDetailTest extends TestCase
             ->assertSee('Tech Corp');
     }
 
-    public function test_courses_stub_rendered(): void
+    public function test_subjects_are_shown_on_detail_page(): void
+    {
+        $instructor = $this->makeInstructor();
+        TeacherSubject::factory()->create([
+            'teacher_id' => $instructor->id,
+            'subject' => 'physics',
+            'grade_from' => 9,
+            'grade_to' => 12,
+        ]);
+
+        $this->get(route('instructors.show', $instructor))
+            ->assertOk()
+            ->assertSee('Physics')
+            ->assertSee('Grades 9-12');
+    }
+
+    public function test_availability_preview_is_shown_on_detail_page(): void
+    {
+        $instructor = $this->makeInstructor();
+        TeacherAvailability::factory()
+            ->forDay(Weekday::Monday)
+            ->between('09:00:00', '11:00:00')
+            ->create(['teacher_id' => $instructor->id]);
+
+        $this->get(route('instructors.show', $instructor))
+            ->assertOk()
+            ->assertSee('Availability Preview')
+            ->assertSee('Monday')
+            ->assertSee('09:00 - 11:00');
+    }
+
+    public function test_ratings_placeholder_rendered(): void
     {
         $instructor = $this->makeInstructor();
 
         $this->get(route('instructors.show', $instructor))
             ->assertOk()
-            ->assertSee('Courses coming soon');
+            ->assertSee('Ratings will appear here once course reviews are available.');
     }
 
-    public function test_reviews_stub_rendered(): void
-    {
-        $instructor = $this->makeInstructor();
-
-        $this->get(route('instructors.show', $instructor))
-            ->assertOk()
-            ->assertSee('No reviews yet');
-    }
-
-    public function test_stat_bar_shows_zero_courses(): void
+    public function test_snapshot_panel_is_rendered(): void
     {
         $instructor = $this->makeInstructor();
 
         $response = $this->get(route('instructors.show', $instructor));
 
-        $response->assertOk()->assertSee('Courses');
+        $response->assertOk()->assertSee('Instructor Snapshot');
     }
 }

@@ -2,7 +2,7 @@
 
 ## Package
 
-Spatie Laravel Media Library v11.23.
+Spatie Laravel Media Library 11.23.1 (`^11.23`).
 
 ## Current usage
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Account;
 
+use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\User;
 
 /**
@@ -20,6 +21,10 @@ use App\Models\User;
  */
 final class AccountMenuService
 {
+    public function __construct(
+        private readonly HomeworkServiceInterface $homework,
+    ) {}
+
     /**
      * @return array<int, array{label: string, url: string, route: string, icon: string, permission: ?string, badge: mixed, children: array}>
      */
@@ -41,6 +46,43 @@ final class AccountMenuService
                 'label' => 'Dashboard',
                 'route' => 'dashboard',
                 'icon' => 'home',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Upcoming Classes',
+                'route' => 'dashboard.upcoming-classes',
+                'icon' => 'calendar',
+                'permission' => null,
+            ],
+            [
+                'label' => 'My Bookings',
+                'route' => 'dashboard.my-bookings',
+                'icon' => 'clipboard',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Payments',
+                'route' => 'dashboard.payments',
+                'icon' => 'credit-card',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Homework',
+                'route' => 'dashboard.homework',
+                'icon' => 'pencil',
+                'permission' => null,
+                'badge' => fn (User $user): mixed => ($this->homework->statsForStudent($user->id)->pending ?? 0) ?: null,
+            ],
+            [
+                'label' => 'Attendance',
+                'route' => 'dashboard.attendance',
+                'icon' => 'check-circle',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Progress',
+                'route' => 'dashboard.progress',
+                'icon' => 'chart-bar',
                 'permission' => null,
             ],
             [
@@ -108,7 +150,7 @@ final class AccountMenuService
 
         return [
             'label' => $item['label'],
-            'url' => route($item['route']),
+            'url' => route($item['route'], $item['params'] ?? []),
             'route' => $item['route'],
             'icon' => $item['icon'] ?? 'default',
             'badge' => is_callable($item['badge'] ?? null) ? ($item['badge'])($user) : ($item['badge'] ?? null),

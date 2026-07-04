@@ -14,6 +14,7 @@ use App\Models\Booking;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
@@ -77,6 +78,24 @@ interface BookingRepositoryInterface
 
     /** @return Collection<int, Booking> */
     public function upcomingForUser(int $userId): Collection;
+
+    /** @return LengthAwarePaginator<int, Booking> full history (any status), newest first */
+    public function paginatedForUser(int $userId, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator;
+
+    /** @return LengthAwarePaginator<int, Booking> bookings with a payment trail (paid types), newest first */
+    public function paginatedPaymentsForUser(int $userId, int $perPage = 15): LengthAwarePaginator;
+
+    /** @return object{completed: int, no_show: int, cancelled: int, total: int} attendance counts for a student */
+    public function attendanceStatsForUser(int $userId): object;
+
+    /** @return Collection<int, Booking> completed/no_show bookings for a student, most recent first */
+    public function attendanceHistoryForUser(int $userId, int $limit = 50): Collection;
+
+    /** @return object{completed_sessions: int, total_hours: float} lifetime session stats for a student */
+    public function progressStatsForUser(int $userId): object;
+
+    /** @return Collection<int, object{subject: string, sessions: int}> subjects studied, most-booked first */
+    public function subjectBreakdownForUser(int $userId): Collection;
 
     /** @return Collection<int, User> hosts the attendee has booked (non-cancelled), most recent first */
     public function previousHostsForAttendee(int $attendeeId): Collection;

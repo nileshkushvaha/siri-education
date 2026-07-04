@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Content\Models\ContentBlock;
 use App\Enums\BlockType;
 use App\Notifications\Cms\ContactFormSubmissionNotification;
+use App\Rules\TurnstileToken;
 use App\Services\AuditTrailService;
 use App\Settings\GeneralSettings;
 use App\Settings\MailSettings;
@@ -24,6 +25,7 @@ class ContactFormController extends Controller
         $request->validate([
             'block_id' => ['required', 'uuid', 'exists:content_blocks,id'],
             'website' => ['nullable', 'max:0'], // Honeypot
+            'cf-turnstile-response' => [new TurnstileToken],
         ]);
 
         /** @var ContentBlock $block */
@@ -112,6 +114,10 @@ class ContactFormController extends Controller
             properties: ['page_id' => $block->blockable_id],
         );
 
-        return back()->with('success', $content['success_message'] ?? 'Thank you for your message. We\'ll get back to you soon!');
+        $successMessage = trim((string) ($content['success_message'] ?? ''));
+
+        return $successMessage !== ''
+            ? back()->with('success', $successMessage)
+            : back();
     }
 }

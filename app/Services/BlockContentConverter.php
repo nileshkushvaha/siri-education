@@ -24,7 +24,12 @@ class BlockContentConverter
             BlockType::Accordion => self::accordionToJson($formData),
             BlockType::Tabs => self::tabsToJson($formData),
             BlockType::Team => self::teamToJson($formData),
+            BlockType::Features => self::featuresToJson($formData),
+            BlockType::FeaturedCourses => self::featuredCoursesToJson($formData),
+            BlockType::FeaturedTeachers => self::featuredTeachersToJson($formData),
             BlockType::Testimonials => self::testimonialsToJson($formData),
+            BlockType::Pricing => self::pricingToJson($formData),
+            BlockType::Newsletter => self::newsletterToJson($formData),
             BlockType::Statistics => self::statisticsToJson($formData),
             BlockType::Timeline => self::timelineToJson($formData),
             BlockType::Button => self::buttonToJson($formData),
@@ -145,6 +150,74 @@ class BlockContentConverter
         ];
     }
 
+    private static function featuresToJson(array $data): array
+    {
+        $features = $data['features'] ?? [];
+
+        $normalizedFeatures = array_values(array_filter(array_map(
+            static fn (array $feature): array => [
+                'icon' => $feature['icon'] ?? '',
+                'title' => $feature['title'] ?? '',
+                'description' => $feature['description'] ?? '',
+                'link' => $feature['link'] ?? '',
+                'link_label' => $feature['link_label'] ?? '',
+            ],
+            $features
+        ), static fn (array $feature): bool => $feature['title'] !== ''));
+
+        return [
+            'eyebrow' => $data['eyebrow'] ?? '',
+            'title' => $data['title'] ?? '',
+            'description' => $data['description'] ?? '',
+            'features' => $normalizedFeatures,
+            'columns' => (int) ($data['columns'] ?? 3),
+        ];
+    }
+
+    private static function featuredCoursesToJson(array $data): array
+    {
+        $courses = $data['courses'] ?? [];
+
+        $normalizedCourses = array_values(array_filter(array_map(
+            static fn (array $course): array => [
+                'title' => $course['title'] ?? '',
+                'category' => $course['category'] ?? '',
+                'description' => $course['description'] ?? '',
+                'instructor' => $course['instructor'] ?? '',
+                'image' => $course['image'] ?? null,
+                'url' => $course['url'] ?? '',
+                'price' => $course['price'] ?? '',
+                'duration' => $course['duration'] ?? '',
+                'level' => $course['level'] ?? '',
+                'badge' => $course['badge'] ?? '',
+            ],
+            $courses
+        ), static fn (array $course): bool => $course['title'] !== ''));
+
+        return [
+            'eyebrow' => $data['eyebrow'] ?? '',
+            'title' => $data['title'] ?? '',
+            'description' => $data['description'] ?? '',
+            'courses' => $normalizedCourses,
+            'columns' => (int) ($data['columns'] ?? 3),
+            'link_label' => $data['link_label'] ?? '',
+            'link_url' => $data['link_url'] ?? '',
+        ];
+    }
+
+    private static function featuredTeachersToJson(array $data): array
+    {
+        return [
+            'eyebrow' => $data['eyebrow'] ?? '',
+            'title' => $data['title'] ?? '',
+            'description' => $data['description'] ?? '',
+            'limit' => max(1, min(12, (int) ($data['limit'] ?? 4))),
+            'columns' => (int) ($data['columns'] ?? 4),
+            'link_label' => $data['link_label'] ?? '',
+            'link_url' => $data['link_url'] ?? '',
+        ];
+    }
+
     private static function testimonialsToJson(array $data): array
     {
         $testimonials = $data['testimonials'] ?? [];
@@ -152,6 +225,52 @@ class BlockContentConverter
         return [
             'testimonials' => array_values(array_filter($testimonials, fn ($t) => ! empty($t['text'] ?? null))),
             'columns' => (int) ($data['columns'] ?? 3),
+        ];
+    }
+
+    private static function pricingToJson(array $data): array
+    {
+        $plans = $data['plans'] ?? [];
+
+        $normalizedPlans = array_values(array_filter(array_map(
+            static function (array $plan): array {
+                return [
+                    'name' => $plan['name'] ?? '',
+                    'description' => $plan['description'] ?? '',
+                    'price' => $plan['price'] ?? '',
+                    'period' => $plan['period'] ?? '',
+                    'features' => self::normalizeList($plan['features'] ?? []),
+                    'button_text' => $plan['button_text'] ?? '',
+                    'button_link' => $plan['button_link'] ?? '',
+                    'highlighted' => (bool) ($plan['highlighted'] ?? false),
+                    'badge' => $plan['badge'] ?? '',
+                ];
+            },
+            $plans
+        ), static fn (array $plan): bool => $plan['name'] !== ''));
+
+        return [
+            'eyebrow' => $data['eyebrow'] ?? '',
+            'title' => $data['title'] ?? '',
+            'description' => $data['description'] ?? '',
+            'plans' => $normalizedPlans,
+            'columns' => (int) ($data['columns'] ?? 3),
+        ];
+    }
+
+    private static function newsletterToJson(array $data): array
+    {
+        return [
+            'eyebrow' => $data['eyebrow'] ?? '',
+            'title' => $data['title'] ?? '',
+            'description' => $data['description'] ?? '',
+            'name_label' => $data['name_label'] ?? '',
+            'name_placeholder' => $data['name_placeholder'] ?? '',
+            'email_label' => $data['email_label'] ?? '',
+            'email_placeholder' => $data['email_placeholder'] ?? '',
+            'button_text' => $data['button_text'] ?? '',
+            'consent_text' => $data['consent_text'] ?? '',
+            'success_message' => $data['success_message'] ?? '',
         ];
     }
 
@@ -238,8 +357,8 @@ class BlockContentConverter
             'title' => $data['title'] ?? '',
             'description' => $data['description'] ?? '',
             'fields' => $normalizedFields,
-            'button_text' => $data['button_text'] ?? 'Send Message',
-            'success_message' => $data['success_message'] ?? 'Thank you for your message!',
+            'button_text' => $data['button_text'] ?? '',
+            'success_message' => $data['success_message'] ?? '',
         ];
     }
 
@@ -253,5 +372,17 @@ class BlockContentConverter
             'description' => $data['description'] ?? '',
             'items' => array_values(array_filter($items, fn ($i) => ! empty($i['value'] ?? null))),
         ];
+    }
+
+    private static function normalizeList(array|string $items): array
+    {
+        if (is_string($items)) {
+            $items = preg_split('/\r\n|\r|\n/', $items) ?: [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (mixed $item): string => trim((string) $item),
+            $items
+        )));
     }
 }

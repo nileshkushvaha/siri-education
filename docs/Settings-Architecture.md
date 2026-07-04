@@ -2,7 +2,7 @@
 
 ## Overview
 
-Application settings are stored in the `settings` table via **Spatie Laravel Settings v3.9**. Each settings class is a typed PHP object where public properties map to DB-backed key-value pairs, grouped by a namespace string.
+Application settings are stored in the `settings` table via **Spatie Laravel Settings 3.9.0** (`^3.9`). Each settings class is a typed PHP object where public properties map to DB-backed key-value pairs, grouped by a namespace string.
 
 Settings are:
 - **Strongly typed** — PHP property types are enforced

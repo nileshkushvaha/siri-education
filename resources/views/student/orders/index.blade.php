@@ -13,7 +13,7 @@
 
     <div class="mb-6">
         <h1 class="text-xl font-bold text-white">Orders</h1>
-        <p class="text-slate-500 text-sm mt-1">Your purchase history, invoices, and receipts.</p>
+        <p class="text-slate-400 text-sm mt-1">Your purchase history, invoices, and receipts.</p>
     </div>
 
     <x-account.card title="Order History">

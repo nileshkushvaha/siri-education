@@ -1,1 +1,1 @@
-//
+import './frontend/alpine';

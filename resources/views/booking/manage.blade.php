@@ -11,7 +11,7 @@
 
     <header class="text-center mb-8">
         <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Manage Booking</h1>
-        <p class="mt-2 text-slate-500" x-text="'Reference ' + reference"></p>
+        <p class="mt-2 text-slate-400" x-text="'Reference ' + reference"></p>
     </header>
 
     <div class="rounded-3xl bg-white p-5 shadow-xl ring-1 ring-slate-100 sm:p-8">
@@ -24,7 +24,7 @@
         {{-- Invalid or expired link --}}
         <div x-show="invalid" x-cloak class="py-10 text-center">
             <p class="text-lg font-bold text-slate-900">We couldn't find that booking.</p>
-            <p class="mt-1 text-sm text-slate-500">The link may be incomplete or the manage code is wrong. Check the link from your confirmation screen.</p>
+            <p class="mt-1 text-sm text-slate-400">The link may be incomplete or the manage code is wrong. Check the link from your confirmation screen.</p>
         </div>
 
         {{-- Booking details --}}
@@ -36,7 +36,7 @@
                                   'bg-emerald-100 text-emerald-700': booking?.status === 'confirmed',
                                   'bg-amber-100 text-amber-700': booking?.status === 'pending',
                                   'bg-red-100 text-red-700': booking?.status === 'cancelled',
-                                  'bg-slate-200 text-slate-600': ['completed','no_show'].includes(booking?.status),
+                                  'bg-slate-200 text-slate-400': ['completed','no_show'].includes(booking?.status),
                               }"
                               x-text="booking?.status_label"></span></dd></div>
                 <div><dt class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Session</dt>
@@ -86,7 +86,7 @@
                                 x-text="slotTime(s.starts_at)"></button>
                     </template>
                 </div>
-                <p x-show="!loading.slots && newDate && !slots.length" x-cloak class="mt-3 text-sm text-slate-500">No open times on that date — try another.</p>
+                <p x-show="!loading.slots && newDate && !slots.length" x-cloak class="mt-3 text-sm text-slate-400">No open times on that date — try another.</p>
 
                 <button type="button" @click="reschedule()" :disabled="!newSlot || loading.action"
                         class="mt-4 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300"

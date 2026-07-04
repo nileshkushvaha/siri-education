@@ -200,6 +200,28 @@ class BlockContentConverterTest extends TestCase
     }
 
     /** @test */
+    public function test_converts_features_block_form_data_to_json(): void
+    {
+        $formData = [
+            'eyebrow' => 'Capabilities',
+            'title' => 'Platform Features',
+            'description' => 'Reusable page sections',
+            'features' => [
+                ['title' => 'CMS Blocks', 'description' => 'Rendered dynamically', 'link' => '/features', 'link_label' => 'Read more'],
+                ['title' => '', 'description' => 'Ignored'],
+            ],
+            'columns' => 3,
+        ];
+
+        $result = BlockContentConverter::convert(BlockType::Features, $formData);
+
+        $this->assertEquals('Capabilities', $result['eyebrow']);
+        $this->assertEquals('Platform Features', $result['title']);
+        $this->assertCount(1, $result['features']);
+        $this->assertEquals('CMS Blocks', $result['features'][0]['title']);
+    }
+
+    /** @test */
     public function test_converts_testimonials_block_form_data_to_json(): void
     {
         $formData = [
@@ -214,6 +236,78 @@ class BlockContentConverterTest extends TestCase
 
         $this->assertCount(2, $result['testimonials']);
         $this->assertEquals(3, $result['columns']);
+    }
+
+    /** @test */
+    public function test_converts_pricing_block_form_data_to_json(): void
+    {
+        $formData = [
+            'title' => 'Pricing',
+            'plans' => [
+                [
+                    'name' => 'Pro',
+                    'price' => '$49',
+                    'features' => "Feature one\nFeature two",
+                    'highlighted' => true,
+                ],
+                ['name' => '', 'price' => '$0'],
+            ],
+            'columns' => 3,
+        ];
+
+        $result = BlockContentConverter::convert(BlockType::Pricing, $formData);
+
+        $this->assertEquals('Pricing', $result['title']);
+        $this->assertCount(1, $result['plans']);
+        $this->assertEquals(['Feature one', 'Feature two'], $result['plans'][0]['features']);
+        $this->assertTrue($result['plans'][0]['highlighted']);
+    }
+
+    /** @test */
+    public function test_converts_featured_courses_block_form_data_to_json(): void
+    {
+        $formData = [
+            'title' => 'Featured Courses',
+            'courses' => [
+                ['title' => 'Algebra', 'category' => 'Math'],
+                ['title' => '', 'category' => 'Ignored'],
+            ],
+            'columns' => 3,
+        ];
+
+        $result = BlockContentConverter::convert(BlockType::FeaturedCourses, $formData);
+
+        $this->assertEquals('Featured Courses', $result['title']);
+        $this->assertCount(1, $result['courses']);
+        $this->assertEquals('Algebra', $result['courses'][0]['title']);
+    }
+
+    /** @test */
+    public function test_converts_featured_teachers_block_form_data_to_json(): void
+    {
+        $result = BlockContentConverter::convert(BlockType::FeaturedTeachers, [
+            'title' => 'Featured Teachers',
+            'limit' => 99,
+            'columns' => 4,
+        ]);
+
+        $this->assertEquals('Featured Teachers', $result['title']);
+        $this->assertEquals(12, $result['limit']);
+        $this->assertEquals(4, $result['columns']);
+    }
+
+    /** @test */
+    public function test_converts_newsletter_block_form_data_to_json(): void
+    {
+        $result = BlockContentConverter::convert(BlockType::Newsletter, [
+            'title' => 'Newsletter',
+            'email_label' => 'Email',
+            'button_text' => 'Subscribe',
+        ]);
+
+        $this->assertEquals('Newsletter', $result['title']);
+        $this->assertEquals('Email', $result['email_label']);
+        $this->assertEquals('Subscribe', $result['button_text']);
     }
 
     /** @test */

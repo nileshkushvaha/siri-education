@@ -48,7 +48,7 @@
                     >
                     @if($query !== '')
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                        <span class="text-xs text-slate-500 bg-white/[0.06] px-2 py-0.5 rounded">{{ $totalResults }} result{{ $totalResults !== 1 ? 's' : '' }}</span>
+                        <span class="text-xs text-slate-400 bg-white/[0.06] px-2 py-0.5 rounded">{{ $totalResults }} result{{ $totalResults !== 1 ? 's' : '' }}</span>
                     </div>
                     @endif
                 </div>
@@ -63,10 +63,10 @@
     @if($query !== '' && $totalResults === 0)
         <div class="text-center py-16 animate-fade-in-up">
             <div class="mx-auto mb-4 h-16 w-16 rounded-2xl bg-slate-800 flex items-center justify-center">
-                <svg class="h-8 w-8 text-slate-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
             </div>
             <p class="text-slate-400 font-medium">No results for "<span class="text-white">{{ $query }}</span>"</p>
-            <p class="text-slate-600 text-sm mt-1">Try different keywords or browse the blog.</p>
+            <p class="text-slate-400 text-sm mt-1">Try different keywords or browse the blog.</p>
             <a href="{{ route('blog.index') }}" class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all">
                 Browse blog
             </a>
@@ -78,9 +78,9 @@
             @if($results['pages']->isNotEmpty())
             <section>
                 <div class="flex items-center gap-3 mb-5">
-                    <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pages</h2>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pages</h2>
                     <div class="flex-1 h-px bg-white/[0.04]"></div>
-                    <span class="text-xs text-slate-600">{{ $results['pages']->count() }}</span>
+                    <span class="text-xs text-slate-400">{{ $results['pages']->count() }}</span>
                 </div>
                 <div class="space-y-2">
                     @foreach($results['pages'] as $page)
@@ -91,7 +91,7 @@
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-white text-sm group-hover:text-indigo-300 transition-colors truncate">{{ $page->title }}</p>
-                            <p class="text-xs text-slate-600 mt-0.5">/{{ $page->slug }}</p>
+                            <p class="text-xs text-slate-400 mt-0.5">/{{ $page->slug }}</p>
                             @if($page->excerpt)
                                 <p class="text-sm text-slate-400 mt-1 line-clamp-1">{{ $page->excerpt }}</p>
                             @endif
@@ -107,9 +107,9 @@
             @if($results['posts']->isNotEmpty())
             <section>
                 <div class="flex items-center gap-3 mb-5">
-                    <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Blog Posts</h2>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Blog Posts</h2>
                     <div class="flex-1 h-px bg-white/[0.04]"></div>
-                    <span class="text-xs text-slate-600">{{ $results['posts']->count() }}</span>
+                    <span class="text-xs text-slate-400">{{ $results['posts']->count() }}</span>
                 </div>
                 <div class="space-y-2">
                     @foreach($results['posts'] as $post)
@@ -120,7 +120,7 @@
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-white text-sm group-hover:text-indigo-300 transition-colors truncate">{{ $post->title }}</p>
-                            <p class="text-xs text-slate-600 mt-0.5">/blog/{{ $post->slug }}</p>
+                            <p class="text-xs text-slate-400 mt-0.5">/blog/{{ $post->slug }}</p>
                             @if($post->excerpt)
                                 <p class="text-sm text-slate-400 mt-1 line-clamp-1">{{ $post->excerpt }}</p>
                             @endif
@@ -134,7 +134,7 @@
 
             {{-- Empty state when query is empty --}}
             @if($query === '')
-            <div class="text-center py-8 text-slate-600 text-sm">
+            <div class="text-center py-8 text-slate-400 text-sm">
                 Start typing to search pages and posts.
             </div>
             @endif

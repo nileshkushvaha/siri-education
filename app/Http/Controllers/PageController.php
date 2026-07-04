@@ -4,35 +4,27 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Content\Rendering\ContentRenderer;
-use App\Models\Page;
-use App\Models\Post;
+use App\Services\PageRenderService;
+use App\Services\PageService;
+use App\Services\PostService;
 use App\Settings\GeneralSettings;
 use Illuminate\Http\Response;
 
 class PageController extends Controller
 {
-    public function show(string $slug, ContentRenderer $renderer): Response
+    public function show(string $slug, PageService $pages, PageRenderService $renderer): Response
     {
-        $page = Page::query()
-            ->published()
-            ->where('slug', $slug)
-            ->with(['blocks' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
-            ->firstOrFail();
+        $page = $pages->getPublishedPage($slug) ?? abort(404);
 
         return response($renderer->render($page), 200)
             ->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
-    public function home(ContentRenderer $renderer, GeneralSettings $settings): Response
+    public function home(PageService $pages, PostService $posts, PageRenderService $renderer, GeneralSettings $settings): Response
     {
         // ── WordPress-style reading setting ──────────────────────────────
         if (($settings->homepage_display ?? 'template') === 'static_page' && filled($settings->homepage_id)) {
-            $staticPage = Page::query()
-                ->published()
-                ->where('id', $settings->homepage_id)
-                ->with(['blocks' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
-                ->first();
+            $staticPage = $pages->getPublishedPageById($settings->homepage_id);
 
             if ($staticPage) {
                 return response($renderer->render($staticPage), 200)
@@ -40,13 +32,13 @@ class PageController extends Controller
             }
         }
 
+        if ($homepage = $pages->getHomepage()) {
+            return response($renderer->render($homepage), 200)
+                ->header('Content-Type', 'text/html; charset=UTF-8');
+        }
+
         // ── Default: render the custom home.blade.php template ───────────
-        $recentPosts = Post::query()
-            ->published()
-            ->with(['author', 'categories', 'media'])
-            ->latest('published_at')
-            ->limit(3)
-            ->get();
+        $recentPosts = $posts->latestPublishedPosts(3);
 
         return response()->view('home', [
             'appName' => $settings->app_name ?? config('app.name'),

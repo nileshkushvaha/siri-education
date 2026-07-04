@@ -15,7 +15,7 @@
         @class([
             'inline-flex items-center gap-1.5 text-sm transition-colors py-1',
             'text-slate-300 font-medium' => $node->isActive,
-            'text-slate-500 hover:text-slate-300' => !$node->isActive,
+            'text-slate-400 hover:text-slate-300' => !$node->isActive,
             $node->cssClass ?? '',
         ])
         aria-current="{{ $node->isActive ? 'page' : 'false' }}"

@@ -16,7 +16,7 @@
     $gscVerification = $seoSettings->google_search_console_verification ?? null;
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,8 +49,13 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    {{-- Alpine is NOT loaded here anymore. Livewire 4 (@livewireStyles /
+         @livewireScripts, below) bundles and auto-starts its own Alpine
+         instance; a second, separately-loaded Alpine (as this used to be)
+         causes "Detected multiple instances of Alpine running" and
+         Livewire-internal errors like "Alpine.transaction is not a
+         function". The collapse plugin Livewire's Alpine needs is
+         registered via resources/js/frontend/alpine.js instead. --}}
 
     @include('partials.head-styles')
 
@@ -60,6 +65,10 @@
     @endif
 
     @stack('head')
+
+    {{-- Livewire 4 (bundled via Filament ^5.6) powers frontend interactivity
+         alongside Alpine — see docs/frontend.md for component conventions. --}}
+    @livewireStyles
 </head>
 <body class="text-slate-800 antialiased" style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
 
@@ -75,7 +84,9 @@
     @hasSection('bare')
         @yield('content')
     @else
-        @include('partials.site-header')
+        <livewire:frontend.layout.announcement-bar />
+        <livewire:frontend.layout.site-header :app-name="$appName" :logo="$logo" />
+        <livewire:frontend.layout.search-overlay />
 
         {{-- Flash messages — Account Portal pages render their own dark-themed
              flash messages inside layouts.account, below the breadcrumb, so
@@ -117,9 +128,19 @@
 
         @yield('content')
 
-        @include('partials.site-footer')
+        <livewire:frontend.layout.site-footer
+            :app-name="$appName"
+            :logo="$logo"
+            :footer-text="$footerText"
+            :footer-copyright="$footerCopyright"
+            :support-email="$supportEmail"
+            :support-phone="$supportPhone"
+            :address="$address"
+        />
+        <livewire:frontend.layout.cookie-banner />
     @endif
 
     @stack('scripts')
+    @livewireScripts
 </body>
 </html>

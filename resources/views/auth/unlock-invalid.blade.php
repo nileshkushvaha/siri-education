@@ -4,7 +4,7 @@
 @section('title', 'Invalid Unlock Link — ' . config('app.name'))
 
 @section('content')
-<div class="min-h-screen bg-[#05080F] flex items-center justify-center px-4 py-16 relative overflow-hidden">
+<div class="min-h-screen bg-surface-dark flex items-center justify-center px-4 py-16 relative overflow-hidden">
     <div class="absolute inset-0 pointer-events-none" style="background-image:radial-gradient(circle,rgba(99,102,241,.04) 1px,transparent 1px);background-size:40px 40px;"></div>
 
     <div class="relative z-10 w-full max-w-md text-center">

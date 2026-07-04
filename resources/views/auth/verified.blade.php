@@ -4,7 +4,7 @@
 @section('title', 'Email Verified! — ' . config('app.name'))
 
 @section('content')
-<div class="min-h-screen bg-[#05080F] flex items-center justify-center px-4 py-16 relative overflow-hidden"
+<div class="min-h-screen bg-surface-dark flex items-center justify-center px-4 py-16 relative overflow-hidden"
      x-data="{
     countdown: 5,
     init() {
@@ -72,7 +72,7 @@
             </a>
         </div>
 
-        <p class="text-center text-xs text-slate-600 mt-5">
+        <p class="text-center text-xs text-slate-400 mt-5">
             You're all set to start your learning journey!
         </p>
     </div>

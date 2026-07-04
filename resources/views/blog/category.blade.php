@@ -21,7 +21,7 @@
     </div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
         <div class="animate-fade-in-up">
-            <div class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+            <div class="flex items-center gap-2 text-sm text-slate-400 mb-4">
                 <a href="{{ url('/') }}" class="hover:text-slate-400 transition-colors">Home</a>
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                 <a href="{{ route('blog.index') }}" class="hover:text-slate-400 transition-colors">Blog</a>
@@ -39,7 +39,7 @@
             @if($category->description)
                 <p class="mt-3 text-lg text-slate-400 max-w-2xl">{{ $category->description }}</p>
             @endif
-            <div class="mt-4 inline-flex items-center gap-2 text-sm text-slate-500">
+            <div class="mt-4 inline-flex items-center gap-2 text-sm text-slate-400">
                 <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
                 {{ $posts->total() }} {{ Str::plural('article', $posts->total()) }}
             </div>
@@ -79,7 +79,7 @@
                         @if($post->excerpt)
                             <p class="mt-2 text-sm text-slate-400 line-clamp-2 leading-relaxed">{{ $post->excerpt }}</p>
                         @endif
-                        <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                        <div class="mt-4 flex items-center gap-2 text-xs text-slate-400">
                             @if($post->author)
                                 <div class="h-5 w-5 rounded-full bg-indigo-600/30 flex items-center justify-center flex-shrink-0">
                                     <span class="text-[10px] font-bold text-indigo-300">{{ mb_substr($post->author->name, 0, 1) }}</span>

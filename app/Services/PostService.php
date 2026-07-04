@@ -61,6 +61,16 @@ class PostService
             ->get();
     }
 
+    public function latestPublishedPosts(int $limit = 3): Collection
+    {
+        return Post::query()
+            ->published()
+            ->with(['author', 'media'])
+            ->latest('published_at')
+            ->limit($limit)
+            ->get();
+    }
+
     public function searchPublishedPosts(string $term, int $limit = 10): Collection
     {
         return Post::query()

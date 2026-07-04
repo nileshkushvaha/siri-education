@@ -16,6 +16,7 @@ use App\Models\BookingActivity;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -180,7 +181,73 @@ final class BookingRepository implements BookingRepositoryInterface
             ->active()
             ->upcoming()
             ->where(fn (Builder $q) => $q->where('attendee_id', $userId)->orWhere('host_id', $userId))
+            ->with(['type', 'host'])
             ->orderBy('starts_at')
+            ->get();
+    }
+
+    public function paginatedForUser(int $userId, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator
+    {
+        return Booking::query()
+            ->forAttendee($userId)
+            ->with(['type', 'host'])
+            ->when($status, fn (Builder $q) => $q->withStatus($status))
+            ->orderByDesc('starts_at')
+            ->paginate($perPage);
+    }
+
+    public function paginatedPaymentsForUser(int $userId, int $perPage = 15): LengthAwarePaginator
+    {
+        return Booking::query()
+            ->forAttendee($userId)
+            ->whereNot('payment_status', BookingPaymentStatus::NotRequired)
+            ->with(['type', 'host'])
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+    }
+
+    public function attendanceStatsForUser(int $userId): object
+    {
+        return Booking::query()
+            ->forAttendee($userId)
+            ->selectRaw(
+                'SUM(status = ?) as completed, SUM(status = ?) as no_show, SUM(status = ?) as cancelled, COUNT(*) as total',
+                [BookingStatus::Completed->value, BookingStatus::NoShow->value, BookingStatus::Cancelled->value],
+            )
+            ->first();
+    }
+
+    public function attendanceHistoryForUser(int $userId, int $limit = 50): Collection
+    {
+        return Booking::query()
+            ->forAttendee($userId)
+            ->whereIn('status', [BookingStatus::Completed, BookingStatus::NoShow])
+            ->with(['type', 'host'])
+            ->orderByDesc('starts_at')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function progressStatsForUser(int $userId): object
+    {
+        return Booking::query()
+            ->forAttendee($userId)
+            ->where('status', BookingStatus::Completed)
+            ->selectRaw(
+                'COUNT(*) as completed_sessions, COALESCE(SUM(TIMESTAMPDIFF(MINUTE, starts_at, ends_at)), 0) / 60.0 as total_hours',
+            )
+            ->first();
+    }
+
+    public function subjectBreakdownForUser(int $userId): Collection
+    {
+        return Booking::query()
+            ->forAttendee($userId)
+            ->where('status', BookingStatus::Completed)
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.subject')) IS NOT NULL")
+            ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.subject')) as subject, COUNT(*) as sessions")
+            ->groupBy('subject')
+            ->orderByDesc('sessions')
             ->get();
     }
 

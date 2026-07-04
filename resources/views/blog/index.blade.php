@@ -22,7 +22,7 @@
     </div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
         <div class="animate-fade-in-up">
-            <div class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+            <div class="flex items-center gap-2 text-sm text-slate-400 mb-4">
                 <a href="{{ url('/') }}" class="hover:text-slate-400 transition-colors">Home</a>
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                 <span>Blog</span>
@@ -35,7 +35,7 @@
                 Guides, tutorials, and insights to help you learn and grow.
             </p>
             @if($posts->total() > 0)
-            <div class="mt-4 inline-flex items-center gap-2 text-sm text-slate-500">
+            <div class="mt-4 inline-flex items-center gap-2 text-sm text-slate-400">
                 <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
                 {{ $posts->total() }} {{ Str::plural('article', $posts->total()) }}
             </div>
@@ -52,7 +52,7 @@
                 <svg class="h-8 w-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
             </div>
             <p class="text-slate-400 font-medium">No posts published yet.</p>
-            <p class="text-slate-600 text-sm mt-1">Check back soon for fresh content.</p>
+            <p class="text-slate-400 text-sm mt-1">Check back soon for fresh content.</p>
         </div>
     @else
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -101,7 +101,7 @@
                             <p class="mt-2 text-sm text-slate-400 line-clamp-2 leading-relaxed">{{ $cardSummary }}</p>
                         @endif
 
-                        <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                        <div class="mt-4 flex items-center gap-2 text-xs text-slate-400">
                             @if($post->author)
                                 <div class="h-5 w-5 rounded-full bg-indigo-600/30 flex items-center justify-center flex-shrink-0">
                                     <span class="text-[10px] font-bold text-indigo-300">{{ mb_substr($post->author->name, 0, 1) }}</span>
@@ -121,7 +121,7 @@
                         <div class="mt-3 flex flex-wrap gap-1">
                             @foreach($post->tags->take(3) as $tag)
                                 <a href="{{ route('blog.tag', $tag->slug) }}"
-                                   class="inline-flex text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                                   class="inline-flex text-xs text-slate-400 hover:text-slate-400 transition-colors">
                                     #{{ $tag->name }}
                                 </a>
                             @endforeach

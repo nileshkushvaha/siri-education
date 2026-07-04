@@ -1,13 +1,5 @@
-{{-- Contact Form Block — Light Glassmorphism --}}
+{{-- Contact Form Block --}}
 <section class="relative py-20 overflow-hidden">
-
-    {{-- Decorative background blobs --}}
-    <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-        <div class="absolute -top-32 -left-32 h-[500px] w-[500px] rounded-full bg-gradient-to-br from-indigo-300/30 to-violet-300/20 blur-3xl"></div>
-        <div class="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-gradient-to-tl from-purple-300/25 to-blue-300/20 blur-3xl"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-96 rounded-full bg-indigo-200/20 blur-2xl"></div>
-    </div>
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-10 items-start">
 
@@ -22,57 +14,6 @@
                     @if($description ?? false)
                         <p class="mt-3 text-base text-slate-500 leading-relaxed">{{ $description }}</p>
                     @endif
-                </div>
-
-                {{-- Decorative feature cards --}}
-                <div class="space-y-3">
-                    <div class="flex items-center gap-3.5 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3.5 shadow-sm">
-                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100">
-                            <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email us</p>
-                            <p class="text-sm font-medium text-slate-700 mt-0.5">hello@example.com</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3.5 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3.5 shadow-sm">
-                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-100">
-                            <svg class="h-5 w-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Response time</p>
-                            <p class="text-sm font-medium text-slate-700 mt-0.5">Within 24 hours</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3.5 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3.5 shadow-sm">
-                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-                            <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Always free</p>
-                            <p class="text-sm font-medium text-slate-700 mt-0.5">No hidden charges</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Decorative illustration --}}
-                <div class="hidden lg:block">
-                    <div class="relative h-44 w-44">
-                        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-indigo-400/20 to-violet-400/20 backdrop-blur-sm border border-white/40 shadow-xl rotate-6"></div>
-                        <div class="absolute inset-2 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 backdrop-blur-sm border border-white/50 shadow-inner -rotate-3 flex items-center justify-center">
-                            <svg class="h-16 w-16 text-indigo-400/60" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
-                            </svg>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -92,7 +33,6 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="font-semibold">Message sent!</p>
                             <p class="mt-0.5 text-emerald-600">{{ session('success') }}</p>
                         </div>
                     </div>
@@ -232,7 +172,10 @@
                             @endif
                         @endwhile
 
+                        <x-ui.turnstile-static />
+
                         {{-- Submit --}}
+                        @if(filled($button_text ?? null))
                         <div class="pt-1">
                             <button
                                 type="submit"
@@ -245,13 +188,10 @@
                                 <svg class="h-4 w-4 relative" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
                                 </svg>
-                                <span class="relative">{{ $button_text ?? 'Send Message' }}</span>
+                                <span class="relative">{{ $button_text }}</span>
                             </button>
-
-                            <p class="mt-3 text-center text-[11px] text-slate-400">
-                                🔒 Your information is kept private and never shared.
-                            </p>
                         </div>
+                        @endif
                     </form>
                 </div>
             </div>

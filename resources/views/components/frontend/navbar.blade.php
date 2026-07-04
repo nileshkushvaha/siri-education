@@ -78,7 +78,7 @@
                                 </template>
                             </div>
                             <span class="text-slate-300 text-sm font-medium hidden sm:block" x-text="user.name"></span>
-                            <svg class="w-3.5 h-3.5 text-slate-500 transition-transform duration-200" :class="dropdownOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="dropdownOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
@@ -106,7 +106,7 @@
                                     </div>
                                     <div class="min-w-0">
                                         <p class="text-white text-sm font-semibold truncate" x-text="user.name"></p>
-                                        <p class="text-slate-500 text-xs truncate" x-text="user.email"></p>
+                                        <p class="text-slate-400 text-xs truncate" x-text="user.email"></p>
                                     </div>
                                 </div>
                             </div>

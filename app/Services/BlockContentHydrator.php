@@ -23,7 +23,12 @@ class BlockContentHydrator
             BlockType::Accordion => self::hydrateAccordion($jsonContent),
             BlockType::Tabs => self::hydrateTabs($jsonContent),
             BlockType::Team => self::hydrateTeam($jsonContent),
+            BlockType::Features => self::hydrateFeatures($jsonContent),
+            BlockType::FeaturedCourses => self::hydrateFeaturedCourses($jsonContent),
+            BlockType::FeaturedTeachers => self::hydrateFeaturedTeachers($jsonContent),
             BlockType::Testimonials => self::hydrateTestimonials($jsonContent),
+            BlockType::Pricing => self::hydratePricing($jsonContent),
+            BlockType::Newsletter => self::hydrateNewsletter($jsonContent),
             BlockType::Statistics => self::hydrateStatistics($jsonContent),
             BlockType::Timeline => self::hydrateTimeline($jsonContent),
             BlockType::Button => self::hydrateButton($jsonContent),
@@ -140,10 +145,74 @@ class BlockContentHydrator
         ];
     }
 
+    private static function hydrateFeatures(array $content): array
+    {
+        return [
+            'eyebrow' => $content['eyebrow'] ?? '',
+            'title' => $content['title'] ?? '',
+            'description' => $content['description'] ?? '',
+            'features' => $content['features'] ?? [],
+            'columns' => $content['columns'] ?? 3,
+        ];
+    }
+
+    private static function hydrateFeaturedCourses(array $content): array
+    {
+        return [
+            'eyebrow' => $content['eyebrow'] ?? '',
+            'title' => $content['title'] ?? '',
+            'description' => $content['description'] ?? '',
+            'courses' => $content['courses'] ?? [],
+            'columns' => $content['columns'] ?? 3,
+            'link_label' => $content['link_label'] ?? '',
+            'link_url' => $content['link_url'] ?? '',
+        ];
+    }
+
+    private static function hydrateFeaturedTeachers(array $content): array
+    {
+        return [
+            'eyebrow' => $content['eyebrow'] ?? '',
+            'title' => $content['title'] ?? '',
+            'description' => $content['description'] ?? '',
+            'limit' => $content['limit'] ?? 4,
+            'columns' => $content['columns'] ?? 4,
+            'link_label' => $content['link_label'] ?? '',
+            'link_url' => $content['link_url'] ?? '',
+        ];
+    }
+
     private static function hydrateTestimonials(array $content): array
     {
         return [
             'testimonials' => $content['testimonials'] ?? [],
+            'columns' => $content['columns'] ?? 3,
+        ];
+    }
+
+    private static function hydrateNewsletter(array $content): array
+    {
+        return [
+            'eyebrow' => $content['eyebrow'] ?? '',
+            'title' => $content['title'] ?? '',
+            'description' => $content['description'] ?? '',
+            'name_label' => $content['name_label'] ?? '',
+            'name_placeholder' => $content['name_placeholder'] ?? '',
+            'email_label' => $content['email_label'] ?? '',
+            'email_placeholder' => $content['email_placeholder'] ?? '',
+            'button_text' => $content['button_text'] ?? '',
+            'consent_text' => $content['consent_text'] ?? '',
+            'success_message' => $content['success_message'] ?? '',
+        ];
+    }
+
+    private static function hydratePricing(array $content): array
+    {
+        return [
+            'eyebrow' => $content['eyebrow'] ?? '',
+            'title' => $content['title'] ?? '',
+            'description' => $content['description'] ?? '',
+            'plans' => $content['plans'] ?? [],
             'columns' => $content['columns'] ?? 3,
         ];
     }
@@ -220,8 +289,8 @@ class BlockContentHydrator
             'title' => $content['title'] ?? '',
             'description' => $content['description'] ?? '',
             'fields' => $fields,
-            'button_text' => $content['button_text'] ?? 'Send Message',
-            'success_message' => $content['success_message'] ?? 'Thank you for your message!',
+            'button_text' => $content['button_text'] ?? '',
+            'success_message' => $content['success_message'] ?? '',
         ];
     }
 

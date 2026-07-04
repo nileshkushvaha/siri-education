@@ -1,0 +1,28 @@
+/* ================================================================
+   Public Frontend — design tokens
+
+   Tailwind v4 theme partial for the new frontend work. @theme blocks
+   from imported files are merged by Tailwind's compiler, so this adds
+   to (never replaces) the tokens already declared in resources/css/app.css.
+
+   These tokens capture values already repeated as one-off literals
+   across existing components (indigo/violet brand gradient, the dark
+   portal glass-morphism surfaces, card radii) so new frontend
+   components can reference a name instead of copy-pasting a hex code.
+   Existing views are untouched — this is additive only.
+   ================================================================ */
+@theme {
+    /* Brand gradient (login panel, hero sections, primary buttons) */
+    --color-brand-start: #4f46e5;
+    --color-brand-mid: #7c3aed;
+    --color-brand-end: #9333ea;
+
+    /* Dark portal surfaces (layouts.account / layouts.auth glass cards) */
+    --color-surface-dark: #05080f;
+    --color-surface-glass: rgb(255 255 255 / 0.04);
+    --color-surface-glass-border: rgb(255 255 255 / 0.08);
+
+    /* Radii used consistently across cards/buttons in new components */
+    --radius-card: 1rem;
+    --radius-pill: 9999px;
+}

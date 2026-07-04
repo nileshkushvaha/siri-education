@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Models\TeacherAvailability;
+use App\Models\TeacherSubject;
 use App\Models\User;
+use App\Booking\Enums\Weekday;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -96,6 +99,55 @@ class InstructorListingTest extends TestCase
             ->assertOk()
             ->assertSee('Alice Walker')
             ->assertDontSee('Bob Builder');
+    }
+
+    public function test_subject_filter_limits_instructor_listing(): void
+    {
+        $mathInstructor = $this->makeInstructor(['name' => 'Math Instructor']);
+        $englishInstructor = $this->makeInstructor(['name' => 'English Instructor']);
+
+        TeacherSubject::factory()->create(['teacher_id' => $mathInstructor->id, 'subject' => 'maths']);
+        TeacherSubject::factory()->create(['teacher_id' => $englishInstructor->id, 'subject' => 'english']);
+
+        $this->get(route('instructors.index', ['subject' => 'maths']))
+            ->assertOk()
+            ->assertSee('Math Instructor')
+            ->assertDontSee('English Instructor');
+    }
+
+    public function test_language_filter_limits_instructor_listing(): void
+    {
+        $englishInstructor = $this->makeInstructor(['name' => 'English Speaking Instructor']);
+        $spanishInstructor = $this->makeInstructor(['name' => 'Spanish Speaking Instructor']);
+
+        $englishInstructor->profile->update(['language' => 'English']);
+        $spanishInstructor->profile->update(['language' => 'Spanish']);
+
+        $this->get(route('instructors.index', ['language' => 'English']))
+            ->assertOk()
+            ->assertSee('English Speaking Instructor')
+            ->assertDontSee('Spanish Speaking Instructor');
+    }
+
+    public function test_availability_filter_limits_instructor_listing(): void
+    {
+        $availableInstructor = $this->makeInstructor(['name' => 'Available Instructor']);
+        $unavailableInstructor = $this->makeInstructor(['name' => 'Unavailable Instructor']);
+
+        TeacherAvailability::factory()
+            ->forDay(Weekday::Monday)
+            ->between('09:00:00', '11:00:00')
+            ->create(['teacher_id' => $availableInstructor->id]);
+
+        TeacherAvailability::factory()
+            ->forDay(Weekday::Tuesday)
+            ->between('09:00:00', '11:00:00')
+            ->create(['teacher_id' => $unavailableInstructor->id, 'is_active' => false]);
+
+        $this->get(route('instructors.index', ['available' => '1']))
+            ->assertOk()
+            ->assertSee('Available Instructor')
+            ->assertDontSee('Unavailable Instructor');
     }
 
     public function test_featured_instructors_appear_first(): void

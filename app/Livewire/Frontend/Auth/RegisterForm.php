@@ -1,0 +1,125 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Frontend\Auth;
+
+use App\Exceptions\Auth\RegistrationException;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Livewire\Frontend\Auth\Concerns\ThrottlesLivewireRequests;
+use App\Services\Auth\RegistrationService;
+use App\Services\PortalResolver;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
+
+/**
+ * Thin Livewire replacement for the classic POST /register form.
+ * Mirrors RegisterController::store() exactly, delegating all
+ * registration logic (approval workflow, auto-verification, password
+ * history, activity log) to RegistrationService — the existing
+ * controller/route stay in place, untouched, as the non-JS fallback.
+ */
+final class RegisterForm extends Component
+{
+    use ThrottlesLivewireRequests;
+
+    public string $first_name = '';
+
+    public ?string $last_name = '';
+
+    public string $email = '';
+
+    public ?string $phone = '';
+
+    public string $password = '';
+
+    public string $password_confirmation = '';
+
+    public bool $terms = false;
+
+    public ?string $banner = null;
+
+    /** @return array<string, mixed> */
+    protected function rules(): array
+    {
+        return (new RegisterRequest)->rules();
+    }
+
+    /** @return array<string, string> */
+    protected function messages(): array
+    {
+        return (new RegisterRequest)->messages();
+    }
+
+    /** @return array<string, string> */
+    protected function validationAttributes(): array
+    {
+        return (new RegisterRequest)->attributes();
+    }
+
+    public function register(RegistrationService $registrationService, PortalResolver $portal): void
+    {
+        $this->banner = null;
+
+        // A classic HTTP request runs through Laravel's global
+        // ConvertEmptyStringsToNull middleware before validation, which
+        // is why RegisterRequest's 'nullable' phone rule tolerates an
+        // empty field. Livewire validates component properties directly
+        // (no such middleware), so an untouched '' would otherwise hit
+        // the regex and fail — normalize the same way here instead of
+        // relaxing the shared rule itself.
+        $this->last_name = blank($this->last_name) ? null : $this->last_name;
+        $this->phone = blank($this->phone) ? null : $this->phone;
+
+        $this->validate();
+        $this->throttleLimiter('login', ['email' => $this->email], 'email');
+
+        try {
+            $result = $registrationService->register(
+                data: [
+                    'first_name' => $this->first_name,
+                    'last_name' => $this->last_name,
+                    'email' => $this->email,
+                    'phone' => $this->phone,
+                    'password' => $this->password,
+                ],
+                ipAddress: request()->ip() ?? '',
+                userAgent: request()->userAgent() ?? '',
+            );
+        } catch (RegistrationException $e) {
+            $this->banner = $e->getMessage();
+
+            return;
+        }
+
+        if ($result->requiresApproval) {
+            session()->flash('success', 'Your account has been created and is awaiting administrator approval. You will be notified by email.');
+            $this->redirect(route('auth.login'), navigate: false);
+
+            return;
+        }
+
+        if ($result->autoVerified) {
+            Auth::login($result->user);
+            session()->regenerate();
+
+            session()->flash('success', 'Welcome to '.config('app.name').'! Your account is ready.');
+            $this->redirect($portal->loginRedirect($result->user), navigate: false);
+
+            return;
+        }
+
+        // Normal flow: log in temporarily so the signed verification URL works.
+        Auth::login($result->user);
+        session()->regenerate();
+
+        session()->flash('success', 'Account created! Please check your email to verify your address before signing in.');
+        $this->redirect(route('auth.verification.notice'), navigate: false);
+    }
+
+    public function render(): View
+    {
+        return view('livewire.frontend.auth.register-form');
+    }
+}

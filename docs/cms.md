@@ -8,8 +8,8 @@ The CMS bounded context lives in `app/Content/` with namespace `App\Content\`. I
 
 `App\Content\Models\ContentBlock` — polymorphic (owned by `Page` or `Post` via `blockable` morph).
 
-19 block types defined in `App\Enums\BlockType`:
-Hero, RichText, Image, Gallery, Video, CTA, FAQ, Accordion, Tabs, Team, Testimonials, Statistics, Timeline, Button, Divider, Spacer, Map, ContactForm, ContactInfo.
+24 block types defined in `App\Enums\BlockType`:
+Hero, RichText, Image, Gallery, Video, CTA, FAQ, Accordion, Tabs, Team, Features, FeaturedCourses, FeaturedTeachers, Testimonials, Pricing, Newsletter, Statistics, Timeline, Button, Divider, Spacer, Map, ContactForm, ContactInfo.
 
 Each block type has a corresponding form schema class in `app/Forms/Blocks/`.
 
@@ -19,7 +19,7 @@ Each block type has a corresponding form schema class in `app/Forms/Blocks/`.
 PageRenderService::render($page)      ← extends ContentRenderer
 → ContentBlockService::getBlocksForPage()
 → BlockRenderer::render($block)       ← dispatches by BlockType
-→ Blade view (resources/views/blocks/{type}.blade.php)
+→ Blade view (resources/views/components/blocks/{type}.blade.php)
 ```
 
 `ContentRenderer` is the abstract base. `PageRenderService` extends it and is registered as a singleton in `CmsServiceProvider`.
@@ -45,7 +45,7 @@ Activity logged via `AuditTrailService::logGuest()` — captures guest name, ema
 | `app/Content/Rendering/ContentRenderer.php` | Abstract rendering base |
 | `app/Services/PageRenderService.php` | Page rendering (singleton) |
 | `app/Http/Controllers/ContactFormController.php` | Contact form submission |
-| `app/Enums/BlockType.php` | All 19 block types |
+| `app/Enums/BlockType.php` | All 24 block types |
 
 ## Observers
 

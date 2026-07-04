@@ -61,7 +61,7 @@
             :aria-expanded="open ? 'true' : 'false'"
             :aria-label="open ? 'Collapse {{ addslashes($node->label) }}' : 'Expand {{ addslashes($node->label) }}'"
             aria-controls="{{ $nodeId }}"
-            class="px-4 flex items-center justify-center text-slate-500 hover:text-slate-200 transition-colors border-l border-white/[0.06]"
+            class="px-4 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors border-l border-white/[0.06]"
         >
             <svg
                 class="h-4 w-4 transition-transform duration-200"

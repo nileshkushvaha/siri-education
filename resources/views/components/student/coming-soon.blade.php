@@ -7,5 +7,5 @@
         </svg>
     </div>
     <h3 class="text-slate-300 font-semibold mb-2">{{ $title }}</h3>
-    <p class="text-slate-500 text-sm max-w-xs">{{ $message }}</p>
+    <p class="text-slate-400 text-sm max-w-xs">{{ $message }}</p>
 </div>

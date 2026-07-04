@@ -7,7 +7,7 @@
 - Roles & Permissions (Spatie Permission + Filament Shield)
 - Settings (13 settings groups: general, mail, SEO, security ×6, payment ×4)
 - Security (6 settings pages, account protection, session management)
-- CMS (19 block types, polymorphic content blocks)
+- CMS (24 block types, polymorphic content blocks)
 - Pages (lifecycle, SEO, scheduling, preview, soft deletes)
 - Posts (lifecycle, categories, tags, auto-publishing, related posts)
 - Navigation (NestedSet, 10 link types, role/permission visibility, publish windows)

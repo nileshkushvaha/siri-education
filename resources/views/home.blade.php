@@ -85,7 +85,7 @@ $faqs = [
      MAIN WRAPPER — Alpine.js root
      ============================================================ --}}
 <div
-    style="background:#05080F"
+    class="bg-surface-dark"
     x-data="{
         activeFaq: null,
     }"
@@ -126,7 +126,7 @@ $faqs = [
             <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">All-in-One Platform</span>
             <h2 class="text-4xl font-bold text-slate-900">Online Tutoring for School Subjects<br class="hidden sm:block"> & Competitive Exams</h2>
             <div class="section-accent"></div>
-            <p class="mt-4 text-slate-500 max-w-xl mx-auto">From K-12 academics to entrance exam coaching — one platform for every learning need.</p>
+            <p class="mt-4 text-slate-400 max-w-xl mx-auto">From K-12 academics to entrance exam coaching — one platform for every learning need.</p>
         </div>
 
         <div class="grid lg:grid-cols-2 gap-16 items-center">
@@ -137,7 +137,7 @@ $faqs = [
                     <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-xl flex-shrink-0 group-hover:scale-110 transition-transform">{{ $f['icon'] }}</div>
                     <div>
                         <h3 class="font-semibold text-slate-900 text-sm mb-0.5">{{ $f['title'] }}</h3>
-                        <p class="text-slate-500 text-xs leading-relaxed">{{ $f['desc'] }}</p>
+                        <p class="text-slate-400 text-xs leading-relaxed">{{ $f['desc'] }}</p>
                     </div>
                 </div>
                 @endforeach
@@ -188,7 +188,7 @@ $faqs = [
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">📈</span>
                         <div>
-                            <div class="text-xs text-slate-500">Improvement</div>
+                            <div class="text-xs text-slate-400">Improvement</div>
                             <div class="font-bold text-slate-900 text-sm text-grad">+42% this month</div>
                         </div>
                     </div>
@@ -239,7 +239,7 @@ $faqs = [
             <div class="card-lift bg-white rounded-3xl p-8 shadow-sm border border-slate-100 group">
                 <div class="w-16 h-16 rounded-2xl bg-gradient-to-br {{ $why['color'] }} flex items-center justify-center text-3xl mb-6 shadow-lg group-hover:scale-110 transition-transform">{{ $why['icon'] }}</div>
                 <h3 class="text-xl font-bold text-slate-900 mb-3">{{ $why['title'] }}</h3>
-                <p class="text-slate-500 leading-relaxed text-sm">{{ $why['desc'] }}</p>
+                <p class="text-slate-400 leading-relaxed text-sm">{{ $why['desc'] }}</p>
                 <div class="mt-6 flex items-center gap-2 text-indigo-600 text-sm font-semibold group-hover:gap-3 transition-all">
                     Learn More <span>→</span>
                 </div>
@@ -258,7 +258,7 @@ $faqs = [
             <span class="inline-block bg-violet-50 text-violet-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Process</span>
             <h2 class="text-4xl font-bold text-slate-900">How It <span class="text-grad">Works</span></h2>
             <div class="section-accent"></div>
-            <p class="mt-4 text-slate-500">Get started in 4 simple steps</p>
+            <p class="mt-4 text-slate-400">Get started in 4 simple steps</p>
         </div>
 
         <div class="relative">
@@ -280,7 +280,7 @@ $faqs = [
                             <span class="text-xl lg:hidden">{{ $step['icon'] }}</span>
                         </div>
                         <h3 class="text-lg font-bold text-slate-900 mb-2">{{ $step['title'] }}</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed">{{ $step['desc'] }}</p>
+                        <p class="text-slate-400 text-sm leading-relaxed">{{ $step['desc'] }}</p>
                     </div>
                     @else
                     {{-- Content left --}}
@@ -290,7 +290,7 @@ $faqs = [
                             <span class="text-xl lg:hidden">{{ $step['icon'] }}</span>
                         </div>
                         <h3 class="text-lg font-bold text-slate-900 mb-2">{{ $step['title'] }}</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed">{{ $step['desc'] }}</p>
+                        <p class="text-slate-400 text-sm leading-relaxed">{{ $step['desc'] }}</p>
                     </div>
                     {{-- Icon right --}}
                     <div class="hidden lg:flex justify-start pl-10">
@@ -373,7 +373,7 @@ $faqs = [
             <span class="inline-block bg-emerald-50 text-emerald-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Expert Faculty</span>
             <h2 class="text-4xl font-bold text-slate-900">Meet Our <span class="text-grad">Top Tutors</span></h2>
             <div class="section-accent"></div>
-            <p class="mt-4 text-slate-500 max-w-md mx-auto">Handpicked experts with proven track records and a passion for teaching.</p>
+            <p class="mt-4 text-slate-400 max-w-md mx-auto">Handpicked experts with proven track records and a passion for teaching.</p>
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -386,7 +386,7 @@ $faqs = [
                 </div>
 
                 <h3 class="font-bold text-slate-900 text-sm mb-0.5">{{ $tutor['name'] }}</h3>
-                <p class="text-slate-500 text-xs mb-3">{{ $tutor['subject'] }}</p>
+                <p class="text-slate-400 text-xs mb-3">{{ $tutor['subject'] }}</p>
 
                 <div class="flex justify-center items-center gap-1 mb-3">
                     <div class="text-amber-400 text-xs">★★★★★</div>
@@ -511,11 +511,11 @@ $faqs = [
                             <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                 {{ strtoupper(substr($post->author->name ?? 'A', 0, 1)) }}
                             </div>
-                            <span class="text-xs text-slate-500">{{ $post->author->name }}</span>
+                            <span class="text-xs text-slate-400">{{ $post->author->name }}</span>
                             @endif
                         </div>
                         @if($post->published_at)
-                        <span class="text-xs text-slate-600">{{ $post->published_at->format('M j, Y') }}</span>
+                        <span class="text-xs text-slate-400">{{ $post->published_at->format('M j, Y') }}</span>
                         @endif
                     </div>
                 </div>
@@ -545,7 +545,7 @@ $faqs = [
             <span class="inline-block bg-amber-50 text-amber-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">FAQ</span>
             <h2 class="text-4xl font-bold text-slate-900">Frequently Asked <span class="text-grad">Questions</span></h2>
             <div class="section-accent"></div>
-            <p class="mt-4 text-slate-500">Find answers to the most common questions about our service.</p>
+            <p class="mt-4 text-slate-400">Find answers to the most common questions about our service.</p>
         </div>
 
         <div class="space-y-3">
@@ -559,13 +559,13 @@ $faqs = [
                     :aria-expanded="open">
                     <span class="font-semibold text-slate-900 text-sm pr-4">{{ $faq['q'] }}</span>
                     <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 transition-all duration-300" :class="open ? 'bg-indigo-100 rotate-45' : ''">
-                        <svg class="w-4 h-4 text-slate-500 transition-colors" :class="open ? 'text-indigo-600' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <svg class="w-4 h-4 text-slate-400 transition-colors" :class="open ? 'text-indigo-600' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
                     </div>
                 </button>
                 <div x-show="open" x-collapse class="px-6 pb-5">
-                    <p class="text-slate-500 text-sm leading-relaxed">{{ $faq['a'] }}</p>
+                    <p class="text-slate-400 text-sm leading-relaxed">{{ $faq['a'] }}</p>
                 </div>
             </div>
             @endforeach

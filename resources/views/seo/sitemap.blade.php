@@ -16,4 +16,11 @@
             <priority>0.6</priority>
         </url>
     @endforeach
+    @foreach(($staticRoutes ?? []) as $routeName)
+        <url>
+            <loc>{{ route($routeName) }}</loc>
+            <changefreq>monthly</changefreq>
+            <priority>0.3</priority>
+        </url>
+    @endforeach
 </urlset>

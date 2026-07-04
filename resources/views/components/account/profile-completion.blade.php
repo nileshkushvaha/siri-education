@@ -22,7 +22,7 @@
     </div>
 
     @if($missing->isNotEmpty())
-        <p class="text-xs text-slate-500 mb-2">Still missing:</p>
+        <p class="text-xs text-slate-400 mb-2">Still missing:</p>
         <div class="flex flex-wrap gap-1.5">
             @foreach($missing as $key)
                 <span class="px-2 py-1 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">

@@ -16,7 +16,7 @@
             </svg>
         </div>
         <p class="text-slate-200 font-semibold text-sm mb-0.5">{{ $title }}</p>
-        <p class="text-slate-500 text-xs">{{ $sub }}</p>
+        <p class="text-slate-400 text-xs">{{ $sub }}</p>
     </a>
     @endforeach
 </div>

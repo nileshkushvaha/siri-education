@@ -4,32 +4,7 @@
 @section('title', 'Verify Your Email — ' . config('app.name'))
 
 @section('content')
-<div class="min-h-screen bg-[#05080F] flex items-center justify-center px-4 py-16 relative overflow-hidden"
-     x-data="{
-    cooldown: {{ session('resent') ? 60 : 0 }},
-    timer: null,
-    loading: false,
-
-    startCooldown() {
-        this.cooldown = 60;
-        this.timer = setInterval(() => {
-            if (this.cooldown > 0) {
-                this.cooldown--;
-            } else {
-                clearInterval(this.timer);
-            }
-        }, 1000);
-    },
-
-    init() {
-        if (this.cooldown > 0) {
-            this.timer = setInterval(() => {
-                if (this.cooldown > 0) this.cooldown--;
-                else clearInterval(this.timer);
-            }, 1000);
-        }
-    }
-}">
+<div class="min-h-screen bg-surface-dark flex items-center justify-center px-4 py-16 relative overflow-hidden">
 
     {{-- Background orbs --}}
     <div class="absolute top-[-10rem] left-[-10rem] w-[38rem] h-[38rem] rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none"></div>
@@ -68,16 +43,10 @@
                 {{ auth()->user()->email }}
             </p>
 
-            @if(session('status') === 'verification-link-sent')
-            <div class="mb-5 flex items-start gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-4 text-left">
-                <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <p class="text-emerald-300 text-sm">A new verification link has been sent to your email address.</p>
-            </div>
-            @endif
 
             {{-- Tips box --}}
             <div class="glass rounded-xl p-4 text-left mb-6 space-y-2">
-                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Didn't receive it?</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Didn't receive it?</p>
                 @foreach(["Check your spam or junk folder", "Allow a few minutes for delivery", "Ensure the email address is correct"] as $tip)
                 <div class="flex items-center gap-2.5">
                     <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
@@ -86,33 +55,19 @@
                 @endforeach
             </div>
 
-            {{-- Resend form --}}
-            <form method="POST" action="{{ route('auth.verification.resend') }}" class="mb-4"
-                  @submit="if(cooldown > 0) { $event.preventDefault(); return; } loading = true; startCooldown();">
-                @csrf
-                <button type="submit"
-                    class="auth-btn-primary"
-                    :disabled="cooldown > 0 || loading">
-                    <svg x-show="loading && cooldown === 0" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span x-show="cooldown > 0">Resend in <span class="font-bold" x-text="cooldown"></span>s</span>
-                    <span x-show="cooldown === 0 && !loading" class="flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        Resend verification email
-                    </span>
-                </button>
-            </form>
+            <livewire:frontend.auth.verify-email-notice />
 
             {{-- Sign out --}}
             <form method="POST" action="{{ route('auth.logout') }}">
                 @csrf
-                <button type="submit" class="text-sm text-slate-500 hover:text-slate-300 transition">
+                <button type="submit" class="text-sm text-slate-400 hover:text-slate-300 transition">
                     Sign out and use a different account
                 </button>
             </form>
         </div>
 
-        <p class="text-center text-xs text-slate-600 mt-5">
-            Need help? <a href="#" class="text-slate-500 hover:text-slate-400 transition">Contact support</a>
+        <p class="text-center text-xs text-slate-400 mt-5">
+            Need help? <a href="#" class="text-slate-400 hover:text-slate-400 transition">Contact support</a>
         </p>
     </div>
 </div>

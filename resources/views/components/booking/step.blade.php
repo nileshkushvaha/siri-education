@@ -15,7 +15,7 @@
     <h2 id="step-title-{{ $step }}" tabindex="-1"
         class="text-xl font-bold text-slate-900 focus:outline-none">{{ $title }}</h2>
     @if($subtitle)
-        <p class="mt-1 text-sm text-slate-500">{{ $subtitle }}</p>
+        <p class="mt-1 text-sm text-slate-400">{{ $subtitle }}</p>
     @endif
 
     <div class="mt-5">

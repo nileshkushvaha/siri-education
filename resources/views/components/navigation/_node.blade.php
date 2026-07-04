@@ -37,7 +37,7 @@
         @class([
             'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
             'text-violet-700 bg-violet-50 font-semibold'  => $node->isActive,
-            'text-slate-600 hover:text-violet-700 hover:bg-violet-50' => ! $node->isActive,
+            'text-slate-400 hover:text-violet-700 hover:bg-violet-50' => ! $node->isActive,
             $node->cssClass ?? '',
         ])
         @if($node->cssId) id="{{ $node->cssId }}" @endif
@@ -80,8 +80,8 @@
             'px-3 py-2 text-sm'                        => !$isRoot,
             'text-violet-700 bg-violet-50 font-semibold'            => $node->isActive && $isRoot,
             'text-violet-600 font-medium'                            => $node->isActive && !$isRoot,
-            'text-slate-600 hover:text-violet-700 hover:bg-violet-50' => !$node->isActive && $isRoot,
-            'text-slate-500 hover:text-violet-600 hover:bg-violet-50/60 rounded-md' => !$node->isActive && !$isRoot,
+            'text-slate-400 hover:text-violet-700 hover:bg-violet-50' => !$node->isActive && $isRoot,
+            'text-slate-400 hover:text-violet-600 hover:bg-violet-50/60 rounded-md' => !$node->isActive && !$isRoot,
             $node->cssClass ?? '',
         ])
         @if($node->cssId) id="{{ $node->cssId }}" @endif

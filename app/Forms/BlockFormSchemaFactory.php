@@ -10,10 +10,15 @@ use App\Forms\Blocks\ContactInfoBlockForm;
 use App\Forms\Blocks\CTABlockForm;
 use App\Forms\Blocks\DividerBlockForm;
 use App\Forms\Blocks\FAQBlockForm;
+use App\Forms\Blocks\FeaturedCoursesBlockForm;
+use App\Forms\Blocks\FeaturedTeachersBlockForm;
+use App\Forms\Blocks\FeaturesBlockForm;
 use App\Forms\Blocks\GalleryBlockForm;
 use App\Forms\Blocks\HeroBlockForm;
 use App\Forms\Blocks\ImageBlockForm;
 use App\Forms\Blocks\MapBlockForm;
+use App\Forms\Blocks\NewsletterBlockForm;
+use App\Forms\Blocks\PricingBlockForm;
 use App\Forms\Blocks\RichTextBlockForm;
 use App\Forms\Blocks\SpacerBlockForm;
 use App\Forms\Blocks\StatisticsBlockForm;
@@ -42,7 +47,12 @@ class BlockFormSchemaFactory
             BlockType::Accordion => AccordionBlockForm::schema(),
             BlockType::Tabs => TabsBlockForm::schema(),
             BlockType::Team => TeamBlockForm::schema(),
+            BlockType::Features => FeaturesBlockForm::schema(),
+            BlockType::FeaturedCourses => FeaturedCoursesBlockForm::schema(),
+            BlockType::FeaturedTeachers => FeaturedTeachersBlockForm::schema(),
             BlockType::Testimonials => TestimonialsBlockForm::schema(),
+            BlockType::Pricing => PricingBlockForm::schema(),
+            BlockType::Newsletter => NewsletterBlockForm::schema(),
             BlockType::Statistics => StatisticsBlockForm::schema(),
             BlockType::Timeline => TimelineBlockForm::schema(),
             BlockType::Button => ButtonBlockForm::schema(),

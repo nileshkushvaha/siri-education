@@ -179,6 +179,90 @@ class BlockRendererTest extends TestCase
         $this->assertStringContainsString('Amazing service!', $html);
     }
 
+    public function test_render_features_block(): void
+    {
+        $block = $this->createBlock(BlockType::Features, [
+            'title' => 'Platform Features',
+            'features' => [
+                ['title' => 'Reusable Blocks', 'description' => 'Render from CMS data'],
+            ],
+            'columns' => 3,
+        ]);
+
+        $html = $this->renderer->render($block);
+
+        $this->assertStringContainsString('Platform Features', $html);
+        $this->assertStringContainsString('Reusable Blocks', $html);
+        $this->assertStringContainsString('Render from CMS data', $html);
+    }
+
+    public function test_render_pricing_block(): void
+    {
+        $block = $this->createBlock(BlockType::Pricing, [
+            'title' => 'Plans',
+            'plans' => [
+                [
+                    'name' => 'Team',
+                    'price' => '$99',
+                    'features' => ['CMS rendering'],
+                    'button_text' => 'Choose Plan',
+                    'button_link' => '/pricing/team',
+                ],
+            ],
+            'columns' => 3,
+        ]);
+
+        $html = $this->renderer->render($block);
+
+        $this->assertStringContainsString('Plans', $html);
+        $this->assertStringContainsString('Team', $html);
+        $this->assertStringContainsString('CMS rendering', $html);
+        $this->assertStringContainsString('Choose Plan', $html);
+    }
+
+    public function test_render_featured_courses_block(): void
+    {
+        $block = $this->createBlock(BlockType::FeaturedCourses, [
+            'title' => 'Featured Courses',
+            'courses' => [
+                ['title' => 'CMS Authored Course', 'description' => 'Managed from page blocks'],
+            ],
+            'columns' => 3,
+        ]);
+
+        $html = $this->renderer->render($block);
+
+        $this->assertStringContainsString('Featured Courses', $html);
+        $this->assertStringContainsString('CMS Authored Course', $html);
+    }
+
+    public function test_render_featured_teachers_block(): void
+    {
+        $block = $this->createBlock(BlockType::FeaturedTeachers, [
+            'title' => 'Featured Teachers',
+            'limit' => 4,
+            'columns' => 4,
+        ]);
+
+        $html = $this->renderer->render($block);
+
+        $this->assertStringContainsString('Featured Teachers', $html);
+    }
+
+    public function test_render_newsletter_block(): void
+    {
+        $block = $this->createBlock(BlockType::Newsletter, [
+            'title' => 'Newsletter',
+            'email_label' => 'Email',
+            'button_text' => 'Subscribe',
+        ]);
+
+        $html = $this->renderer->render($block);
+
+        $this->assertStringContainsString('Newsletter', $html);
+        $this->assertStringContainsString('Subscribe', $html);
+    }
+
     public function test_render_statistics_block(): void
     {
         $block = $this->createBlock(BlockType::Statistics, [
@@ -304,6 +388,11 @@ class BlockRendererTest extends TestCase
         $this->assertEquals('hero', $this->renderer->getComponentName(BlockType::Hero));
         $this->assertEquals('rich-text', $this->renderer->getComponentName(BlockType::RichText));
         $this->assertEquals('gallery', $this->renderer->getComponentName(BlockType::Gallery));
+        $this->assertEquals('features', $this->renderer->getComponentName(BlockType::Features));
+        $this->assertEquals('pricing', $this->renderer->getComponentName(BlockType::Pricing));
+        $this->assertEquals('featured-courses', $this->renderer->getComponentName(BlockType::FeaturedCourses));
+        $this->assertEquals('featured-teachers', $this->renderer->getComponentName(BlockType::FeaturedTeachers));
+        $this->assertEquals('newsletter', $this->renderer->getComponentName(BlockType::Newsletter));
         $this->assertEquals('contact-form', $this->renderer->getComponentName(BlockType::ContactForm));
     }
 

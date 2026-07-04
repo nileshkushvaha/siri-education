@@ -12,7 +12,7 @@
     $address         = $generalSettings->address ?? null;
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,6 +76,8 @@
         <script async src="https://www.googletagmanager.com/gtag/js?id={{ $site['google_analytics_id'] }}"></script>
         <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ $site['google_analytics_id'] }}');</script>
     @endif
+
+    @livewireStyles
 </head>
 <body class="text-slate-800 antialiased" style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
 
@@ -88,7 +90,9 @@
         <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={{ $site['facebook_pixel_id'] }}&ev=PageView&noscript=1"/></noscript>
     @endif
 
-    @include('partials.site-header')
+    <livewire:frontend.layout.announcement-bar />
+    <livewire:frontend.layout.site-header :app-name="$appName" :logo="$logo" />
+    <livewire:frontend.layout.search-overlay />
 
     @if(session()->has('success') || session()->has('error') || session()->has('warning') || session()->has('info'))
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 space-y-2">
@@ -169,7 +173,18 @@
         {!! $content ?? '' !!}
     </main>
 
-    @include('partials.site-footer')
+    <livewire:frontend.layout.site-footer
+        :app-name="$appName"
+        :logo="$logo"
+        :footer-text="$footerText"
+        :footer-copyright="$footerCopyright"
+        :support-email="$supportEmail"
+        :support-phone="$supportPhone"
+        :address="$address"
+    />
+    <livewire:frontend.layout.cookie-banner />
+
+    @livewireScripts
 
 </body>
 </html>

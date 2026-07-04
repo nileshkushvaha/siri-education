@@ -1,6 +1,6 @@
 # Enterprise App
 
-An enterprise-grade starter kit built on **Laravel 13** and **Filament v4** — covering authentication, CMS, navigation, security configuration, payment infrastructure, and system monitoring. Designed as the stable foundation for business modules (e-commerce, LMS, etc.).
+An enterprise-grade starter kit built on **Laravel 13** and **Filament v5** — covering authentication, CMS, navigation, security configuration, payment infrastructure, and system monitoring. Designed as the stable foundation for business modules (e-commerce, LMS, etc.).
 
 ---
 
@@ -8,15 +8,16 @@ An enterprise-grade starter kit built on **Laravel 13** and **Filament v4** — 
 
 | | |
 |---|---|
-| **Language** | PHP 8.5 |
-| **Framework** | Laravel 13 |
-| **Admin Panel** | Filament v4 (`/admin`) |
+| **Language** | PHP `^8.3` (local runtime: 8.5.7) |
+| **Framework** | Laravel 13.18.1 (`^13.8`) |
+| **Admin Panel** | Filament 5.6.8 (`^5.6`, `/admin`) |
 | **Database** | MySQL |
-| **Permissions** | Spatie Laravel Permission v7 |
-| **Settings** | Spatie Laravel Settings v3.9 |
-| **Activity Log** | Spatie Laravel Activitylog v5 |
-| **Media** | Spatie Laravel Media Library v11 |
-| **Auth Shield** | Bezhansalleh Filament Shield v4 |
+| **Frontend Runtime** | Blade · Livewire 4.3.3 · Alpine.js 3.14.3 · Tailwind CSS 4.3.1 · Vite 8.1.0 |
+| **Permissions** | Spatie Laravel Permission 7.4.2 (`^7.0`) |
+| **Settings** | Spatie Laravel Settings 3.9.0 (`^3.9`) |
+| **Activity Log** | Spatie Laravel Activitylog 5.0.0 (`^5.0`) |
+| **Media** | Spatie Laravel Media Library 11.23.1 (`^11.23`) |
+| **Auth Shield** | Bezhansalleh Filament Shield 4.2.0 (`^4.2`) |
 
 ---
 
@@ -105,7 +106,7 @@ php artisan test --env=testing --filter SecurityPolicyTest
 php artisan test --env=testing tests/Feature/Security/
 ```
 
-Current suite: **762 tests, 762 passing**.
+Current suite: **1460 tests, 1460 passing**.
 
 ---
 

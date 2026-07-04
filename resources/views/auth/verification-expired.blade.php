@@ -4,7 +4,7 @@
 @section('title', 'Link Expired — ' . config('app.name'))
 
 @section('content')
-<div class="min-h-screen bg-[#05080F] flex items-center justify-center px-4 py-16 relative overflow-hidden">
+<div class="min-h-screen bg-surface-dark flex items-center justify-center px-4 py-16 relative overflow-hidden">
 
     {{-- Background orbs --}}
     <div class="absolute top-[-10rem] left-[-10rem] w-[36rem] h-[36rem] rounded-full bg-amber-600/10 blur-[120px] pointer-events-none"></div>
@@ -74,15 +74,15 @@
             </a>
 
             <div class="mt-2">
-                <a href="{{ route('auth.register') }}" class="text-sm text-slate-500 hover:text-slate-300 transition">
+                <a href="{{ route('auth.register') }}" class="text-sm text-slate-400 hover:text-slate-300 transition">
                     Don't have an account? Register →
                 </a>
             </div>
             @endauth
         </div>
 
-        <p class="text-center text-xs text-slate-600 mt-5">
-            Need help? <a href="#" class="text-slate-500 hover:text-slate-400 transition">Contact support</a>
+        <p class="text-center text-xs text-slate-400 mt-5">
+            Need help? <a href="#" class="text-slate-400 hover:text-slate-400 transition">Contact support</a>
         </p>
     </div>
 </div>

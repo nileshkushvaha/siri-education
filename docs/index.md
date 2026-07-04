@@ -10,6 +10,7 @@
 | Pages | pages.md |
 | Posts | posts.md |
 | Navigation | navigation.md |
+| Frontend | frontend.md |
 | Media | media.md |
 | Notifications | notifications.md |
 | Activity Log | activity-log.md |

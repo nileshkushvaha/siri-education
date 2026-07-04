@@ -17,7 +17,12 @@ use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Faq\DashboardFaqController;
 use App\Http\Controllers\Faq\PublicFaqController;
+use App\Http\Controllers\Forms\CallbackController;
+use App\Http\Controllers\Forms\FeedbackController;
+use App\Http\Controllers\Forms\GeneralInquiryController;
+use App\Http\Controllers\Forms\SupportController;
 use App\Http\Controllers\Instructor\InstructorController;
+use App\Http\Controllers\NewsletterUnsubscribeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\Profile\ProfileController;
@@ -26,13 +31,18 @@ use App\Http\Controllers\Profile\SecurityController;
 use App\Http\Controllers\Profile\SessionController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SeoController;
+use App\Http\Controllers\Student\StudentAttendanceController;
 use App\Http\Controllers\Student\StudentBookingController;
+use App\Http\Controllers\Student\StudentBookingHistoryController;
 use App\Http\Controllers\Student\StudentCertificatesController;
 use App\Http\Controllers\Student\StudentCoursesController;
+use App\Http\Controllers\Student\StudentHomeworkController;
 use App\Http\Controllers\Student\StudentNotificationsController;
 use App\Http\Controllers\Student\StudentOrdersController;
+use App\Http\Controllers\Student\StudentPaymentsController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\StudentReviewsController;
+use App\Http\Controllers\Student\StudentUpcomingClassesController;
 use App\Http\Controllers\Student\StudentWishlistController;
 use App\Http\Controllers\TagController;
 use App\Http\Middleware\EnsureAccountIsActive;
@@ -67,6 +77,15 @@ Route::get('/blog/{slug}', [PostController::class, 'show'])->name('blog.show');
 Route::post('/contact/submit', [ContactFormController::class, 'submit'])
     ->middleware('throttle:10,1')
     ->name('contact.submit');
+
+// ── Public Forms (Callback / Feedback / Support / General Inquiry) ───
+Route::get('/callback', [CallbackController::class, 'show'])->name('forms.callback');
+Route::get('/feedback', [FeedbackController::class, 'show'])->name('forms.feedback');
+Route::get('/support', [SupportController::class, 'show'])->name('forms.support');
+Route::get('/inquiry', [GeneralInquiryController::class, 'show'])->name('forms.inquiry');
+
+// ── Newsletter unsubscribe (token-based, no auth) ─────────────────────
+Route::get('/newsletter/unsubscribe/{token}', NewsletterUnsubscribeController::class)->name('newsletter.unsubscribe');
 
 // ── Dashboard (Frontend Portal — see PortalResolver) ─────────────────
 Route::get('/dashboard', DashboardController::class)->name('dashboard')
@@ -181,6 +200,13 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/notifications/read-all', [StudentNotificationsController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/{id}/read', [StudentNotificationsController::class, 'markRead'])->name('notifications.read');
     Route::get('/faqs', [DashboardFaqController::class, 'index'])->name('faqs');
+
+    // ── Student Dashboard — Booking Engine sections (Livewire-backed) ──
+    Route::get('/upcoming-classes', [StudentUpcomingClassesController::class, 'index'])->name('upcoming-classes');
+    Route::get('/my-bookings', [StudentBookingHistoryController::class, 'index'])->name('my-bookings');
+    Route::get('/payments', [StudentPaymentsController::class, 'index'])->name('payments');
+    Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
+    Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
     // ── Student booking (JSON, session-auth — reuses the Booking Engine) ──
     Route::prefix('bookings')->name('bookings.')->group(function (): void {

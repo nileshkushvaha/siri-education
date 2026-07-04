@@ -7,7 +7,7 @@
 @endsection
 
 @section('content')
-<div class="min-h-screen bg-[#05080F]">
+<div class="min-h-screen bg-surface-dark">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
         <x-account.profile-header :summary="$summary" variant="full" />
@@ -29,7 +29,7 @@
                     <div class="space-y-4">
                         @if($currentPosition)
                             <div>
-                                <p class="text-slate-500 text-xs mb-1">Current Position</p>
+                                <p class="text-slate-400 text-xs mb-1">Current Position</p>
                                 <p class="text-white text-sm font-medium">{{ $currentPosition->designation }}</p>
                                 <p class="text-slate-400 text-xs">{{ $currentPosition->organization_name }}</p>
                             </div>
@@ -37,21 +37,21 @@
 
                         @if($yearsOfExperience > 0)
                             <div>
-                                <p class="text-slate-500 text-xs mb-1">Years of Experience</p>
+                                <p class="text-slate-400 text-xs mb-1">Years of Experience</p>
                                 <p class="text-white text-sm font-medium">{{ $yearsOfExperience }} years</p>
                             </div>
                         @endif
 
                         @if($latestEducation)
                             <div>
-                                <p class="text-slate-500 text-xs mb-1">Education</p>
+                                <p class="text-slate-400 text-xs mb-1">Education</p>
                                 <p class="text-white text-sm font-medium">{{ $latestEducation->degree ?? $latestEducation->education_level?->label() }}</p>
                                 <p class="text-slate-400 text-xs">{{ $latestEducation->institution_name }}</p>
                             </div>
                         @endif
 
                         @if(! $currentPosition && $yearsOfExperience <= 0 && ! $latestEducation)
-                            <p class="text-slate-500 text-sm">No details added yet.</p>
+                            <p class="text-slate-400 text-sm">No details added yet.</p>
                         @endif
                     </div>
                 </x-account.card>

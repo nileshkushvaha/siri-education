@@ -28,7 +28,16 @@ class SeoController extends Controller
                     ->latest('updated_at')
                     ->get();
 
-                return view('seo.sitemap', ['pages' => $pages, 'posts' => $posts])->render();
+                // Public form pages have no CMS-managed content, so they carry
+                // no updated_at — they're listed with a static low priority.
+                $staticRoutes = [
+                    'forms.callback',
+                    'forms.feedback',
+                    'forms.support',
+                    'forms.inquiry',
+                ];
+
+                return view('seo.sitemap', ['pages' => $pages, 'posts' => $posts, 'staticRoutes' => $staticRoutes])->render();
             }
         );
 
@@ -45,6 +54,7 @@ class SeoController extends Controller
                 'Allow: /',
                 'Disallow: /admin',
                 'Disallow: /login',
+                'Disallow: /dashboard',
                 'Sitemap: '.route('seo.sitemap'),
                 '',
             ])

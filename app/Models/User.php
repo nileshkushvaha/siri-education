@@ -127,6 +127,16 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(Booking::class, 'host_id');
     }
 
+    public function teacherSubjects(): HasMany
+    {
+        return $this->hasMany(TeacherSubject::class, 'teacher_id');
+    }
+
+    public function teacherAvailability(): HasMany
+    {
+        return $this->hasMany(TeacherAvailability::class, 'teacher_id');
+    }
+
     // ── Accessors ────────────────────────────────────────────────────
 
     public function getFullNameAttribute(): string

@@ -27,9 +27,9 @@ final class FaqService
         );
     }
 
-    public function publicFaqs(?string $search = null, ?string $categoryId = null): Collection
+    public function publicFaqs(?string $search = null, ?string $categoryId = null, ?int $limit = null): Collection
     {
-        return $this->query([FaqAudience::Public->value], $search, $categoryId);
+        return $this->query([FaqAudience::Public->value], $search, $categoryId, $limit);
     }
 
     public function forUser(User $user, ?string $search = null, ?string $categoryId = null): Collection
@@ -71,7 +71,7 @@ final class FaqService
 
     // ── Private ───────────────────────────────────────────────────────────
 
-    private function query(array $audiences, ?string $search, ?string $categoryId): Collection
+    private function query(array $audiences, ?string $search, ?string $categoryId, ?int $limit = null): Collection
     {
         $query = $this->baseQuery($audiences);
 
@@ -87,6 +87,7 @@ final class FaqService
             ->orderBy('display_order')
             ->orderBy('question')
             ->with('category')
+            ->when($limit, fn (Builder $q, int $l) => $q->limit($l))
             ->get();
     }
 

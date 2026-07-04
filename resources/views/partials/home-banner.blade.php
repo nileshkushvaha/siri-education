@@ -5,7 +5,7 @@ $countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingd
 {{-- ============================================================
      HOME HERO BANNER — included on the homepage only
      ============================================================ --}}
-<div style="background:#05080F" x-data="{ activeCountry: '🇮🇳 India' }">
+<div class="bg-surface-dark" x-data="{ activeCountry: '🇮🇳 India' }">
 
     <section class="hero-mesh flex flex-col" style="min-height: 75vh;">
 
@@ -91,14 +91,14 @@ $countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingd
                             <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30">💻</div>
                             <div>
                                 <div class="font-bold text-slate-900 text-sm">Data Structures & Algo</div>
-                                <div class="text-slate-500 text-xs">Computer Science · Intermediate</div>
+                                <div class="text-slate-400 text-xs">Computer Science · Intermediate</div>
                             </div>
                         </div>
 
                         {{-- Progress --}}
                         <div class="mb-4">
                             <div class="flex justify-between text-xs mb-1.5">
-                                <span class="text-slate-500">Course Progress</span>
+                                <span class="text-slate-400">Course Progress</span>
                                 <span class="text-indigo-600 font-bold">68%</span>
                             </div>
                             <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -111,7 +111,7 @@ $countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingd
                             <div class="flex items-center gap-2">
                                 <span class="text-lg">▶</span>
                                 <div>
-                                    <div class="text-xs text-slate-500">Next Lesson</div>
+                                    <div class="text-xs text-slate-400">Next Lesson</div>
                                     <div class="text-sm font-semibold text-slate-900">Binary Trees & BST</div>
                                 </div>
                             </div>
@@ -122,7 +122,7 @@ $countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingd
                                 @foreach(['🟣','🔵','🟢'] as $dot)
                                 <div class="w-7 h-7 rounded-full border-2 border-white bg-gradient-to-br from-indigo-400 to-violet-400 flex items-center justify-center text-xs">{{ $loop->iteration }}</div>
                                 @endforeach
-                                <div class="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-bold">+9</div>
+                                <div class="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 font-bold">+9</div>
                             </div>
                             <button class="btn-indigo px-4 py-2 rounded-xl text-white text-xs font-bold">Continue →</button>
                         </div>

@@ -11,7 +11,7 @@
 
 @section('account-content')
 <div x-data="{
-    activeTab: '{{ session('active_tab', 'general') }}',
+    activeTab: '{{ request('tab', session('active_tab', 'general')) }}',
     avatarPreview: '{{ $accountProfileSummary->avatarUrl }}',
     uploading: false,
     uploadError: '',
@@ -128,19 +128,19 @@
         </x-slot:coverActions>
 
         @if($user->profile->country)
-            <p class="text-slate-500 text-xs mt-1">{{ $user->profile->country->flag }} {{ $user->profile->country->name }}</p>
+            <p class="text-slate-400 text-xs mt-1">{{ $user->profile->country->flag }} {{ $user->profile->country->name }}</p>
         @endif
         <p x-show="uploadError" x-text="uploadError" class="text-xs text-red-400 mt-2"></p>
         <p x-show="coverUploadError" x-text="coverUploadError" class="text-xs text-red-400 mt-2"></p>
         <button x-show="avatarPreview" @click="deleteAvatar()" type="button"
-            class="mt-2 flex items-center gap-1 text-xs text-slate-600 hover:text-red-400 transition-colors"
+            class="mt-2 flex items-center gap-1 text-xs text-slate-400 hover:text-red-400 transition-colors"
             style="display:none">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Remove photo
         </button>
 
         <x-slot:actions>
-            <div class="text-xs text-slate-600 text-right">Hover photos to change</div>
+            <div class="text-xs text-slate-400 text-right">Hover photos to change</div>
         </x-slot:actions>
     </x-account.profile-header>
 
@@ -198,7 +198,7 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-semibold text-white">Personal Information</h2>
-                                    <p class="text-xs text-slate-500">Your name, contact, and identity details</p>
+                                    <p class="text-xs text-slate-400">Your name, contact, and identity details</p>
                                 </div>
                             </div>
 
@@ -233,12 +233,12 @@
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Email Address</label>
                                     <div class="relative">
                                         <input type="email" value="{{ $user->email }}" readonly disabled
-                                            class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05] text-slate-500 text-sm cursor-not-allowed pr-10">
+                                            class="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05] text-slate-400 text-sm cursor-not-allowed pr-10">
                                         <svg class="w-4 h-4 text-slate-600 absolute right-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                         </svg>
                                     </div>
-                                    <p class="mt-1.5 text-xs text-slate-600">Your email address cannot be changed. Contact support if you need to update it.</p>
+                                    <p class="mt-1.5 text-xs text-slate-400">Your email address cannot be changed. Contact support if you need to update it.</p>
                                 </div>
 
                                 {{-- Gender --}}
@@ -308,7 +308,7 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-semibold text-white">Address</h2>
-                                    <p class="text-xs text-slate-500">Your location and mailing address — integrates with the Countries/States masters</p>
+                                    <p class="text-xs text-slate-400">Your location and mailing address — integrates with the Countries/States masters</p>
                                 </div>
                             </div>
 
@@ -365,7 +365,7 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-semibold text-white">Social Links</h2>
-                                    <p class="text-xs text-slate-500">Shown on your profile if visibility allows</p>
+                                    <p class="text-xs text-slate-400">Shown on your profile if visibility allows</p>
                                 </div>
                             </div>
 
@@ -394,7 +394,7 @@
                                 class="px-7 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-[.98]">
                                 Save Changes
                             </button>
-                            <span class="text-xs text-slate-600">Changes are saved immediately</span>
+                            <span class="text-xs text-slate-400">Changes are saved immediately</span>
                         </div>
                     </form>
 
@@ -408,7 +408,7 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-semibold text-white">Profile Visibility</h2>
-                                <p class="text-xs text-slate-500">Control who can see your profile and which details are shown</p>
+                                <p class="text-xs text-slate-400">Control who can see your profile and which details are shown</p>
                             </div>
                         </div>
 
@@ -467,7 +467,7 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-semibold text-white">Login Alerts</h2>
-                                <p class="text-xs text-slate-500">Get notified when your account is accessed</p>
+                                <p class="text-xs text-slate-400">Get notified when your account is accessed</p>
                             </div>
                         </div>
                         <form method="POST" action="{{ route('profile.security.alerts') }}" class="space-y-3">
@@ -479,7 +479,7 @@
                             <label class="flex items-center justify-between gap-4 p-4 rounded-xl border border-white/[0.04] hover:border-white/[0.08] hover:bg-white/[0.02] cursor-pointer transition-all">
                                 <div>
                                     <p class="text-sm font-medium text-slate-200">{{ $label }}</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">{{ $desc }}</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">{{ $desc }}</p>
                                 </div>
                                 <div class="flex-shrink-0">
                                     <label class="toggle-switch">
@@ -503,7 +503,7 @@
                             </div>
                             <div class="flex-1">
                                 <h2 class="text-base font-semibold text-white">Change Password</h2>
-                                <p class="text-xs text-slate-500">
+                                <p class="text-xs text-slate-400">
                                     Last changed: <span class="text-slate-400">{{ $user->password_changed_at?->diffForHumans() ?? 'Never' }}</span>
                                 </p>
                             </div>
@@ -524,7 +524,7 @@
                                             class="w-full pr-10 px-4 py-3 rounded-xl bg-white/[0.05] border @error($name) border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/30 transition-all"
                                             placeholder="{{ $placeholder }}" autocomplete="{{ $autocomplete }}">
                                         <button type="button" @click="{{ $showVar }} = !{{ $showVar }}"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path x-show="!{{ $showVar }}" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                                 <path x-show="{{ $showVar }}" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" style="display:none"/>
@@ -537,10 +537,10 @@
                             </div>
 
                             <div class="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] mb-5">
-                                <p class="text-xs text-slate-500 font-semibold mb-2.5">Password requirements</p>
+                                <p class="text-xs text-slate-400 font-semibold mb-2.5">Password requirements</p>
                                 <ul class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
                                     @foreach(['At least 8 characters', 'Uppercase & lowercase', 'At least one number', 'At least one symbol'] as $rule)
-                                    <li class="flex items-center gap-1.5 text-xs text-slate-500">
+                                    <li class="flex items-center gap-1.5 text-xs text-slate-400">
                                         <svg class="w-3 h-3 text-slate-700 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                                         </svg>
@@ -567,13 +567,13 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-semibold text-white">Recent Login Activity</h2>
-                                <p class="text-xs text-slate-500">Last 10 login attempts on your account</p>
+                                <p class="text-xs text-slate-400">Last 10 login attempts on your account</p>
                             </div>
                         </div>
                         @if($loginHistory->isEmpty())
                             <div class="py-10 text-center">
                                 <svg class="w-10 h-10 text-slate-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <p class="text-sm text-slate-500">No login history yet.</p>
+                                <p class="text-sm text-slate-400">No login history yet.</p>
                             </div>
                         @else
                             <div class="space-y-1">
@@ -583,11 +583,11 @@
                                         <div class="w-2 h-2 rounded-full flex-shrink-0 {{ $log->isSuccessful() ? 'bg-emerald-400' : 'bg-red-400' }}"></div>
                                         <div>
                                             <p class="text-sm text-slate-300">{{ $log->browser }} on {{ $log->platform }}</p>
-                                            <p class="text-xs text-slate-500">{{ $log->ip_address }} · {{ $log->device_type }}</p>
+                                            <p class="text-xs text-slate-400">{{ $log->ip_address }} · {{ $log->device_type }}</p>
                                         </div>
                                     </div>
                                     <div class="text-right flex-shrink-0">
-                                        <p class="text-xs text-slate-500">{{ $log->logged_in_at?->diffForHumans() }}</p>
+                                        <p class="text-xs text-slate-400">{{ $log->logged_in_at?->diffForHumans() }}</p>
                                         <span class="text-xs px-2 py-0.5 rounded-full {{ $log->isSuccessful() ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400' }}">
                                             {{ ucfirst($log->status) }}
                                         </span>
@@ -659,7 +659,7 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-semibold text-white">Active Sessions</h2>
-                                    <p class="text-xs text-slate-500">Devices signed in to your account</p>
+                                    <p class="text-xs text-slate-400">Devices signed in to your account</p>
                                 </div>
                             </div>
                             <button @click="revokeAll()"
@@ -698,7 +698,7 @@
                                                     This device
                                                 </span>
                                             </div>
-                                            <p class="text-xs text-slate-500 mt-0.5">
+                                            <p class="text-xs text-slate-400 mt-0.5">
                                                 <span x-text="session.ip_address"></span>
                                                 &nbsp;·&nbsp;<span class="capitalize" x-text="session.device_type"></span>
                                                 &nbsp;·&nbsp;Last seen <span x-text="session.last_seen"></span>
@@ -720,7 +720,7 @@
                             </template>
                             <div x-show="sessions.length === 0" class="py-10 text-center">
                                 <svg class="w-10 h-10 text-slate-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/></svg>
-                                <p class="text-sm text-slate-500">No active sessions found.</p>
+                                <p class="text-sm text-slate-400">No active sessions found.</p>
                             </div>
                         </div>
 
@@ -756,7 +756,7 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-semibold text-white">Notification Preferences</h2>
-                                    <p class="text-xs text-slate-500">Control which notifications you receive</p>
+                                    <p class="text-xs text-slate-400">Control which notifications you receive</p>
                                 </div>
                             </div>
 
@@ -778,7 +778,7 @@
                                         </div>
                                         <div>
                                             <p class="text-sm font-semibold text-slate-200">{{ $label }}</p>
-                                            <p class="text-xs text-slate-500 mt-0.5">{{ $description }}</p>
+                                            <p class="text-xs text-slate-400 mt-0.5">{{ $description }}</p>
                                         </div>
                                     </div>
                                     <label class="relative flex items-center cursor-pointer flex-shrink-0 ml-4">

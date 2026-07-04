@@ -14,10 +14,12 @@ use App\Booking\DTOs\CreateBookingData;
 use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\StudentBookingData;
+use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -52,6 +54,41 @@ final class StudentBookingService implements StudentBookingServiceInterface
     public function previousTeachers(User $student): Collection
     {
         return $this->repository->previousHostsForAttendee($student->id);
+    }
+
+    public function upcomingClasses(User $student): Collection
+    {
+        return $this->repository->upcomingForUser($student->id);
+    }
+
+    public function bookingHistory(User $student, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator
+    {
+        return $this->repository->paginatedForUser($student->id, $perPage, $status);
+    }
+
+    public function paymentHistory(User $student, int $perPage = 15): LengthAwarePaginator
+    {
+        return $this->repository->paginatedPaymentsForUser($student->id, $perPage);
+    }
+
+    public function attendanceStats(User $student): object
+    {
+        return $this->repository->attendanceStatsForUser($student->id);
+    }
+
+    public function attendanceHistory(User $student, int $limit = 50): Collection
+    {
+        return $this->repository->attendanceHistoryForUser($student->id, $limit);
+    }
+
+    public function progressStats(User $student): object
+    {
+        return $this->repository->progressStatsForUser($student->id);
+    }
+
+    public function subjectBreakdown(User $student): Collection
+    {
+        return $this->repository->subjectBreakdownForUser($student->id);
     }
 
     public function book(StudentBookingData $data): Booking

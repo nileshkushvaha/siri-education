@@ -81,13 +81,11 @@ class ContactFormBlockForm
                 ->schema([
                     TextInput::make('button_text')
                         ->label('Submit Button Text')
-                        ->default('Send Message')
                         ->maxLength(100),
 
                     Textarea::make('success_message')
                         ->label('Success Message')
                         ->rows(2)
-                        ->default('Thank you for your message!')
                         ->maxLength(300),
                 ]),
         ];

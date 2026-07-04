@@ -4,7 +4,7 @@
 @section('title', 'Unlock Account — ' . config('app.name'))
 
 @section('content')
-<div class="min-h-screen bg-[#05080F] flex items-center justify-center px-4 py-16 relative overflow-hidden">
+<div class="min-h-screen bg-surface-dark flex items-center justify-center px-4 py-16 relative overflow-hidden">
     <div class="absolute top-[-10rem] left-[-10rem] w-[38rem] h-[38rem] rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none"></div>
     <div class="absolute bottom-[-10rem] right-[-10rem] w-[36rem] h-[36rem] rounded-full bg-violet-600/12 blur-[120px] pointer-events-none"></div>
     <div class="absolute inset-0 pointer-events-none" style="background-image:radial-gradient(circle,rgba(99,102,241,.04) 1px,transparent 1px);background-size:40px 40px;"></div>
@@ -49,10 +49,10 @@
                 </button>
             </form>
 
-            <p class="mt-6 text-xs text-slate-600">
+            <p class="mt-6 text-xs text-slate-400">
                 This unlock link expires in {{ \App\Models\User::UNLOCK_TOKEN_MINUTES }} minutes.
                 <br>Prefer to wait?
-                <a href="{{ route('auth.login') }}" class="text-slate-500 hover:text-slate-400 transition">Sign in page</a>
+                <a href="{{ route('auth.login') }}" class="text-slate-400 hover:text-slate-400 transition">Sign in page</a>
             </p>
         </div>
     </div>

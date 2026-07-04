@@ -1,4 +1,16 @@
 @import 'tailwindcss';
+@import './frontend/theme.css';
+
+/*
+ * The frontend is dark-themed by design (booking, dashboard, auth, forms
+ * all hardcode dark backgrounds) — only a couple of pages ever used the
+ * light-first `dark:` kit as intended. Switching to class-based dark mode
+ * and forcing `class="dark"` on <html> (see layouts/*.blade.php) makes
+ * every `dark:` variant apply unconditionally, instead of following the
+ * visitor's OS preference — which previously produced a light-styled
+ * <x-ui.card> on a hardcoded-dark page for light-OS visitors.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';

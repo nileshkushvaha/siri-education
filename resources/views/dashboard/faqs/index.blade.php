@@ -13,7 +13,7 @@
 
 <div class="mb-6">
     <h1 class="text-xl font-bold text-white">FAQs</h1>
-    <p class="text-slate-500 text-sm mt-1">Find answers to common questions.</p>
+    <p class="text-slate-400 text-sm mt-1">Find answers to common questions.</p>
 </div>
 
 {{-- Search --}}
@@ -27,12 +27,12 @@
         class="w-full py-3 pl-10 pr-4 rounded-xl border border-white/[0.07] text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500/40 focus:ring-1 focus:ring-indigo-500/20 transition-all"
         style="background: rgba(255,255,255,0.03)"
     >
-    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
     </svg>
     @if($search)
         <a href="{{ route('dashboard.faqs') }}"
-           class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+           class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -50,7 +50,7 @@
         </svg>
     </div>
     <p class="text-slate-400 text-sm font-medium">No FAQs found</p>
-    <p class="text-slate-600 text-xs mt-1">
+    <p class="text-slate-400 text-xs mt-1">
         @if($search)
             No results for "{{ $search }}".
         @else
@@ -61,11 +61,11 @@
 @else
 
 <div class="flex items-center justify-between mb-3">
-    <span class="text-xs text-slate-600">{{ $faqs->count() }} {{ Str::plural('result', $faqs->count()) }}</span>
+    <span class="text-xs text-slate-400">{{ $faqs->count() }} {{ Str::plural('result', $faqs->count()) }}</span>
     <div class="flex gap-3">
         <button onclick="expandAll()" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">Expand all</button>
         <span class="text-slate-700">·</span>
-        <button onclick="collapseAll()" class="text-xs text-slate-500 hover:text-slate-400 transition-colors">Collapse all</button>
+        <button onclick="collapseAll()" class="text-xs text-slate-400 hover:text-slate-400 transition-colors">Collapse all</button>
     </div>
 </div>
 
@@ -87,7 +87,7 @@
                     {{ $faq->question }}
                 @endif
             </span>
-            <svg class="faq-chevron w-4 h-4 flex-shrink-0 text-slate-600 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="faq-chevron w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
         </button>

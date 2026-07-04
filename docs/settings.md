@@ -2,7 +2,7 @@
 
 ## Overview
 
-All settings use **Spatie Laravel Settings v3.9**. Values live in the `settings` table (group + name → JSON payload). Reads are cached per-request. Every settings class has a corresponding Filament admin page.
+All settings use **Spatie Laravel Settings 3.9.0** (`^3.9`). Values live in the `settings` table (group + name → JSON payload). Reads are cached per-request. Every settings class has a corresponding Filament admin page.
 
 ## All settings classes
 

@@ -36,7 +36,7 @@ public static function form(Form $form): Form
 }
 ```
 
-### Filament v4 form API
+### Filament v5 form API
 
 Use `content(Schema $schema)` on pages, not `form(Form $form)`. The `Schema` class replaces `Form` for non-resource pages. See any Security page for the current pattern.
 

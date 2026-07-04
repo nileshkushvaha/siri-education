@@ -2,19 +2,25 @@
 
 ## Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| Language | PHP | ^8.3 (running 8.5.7) |
-| Framework | Laravel | ^13.8 |
-| Admin panel | Filament | ^4.0 |
-| Database | MySQL | — |
-| Auth/permissions | Spatie Laravel Permission | ^7.0 |
-| Settings | Spatie Laravel Settings | ^3.9 |
-| Activity log | Spatie Laravel Activitylog | ^5.0 |
-| Media | Spatie Laravel Media Library | ^11.23 |
-| Query builder | Spatie Laravel Query Builder | ^7.3 |
-| Slugs | Spatie Laravel Sluggable | ^4.0 |
-| Filament Shield | bezhansalleh/filament-shield | ^4.2 |
+| Layer | Technology | Composer/npm constraint | Installed |
+|---|---|---|---|
+| Language | PHP | `^8.3` | 8.5.7 local CLI |
+| Framework | Laravel | `^13.8` | 13.18.1 |
+| Admin panel | Filament | `^5.6` | 5.6.8 |
+| Frontend interactivity | Livewire | transitive via Filament | 4.3.3 |
+| Frontend behavior | Alpine.js | CDN-pinned | 3.14.3 |
+| CSS | Tailwind CSS / `@tailwindcss/vite` | `^4.3.1` | 4.3.1 |
+| Asset bundler | Vite / Laravel Vite plugin | `^8.0.0` / `^3.1` | 8.1.0 / 3.1.0 |
+| Database | MySQL | — | MySQL 8+ expected |
+| Auth/permissions | Spatie Laravel Permission | `^7.0` | 7.4.2 |
+| Settings | Spatie Laravel Settings | `^3.9` | 3.9.0 |
+| Activity log | Spatie Laravel Activitylog | `^5.0` | 5.0.0 |
+| Media | Spatie Laravel Media Library | `^11.23` | 11.23.1 |
+| Query builder | Spatie Laravel Query Builder | `^7.3` | 7.3.0 |
+| Slugs | Spatie Laravel Sluggable | `^4.0` | 4.0.2 |
+| Navigation tree | Kalnoy NestedSet | `^7.0` | 7.0.0 |
+| Filament Shield | bezhansalleh/filament-shield | `^4.2` | 4.2.0 |
+| Testing | PHPUnit | `^12.5.12` | 12.5.30 |
 
 Admin panel lives at `/admin`. Frontend is standard Laravel + Blade.
 
@@ -30,7 +36,7 @@ enterprise-app/
 ├── Security module      — 6 settings pages with permission-gated access
 ├── Settings module      — 7 setting groups (general, mail, SEO, payment×4)
 ├── System module        — Cache Manager, Scheduler Monitor, Queue Monitor
-└── Admin panel          — Filament v4, path=/admin
+└── Admin panel          — Filament v5, path=/admin
 ```
 
 ---

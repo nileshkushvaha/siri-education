@@ -3,7 +3,7 @@
 @section('title', 'Help Center')
 
 @section('content')
-<div class="min-h-screen" style="background: #0a0a0f">
+<div class="min-h-screen bg-surface-dark">
 
     {{-- Hero --}}
     <div class="relative py-20 px-4 text-center" style="background: linear-gradient(180deg, rgba(99,102,241,0.12) 0%, transparent 100%)">
@@ -25,12 +25,12 @@
                     class="w-full py-4 pl-12 pr-4 rounded-2xl border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all"
                     style="background: rgba(255,255,255,0.05)"
                 >
-                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
                 @if($search)
                     <a href="{{ route('faqs.index', $categoryId ? ['category' => $categoryId] : []) }}"
-                       class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                       class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors"
                        title="Clear search">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -80,7 +80,7 @@
                      onclick="document.getElementById('faq-{{ $faq->id }}')?.scrollIntoView({behavior:'smooth',block:'center'})">
                     <p class="text-sm font-medium text-slate-200 line-clamp-2">{{ $faq->question }}</p>
                     @if($faq->category)
-                    <p class="text-xs text-slate-500 mt-1">{{ $faq->category->name }}</p>
+                    <p class="text-xs text-slate-400 mt-1">{{ $faq->category->name }}</p>
                     @endif
                 </div>
                 @endforeach
@@ -97,7 +97,7 @@
                 </svg>
             </div>
             <h3 class="text-slate-300 font-semibold mb-2">No FAQs found</h3>
-            <p class="text-slate-500 text-sm">
+            <p class="text-slate-400 text-sm">
                 @if($search)
                     No results for "{{ $search }}". Try a different search term.
                 @else
@@ -109,11 +109,11 @@
 
         {{-- Accordion controls --}}
         <div class="flex items-center justify-between mb-4">
-            <p class="text-sm text-slate-500">{{ $faqs->count() }} {{ Str::plural('question', $faqs->count()) }}</p>
+            <p class="text-sm text-slate-400">{{ $faqs->count() }} {{ Str::plural('question', $faqs->count()) }}</p>
             <div class="flex gap-3">
                 <button onclick="expandAll()" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">Expand all</button>
                 <span class="text-slate-700">·</span>
-                <button onclick="collapseAll()" class="text-xs text-slate-500 hover:text-slate-400 transition-colors">Collapse all</button>
+                <button onclick="collapseAll()" class="text-xs text-slate-400 hover:text-slate-400 transition-colors">Collapse all</button>
             </div>
         </div>
 
@@ -143,7 +143,7 @@
                                 {{ $faq->question }}
                             @endif
                         </span>
-                        <svg class="faq-chevron w-4 h-4 flex-shrink-0 text-slate-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="faq-chevron w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
                     </button>

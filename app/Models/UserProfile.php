@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +51,7 @@ class UserProfile extends Model implements HasMedia
         'featured_order',
         'is_instructor_verified',
         'instructor_status',
+        'student_status',
         'assignment_priority',
     ];
 
@@ -65,6 +67,7 @@ class UserProfile extends Model implements HasMedia
             'is_featured' => 'boolean',
             'is_instructor_verified' => 'boolean',
             'instructor_status' => InstructorStatus::class,
+            'student_status' => StudentStatus::class,
             'assignment_priority' => 'integer',
         ];
     }

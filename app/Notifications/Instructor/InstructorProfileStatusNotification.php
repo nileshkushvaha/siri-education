@@ -30,14 +30,14 @@ final class InstructorProfileStatusNotification extends Notification implements 
         $subject = match ($this->status) {
             InstructorStatus::Approved => 'Your instructor profile has been approved',
             InstructorStatus::Rejected => 'Your instructor profile was not approved',
-            InstructorStatus::Published => 'Your instructor profile is now live',
+            InstructorStatus::Active => 'Your instructor profile is now live',
             default => 'Your instructor profile status has been updated',
         };
 
         $message = match ($this->status) {
             InstructorStatus::Approved => 'Great news! Your instructor profile has been reviewed and approved. It is now visible to the community.',
             InstructorStatus::Rejected => 'Thank you for submitting your instructor profile. Unfortunately it did not meet our current requirements. Please contact support for more details.',
-            InstructorStatus::Published => 'Your instructor profile is now published and live. Students can find you on the instructors page.',
+            InstructorStatus::Active => 'Your instructor profile is now active and live. Students can find you on the instructors page.',
             default => 'Your instructor profile status has been updated to: '.$this->status->label(),
         };
 

@@ -10,12 +10,26 @@ use App\Services\AuditTrailService;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Logs instructor-specific profile lifecycle events to the 'instructor'
- * activity log name. Only fires when the subject user has the instructor
- * role, so generic profile updates on non-instructor accounts are silenced.
+ * Logs profile-lifecycle events to the Activity Log.
+ *
+ * Two tiers:
+ *  - Generic 'profile' / 'profile_updated' — fires for ANY user (student
+ *    or instructor) when actual profile-content fields change. Limited to
+ *    TRACKED_PROFILE_FIELDS so recalculation-only saves (profile_completion)
+ *    or unrelated column touches don't create noise.
+ *  - 'instructor' events — only for accounts holding the instructor role;
+ *    generic profile updates on non-instructor accounts don't also fire these.
  */
 class UserProfileObserver
 {
+    /** Fields whose change is worth a business-timeline entry; excludes system-recalculated/audit columns. */
+    private const TRACKED_PROFILE_FIELDS = [
+        'headline', 'designation', 'short_bio', 'bio', 'phone', 'gender',
+        'date_of_birth', 'address', 'city', 'country_id', 'state_id',
+        'postal_code', 'website', 'facebook', 'twitter', 'linkedin',
+        'github', 'instagram', 'youtube',
+    ];
+
     public function __construct(
         private readonly AuditTrailService $auditTrail,
     ) {}
@@ -24,7 +38,22 @@ class UserProfileObserver
     {
         $user = $profile->user;
 
-        if (! $user || ! $user->hasRole('instructor')) {
+        if (! $user) {
+            return;
+        }
+
+        $changedTrackedFields = array_values(array_intersect(
+            self::TRACKED_PROFILE_FIELDS,
+            array_keys($profile->getDirty()),
+        ));
+
+        if ($changedTrackedFields !== []) {
+            $this->log('profile', 'profile_updated', 'Profile updated', $user, [
+                'changed_fields' => $changedTrackedFields,
+            ]);
+        }
+
+        if (! $user->hasRole('instructor')) {
             return;
         }
 

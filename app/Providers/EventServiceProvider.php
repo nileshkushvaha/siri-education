@@ -22,10 +22,28 @@ use App\Listeners\Auth\SendWelcomeNotification;
 use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
+use App\Listeners\Mail\LogMailSending;
+use App\Listeners\Mail\LogMailSent;
+use App\Listeners\Mail\LogNotificationFailed;
+use App\Listeners\Mail\LogNotificationSending;
+use App\Listeners\Mail\LogNotificationSent;
+use App\Listeners\Mail\LogResendEmailEvent;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Notifications\Events\NotificationFailed;
+use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Notifications\Events\NotificationSent;
+use Resend\Laravel\Events\EmailBounced;
+use Resend\Laravel\Events\EmailComplained;
+use Resend\Laravel\Events\EmailDelivered;
+use Resend\Laravel\Events\EmailDeliveryDelayed;
+use Resend\Laravel\Events\EmailFailed;
+use Resend\Laravel\Events\EmailSent;
+use Resend\Laravel\Events\EmailSuppressed;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -53,6 +71,42 @@ class EventServiceProvider extends ServiceProvider
         ],
         LoginFailed::class => [
             [LogLoginActivity::class, 'handleLoginFailed'],
+        ],
+        NotificationSending::class => [
+            LogNotificationSending::class,
+        ],
+        NotificationSent::class => [
+            LogNotificationSent::class,
+        ],
+        NotificationFailed::class => [
+            LogNotificationFailed::class,
+        ],
+        MessageSending::class => [
+            LogMailSending::class,
+        ],
+        MessageSent::class => [
+            LogMailSent::class,
+        ],
+        EmailSent::class => [
+            [LogResendEmailEvent::class, 'handleEmailSent'],
+        ],
+        EmailDelivered::class => [
+            [LogResendEmailEvent::class, 'handleEmailDelivered'],
+        ],
+        EmailFailed::class => [
+            [LogResendEmailEvent::class, 'handleEmailFailed'],
+        ],
+        EmailBounced::class => [
+            [LogResendEmailEvent::class, 'handleEmailBounced'],
+        ],
+        EmailComplained::class => [
+            [LogResendEmailEvent::class, 'handleEmailComplained'],
+        ],
+        EmailDeliveryDelayed::class => [
+            [LogResendEmailEvent::class, 'handleEmailDelayed'],
+        ],
+        EmailSuppressed::class => [
+            [LogResendEmailEvent::class, 'handleEmailSuppressed'],
         ],
         BookingRequested::class => [
             [SendBookingNotifications::class, 'handleRequested'],

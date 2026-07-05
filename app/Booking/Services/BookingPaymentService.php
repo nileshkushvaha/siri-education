@@ -17,6 +17,7 @@ use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Registry\PaymentProviderRegistry;
 use App\Models\Booking;
+use App\Services\AuditTrailService;
 use App\Settings\BookingSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         private readonly BookingServiceInterface $bookingService,
         private readonly PaymentProviderRegistry $providers,
         private readonly BookingSettings $settings,
+        private readonly AuditTrailService $audit,
     ) {}
 
     public function initiate(Booking $booking): PaymentIntentData
@@ -147,7 +149,14 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         }
     }
 
-    /** @param array<string, mixed> $meta */
+    /**
+     * Writes to both the per-booking business timeline (booking_activities,
+     * via BookingRepository::logActivity) and the unified, searchable
+     * Activity Log (via AuditTrailService) — financial state changes must
+     * be traceable centrally, not only from inside one booking's history.
+     *
+     * @param  array<string, mixed>  $meta
+     */
     private function logPayment(Booking $booking, BookingPaymentStatus $to, array $meta = []): void
     {
         $this->bookings->logActivity(
@@ -157,5 +166,31 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             Auth::id(),
             meta: ['payment_status' => $to->value, ...$meta],
         );
+
+        $description = sprintf('Booking %s payment %s', $booking->reference, $to->label());
+        $properties = ['payment_status' => $to->value, ...$meta];
+
+        if ($user = Auth::user()) {
+            $this->audit->logUser($user, 'payments', 'payment_'.$to->value, $description, $booking, $properties);
+
+            return;
+        }
+
+        if ($booking->isGuest()) {
+            $this->audit->logGuest(
+                logName: 'payments',
+                event: 'payment_'.$to->value,
+                description: $description,
+                subject: $booking,
+                guestName: $booking->guest_name ?? '',
+                guestEmail: $booking->guest_email ?? '',
+                guestPhone: $booking->guest_phone ?? '',
+                properties: $properties,
+            );
+
+            return;
+        }
+
+        $this->audit->logSystem('payments', 'payment_'.$to->value, $description, $booking, $properties);
     }
 }

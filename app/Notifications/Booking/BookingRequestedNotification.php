@@ -7,13 +7,11 @@ namespace App\Notifications\Booking;
 use App\Models\Booking;
 use App\Notifications\Booking\Concerns\RoutesBookingChannels;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 use Illuminate\Queue\SerializesModels;
 
 /** Sent to the host when a booking needs their approval. */
-final class BookingRequestedNotification extends Notification implements ShouldQueue
+final class BookingRequestedNotification extends BookingNotification
 {
     use Queueable, RoutesBookingChannels, SerializesModels;
 
@@ -25,7 +23,7 @@ final class BookingRequestedNotification extends Notification implements ShouldQ
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('New booking request %s', $this->booking->reference))
             ->line(sprintf(
                 'You have a new %s request from %s for %s (%s).',

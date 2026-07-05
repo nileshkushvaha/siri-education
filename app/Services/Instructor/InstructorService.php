@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Enums\InstructorStatus;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Services\Profile\UserExperienceService;
@@ -95,8 +96,6 @@ final class InstructorService
             'years_experience' => $this->experienceService->yearsOfExperience($instructor),
             'experience_count' => $instructor->experiences()->active()->count(),
             'education_count' => $instructor->educations()->active()->count(),
-            // Stubbed — Course model does not exist yet
-            'courses_count' => 0,
             'students_count' => 0,
             'avg_rating' => null,
         ];
@@ -113,7 +112,9 @@ final class InstructorService
 
         $isOwner = $viewer && $viewer->id === $instructor->id;
         $canManage = $isOwner || ($viewer && $viewer->can('Update:User'));
+        $isBookable = in_array($profile->instructor_status, InstructorStatus::bookable(), true);
 
+        abort_if(! $canManage && (! $instructor->isActive() || ! $isBookable), 403);
         abort_if($profile->profile_visibility === 'private' && ! $canManage, 403);
         abort_if($profile->profile_visibility === 'members_only' && ! $viewer, 403);
 
@@ -275,6 +276,7 @@ final class InstructorService
             ->whereNull('user_profiles.deleted_at')
             ->where('users.status', 'active')
             ->where('user_profiles.profile_visibility', 'public')
+            ->whereIn('user_profiles.instructor_status', InstructorStatus::bookableValues())
             ->whereHas('roles', fn (Builder $q) => $q->where('name', 'instructor'))
             ->with($this->cardRelations())
             ->select('users.*')
@@ -310,7 +312,8 @@ final class InstructorService
                 ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'instructor'))
                 ->whereHas('profile', fn (Builder $profileQuery) => $profileQuery
                     ->whereNull('deleted_at')
-                    ->where('profile_visibility', 'public')))
+                    ->where('profile_visibility', 'public')
+                    ->whereIn('instructor_status', InstructorStatus::bookableValues())))
             ->select('subject')
             ->distinct()
             ->orderBy('subject')

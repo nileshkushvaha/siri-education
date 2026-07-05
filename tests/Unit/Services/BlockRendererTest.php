@@ -220,22 +220,6 @@ class BlockRendererTest extends TestCase
         $this->assertStringContainsString('Choose Plan', $html);
     }
 
-    public function test_render_featured_courses_block(): void
-    {
-        $block = $this->createBlock(BlockType::FeaturedCourses, [
-            'title' => 'Featured Courses',
-            'courses' => [
-                ['title' => 'CMS Authored Course', 'description' => 'Managed from page blocks'],
-            ],
-            'columns' => 3,
-        ]);
-
-        $html = $this->renderer->render($block);
-
-        $this->assertStringContainsString('Featured Courses', $html);
-        $this->assertStringContainsString('CMS Authored Course', $html);
-    }
-
     public function test_render_featured_teachers_block(): void
     {
         $block = $this->createBlock(BlockType::FeaturedTeachers, [
@@ -390,7 +374,6 @@ class BlockRendererTest extends TestCase
         $this->assertEquals('gallery', $this->renderer->getComponentName(BlockType::Gallery));
         $this->assertEquals('features', $this->renderer->getComponentName(BlockType::Features));
         $this->assertEquals('pricing', $this->renderer->getComponentName(BlockType::Pricing));
-        $this->assertEquals('featured-courses', $this->renderer->getComponentName(BlockType::FeaturedCourses));
         $this->assertEquals('featured-teachers', $this->renderer->getComponentName(BlockType::FeaturedTeachers));
         $this->assertEquals('newsletter', $this->renderer->getComponentName(BlockType::Newsletter));
         $this->assertEquals('contact-form', $this->renderer->getComponentName(BlockType::ContactForm));

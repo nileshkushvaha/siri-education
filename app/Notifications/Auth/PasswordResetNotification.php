@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class PasswordResetNotification extends Notification implements ShouldQueue
+final class PasswordResetNotification extends AuthNotification
 {
     use Queueable;
 
@@ -28,7 +26,7 @@ final class PasswordResetNotification extends Notification implements ShouldQueu
 
     public function toMail(mixed $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('Reset Your Password — '.config('app.name'))
             ->view('emails.auth.password-reset', [
                 'url' => $this->resetUrl,

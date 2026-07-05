@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Country;
+use App\Models\Currency;
+use App\Models\Language;
 use Illuminate\Database\Seeder;
 
 class CountrySeeder extends Seeder
@@ -213,19 +215,40 @@ class CountrySeeder extends Seeder
         ['Zimbabwe', 'ZW', 'ZWE', '+263'],
     ];
 
+    private const LOCALIZATION = [
+        'IN' => ['INR', 'en', 'Asia/Kolkata', 'support-in@example.com', '+91 00000 00000', 'd/m/Y', 'H:i', '1,23,456.78'],
+        'US' => ['USD', 'en', 'America/New_York', 'support-us@example.com', '+1 000 000 0000', 'm/d/Y', 'h:i A', '1,234.56'],
+        'GB' => ['GBP', 'en', 'Europe/London', 'support-uk@example.com', '+44 0000 000000', 'd/m/Y', 'H:i', '1,234.56'],
+        'CA' => ['CAD', 'en', 'America/Toronto', 'support-ca@example.com', '+1 000 000 0000', 'Y-m-d', 'H:i', '1,234.56'],
+        'AU' => ['AUD', 'en', 'Australia/Sydney', 'support-au@example.com', '+61 000 000 000', 'd/m/Y', 'h:i A', '1,234.56'],
+    ];
+
     public function run(): void
     {
+        $currencyIds = Currency::query()->pluck('id', 'code');
+        $languageIds = Language::query()->pluck('id', 'code');
+
         foreach (self::COUNTRIES as $sortOrder => [$name, $iso2, $iso3, $phoneCode]) {
+            $localization = self::LOCALIZATION[$iso2] ?? null;
+
             Country::updateOrCreate(
                 ['iso2' => $iso2],
-                [
+                array_filter([
                     'name' => $name,
                     'iso3' => $iso3,
                     'phone_code' => $phoneCode,
                     'flag' => $this->flagEmoji($iso2),
                     'sort_order' => $sortOrder,
                     'status' => 'active',
-                ]
+                    'default_currency_id' => $localization ? ($currencyIds[$localization[0]] ?? null) : null,
+                    'default_language_id' => $localization ? ($languageIds[$localization[1]] ?? null) : null,
+                    'default_timezone' => $localization[2] ?? null,
+                    'support_email' => $localization[3] ?? null,
+                    'support_phone' => $localization[4] ?? null,
+                    'date_format' => $localization[5] ?? null,
+                    'time_format' => $localization[6] ?? null,
+                    'number_format' => $localization[7] ?? null,
+                ], fn ($value): bool => $value !== null)
             );
         }
     }

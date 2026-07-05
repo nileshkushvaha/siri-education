@@ -34,17 +34,17 @@ final class BookingWindowRule implements BookingRuleInterface
     /** Shared with reschedule, which has no CreateBookingData. */
     public function assertWithinWindow(CarbonImmutable $startsAt): void
     {
-        if ($startsAt->lessThan(now()->addHours($this->settings->min_lead_hours))) {
+        if ($startsAt->lessThan(now()->addMinutes($this->settings->minimum_booking_notice_minutes))) {
             throw new BookingException(sprintf(
-                'Bookings require at least %d hours notice.',
-                $this->settings->min_lead_hours,
+                'Bookings require at least %d minutes notice.',
+                $this->settings->minimum_booking_notice_minutes,
             ));
         }
 
-        if ($startsAt->greaterThan(now()->addDays($this->settings->max_advance_days))) {
+        if ($startsAt->greaterThan(now()->addDays($this->settings->maximum_advance_booking_days))) {
             throw new BookingException(sprintf(
                 'Bookings cannot be made more than %d days in advance.',
-                $this->settings->max_advance_days,
+                $this->settings->maximum_advance_booking_days,
             ));
         }
     }

@@ -83,6 +83,7 @@ final class RegisterForm extends Component
                     'email' => $this->email,
                     'phone' => $this->phone,
                     'password' => $this->password,
+                    'terms' => $this->terms,
                 ],
                 ipAddress: request()->ip() ?? '',
                 userAgent: request()->userAgent() ?? '',

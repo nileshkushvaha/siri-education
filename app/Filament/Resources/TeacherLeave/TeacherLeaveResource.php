@@ -31,7 +31,7 @@ class TeacherLeaveResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Leave';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Bookings';
+    protected static string|\UnitEnum|null $navigationGroup = 'Scheduling';
 
     protected static ?int $navigationSort = 4;
 

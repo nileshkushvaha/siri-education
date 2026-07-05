@@ -52,6 +52,34 @@ final class AuditTrailService
     }
 
     /**
+     * Record an admin override — a manual, critical action that bypasses
+     * the normal lifecycle/workflow for a subject (e.g. force-approving an
+     * instructor application still under review, manually correcting a
+     * financial record). A reason is mandatory and always stored in
+     * properties under 'override_reason', and 'is_override' is always
+     * true, so these entries can be found/filtered independently of
+     * whatever log_name the calling feature uses.
+     */
+    public function logOverride(
+        User $admin,
+        string $logName,
+        string $event,
+        string $description,
+        string $reason,
+        ?Model $subject = null,
+        array $properties = [],
+    ): Activity {
+        return $this->logUser(
+            $admin,
+            $logName,
+            $event,
+            $description,
+            $subject,
+            [...$properties, 'override_reason' => $reason, 'is_override' => true],
+        );
+    }
+
+    /**
      * Record an action performed by an anonymous visitor (no authenticated user).
      * Captures guest identity fields and request context.
      */

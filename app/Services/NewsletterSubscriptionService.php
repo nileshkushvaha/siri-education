@@ -7,15 +7,14 @@ namespace App\Services;
 use App\Enums\NewsletterSubscriberStatus;
 use App\Models\NewsletterSubscriber;
 use App\Notifications\Newsletter\NewsletterWelcomeNotification;
-use App\Settings\MailSettings;
-use Illuminate\Support\Facades\Notification;
+use App\Services\Mail\TransactionalNotificationService;
 use Illuminate\Support\Str;
 
 final class NewsletterSubscriptionService
 {
     public function __construct(
         private readonly AuditTrailService $auditTrail,
-        private readonly MailSettings $mailSettings,
+        private readonly TransactionalNotificationService $notifications,
     ) {}
 
     public function subscribe(string $email, ?string $name = null, array $properties = []): NewsletterSubscriber
@@ -71,12 +70,6 @@ final class NewsletterSubscriptionService
 
     private function sendWelcome(NewsletterSubscriber $subscriber): void
     {
-        $notification = new NewsletterWelcomeNotification($subscriber);
-
-        if ($this->mailSettings->queue_emails) {
-            Notification::route('mail', $subscriber->email)->notify($notification);
-        } else {
-            Notification::route('mail', $subscriber->email)->notifyNow($notification);
-        }
+        $this->notifications->routeMail($subscriber->email, new NewsletterWelcomeNotification($subscriber));
     }
 }

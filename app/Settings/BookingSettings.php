@@ -8,13 +8,27 @@ use Spatie\LaravelSettings\Settings;
 
 class BookingSettings extends Settings
 {
+    public int $demo_duration_minutes;
+
+    public int $reservation_expiry_minutes;
+
+    public int $cancellation_window_hours;
+
+    public int $reschedule_limit;
+
+    public int $no_show_grace_minutes;
+
+    public int $auto_completion_delay_minutes;
+
     /** Active bookings a teacher may hold per day. null = unlimited. */
     public ?int $max_daily_bookings_per_teacher;
 
-    // Bookable window
-    public int $min_lead_hours;
+    // Bookable window — the only fields BookingWindowRule reads for
+    // lead-time/advance-window enforcement. Named to match the Phase 1
+    // settings spec; do not add a second pair of fields for this concept.
+    public int $minimum_booking_notice_minutes;
 
-    public int $max_advance_days;
+    public int $maximum_advance_booking_days;
 
     /** Key of the AssignmentStrategyInterface used to auto-assign teachers. */
     public string $assignment_strategy;

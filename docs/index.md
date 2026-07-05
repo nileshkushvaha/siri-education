@@ -13,6 +13,7 @@
 | Frontend | frontend.md |
 | Media | media.md |
 | Notifications | notifications.md |
+| Resend Transactional Email | resend.md |
 | Activity Log | activity-log.md |
 | Booking Engine | booking.md |
 | Cache Manager | cache-manager.md |

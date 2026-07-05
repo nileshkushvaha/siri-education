@@ -8,8 +8,8 @@ The CMS bounded context lives in `app/Content/` with namespace `App\Content\`. I
 
 `App\Content\Models\ContentBlock` — polymorphic (owned by `Page` or `Post` via `blockable` morph).
 
-24 block types defined in `App\Enums\BlockType`:
-Hero, RichText, Image, Gallery, Video, CTA, FAQ, Accordion, Tabs, Team, Features, FeaturedCourses, FeaturedTeachers, Testimonials, Pricing, Newsletter, Statistics, Timeline, Button, Divider, Spacer, Map, ContactForm, ContactInfo.
+23 block types defined in `App\Enums\BlockType`:
+Hero, RichText, Image, Gallery, Video, CTA, FAQ, Accordion, Tabs, Team, Features, FeaturedTeachers, Testimonials, Pricing, Newsletter, Statistics, Timeline, Button, Divider, Spacer, Map, ContactForm, ContactInfo.
 
 Each block type has a corresponding form schema class in `app/Forms/Blocks/`.
 

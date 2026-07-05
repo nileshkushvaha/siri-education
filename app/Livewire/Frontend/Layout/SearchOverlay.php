@@ -37,7 +37,7 @@ class SearchOverlay extends Component
     }
 
     /**
-     * @return array{teachers: Collection, courses: Collection, pages: Collection, posts: Collection, faqs: Collection}
+     * @return array{teachers: Collection, pages: Collection, posts: Collection, faqs: Collection}
      */
     #[Computed]
     public function results(): array

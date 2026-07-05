@@ -7,11 +7,10 @@ use App\Enums\BlockType;
 use App\Notifications\Cms\ContactFormSubmissionNotification;
 use App\Rules\TurnstileToken;
 use App\Services\AuditTrailService;
+use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
-use App\Settings\MailSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -88,20 +87,14 @@ class ContactFormController extends Controller
         ];
 
         $generalSettings = app(GeneralSettings::class);
-        $mailSettings = app(MailSettings::class);
         $recipient = $generalSettings->support_email ?: config('mail.from.address');
 
         if (! is_string($recipient) || $recipient === '') {
             throw new RuntimeException('Contact form recipient email is not configured.');
         }
 
-        if ($mailSettings->queue_emails) {
-            Notification::route('mail', $recipient)
-                ->notify(new ContactFormSubmissionNotification($payload));
-        } else {
-            Notification::route('mail', $recipient)
-                ->notifyNow(new ContactFormSubmissionNotification($payload));
-        }
+        app(TransactionalNotificationService::class)
+            ->routeMail($recipient, new ContactFormSubmissionNotification($payload));
 
         app(AuditTrailService::class)->logGuest(
             logName: 'contact',

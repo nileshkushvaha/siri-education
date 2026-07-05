@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Notifications\Support\TestMailConfigurationNotification;
+use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
 use App\Settings\MailSettings;
 use BackedEnum;
@@ -23,7 +25,6 @@ use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Mail;
 
 class MailSettingsPage extends Page
 {
@@ -33,7 +34,7 @@ class MailSettingsPage extends Page
 
     protected static ?string $navigationLabel = 'Mail';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Platform';
 
     protected static ?int $navigationSort = 3;
 
@@ -75,6 +76,21 @@ class MailSettingsPage extends Page
         $this->form->fill([
             'from_name' => $settings->from_name,
             'from_email' => $settings->from_email,
+            'transactional_domain' => $settings->transactional_domain,
+            'auth_from_name' => $settings->auth_from_name,
+            'auth_from_email' => $settings->auth_from_email,
+            'booking_from_name' => $settings->booking_from_name,
+            'booking_from_email' => $settings->booking_from_email,
+            'payment_from_name' => $settings->payment_from_name,
+            'payment_from_email' => $settings->payment_from_email,
+            'tutor_from_name' => $settings->tutor_from_name,
+            'tutor_from_email' => $settings->tutor_from_email,
+            'wallet_from_name' => $settings->wallet_from_name,
+            'wallet_from_email' => $settings->wallet_from_email,
+            'support_from_name' => $settings->support_from_name,
+            'support_from_email' => $settings->support_from_email,
+            'admin_from_name' => $settings->admin_from_name,
+            'admin_from_email' => $settings->admin_from_email,
             'driver' => $settings->driver,
             'host' => $settings->host,
             'port' => $settings->port,
@@ -163,6 +179,7 @@ class MailSettingsPage extends Page
                                 ->label('Mail Driver')
                                 ->options([
                                     'smtp' => 'SMTP',
+                                    'resend' => 'Resend (production)',
                                     'sendmail' => 'Sendmail',
                                     'log' => 'Log (development)',
                                     'array' => 'Array (testing)',
@@ -214,6 +231,24 @@ class MailSettingsPage extends Page
                         ]),
                     ]),
 
+                Section::make('Transactional Senders')
+                    ->description('Verified domain sender addresses used by queued transactional notifications.')
+                    ->columnSpanFull()
+                    ->schema([
+                        TextInput::make('transactional_domain')
+                            ->label('Verified Sending Domain')
+                            ->placeholder('example.com')
+                            ->maxLength(255),
+
+                        Grid::make(2)->schema($this->senderFields('auth', 'Auth')),
+                        Grid::make(2)->schema($this->senderFields('booking', 'Booking')),
+                        Grid::make(2)->schema($this->senderFields('payment', 'Payment')),
+                        Grid::make(2)->schema($this->senderFields('tutor', 'Tutor')),
+                        Grid::make(2)->schema($this->senderFields('wallet', 'Wallet')),
+                        Grid::make(2)->schema($this->senderFields('support', 'Support')),
+                        Grid::make(2)->schema($this->senderFields('admin', 'Admin Alerts')),
+                    ]),
+
                 // ── Email Queue ────────────────────────────────────── left
                 Section::make('Email Queue')
                     ->description('Control whether emails are sent synchronously or queued.')
@@ -263,6 +298,11 @@ class MailSettingsPage extends Page
 
         $settings->from_name = $data['from_name'];
         $settings->from_email = $data['from_email'];
+        $settings->transactional_domain = $data['transactional_domain'] ?? null;
+        foreach (['auth', 'booking', 'payment', 'tutor', 'wallet', 'support', 'admin'] as $area) {
+            $settings->{"{$area}_from_name"} = $data["{$area}_from_name"] ?? $settings->from_name;
+            $settings->{"{$area}_from_email"} = $data["{$area}_from_email"] ?? $settings->from_email;
+        }
         $settings->driver = $data['driver'];
         $settings->host = $data['host'];
         $settings->port = (int) $data['port'];
@@ -292,6 +332,7 @@ class MailSettingsPage extends Page
 
             // Temporarily override mail config with saved settings
             config([
+                'mail.default' => $settings->driver,
                 'mail.mailers.smtp.host' => $settings->host,
                 'mail.mailers.smtp.port' => $settings->port,
                 'mail.mailers.smtp.username' => $settings->username,
@@ -303,14 +344,8 @@ class MailSettingsPage extends Page
                 'mail.from.name' => $settings->from_name,
             ]);
 
-            Mail::raw(
-                'This is a test email from '.app(GeneralSettings::class)->app_name.'. Your mail configuration is working correctly.',
-                function ($message) use ($to, $settings) {
-                    $message->to($to)
-                        ->from($settings->from_email, $settings->from_name)
-                        ->subject('Test Email — Mail Configuration');
-                }
-            );
+            app(TransactionalNotificationService::class)
+                ->routeMail($to, new TestMailConfigurationNotification(app(GeneralSettings::class)->app_name));
 
             Notification::make()
                 ->title('Test email sent')
@@ -324,5 +359,23 @@ class MailSettingsPage extends Page
                 ->danger()
                 ->send();
         }
+    }
+
+    /**
+     * @return array<int, TextInput>
+     */
+    private function senderFields(string $key, string $label): array
+    {
+        return [
+            TextInput::make("{$key}_from_name")
+                ->label("{$label} From Name")
+                ->required()
+                ->maxLength(100),
+            TextInput::make("{$key}_from_email")
+                ->label("{$label} From Email")
+                ->email()
+                ->required()
+                ->maxLength(150),
+        ];
     }
 }

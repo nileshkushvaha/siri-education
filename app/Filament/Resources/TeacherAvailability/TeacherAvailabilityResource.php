@@ -29,7 +29,7 @@ class TeacherAvailabilityResource extends Resource
 
     protected static ?string $modelLabel = 'Availability Window';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Bookings';
+    protected static string|\UnitEnum|null $navigationGroup = 'Scheduling';
 
     protected static ?int $navigationSort = 3;
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Enums\StudentStatus;
 use App\Events\Auth\UserApproved;
 use App\Models\User;
+use App\Models\UserProfile;
 use App\Notifications\Auth\AccountApprovedNotification;
 use App\Notifications\Auth\RegistrationPendingNotification;
 use App\Notifications\Auth\VerifyEmailNotification;
@@ -101,6 +103,41 @@ class RegistrationIntegrationTest extends TestCase
 
         $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
         $this->assertTrue($user->hasRole('student'));
+    }
+
+    public function test_student_status_set_to_registered_when_default_role_is_student(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $s = app(RegistrationSettings::class);
+        $s->default_role = 'student';
+        $s->save();
+
+        $this->post(route('auth.register.store'), $this->validPayload());
+
+        $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
+        $this->assertSame(StudentStatus::Registered, $user->profile->student_status);
+    }
+
+    public function test_student_status_stays_null_when_default_role_is_not_student(): void
+    {
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $s = app(RegistrationSettings::class);
+        $s->default_role = 'instructor';
+        $s->save();
+
+        $this->post(route('auth.register.store'), $this->validPayload());
+
+        $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
+        $this->assertNull($user->profile->student_status);
+        $this->assertNull($user->profile->instructor_status);
+    }
+
+    public function test_registration_creates_exactly_one_profile_per_user(): void
+    {
+        $this->post(route('auth.register.store'), $this->validPayload());
+
+        $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
+        $this->assertSame(1, UserProfile::where('user_id', $user->id)->count());
     }
 
     public function test_registration_blocked_when_default_role_is_configured_but_missing(): void

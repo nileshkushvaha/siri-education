@@ -21,6 +21,15 @@ All settings use **Spatie Laravel Settings 3.9.0** (`^3.9`). Values live in the 
 | `PaymentConfigurationSettings` | `payment_configuration` | Payment Configuration |
 | `PaymentAdvancedSettings` | `payment_advanced` | Payment Advanced |
 | `BankSettings` | `payment_bank` | Bank Account |
+| `BookingSettings` | `booking` | Platform Foundation |
+| `WalletSettings` | `wallet` | Platform Foundation |
+| `MeetingSettings` | `meeting` | Platform Foundation |
+| `InstructorSettings` | `instructor` | Platform Foundation |
+| `ReferralSettings` | `referral` | Platform Foundation |
+| `LocalizationSettings` | `localization` | Platform Foundation |
+| `FeatureSettings` | `features` | Platform Foundation |
+
+Compatibility note: the SRS-level "PaymentSettings" concept is implemented by the existing payment settings split (`PaymentGatewaySettings`, `PaymentConfigurationSettings`, `PaymentAdvancedSettings`, and `BankSettings`). The SRS-level "SecuritySettings" concept is implemented by the existing security settings split (`AuthenticationSettings`, `PasswordPolicySettings`, `LoginSecuritySettings`, `SessionSettings`, `RegistrationSettings`, and `AccountProtectionSettings`). Do not add duplicate aggregate settings classes unless a future architecture decision replaces the split model.
 
 ## Reading settings
 
@@ -72,3 +81,11 @@ php artisan make:settings-migration fill_my_settings
 
 The 6 security settings groups follow a stricter pattern — see `security.md`.
 All saves route through `SecuritySettingsService` which logs field-level diffs.
+
+## Mail settings pattern
+
+`MailSettings` stores the default sender plus category-specific transactional senders for Auth, Booking, Payment, Tutor, Wallet, Support, and Admin alerts. Production sender addresses must use a Resend-verified domain. See `resend.md` for DNS, SPF, DKIM, webhook, and production setup notes.
+
+## Feature settings pattern
+
+`FeatureSettings` stores coarse-grained Phase 1 feature flags only. Business logic is not wired to every flag yet. Future implementation should inject `FeatureSettings` or a dedicated service that wraps it, then keep controllers, Filament resources, and Livewire components thin.

@@ -39,6 +39,24 @@ return [
         'order' => 10,
     ],
 
+    'State' => [
+        'title' => 'States',
+        'icon' => 'heroicon-o-map-pin',
+        'order' => 11,
+    ],
+
+    'Currency' => [
+        'title' => 'Currencies',
+        'icon' => 'heroicon-o-banknotes',
+        'order' => 12,
+    ],
+
+    'Language' => [
+        'title' => 'Languages',
+        'icon' => 'heroicon-o-language',
+        'order' => 13,
+    ],
+
     // ── Assessment (future) ───────────────────────────────────────────────
     'assessment' => [
         'title' => 'Assessment',

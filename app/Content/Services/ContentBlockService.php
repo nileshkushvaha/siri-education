@@ -158,7 +158,6 @@ class ContentBlockService
             BlockType::Tabs => ['items' => []],
             BlockType::Team => ['title' => '', 'description' => '', 'members' => [], 'columns' => 3],
             BlockType::Features => ['eyebrow' => '', 'title' => '', 'description' => '', 'features' => [], 'columns' => 3],
-            BlockType::FeaturedCourses => ['eyebrow' => '', 'title' => '', 'description' => '', 'courses' => [], 'columns' => 3, 'link_label' => '', 'link_url' => ''],
             BlockType::FeaturedTeachers => ['eyebrow' => '', 'title' => '', 'description' => '', 'limit' => 4, 'columns' => 4, 'link_label' => '', 'link_url' => ''],
             BlockType::Testimonials => ['testimonials' => [], 'columns' => 3],
             BlockType::Pricing => ['eyebrow' => '', 'title' => '', 'description' => '', 'plans' => [], 'columns' => 3],

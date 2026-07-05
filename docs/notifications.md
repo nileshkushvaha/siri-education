@@ -6,6 +6,10 @@
 
 **2. Database bell notifications** — `->sendToDatabase($recipients)` — persisted to the `notifications` table, visible via Filament's bell icon. These come exclusively from the Activity Log pipeline.
 
+**3. Transactional email notifications** — queued Laravel Notifications sent through the configured mailer. Production uses Resend; local development may use `log`; tests may use `array`. Delivery status is logged in `email_logs` and reviewed from Filament's **Email Logs** resource. See `resend.md`.
+
+Never send transactional email directly from controllers, Livewire components, or Filament resources. Use domain events plus queued listeners where possible, or `TransactionalNotificationService` for on-demand mail routes.
+
 ## Activity Log pipeline
 
 ```
@@ -61,3 +65,12 @@ All active `super_admin` users, excluding the actor when they are a `super_admin
 1. Log the activity via `AuditTrailService` with the correct `log_name` and `event`
 2. Add the `'{log_name}.{event}'` case to `NotificationMapper::map()`
 3. `AdminNotificationService` and the pipeline require no changes
+
+## Adding a transactional email
+
+1. Dispatch a domain event from the business service.
+2. Handle it in a queued listener on the `notifications` queue.
+3. Send a queued Notification/Mailable only.
+4. Extend the matching base notification structure: Auth, Booking, Payment, Tutor, Wallet, Support, or Admin.
+5. Configure the category sender in Mail Settings when a separate sender address is required.
+6. Confirm the message appears in `email_logs`.

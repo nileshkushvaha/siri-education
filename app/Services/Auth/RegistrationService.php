@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Actions\Auth\RegisterUserAction;
+use App\Enums\StudentStatus;
 use App\Events\Auth\UserRegistered;
 use App\Exceptions\Auth\RegistrationException;
 use App\Models\User;
@@ -28,6 +29,9 @@ final class RegistrationService
      */
     public function register(array $data, string $ipAddress, string $userAgent): RegistrationResult
     {
+        $data['accepted_ip'] = $ipAddress;
+        $data['accepted_user_agent'] = $userAgent;
+
         // 1. Validate default role exists — fail fast before creating the user
         $role = $this->resolveDefaultRole();
 
@@ -59,6 +63,13 @@ final class RegistrationService
         // 6. Assign default role
         if ($role) {
             $user->assignRole($role);
+
+            // Student lifecycle starts here — separate from User::status
+            // (account/login eligibility) and InstructorStatus (which stays
+            // null until a user actually applies to teach).
+            if ($role->name === 'student') {
+                $user->profile?->update(['student_status' => StudentStatus::Registered]);
+            }
         }
 
         // 7. Dispatch event — listener handles all notifications + activity logging

@@ -114,6 +114,10 @@ class RolesTable
                 ReplicateAction::make()
                     ->label('Duplicate')
                     ->icon('heroicon-o-document-duplicate')
+                    // permissions_count/users_count are ->counts() aggregates loaded onto
+                    // the table's rows, not real columns — replicate() would otherwise try
+                    // to INSERT them and fail with an unknown-column SQL error.
+                    ->excludeAttributes(['permissions_count', 'users_count'])
                     ->form([
                         TextInput::make('name')
                             ->label('New Role Name')
@@ -129,7 +133,14 @@ class RolesTable
                         $record->status = 'inactive'; // duplicates start inactive
                     })
                     ->afterReplicaSaved(function (Role $replica, Role $original): void {
-                        $replica->syncPermissions($original->permissions);
+                        // Duplicating copies the ORIGINAL role's full permission set onto a
+                        // new role — that's an assignment, not just a copy, so it must be
+                        // gated by the same AssignPermissions:Role permission EditRole/
+                        // CreateRole already require. Replicate:Role alone must not be a
+                        // side-door around that gate.
+                        if (auth()->user()?->can('AssignPermissions:Role')) {
+                            $replica->syncPermissions($original->permissions);
+                        }
 
                         Notification::make()
                             ->title('Role duplicated')

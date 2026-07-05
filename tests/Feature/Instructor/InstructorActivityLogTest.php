@@ -58,18 +58,18 @@ class InstructorActivityLogTest extends TestCase
         ]);
     }
 
-    public function test_instructor_status_published_logs_profile_published(): void
+    public function test_instructor_status_active_logs_profile_active(): void
     {
         $admin = User::factory()->create(['status' => 'active']);
         $admin->assignRole('super_admin');
         $this->actingAs($admin);
 
         $instructor = $this->makeInstructor();
-        $instructor->profile->update(['instructor_status' => 'published']);
+        $instructor->profile->update(['instructor_status' => 'active']);
 
         $this->assertDatabaseHas('activity_log', [
             'log_name' => 'instructor',
-            'event' => 'profile_published',
+            'event' => 'profile_active',
         ]);
     }
 

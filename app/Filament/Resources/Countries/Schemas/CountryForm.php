@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Countries\Schemas;
 
+use App\Models\Currency;
+use App\Models\Language;
+use DateTimeZone;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -70,6 +73,73 @@ class CountryForm
                                 ->nullable()
                                 ->placeholder('🇮🇳')
                                 ->helperText('Paste the flag emoji directly.'),
+                        ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Localization Defaults')
+                    ->description('Country-aware defaults for currency, timezone, language, and formatting.')
+                    ->icon('heroicon-o-language')
+                    ->schema([
+                        Grid::make(3)->schema([
+                            Select::make('default_currency_id')
+                                ->label('Default Currency')
+                                ->options(fn () => Currency::query()->active()->orderBy('code')->pluck('code', 'id'))
+                                ->searchable()
+                                ->preload()
+                                ->nullable()
+                                ->native(false),
+
+                            Select::make('default_language_id')
+                                ->label('Default Language')
+                                ->options(fn () => Language::query()->active()->orderBy('name')->pluck('name', 'id'))
+                                ->searchable()
+                                ->preload()
+                                ->nullable()
+                                ->native(false),
+
+                            Select::make('default_timezone')
+                                ->label('Default Timezone')
+                                ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
+                                ->searchable()
+                                ->nullable()
+                                ->native(false),
+                        ]),
+
+                        Grid::make(3)->schema([
+                            TextInput::make('date_format')
+                                ->maxLength(40)
+                                ->nullable()
+                                ->placeholder('Y-m-d'),
+
+                            TextInput::make('time_format')
+                                ->maxLength(40)
+                                ->nullable()
+                                ->placeholder('H:i'),
+
+                            TextInput::make('number_format')
+                                ->maxLength(40)
+                                ->nullable()
+                                ->placeholder('1,234.56'),
+                        ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Support')
+                    ->description('Country-specific support contact overrides.')
+                    ->icon('heroicon-o-lifebuoy')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            TextInput::make('support_email')
+                                ->email()
+                                ->maxLength(255)
+                                ->nullable()
+                                ->placeholder('support@example.com'),
+
+                            TextInput::make('support_phone')
+                                ->maxLength(50)
+                                ->nullable()
+                                ->placeholder('+91 00000 00000'),
                         ]),
                     ])
                     ->columnSpanFull(),

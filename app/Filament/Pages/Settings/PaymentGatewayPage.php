@@ -23,7 +23,7 @@ class PaymentGatewayPage extends PaymentSettingsPage
 
     protected static ?string $navigationLabel = 'Payment Gateways';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Payment';
+    protected static string|\UnitEnum|null $navigationGroup = 'Finance';
 
     protected static ?int $navigationSort = 2;
 

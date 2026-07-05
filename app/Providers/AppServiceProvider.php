@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Activity;
+use App\Models\EmailLog;
 use App\Models\Faq;
 use App\Models\FaqCategory;
 use App\Models\NavigationMenu;
@@ -28,6 +29,7 @@ use App\Observers\UserObserver;
 use App\Observers\UserProfileObserver;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\CacheManagerPolicy;
+use App\Policies\EmailLogPolicy;
 use App\Policies\FaqCategoryPolicy;
 use App\Policies\FaqPolicy;
 use App\Policies\InstructorPolicy;
@@ -110,6 +112,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(FaqCategory::class, FaqCategoryPolicy::class);
         Gate::policy(NavigationMenu::class, NavigationMenuPolicy::class);
         Gate::policy(Activity::class, ActivityLogPolicy::class);
+        Gate::policy(EmailLog::class, EmailLogPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Permission::class, PermissionPolicy::class);
         Gate::policy(UserExperience::class, UserExperiencePolicy::class);

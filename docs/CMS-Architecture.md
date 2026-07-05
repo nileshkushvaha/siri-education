@@ -101,7 +101,7 @@ This means the DB stores `'page'` not `'App\\Models\\Page'`. Always use morph ma
 
 ## BlockType Enum
 
-`app/Enums/BlockType.php` — 24 block types:
+`app/Enums/BlockType.php` — 23 block types:
 
 | Enum case | Description |
 |---|---|
@@ -116,7 +116,6 @@ This means the DB stores `'page'` not `'App\\Models\\Page'`. Always use morph ma
 | `Tabs` | Tabbed content |
 | `Team` | Team member cards |
 | `Features` | Feature cards with optional links |
-| `FeaturedCourses` | CMS-authored featured course cards |
 | `FeaturedTeachers` | Featured public instructors from the instructor service |
 | `Testimonials` | Testimonial cards |
 | `Pricing` | Pricing plan cards |

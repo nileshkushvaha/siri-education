@@ -21,7 +21,7 @@ class PaymentBankAccountPage extends PaymentSettingsPage
 
     protected static ?string $navigationLabel = 'Bank Account';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Payment';
+    protected static string|\UnitEnum|null $navigationGroup = 'Finance';
 
     protected static ?int $navigationSort = 1;
 

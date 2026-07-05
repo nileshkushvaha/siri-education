@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\InstructorStatus;
 use App\Enums\PageStatus;
 use App\Enums\PageVisibility;
 use App\Livewire\Frontend\Layout\SearchOverlay;
@@ -30,7 +31,10 @@ class SearchOverlayTest extends TestCase
     private function makeInstructor(array $overrides = []): User
     {
         $user = User::factory()->create(array_merge(['status' => 'active'], $overrides));
-        $user->profile->update(['profile_visibility' => 'public']);
+        $user->profile->update([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Approved,
+        ]);
         $user->assignRole('instructor');
 
         return $user;
@@ -99,14 +103,6 @@ class SearchOverlayTest extends TestCase
             ->set('query', 'cancel a booking')
             ->assertSee('How do I')
             ->assertSee('FAQs');
-    }
-
-    public function test_courses_category_is_always_empty(): void
-    {
-        Livewire::test(SearchOverlay::class)
-            ->set('open', true)
-            ->set('query', 'anything')
-            ->assertSee('Course search is coming soon');
     }
 
     public function test_no_results_shows_empty_state(): void

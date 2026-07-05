@@ -24,7 +24,6 @@ class BlockContentHydrator
             BlockType::Tabs => self::hydrateTabs($jsonContent),
             BlockType::Team => self::hydrateTeam($jsonContent),
             BlockType::Features => self::hydrateFeatures($jsonContent),
-            BlockType::FeaturedCourses => self::hydrateFeaturedCourses($jsonContent),
             BlockType::FeaturedTeachers => self::hydrateFeaturedTeachers($jsonContent),
             BlockType::Testimonials => self::hydrateTestimonials($jsonContent),
             BlockType::Pricing => self::hydratePricing($jsonContent),
@@ -153,19 +152,6 @@ class BlockContentHydrator
             'description' => $content['description'] ?? '',
             'features' => $content['features'] ?? [],
             'columns' => $content['columns'] ?? 3,
-        ];
-    }
-
-    private static function hydrateFeaturedCourses(array $content): array
-    {
-        return [
-            'eyebrow' => $content['eyebrow'] ?? '',
-            'title' => $content['title'] ?? '',
-            'description' => $content['description'] ?? '',
-            'courses' => $content['courses'] ?? [],
-            'columns' => $content['columns'] ?? 3,
-            'link_label' => $content['link_label'] ?? '',
-            'link_url' => $content['link_url'] ?? '',
         ];
     }
 

@@ -10,7 +10,6 @@ use App\Forms\Blocks\ContactInfoBlockForm;
 use App\Forms\Blocks\CTABlockForm;
 use App\Forms\Blocks\DividerBlockForm;
 use App\Forms\Blocks\FAQBlockForm;
-use App\Forms\Blocks\FeaturedCoursesBlockForm;
 use App\Forms\Blocks\FeaturedTeachersBlockForm;
 use App\Forms\Blocks\FeaturesBlockForm;
 use App\Forms\Blocks\GalleryBlockForm;
@@ -48,7 +47,6 @@ class BlockFormSchemaFactory
             BlockType::Tabs => TabsBlockForm::schema(),
             BlockType::Team => TeamBlockForm::schema(),
             BlockType::Features => FeaturesBlockForm::schema(),
-            BlockType::FeaturedCourses => FeaturedCoursesBlockForm::schema(),
             BlockType::FeaturedTeachers => FeaturedTeachersBlockForm::schema(),
             BlockType::Testimonials => TestimonialsBlockForm::schema(),
             BlockType::Pricing => PricingBlockForm::schema(),

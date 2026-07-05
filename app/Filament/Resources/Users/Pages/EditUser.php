@@ -2,12 +2,17 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Enums\InstructorStatus;
 use App\Events\Auth\UserApproved;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditUser extends EditRecord
@@ -21,11 +26,67 @@ class EditUser extends EditRecord
     {
         return [
             ViewAction::make(),
+            $this->forceApproveInstructorAction(),
             DeleteAction::make()
                 ->hidden(fn (): bool => $this->record->id === auth()->id()
                     || $this->record->isSuperAdmin()
                 ),
         ];
+    }
+
+    /**
+     * Admin override — bypasses the normal instructor lifecycle (draft →
+     * submitted → under_review → ... → approved) to force an instructor
+     * straight to Approved. Requires a reason, logged via
+     * AuditTrailService::logOverride() (event 'admin_override', findable
+     * independently of the 'instructor' log this also feeds into via
+     * UserProfileObserver).
+     */
+    private function forceApproveInstructorAction(): Action
+    {
+        return Action::make('forceApproveInstructor')
+            ->label('Force Approve')
+            ->icon('heroicon-m-shield-check')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => $this->record->hasRole('instructor')
+                && ! in_array($this->record->profile?->instructor_status, InstructorStatus::bookable(), true)
+            )
+            ->form([
+                Textarea::make('reason')
+                    ->label('Reason for override')
+                    ->required()
+                    ->maxLength(500)
+                    ->helperText('Why is this instructor being approved outside the normal review flow?'),
+            ])
+            ->action(function (array $data): void {
+                $admin = auth()->user();
+                if (! $admin instanceof User) {
+                    return;
+                }
+
+                $previousStatus = $this->record->profile?->instructor_status;
+
+                $this->record->profile()->update(['instructor_status' => InstructorStatus::Approved]);
+
+                app(AuditTrailService::class)->logOverride(
+                    admin: $admin,
+                    logName: 'instructor',
+                    event: 'admin_override',
+                    description: "Instructor status force-approved for {$this->record->name}",
+                    reason: $data['reason'],
+                    subject: $this->record,
+                    properties: [
+                        'previous_status' => $previousStatus?->value,
+                        'new_status' => InstructorStatus::Approved->value,
+                    ],
+                );
+
+                Notification::make()
+                    ->title('Instructor force-approved')
+                    ->success()
+                    ->send();
+            });
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -60,20 +121,24 @@ class EditUser extends EditRecord
         $fresh = $this->record->fresh();
         $newRoles = $fresh->roles->pluck('name')->toArray();
 
+        // This page is only reachable by an authenticated admin; the guard
+        // is purely for AuditTrailService::logUser()'s non-nullable signature.
+        $admin = auth()->user();
+        if (! $admin instanceof User) {
+            return;
+        }
+
+        $audit = app(AuditTrailService::class);
+
         $added = array_values(array_diff($newRoles, $this->oldRoles));
         $removed = array_values(array_diff($this->oldRoles, $newRoles));
 
         if ($added || $removed) {
-            activity('users')
-                ->performedOn($this->record)
-                ->causedBy(auth()->user())
-                ->event('roles_updated')
-                ->withProperties([
-                    'roles_added' => $added,
-                    'roles_removed' => $removed,
-                    'current_roles' => $newRoles,
-                ])
-                ->log('User roles updated');
+            $audit->logUser($admin, 'users', 'roles_updated', 'User roles updated', $this->record, [
+                'roles_added' => $added,
+                'roles_removed' => $removed,
+                'current_roles' => $newRoles,
+            ]);
         }
 
         // If admin set a new password, store old hash and reset the expiry clock
@@ -84,29 +149,17 @@ class EditUser extends EditRecord
 
         // Detect approval: admin changed status from INACTIVE (pending approval) → ACTIVE
         if ($this->previousStatus === User::STATUS_INACTIVE && $fresh->status === User::STATUS_ACTIVE) {
-            UserApproved::dispatch($fresh, auth()->user());
+            UserApproved::dispatch($fresh, $admin);
 
-            activity('users')
-                ->performedOn($this->record)
-                ->causedBy(auth()->user())
-                ->event('account_approved')
-                ->log('User account approved by administrator');
+            $audit->logUser($admin, 'users', 'account_approved', 'User account approved by administrator', $this->record);
         }
 
         $isMustChange = (bool) $fresh->must_change_password;
 
         if ($isMustChange && ! $this->wasMustChangePassword) {
-            activity('users')
-                ->performedOn($this->record)
-                ->causedBy(auth()->user())
-                ->event('password_change_required')
-                ->log('Administrator required password change on next login');
+            $audit->logUser($admin, 'users', 'password_change_required', 'Administrator required password change on next login', $this->record);
         } elseif (! $isMustChange && $this->wasMustChangePassword) {
-            activity('users')
-                ->performedOn($this->record)
-                ->causedBy(auth()->user())
-                ->event('password_change_cleared')
-                ->log('Password change requirement cleared by administrator');
+            $audit->logUser($admin, 'users', 'password_change_cleared', 'Password change requirement cleared by administrator', $this->record);
         }
     }
 }

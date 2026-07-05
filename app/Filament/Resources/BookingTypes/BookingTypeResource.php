@@ -27,7 +27,9 @@ class BookingTypeResource extends Resource
 
     protected static ?string $navigationLabel = 'Booking Types';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Bookings';
+    protected static string|\UnitEnum|null $navigationGroup = 'Booking';
+
+    protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?int $navigationSort = 2;
 

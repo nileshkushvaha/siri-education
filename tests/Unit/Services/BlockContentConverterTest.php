@@ -264,25 +264,6 @@ class BlockContentConverterTest extends TestCase
     }
 
     /** @test */
-    public function test_converts_featured_courses_block_form_data_to_json(): void
-    {
-        $formData = [
-            'title' => 'Featured Courses',
-            'courses' => [
-                ['title' => 'Algebra', 'category' => 'Math'],
-                ['title' => '', 'category' => 'Ignored'],
-            ],
-            'columns' => 3,
-        ];
-
-        $result = BlockContentConverter::convert(BlockType::FeaturedCourses, $formData);
-
-        $this->assertEquals('Featured Courses', $result['title']);
-        $this->assertCount(1, $result['courses']);
-        $this->assertEquals('Algebra', $result['courses'][0]['title']);
-    }
-
-    /** @test */
     public function test_converts_featured_teachers_block_form_data_to_json(): void
     {
         $result = BlockContentConverter::convert(BlockType::FeaturedTeachers, [

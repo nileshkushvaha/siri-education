@@ -23,7 +23,7 @@ final class SearchService
     ) {}
 
     /**
-     * @return array{teachers: Collection, courses: Collection, pages: Collection, posts: Collection, faqs: Collection}
+     * @return array{teachers: Collection, pages: Collection, posts: Collection, faqs: Collection}
      */
     public function quickSearch(string $term, int $perCategory = 5): array
     {
@@ -32,7 +32,6 @@ final class SearchService
         if ($term === '') {
             return [
                 'teachers' => new Collection,
-                'courses' => new Collection,
                 'pages' => new Collection,
                 'posts' => new Collection,
                 'faqs' => new Collection,
@@ -41,9 +40,6 @@ final class SearchService
 
         return [
             'teachers' => $this->instructors->search($term, $perCategory),
-            // No Course domain exists yet — kept as an explicit, always-empty
-            // category rather than mapping onto an unrelated model.
-            'courses' => new Collection,
             'pages' => $this->pages->searchPublishedPages($term, $perCategory),
             'posts' => $this->posts->searchPublishedPosts($term, $perCategory),
             'faqs' => $this->faqs->publicFaqs($term, limit: $perCategory),

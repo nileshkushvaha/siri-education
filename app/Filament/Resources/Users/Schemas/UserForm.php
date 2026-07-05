@@ -339,16 +339,12 @@ class UserForm
                             ->visible(fn ($record) => $record && $record->hasRole('student'))
                             ->schema([
                                 Section::make('Learning Overview')
-                                    ->description('Enrollment, progress, and order data will be available in Phase 6 (Course module).')
+                                    ->description('Enrollment, progress, and order data will be available in a future phase.')
                                     ->icon('heroicon-o-academic-cap')
                                     ->schema([
-                                        Grid::make(4)->schema([
+                                        Grid::make(3)->schema([
                                             Placeholder::make('enrollments')
                                                 ->label('Enrollments')
-                                                ->content('—'),
-
-                                            Placeholder::make('completed')
-                                                ->label('Completed Courses')
                                                 ->content('—'),
 
                                             Placeholder::make('certificates')

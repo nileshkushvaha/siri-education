@@ -29,7 +29,7 @@ class TeacherLeaveForm
                                 'name',
                                 fn (Builder $query) => $query->whereHas('profile', fn (Builder $q) => $q->whereIn(
                                     'instructor_status',
-                                    [InstructorStatus::Approved, InstructorStatus::Published],
+                                    InstructorStatus::bookable(),
                                 )),
                             )
                             ->searchable()

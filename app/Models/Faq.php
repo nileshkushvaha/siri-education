@@ -11,10 +11,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Faq extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasUuids, LogsActivity, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -108,5 +110,14 @@ class Faq extends Model
         $value = $audience instanceof FaqAudience ? $audience->value : $audience;
 
         return in_array($value, $this->audience ?? [], true);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['faq_category_id', 'question', 'answer', 'audience', 'display_order', 'featured', 'status'])
+            ->useLogName('faqs')
+            ->logOnlyDirty()
+            ->dontLogIfAttributesChangedOnly(['updated_at']);
     }
 }

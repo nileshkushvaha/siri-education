@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Profile;
 
 use App\Models\User;
+use App\Models\UserProfile;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -53,6 +55,15 @@ class UserProfileCreationTest extends TestCase
         $newUser = User::factory()->create();
 
         $this->assertSame($admin->id, $newUser->profile->created_by);
+    }
+
+    public function test_a_user_cannot_have_a_second_profile(): void
+    {
+        $user = User::factory()->create();
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        UserProfile::create(['user_id' => $user->id, 'phone' => '555-0100']);
     }
 
     public function test_deleting_a_user_cascades_to_their_profile(): void

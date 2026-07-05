@@ -34,7 +34,7 @@ final class NotifyInstructorOnProfileActivity implements ShouldQueue
         $statusEvent = match ($activity->event) {
             'profile_approved' => InstructorStatus::Approved,
             'profile_rejected' => InstructorStatus::Rejected,
-            'profile_published' => InstructorStatus::Published,
+            'profile_active' => InstructorStatus::Active,
             default => null,
         };
 

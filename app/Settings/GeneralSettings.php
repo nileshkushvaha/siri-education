@@ -30,7 +30,7 @@ class GeneralSettings extends Settings
 
     public ?string $favicon;
 
-    // Localization
+    // Localization — country/detection settings live in LocalizationSettings.
     public string $default_timezone;
 
     public string $default_language;

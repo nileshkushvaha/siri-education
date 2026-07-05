@@ -28,12 +28,13 @@ use Illuminate\Contracts\Support\Htmlable;
 class GeneralSettingsPage extends Page
 {
     use HasSettingsAccess;
+    use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected static ?string $navigationLabel = 'General';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Platform';
 
     protected static ?int $navigationSort = 1;
 
@@ -217,7 +218,7 @@ class GeneralSettingsPage extends Page
 
                 // ── Localization ──────────────────────────────────── right
                 Section::make('Localization')
-                    ->description('Default timezone, language, and date/time formats.')
+                    ->description('Default timezone, language, and date/time formats. Country and locale-switching defaults live under Platform Foundation Settings.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
@@ -376,6 +377,7 @@ class GeneralSettingsPage extends Page
         }
 
         $settings = app(GeneralSettings::class);
+        $before = $this->snapshotSettings($settings);
 
         $settings->app_name = $data['app_name'];
         $settings->app_short_name = $data['app_short_name'] ?? null;
@@ -402,6 +404,7 @@ class GeneralSettingsPage extends Page
                                         : null;
 
         $settings->save();
+        $this->logSettingsUpdate('settings', $settings, $before);
 
         Notification::make()
             ->title('General settings saved')

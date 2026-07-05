@@ -66,6 +66,47 @@ class AuditTrailTest extends TestCase
             : []);
     }
 
+    // ── AuditTrailService::logOverride ────────────────────────────────────
+
+    public function test_log_override_sets_actor_type_user(): void
+    {
+        $admin = $this->user();
+        $activity = $this->audit()->logOverride($admin, 'instructor', 'admin_override', 'Force approved', 'because reasons');
+
+        $this->assertSame(ActivityActorType::User, $activity->actor_type);
+        $this->assertSame($admin->id, $activity->causer_id);
+    }
+
+    public function test_log_override_always_stores_the_reason(): void
+    {
+        $activity = $this->audit()->logOverride($this->user(), 'instructor', 'admin_override', 'Force approved', 'urgent business need');
+
+        $this->assertSame('urgent business need', $activity->properties->get('override_reason'));
+    }
+
+    public function test_log_override_always_flags_is_override(): void
+    {
+        $activity = $this->audit()->logOverride($this->user(), 'instructor', 'admin_override', 'Force approved', 'reason');
+
+        $this->assertTrue($activity->properties->get('is_override'));
+    }
+
+    public function test_log_override_merges_additional_properties_with_the_reason(): void
+    {
+        $activity = $this->audit()->logOverride(
+            $this->user(),
+            'instructor',
+            'admin_override',
+            'Force approved',
+            'reason',
+            properties: ['previous_status' => 'submitted', 'new_status' => 'approved'],
+        );
+
+        $this->assertSame('submitted', $activity->properties->get('previous_status'));
+        $this->assertSame('approved', $activity->properties->get('new_status'));
+        $this->assertSame('reason', $activity->properties->get('override_reason'));
+    }
+
     // ── AuditTrailService::logGuest ───────────────────────────────────────
 
     public function test_log_guest_sets_actor_type_guest(): void

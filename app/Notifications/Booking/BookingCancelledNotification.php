@@ -7,12 +7,10 @@ namespace App\Notifications\Booking;
 use App\Models\Booking;
 use App\Notifications\Booking\Concerns\RoutesBookingChannels;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 use Illuminate\Queue\SerializesModels;
 
-final class BookingCancelledNotification extends Notification implements ShouldQueue
+final class BookingCancelledNotification extends BookingNotification
 {
     use Queueable, RoutesBookingChannels, SerializesModels;
 
@@ -24,7 +22,7 @@ final class BookingCancelledNotification extends Notification implements ShouldQ
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
+        $mail = $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Booking %s cancelled', $this->booking->reference))
             ->line(sprintf(
                 'The %s scheduled for %s (%s) has been cancelled.',

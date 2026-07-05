@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /** A one-off blackout period (holiday, sick day) overriding availability. */
 class TeacherUnavailability extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, LogsActivity;
 
     protected $table = 'teacher_unavailability';
 
@@ -49,5 +51,14 @@ class TeacherUnavailability extends Model
         return $query
             ->where('starts_at', '<', $endsAt)
             ->where('ends_at', '>', $startsAt);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['teacher_id', 'starts_at', 'ends_at', 'reason'])
+            ->useLogName('teacher_unavailability')
+            ->logOnlyDirty()
+            ->dontLogIfAttributesChangedOnly(['updated_at']);
     }
 }

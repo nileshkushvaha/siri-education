@@ -92,12 +92,6 @@ final class AccountMenuService
                 'permission' => 'profile.view',
             ],
             [
-                'label' => 'My Courses',
-                'route' => 'dashboard.courses',
-                'icon' => 'book',
-                'permission' => null,
-            ],
-            [
                 'label' => 'Certificates',
                 'route' => 'dashboard.certificates',
                 'icon' => 'badge',

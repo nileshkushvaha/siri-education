@@ -28,7 +28,9 @@ class FaqResource extends Resource
 
     protected static ?string $pluralModelLabel = 'FAQs';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'CMS';
+    protected static string|\UnitEnum|null $navigationGroup = 'Content';
+
+    protected static ?string $recordTitleAttribute = 'question';
 
     protected static ?int $navigationSort = 6;
 

@@ -10,9 +10,8 @@ use App\Forms\Enums\PublicFormType;
 use App\Models\PublicFormSubmission;
 use App\Notifications\Forms\PublicFormSubmissionNotification;
 use App\Services\AuditTrailService;
+use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
-use App\Settings\MailSettings;
-use Illuminate\Support\Facades\Notification;
 use RuntimeException;
 
 final class PublicFormService implements PublicFormServiceInterface
@@ -21,7 +20,7 @@ final class PublicFormService implements PublicFormServiceInterface
         private readonly PublicFormRepositoryInterface $repository,
         private readonly AuditTrailService $auditTrail,
         private readonly GeneralSettings $generalSettings,
-        private readonly MailSettings $mailSettings,
+        private readonly TransactionalNotificationService $notifications,
     ) {}
 
     public function submit(PublicFormType $type, array $data): PublicFormSubmission
@@ -52,12 +51,6 @@ final class PublicFormService implements PublicFormServiceInterface
             throw new RuntimeException('Support recipient email is not configured.');
         }
 
-        $notification = new PublicFormSubmissionNotification($type, $submission);
-
-        if ($this->mailSettings->queue_emails) {
-            Notification::route('mail', $recipient)->notify($notification);
-        } else {
-            Notification::route('mail', $recipient)->notifyNow($notification);
-        }
+        $this->notifications->routeMail($recipient, new PublicFormSubmissionNotification($type, $submission));
     }
 }

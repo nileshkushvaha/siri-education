@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Enums\InstructorStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -49,7 +50,10 @@ class InstructorSlugTest extends TestCase
     public function test_slug_route_binding_resolves_correct_user(): void
     {
         $user = User::factory()->create(['name' => 'Route User', 'status' => 'active']);
-        $user->profile->update(['profile_visibility' => 'public']);
+        $user->profile->update([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Approved,
+        ]);
         $user->assignRole('instructor');
 
         $response = $this->get("/instructors/{$user->slug}");

@@ -48,6 +48,23 @@ class CountriesTable
                     ->searchable()
                     ->placeholder('—'),
 
+                TextColumn::make('defaultCurrency.code')
+                    ->label('Currency')
+                    ->badge()
+                    ->placeholder('—')
+                    ->sortable(),
+
+                TextColumn::make('defaultLanguage.code')
+                    ->label('Language')
+                    ->badge()
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                TextColumn::make('default_timezone')
+                    ->label('Timezone')
+                    ->placeholder('—')
+                    ->toggleable(),
+
                 TextColumn::make('nationality')
                     ->label('Nationality')
                     ->searchable()

@@ -31,7 +31,7 @@ class AccountProtectionPage extends Page
 
     protected static ?string $navigationLabel = 'Account Protection';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Security';
+    protected static string|\UnitEnum|null $navigationGroup = 'Users & Access';
 
     protected static ?int $navigationSort = 6;
 

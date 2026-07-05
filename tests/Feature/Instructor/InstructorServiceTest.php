@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Enums\InstructorStatus;
 use App\Models\User;
 use App\Models\UserExperience;
 use App\Services\Instructor\InstructorService;
@@ -28,7 +29,10 @@ class InstructorServiceTest extends TestCase
     private function makeInstructor(array $overrides = [], array $profileOverrides = []): User
     {
         $user = User::factory()->create(array_merge(['status' => 'active'], $overrides));
-        $user->profile->update(array_merge(['profile_visibility' => 'public'], $profileOverrides));
+        $user->profile->update(array_merge([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Approved,
+        ], $profileOverrides));
         $user->assignRole('instructor');
 
         return $user;
@@ -58,6 +62,16 @@ class InstructorServiceTest extends TestCase
     public function test_listing_excludes_private_profiles(): void
     {
         $this->makeInstructor([], ['profile_visibility' => 'private']);
+
+        $request = Request::create('/instructors');
+        $result = $this->service->listing($request);
+
+        $this->assertSame(0, $result->total());
+    }
+
+    public function test_listing_excludes_pending_instructors(): void
+    {
+        $this->makeInstructor([], ['instructor_status' => InstructorStatus::Submitted]);
 
         $request = Request::create('/instructors');
         $result = $this->service->listing($request);
@@ -109,13 +123,12 @@ class InstructorServiceTest extends TestCase
         $this->assertFalse($result->contains('id', $instructor->id));
     }
 
-    public function test_stats_returns_zero_stubs_for_courses_and_students(): void
+    public function test_stats_returns_zero_stub_for_students(): void
     {
         $instructor = $this->makeInstructor();
 
         $stats = $this->service->stats($instructor);
 
-        $this->assertSame(0, $stats['courses_count']);
         $this->assertSame(0, $stats['students_count']);
         $this->assertNull($stats['avg_rating']);
     }

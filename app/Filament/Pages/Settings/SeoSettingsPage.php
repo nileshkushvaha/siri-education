@@ -31,7 +31,7 @@ class SeoSettingsPage extends Page
 
     protected static ?string $navigationLabel = 'SEO';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Platform';
 
     protected static ?int $navigationSort = 2;
 

@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class WelcomeNotification extends Notification implements ShouldQueue
+final class WelcomeNotification extends AuthNotification
 {
     use Queueable;
 
@@ -25,7 +23,7 @@ final class WelcomeNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('Welcome to '.config('app.name').'! 🎉')
             ->view('emails.auth.welcome', [
                 'user' => $notifiable,

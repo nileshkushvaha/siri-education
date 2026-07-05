@@ -28,7 +28,9 @@ class PostCategoryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Categories';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'CMS';
+    protected static string|\UnitEnum|null $navigationGroup = 'Content';
+
+    protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?int $navigationSort = 3;
 

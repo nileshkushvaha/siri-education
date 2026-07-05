@@ -8,13 +8,11 @@ use App\Booking\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Notifications\Booking\Concerns\RoutesBookingChannels;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 use Illuminate\Queue\SerializesModels;
 
 /** Covers both terminal outcomes — Completed and NoShow. */
-final class BookingCompletedNotification extends Notification implements ShouldQueue
+final class BookingCompletedNotification extends BookingNotification
 {
     use Queueable, RoutesBookingChannels, SerializesModels;
 
@@ -26,7 +24,7 @@ final class BookingCompletedNotification extends Notification implements ShouldQ
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
+        $mail = $this->configureMailMessage(new MailMessage)
             ->subject(sprintf(
                 'Booking %s %s',
                 $this->booking->reference,

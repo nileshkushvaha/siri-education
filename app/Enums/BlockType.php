@@ -15,7 +15,6 @@ enum BlockType: string
     case Tabs = 'tabs';
     case Team = 'team';
     case Features = 'features';
-    case FeaturedCourses = 'featured_courses';
     case FeaturedTeachers = 'featured_teachers';
     case Testimonials = 'testimonials';
     case Pricing = 'pricing';
@@ -43,7 +42,6 @@ enum BlockType: string
             self::Tabs => 'Tabs',
             self::Team => 'Team',
             self::Features => 'Features',
-            self::FeaturedCourses => 'Featured Courses',
             self::FeaturedTeachers => 'Featured Teachers',
             self::Testimonials => 'Testimonials',
             self::Pricing => 'Pricing',
@@ -73,7 +71,6 @@ enum BlockType: string
             self::Tabs => 'heroicon-m-rectangle-group',
             self::Team => 'heroicon-m-user-group',
             self::Features => 'heroicon-m-squares-2x2',
-            self::FeaturedCourses => 'heroicon-m-academic-cap',
             self::FeaturedTeachers => 'heroicon-m-user-group',
             self::Testimonials => 'heroicon-m-star',
             self::Pricing => 'heroicon-m-banknotes',
@@ -103,7 +100,6 @@ enum BlockType: string
             self::Tabs => 'Tabbed content sections',
             self::Team => 'Team member profiles',
             self::Features => 'Feature cards with optional links',
-            self::FeaturedCourses => 'CMS-authored featured course cards',
             self::FeaturedTeachers => 'Featured public instructors from the instructor service',
             self::Testimonials => 'Customer testimonials/reviews',
             self::Pricing => 'Pricing plans and included features',
@@ -127,7 +123,7 @@ enum BlockType: string
             self::Image, self::Gallery, self::Video => 'Media',
             self::CTA => 'Call to Action',
             self::FAQ, self::Accordion, self::Tabs => 'Interactive',
-            self::Team, self::Features, self::FeaturedCourses, self::FeaturedTeachers, self::Testimonials, self::Pricing, self::Statistics, self::Timeline => 'Components',
+            self::Team, self::Features, self::FeaturedTeachers, self::Testimonials, self::Pricing, self::Statistics, self::Timeline => 'Components',
             self::Newsletter => 'Forms',
             self::Map => 'Location',
             self::ContactForm => 'Forms',
@@ -146,7 +142,7 @@ enum BlockType: string
             self::Image, self::Gallery, self::Video => 'warning',
             self::CTA => 'danger',
             self::FAQ, self::Accordion, self::Tabs => 'purple',
-            self::Team, self::Features, self::FeaturedCourses, self::FeaturedTeachers, self::Testimonials, self::Pricing, self::Statistics, self::Timeline => 'blue',
+            self::Team, self::Features, self::FeaturedTeachers, self::Testimonials, self::Pricing, self::Statistics, self::Timeline => 'blue',
             self::Newsletter => 'amber',
             self::Button => 'pink',
             self::Divider, self::Spacer => 'gray',

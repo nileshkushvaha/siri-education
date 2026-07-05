@@ -25,7 +25,6 @@ class BlockContentConverter
             BlockType::Tabs => self::tabsToJson($formData),
             BlockType::Team => self::teamToJson($formData),
             BlockType::Features => self::featuresToJson($formData),
-            BlockType::FeaturedCourses => self::featuredCoursesToJson($formData),
             BlockType::FeaturedTeachers => self::featuredTeachersToJson($formData),
             BlockType::Testimonials => self::testimonialsToJson($formData),
             BlockType::Pricing => self::pricingToJson($formData),
@@ -171,37 +170,6 @@ class BlockContentConverter
             'description' => $data['description'] ?? '',
             'features' => $normalizedFeatures,
             'columns' => (int) ($data['columns'] ?? 3),
-        ];
-    }
-
-    private static function featuredCoursesToJson(array $data): array
-    {
-        $courses = $data['courses'] ?? [];
-
-        $normalizedCourses = array_values(array_filter(array_map(
-            static fn (array $course): array => [
-                'title' => $course['title'] ?? '',
-                'category' => $course['category'] ?? '',
-                'description' => $course['description'] ?? '',
-                'instructor' => $course['instructor'] ?? '',
-                'image' => $course['image'] ?? null,
-                'url' => $course['url'] ?? '',
-                'price' => $course['price'] ?? '',
-                'duration' => $course['duration'] ?? '',
-                'level' => $course['level'] ?? '',
-                'badge' => $course['badge'] ?? '',
-            ],
-            $courses
-        ), static fn (array $course): bool => $course['title'] !== ''));
-
-        return [
-            'eyebrow' => $data['eyebrow'] ?? '',
-            'title' => $data['title'] ?? '',
-            'description' => $data['description'] ?? '',
-            'courses' => $normalizedCourses,
-            'columns' => (int) ($data['columns'] ?? 3),
-            'link_label' => $data['link_label'] ?? '',
-            'link_url' => $data['link_url'] ?? '',
         ];
     }
 

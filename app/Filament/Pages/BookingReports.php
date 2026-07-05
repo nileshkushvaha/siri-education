@@ -30,7 +30,7 @@ class BookingReports extends Page
 
     protected static ?string $title = 'Booking Reports';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Bookings';
+    protected static string|\UnitEnum|null $navigationGroup = 'Reports';
 
     protected static ?int $navigationSort = 5;
 

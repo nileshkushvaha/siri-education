@@ -71,6 +71,12 @@ class RegisterFormTest extends TestCase
             ->call('register');
 
         $this->assertDatabaseHas('users', ['email' => 'jane-doe@gmail.com']);
+
+        $user = User::where('email', 'jane-doe@gmail.com')->firstOrFail();
+
+        $this->assertNotNull($user->terms_accepted_at);
+        $this->assertNotNull($user->privacy_accepted_at);
+        $this->assertSame($user->terms_accepted_at->toDateTimeString(), $user->privacy_accepted_at->toDateTimeString());
     }
 
     public function test_duplicate_email_is_rejected(): void

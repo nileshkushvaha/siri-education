@@ -30,7 +30,9 @@ class NavigationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Navigation Menus';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'CMS';
+    protected static string|\UnitEnum|null $navigationGroup = 'Content';
+
+    protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?int $navigationSort = 5;
 

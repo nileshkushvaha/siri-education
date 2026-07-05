@@ -8,12 +8,10 @@ use App\Models\Booking;
 use App\Notifications\Booking\Concerns\RoutesBookingChannels;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 use Illuminate\Queue\SerializesModels;
 
-final class BookingRescheduledNotification extends Notification implements ShouldQueue
+final class BookingRescheduledNotification extends BookingNotification
 {
     use Queueable, RoutesBookingChannels, SerializesModels;
 
@@ -28,7 +26,7 @@ final class BookingRescheduledNotification extends Notification implements Shoul
     {
         $timezone = $this->booking->timezone;
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Booking %s rescheduled', $this->booking->reference))
             ->line(sprintf(
                 'Your %s has moved from %s to %s (%s).',

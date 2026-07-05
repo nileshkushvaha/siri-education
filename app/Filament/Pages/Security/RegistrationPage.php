@@ -32,7 +32,7 @@ class RegistrationPage extends Page
 
     protected static ?string $navigationLabel = 'Registration';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Security';
+    protected static string|\UnitEnum|null $navigationGroup = 'Users & Access';
 
     protected static ?int $navigationSort = 5;
 

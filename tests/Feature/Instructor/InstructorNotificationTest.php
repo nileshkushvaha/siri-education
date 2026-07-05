@@ -59,7 +59,7 @@ class InstructorNotificationTest extends TestCase
         );
     }
 
-    public function test_profile_published_event_triggers_instructor_notification(): void
+    public function test_profile_active_event_triggers_instructor_notification(): void
     {
         Notification::fake();
 
@@ -69,7 +69,7 @@ class InstructorNotificationTest extends TestCase
         $admin = User::factory()->create(['status' => 'active']);
         $this->actingAs($admin);
 
-        $instructor->profile->update(['instructor_status' => 'published']);
+        $instructor->profile->update(['instructor_status' => 'active']);
 
         Notification::assertSentTo(
             $instructor,

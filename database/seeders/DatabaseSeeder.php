@@ -16,10 +16,19 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             DefaultRolesAndUsersSeeder::class,
+            CurrencySeeder::class,
+            LanguageSeeder::class,
             CountrySeeder::class,
             StateSeeder::class,
+            LocalizationPermissionSeeder::class,
+            PlatformSettingsPermissionSeeder::class,
             BookingTypeSeeder::class,
             BookingPermissionSeeder::class,
+            AcademicPermissionSeeder::class,
+            AcademicCategorySeeder::class,
+            SubjectSeeder::class,
+            AcademicLevelSeeder::class,
+            SkillLevelSeeder::class,
         ]);
     }
 }

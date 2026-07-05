@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Booking\Enums\Weekday;
+use App\Enums\InstructorStatus;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -29,7 +30,10 @@ class InstructorDetailTest extends TestCase
     private function makeInstructor(array $profileOverrides = []): User
     {
         $user = User::factory()->create(['status' => 'active']);
-        $user->profile->update(array_merge(['profile_visibility' => 'public'], $profileOverrides));
+        $user->profile->update(array_merge([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Approved,
+        ], $profileOverrides));
         $user->assignRole('instructor');
 
         return $user;
@@ -57,6 +61,21 @@ class InstructorDetailTest extends TestCase
         $user->profile->update(['profile_visibility' => 'public']);
 
         $this->get(route('instructors.show', $user))->assertNotFound();
+    }
+
+    public function test_guest_cannot_view_pending_public_instructor_profile(): void
+    {
+        $instructor = $this->makeInstructor(['instructor_status' => InstructorStatus::Submitted]);
+
+        $this->get(route('instructors.show', $instructor))->assertForbidden();
+    }
+
+    public function test_guest_cannot_view_inactive_approved_instructor_profile(): void
+    {
+        $instructor = $this->makeInstructor();
+        $instructor->update(['status' => User::STATUS_INACTIVE]);
+
+        $this->get(route('instructors.show', $instructor))->assertForbidden();
     }
 
     public function test_guest_cannot_view_private_instructor_profile(): void

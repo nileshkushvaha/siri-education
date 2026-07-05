@@ -29,7 +29,7 @@ class PageBlockResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Content Blocks';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'CMS';
+    protected static string|\UnitEnum|null $navigationGroup = 'Content';
 
     protected static ?int $navigationSort = 5;
 

@@ -27,10 +27,7 @@ final class TeacherCandidateRepository implements TeacherCandidateRepositoryInte
 
         return User::query()
             ->whereIn('id', $teacherIds)
-            ->whereHas('profile', fn ($q) => $q->whereIn(
-                'instructor_status',
-                [InstructorStatus::Approved, InstructorStatus::Published],
-            ))
+            ->whereHas('profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
             ->with('profile')
             ->get();
     }
@@ -49,20 +46,14 @@ final class TeacherCandidateRepository implements TeacherCandidateRepositoryInte
     {
         return User::query()
             ->whereKey($teacherId)
-            ->whereHas('profile', fn ($q) => $q->whereIn(
-                'instructor_status',
-                [InstructorStatus::Approved, InstructorStatus::Published],
-            ))
+            ->whereHas('profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
             ->exists();
     }
 
     public function availableSubjects(): Collection
     {
         return TeacherSubject::query()
-            ->whereHas('teacher.profile', fn ($q) => $q->whereIn(
-                'instructor_status',
-                [InstructorStatus::Approved, InstructorStatus::Published],
-            ))
+            ->whereHas('teacher.profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
             ->distinct()
             ->orderBy('subject')
             ->pluck('subject');

@@ -69,12 +69,16 @@ class AdminPanelProvider extends PanelProvider
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\Filament\Clusters')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->navigationGroups([
-                'Administration',
-                'CMS',
-                'Masters',
-                'Configuration',
-                'Payment',
-                'Security',
+                'Platform',
+                'Users & Access',
+                'Academic',
+                'Marketplace',
+                'Scheduling',
+                'Booking',
+                'Finance',
+                'Content',
+                'Communication',
+                'Reports',
                 'System',
             ])
             ->pages([

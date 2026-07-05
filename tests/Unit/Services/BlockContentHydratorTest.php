@@ -228,24 +228,6 @@ class BlockContentHydratorTest extends TestCase
     }
 
     /** @test */
-    public function test_hydrates_featured_courses_block_json_to_form_data(): void
-    {
-        $content = [
-            'title' => 'Featured Courses',
-            'courses' => [
-                ['title' => 'Algebra', 'category' => 'Math'],
-            ],
-            'columns' => 3,
-        ];
-
-        $result = BlockContentHydrator::hydrate(BlockType::FeaturedCourses, $content);
-
-        $this->assertEquals('Featured Courses', $result['title']);
-        $this->assertCount(1, $result['courses']);
-        $this->assertEquals(3, $result['columns']);
-    }
-
-    /** @test */
     public function test_hydrates_featured_teachers_block_json_to_form_data(): void
     {
         $result = BlockContentHydrator::hydrate(BlockType::FeaturedTeachers, [

@@ -21,7 +21,7 @@ class StateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMapPin;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Masters';
+    protected static string|\UnitEnum|null $navigationGroup = 'Platform';
 
     protected static ?string $recordTitleAttribute = 'name';
 

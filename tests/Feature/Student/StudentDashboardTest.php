@@ -57,7 +57,6 @@ class StudentDashboardTest extends TestCase
         $this->actingAs($student)
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('My Courses')
             ->assertSee('Completed')
             ->assertSee('Certificates');
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Notifications\Auth;
 
+use App\Notifications\Concerns\ConfiguresTransactionalEmail;
+use App\Notifications\Contracts\TransactionalEmail;
 use Illuminate\Auth\Notifications\VerifyEmail as BaseVerifyEmail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,9 +14,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
-final class VerifyEmailNotification extends BaseVerifyEmail implements ShouldQueue
+final class VerifyEmailNotification extends BaseVerifyEmail implements ShouldQueue, TransactionalEmail
 {
-    use Queueable;
+    use ConfiguresTransactionalEmail, Queueable;
 
     /**
      * Pre-generate the signed URL at dispatch time so the URL remains valid
@@ -49,7 +51,7 @@ final class VerifyEmailNotification extends BaseVerifyEmail implements ShouldQue
 
     protected function buildMailMessage($url): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('Verify Your Email Address — '.config('app.name'))
             ->view('emails.auth.verify-email', [
                 'url' => $url,
@@ -63,7 +65,7 @@ final class VerifyEmailNotification extends BaseVerifyEmail implements ShouldQue
     {
         $url = $this->verificationUrl($notifiable);
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('Verify Your Email Address — '.config('app.name'))
             ->view('emails.auth.verify-email', [
                 'url' => $url,
@@ -72,5 +74,15 @@ final class VerifyEmailNotification extends BaseVerifyEmail implements ShouldQue
                 'appUrl' => config('app.url'),
                 'expiry' => config('auth.verification.expire', 60),
             ]);
+    }
+
+    public function emailCategory(): string
+    {
+        return 'auth';
+    }
+
+    public function senderKey(): string
+    {
+        return 'auth';
     }
 }

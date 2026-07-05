@@ -108,6 +108,32 @@ class PaymentWorkflowTest extends TestCase
             ->exists());
     }
 
+    public function test_successful_payment_is_recorded_in_the_unified_activity_log(): void
+    {
+        [$booking, $reference] = $this->reserve();
+
+        $this->webhook(['event' => 'succeeded', 'reference' => $reference])->assertOk();
+
+        $this->assertDatabaseHas('activity_log', [
+            'log_name' => 'payments',
+            'event' => 'payment_paid',
+            'subject_type' => Booking::class,
+            'subject_id' => $booking->id,
+        ]);
+    }
+
+    public function test_failed_payment_is_recorded_in_the_unified_activity_log(): void
+    {
+        [, $reference] = $this->reserve();
+
+        $this->webhook(['event' => 'failed', 'reference' => $reference, 'reason' => 'card declined'])->assertOk();
+
+        $this->assertDatabaseHas('activity_log', [
+            'log_name' => 'payments',
+            'event' => 'payment_failed',
+        ]);
+    }
+
     public function test_failure_webhook_keeps_reservation_and_allows_retry(): void
     {
         [$booking, $reference] = $this->reserve();

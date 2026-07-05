@@ -21,7 +21,7 @@ class PaymentAdvancedPage extends PaymentSettingsPage
 
     protected static ?string $navigationLabel = 'Advanced';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Payment';
+    protected static string|\UnitEnum|null $navigationGroup = 'Finance';
 
     protected static ?int $navigationSort = 4;
 

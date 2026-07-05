@@ -37,7 +37,6 @@ class StudentRoutesTest extends TestCase
     public static function stubRouteProvider(): array
     {
         return [
-            'courses' => ['dashboard.courses',      'My Courses'],
             'progress' => ['dashboard.progress',     'My Progress'],
             'certificates' => ['dashboard.certificates', 'Certificates'],
             'orders' => ['dashboard.orders',       'Orders'],
@@ -50,14 +49,6 @@ class StudentRoutesTest extends TestCase
     public function test_guest_is_redirected_from_stub_pages(string $route, string $_expectedText): void
     {
         $this->get(route($route))->assertRedirect(route('auth.login'));
-    }
-
-    public function test_courses_page_shows_coming_soon(): void
-    {
-        $this->actingAs($this->student)
-            ->get(route('dashboard.courses'))
-            ->assertOk()
-            ->assertSee('Courses Coming Soon');
     }
 
     public function test_certificates_page_shows_no_certificates_yet(): void

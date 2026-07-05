@@ -44,12 +44,12 @@
                            x-on:keydown.arrow-up.prevent="move(-1)"
                            x-on:keydown.enter.prevent="select()"
                            class="min-h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
-                           placeholder="Search teachers, courses, pages, FAQs..." autofocus>
+                           placeholder="Search teachers, pages, FAQs..." autofocus>
                 </div>
 
                 <div class="mt-4 space-y-5">
                     @if(trim($query) === '')
-                        <p class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">Start typing to search teachers, courses, pages, and FAQs.</p>
+                        <p class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">Start typing to search teachers, pages, and FAQs.</p>
                     @else
                         @if(! $this->hasResults)
                             <x-ui.empty-state title="No results" description="Try a different keyword or open the full search page.">
@@ -72,14 +72,6 @@
                                 </div>
                             </section>
                         @endif
-
-                        {{-- Courses always shown once a query is typed — no Course
-                             domain exists yet, so this is an explicit stub rather
-                             than silently omitting the category. --}}
-                        <section>
-                            <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Courses</h3>
-                            <p class="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">Course search is coming soon.</p>
-                        </section>
 
                         @if($this->results['pages']->isNotEmpty())
                             <section>

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Booking\Enums\Weekday;
+use App\Enums\InstructorStatus;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
-use App\Booking\Enums\Weekday;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -26,7 +27,10 @@ class InstructorListingTest extends TestCase
     private function makeInstructor(array $overrides = []): User
     {
         $user = User::factory()->create(array_merge(['status' => 'active'], $overrides));
-        $user->profile->update(['profile_visibility' => 'public']);
+        $user->profile->update([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Approved,
+        ]);
         $user->assignRole('instructor');
 
         return $user;
@@ -49,7 +53,10 @@ class InstructorListingTest extends TestCase
     public function test_inactive_instructor_not_listed(): void
     {
         $user = User::factory()->create(['status' => 'inactive', 'name' => 'Inactive Instructor']);
-        $user->profile->update(['profile_visibility' => 'public']);
+        $user->profile->update([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Approved,
+        ]);
         $user->assignRole('instructor');
 
         $this->get(route('instructors.index'))
@@ -60,7 +67,10 @@ class InstructorListingTest extends TestCase
     public function test_private_profile_instructor_not_listed(): void
     {
         $user = User::factory()->create(['status' => 'active', 'name' => 'Private Instructor']);
-        $user->profile->update(['profile_visibility' => 'private']);
+        $user->profile->update([
+            'profile_visibility' => 'private',
+            'instructor_status' => InstructorStatus::Approved,
+        ]);
         $user->assignRole('instructor');
 
         $this->get(route('instructors.index'))
@@ -71,7 +81,10 @@ class InstructorListingTest extends TestCase
     public function test_members_only_instructor_not_listed(): void
     {
         $user = User::factory()->create(['status' => 'active', 'name' => 'Members Only Instructor']);
-        $user->profile->update(['profile_visibility' => 'members_only']);
+        $user->profile->update([
+            'profile_visibility' => 'members_only',
+            'instructor_status' => InstructorStatus::Approved,
+        ]);
         $user->assignRole('instructor');
 
         $this->get(route('instructors.index'))
@@ -88,6 +101,20 @@ class InstructorListingTest extends TestCase
         $this->get(route('instructors.index'))
             ->assertOk()
             ->assertDontSee('Student Only');
+    }
+
+    public function test_pending_instructor_not_listed(): void
+    {
+        $user = User::factory()->create(['status' => 'active', 'name' => 'Pending Instructor']);
+        $user->profile->update([
+            'profile_visibility' => 'public',
+            'instructor_status' => InstructorStatus::Submitted,
+        ]);
+        $user->assignRole('instructor');
+
+        $this->get(route('instructors.index'))
+            ->assertOk()
+            ->assertDontSee('Pending Instructor');
     }
 
     public function test_keyword_search_filters_by_name(): void

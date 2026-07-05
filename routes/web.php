@@ -35,7 +35,6 @@ use App\Http\Controllers\Student\StudentAttendanceController;
 use App\Http\Controllers\Student\StudentBookingController;
 use App\Http\Controllers\Student\StudentBookingHistoryController;
 use App\Http\Controllers\Student\StudentCertificatesController;
-use App\Http\Controllers\Student\StudentCoursesController;
 use App\Http\Controllers\Student\StudentHomeworkController;
 use App\Http\Controllers\Student\StudentNotificationsController;
 use App\Http\Controllers\Student\StudentOrdersController;
@@ -190,7 +189,6 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     'session.track',
     'frontend.portal',
 ])->group(function (): void {
-    Route::get('/courses', [StudentCoursesController::class,      'index'])->name('courses');
     Route::get('/progress', [StudentProgressController::class,     'index'])->name('progress');
     Route::get('/certificates', [StudentCertificatesController::class, 'index'])->name('certificates');
     Route::get('/orders', [StudentOrdersController::class,       'index'])->name('orders');

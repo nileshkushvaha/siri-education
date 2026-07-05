@@ -13,6 +13,36 @@ class MailSettings extends Settings
 
     public string $from_email;
 
+    public ?string $transactional_domain;
+
+    public ?string $auth_from_name;
+
+    public ?string $auth_from_email;
+
+    public ?string $booking_from_name;
+
+    public ?string $booking_from_email;
+
+    public ?string $payment_from_name;
+
+    public ?string $payment_from_email;
+
+    public ?string $tutor_from_name;
+
+    public ?string $tutor_from_email;
+
+    public ?string $wallet_from_name;
+
+    public ?string $wallet_from_email;
+
+    public ?string $support_from_name;
+
+    public ?string $support_from_email;
+
+    public ?string $admin_from_name;
+
+    public ?string $admin_from_email;
+
     // SMTP
     public string $driver;
 

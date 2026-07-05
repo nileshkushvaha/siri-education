@@ -12,11 +12,6 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-/**
- * Sidebar visibility is permission-driven, not role-name-driven: the same
- * AccountMenuService::items() call must return different item sets purely
- * based on which permissions a user holds.
- */
 class AccountMenuServiceTest extends TestCase
 {
     use RefreshDatabase;
@@ -76,9 +71,9 @@ class AccountMenuServiceTest extends TestCase
         $this->assertContains('My Profile', $labels);
     }
 
-    public function test_instructor_and_student_menus_differ_only_by_permission_not_role(): void
+    public function test_instructor_menu_does_not_show_student_workflow_links(): void
     {
-        $instructor = $this->makeUser(status: 'inactive');
+        $instructor = $this->makeUser();
         $instructor->assignRole('instructor');
 
         $student = $this->makeUser();
@@ -87,14 +82,31 @@ class AccountMenuServiceTest extends TestCase
         $instructorLabels = array_column($this->service->items($instructor), 'label');
         $studentLabels = array_column($this->service->items($student), 'label');
 
-        // The inactive instructor fails the 'profile.view' permission check
-        // despite the role; the active student passes it — proving the
-        // divergence is permission-scoped, not a role-name branch.
-        $this->assertNotContains('My Profile', $instructorLabels);
+        $this->assertContains('My Profile', $instructorLabels);
         $this->assertContains('My Profile', $studentLabels);
 
         $this->assertContains('Dashboard', $instructorLabels);
         $this->assertContains('Dashboard', $studentLabels);
+
+        $this->assertNotContains('My Bookings', $instructorLabels);
+        $this->assertNotContains('Payments', $instructorLabels);
+        $this->assertNotContains('Homework', $instructorLabels);
+        $this->assertContains('My Bookings', $studentLabels);
+        $this->assertContains('Payments', $studentLabels);
+        $this->assertContains('Homework', $studentLabels);
+    }
+
+    public function test_student_links_remain_visible_when_user_also_has_instructor_role(): void
+    {
+        $user = $this->makeUser();
+        $user->assignRole(['student', 'instructor']);
+
+        $labels = array_column($this->service->items($user), 'label');
+
+        $this->assertContains('Upcoming Classes', $labels);
+        $this->assertContains('My Bookings', $labels);
+        $this->assertContains('Payments', $labels);
+        $this->assertContains('Homework', $labels);
     }
 
     public function test_items_have_expected_shape_for_future_nesting_and_badges(): void
@@ -106,6 +118,7 @@ class AccountMenuServiceTest extends TestCase
             $this->assertArrayHasKey('url', $item);
             $this->assertArrayHasKey('route', $item);
             $this->assertArrayHasKey('icon', $item);
+            $this->assertArrayHasKey('audience', $item);
             $this->assertArrayHasKey('badge', $item);
             $this->assertArrayHasKey('children', $item);
             $this->assertIsArray($item['children']);

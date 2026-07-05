@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Enums\InstructorStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -66,6 +67,14 @@ class UsersTable
                     })
                     ->sortable(),
 
+                TextColumn::make('profile.instructor_status')
+                    ->label('Instructor')
+                    ->badge()
+                    ->formatStateUsing(fn (?InstructorStatus $state): string => $state?->label() ?? '—')
+                    ->color(fn (?InstructorStatus $state): string => $state?->color() ?? 'gray')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('email_verified_at')
                     ->label('Verified')
                     ->badge()
@@ -105,6 +114,19 @@ class UsersTable
                         'active' => 'Active',
                         'inactive' => 'Inactive',
                     ]),
+
+                SelectFilter::make('instructor_status')
+                    ->label('Instructor Status')
+                    ->options(InstructorStatus::class)
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (! filled($value)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('profile', fn (Builder $profileQuery) => $profileQuery->where('instructor_status', $value));
+                    }),
 
                 TernaryFilter::make('email_verified_at')
                     ->label('Email Verified')

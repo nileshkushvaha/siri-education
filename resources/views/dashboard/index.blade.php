@@ -19,7 +19,11 @@
 
         {{-- Overview stats + Next Classes + Quick Actions --}}
         <div class="lg:col-span-2 space-y-6">
-            <livewire:frontend.student.dashboard-overview />
+            @if(auth()->user()->hasRole('student') || ! auth()->user()->hasRole('instructor'))
+                <livewire:frontend.student.dashboard-overview />
+            @else
+                <livewire:frontend.instructor.dashboard-overview />
+            @endif
         </div>
 
         {{-- Right sidebar --}}
@@ -36,6 +40,52 @@
                     </x-slot:actions>
                 </x-account.profile-header>
             </x-account.card>
+
+            @if(auth()->user()->hasRole('student') || ! auth()->user()->hasRole('instructor'))
+                <x-account.card>
+                    <div class="space-y-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 class="text-sm font-semibold text-white">Instructor Onboarding</h2>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    {{ $instructorOnboarding['status']?->label() ?? 'Not started' }}
+                                </p>
+                            </div>
+                            <span class="text-sm font-semibold text-indigo-300">{{ $instructorOnboarding['percentage'] }}%</span>
+                        </div>
+
+                        <div class="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div class="h-full rounded-full bg-indigo-500" style="width: {{ $instructorOnboarding['percentage'] }}%"></div>
+                        </div>
+
+                        @if($instructorOnboarding['missing'])
+                            <div class="flex flex-wrap gap-2">
+                                @foreach(array_slice($instructorOnboarding['missing'], 0, 4) as $missing)
+                                    <span class="px-2 py-1 rounded-lg bg-white/[0.04] text-xs text-slate-300">{{ $missing }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <div class="flex gap-2">
+                            <form method="POST" action="{{ route('dashboard.instructor.start') }}" class="flex-1">
+                                @csrf
+                                <button type="submit" class="w-full py-2 rounded-xl border border-white/[0.10] text-slate-300 hover:text-white hover:bg-white/[0.05] text-sm font-medium transition-all">
+                                    {{ $instructorOnboarding['status'] ? 'Continue' : 'Become Instructor' }}
+                                </button>
+                            </form>
+
+                            @if($instructorOnboarding['status'] && $instructorOnboarding['missing'] === [])
+                                <form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">
+                                    @csrf
+                                    <button type="submit" class="w-full py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-all">
+                                        Submit
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                </x-account.card>
+            @endif
 
             {{-- Streak / Motivation --}}
             <div class="rounded-2xl border border-amber-500/20 p-5 relative overflow-hidden"

@@ -25,6 +25,7 @@ class UserProfileObserver
     /** Fields whose change is worth a business-timeline entry; excludes system-recalculated/audit columns. */
     private const TRACKED_PROFILE_FIELDS = [
         'headline', 'designation', 'short_bio', 'bio', 'phone', 'gender',
+        'instructor_teaching_experience_summary', 'instructor_teaching_philosophy',
         'date_of_birth', 'address', 'city', 'country_id', 'state_id',
         'postal_code', 'website', 'facebook', 'twitter', 'linkedin',
         'github', 'instagram', 'youtube',

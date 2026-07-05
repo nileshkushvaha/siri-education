@@ -8,6 +8,7 @@ use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
+use App\Services\Instructor\InstructorOnboardingService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -26,12 +27,110 @@ class EditUser extends EditRecord
     {
         return [
             ViewAction::make(),
+            $this->markInstructorUnderReviewAction(),
+            $this->requestInstructorDocumentsAction(),
+            $this->approveInstructorAction(),
+            $this->rejectInstructorAction(),
             $this->forceApproveInstructorAction(),
             DeleteAction::make()
                 ->hidden(fn (): bool => $this->record->id === auth()->id()
                     || $this->record->isSuperAdmin()
                 ),
         ];
+    }
+
+    private function markInstructorUnderReviewAction(): Action
+    {
+        return Action::make('markInstructorUnderReview')
+            ->label('Start Review')
+            ->icon('heroicon-m-eye')
+            ->color('info')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => $this->canReviewInstructor())
+            ->action(function (): void {
+                app(InstructorOnboardingService::class)->markUnderReview(auth()->user(), $this->record);
+
+                Notification::make()
+                    ->title('Instructor marked under review')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function requestInstructorDocumentsAction(): Action
+    {
+        return Action::make('requestInstructorDocuments')
+            ->label('Request Documents')
+            ->icon('heroicon-m-document-plus')
+            ->color('warning')
+            ->visible(fn (): bool => $this->canReviewInstructor())
+            ->form([
+                Textarea::make('reason')
+                    ->label('Requested documents')
+                    ->required()
+                    ->maxLength(1000),
+            ])
+            ->action(function (array $data): void {
+                app(InstructorOnboardingService::class)->requestDocuments(auth()->user(), $this->record, $data['reason']);
+
+                Notification::make()
+                    ->title('Documents requested')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function approveInstructorAction(): Action
+    {
+        return Action::make('approveInstructor')
+            ->label('Approve')
+            ->icon('heroicon-m-check-badge')
+            ->color('success')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => $this->canReviewInstructor()
+                && ! in_array($this->record->profile?->instructor_status, InstructorStatus::bookable(), true)
+            )
+            ->form([
+                Textarea::make('reason')
+                    ->label('Approval note')
+                    ->maxLength(500),
+            ])
+            ->action(function (array $data): void {
+                app(InstructorOnboardingService::class)->approve(auth()->user(), $this->record, $data['reason'] ?? null);
+
+                Notification::make()
+                    ->title('Instructor approved')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function rejectInstructorAction(): Action
+    {
+        return Action::make('rejectInstructor')
+            ->label('Reject')
+            ->icon('heroicon-m-x-circle')
+            ->color('danger')
+            ->visible(fn (): bool => $this->canReviewInstructor())
+            ->form([
+                Textarea::make('reason')
+                    ->label('Rejection reason')
+                    ->required()
+                    ->maxLength(1000),
+            ])
+            ->action(function (array $data): void {
+                app(InstructorOnboardingService::class)->reject(auth()->user(), $this->record, $data['reason']);
+
+                Notification::make()
+                    ->title('Instructor rejected')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function canReviewInstructor(): bool
+    {
+        return $this->record->hasRole('instructor') && auth()->user()?->can('Update:User');
     }
 
     /**

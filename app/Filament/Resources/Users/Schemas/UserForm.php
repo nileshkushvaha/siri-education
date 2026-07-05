@@ -289,6 +289,16 @@ class UserForm
                                             ->label('Bio')
                                             ->content(fn ($record) => $record?->bio ? Str::limit($record->bio, 200) : '—')
                                             ->columnSpanFull(),
+
+                                        Placeholder::make('teaching_experience_summary_preview')
+                                            ->label('Teaching Experience')
+                                            ->content(fn ($record) => $record?->instructor_teaching_experience_summary ? Str::limit($record->instructor_teaching_experience_summary, 200) : '—')
+                                            ->columnSpanFull(),
+
+                                        Placeholder::make('teaching_philosophy_preview')
+                                            ->label('Teaching Philosophy')
+                                            ->content(fn ($record) => $record?->instructor_teaching_philosophy ? Str::limit($record->instructor_teaching_philosophy, 200) : '—')
+                                            ->columnSpanFull(),
                                     ]),
 
                                 Section::make('Instructor Controls')
@@ -317,6 +327,50 @@ class UserForm
                                             ->numeric()
                                             ->minValue(0)
                                             ->helperText('Lower numbers appear first in the featured listing.'),
+                                    ]),
+
+                                Section::make('Verification Documents')
+                                    ->description('Private documents used for instructor verification.')
+                                    ->icon('heroicon-o-document-check')
+                                    ->relationship('profile')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            SpatieMediaLibraryFileUpload::make('government_id')
+                                                ->label('Government ID')
+                                                ->collection('government_id')
+                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                                                ->maxSize(4096),
+
+                                            SpatieMediaLibraryFileUpload::make('address_proof')
+                                                ->label('Address Proof')
+                                                ->collection('address_proof')
+                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                                                ->maxSize(4096),
+
+                                            SpatieMediaLibraryFileUpload::make('education_certificate')
+                                                ->label('Education Certificate')
+                                                ->collection('education_certificate')
+                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                                                ->maxSize(4096),
+
+                                            SpatieMediaLibraryFileUpload::make('teaching_certificate')
+                                                ->label('Teaching Certificate')
+                                                ->collection('teaching_certificate')
+                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                                                ->maxSize(4096),
+
+                                            SpatieMediaLibraryFileUpload::make('resume')
+                                                ->label('Resume')
+                                                ->collection('resume')
+                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                                                ->maxSize(4096),
+
+                                            SpatieMediaLibraryFileUpload::make('introduction_video')
+                                                ->label('Introduction Video')
+                                                ->collection('introduction_video')
+                                                ->acceptedFileTypes(['video/mp4', 'video/webm', 'video/quicktime'])
+                                                ->maxSize(51200),
+                                        ]),
                                     ]),
 
                                 Section::make('Instructor Cover')

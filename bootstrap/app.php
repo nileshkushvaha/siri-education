@@ -13,8 +13,10 @@ use App\Providers\EventServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Exceptions\Renderer\Renderer;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -57,6 +59,30 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('auth/verify-email/*')) {
                 return response()->view('auth.verification-expired', [], 403);
             }
+        });
+
+        // Friendly web HTTP error pages are for non-debug environments only.
+        $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            if (config('app.debug')) {
+                $renderer = app(Renderer::class);
+
+                return response($renderer->render($request, $e), $e->getStatusCode(), $e->getHeaders())
+                    ->withException($e);
+            }
+
+            $status = $e->getStatusCode();
+
+            if ($status < 400 || $status >= 500) {
+                return null;
+            }
+
+            $view = view()->exists("errors.{$status}") ? "errors.{$status}" : 'errors.4xx';
+
+            return response()->view($view, ['exception' => $e], $status, $e->getHeaders());
         });
 
         // Domain failures (slot taken, duplicate, no teacher, …) are

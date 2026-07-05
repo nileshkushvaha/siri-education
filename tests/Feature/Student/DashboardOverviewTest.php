@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\Booking\Enums\BookingStatus;
+use App\Livewire\Frontend\Instructor\DashboardOverview as InstructorDashboardOverview;
 use App\Livewire\Frontend\Student\DashboardOverview;
 use App\Models\Booking;
 use App\Models\BookingType;
@@ -25,6 +26,7 @@ class DashboardOverviewTest extends TestCase
     {
         parent::setUp();
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
@@ -36,6 +38,30 @@ class DashboardOverviewTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSeeLivewire(DashboardOverview::class);
+    }
+
+    public function test_instructor_dashboard_renders_instructor_overview_component(): void
+    {
+        $instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $instructor->assignRole('instructor');
+
+        $this->actingAs($instructor)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSeeLivewire(InstructorDashboardOverview::class)
+            ->assertDontSeeLivewire(DashboardOverview::class);
+    }
+
+    public function test_student_dashboard_wins_when_user_also_has_instructor_role(): void
+    {
+        $user = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $user->assignRole(['student', 'instructor']);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSeeLivewire(DashboardOverview::class)
+            ->assertDontSeeLivewire(InstructorDashboardOverview::class);
     }
 
     public function test_stats_reflect_upcoming_classes_and_pending_homework(): void

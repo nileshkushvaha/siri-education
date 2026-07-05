@@ -22,6 +22,7 @@ use App\Http\Controllers\Forms\FeedbackController;
 use App\Http\Controllers\Forms\GeneralInquiryController;
 use App\Http\Controllers\Forms\SupportController;
 use App\Http\Controllers\Instructor\InstructorController;
+use App\Http\Controllers\Instructor\InstructorOnboardingController;
 use App\Http\Controllers\NewsletterUnsubscribeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
@@ -198,6 +199,8 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/notifications/read-all', [StudentNotificationsController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/{id}/read', [StudentNotificationsController::class, 'markRead'])->name('notifications.read');
     Route::get('/faqs', [DashboardFaqController::class, 'index'])->name('faqs');
+    Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');
+    Route::post('/instructor/submit', [InstructorOnboardingController::class, 'submit'])->name('instructor.submit');
 
     // ── Student Dashboard — Booking Engine sections (Livewire-backed) ──
     Route::get('/upcoming-classes', [StudentUpcomingClassesController::class, 'index'])->name('upcoming-classes');

@@ -1,8 +1,8 @@
 @extends('layouts.error')
 
-@section('title', '500 Server Error')
+@section('title', 'Server Error')
 @section('meta_description', 'Something went wrong on our end.')
-@section('code', '500')
+@section('code', method_exists($exception, 'getStatusCode') ? (string) $exception->getStatusCode() : '5xx')
 @section('error-title', 'Something went wrong')
 @section('error-message', 'We encountered an unexpected error. Please try again in a moment.')
 

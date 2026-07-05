@@ -25,6 +25,8 @@ class UserProfile extends Model implements HasMedia
         'designation',
         'short_bio',
         'bio',
+        'instructor_teaching_experience_summary',
+        'instructor_teaching_philosophy',
         'phone',
         'gender',
         'date_of_birth',
@@ -51,6 +53,15 @@ class UserProfile extends Model implements HasMedia
         'featured_order',
         'is_instructor_verified',
         'instructor_status',
+        'instructor_academic_level_ids',
+        'instructor_skill_level_ids',
+        'instructor_teaching_language_ids',
+        'instructor_application_started_at',
+        'instructor_application_submitted_at',
+        'instructor_reviewed_at',
+        'instructor_reviewed_by',
+        'instructor_review_reason',
+        'instructor_documents_requested_reason',
         'student_status',
         'assignment_priority',
     ];
@@ -67,6 +78,12 @@ class UserProfile extends Model implements HasMedia
             'is_featured' => 'boolean',
             'is_instructor_verified' => 'boolean',
             'instructor_status' => InstructorStatus::class,
+            'instructor_academic_level_ids' => 'array',
+            'instructor_skill_level_ids' => 'array',
+            'instructor_teaching_language_ids' => 'array',
+            'instructor_application_started_at' => 'datetime',
+            'instructor_application_submitted_at' => 'datetime',
+            'instructor_reviewed_at' => 'datetime',
             'student_status' => StudentStatus::class,
             'assignment_priority' => 'integer',
         ];
@@ -117,6 +134,18 @@ class UserProfile extends Model implements HasMedia
         $this->addMediaCollection('cover')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+        foreach (['government_id', 'address_proof', 'education_certificate', 'teaching_certificate', 'resume'] as $collection) {
+            $this->addMediaCollection($collection)
+                ->useDisk('local')
+                ->singleFile()
+                ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+        }
+
+        $this->addMediaCollection('introduction_video')
+            ->useDisk('local')
+            ->singleFile()
+            ->acceptsMimeTypes(['video/mp4', 'video/webm', 'video/quicktime']);
     }
 
     public function avatarUrl(): Attribute

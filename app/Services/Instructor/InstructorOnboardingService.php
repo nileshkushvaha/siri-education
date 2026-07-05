@@ -7,17 +7,24 @@ namespace App\Services\Instructor;
 use App\Enums\InstructorStatus;
 use App\Models\AcademicLevel;
 use App\Models\Language;
+use App\Models\SkillLevel;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\UserEducation;
+use App\Models\UserExperience;
 use App\Models\UserProfile;
 use App\Services\AuditTrailService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Models\Role;
 
 final class InstructorOnboardingService
 {
+    public const REVIEW_PERMISSION = 'instructor.applications.review';
+
     public const REQUIRED_DOCUMENT_COLLECTIONS = [
         'government_id',
         'address_proof',
@@ -26,12 +33,23 @@ final class InstructorOnboardingService
         'resume',
     ];
 
+    public const OPTIONAL_DOCUMENT_COLLECTIONS = [
+        'introduction_video',
+    ];
+
+    public const PROFILE_MEDIA_COLLECTIONS = [
+        'avatar',
+        'introduction_video',
+    ];
+
     public function __construct(
         private readonly AuditTrailService $auditTrail,
     ) {}
 
     public function start(User $user): UserProfile
     {
+        $this->ensureEmailVerified($user);
+
         return DB::transaction(function () use ($user): UserProfile {
             $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
             $started = $profile->instructor_status === null;
@@ -67,6 +85,7 @@ final class InstructorOnboardingService
     {
         return DB::transaction(function () use ($user, $data): UserProfile {
             $profile = $this->start($user);
+            $this->ensureEditable($profile);
 
             $profile->update([
                 'headline' => $data['headline'] ?? $profile->headline,
@@ -74,8 +93,10 @@ final class InstructorOnboardingService
                 'instructor_teaching_experience_summary' => $data['teaching_experience_summary'] ?? $profile->instructor_teaching_experience_summary,
                 'instructor_teaching_philosophy' => $data['teaching_philosophy'] ?? $profile->instructor_teaching_philosophy,
                 'instructor_academic_level_ids' => $this->validAcademicLevelIds($data['academic_level_ids'] ?? $profile->instructor_academic_level_ids ?? []),
-                'instructor_skill_level_ids' => array_values(array_filter((array) ($data['skill_level_ids'] ?? $profile->instructor_skill_level_ids ?? []))),
+                'instructor_skill_level_ids' => $this->validSkillLevelIds($data['skill_level_ids'] ?? $profile->instructor_skill_level_ids ?? []),
                 'instructor_teaching_language_ids' => $this->validLanguageIds($data['teaching_language_ids'] ?? $profile->instructor_teaching_language_ids ?? []),
+                'country_id' => $data['country_id'] ?? $profile->country_id,
+                'timezone' => $data['timezone'] ?? $profile->timezone,
             ]);
 
             if (array_key_exists('subject_ids', $data)) {
@@ -88,10 +109,120 @@ final class InstructorOnboardingService
         });
     }
 
+    public function uploadMedia(User $user, string $collection, UploadedFile $file): UserProfile
+    {
+        return DB::transaction(function () use ($user, $collection, $file): UserProfile {
+            $profile = $this->start($user);
+            $this->ensureEditable($profile);
+            $this->ensureKnownMediaCollection($collection);
+
+            $profile->addMedia($file)->toMediaCollection($collection);
+
+            $this->auditTrail->logUser(
+                $user,
+                'instructor',
+                'application_media_updated',
+                'Instructor application media updated',
+                $user,
+                ['collection' => $collection],
+            );
+
+            return $profile->fresh('media');
+        });
+    }
+
+    public function upsertEducation(User $user, ?int $educationId, array $data): UserEducation
+    {
+        return DB::transaction(function () use ($user, $educationId, $data): UserEducation {
+            $profile = $this->start($user);
+            $this->ensureEditable($profile);
+
+            $education = $educationId
+                ? $user->educations()->whereKey($educationId)->firstOrFail()
+                : new UserEducation(['user_id' => $user->id]);
+
+            $education->fill([
+                'institution_name' => $data['institution_name'],
+                'degree' => $data['degree'],
+                'field_of_study' => $data['field_of_study'] ?? null,
+                'education_level' => $data['education_level'],
+                'description' => $data['description'] ?? null,
+                'start_date' => $data['start_date'],
+                'end_date' => ($data['is_current'] ?? false) ? null : ($data['end_date'] ?? null),
+                'is_current' => (bool) ($data['is_current'] ?? false),
+                'status' => 'active',
+            ]);
+            $education->save();
+
+            $this->auditTrail->logUser($user, 'instructor', 'application_education_updated', 'Instructor education updated', $user);
+
+            return $education->fresh();
+        });
+    }
+
+    public function deleteEducation(User $user, int $educationId): void
+    {
+        DB::transaction(function () use ($user, $educationId): void {
+            $profile = $this->start($user);
+            $this->ensureEditable($profile);
+
+            $user->educations()->whereKey($educationId)->firstOrFail()->delete();
+
+            $this->auditTrail->logUser($user, 'instructor', 'application_education_deleted', 'Instructor education deleted', $user);
+        });
+    }
+
+    public function upsertExperience(User $user, ?int $experienceId, array $data): UserExperience
+    {
+        return DB::transaction(function () use ($user, $experienceId, $data): UserExperience {
+            $profile = $this->start($user);
+            $this->ensureEditable($profile);
+
+            $experience = $experienceId
+                ? $user->experiences()->whereKey($experienceId)->firstOrFail()
+                : new UserExperience(['user_id' => $user->id]);
+
+            $experience->fill([
+                'organization_name' => $data['organization_name'],
+                'designation' => $data['designation'],
+                'employment_type' => $data['employment_type'],
+                'industry' => $data['industry'] ?? null,
+                'location' => $data['location'] ?? null,
+                'description' => $data['description'] ?? null,
+                'skills' => $this->skillsArray($data['skills'] ?? []),
+                'start_date' => $data['start_date'],
+                'end_date' => ($data['is_current'] ?? false) ? null : ($data['end_date'] ?? null),
+                'is_current' => (bool) ($data['is_current'] ?? false),
+                'status' => 'active',
+            ]);
+            $experience->save();
+
+            $this->auditTrail->logUser($user, 'instructor', 'application_experience_updated', 'Instructor experience updated', $user);
+
+            return $experience->fresh();
+        });
+    }
+
+    public function deleteExperience(User $user, int $experienceId): void
+    {
+        DB::transaction(function () use ($user, $experienceId): void {
+            $profile = $this->start($user);
+            $this->ensureEditable($profile);
+
+            $user->experiences()->whereKey($experienceId)->firstOrFail()->delete();
+
+            $this->auditTrail->logUser($user, 'instructor', 'application_experience_deleted', 'Instructor experience deleted', $user);
+        });
+    }
+
     public function submit(User $user): UserProfile
     {
+        $this->ensureEmailVerified($user);
+
         return DB::transaction(function () use ($user): UserProfile {
             $profile = $this->start($user);
+            $this->ensureSubmittable($profile);
+
             $missing = $this->missingRequiredItems($user);
 
             if ($missing !== []) {
@@ -210,12 +341,15 @@ final class InstructorOnboardingService
     {
         $missing = $this->missingRequiredItems($user);
         $total = 14;
+        $status = $user->profile?->instructor_status;
 
         return [
-            'status' => $user->profile?->instructor_status,
+            'status' => $status,
             'missing' => $missing,
             'percentage' => $total > 0 ? (int) round((($total - count($missing)) / $total) * 100) : 0,
-            'next_action' => $missing === [] ? 'submit_application' : 'complete_required_items',
+            'next_action' => $missing === [] && $this->isSubmittableStatus($status)
+                ? 'submit_application'
+                : 'complete_required_items',
         ];
     }
 
@@ -307,6 +441,16 @@ final class InstructorOnboardingService
             ->all();
     }
 
+    private function validSkillLevelIds(array $ids): array
+    {
+        return SkillLevel::query()
+            ->active()
+            ->whereIn('id', array_values(array_filter($ids)))
+            ->pluck('id')
+            ->values()
+            ->all();
+    }
+
     private function transitionByAdmin(
         User $admin,
         User $instructor,
@@ -335,8 +479,80 @@ final class InstructorOnboardingService
 
     private function authorizeReview(User $admin): void
     {
-        if (! $admin->can('Update:User')) {
+        if (! $this->canReviewApplications($admin)) {
             throw new AuthorizationException('You are not authorized to review instructor applications.');
+        }
+    }
+
+    private function ensureEmailVerified(User $user): void
+    {
+        if (! $user->hasVerifiedEmail()) {
+            throw ValidationException::withMessages([
+                'email' => 'Please verify your email before starting instructor onboarding.',
+            ]);
+        }
+    }
+
+    private function ensureSubmittable(UserProfile $profile): void
+    {
+        if ($this->isSubmittableStatus($profile->instructor_status)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'application' => 'This instructor application has already been submitted or reviewed.',
+        ]);
+    }
+
+    private function isSubmittableStatus(?InstructorStatus $status): bool
+    {
+        return in_array($status, [null, InstructorStatus::Draft, InstructorStatus::DocumentsPending], true);
+    }
+
+    private function ensureEditable(UserProfile $profile): void
+    {
+        if ($this->isSubmittableStatus($profile->instructor_status)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'application' => 'This instructor application cannot be edited in its current status.',
+        ]);
+    }
+
+    private function ensureKnownMediaCollection(string $collection): void
+    {
+        if (in_array($collection, [...self::REQUIRED_DOCUMENT_COLLECTIONS, ...self::OPTIONAL_DOCUMENT_COLLECTIONS, ...self::PROFILE_MEDIA_COLLECTIONS], true)) {
+            return;
+        }
+
+        throw ValidationException::withMessages(['document' => 'Unsupported instructor onboarding upload.']);
+    }
+
+    private function skillsArray(array|string $skills): array
+    {
+        if (is_string($skills)) {
+            $skills = preg_split('/[,|]/', $skills) ?: [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (string $skill): string => trim($skill),
+            array_map('strval', $skills),
+        )));
+    }
+
+    public function canReviewApplications(User $admin): bool
+    {
+        return $this->hasPermission($admin, self::REVIEW_PERMISSION)
+            || $this->hasPermission($admin, 'Update:User');
+    }
+
+    private function hasPermission(User $user, string $permission): bool
+    {
+        try {
+            return $user->can($permission);
+        } catch (PermissionDoesNotExist) {
+            return false;
         }
     }
 }

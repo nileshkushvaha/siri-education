@@ -37,8 +37,20 @@ class InstructorOnboardingServiceTest extends TestCase
         Storage::fake('local');
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'Update:User', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => InstructorOnboardingService::REVIEW_PERMISSION, 'guard_name' => 'web']);
 
         $this->onboarding = app(InstructorOnboardingService::class);
+    }
+
+    public function test_unverified_user_cannot_start_instructor_onboarding(): void
+    {
+        $user = User::factory()->unverified()->create(['status' => 'active']);
+
+        $this->actingAs($user);
+
+        $this->expectException(ValidationException::class);
+
+        $this->onboarding->start($user);
     }
 
     public function test_user_can_start_instructor_onboarding_once(): void
@@ -79,6 +91,17 @@ class InstructorOnboardingServiceTest extends TestCase
         $this->onboarding->submit($user);
     }
 
+    public function test_unverified_user_cannot_submit_instructor_application(): void
+    {
+        $user = User::factory()->unverified()->create(['status' => 'active']);
+
+        $this->actingAs($user);
+
+        $this->expectException(ValidationException::class);
+
+        $this->onboarding->submit($user);
+    }
+
     public function test_user_can_submit_complete_application(): void
     {
         $user = $this->completeApplicant();
@@ -93,6 +116,20 @@ class InstructorOnboardingServiceTest extends TestCase
             'event' => 'application_submitted',
             'causer_id' => $user->id,
         ]);
+    }
+
+    public function test_duplicate_submission_is_prevented(): void
+    {
+        $user = $this->completeApplicant();
+
+        $this->actingAs($user);
+        $this->onboarding->submit($user->fresh());
+
+        $this->assertSame('complete_required_items', $this->onboarding->progress($user->fresh())['next_action']);
+
+        $this->expectException(ValidationException::class);
+
+        $this->onboarding->submit($user->fresh());
     }
 
     public function test_submitted_instructor_is_not_bookable(): void
@@ -122,6 +159,17 @@ class InstructorOnboardingServiceTest extends TestCase
         $this->onboarding->approve($admin, $instructor, 'Looks good');
     }
 
+    public function test_admin_can_review_with_instructor_application_permission(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->givePermissionTo(InstructorOnboardingService::REVIEW_PERMISSION);
+        $instructor = $this->completeApplicant();
+
+        $profile = $this->onboarding->markUnderReview($admin, $instructor);
+
+        $this->assertSame(InstructorStatus::UnderReview, $profile->instructor_status);
+    }
+
     public function test_admin_rejection_requires_reason(): void
     {
         $admin = User::factory()->create(['status' => 'active']);
@@ -131,6 +179,17 @@ class InstructorOnboardingServiceTest extends TestCase
         $this->expectException(ValidationException::class);
 
         $this->onboarding->reject($admin, $instructor, '');
+    }
+
+    public function test_admin_document_request_requires_reason(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->givePermissionTo(InstructorOnboardingService::REVIEW_PERMISSION);
+        $instructor = $this->completeApplicant();
+
+        $this->expectException(ValidationException::class);
+
+        $this->onboarding->requestDocuments($admin, $instructor, ' ');
     }
 
     public function test_kyc_documents_are_private_media_library_attachments(): void

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Instructor\InstructorOnboardingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 final class InstructorOnboardingController extends Controller
 {
@@ -15,13 +16,18 @@ final class InstructorOnboardingController extends Controller
         private readonly InstructorOnboardingService $onboarding,
     ) {}
 
+    public function show(): View
+    {
+        return view('instructor.onboarding');
+    }
+
     public function start(): RedirectResponse
     {
         $this->onboarding->start(auth()->user());
 
         return redirect()
-            ->route('profile.show', ['tab' => 'general'])
-            ->with('success', 'Instructor onboarding started. Complete your professional profile to submit for review.');
+            ->route('dashboard.instructor.onboarding')
+            ->with('success', 'Instructor onboarding started.');
     }
 
     public function submit(): RedirectResponse

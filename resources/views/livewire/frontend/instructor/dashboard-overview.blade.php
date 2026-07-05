@@ -70,6 +70,21 @@
                         @endforeach
                     </div>
                 @endif
+
+                <div class="flex gap-2">
+                    <a href="{{ route('dashboard.instructor.onboarding') }}" class="flex-1 text-center py-2 rounded-xl border border-white/[0.10] text-slate-300 hover:text-white hover:bg-white/[0.05] text-sm font-medium transition-all">
+                        {{ $onboarding['status'] ? 'Continue' : 'Start' }}
+                    </a>
+
+                    @if($onboarding['next_action'] === 'submit_application')
+                        <form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">
+                            @csrf
+                            <button type="submit" class="w-full py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-all">
+                                Submit
+                            </button>
+                        </form>
+                    @endif
+                </div>
             </div>
         </x-account.card>
     </div>

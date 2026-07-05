@@ -130,7 +130,11 @@ class EditUser extends EditRecord
 
     private function canReviewInstructor(): bool
     {
-        return $this->record->hasRole('instructor') && auth()->user()?->can('Update:User');
+        $admin = auth()->user();
+
+        return $this->record->hasRole('instructor')
+            && $admin instanceof User
+            && app(InstructorOnboardingService::class)->canReviewApplications($admin);
     }
 
     /**
@@ -148,7 +152,7 @@ class EditUser extends EditRecord
             ->icon('heroicon-m-shield-check')
             ->color('warning')
             ->requiresConfirmation()
-            ->visible(fn (): bool => $this->record->hasRole('instructor')
+            ->visible(fn (): bool => $this->canReviewInstructor()
                 && ! in_array($this->record->profile?->instructor_status, InstructorStatus::bookable(), true)
             )
             ->form([

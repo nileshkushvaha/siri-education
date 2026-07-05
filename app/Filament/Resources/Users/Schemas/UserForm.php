@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use App\Enums\InstructorStatus;
 use App\Models\Country;
 use App\Models\State;
 use App\Services\Security\PasswordRuleBuilder;
@@ -306,11 +305,9 @@ class UserForm
                                     ->icon('heroicon-o-cog-6-tooth')
                                     ->relationship('profile')
                                     ->schema([
-                                        Select::make('instructor_status')
+                                        Placeholder::make('instructor_status_display')
                                             ->label('Profile Status')
-                                            ->options(InstructorStatus::class)
-                                            ->native(false)
-                                            ->placeholder('Not set'),
+                                            ->content(fn ($record) => $record?->instructor_status?->label() ?? 'Not set'),
 
                                         Grid::make(2)->schema([
                                             Toggle::make('is_featured')

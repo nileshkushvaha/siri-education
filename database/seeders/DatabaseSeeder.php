@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             StateSeeder::class,
             LocalizationPermissionSeeder::class,
             PlatformSettingsPermissionSeeder::class,
+            InstructorPermissionSeeder::class,
             BookingTypeSeeder::class,
             BookingPermissionSeeder::class,
             AcademicPermissionSeeder::class,

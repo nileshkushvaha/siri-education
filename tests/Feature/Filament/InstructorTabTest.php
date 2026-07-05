@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 /**
  * Verifies the Instructor tab in UserResource behaves correctly — hidden for
- * non-instructor users, visible for instructor-role users, and persists the
- * instructor-specific controls through form save.
+ * non-instructor users, visible for instructor-role users, and keeps status
+ * transitions on reason-required review actions instead of a generic select.
  */
 class InstructorTabTest extends TestCase
 {
@@ -83,16 +83,15 @@ class InstructorTabTest extends TestCase
         $this->assertTrue((bool) $instructor->profile->fresh()->is_instructor_verified);
     }
 
-    public function test_instructor_status_select_persists(): void
+    public function test_instructor_status_is_read_only_in_generic_form(): void
     {
         $instructor = User::factory()->create(['status' => 'active']);
         $instructor->assignRole('instructor');
 
         Livewire::test(EditUser::class, ['record' => $instructor->getRouteKey()])
-            ->set('data.profile.instructor_status', 'approved')
-            ->call('save')
-            ->assertHasNoErrors();
+            ->assertSee('Profile Status')
+            ->assertDontSeeHtml('name="data.profile.instructor_status"');
 
-        $this->assertSame('approved', $instructor->profile->fresh()->instructor_status->value);
+        $this->assertNull($instructor->profile->fresh()->instructor_status);
     }
 }

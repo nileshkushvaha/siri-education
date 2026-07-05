@@ -60,9 +60,11 @@ The document collections are not public profile assets.
 
 Filament actions and frontend routes call this service instead of embedding business rules in forms.
 
+Starting and submitting an application require a verified email address. A user can resume an existing draft without creating a new profile/application row. Duplicate submissions are rejected once the application is already submitted, under review, approved, active, rejected, suspended, or archived; `documents_pending` may be resubmitted after the requested materials are added.
+
 ## Review Rules
 
-Admin review actions require the existing `Update:User` permission. Approval sets `InstructorStatus::Approved` and the verification badge readiness flag. Rejection and document requests require reasons and are audit logged.
+Admin review actions require `instructor.applications.review`. The existing `Update:User` permission remains accepted as a compatibility path for current User Resource managers, but new role assignments should grant the dedicated instructor-review permission. Approval sets `InstructorStatus::Approved` and the verification badge readiness flag. Rejection and document requests require reasons and are audit logged.
 
 Only `Approved` and `Active` remain bookable because `InstructorStatus::bookable()` was not changed.
 

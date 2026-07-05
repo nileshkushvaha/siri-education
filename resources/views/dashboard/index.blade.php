@@ -67,14 +67,11 @@
                         @endif
 
                         <div class="flex gap-2">
-                            <form method="POST" action="{{ route('dashboard.instructor.start') }}" class="flex-1">
-                                @csrf
-                                <button type="submit" class="w-full py-2 rounded-xl border border-white/[0.10] text-slate-300 hover:text-white hover:bg-white/[0.05] text-sm font-medium transition-all">
-                                    {{ $instructorOnboarding['status'] ? 'Continue' : 'Become Instructor' }}
-                                </button>
-                            </form>
+                            <a href="{{ route('dashboard.instructor.onboarding') }}" class="flex-1 text-center py-2 rounded-xl border border-white/[0.10] text-slate-300 hover:text-white hover:bg-white/[0.05] text-sm font-medium transition-all">
+                                {{ $instructorOnboarding['status'] ? 'Continue' : 'Become Instructor' }}
+                            </a>
 
-                            @if($instructorOnboarding['status'] && $instructorOnboarding['missing'] === [])
+                            @if($instructorOnboarding['next_action'] === 'submit_application')
                                 <form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">
                                     @csrf
                                     <button type="submit" class="w-full py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-all">

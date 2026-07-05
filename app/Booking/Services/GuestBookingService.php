@@ -110,7 +110,7 @@ final class GuestBookingService implements GuestBookingServiceInterface
 
         return $this->bookings->request(new CreateBookingData(
             typeKey: $data->typeKey,
-            attendeeId: null,
+            attendeeId: auth()->id(),
             hostId: $teacher->id,
             startsAt: $data->startsAt,
             durationMinutes: $type->duration_minutes,

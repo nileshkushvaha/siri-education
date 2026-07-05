@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             SubjectSeeder::class,
             AcademicLevelSeeder::class,
             SkillLevelSeeder::class,
+            InstructorSeeder::class,
         ]);
     }
 }

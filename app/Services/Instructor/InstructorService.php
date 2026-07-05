@@ -184,15 +184,21 @@ final class InstructorService
         ];
     }
 
+    /**
+     * Prefers the linked Subject master's name/slug when a teacher_subjects
+     * row has been reconciled to one (subject_id set); falls back to the
+     * legacy free-text value for rows that haven't been (or couldn't be)
+     * matched. See docs/architecture/subject-teacher-subject-reconciliation.md.
+     */
     public function subjectsFor(User $instructor): Collection
     {
-        $instructor->loadMissing('teacherSubjects');
+        $instructor->loadMissing('teacherSubjects.subjectMaster');
 
         return $instructor->teacherSubjects
             ->sortBy('subject')
             ->map(fn ($subject): array => [
-                'name' => $this->formatSubject((string) $subject->subject),
-                'slug' => (string) $subject->subject,
+                'name' => $subject->subjectMaster?->name ?? $this->formatSubject((string) $subject->subject),
+                'slug' => $subject->subjectMaster?->slug ?? (string) $subject->subject,
                 'grade_range' => $this->formatGradeRange($subject->grade_from, $subject->grade_to),
             ])
             ->values();
@@ -290,7 +296,7 @@ final class InstructorService
             'profile.country',
             'profile.state',
             'media',
-            'teacherSubjects',
+            'teacherSubjects.subjectMaster',
             'teacherAvailability',
             'experiences',
         ];

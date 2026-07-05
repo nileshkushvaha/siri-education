@@ -98,10 +98,11 @@ final class BookingWizardService
             'subject' => $booking->meta['subject'] ?? null,
             'grade' => $booking->meta['grade'] ?? null,
             'manage_token' => $booking->plainManageToken,
-            'manage_url' => route('booking.manage', [
+            'manage_url' => $booking->plainManageToken ? route('booking.manage', [
                 'reference' => $booking->reference,
                 'token' => $booking->plainManageToken,
-            ]),
+            ]) : null,
+            'my_bookings_url' => auth()->check() ? route('dashboard.my-bookings') : null,
         ];
     }
 }

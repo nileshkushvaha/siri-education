@@ -58,6 +58,7 @@ class FrontendServiceProvider extends ServiceProvider
             'dashboard.*',
             'student.*',
             'profile.show',
+            'booking.manage',
         ], AccountPortalComposer::class);
     }
 }

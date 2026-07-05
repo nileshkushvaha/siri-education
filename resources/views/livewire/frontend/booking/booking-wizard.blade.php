@@ -1,3 +1,4 @@
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
 <div
     class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8"
     x-data
@@ -271,6 +272,8 @@
                 <div class="mt-6 flex flex-wrap justify-center gap-3">
                     @if($result['manage_url'])
                         <x-ui.button href="{{ $result['manage_url'] }}">Manage booking</x-ui.button>
+                    @elseif($result['my_bookings_url'])
+                        <x-ui.button href="{{ $result['my_bookings_url'] }}">View my bookings</x-ui.button>
                     @endif
                     <x-ui.button type="button" variant="ghost" wire:click="restart">Book another session</x-ui.button>
                 </div>
@@ -285,4 +288,5 @@
             </div>
         @endif
     </section>
+</div>
 </div>

@@ -10,15 +10,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Academic master data only — this is NOT yet wired into the booking
- * flow. TeacherSubject.subject stays a free-text string, and booking
- * DTOs/validation are untouched; that migration is a deliberate later
- * phase, not part of the Phase 1 foundation.
+ * Academic master data. `TeacherSubject.subject` (free-text) remains the
+ * field booking flows read — this is not a replacement for it. `TeacherSubject`
+ * rows may optionally link here via `subject_id` (see
+ * docs/architecture/subject-teacher-subject-reconciliation.md); booking
+ * DTOs/validation remain untouched.
  */
 class Subject extends Model
 {
@@ -73,6 +75,12 @@ class Subject extends Model
     public function countries(): BelongsToMany
     {
         return $this->belongsToMany(Country::class, 'subject_country');
+    }
+
+    /** TeacherSubject rows reconciled to this master (subject_id set). */
+    public function teacherSubjects(): HasMany
+    {
+        return $this->hasMany(TeacherSubject::class, 'subject_id');
     }
 
     public function creator(): BelongsTo

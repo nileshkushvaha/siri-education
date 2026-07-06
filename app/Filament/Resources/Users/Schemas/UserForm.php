@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Enums\LearningGoalStatus;
 use App\Models\Country;
 use App\Models\State;
 use App\Services\Security\PasswordRuleBuilder;
@@ -390,21 +391,34 @@ class UserForm
                             ->visible(fn ($record) => $record && $record->hasRole('student'))
                             ->schema([
                                 Section::make('Learning Overview')
-                                    ->description('Enrollment, progress, and order data will be available in a future phase.')
+                                    ->description('Read-only student foundation data. Manage goals from the Learning Goals resource.')
                                     ->icon('heroicon-o-academic-cap')
                                     ->schema([
                                         Grid::make(3)->schema([
-                                            Placeholder::make('enrollments')
-                                                ->label('Enrollments')
-                                                ->content('—'),
+                                            Placeholder::make('student_status')
+                                                ->label('Student Status')
+                                                ->content(fn ($record) => $record?->profile?->student_status?->label() ?? '—'),
 
-                                            Placeholder::make('certificates')
-                                                ->label('Certificates')
-                                                ->content('—'),
+                                            Placeholder::make('student_academic_level')
+                                                ->label('Academic Level')
+                                                ->content(fn ($record) => $record?->profile?->studentAcademicLevel?->name ?? '—'),
 
-                                            Placeholder::make('orders')
-                                                ->label('Orders')
-                                                ->content('—'),
+                                            Placeholder::make('preferred_subjects')
+                                                ->label('Preferred Subjects')
+                                                ->content(fn ($record) => $record?->preferredSubjects()->pluck('name')->implode(', ') ?: '—'),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            Placeholder::make('active_learning_goal_count')
+                                                ->label('Active Learning Goals')
+                                                ->content(fn ($record) => (string) ($record?->studentLearningGoals()->whereIn('status', [
+                                                    LearningGoalStatus::Draft->value,
+                                                    LearningGoalStatus::Active->value,
+                                                    LearningGoalStatus::Paused->value,
+                                                ])->count() ?? 0)),
+
+                                            Placeholder::make('favorite_instructor_count')
+                                                ->label('Favorite Instructors')
+                                                ->content(fn ($record) => (string) ($record?->favoriteInstructorRows()->count() ?? 0)),
                                         ]),
                                     ]),
 

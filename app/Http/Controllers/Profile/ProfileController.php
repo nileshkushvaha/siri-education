@@ -10,8 +10,11 @@ use App\Http\Requests\Profile\UpdateProfileRequest;
 use App\Http\Requests\Profile\UpdateProfileVisibilityRequest;
 use App\Http\Requests\Profile\UploadAvatarRequest;
 use App\Http\Requests\Profile\UploadCoverRequest;
+use App\Models\AcademicLevel;
 use App\Models\Country;
+use App\Models\Language;
 use App\Models\State;
+use App\Models\Subject;
 use App\Services\Profile\ProfileCompletionService;
 use App\Services\Profile\ProfileService;
 use App\Services\Profile\SessionService;
@@ -30,9 +33,12 @@ class ProfileController extends Controller
 
     public function show(Request $request): View
     {
-        $user = auth()->user()->load(['profile.country', 'profile.state', 'profile.media']);
+        $user = auth()->user()->load(['profile.country', 'profile.state', 'profile.media', 'profile.studentAcademicLevel', 'profile.studentPreferredLanguage', 'preferredSubjects']);
         $countries = Country::active()->orderBy('name')->get(['id', 'name', 'iso2', 'flag']);
         $states = State::active()->orderBy('name')->get(['id', 'country_id', 'name']);
+        $subjects = Subject::availableForAssignment()->orderBy('name')->get(['id', 'name']);
+        $academicLevels = AcademicLevel::availableForAssignment()->orderBy('display_order')->orderBy('name')->get(['id', 'name']);
+        $languages = Language::active()->orderBy('name')->get(['id', 'name', 'code']);
         $timezones = \DateTimeZone::listIdentifiers();
         $loginHistory = $user->loginHistories()->limit(10)->get();
         $activeSessions = $this->sessionService->getSessionsForUser($user);
@@ -40,7 +46,7 @@ class ProfileController extends Controller
         $completionBreakdown = $this->completionService->breakdown($user);
 
         return view('profile.show', compact(
-            'user', 'countries', 'states', 'timezones', 'loginHistory', 'activeSessions',
+            'user', 'countries', 'states', 'subjects', 'academicLevels', 'languages', 'timezones', 'loginHistory', 'activeSessions',
             'currentSessionId', 'completionBreakdown'
         ));
     }

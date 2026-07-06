@@ -83,6 +83,22 @@ class Subject extends Model
         return $this->hasMany(TeacherSubject::class, 'subject_id');
     }
 
+    public function preferredByStudents(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'student_preferred_subjects')
+            ->withTimestamps();
+    }
+
+    public function studentLearningGoals(): HasMany
+    {
+        return $this->hasMany(StudentLearningGoal::class);
+    }
+
+    public function studentLearningPlans(): HasMany
+    {
+        return $this->hasMany(StudentLearningPlan::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

@@ -63,6 +63,8 @@ class UserProfile extends Model implements HasMedia
         'instructor_review_reason',
         'instructor_documents_requested_reason',
         'student_status',
+        'student_academic_level_id',
+        'student_preferred_language_id',
         'assignment_priority',
     ];
 
@@ -113,6 +115,16 @@ class UserProfile extends Model implements HasMedia
     public function state(): BelongsTo
     {
         return $this->belongsTo(State::class);
+    }
+
+    public function studentAcademicLevel(): BelongsTo
+    {
+        return $this->belongsTo(AcademicLevel::class, 'student_academic_level_id');
+    }
+
+    public function studentPreferredLanguage(): BelongsTo
+    {
+        return $this->belongsTo(Language::class, 'student_preferred_language_id');
     }
 
     public function creator(): BelongsTo

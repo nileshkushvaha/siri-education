@@ -1,4 +1,78 @@
 <div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <x-account.card title="Profile Readiness">
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-sm text-slate-400">Completion</span>
+                <span class="text-sm font-semibold text-indigo-300">{{ $profileCompletion }}%</span>
+            </div>
+            <div class="h-2 rounded-full bg-white/[0.06] overflow-hidden mt-3">
+                <div class="h-full rounded-full bg-indigo-500" style="width: {{ $profileCompletion }}%"></div>
+            </div>
+            @if($profileMissingItems)
+                <div class="flex flex-wrap gap-2 mt-4">
+                    @foreach(array_slice($profileMissingItems, 0, 3) as $item)
+                        <span class="px-2 py-1 rounded-lg bg-white/[0.04] text-xs text-slate-300">{{ $item }}</span>
+                    @endforeach
+                </div>
+            @endif
+            <a href="{{ route('profile.show') }}" class="inline-block mt-4 text-xs font-semibold text-indigo-300 hover:text-indigo-200">
+                Complete profile →
+            </a>
+        </x-account.card>
+
+        <x-account.card title="Learning Goals">
+            <p class="text-3xl font-bold text-white">{{ $activeGoals->count() }}</p>
+            <p class="text-sm text-slate-400 mt-1">Active goals</p>
+            @if($activeGoals->isNotEmpty())
+                <p class="text-xs text-slate-500 mt-3 truncate">{{ $activeGoals->first()->title }}</p>
+            @endif
+            <a href="{{ route('dashboard.learning-goals') }}" class="inline-block mt-4 text-xs font-semibold text-indigo-300 hover:text-indigo-200">
+                Manage goals →
+            </a>
+        </x-account.card>
+
+        <x-account.card title="Favorite Instructors">
+            <p class="text-3xl font-bold text-white">{{ $favoriteInstructorCount }}</p>
+            <p class="text-sm text-slate-400 mt-1">{{ $bookableFavoriteInstructorCount }} currently bookable</p>
+            <a href="{{ route('dashboard.wishlist') }}" class="inline-block mt-4 text-xs font-semibold text-indigo-300 hover:text-indigo-200">
+                View favorites →
+            </a>
+        </x-account.card>
+    </div>
+
+    <x-account.card title="Learning Plan" link-text="View plans →" :link-href="route('dashboard.learning-plans')">
+        @if($currentLearningPlan)
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold text-white">{{ $currentLearningPlan->title }}</p>
+                    <p class="text-xs text-slate-500 mt-1">
+                        {{ $currentLearningPlan->subject?->name }} · {{ $currentLearningPlan->status->label() }}
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Instructor: {{ $currentLearningPlan->primaryInstructor?->name ?? 'Not assigned yet' }}
+                    </p>
+                </div>
+                <div class="md:text-right">
+                    <p class="text-2xl font-bold text-white">{{ $currentLearningPlan->progress_percent ?? 0 }}%</p>
+                    <p class="text-xs text-slate-500">{{ $activeLearningPlanCount }} active plan{{ $activeLearningPlanCount === 1 ? '' : 's' }}</p>
+                </div>
+            </div>
+        @else
+            <div class="py-6 text-center">
+                <p class="text-sm font-semibold text-slate-300">No learning plan yet.</p>
+                <p class="text-sm text-slate-500 mt-1">Create a plan from a learning goal when you are ready for instructor guidance.</p>
+            </div>
+        @endif
+    </x-account.card>
+
+    @if($preferredSubjects->isNotEmpty())
+        <div class="mb-6 flex flex-wrap gap-2">
+            @foreach($preferredSubjects->take(8) as $subject)
+                <span class="px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-xs text-slate-300">{{ $subject->name }}</span>
+            @endforeach
+        </div>
+    @endif
+
     {{-- ── Stats Grid ───────────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <x-account.stat-card
@@ -53,6 +127,15 @@
             </div>
         @endforelse
     </x-account.card>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        @foreach($safePlaceholders as $label => $message)
+            <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                <p class="text-sm font-semibold text-white capitalize">{{ $label }}</p>
+                <p class="text-xs text-slate-500 mt-1">{{ $message }}</p>
+            </div>
+        @endforeach
+    </div>
 
     @if($overdueHomeworkCount > 0)
         <div class="rounded-2xl border border-rose-500/20 p-5 relative overflow-hidden mt-6"

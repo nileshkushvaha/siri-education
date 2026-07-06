@@ -11,6 +11,7 @@ use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -145,6 +146,43 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
     public function teacherAvailability(): HasMany
     {
         return $this->hasMany(TeacherAvailability::class, 'teacher_id');
+    }
+
+    public function studentLearningGoals(): HasMany
+    {
+        return $this->hasMany(StudentLearningGoal::class);
+    }
+
+    public function studentLearningPlans(): HasMany
+    {
+        return $this->hasMany(StudentLearningPlan::class, 'student_user_id');
+    }
+
+    public function assignedLearningPlans(): HasMany
+    {
+        return $this->hasMany(StudentLearningPlan::class, 'primary_instructor_user_id');
+    }
+
+    public function preferredSubjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Subject::class, 'student_preferred_subjects')
+            ->withTimestamps();
+    }
+
+    public function favoriteInstructors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'student_favorite_instructors', 'student_user_id', 'instructor_user_id')
+            ->withTimestamps();
+    }
+
+    public function favoriteInstructorRows(): HasMany
+    {
+        return $this->hasMany(StudentFavoriteInstructor::class, 'student_user_id');
+    }
+
+    public function favoritedByStudentRows(): HasMany
+    {
+        return $this->hasMany(StudentFavoriteInstructor::class, 'instructor_user_id');
     }
 
     // ── Accessors ────────────────────────────────────────────────────

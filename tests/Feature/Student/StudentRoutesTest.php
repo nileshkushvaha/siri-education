@@ -40,7 +40,7 @@ class StudentRoutesTest extends TestCase
             'progress' => ['dashboard.progress',     'My Progress'],
             'certificates' => ['dashboard.certificates', 'Certificates'],
             'orders' => ['dashboard.orders',       'Orders'],
-            'wishlist' => ['dashboard.wishlist',     'Wishlist'],
+            'wishlist' => ['dashboard.wishlist',     'Favorite Instructors'],
             'reviews' => ['dashboard.reviews',      'Reviews'],
         ];
     }

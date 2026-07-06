@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
+use App\Services\Student\StudentProfilePreferenceService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -22,6 +23,7 @@ final class ProfileService
         private readonly PasswordHistoryService $historyService,
         private readonly ProfileCompletionService $completionService,
         private readonly AuditTrailService $auditTrail,
+        private readonly StudentProfilePreferenceService $studentPreferences,
     ) {}
 
     public function update(User $user, array $data): User
@@ -33,6 +35,20 @@ final class ProfileService
         ]);
 
         $this->completionService->recalculateAndStore($updated);
+
+        if (
+            array_key_exists('student_academic_level_id', $data)
+            || array_key_exists('student_preferred_language_id', $data)
+            || array_key_exists('preferred_subject_ids', $data)
+        ) {
+            $updated = $this->studentPreferences->update($updated, [
+                'student_academic_level_id' => $data['student_academic_level_id'] ?? null,
+                'student_preferred_language_id' => $data['student_preferred_language_id'] ?? null,
+                'preferred_subject_ids' => $data['preferred_subject_ids'] ?? [],
+            ]);
+
+            $this->completionService->recalculateAndStore($updated);
+        }
 
         return $updated;
     }

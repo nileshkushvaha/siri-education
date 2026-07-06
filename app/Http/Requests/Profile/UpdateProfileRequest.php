@@ -39,6 +39,10 @@ class UpdateProfileRequest extends FormRequest
             'postal_code' => ['nullable', 'string', 'max:20'],
             'timezone' => ['nullable', 'string', 'timezone:all'],
             'language' => ['nullable', 'string', 'max:10'],
+            'student_academic_level_id' => ['nullable', 'uuid', 'exists:academic_levels,id'],
+            'student_preferred_language_id' => ['nullable', 'integer', 'exists:languages,id'],
+            'preferred_subject_ids' => ['nullable', 'array'],
+            'preferred_subject_ids.*' => ['uuid', 'exists:subjects,id'],
             'website' => ['nullable', 'url', 'max:255'],
             'facebook' => ['nullable', 'url', 'max:255'],
             'twitter' => ['nullable', 'url', 'max:255'],
@@ -60,6 +64,9 @@ class UpdateProfileRequest extends FormRequest
             'timezone.timezone' => 'Please select a valid timezone.',
             'country_id.exists' => 'Please select a valid country.',
             'state_id.exists' => 'Please select a state that belongs to the chosen country.',
+            'student_academic_level_id.exists' => 'Please select a valid academic level.',
+            'student_preferred_language_id.exists' => 'Please select a valid preferred language.',
+            'preferred_subject_ids.*.exists' => 'Please select subjects from the catalog.',
         ];
     }
 

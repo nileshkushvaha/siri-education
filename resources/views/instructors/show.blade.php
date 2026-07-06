@@ -171,6 +171,21 @@
                             <dd class="font-medium text-slate-950 dark:text-white">{{ $subjects->count() }}</dd>
                         </div>
                     </dl>
+
+                    @auth
+                        @if(auth()->user()->hasRole('student') && auth()->id() !== $instructor->id)
+                            @php($isFavorite = auth()->user()->favoriteInstructors()->whereKey($instructor->id)->exists())
+                            <form method="POST" action="{{ $isFavorite ? route('dashboard.favorite-instructors.destroy', $instructor) : route('dashboard.favorite-instructors.store', $instructor) }}" class="mt-5">
+                                @csrf
+                                @if($isFavorite)
+                                    @method('DELETE')
+                                @endif
+                                <button type="submit" class="w-full rounded-xl border border-indigo-500/20 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:text-indigo-200 dark:hover:bg-indigo-500/10">
+                                    {{ $isFavorite ? 'Remove from Favorites' : 'Add to Favorites' }}
+                                </button>
+                            </form>
+                        @endif
+                    @endauth
                 </x-ui.card>
 
                 @if($languages->isNotEmpty())

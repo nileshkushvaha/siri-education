@@ -8,6 +8,7 @@ use App\Enums\AcademicStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -77,6 +78,21 @@ class AcademicLevel extends Model
         }
 
         return $grade >= ($this->min_grade ?? 0) && $grade <= ($this->max_grade ?? 12);
+    }
+
+    public function studentProfiles(): HasMany
+    {
+        return $this->hasMany(UserProfile::class, 'student_academic_level_id');
+    }
+
+    public function studentLearningGoals(): HasMany
+    {
+        return $this->hasMany(StudentLearningGoal::class);
+    }
+
+    public function studentLearningPlans(): HasMany
+    {
+        return $this->hasMany(StudentLearningPlan::class);
     }
 
     public function getActivitylogOptions(): LogOptions

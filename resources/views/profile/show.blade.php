@@ -298,6 +298,75 @@
                             </div>
                         </div>
 
+                        @if($user->hasRole('student') || ! $user->hasRole('instructor'))
+                            {{-- Student Preferences --}}
+                            <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mb-5">
+                                <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">
+                                    <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4.5 h-4.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5S19.832 5.477 21 6.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-base font-semibold text-white">Student Preferences</h2>
+                                        <p class="text-xs text-slate-400">Used for learning goals, dashboard guidance, and future instructor recommendations</p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-400 mb-2">Current Academic Level</label>
+                                        <select name="student_academic_level_id"
+                                            class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border @error('student_academic_level_id') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
+                                            <option value="" class="bg-[#0d1117]">— Select academic level —</option>
+                                            @foreach($academicLevels as $level)
+                                                <option value="{{ $level->id }}" class="bg-[#0d1117]" {{ old('student_academic_level_id', $user->profile->student_academic_level_id) === $level->id ? 'selected' : '' }}>
+                                                    {{ $level->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('student_academic_level_id')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-400 mb-2">Preferred Teaching Language</label>
+                                        <select name="student_preferred_language_id"
+                                            class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border @error('student_preferred_language_id') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
+                                            <option value="" class="bg-[#0d1117]">— Select preferred language —</option>
+                                            @foreach($languages as $language)
+                                                <option value="{{ $language->id }}" class="bg-[#0d1117]" {{ (string) old('student_preferred_language_id', $user->profile->student_preferred_language_id) === (string) $language->id ? 'selected' : '' }}>
+                                                    {{ $language->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('student_preferred_language_id')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
+                                    </div>
+                                </div>
+
+                                <div class="mt-5">
+                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Preferred Subjects</label>
+                                    @php
+                                        $selectedPreferredSubjects = collect(old('preferred_subject_ids', $user->preferredSubjects->pluck('id')->all()))
+                                            ->map(fn ($id) => (string) $id)
+                                            ->all();
+                                    @endphp
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        @foreach($subjects as $subject)
+                                            <label class="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.035] px-4 py-3 text-sm text-slate-200">
+                                                <input type="checkbox" name="preferred_subject_ids[]" value="{{ $subject->id }}"
+                                                    @checked(in_array((string) $subject->id, $selectedPreferredSubjects, true))
+                                                    class="rounded border-white/[0.20] bg-slate-950 text-indigo-600 focus:ring-indigo-500/40">
+                                                <span>{{ $subject->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <p class="mt-2 text-xs text-slate-500">Subjects come from the academic master catalog, not free text.</p>
+                                    @error('preferred_subject_ids')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
+                                    @error('preferred_subject_ids.*')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- Address --}}
                         <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mb-5">
                             <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">

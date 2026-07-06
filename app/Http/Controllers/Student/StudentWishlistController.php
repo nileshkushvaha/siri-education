@@ -11,6 +11,6 @@ final class StudentWishlistController extends Controller
 {
     public function index(): View
     {
-        return view('student.wishlist.index');
+        return view('student.favorite-instructors.index');
     }
 }

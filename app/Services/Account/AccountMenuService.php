@@ -101,6 +101,27 @@ final class AccountMenuService
                 'permission' => 'profile.view',
             ],
             [
+                'label' => 'Learning Goals',
+                'route' => 'dashboard.learning-goals',
+                'icon' => 'chart-bar',
+                'audience' => 'student',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Learning Plans',
+                'route' => 'dashboard.learning-plans',
+                'icon' => 'clipboard',
+                'audience' => 'student',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Learning Plans',
+                'route' => 'dashboard.instructor.learning-plans',
+                'icon' => 'clipboard',
+                'audience' => 'instructor',
+                'permission' => null,
+            ],
+            [
                 'label' => 'Certificates',
                 'route' => 'dashboard.certificates',
                 'icon' => 'badge',
@@ -115,7 +136,7 @@ final class AccountMenuService
                 'permission' => null,
             ],
             [
-                'label' => 'Wishlist',
+                'label' => 'Favorite Instructors',
                 'route' => 'dashboard.wishlist',
                 'icon' => 'heart',
                 'audience' => 'student',

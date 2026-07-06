@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Livewire\Frontend\Instructor;
 
 use App\Booking\Enums\BookingStatus;
+use App\Enums\LearningPlanStatus;
 use App\Models\Booking;
+use App\Models\StudentLearningPlan;
 use App\Services\Instructor\InstructorOnboardingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -20,6 +22,12 @@ final class DashboardOverview extends Component
     public float $teachingHours = 0.0;
 
     public int $subjectCount = 0;
+
+    public int $assignedActiveLearningPlanCount = 0;
+
+    public int $reviewDueLearningPlanCount = 0;
+
+    public int $pendingAssessmentLearningPlanCount = 0;
 
     /** @var Collection<int, Booking> */
     public Collection $nextClasses;
@@ -62,6 +70,23 @@ final class DashboardOverview extends Component
         $this->completedSessions = (int) $progress->completed_sessions;
         $this->teachingHours = round((float) $progress->teaching_hours, 1);
         $this->subjectCount = $user->teacherSubjects()->count();
+        $this->assignedActiveLearningPlanCount = StudentLearningPlan::query()
+            ->where('primary_instructor_user_id', $user->id)
+            ->whereIn('status', [
+                LearningPlanStatus::Active->value,
+                LearningPlanStatus::Paused->value,
+                LearningPlanStatus::ReviewDue->value,
+            ])
+            ->count();
+        $this->reviewDueLearningPlanCount = StudentLearningPlan::query()
+            ->where('primary_instructor_user_id', $user->id)
+            ->where('status', LearningPlanStatus::ReviewDue)
+            ->count();
+        $this->pendingAssessmentLearningPlanCount = StudentLearningPlan::query()
+            ->where('primary_instructor_user_id', $user->id)
+            ->where('status', LearningPlanStatus::AwaitingAssessment)
+            ->whereDoesntHave('assessments')
+            ->count();
         $this->onboarding = $onboarding->progress($user);
     }
 

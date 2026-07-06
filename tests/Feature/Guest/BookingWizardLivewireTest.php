@@ -20,20 +20,35 @@ class BookingWizardLivewireTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $teacher;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        UserProfile::updateOrCreate(['user_id' => $teacher->id], ['instructor_status' => 'approved']);
+        UserProfile::updateOrCreate(['user_id' => $teacher->id], [
+            'instructor_status' => 'approved',
+            'profile_visibility' => 'public',
+        ]);
         TeacherSubject::factory()->state(['teacher_id' => $teacher->id])->subject('maths', 1, 12)->create();
+        $this->teacher = $teacher;
+
+        $otherTeacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        UserProfile::updateOrCreate(['user_id' => $otherTeacher->id], [
+            'instructor_status' => 'approved',
+            'profile_visibility' => 'public',
+        ]);
+        TeacherSubject::factory()->state(['teacher_id' => $otherTeacher->id])->subject('maths', 1, 12)->create();
 
         foreach (Weekday::cases() as $day) {
-            TeacherAvailability::factory()
-                ->state(['teacher_id' => $teacher->id])
-                ->forDay($day)
-                ->between('09:00:00', '17:00:00')
-                ->create();
+            foreach ([$teacher, $otherTeacher] as $availableTeacher) {
+                TeacherAvailability::factory()
+                    ->state(['teacher_id' => $availableTeacher->id])
+                    ->forDay($day)
+                    ->between('09:00:00', '17:00:00')
+                    ->create();
+            }
         }
 
         BookingType::factory()->create([
@@ -82,5 +97,33 @@ class BookingWizardLivewireTest extends TestCase
         ]);
 
         $this->assertNotNull(Booking::query()->where('guest_email', 'parent@example.com')->value('manage_token'));
+    }
+
+    public function test_instructor_profile_booking_link_locks_booking_to_that_instructor(): void
+    {
+        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+
+        Livewire::withQueryParams([
+            'instructor' => $this->teacher->slug,
+            'type' => 'free_demo',
+            'subject' => 'maths',
+        ])
+            ->test('frontend.booking.booking-wizard')
+            ->assertSet('lockedInstructorId', $this->teacher->id)
+            ->assertSet('lockedInstructorName', $this->teacher->name)
+            ->assertSet('subject', 'maths')
+            ->call('selectGrade', 5)
+            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
+            ->call('selectSlot', $start)
+            ->set('name', 'Locked Parent')
+            ->set('email', 'locked-parent@example.com')
+            ->call('review')
+            ->call('submit')
+            ->assertSet('step', 7);
+
+        $this->assertDatabaseHas('bookings', [
+            'guest_email' => 'locked-parent@example.com',
+            'host_id' => $this->teacher->id,
+        ]);
     }
 }

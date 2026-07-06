@@ -9,7 +9,9 @@ use App\Booking\Contracts\GuestBookingServiceInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\DTOs\GuestBookingData;
 use App\Booking\DTOs\TimeSlotData;
+use App\Enums\InstructorStatus;
 use App\Models\Booking;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -45,16 +47,16 @@ final class BookingWizardService
     }
 
     /** @return Collection<int, string> */
-    public function availableDates(string $typeKey, string $subject, int $grade, CarbonImmutable $from, CarbonImmutable $to, string $timezone): Collection
+    public function availableDates(string $typeKey, string $subject, int $grade, CarbonImmutable $from, CarbonImmutable $to, string $timezone, ?int $teacherId = null): Collection
     {
-        return $this->bookings->availableDates($typeKey, $subject, $grade, $from, $to, $timezone);
+        return $this->bookings->availableDates($typeKey, $subject, $grade, $from, $to, $timezone, $teacherId);
     }
 
     /** @return Collection<int, array<string, mixed>> */
-    public function availableSlots(string $typeKey, string $subject, int $grade, CarbonImmutable $date, string $timezone): Collection
+    public function availableSlots(string $typeKey, string $subject, int $grade, CarbonImmutable $date, string $timezone, ?int $teacherId = null): Collection
     {
         return $this->bookings
-            ->availableSlots($typeKey, $subject, $grade, $date, $timezone)
+            ->availableSlots($typeKey, $subject, $grade, $date, $timezone, $teacherId)
             ->map(fn (TimeSlotData $slot): array => [
                 'starts_at' => $slot->startsAt->toIso8601String(),
                 'ends_at' => $slot->endsAt->toIso8601String(),
@@ -75,7 +77,29 @@ final class BookingWizardService
             guestEmail: $data['email'],
             guestPhone: $data['phone'] ?? null,
             notes: $data['notes'] ?? null,
+            teacherId: $data['teacher_id'] ?? null,
         ));
+    }
+
+    /** @return array{id:int,name:string}|null */
+    public function lockedInstructor(string $slug): ?array
+    {
+        $instructor = User::query()
+            ->where('slug', $slug)
+            ->where('status', User::STATUS_ACTIVE)
+            ->whereHas('profile', fn ($query) => $query
+                ->whereIn('instructor_status', InstructorStatus::bookableValues())
+                ->where('profile_visibility', 'public'))
+            ->first();
+
+        if (! $instructor) {
+            return null;
+        }
+
+        return [
+            'id' => $instructor->id,
+            'name' => $instructor->name,
+        ];
     }
 
     /** @return array<string, mixed> */

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentLearningPlans;
 
-use App\Filament\Resources\StudentLearningPlans\Pages\CreateStudentLearningPlan;
 use App\Filament\Resources\StudentLearningPlans\Pages\EditStudentLearningPlan;
 use App\Filament\Resources\StudentLearningPlans\Pages\ListStudentLearningPlans;
 use App\Filament\Resources\StudentLearningPlans\Schemas\StudentLearningPlanForm;
@@ -47,7 +46,6 @@ class StudentLearningPlanResource extends Resource
     {
         return [
             'index' => ListStudentLearningPlans::route('/'),
-            'create' => CreateStudentLearningPlan::route('/create'),
             'edit' => EditStudentLearningPlan::route('/{record}/edit'),
         ];
     }

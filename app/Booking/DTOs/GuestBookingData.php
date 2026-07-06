@@ -7,9 +7,10 @@ namespace App\Booking\DTOs;
 use Carbon\CarbonImmutable;
 
 /**
- * A guest's booking request. No teacher and no duration — the
- * assignment engine picks the teacher, the booking type fixes the
- * duration.
+ * A guest's booking request. Most guest bookings have no teacher and
+ * the assignment engine picks one. Profile-launched bookings may lock
+ * a specific teacher while still using the same eligibility and
+ * availability checks.
  */
 final readonly class GuestBookingData
 {
@@ -23,5 +24,6 @@ final readonly class GuestBookingData
         public string $guestEmail,
         public ?string $guestPhone = null,
         public ?string $notes = null,
+        public ?int $teacherId = null,
     ) {}
 }

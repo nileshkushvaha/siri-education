@@ -204,4 +204,24 @@ class InstructorDetailTest extends TestCase
 
         $response->assertOk()->assertSee('Instructor Snapshot');
     }
+
+    public function test_booking_links_carry_the_current_instructor_context(): void
+    {
+        $instructor = $this->makeInstructor();
+        TeacherSubject::factory()->create([
+            'teacher_id' => $instructor->id,
+            'subject' => 'maths',
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+
+        $response = $this->get(route('instructors.show', $instructor));
+
+        $response
+            ->assertOk()
+            ->assertSee('instructor='.$instructor->slug, false)
+            ->assertSee('subject=maths', false)
+            ->assertSee('type=free_demo', false)
+            ->assertSee('type=paid_one_to_one', false);
+    }
 }

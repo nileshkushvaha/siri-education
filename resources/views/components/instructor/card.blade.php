@@ -3,14 +3,20 @@
 @php
     $subjects = collect($instructor['subjects'] ?? []);
     $languages = collect($instructor['languages'] ?? []);
+    $academicLevels = collect($instructor['academic_levels'] ?? []);
     $availability = collect($instructor['availability_preview'] ?? []);
     $ratings = $instructor['ratings'] ?? ['average' => null, 'count' => 0];
+    $model = $instructor['model'] ?? null;
+    $viewer = auth()->user();
+    $isStudentViewer = $viewer?->hasRole('student') ?? false;
+    $canFavorite = $isStudentViewer && $model && $viewer->id !== $model->id;
+    $isFavorite = $canFavorite ? $viewer->favoriteInstructors()->whereKey($model->id)->exists() : false;
 @endphp
 
-<x-ui.card class="flex h-full flex-col" {{ $attributes }}>
-    <a href="{{ $instructor['url'] }}" class="group flex h-full flex-col rounded-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 dark:focus-visible:ring-indigo-400/30">
+<x-ui.card class="flex h-full flex-col transition duration-200 hover:-translate-y-0.5 hover:border-indigo-400/30 hover:bg-white/[0.07] hover:shadow-2xl hover:shadow-indigo-950/20" {{ $attributes }}>
+    <div class="group flex h-full flex-col rounded-xl">
         <div class="flex items-start gap-4">
-            <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-100 text-xl font-bold text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200">
+            <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xl font-black text-white shadow-lg shadow-indigo-950/30">
                 @if($instructor['avatar_url'])
                     <img src="{{ $instructor['avatar_url'] }}" alt="{{ $instructor['name'] }}" class="h-full w-full object-cover">
                 @else
@@ -20,11 +26,11 @@
 
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                    <h2 class="truncate text-base font-semibold text-slate-950 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
+                    <a href="{{ $instructor['url'] }}" class="truncate text-base font-bold text-slate-950 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
                         {{ $instructor['name'] }}
-                    </h2>
+                    </a>
                     @if($instructor['verified'])
-                        <span class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">
+                        <span class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-slate-950">
                             <span class="sr-only">Verified instructor</span>
                             <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.25 7.25a1 1 0 01-1.42 0l-3.25-3.25a1 1 0 111.42-1.42l2.54 2.54 6.54-6.54a1 1 0 011.42 0z" clip-rule="evenodd"/></svg>
                         </span>
@@ -45,17 +51,34 @@
 
         <div class="mt-5 flex flex-wrap gap-2">
             @foreach($subjects as $subject)
-                <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-200">
+                <span class="rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400/20">
                     {{ $subject['name'] }}
                 </span>
             @endforeach
         </div>
+
+        @if($academicLevels->isNotEmpty())
+            <div class="mt-3 flex flex-wrap gap-2">
+                @foreach($academicLevels as $level)
+                    <span class="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-medium text-emerald-200 ring-1 ring-emerald-300/15">
+                        {{ $level['name'] }}
+                    </span>
+                @endforeach
+            </div>
+        @endif
 
         <div class="mt-5 grid gap-3 text-sm text-slate-600 dark:text-slate-300">
             @if($languages->isNotEmpty())
                 <div>
                     <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Languages</span>
                     <p class="mt-1">{{ $languages->join(', ') }}</p>
+                </div>
+            @endif
+
+            @if($instructor['country'] || $instructor['timezone'])
+                <div>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Location</span>
+                    <p class="mt-1">{{ collect([$instructor['country'], $instructor['timezone']])->filter()->join(' · ') }}</p>
                 </div>
             @endif
 
@@ -85,5 +108,36 @@
                 </div>
             @endif
         </div>
-    </a>
+
+        <div class="mt-auto flex items-center gap-3 pt-6">
+            <a href="{{ $instructor['url'] }}" class="inline-flex flex-1 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-indigo-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 dark:focus-visible:ring-indigo-400/30">
+                View Profile
+            </a>
+
+            @if($canFavorite)
+                <form method="POST" action="{{ $isFavorite ? route('dashboard.favorite-instructors.destroy', $model) : route('dashboard.favorite-instructors.store', $model) }}">
+                    @csrf
+                    @if($isFavorite)
+                        @method('DELETE')
+                    @endif
+                    <button type="submit" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-indigo-200 transition hover:border-indigo-300/40 hover:bg-indigo-500/15">
+                        <span class="sr-only">{{ $isFavorite ? 'Remove from favorites' : 'Add to favorites' }}</span>
+                        <svg class="h-5 w-5" fill="{{ $isFavorite ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
+                        </svg>
+                    </button>
+                </form>
+            @elseif(! $viewer)
+                <form method="POST" action="{{ $model ? route('dashboard.favorite-instructors.store', $model) : '#' }}">
+                    @csrf
+                    <button type="submit" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-slate-400 transition hover:border-slate-300/30 hover:bg-white/5 hover:text-slate-200">
+                        <span class="sr-only">Add to favorites</span>
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
+                        </svg>
+                    </button>
+                </form>
+            @endif
+        </div>
+    </div>
 </x-ui.card>

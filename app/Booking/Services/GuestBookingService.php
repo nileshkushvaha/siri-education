@@ -47,6 +47,7 @@ final class GuestBookingService implements GuestBookingServiceInterface
         CarbonImmutable $from,
         CarbonImmutable $to,
         string $timezone = 'UTC',
+        ?int $teacherId = null,
     ): Collection {
         $type = $this->types->requireActiveByKey($typeKey);
         $totalDays = (int) $from->startOfDay()->diffInDays($to->endOfDay()) + 1;
@@ -55,7 +56,7 @@ final class GuestBookingService implements GuestBookingServiceInterface
         // slot objects — and stop as soon as every day is covered.
         $found = [];
 
-        foreach ($this->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes) as $teacher) {
+        foreach ($this->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes, $teacherId) as $teacher) {
             $slots = $this->availability->slots(
                 new AvailabilityQueryData($teacher->id, $typeKey, $from, $to, $timezone),
             );
@@ -78,11 +79,12 @@ final class GuestBookingService implements GuestBookingServiceInterface
         int $grade,
         CarbonImmutable $date,
         string $timezone = 'UTC',
+        ?int $teacherId = null,
     ): Collection {
         $from = $date->setTimezone($timezone)->startOfDay();
 
         return $this
-            ->slotsAcrossTeachers($typeKey, $subject, $grade, $from, $from->addDay(), $timezone)
+            ->slotsAcrossTeachers($typeKey, $subject, $grade, $from, $from->addDay(), $timezone, $teacherId)
             ->unique(fn (TimeSlotData $slot): int => $slot->startsAt->getTimestamp())
             ->sortBy(fn (TimeSlotData $slot): int => $slot->startsAt->getTimestamp())
             ->values();
@@ -99,19 +101,29 @@ final class GuestBookingService implements GuestBookingServiceInterface
 
         $type = $this->types->requireActiveByKey($data->typeKey);
 
-        $teacher = $this->assigner->assign(new AssignmentCriteriaData(
+        $criteria = new AssignmentCriteriaData(
             typeKey: $data->typeKey,
             subject: $data->subject,
             grade: $data->grade,
             startsAt: $data->startsAt,
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
-        ));
+        );
+
+        if ($data->teacherId !== null) {
+            if (! $this->candidates->isEligible($data->teacherId, $criteria)) {
+                throw new BookingException('This instructor is not available for the selected subject and grade.');
+            }
+
+            $teacherId = $data->teacherId;
+        } else {
+            $teacherId = $this->assigner->assign($criteria)->id;
+        }
 
         return $this->bookings->request(new CreateBookingData(
             typeKey: $data->typeKey,
             attendeeId: auth()->id(),
-            hostId: $teacher->id,
+            hostId: $teacherId,
             startsAt: $data->startsAt,
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
@@ -158,21 +170,33 @@ final class GuestBookingService implements GuestBookingServiceInterface
         CarbonImmutable $from,
         CarbonImmutable $to,
         string $timezone,
+        ?int $teacherId = null,
     ): Collection {
         $type = $this->types->requireActiveByKey($typeKey);
 
         return $this
-            ->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes)
+            ->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes, $teacherId)
             ->flatMap(fn (User $teacher): Collection => $this->availability->slots(
                 new AvailabilityQueryData($teacher->id, $typeKey, $from, $to, $timezone),
             ));
     }
 
     /** @return Collection<int, User> */
-    private function eligibleTeachers(string $typeKey, string $subject, int $grade, CarbonImmutable $startsAt, int $duration): Collection
+    private function eligibleTeachers(string $typeKey, string $subject, int $grade, CarbonImmutable $startsAt, int $duration, ?int $teacherId = null): Collection
     {
-        return $this->candidates->eligible(
-            new AssignmentCriteriaData($typeKey, $subject, $grade, $startsAt, $duration),
-        );
+        $criteria = new AssignmentCriteriaData($typeKey, $subject, $grade, $startsAt, $duration);
+
+        if ($teacherId === null) {
+            return $this->candidates->eligible($criteria);
+        }
+
+        if (! $this->candidates->isEligible($teacherId, $criteria)) {
+            return new Collection;
+        }
+
+        return User::query()
+            ->whereKey($teacherId)
+            ->with('profile')
+            ->get();
     }
 }

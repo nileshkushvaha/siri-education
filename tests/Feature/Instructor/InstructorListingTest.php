@@ -6,6 +6,7 @@ namespace Tests\Feature\Instructor;
 
 use App\Booking\Enums\Weekday;
 use App\Enums\InstructorStatus;
+use App\Models\Language;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -146,11 +147,13 @@ class InstructorListingTest extends TestCase
     {
         $englishInstructor = $this->makeInstructor(['name' => 'English Speaking Instructor']);
         $spanishInstructor = $this->makeInstructor(['name' => 'Spanish Speaking Instructor']);
+        $english = Language::create(['name' => 'English', 'code' => 'en', 'status' => 'active']);
+        $spanish = Language::create(['name' => 'Spanish', 'code' => 'es', 'status' => 'active']);
 
-        $englishInstructor->profile->update(['language' => 'English']);
-        $spanishInstructor->profile->update(['language' => 'Spanish']);
+        $englishInstructor->profile->update(['instructor_teaching_language_ids' => [(string) $english->id]]);
+        $spanishInstructor->profile->update(['instructor_teaching_language_ids' => [(string) $spanish->id]]);
 
-        $this->get(route('instructors.index', ['language' => 'English']))
+        $this->get(route('instructors.index', ['language' => (string) $english->id]))
             ->assertOk()
             ->assertSee('English Speaking Instructor')
             ->assertDontSee('Spanish Speaking Instructor');

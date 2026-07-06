@@ -35,17 +35,23 @@ final class LearningPlanService
             throw new AuthorizationException;
         }
 
-        $this->assertNoOpenPlanForGoal($goal);
-
         return DB::transaction(function () use ($actor, $goal, $data): StudentLearningPlan {
+            /** @var StudentLearningGoal $lockedGoal */
+            $lockedGoal = StudentLearningGoal::query()
+                ->whereKey($goal->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertNoOpenPlanForGoal($lockedGoal);
+
             $plan = StudentLearningPlan::create([
-                'student_user_id' => $goal->user_id,
-                'learning_goal_id' => $goal->id,
-                'subject_id' => $goal->subject_id,
-                'academic_level_id' => $goal->academic_level_id,
-                'title' => trim((string) ($data['title'] ?? $goal->title)),
-                'summary' => $data['summary'] ?? $goal->description,
-                'target_completion_date' => $data['target_completion_date'] ?? $goal->target_date,
+                'student_user_id' => $lockedGoal->user_id,
+                'learning_goal_id' => $lockedGoal->id,
+                'subject_id' => $lockedGoal->subject_id,
+                'academic_level_id' => $lockedGoal->academic_level_id,
+                'title' => trim((string) ($data['title'] ?? $lockedGoal->title)),
+                'summary' => $data['summary'] ?? $lockedGoal->description,
+                'target_completion_date' => $data['target_completion_date'] ?? $lockedGoal->target_date,
                 'status' => LearningPlanStatus::Draft,
                 'progress_percent' => 0,
                 'created_by' => $actor->id,
@@ -54,7 +60,7 @@ final class LearningPlanService
 
             $this->audit->logUser($actor, 'learning_plans', 'learning_plan_created', 'Learning plan draft created.', $plan, [
                 'learning_plan_id' => $plan->id,
-                'learning_goal_id' => $goal->id,
+                'learning_goal_id' => $lockedGoal->id,
                 'subject_id' => $plan->subject_id,
             ]);
 

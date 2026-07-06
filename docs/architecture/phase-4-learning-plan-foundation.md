@@ -31,7 +31,7 @@ No duplicate student, instructor, profile, subject, booking, wallet, payment, ho
 - actor audit columns
 - soft deletes
 
-Only one open plan is allowed per learning goal. Completed or archived plans remain historical.
+Only one open plan is allowed per learning goal. Completed or archived plans remain historical. Phase 4.2 moved the duplicate-open-plan check inside a transaction with a row lock on the source learning goal, keeping the guard portable for MySQL without adding a database-specific partial index.
 
 ## Lifecycle
 
@@ -114,6 +114,27 @@ No out-of-scope records are created.
 ## Admin
 
 `StudentLearningPlanResource` manages plan records only. It does not duplicate student or instructor identity. Student and instructor identity remain on `UserResource`/existing user structures.
+
+Phase 4.2 hardened the resource:
+
+- The generic create route was removed.
+- Generic edit fields that affect lifecycle, assignment, subject, academic level, progress, and major academic notes are read-only on edit.
+- Admins must use explicit service-backed actions for assignment, activation, review-due marking, adjustment, completion, and archival.
+- Adjustments require a reason and write `learning_plan_adjustments` through `LearningPlanService`.
+- Lifecycle actions write activity logs through `AuditTrailService`.
+- Actions are gated by the `StudentLearningPlanPolicy` update permission.
+
+Child assessment, milestone, and review records are still managed through the service-backed instructor/admin workflows rather than standalone duplicate resources.
+
+## Instructor Dashboard Counters
+
+Phase 4.2 added read-only instructor dashboard counters:
+
+- assigned active learning plans
+- review due plans
+- assigned plans awaiting assessment
+
+These counters query learning plan state only. They do not create bookings, payments, homework, meetings, or reviews.
 
 ## Intentionally Excluded
 

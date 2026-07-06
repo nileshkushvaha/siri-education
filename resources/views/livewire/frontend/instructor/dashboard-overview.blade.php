@@ -26,6 +26,24 @@
         />
     </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <x-account.card>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Learning Plans</p>
+            <p class="mt-2 text-3xl font-bold text-white">{{ $assignedActiveLearningPlanCount }}</p>
+            <p class="mt-1 text-sm text-slate-400">Assigned active plans</p>
+        </x-account.card>
+        <x-account.card>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Reviews Due</p>
+            <p class="mt-2 text-3xl font-bold text-white">{{ $reviewDueLearningPlanCount }}</p>
+            <p class="mt-1 text-sm text-slate-400">Plans needing academic review</p>
+        </x-account.card>
+        <x-account.card>
+            <p class="text-xs uppercase tracking-wide text-slate-500">Assessments</p>
+            <p class="mt-2 text-3xl font-bold text-white">{{ $pendingAssessmentLearningPlanCount }}</p>
+            <p class="mt-1 text-sm text-slate-400">Assigned plans awaiting assessment</p>
+        </x-account.card>
+    </div>
+
     <x-account.card title="Next Classes">
         @forelse($nextClasses as $booking)
             <div wire:key="instructor-next-class-{{ $booking->id }}" class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-white/[0.05]' : '' }}">

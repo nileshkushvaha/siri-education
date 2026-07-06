@@ -40,6 +40,11 @@ class Country extends Model
         return $this->hasMany(State::class);
     }
 
+    public function userProfiles(): HasMany
+    {
+        return $this->hasMany(UserProfile::class);
+    }
+
     public function defaultCurrency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'default_currency_id');

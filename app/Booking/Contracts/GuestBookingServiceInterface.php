@@ -27,6 +27,7 @@ interface GuestBookingServiceInterface
         CarbonImmutable $from,
         CarbonImmutable $to,
         string $timezone = 'UTC',
+        ?int $teacherId = null,
     ): Collection;
 
     /** @return Collection<int, TimeSlotData> deduplicated across teachers, in $timezone */
@@ -36,6 +37,7 @@ interface GuestBookingServiceInterface
         int $grade,
         CarbonImmutable $date,
         string $timezone = 'UTC',
+        ?int $teacherId = null,
     ): Collection;
 
     /** @throws BookingException */

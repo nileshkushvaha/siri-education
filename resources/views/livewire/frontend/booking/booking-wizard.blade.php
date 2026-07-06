@@ -14,6 +14,11 @@
         <p class="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
             Choose a subject, pick an available time, and confirm the student details.
         </p>
+        @if($lockedInstructorName)
+            <p class="mx-auto mt-4 inline-flex items-center rounded-full bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 ring-1 ring-indigo-100 dark:bg-indigo-400/10 dark:text-indigo-100 dark:ring-indigo-300/20">
+                Booking with {{ $lockedInstructorName }}
+            </p>
+        @endif
     </header>
 
     <nav class="mt-8" aria-label="Booking progress">
@@ -231,6 +236,9 @@
                 <dl class="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-white/5 sm:grid-cols-2">
                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Subject</dt><dd class="mt-1 font-semibold capitalize text-slate-900 dark:text-white">{{ str_replace(['_', '-'], ' ', (string) $subject) }}</dd></div>
                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Grade</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ $grade }}</dd></div>
+                    @if($lockedInstructorName)
+                        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Instructor</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ $lockedInstructorName }}</dd></div>
+                    @endif
                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Date</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ $date ? \Carbon\CarbonImmutable::parse($date)->format('M j, Y') : '' }}</dd></div>
                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Time</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ $selectedSlotStartsAt ? \Carbon\CarbonImmutable::parse($selectedSlotStartsAt)->timezone($timezone)->format('g:i A') : '' }}</dd></div>
                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Student</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-white">{{ $name }}</dd></div>

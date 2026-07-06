@@ -67,6 +67,10 @@ final class BookingWizard extends Component
     /** @var array<string, mixed>|null */
     public ?array $result = null;
 
+    public ?int $lockedInstructorId = null;
+
+    public ?string $lockedInstructorName = null;
+
     private BookingWizardService $wizard;
 
     public function boot(BookingWizardService $wizard): void
@@ -81,6 +85,29 @@ final class BookingWizard extends Component
         $this->types = $this->wizard->bookingTypes()->all();
         $this->type = collect($this->types)->first()['key'] ?? null;
         $this->subjects = $this->wizard->subjects()->all();
+
+        $requestedType = request()->query('type');
+        if (is_string($requestedType) && collect($this->types)->pluck('key')->contains($requestedType)) {
+            $this->type = $requestedType;
+        }
+
+        $requestedSubject = request()->query('subject');
+        if (is_string($requestedSubject) && in_array($requestedSubject, $this->subjects, true)) {
+            $this->subject = $requestedSubject;
+            $this->step = 2;
+        }
+
+        $requestedInstructor = request()->query('instructor');
+        if (is_string($requestedInstructor) && filled($requestedInstructor)) {
+            $lockedInstructor = $this->wizard->lockedInstructor($requestedInstructor);
+
+            if ($lockedInstructor) {
+                $this->lockedInstructorId = $lockedInstructor['id'];
+                $this->lockedInstructorName = $lockedInstructor['name'];
+            } else {
+                $this->banner = 'This instructor is not available for public booking right now.';
+            }
+        }
 
         $settings = app(BookingSettings::class);
         $this->turnstileEnabled = (bool) $settings->captcha_enabled;
@@ -161,6 +188,7 @@ final class BookingWizard extends Component
                 'email' => $this->email,
                 'phone' => filled($this->phone) ? $this->phone : null,
                 'notes' => filled($this->notes) ? $this->notes : null,
+                'teacher_id' => $this->lockedInstructorId,
             ]);
 
             $this->result = $this->wizard->result($booking);
@@ -257,7 +285,7 @@ final class BookingWizard extends Component
 
         try {
             $this->dates = $this->wizard
-                ->availableDates($this->type, $this->subject, (int) $this->grade, $from, $to, $this->timezone)
+                ->availableDates($this->type, $this->subject, (int) $this->grade, $from, $to, $this->timezone, $this->lockedInstructorId)
                 ->all();
         } catch (BookingException $exception) {
             $this->dates = [];
@@ -277,7 +305,7 @@ final class BookingWizard extends Component
 
         try {
             $this->availableSlots = $this->wizard
-                ->availableSlots($this->type, $this->subject, (int) $this->grade, CarbonImmutable::parse($this->date, $this->timezone), $this->timezone)
+                ->availableSlots($this->type, $this->subject, (int) $this->grade, CarbonImmutable::parse($this->date, $this->timezone), $this->timezone, $this->lockedInstructorId)
                 ->all();
         } catch (BookingException $exception) {
             $this->availableSlots = [];

@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Instructor;
 
 use App\Enums\InstructorStatus;
+use App\Models\AcademicLevel;
+use App\Models\Country;
+use App\Models\Language;
+use App\Models\Subject;
 use App\Models\TeacherSubject;
 use App\Models\User;
+use App\Models\UserProfile;
 use App\Services\Profile\UserExperienceService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,11 +38,23 @@ final class InstructorService
         }
 
         if ($subject = $request->string('subject')->trim()->toString()) {
-            $query->whereHas('teacherSubjects', fn (Builder $subjectQuery) => $subjectQuery->where('subject', $subject));
+            $this->applySubjectFilter($query, $subject);
+        }
+
+        if ($academicLevel = $request->string('academic_level')->trim()->toString()) {
+            $this->applyAcademicLevelFilter($query, $academicLevel);
         }
 
         if ($language = $request->string('language')->trim()->toString()) {
-            $query->where('user_profiles.language', $language);
+            $this->applyLanguageFilter($query, $language);
+        }
+
+        if ($country = $request->integer('country')) {
+            $query->where('user_profiles.country_id', $country);
+        }
+
+        if ($timezone = $request->string('timezone')->trim()->toString()) {
+            $query->where('user_profiles.timezone', $timezone);
         }
 
         if ($request->boolean('available')) {
@@ -49,8 +66,8 @@ final class InstructorService
         match ($sort) {
             'name' => $query->orderBy('users.name'),
             'newest' => $query->orderByDesc('users.created_at'),
-            default => $query->orderByRaw('user_profiles.is_featured DESC')
-                ->orderBy('user_profiles.featured_order')
+            default => $query->orderByRaw('COALESCE(user_profiles.is_featured, 0) DESC')
+                ->orderByRaw('COALESCE(user_profiles.featured_order, 999999)')
                 ->orderBy('users.name'),
         };
 
@@ -67,7 +84,10 @@ final class InstructorService
     {
         return [
             'subjects' => $this->availableSubjects(),
+            'academic_levels' => $this->availableAcademicLevels(),
             'languages' => $this->availableLanguages(),
+            'countries' => $this->availableCountries(),
+            'timezones' => $this->availableTimezones(),
         ];
     }
 
@@ -81,7 +101,7 @@ final class InstructorService
             ->get();
     }
 
-    public function related(User $instructor, int $limit = 4): Collection
+    public function related(User $instructor, int $limit = 3): Collection
     {
         return $this->baseQuery()
             ->where('users.id', '!=', $instructor->id)
@@ -161,6 +181,7 @@ final class InstructorService
         $currentPosition = $this->experienceService->currentPosition($instructor);
         $subjects = $this->subjectsFor($instructor)->take(3);
         $languages = $this->languagesFor($instructor)->take(2);
+        $academicLevels = $this->academicLevelsFor($instructor)->take(3);
         $ratings = $this->ratingsFor($instructor);
         $availability = $this->availabilityPreview($instructor)->take(2);
 
@@ -178,9 +199,12 @@ final class InstructorService
                 : null,
             'subjects' => $subjects,
             'languages' => $languages,
+            'academic_levels' => $academicLevels,
             'ratings' => $ratings,
             'availability_preview' => $availability,
             'years_experience' => $this->experienceService->yearsOfExperience($instructor),
+            'country' => $profile?->country?->name,
+            'timezone' => $profile?->timezone,
         ];
     }
 
@@ -199,6 +223,7 @@ final class InstructorService
             ->map(fn ($subject): array => [
                 'name' => $subject->subjectMaster?->name ?? $this->formatSubject((string) $subject->subject),
                 'slug' => $subject->subjectMaster?->slug ?? (string) $subject->subject,
+                'booking_value' => (string) $subject->subject,
                 'grade_range' => $this->formatGradeRange($subject->grade_from, $subject->grade_to),
             ])
             ->values();
@@ -206,15 +231,40 @@ final class InstructorService
 
     public function languagesFor(User $instructor): Collection
     {
-        $language = $instructor->profile?->language;
+        $profile = $instructor->profile;
+        $languageIds = array_values(array_filter($profile?->instructor_teaching_language_ids ?? []));
+        $languages = $languageIds === []
+            ? new Collection
+            : Language::query()
+                ->whereIn('id', $languageIds)
+                ->orderBy('name')
+                ->pluck('name');
 
-        if (! is_string($language) || trim($language) === '') {
-            return collect();
+        if ($languages->isNotEmpty()) {
+            return $languages->values();
         }
 
-        return collect(preg_split('/[,|]/', $language) ?: [])
-            ->map(fn (string $item): string => trim($item))
-            ->filter()
+        return collect();
+    }
+
+    public function academicLevelsFor(User $instructor): Collection
+    {
+        $levelIds = array_values(array_filter($instructor->profile?->instructor_academic_level_ids ?? []));
+
+        if ($levelIds === []) {
+            return new Collection;
+        }
+
+        return AcademicLevel::query()
+            ->whereIn('id', $levelIds)
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (AcademicLevel $level): array => [
+                'id' => $level->id,
+                'name' => $level->name,
+                'slug' => $level->slug,
+            ])
             ->values();
     }
 
@@ -271,8 +321,67 @@ final class InstructorService
             $sub->where('users.name', 'like', '%'.$term.'%')
                 ->orWhere('user_profiles.bio', 'like', '%'.$term.'%')
                 ->orWhere('user_profiles.headline', 'like', '%'.$term.'%')
-                ->orWhere('user_profiles.short_bio', 'like', '%'.$term.'%');
+                ->orWhere('user_profiles.short_bio', 'like', '%'.$term.'%')
+                ->orWhereHas('teacherSubjects.subjectMaster', fn (Builder $subjectQuery) => $subjectQuery->where('name', 'like', '%'.$term.'%'))
+                ->orWhereHas('teacherSubjects', fn (Builder $subjectQuery) => $subjectQuery->where('subject', 'like', '%'.$term.'%'));
         });
+    }
+
+    private function applySubjectFilter(Builder $query, string $subject): void
+    {
+        $subjectMaster = Subject::query()
+            ->availableForAssignment()
+            ->where(fn (Builder $subjectQuery) => $subjectQuery
+                ->whereKey($subject)
+                ->orWhere('slug', $subject))
+            ->first();
+
+        if ($subjectMaster) {
+            $query->whereHas('teacherSubjects', fn (Builder $subjectQuery) => $subjectQuery
+                ->where('subject_id', $subjectMaster->id)
+                ->orWhere('subject', $subjectMaster->name));
+
+            return;
+        }
+
+        $query->whereHas('teacherSubjects', fn (Builder $subjectQuery) => $subjectQuery->where('subject', $subject));
+    }
+
+    private function applyAcademicLevelFilter(Builder $query, string $academicLevel): void
+    {
+        $level = AcademicLevel::query()
+            ->availableForAssignment()
+            ->where(fn (Builder $levelQuery) => $levelQuery
+                ->whereKey($academicLevel)
+                ->orWhere('slug', $academicLevel))
+            ->first();
+
+        if (! $level) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereJsonContains('user_profiles.instructor_academic_level_ids', $level->id);
+    }
+
+    private function applyLanguageFilter(Builder $query, string $language): void
+    {
+        $languageMaster = Language::query()
+            ->active()
+            ->where(fn (Builder $languageQuery) => $languageQuery
+                ->whereKey($language)
+                ->orWhere('code', $language)
+                ->orWhere('name', $language))
+            ->first();
+
+        if ($languageMaster) {
+            $query->whereJsonContains('user_profiles.instructor_teaching_language_ids', (string) $languageMaster->id);
+
+            return;
+        }
+
+        $query->whereRaw('1 = 0');
     }
 
     private function baseQuery(): Builder
@@ -286,7 +395,7 @@ final class InstructorService
             ->whereHas('roles', fn (Builder $q) => $q->where('name', 'instructor'))
             ->with($this->cardRelations())
             ->select('users.*')
-            ->addSelect('user_profiles.language as profile_language');
+            ->select('users.*');
     }
 
     private function cardRelations(): array
@@ -312,7 +421,25 @@ final class InstructorService
 
     private function availableSubjects(): Collection
     {
-        return TeacherSubject::query()
+        $linked = Subject::query()
+            ->availableForAssignment()
+            ->whereHas('teacherSubjects.teacher', fn (Builder $query) => $query
+                ->where('users.status', 'active')
+                ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'instructor'))
+                ->whereHas('profile', fn (Builder $profileQuery) => $profileQuery
+                    ->whereNull('deleted_at')
+                    ->where('profile_visibility', 'public')
+                    ->whereIn('instructor_status', InstructorStatus::bookableValues())))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Subject $subject): array => [
+                'value' => $subject->id,
+                'label' => $subject->name,
+            ])
+            ->toBase();
+
+        $legacy = TeacherSubject::query()
+            ->whereNull('subject_id')
             ->whereHas('teacher', fn (Builder $query) => $query
                 ->where('users.status', 'active')
                 ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'instructor'))
@@ -326,24 +453,92 @@ final class InstructorService
             ->pluck('subject')
             ->map(fn (string $subject): array => [
                 'value' => $subject,
-                'label' => $this->formatSubject($subject),
+                'label' => $this->formatSubject($subject).' (legacy)',
+            ])
+            ->values();
+
+        return $linked
+            ->merge($legacy)
+            ->unique('value')
+            ->values();
+    }
+
+    private function availableAcademicLevels(): Collection
+    {
+        return AcademicLevel::query()
+            ->availableForAssignment()
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (AcademicLevel $level): array => [
+                'value' => $level->id,
+                'label' => $level->name,
             ])
             ->values();
     }
 
     private function availableLanguages(): Collection
     {
+        $languageIds = UserProfile::query()
+            ->where('profile_visibility', 'public')
+            ->whereIn('instructor_status', InstructorStatus::bookableValues())
+            ->whereNotNull('instructor_teaching_language_ids')
+            ->whereHas('user', fn (Builder $userQuery) => $userQuery
+                ->where('users.status', 'active')
+                ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'instructor')))
+            ->pluck('instructor_teaching_language_ids')
+            ->flatMap(fn (mixed $ids): array => $this->normalizeJsonIdList($ids))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($languageIds->isEmpty()) {
+            return collect();
+        }
+
+        return Language::query()
+            ->active()
+            ->whereIn('id', $languageIds->all())
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Language $language): array => [
+                'value' => (string) $language->id,
+                'label' => $language->name,
+            ])
+            ->values();
+    }
+
+    private function availableCountries(): Collection
+    {
+        return Country::query()
+            ->active()
+            ->whereHas('userProfiles', fn (Builder $profileQuery) => $profileQuery
+                ->where('profile_visibility', 'public')
+                ->whereIn('instructor_status', InstructorStatus::bookableValues())
+                ->whereHas('user', fn (Builder $userQuery) => $userQuery
+                    ->where('users.status', 'active')
+                    ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'instructor'))))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Country $country): array => [
+                'value' => $country->id,
+                'label' => $country->name,
+            ])
+            ->values();
+    }
+
+    private function availableTimezones(): Collection
+    {
         return $this->baseQuery()
-            ->whereNotNull('user_profiles.language')
-            ->pluck('profile_language')
-            ->flatMap(fn (?string $language): array => preg_split('/[,|]/', (string) $language) ?: [])
-            ->map(fn (string $language): string => trim($language))
+            ->whereNotNull('user_profiles.timezone')
+            ->select('user_profiles.timezone as profile_timezone')
+            ->pluck('profile_timezone')
             ->filter()
             ->unique()
             ->sort()
-            ->map(fn (string $language): array => [
-                'value' => $language,
-                'label' => $language,
+            ->map(fn (string $timezone): array => [
+                'value' => $timezone,
+                'label' => $timezone,
             ])
             ->values();
     }
@@ -351,6 +546,21 @@ final class InstructorService
     private function formatSubject(string $subject): string
     {
         return Str::headline(str_replace(['_', '-'], ' ', $subject));
+    }
+
+    private function normalizeJsonIdList(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function formatGradeRange(?int $from, ?int $to): ?string

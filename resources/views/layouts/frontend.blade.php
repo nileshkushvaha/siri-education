@@ -91,7 +91,7 @@
         {{-- Flash messages — Account Portal pages render their own dark-themed
              flash messages inside layouts.account, below the breadcrumb, so
              this global (light-themed) block is skipped for them. --}}
-        @unless($__env->hasSection('account-content'))
+        @unless($__env->hasSection('account-content') || $__env->hasSection('page-flash'))
             @if(session()->has('success') || session()->has('error') || session()->has('warning') || session()->has('info'))
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 space-y-2">
                 @if(session('success'))

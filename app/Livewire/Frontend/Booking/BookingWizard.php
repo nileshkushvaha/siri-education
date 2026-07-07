@@ -400,10 +400,10 @@ final class BookingWizard extends Component
             ['number' => 1, 'label' => 'Subject'],
             ['number' => 2, 'label' => 'Grade'],
             ['number' => 3, 'label' => 'Date'],
-            ['number' => 4, 'label' => 'Available Slots'],
-            ['number' => 5, 'label' => 'Student Details'],
+            ['number' => 4, 'label' => 'Time'],
+            ['number' => 5, 'label' => 'Details'],
             ['number' => 6, 'label' => 'Review'],
-            ['number' => 7, 'label' => 'Success'],
+            ['number' => 7, 'label' => 'Confirmed'],
         ];
     }
 }

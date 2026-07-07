@@ -122,6 +122,13 @@ final class AccountMenuService
                 'permission' => null,
             ],
             [
+                'label' => 'Availability',
+                'route' => 'dashboard.instructor.availability',
+                'icon' => 'calendar',
+                'audience' => 'instructor',
+                'permission' => null,
+            ],
+            [
                 'label' => 'Certificates',
                 'route' => 'dashboard.certificates',
                 'icon' => 'badge',

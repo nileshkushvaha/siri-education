@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\TeacherLeave\Schemas;
 
 use App\Enums\InstructorStatus;
+use DateTimeZone;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -20,7 +21,7 @@ class TeacherLeaveForm
         return $schema
             ->components([
                 Section::make('Leave period')
-                    ->description('Blocks all bookings for the teacher during this window (times in UTC).')
+                    ->description('Blocks all bookings for the teacher during this window. Enter times in the selected instructor timezone.')
                     ->schema([
                         Select::make('teacher_id')
                             ->label('Teacher')
@@ -44,6 +45,10 @@ class TeacherLeaveForm
                                 ->required()
                                 ->after('starts_at'),
                         ]),
+                        Select::make('timezone')
+                            ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
+                            ->searchable()
+                            ->helperText('Defaults to the instructor profile timezone and is stored for audit/display clarity.'),
                         TextInput::make('reason')
                             ->maxLength(255)
                             ->placeholder('Annual leave, sick day, training…'),

@@ -35,6 +35,9 @@ class TeacherLeaveTable
                     ->sortable(),
                 TextColumn::make('duration')
                     ->state(fn (TeacherUnavailability $record): string => $record->starts_at->diffForHumans($record->ends_at, true)),
+                TextColumn::make('timezone')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('reason')
                     ->placeholder('—')
                     ->limit(40),
@@ -63,6 +66,7 @@ class TeacherLeaveTable
                             'Teacher' => 'teacher.name',
                             'Starts (UTC)' => fn (TeacherUnavailability $l): string => $l->starts_at->toDateTimeString(),
                             'Ends (UTC)' => fn (TeacherUnavailability $l): string => $l->ends_at->toDateTimeString(),
+                            'Timezone' => 'timezone',
                             'Reason' => 'reason',
                         ], 'teacher-leave.csv'))
                         ->deselectRecordsAfterCompletion(),

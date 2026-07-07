@@ -51,8 +51,7 @@ The directory now supports safe public filters for:
 - subject using `subjects.id` where available
 - legacy subject fallback for unreconciled `teacher_subjects.subject`
 - academic level using `AcademicLevel`
-- teaching language using `Language` master data where available
-- legacy profile language fallback
+- teaching language using `Language` master data from instructor teaching-language IDs
 - country from `user_profiles.country_id`
 - timezone from `user_profiles.timezone`
 - existing availability preview filter remains unchanged
@@ -61,6 +60,8 @@ The directory now supports safe public filters for:
 Keyword search deliberately avoids private KYC fields, admin review notes, internal lifecycle reasons, and other sensitive verification data.
 
 Country filter options are scoped to the same public instructor visibility boundary as the listing: active users, instructor role, public profile visibility, and bookable instructor statuses. Countries that belong only to hidden, inactive, rejected, suspended, archived, vacation, or otherwise non-bookable instructors are not shown as filter options.
+
+Legacy `user_profiles.language` values are not rendered or used as marketplace filter options. The Phase 5.2 hardening path intentionally uses the `languages` master table and `user_profiles.instructor_teaching_language_ids` for public teaching-language discovery.
 
 ## Subject Master Usage
 
@@ -93,14 +94,16 @@ Non-public or non-bookable profiles remain inaccessible to public users and are 
 
 ## UI Scope
 
-The Phase 5 UI changes are intentionally light:
+The Phase 5 UI changes are intentionally bounded:
 
 - expanded filter controls on the public instructor directory
 - clearer instructor cards with profile, academic level, location/timezone, and favorite actions
 - profile page teaching approach content sourced from public profile fields
 - guest favorite actions redirect to login through existing middleware
+- instructor profile booking CTAs hand off to the existing guest booking wizard with instructor context locked, without adding booking tables or changing booking lifecycle rules
+- the booking wizard accepts an instructor lock from marketplace/profile URLs and still validates instructor eligibility and availability through existing booking services
 
-This phase does not rewrite marketplace search, build a recommendation engine, or create booking entry flows.
+This phase does not rewrite marketplace search, build a recommendation engine, create new booking records outside the existing booking service, or add any new booking lifecycle, payment, recurring lesson, or availability-engine behavior.
 
 ## Admin Scope
 
@@ -150,7 +153,7 @@ Phase 5 adds focused coverage in `tests/Feature/Instructor/MarketplaceDiscoveryF
 - duplicate, self, and non-bookable favorite protection
 - no out-of-scope records or duplicate domain tables
 
-Existing instructor listing/detail/service and student favorite instructor tests continue to cover older flows.
+Existing instructor listing/detail/service, guest booking wizard, and student favorite instructor tests continue to cover older flows plus the marketplace-to-booking instructor handoff.
 
 ## Remaining Gaps
 

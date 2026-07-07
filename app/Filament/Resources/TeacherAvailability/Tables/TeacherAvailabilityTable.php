@@ -6,6 +6,7 @@ namespace App\Filament\Resources\TeacherAvailability\Tables;
 
 use App\Booking\Enums\Weekday;
 use App\Models\TeacherAvailability;
+use App\Services\Instructor\InstructorAvailabilityService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -37,6 +38,9 @@ class TeacherAvailabilityTable
                     ->time('H:i'),
                 TextColumn::make('end_time')
                     ->time('H:i'),
+                TextColumn::make('timezone')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('effective_from')
                     ->date()
                     ->placeholder('Always')
@@ -73,7 +77,8 @@ class TeacherAvailabilityTable
                         ->color('success')
                         ->authorize(fn (): bool => auth()->user()?->can('create', TeacherAvailability::class) ?? false)
                         ->action(function (Collection $records): void {
-                            $records->each->update(['is_active' => true]);
+                            $service = app(InstructorAvailabilityService::class);
+                            $records->each(fn (TeacherAvailability $record): TeacherAvailability => $service->setActive($record, true, auth()->user()));
                             Notification::make()->title('Windows activated')->success()->send();
                         })
                         ->deselectRecordsAfterCompletion(),
@@ -82,7 +87,8 @@ class TeacherAvailabilityTable
                         ->color('warning')
                         ->authorize(fn (): bool => auth()->user()?->can('create', TeacherAvailability::class) ?? false)
                         ->action(function (Collection $records): void {
-                            $records->each->update(['is_active' => false]);
+                            $service = app(InstructorAvailabilityService::class);
+                            $records->each(fn (TeacherAvailability $record): TeacherAvailability => $service->setActive($record, false, auth()->user()));
                             Notification::make()->title('Windows deactivated')->warning()->send();
                         })
                         ->deselectRecordsAfterCompletion(),

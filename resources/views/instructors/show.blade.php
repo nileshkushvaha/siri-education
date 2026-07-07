@@ -63,8 +63,8 @@
                 ['label' => $instructor->name],
             ]" />
 
-            <div class="mt-9 grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
-                <div class="min-w-0">
+            <div class="mt-9 grid gap-8 lg:grid-cols-3 lg:items-end">
+                <div class="min-w-0 lg:col-span-2">
                     <div class="flex flex-col gap-6 sm:flex-row sm:items-end">
                         <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 text-4xl font-black text-white shadow-2xl shadow-indigo-950/40">
                             @if($profile->avatarUrl)

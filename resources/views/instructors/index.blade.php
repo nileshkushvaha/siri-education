@@ -47,8 +47,8 @@
                 </div>
             @endif
 
-            <div class="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-                <div class="max-w-4xl">
+            <div class="mt-10 grid gap-8 lg:grid-cols-3 lg:items-end">
+                <div class="max-w-4xl lg:col-span-2">
                     <div class="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-200">
                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
                         Instructor Directory

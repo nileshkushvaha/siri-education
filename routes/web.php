@@ -21,6 +21,7 @@ use App\Http\Controllers\Forms\CallbackController;
 use App\Http\Controllers\Forms\FeedbackController;
 use App\Http\Controllers\Forms\GeneralInquiryController;
 use App\Http\Controllers\Forms\SupportController;
+use App\Http\Controllers\Instructor\InstructorAvailabilityController;
 use App\Http\Controllers\Instructor\InstructorController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
@@ -209,6 +210,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/faqs', [DashboardFaqController::class, 'index'])->name('faqs');
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
     Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
+    Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
     Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');
     Route::post('/instructor/submit', [InstructorOnboardingController::class, 'submit'])->name('instructor.submit');
 
@@ -232,6 +234,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
 
 // ── Instructors (public — visibility enforced in the controller) ──────
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
+Route::get('/instructors/book', [GuestBookingPageController::class, 'create'])->name('instructors.booking.create');
 Route::get('/instructors/{user:slug}', [InstructorController::class, 'show'])->name('instructors.show');
 
 // ── Public Profile (guests + authenticated — visibility enforced in the controller) ──

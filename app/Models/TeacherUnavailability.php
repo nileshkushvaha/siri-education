@@ -24,7 +24,10 @@ class TeacherUnavailability extends Model
         'teacher_id',
         'starts_at',
         'ends_at',
+        'timezone',
         'reason',
+        'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array
@@ -38,6 +41,16 @@ class TeacherUnavailability extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function scopeForTeacher(Builder $query, int $teacherId): Builder
@@ -56,7 +69,7 @@ class TeacherUnavailability extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['teacher_id', 'starts_at', 'ends_at', 'reason'])
+            ->logOnly(['teacher_id', 'starts_at', 'ends_at', 'timezone', 'reason'])
             ->useLogName('teacher_unavailability')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Booking\Repositories;
 
 use App\Booking\Contracts\AvailabilityRepositoryInterface;
-use App\Booking\Enums\Weekday;
 use App\Models\Holiday;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherUnavailability;
@@ -19,12 +18,17 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
         $rows = TeacherAvailability::query()
             ->active()
             ->forTeacher($teacherId)
+            ->with('teacher.profile')
             ->get();
 
         $windows = new Collection;
 
-        for ($date = $from->startOfDay(); $date->lessThan($to); $date = $date->addDay()) {
-            foreach ($rows as $row) {
+        foreach ($rows as $row) {
+            $timezone = $row->timezone ?: $row->teacher?->profile?->timezone ?: config('app.timezone', 'UTC');
+            $localFrom = $from->setTimezone($timezone)->startOfDay();
+            $localTo = $to->setTimezone($timezone)->endOfDay();
+
+            for ($date = $localFrom; $date->lessThanOrEqualTo($localTo); $date = $date->addDay()) {
                 if ($row->day_of_week->value !== $date->dayOfWeek) {
                     continue;
                 }
@@ -37,8 +41,8 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
                     continue;
                 }
 
-                $startsAt = $date->setTimeFromTimeString($row->start_time);
-                $endsAt = $date->setTimeFromTimeString($row->end_time);
+                $startsAt = $date->setTimeFromTimeString($row->start_time)->utc();
+                $endsAt = $date->setTimeFromTimeString($row->end_time)->utc();
 
                 if ($endsAt->greaterThan($from) && $startsAt->lessThan($to)) {
                     $windows->push(['starts_at' => $startsAt, 'ends_at' => $endsAt]);
@@ -55,14 +59,41 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
             return false;
         }
 
-        return TeacherAvailability::query()
+        $rows = TeacherAvailability::query()
             ->active()
             ->forTeacher($teacherId)
-            ->forDay(Weekday::from($startsAt->dayOfWeek))
-            ->effectiveOn($startsAt)
-            ->where('start_time', '<=', $startsAt->format('H:i:s'))
-            ->where('end_time', '>=', $startsAt->isSameDay($endsAt) ? $endsAt->format('H:i:s') : '24:00:00')
-            ->exists();
+            ->with('teacher.profile')
+            ->get();
+
+        foreach ($rows as $row) {
+            $timezone = $row->timezone ?: $row->teacher?->profile?->timezone ?: config('app.timezone', 'UTC');
+            $localStart = $startsAt->setTimezone($timezone);
+            $localEnd = $endsAt->setTimezone($timezone);
+
+            if ($row->day_of_week->value !== $localStart->dayOfWeek) {
+                continue;
+            }
+
+            if (! $localStart->isSameDay($localEnd) && ! $localEnd->equalTo($localStart->addDay()->startOfDay())) {
+                continue;
+            }
+
+            if ($row->effective_from !== null && $localStart->lessThan($row->effective_from)) {
+                continue;
+            }
+
+            if ($row->effective_until !== null && $localStart->greaterThan($row->effective_until)) {
+                continue;
+            }
+
+            $endTime = $localStart->isSameDay($localEnd) ? $localEnd->format('H:i:s') : '24:00:00';
+
+            if ($row->start_time <= $localStart->format('H:i:s') && $row->end_time >= $endTime) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function hasBlackout(int $teacherId, CarbonImmutable $startsAt, CarbonImmutable $endsAt): bool

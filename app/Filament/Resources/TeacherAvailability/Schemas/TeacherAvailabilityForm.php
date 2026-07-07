@@ -6,6 +6,7 @@ namespace App\Filament\Resources\TeacherAvailability\Schemas;
 
 use App\Booking\Enums\Weekday;
 use App\Enums\InstructorStatus;
+use DateTimeZone;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TimePicker;
@@ -22,7 +23,7 @@ class TeacherAvailabilityForm
         return $schema
             ->components([
                 Section::make('Weekly window')
-                    ->description('Recurring working hours. Times are stored in UTC.')
+                    ->description('Recurring working hours. Times are entered in the instructor timezone and converted safely when slots are generated.')
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('teacher_id')
@@ -53,6 +54,10 @@ class TeacherAvailabilityForm
                                 ->required()
                                 ->after('start_time'),
                         ]),
+                        Select::make('timezone')
+                            ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
+                            ->searchable()
+                            ->helperText('Defaults to the instructor profile timezone. Required for reliable daylight-saving handling.'),
                     ]),
 
                 Section::make('Validity')

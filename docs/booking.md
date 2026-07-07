@@ -31,8 +31,13 @@ teacher's daily cap (`BookingSettings::max_daily_bookings_per_teacher`).
   consecutive slots are spaced by duration + buffer, and existing
   bookings block a padded range on both sides. Intervals are
   half-open — touching does not conflict.
-- **Timezones**: everything is stored and compared in UTC;
-  `AvailabilityQueryData::timezone` only converts the returned slots.
+- **Timezones**: weekly availability windows are entered as local
+  instructor wall-clock times and carry a timezone, defaulting from
+  `user_profiles.timezone`. Slot generation expands those windows in
+  the instructor timezone, converts candidate instants to UTC for
+  conflict checks, and returns slots in `AvailabilityQueryData::timezone`.
+  Leave / blackout periods are stored in UTC with the source timezone
+  retained for display and audit context.
 - `ensureAvailable()` applies the same checks for a single slot and
   is re-run under the host lock on create/reschedule.
 
@@ -54,7 +59,10 @@ Reports page. All follow the Schemas/Tables delegation pattern.
   activate/deactivate bulk actions, soft deletes, CSV export.
 - **Teacher Availability / Leave** filter teacher selects to
   approved/published instructors; availability has activate/deactivate
-  bulk actions; leave defaults to current-or-upcoming filter.
+  bulk actions; leave defaults to current-or-upcoming filter. Create,
+  edit, delete, and publish-style actions run through instructor
+  availability/time-off services so timezone, bookable-status,
+  overlap, and audit rules are consistent with frontend self-service.
 - **Reports** (`/admin/booking-reports`): stats overview, 30-day
   bookings chart, top-teachers table — widgets live in
   `app/Filament/Widgets/Booking/` (kept off the Dashboard by its

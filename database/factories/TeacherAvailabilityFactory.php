@@ -19,6 +19,7 @@ class TeacherAvailabilityFactory extends Factory
             'day_of_week' => fake()->randomElement(Weekday::cases()),
             'start_time' => '09:00:00',
             'end_time' => '17:00:00',
+            'timezone' => 'UTC',
             'is_active' => true,
         ];
     }

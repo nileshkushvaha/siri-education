@@ -20,6 +20,7 @@ class TeacherUnavailabilityFactory extends Factory
             'teacher_id' => User::factory(),
             'starts_at' => $startsAt,
             'ends_at' => $startsAt->copy()->addDay(),
+            'timezone' => 'UTC',
             'reason' => fake()->optional()->sentence(3),
         ];
     }

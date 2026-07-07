@@ -56,6 +56,7 @@ class FrontendServiceProvider extends ServiceProvider
     {
         View::composer([
             'dashboard.*',
+            'instructor.*',
             'student.*',
             'profile.show',
             'booking.manage',

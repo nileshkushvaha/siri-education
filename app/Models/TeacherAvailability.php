@@ -29,9 +29,12 @@ class TeacherAvailability extends Model
         'day_of_week',
         'start_time',
         'end_time',
+        'timezone',
         'effective_from',
         'effective_until',
         'is_active',
+        'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array
@@ -47,6 +50,16 @@ class TeacherAvailability extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function scopeActive(Builder $query): Builder
@@ -75,7 +88,7 @@ class TeacherAvailability extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['teacher_id', 'day_of_week', 'start_time', 'end_time', 'effective_from', 'effective_until', 'is_active'])
+            ->logOnly(['teacher_id', 'day_of_week', 'start_time', 'end_time', 'timezone', 'effective_from', 'effective_until', 'is_active'])
             ->useLogName('teacher_availability')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

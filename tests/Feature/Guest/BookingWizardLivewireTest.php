@@ -70,6 +70,14 @@ class BookingWizardLivewireTest extends TestCase
             ->assertSee('Book a Session');
     }
 
+    public function test_instructor_booking_alias_renders_livewire_wizard(): void
+    {
+        $this->get(route('instructors.booking.create'))
+            ->assertOk()
+            ->assertSeeLivewire(BookingWizard::class)
+            ->assertSee('Book a Session');
+    }
+
     public function test_guest_can_complete_booking_wizard(): void
     {
         $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();

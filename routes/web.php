@@ -48,6 +48,7 @@ use App\Http\Controllers\Student\StudentPaymentsController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\StudentReviewsController;
 use App\Http\Controllers\Student\StudentUpcomingClassesController;
+use App\Http\Controllers\Student\StudentWalletController;
 use App\Http\Controllers\Student\StudentWishlistController;
 use App\Http\Controllers\TagController;
 use App\Http\Middleware\EnsureAccountIsActive;
@@ -218,6 +219,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/upcoming-classes', [StudentUpcomingClassesController::class, 'index'])->name('upcoming-classes');
     Route::get('/my-bookings', [StudentBookingHistoryController::class, 'index'])->name('my-bookings');
     Route::get('/payments', [StudentPaymentsController::class, 'index'])->name('payments');
+    Route::get('/wallet', [StudentWalletController::class, 'index'])->name('wallet');
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 

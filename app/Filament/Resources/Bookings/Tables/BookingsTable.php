@@ -73,6 +73,12 @@ class BookingsTable
                     ->formatStateUsing(fn (BookingPaymentStatus $state): string => $state->label())
                     ->color(fn (BookingPaymentStatus $state): string => $state->color())
                     ->toggleable(),
+                TextColumn::make('price')
+                    ->label('Amount')
+                    ->money(fn (Booking $record): string => $record->currency ?? 'USD')
+                    ->placeholder('Free')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -235,12 +241,45 @@ class BookingsTable
                             'Currency' => 'currency',
                         ], 'bookings.csv'))
                         ->deselectRecordsAfterCompletion(),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->action(fn (Collection $records) => self::deleteTerminalOnly($records, force: false))
+                        ->deselectRecordsAfterCompletion(),
                     RestoreBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make()
+                        ->action(fn (Collection $records) => self::deleteTerminalOnly($records, force: true))
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ])
             ->defaultSort('starts_at', 'desc');
+    }
+
+    /**
+     * Deleting (or force-deleting) a still-active booking removes it from
+     * every availability conflict check without going through cancellation —
+     * see EditBooking::guardAgainstNonTerminalDelete() for the same rule on
+     * the row-level actions. Bulk variants skip non-terminal records instead
+     * of failing the whole batch.
+     */
+    private static function deleteTerminalOnly(Collection $records, bool $force): void
+    {
+        $deleted = 0;
+        $skipped = 0;
+
+        foreach ($records as $booking) {
+            if (! $booking->status->isTerminal()) {
+                $skipped++;
+
+                continue;
+            }
+
+            $force ? $booking->forceDelete() : $booking->delete();
+            $deleted++;
+        }
+
+        Notification::make()
+            ->title(sprintf('%d %sdeleted, %d skipped (not terminal)', $deleted, $force ? 'permanently ' : '', $skipped))
+            ->{$deleted > 0 ? 'success' : 'warning'}()
+            ->send();
     }
 
     /** Run a service call, converting domain failures into panel notifications. */

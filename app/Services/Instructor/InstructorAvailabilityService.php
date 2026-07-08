@@ -10,6 +10,7 @@ use App\Models\TeacherAvailability;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -36,10 +37,14 @@ final class InstructorAvailabilityService
     {
         return DB::transaction(function () use ($data, $actor): TeacherAvailability {
             $teacher = $this->teacher((int) $data['teacher_id']);
+            $this->assertCanCreate($actor, $teacher);
+
             $payload = $this->payload($data, $teacher, $actor);
 
             $this->assertCanPublish($teacher, (bool) $payload['is_active']);
+            $this->assertTimezoneResolved($teacher, $data, (bool) $payload['is_active']);
             $this->assertValidTimeRange($payload['start_time'], $payload['end_time']);
+            $this->assertValidEffectiveRange($payload['effective_from'], $payload['effective_until']);
             $this->assertNoOverlap($teacher, $payload);
 
             $availability = TeacherAvailability::query()->create($payload);
@@ -73,7 +78,9 @@ final class InstructorAvailabilityService
     {
         return DB::transaction(function () use ($availability, $data, $actor): TeacherAvailability {
             $teacher = $this->teacher((int) ($data['teacher_id'] ?? $availability->teacher_id));
-            $payload = $this->payload([
+            $this->assertCanManage($actor, $availability, $teacher, 'update');
+
+            $normalized = [
                 'teacher_id' => $teacher->id,
                 'day_of_week' => $data['day_of_week'] ?? $availability->day_of_week,
                 'start_time' => $data['start_time'] ?? $availability->start_time,
@@ -82,10 +89,13 @@ final class InstructorAvailabilityService
                 'effective_from' => array_key_exists('effective_from', $data) ? $data['effective_from'] : $availability->effective_from?->toDateString(),
                 'effective_until' => array_key_exists('effective_until', $data) ? $data['effective_until'] : $availability->effective_until?->toDateString(),
                 'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : (bool) $availability->is_active,
-            ], $teacher, $actor);
+            ];
+            $payload = $this->payload($normalized, $teacher, $actor);
 
             $this->assertCanPublish($teacher, (bool) $payload['is_active']);
+            $this->assertTimezoneResolved($teacher, $data, (bool) $payload['is_active'], (bool) $availability->is_active);
             $this->assertValidTimeRange($payload['start_time'], $payload['end_time']);
+            $this->assertValidEffectiveRange($payload['effective_from'], $payload['effective_until']);
             $this->assertNoOverlap($teacher, $payload, $availability);
 
             $previous = $availability->only(['teacher_id', 'day_of_week', 'start_time', 'end_time', 'timezone', 'effective_from', 'effective_until', 'is_active']);
@@ -110,6 +120,8 @@ final class InstructorAvailabilityService
     public function delete(TeacherAvailability $availability, User $actor): void
     {
         DB::transaction(function () use ($availability, $actor): void {
+            $this->assertCanManage($actor, $availability, null, 'delete');
+
             $properties = $this->auditProperties($availability);
             $availability->delete();
 
@@ -202,6 +214,73 @@ final class InstructorAvailabilityService
         if ($startTime >= $endTime) {
             throw ValidationException::withMessages(['end_time' => 'End time must be after start time.']);
         }
+    }
+
+    private function assertValidEffectiveRange(?string $effectiveFrom, ?string $effectiveUntil): void
+    {
+        if ($effectiveFrom !== null && $effectiveUntil !== null && $effectiveUntil < $effectiveFrom) {
+            throw ValidationException::withMessages([
+                'effective_until' => 'Effective until date must be on or after the effective from date.',
+            ]);
+        }
+    }
+
+    /**
+     * Publishing active availability must never fall back to the app
+     * timezone silently: either the instructor profile carries one, or
+     * this call must explicitly select one.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function assertTimezoneResolved(User $teacher, array $data, bool $willBeActive, bool $wasActive = false): void
+    {
+        if (! $willBeActive || $wasActive) {
+            return;
+        }
+
+        if (filled($data['timezone'] ?? null) || $teacher->profile?->timezone !== null) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'timezone' => 'Set your profile timezone or choose one explicitly before publishing availability.',
+        ]);
+    }
+
+    /**
+     * Instructors may only manage their own record; anyone else needs
+     * the equivalent Shield-style admin permission (see
+     * TeacherAvailabilityPolicy). Non-instructor actors (students,
+     * public users) cannot self-service regardless of the target id.
+     */
+    private function assertCanCreate(User $actor, User $teacher): void
+    {
+        if ($this->isSelfService($actor, $teacher->id)) {
+            return;
+        }
+
+        if (! $actor->can('create', TeacherAvailability::class)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    private function assertCanManage(User $actor, TeacherAvailability $availability, ?User $newTeacher, string $ability): void
+    {
+        $ownsExisting = $this->isSelfService($actor, $availability->teacher_id);
+        $ownsTarget = $newTeacher === null || $this->isSelfService($actor, $newTeacher->id);
+
+        if ($ownsExisting && $ownsTarget) {
+            return;
+        }
+
+        if (! $actor->can($ability, $availability)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    private function isSelfService(User $actor, int $teacherId): bool
+    {
+        return $actor->id === $teacherId && $actor->hasRole('instructor');
     }
 
     /**

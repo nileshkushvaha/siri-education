@@ -108,9 +108,12 @@ final class BookingWizardService
         $booking->loadMissing('type');
 
         return [
+            'id' => $booking->id,
             'reference' => $booking->reference,
             'status' => $booking->status->value,
             'status_label' => $booking->status->label(),
+            'requires_payment' => $booking->payment_status->isPayable(),
+            'payment_status' => $booking->payment_status->value,
             'type' => [
                 'key' => $booking->type->key,
                 'name' => $booking->type->name,

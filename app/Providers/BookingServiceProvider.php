@@ -22,6 +22,7 @@ use App\Booking\Contracts\StudentBookingServiceInterface;
 use App\Booking\Contracts\TeacherAssignmentServiceInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\Payments\FakePaymentProvider;
+use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Registry\AssignmentStrategyRegistry;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Registry\PaymentProviderRegistry;
@@ -83,6 +84,7 @@ class BookingServiceProvider extends ServiceProvider
         // switch via BookingSettings::payment_provider.
         $this->app->afterResolving(PaymentProviderRegistry::class, function (PaymentProviderRegistry $registry, Application $app): void {
             $registry->register($app->make(FakePaymentProvider::class));
+            $registry->register($app->make(RazorpayPaymentProvider::class));
         });
     }
 

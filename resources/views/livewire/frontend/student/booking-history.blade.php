@@ -110,6 +110,16 @@
                 </p>
             @endif
 
+            @if($booking->payment_status->value === 'pending' || $booking->payment_status->value === 'failed')
+                <div class="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3">
+                    <p class="text-sm text-indigo-200">Payment is {{ $booking->payment_status->label() }}. Complete payment to confirm this booking.</p>
+                    <x-ui.button type="button" class="mt-3" size="sm" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
+                        <span wire:loading.remove wire:target="initiatePayment">Pay with Razorpay</span>
+                        <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
+                    </x-ui.button>
+                </div>
+            @endif
+
             @if($isActive)
                 <div class="mt-6 flex flex-wrap gap-3 border-t border-white/[0.07] pt-5">
                     <x-ui.button type="button" wire:click="openReschedulePanel" size="sm">Reschedule</x-ui.button>
@@ -160,3 +170,7 @@
         @endif
     </x-ui.modal>
 </div>
+
+@script
+@include('livewire.frontend.booking.partials.razorpay-checkout-script')
+@endscript

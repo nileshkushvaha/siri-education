@@ -38,6 +38,38 @@ teacher's daily cap (`BookingSettings::max_daily_bookings_per_teacher`).
   conflict checks, and returns slots in `AvailabilityQueryData::timezone`.
   Leave / blackout periods are stored in UTC with the source timezone
   retained for display and audit context.
+- **DST**: weekly windows expand using Carbon's per-instant timezone
+  offset (via `AvailabilityRepository::windowsFor()`), so the same
+  local wall-clock window (e.g. 09:00–11:00) resolves to a different
+  UTC instant on either side of a daylight-saving transition — never a
+  fixed UTC delta. Covered by
+  `tests/Feature/Instructor/InstructorAvailabilityHardeningTest::test_slot_generation_handles_dst_spring_forward_transition`,
+  which locates the next real spring-forward transition for
+  `Australia/Sydney` dynamically (rather than a hardcoded date) so it
+  keeps exercising a live transition indefinitely; it self-skips
+  (non-blocking) on the rare run where no transition falls inside the
+  booking engine's max-advance window. Leave/time-off ranges are
+  parsed in the source timezone and stored as UTC instants, so they
+  are DST-transition-safe by construction.
+- **Missing instructor timezone**: publishing (`is_active = true`)
+  weekly availability never silently falls back to the app timezone.
+  If `user_profiles.timezone` is empty, the create/update call must
+  explicitly pass a `timezone`, or `InstructorAvailabilityService`
+  throws a `ValidationException` on the `timezone` field. Draft
+  windows (`is_active = false`) may still be saved without a profile
+  timezone or explicit choice at the service layer — they fall back to
+  `config('app.timezone')` until published, matching
+  `docs/architecture/phase-6-instructor-availability-foundation.md`.
+  The instructor availability page (`/dashboard/instructor/availability`)
+  shows a warning banner and links to profile settings whenever the
+  profile timezone is missing, and its timezone `<select>` starts
+  blank (no default value) so the instructor must explicitly choose
+  one instead of unknowingly submitting a browser-preselected option.
+  The page's "Add window" form always creates active (published)
+  windows and requires a timezone unconditionally (Livewire validation),
+  so the draft-without-timezone path is only reachable through the
+  service directly (e.g. a future admin/draft UI), not through this
+  form today — the banner text is scoped accordingly.
 - `ensureAvailable()` applies the same checks for a single slot and
   is re-run under the host lock on create/reschedule.
 
@@ -60,9 +92,18 @@ Reports page. All follow the Schemas/Tables delegation pattern.
 - **Teacher Availability / Leave** filter teacher selects to
   approved/published instructors; availability has activate/deactivate
   bulk actions; leave defaults to current-or-upcoming filter. Create,
-  edit, delete, and publish-style actions run through instructor
-  availability/time-off services so timezone, bookable-status,
-  overlap, and audit rules are consistent with frontend self-service.
+  edit, delete, and publish-style actions — including table row
+  `DeleteAction` and bulk `DeleteBulkAction`, hardened in Phase 6.3 —
+  run through `InstructorAvailabilityService` / `InstructorTimeOffService`
+  so timezone, bookable-status, overlap, permission, and audit rules
+  are consistent with frontend self-service. No generic
+  `Model::delete()` path remains on either resource's table: row
+  deletes require the `delete` policy ability (`->authorize()`) and
+  call the owning service inside a try/catch that shows a Filament
+  danger notification on failure instead of a raw exception; bulk
+  deletes authorize each selected record individually
+  (`->authorizeIndividualRecords('delete')`) and report a partial-failure
+  notification if any record's service call is rejected.
 - **Reports** (`/admin/booking-reports`): stats overview, 30-day
   bookings chart, top-teachers table — widgets live in
   `app/Filament/Widgets/Booking/` (kept off the Dashboard by its
@@ -74,6 +115,20 @@ Reports page. All follow the Schemas/Tables delegation pattern.
   (`ViewAny:Booking`, …); run `shield:generate` (or seed permissions)
   before granting managers access. Smoke-tested in
   `tests/Feature/Filament/BookingAdminPanelTest.php`.
+- **Service-level ownership/admin guards (Phase 6.3)**: policies gate
+  the Filament layer, but `InstructorAvailabilityService` and
+  `InstructorTimeOffService` also assert authorization internally on
+  every `create`/`update`/`delete`, so the same rule applies whether
+  the call comes from Filament, the instructor Livewire page, or a
+  direct service call. An actor may act on a record only if either
+  (a) it is the record's own instructor (`actor->id === teacher_id`
+  and `actor->hasRole('instructor')`), or (b) the actor passes the
+  matching Shield permission via the resource policy
+  (`Create:TeacherAvailability`, `Update:TeacherUnavailability`, …).
+  Anyone else — a different instructor, a student, an unpermitted
+  manager — gets `Illuminate\Auth\Access\AuthorizationException`, not
+  a silent no-op. Covered by
+  `tests/Feature/Instructor/InstructorAvailabilityHardeningTest.php`.
 
 ## Deployment runbook
 

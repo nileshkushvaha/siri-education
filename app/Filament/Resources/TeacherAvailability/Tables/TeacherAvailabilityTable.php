@@ -18,7 +18,9 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\ValidationException;
 
 class TeacherAvailabilityTable
 {
@@ -68,7 +70,18 @@ class TeacherAvailabilityTable
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->authorize(fn (TeacherAvailability $record): bool => auth()->user()?->can('delete', $record) ?? false)
+                    ->action(function (TeacherAvailability $record): void {
+                        try {
+                            app(InstructorAvailabilityService::class)->delete($record, auth()->user());
+                            Notification::make()->title('Availability window deleted.')->success()->send();
+                        } catch (ValidationException $e) {
+                            Notification::make()->title('Unable to delete availability window.')->body($e->validator->errors()->first())->danger()->send();
+                        } catch (AuthorizationException) {
+                            Notification::make()->title('You are not authorized to delete this availability window.')->danger()->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -92,7 +105,26 @@ class TeacherAvailabilityTable
                             Notification::make()->title('Windows deactivated')->warning()->send();
                         })
                         ->deselectRecordsAfterCompletion(),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
+                        ->action(function (Collection $records): void {
+                            $service = app(InstructorAvailabilityService::class);
+                            $actor = auth()->user();
+                            $failures = 0;
+
+                            foreach ($records as $record) {
+                                try {
+                                    $service->delete($record, $actor);
+                                } catch (ValidationException|AuthorizationException) {
+                                    $failures++;
+                                }
+                            }
+
+                            $failures > 0
+                                ? Notification::make()->title("Deleted with {$failures} failure(s).")->warning()->send()
+                                : Notification::make()->title('Availability windows deleted.')->success()->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ])
             ->defaultSort('teacher.name');

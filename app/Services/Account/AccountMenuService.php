@@ -6,6 +6,7 @@ namespace App\Services\Account;
 
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\User;
+use App\Settings\FeatureSettings;
 
 /**
  * Builds the permission-driven Account Portal sidebar menu.
@@ -24,6 +25,7 @@ final class AccountMenuService
 {
     public function __construct(
         private readonly HomeworkServiceInterface $homework,
+        private readonly FeatureSettings $features,
     ) {}
 
     /**
@@ -70,6 +72,14 @@ final class AccountMenuService
                 'icon' => 'credit-card',
                 'audience' => 'student',
                 'permission' => null,
+            ],
+            [
+                'label' => 'Wallet',
+                'route' => 'dashboard.wallet',
+                'icon' => 'credit-card',
+                'audience' => 'student',
+                'permission' => null,
+                'enabled' => fn (): bool => $this->features->wallet_enabled,
             ],
             [
                 'label' => 'Homework',
@@ -181,6 +191,10 @@ final class AccountMenuService
         }
 
         if (! $this->isVisible($user, $item['permission'] ?? null)) {
+            return null;
+        }
+
+        if (isset($item['enabled']) && ! ($item['enabled'])()) {
             return null;
         }
 

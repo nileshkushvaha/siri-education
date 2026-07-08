@@ -66,7 +66,8 @@ final class PaymentWebhookSignatureService
         return hash_equals($expected, (string) $providedSignature);
     }
 
-    private function decryptSecret(PaymentGatewaySettings $settings, string $field): ?string
+    /** Shared with RazorpayPaymentProvider — one decrypt-with-legacy-fallback routine for all gateway secrets. */
+    public static function decryptSecret(PaymentGatewaySettings $settings, string $field): ?string
     {
         $value = $settings->{$field} ?? null;
 

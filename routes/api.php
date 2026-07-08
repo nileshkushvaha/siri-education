@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\Guest\GuestAvailabilityController;
 use App\Http\Controllers\Api\Guest\GuestBookingController;
+use App\Http\Controllers\Api\Guest\GuestBookingPaymentController;
 use App\Http\Controllers\Api\Guest\GuestCatalogController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -32,5 +33,7 @@ Route::prefix('v1/guest')->name('api.guest.')->group(function (): void {
         Route::post('/bookings', [GuestBookingController::class, 'store'])->name('bookings.store');
         Route::post('/bookings/{reference}/cancel', [GuestBookingController::class, 'cancel'])->name('bookings.cancel');
         Route::post('/bookings/{reference}/reschedule', [GuestBookingController::class, 'reschedule'])->name('bookings.reschedule');
+        Route::post('/bookings/{reference}/payments/razorpay/initiate', [GuestBookingPaymentController::class, 'initiate'])->name('bookings.payments.initiate');
+        Route::post('/bookings/{reference}/payments/razorpay/verify', [GuestBookingPaymentController::class, 'verify'])->name('bookings.payments.verify');
     });
 });

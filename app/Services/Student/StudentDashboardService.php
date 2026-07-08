@@ -7,6 +7,9 @@ namespace App\Services\Student;
 use App\Booking\Contracts\StudentBookingServiceInterface;
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Settings\FeatureSettings;
+use App\Wallet\Support\WalletMoneyFormatter;
 use Illuminate\Support\Collection;
 
 final class StudentDashboardService
@@ -15,6 +18,7 @@ final class StudentDashboardService
         private readonly StudentBookingServiceInterface $bookings,
         private readonly HomeworkServiceInterface $homework,
         private readonly StudentFavoriteInstructorService $favorites,
+        private readonly FeatureSettings $features,
     ) {}
 
     /**
@@ -46,6 +50,7 @@ final class StudentDashboardService
             ->get();
         $favoriteInstructors = $this->favorites->bookableFavorites($student, 4);
         $profileCompletion = $this->profileCompletion($student);
+        $wallet = $this->walletSummary($student);
 
         return [
             'profile_completion' => $profileCompletion,
@@ -65,12 +70,43 @@ final class StudentDashboardService
             'pending_homework_count' => (int) ($homeworkStats->pending ?? 0),
             'overdue_homework_count' => (int) ($homeworkStats->overdue ?? 0),
             'default_currency' => $student->profile?->country?->defaultCurrency,
-            'safe_placeholders' => [
-                'wallet' => 'Wallet setup will be available in a later phase.',
+            'wallet' => $wallet,
+            'safe_placeholders' => array_filter([
+                // Real balance data replaces this placeholder once the
+                // wallet module is enabled and the student has a wallet —
+                // otherwise it stays a safe "nothing to show yet" tile.
+                'wallet' => $wallet === null ? 'Wallet setup will be available in a later phase.' : null,
                 'payments' => 'Payment history will appear after bookings are paid.',
                 'meetings' => 'Meeting links will appear after lessons are scheduled.',
-            ],
+            ]),
             'recommended_next_action' => $this->recommendedNextAction($profileCompletion, $activeGoals, $favoriteInstructors, $upcoming),
+        ];
+    }
+
+    /**
+     * Read-only — never creates a wallet. Returns null (safe placeholder
+     * stays) when the module is off or the student has none yet.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function walletSummary(User $student): ?array
+    {
+        if (! $this->features->wallet_enabled) {
+            return null;
+        }
+
+        $wallet = Wallet::query()->forUser($student->id)->with('currency')->first();
+
+        if ($wallet === null) {
+            return null;
+        }
+
+        return [
+            'status' => $wallet->status,
+            'currency' => $wallet->currency_code,
+            'balance' => WalletMoneyFormatter::format($wallet->balance_minor, $wallet->currency, $wallet->currency_code),
+            'available_balance' => WalletMoneyFormatter::format($wallet->available_balance_minor, $wallet->currency, $wallet->currency_code),
+            'held_balance' => WalletMoneyFormatter::format($wallet->held_balance_minor, $wallet->currency, $wallet->currency_code),
         ];
     }
 

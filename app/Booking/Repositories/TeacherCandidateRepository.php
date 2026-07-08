@@ -27,6 +27,7 @@ final class TeacherCandidateRepository implements TeacherCandidateRepositoryInte
 
         return User::query()
             ->whereIn('id', $teacherIds)
+            ->where('status', User::STATUS_ACTIVE)
             ->whereHas('profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
             ->with('profile')
             ->get();
@@ -42,10 +43,12 @@ final class TeacherCandidateRepository implements TeacherCandidateRepositoryInte
                 ->exists();
     }
 
+    /** Approved/published instructor whose account is also currently active — not just profile-approved. */
     public function isApprovedTeacher(int $teacherId): bool
     {
         return User::query()
             ->whereKey($teacherId)
+            ->where('status', User::STATUS_ACTIVE)
             ->whereHas('profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
             ->exists();
     }
@@ -53,6 +56,7 @@ final class TeacherCandidateRepository implements TeacherCandidateRepositoryInte
     public function availableSubjects(): Collection
     {
         return TeacherSubject::query()
+            ->whereHas('teacher', fn ($q) => $q->where('status', User::STATUS_ACTIVE))
             ->whereHas('teacher.profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
             ->distinct()
             ->orderBy('subject')

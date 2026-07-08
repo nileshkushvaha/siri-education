@@ -6,17 +6,21 @@ namespace App\Filament\Resources\TeacherLeave\Tables;
 
 use App\Filament\Support\CsvExport;
 use App\Models\TeacherUnavailability;
+use App\Services\Instructor\InstructorTimeOffService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\ValidationException;
 
 class TeacherLeaveTable
 {
@@ -55,7 +59,18 @@ class TeacherLeaveTable
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->authorize(fn (TeacherUnavailability $record): bool => auth()->user()?->can('delete', $record) ?? false)
+                    ->action(function (TeacherUnavailability $record): void {
+                        try {
+                            app(InstructorTimeOffService::class)->delete($record, auth()->user());
+                            Notification::make()->title('Time off deleted.')->success()->send();
+                        } catch (ValidationException $e) {
+                            Notification::make()->title('Unable to delete time off.')->body($e->validator->errors()->first())->danger()->send();
+                        } catch (AuthorizationException) {
+                            Notification::make()->title('You are not authorized to delete this time off.')->danger()->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -70,7 +85,26 @@ class TeacherLeaveTable
                             'Reason' => 'reason',
                         ], 'teacher-leave.csv'))
                         ->deselectRecordsAfterCompletion(),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
+                        ->action(function (Collection $records): void {
+                            $service = app(InstructorTimeOffService::class);
+                            $actor = auth()->user();
+                            $failures = 0;
+
+                            foreach ($records as $record) {
+                                try {
+                                    $service->delete($record, $actor);
+                                } catch (ValidationException|AuthorizationException) {
+                                    $failures++;
+                                }
+                            }
+
+                            $failures > 0
+                                ? Notification::make()->title("Deleted with {$failures} failure(s).")->warning()->send()
+                                : Notification::make()->title('Time off deleted.')->success()->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ])
             ->defaultSort('starts_at', 'desc');

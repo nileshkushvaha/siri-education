@@ -112,6 +112,11 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(LoginHistory::class)->latest('logged_in_at');
     }
 
+    public function wallets(): HasMany
+    {
+        return $this->hasMany(Wallet::class);
+    }
+
     public function authoredPosts(): HasMany
     {
         return $this->hasMany(Post::class, 'author_id');

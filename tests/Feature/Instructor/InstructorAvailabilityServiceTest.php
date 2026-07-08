@@ -20,6 +20,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -29,7 +30,7 @@ class InstructorAvailabilityServiceTest extends TestCase
 
     public function test_service_creates_timezone_scoped_availability_for_bookable_instructor(): void
     {
-        $actor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $actor = $this->permittedAdmin();
         $teacher = $this->instructor(InstructorStatus::Approved, 'America/New_York');
 
         $availability = app(InstructorAvailabilityService::class)->create([
@@ -48,7 +49,7 @@ class InstructorAvailabilityServiceTest extends TestCase
 
     public function test_service_rejects_published_availability_for_non_bookable_instructor(): void
     {
-        $actor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $actor = $this->permittedAdmin();
         $teacher = $this->instructor(InstructorStatus::Suspended);
 
         $this->expectException(ValidationException::class);
@@ -64,7 +65,7 @@ class InstructorAvailabilityServiceTest extends TestCase
 
     public function test_service_rejects_overlapping_active_windows(): void
     {
-        $actor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $actor = $this->permittedAdmin();
         $teacher = $this->instructor();
         $service = app(InstructorAvailabilityService::class);
 
@@ -121,7 +122,7 @@ class InstructorAvailabilityServiceTest extends TestCase
 
     public function test_time_off_service_stores_local_input_as_utc_and_blocks_slots(): void
     {
-        $actor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $actor = $this->permittedAdmin();
         $teacher = $this->instructor(InstructorStatus::Approved, 'Asia/Kolkata');
         BookingType::factory()->create([
             'key' => 'free_demo',
@@ -205,5 +206,21 @@ class InstructorAvailabilityServiceTest extends TestCase
         );
 
         return $user->refresh();
+    }
+
+    private function permittedAdmin(): User
+    {
+        $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+
+        foreach (['Create:TeacherAvailability', 'Update:TeacherAvailability', 'Delete:TeacherAvailability', 'Create:TeacherUnavailability', 'Update:TeacherUnavailability', 'Delete:TeacherUnavailability'] as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
+
+        $admin->givePermissionTo([
+            'Create:TeacherAvailability', 'Update:TeacherAvailability', 'Delete:TeacherAvailability',
+            'Create:TeacherUnavailability', 'Update:TeacherUnavailability', 'Delete:TeacherUnavailability',
+        ]);
+
+        return $admin;
     }
 }

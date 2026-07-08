@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Guest;
 
+use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Models\Booking;
 use Illuminate\Http\Request;
@@ -26,6 +27,11 @@ final class GuestBookingResource extends JsonResource
             'ends_at' => $this->ends_at->timezone($this->timezone)->toIso8601String(),
             'timezone' => $this->timezone,
             'guest_name' => $this->guest_name,
+            'payment_status' => $this->payment_status->value,
+            'price' => $this->price,
+            'currency' => $this->currency,
+            'requires_payment' => $this->payment_status !== BookingPaymentStatus::NotRequired,
+            'is_free_booking' => $this->price === null || (float) $this->price <= 0,
             'subject' => $this->meta['subject'] ?? null,
             'grade' => $this->meta['grade'] ?? null,
             'notes' => $this->notes,

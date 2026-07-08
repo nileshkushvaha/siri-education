@@ -15,6 +15,7 @@ use App\Models\StudentFavoriteInstructor;
 use App\Models\Subject;
 use App\Models\TeacherSubject;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
@@ -311,7 +312,9 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
         $this->assertFalse(Schema::hasTable('student_profiles'));
         $this->assertFalse(Schema::hasTable('instructors'));
         $this->assertFalse(Schema::hasTable('instructor_profiles'));
-        $this->assertFalse(Schema::hasTable('wallets'));
+        // wallets is the approved Phase 9 foundation; marketplace browsing must
+        // still never touch it.
+        $this->assertSame(0, Wallet::count());
         $this->assertFalse(Schema::hasTable('payments'));
     }
 

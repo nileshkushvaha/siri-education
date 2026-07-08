@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\BookingTypes\Schemas;
 
 use App\Booking\Registry\BookingTypeRegistry;
+use App\Models\Currency;
+use App\Settings\GeneralSettings;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -79,9 +81,10 @@ class BookingTypeForm
                                 ->minValue(0)
                                 ->visible(fn (Get $get): bool => (bool) $get('is_paid'))
                                 ->requiredIfAccepted('is_paid'),
-                            TextInput::make('currency')
-                                ->length(3)
-                                ->placeholder('USD')
+                            Select::make('currency')
+                                ->options(fn (): array => Currency::query()->active()->orderBy('code')->pluck('code', 'code')->all())
+                                ->searchable()
+                                ->default(fn (): string => app(GeneralSettings::class)->default_currency)
                                 ->visible(fn (Get $get): bool => (bool) $get('is_paid')),
                         ]),
                         Grid::make(2)->schema([

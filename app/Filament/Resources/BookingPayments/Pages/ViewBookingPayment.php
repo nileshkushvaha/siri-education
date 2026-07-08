@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\BookingPayments\Pages;
+
+use App\Filament\Resources\BookingPayments\BookingPaymentResource;
+use Filament\Resources\Pages\ViewRecord;
+
+class ViewBookingPayment extends ViewRecord
+{
+    protected static string $resource = BookingPaymentResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [];
+    }
+}

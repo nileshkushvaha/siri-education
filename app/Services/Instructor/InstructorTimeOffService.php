@@ -8,6 +8,7 @@ use App\Models\TeacherUnavailability;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -30,6 +31,8 @@ final class InstructorTimeOffService
     {
         return DB::transaction(function () use ($data, $actor): TeacherUnavailability {
             $teacher = $this->teacher((int) $data['teacher_id']);
+            $this->assertCanCreate($actor, $teacher);
+
             $payload = $this->payload($data, $teacher, $actor);
 
             $this->assertValidRange($payload['starts_at'], $payload['ends_at']);
@@ -62,6 +65,8 @@ final class InstructorTimeOffService
     {
         return DB::transaction(function () use ($leave, $data, $actor): TeacherUnavailability {
             $teacher = $this->teacher((int) ($data['teacher_id'] ?? $leave->teacher_id));
+            $this->assertCanManage($actor, $leave, $teacher, 'update');
+
             $payload = $this->payload([
                 'teacher_id' => $teacher->id,
                 'starts_at' => $data['starts_at'] ?? $leave->starts_at,
@@ -94,6 +99,8 @@ final class InstructorTimeOffService
     public function delete(TeacherUnavailability $leave, User $actor): void
     {
         DB::transaction(function () use ($leave, $actor): void {
+            $this->assertCanManage($actor, $leave, null, 'delete');
+
             $properties = $this->auditProperties($leave);
             $leave->delete();
 
@@ -163,5 +170,41 @@ final class InstructorTimeOffService
             'timezone' => $leave->timezone,
             'reason_present' => filled($leave->reason),
         ];
+    }
+
+    /**
+     * Instructors may only manage their own record; anyone else needs
+     * the equivalent Shield-style admin permission (see
+     * TeacherUnavailabilityPolicy). Non-instructor actors (students,
+     * public users) cannot self-service regardless of the target id.
+     */
+    private function assertCanCreate(User $actor, User $teacher): void
+    {
+        if ($this->isSelfService($actor, $teacher->id)) {
+            return;
+        }
+
+        if (! $actor->can('create', TeacherUnavailability::class)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    private function assertCanManage(User $actor, TeacherUnavailability $leave, ?User $newTeacher, string $ability): void
+    {
+        $ownsExisting = $this->isSelfService($actor, $leave->teacher_id);
+        $ownsTarget = $newTeacher === null || $this->isSelfService($actor, $newTeacher->id);
+
+        if ($ownsExisting && $ownsTarget) {
+            return;
+        }
+
+        if (! $actor->can($ability, $leave)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    private function isSelfService(User $actor, int $teacherId): bool
+    {
+        return $actor->id === $teacherId && $actor->hasRole('instructor');
     }
 }

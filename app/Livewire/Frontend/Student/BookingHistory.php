@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Frontend\Student;
 
 use App\Booking\Contracts\AvailabilityServiceInterface;
+use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\StudentBookingServiceInterface;
@@ -14,6 +15,8 @@ use App\Booking\DTOs\RescheduleBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\InvalidPaymentWebhookException;
+use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Models\Booking;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -44,6 +47,9 @@ final class BookingHistory extends Component
 
     public string $modalBanner = '';
 
+    /** @var array<string, mixed> */
+    public array $paymentOrder = [];
+
     private StudentBookingServiceInterface $bookings;
 
     private BookingRepositoryInterface $repository;
@@ -52,16 +58,24 @@ final class BookingHistory extends Component
 
     private AvailabilityServiceInterface $availability;
 
+    private BookingPaymentServiceInterface $payments;
+
+    private RazorpayPaymentProvider $razorpay;
+
     public function boot(
         StudentBookingServiceInterface $bookings,
         BookingRepositoryInterface $repository,
         BookingServiceInterface $bookingService,
         AvailabilityServiceInterface $availability,
+        BookingPaymentServiceInterface $payments,
+        RazorpayPaymentProvider $razorpay,
     ): void {
         $this->bookings = $bookings;
         $this->repository = $repository;
         $this->bookingService = $bookingService;
         $this->availability = $availability;
+        $this->payments = $payments;
+        $this->razorpay = $razorpay;
     }
 
     public function updatingStatusFilter(): void
@@ -170,6 +184,59 @@ final class BookingHistory extends Component
             $this->selectedBooking = $updated->loadMissing(['type', 'host']);
             $this->cancelPanelOpen = false;
         } catch (BookingException $exception) {
+            $this->modalBanner = $exception->getMessage();
+        }
+    }
+
+    public function initiatePayment(): void
+    {
+        if (! $this->selectedBooking) {
+            return;
+        }
+
+        Gate::authorize('pay', $this->selectedBooking);
+
+        $this->modalBanner = '';
+
+        try {
+            $this->payments->initiate($this->selectedBooking);
+            $this->paymentOrder = $this->razorpay->checkoutPayload($this->selectedBooking);
+
+            $this->dispatch(
+                'razorpay-checkout-ready',
+                orderId: $this->paymentOrder['order_id'],
+                keyId: $this->paymentOrder['key_id'],
+                amountMinor: $this->paymentOrder['amount_minor'],
+                currency: $this->paymentOrder['currency'],
+                name: auth()->user()?->name ?? '',
+                email: auth()->user()?->email ?? '',
+            );
+        } catch (BookingException $exception) {
+            $this->modalBanner = $exception->getMessage();
+        }
+    }
+
+    public function verifyPayment(string $orderId, string $paymentId, string $signature): void
+    {
+        if (! $this->selectedBooking) {
+            return;
+        }
+
+        Gate::authorize('pay', $this->selectedBooking);
+
+        $this->modalBanner = '';
+
+        try {
+            $this->razorpay->verifyCheckout($this->selectedBooking, $orderId, $paymentId, $signature);
+
+            $booking = $this->selectedBooking->refresh();
+
+            if ($booking->payment_status->isPayable()) {
+                $this->payments->markPaid($booking, (string) $booking->payment_reference);
+            }
+
+            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'host']);
+        } catch (InvalidPaymentWebhookException|BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
         }
     }

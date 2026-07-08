@@ -26,6 +26,8 @@ final class AvailabilityManager extends Component
 
     public ?string $timezone = null;
 
+    public bool $hasProfileTimezone = true;
+
     public int $dayOfWeek = 1;
 
     public string $startTime = '09:00';
@@ -46,7 +48,11 @@ final class AvailabilityManager extends Component
     {
         abort_unless(auth()->user()?->hasRole('instructor'), 403);
 
-        $this->timezone = auth()->user()->profile?->timezone ?: config('app.timezone', 'UTC');
+        $profileTimezone = auth()->user()->profile?->timezone;
+        $this->hasProfileTimezone = filled($profileTimezone);
+        // Missing profile timezone: leave blank so the instructor must
+        // explicitly choose one — never silently publish on the app timezone.
+        $this->timezone = $profileTimezone;
         $this->weekdays = collect(Weekday::cases())
             ->mapWithKeys(fn (Weekday $day): array => [$day->value => $day->label()])
             ->all();

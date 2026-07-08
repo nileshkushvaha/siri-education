@@ -47,6 +47,7 @@ final class BookingPaymentWebhookController extends Controller
                 PaymentWebhookEvent::Succeeded => $payments->markPaid($booking, $webhook->reference),
                 PaymentWebhookEvent::Failed => $payments->markFailed($booking, $webhook->reference, $webhook->reason),
                 PaymentWebhookEvent::Refunded => $payments->recordRefund($booking, $webhook->reason),
+                PaymentWebhookEvent::Ignored => throw new BookingException('Event type is not actionable.'),
             };
         } catch (BookingException $e) {
             // Already processed / out-of-state — acknowledge so the provider stops retrying.

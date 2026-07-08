@@ -8,6 +8,7 @@ use App\Booking\Contracts\AvailabilityRepositoryInterface;
 use App\Booking\Contracts\AvailabilityServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
+use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\DTOs\AvailabilityQueryData;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\Exceptions\SlotUnavailableException;
@@ -34,10 +35,15 @@ final class AvailabilityService implements AvailabilityServiceInterface
         private readonly BookingWindowRule $window,
         private readonly SlotGenerator $generator,
         private readonly BookingSettings $settings,
+        private readonly TeacherCandidateRepositoryInterface $teachers,
     ) {}
 
     public function slots(AvailabilityQueryData $query): Collection
     {
+        if (! $this->teachers->isApprovedTeacher($query->hostId)) {
+            return new Collection;
+        }
+
         $type = $this->types->requireActiveByKey($query->typeKey);
         $duration = $type->duration_minutes;
         $buffer = $type->buffer_minutes;
@@ -130,6 +136,14 @@ final class AvailabilityService implements AvailabilityServiceInterface
     ): void {
         $startsAt = $startsAt->utc();
         $endsAt = $endsAt->utc();
+
+        // Re-verified here (not just by the caller before the host lock) so a
+        // teacher deactivated/rejected between the caller's eligibility check
+        // and lock acquisition can never still be booked — this is the final
+        // truth check, run both fast-fail and inside the race-safe lock.
+        if (! $this->teachers->isApprovedTeacher($hostId)) {
+            throw SlotUnavailableException::for($hostId, $startsAt);
+        }
 
         if (! $this->availability->windowCovers($hostId, $startsAt, $endsAt)) {
             throw SlotUnavailableException::for($hostId, $startsAt);

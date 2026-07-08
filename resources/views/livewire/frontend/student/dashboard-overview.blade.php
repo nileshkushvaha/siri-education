@@ -129,6 +129,14 @@
     </x-account.card>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        @if($wallet)
+            <a href="{{ route('dashboard.wallet') }}" class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 hover:bg-white/[0.05] transition-colors">
+                <p class="text-sm font-semibold text-white">Wallet</p>
+                <p class="text-lg font-bold text-emerald-400 mt-1">{{ $wallet['available_balance'] }}</p>
+                <p class="text-xs text-slate-500 mt-1">Available balance &middot; {{ $wallet['balance'] }} total</p>
+            </a>
+        @endif
+
         @foreach($safePlaceholders as $label => $message)
             <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
                 <p class="text-sm font-semibold text-white capitalize">{{ $label }}</p>

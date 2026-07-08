@@ -31,9 +31,11 @@ use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Validation\BookingValidationPipeline;
 use App\Booking\Validation\Rules\BookingWindowRule;
 use App\Booking\Validation\Rules\DuplicateBookingRule;
+use App\Booking\Validation\Rules\SelfBookingRule;
 use App\Booking\Validation\Rules\TeacherAvailabilityRule;
 use App\Models\Booking;
 use App\Models\BookingType;
+use App\Models\User;
 use App\Settings\BookingSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +52,7 @@ final class BookingService implements BookingServiceInterface
     /** @var list<class-string> fast-fail rules run before the host lock */
     private const array GLOBAL_RULES = [
         BookingWindowRule::class,
+        SelfBookingRule::class,
         DuplicateBookingRule::class,
         TeacherAvailabilityRule::class,
     ];
@@ -62,6 +65,7 @@ final class BookingService implements BookingServiceInterface
         private readonly AvailabilityServiceInterface $availability,
         private readonly BookingWindowRule $window,
         private readonly BookingSettings $settings,
+        private readonly BookingPriceCalculator $priceCalculator,
         private readonly CreateBookingAction $createAction,
         private readonly ConfirmBookingAction $confirmAction,
         private readonly CancelBookingAction $cancelAction,
@@ -97,15 +101,19 @@ final class BookingService implements BookingServiceInterface
                 // Paid bookings are reservations: they hold the slot as
                 // Pending until payment settles (BookingPaymentService
                 // confirms) or the hold lapses (booking:release-expired).
-                $autoConfirm = ! $type->requires_approval && ! $type->is_paid;
+                // A paid type explicitly configured with a zero price is
+                // treated as free (BookingPriceCalculator), never as an
+                // unpaid reservation.
+                $price = $this->priceCalculator->calculate($type, $this->attendeeFor($data));
+                $autoConfirm = ! $type->requires_approval && $price->isFreeBooking;
                 $status = $autoConfirm ? BookingStatus::Confirmed : BookingStatus::Pending;
 
                 $booking = $this->createAction->execute($data, $status, [
                     'booking_type_id' => $type->id,
-                    'payment_status' => $type->is_paid ? BookingPaymentStatus::Pending : BookingPaymentStatus::NotRequired,
-                    'price' => $type->is_paid ? $type->price : null,
-                    'currency' => $type->is_paid ? $type->currency : null,
-                    'reserved_until' => $type->is_paid
+                    'payment_status' => $price->requiresPayment ? BookingPaymentStatus::Pending : BookingPaymentStatus::NotRequired,
+                    'price' => $price->requiresPayment ? $price->payableAmount : null,
+                    'currency' => $price->requiresPayment ? $price->currency : null,
+                    'reserved_until' => $price->requiresPayment
                         ? now()->addMinutes($this->settings->payment_reservation_minutes)
                         : null,
                     'confirmed_at' => $autoConfirm ? now() : null,
@@ -252,6 +260,12 @@ final class BookingService implements BookingServiceInterface
     private function sharedSlotKey(BookingType $type): ?string
     {
         return $type->max_attendees === 1 ? null : $type->key;
+    }
+
+    /** Only used for currency display fallback — never for authorization. */
+    private function attendeeFor(CreateBookingData $data): ?User
+    {
+        return $data->attendeeId !== null ? User::find($data->attendeeId) : null;
     }
 
     private function assertCapacity(BookingType $type, CreateBookingData $data): void

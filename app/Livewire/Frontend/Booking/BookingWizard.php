@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Livewire\Frontend\Booking;
 
+use App\Booking\Contracts\BookingPaymentServiceInterface;
+use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\InvalidPaymentWebhookException;
+use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
 use App\Rules\TurnstileToken;
 use App\Settings\BookingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 final class BookingWizard extends Component
@@ -67,15 +72,43 @@ final class BookingWizard extends Component
     /** @var array<string, mixed>|null */
     public ?array $result = null;
 
+    #[Locked]
+    public ?string $bookingId = null;
+
+    /** @var array<string, mixed> */
+    public array $paymentOrder = [];
+
+    public string $paymentBanner = '';
+
+    /**
+     * Set once in mount() from a server-validated slug lookup and never
+     * again — #[Locked] rejects any client-submitted update, so a crafted
+     * Livewire request cannot swap the marketplace-locked instructor.
+     */
+    #[Locked]
     public ?int $lockedInstructorId = null;
 
+    #[Locked]
     public ?string $lockedInstructorName = null;
 
     private BookingWizardService $wizard;
 
-    public function boot(BookingWizardService $wizard): void
-    {
+    private BookingRepositoryInterface $bookings;
+
+    private BookingPaymentServiceInterface $payments;
+
+    private RazorpayPaymentProvider $razorpay;
+
+    public function boot(
+        BookingWizardService $wizard,
+        BookingRepositoryInterface $bookings,
+        BookingPaymentServiceInterface $payments,
+        RazorpayPaymentProvider $razorpay,
+    ): void {
         $this->wizard = $wizard;
+        $this->bookings = $bookings;
+        $this->payments = $payments;
+        $this->razorpay = $razorpay;
     }
 
     public function mount(): void
@@ -191,10 +224,65 @@ final class BookingWizard extends Component
                 'teacher_id' => $this->lockedInstructorId,
             ]);
 
+            $this->bookingId = $booking->id;
             $this->result = $this->wizard->result($booking);
             $this->goTo(7);
         } catch (BookingException $exception) {
             $this->banner = $exception->getMessage();
+        }
+    }
+
+    public function initiatePayment(): void
+    {
+        $this->paymentBanner = '';
+
+        if ($this->bookingId === null) {
+            return;
+        }
+
+        try {
+            $booking = $this->bookings->findOrFail($this->bookingId);
+            $this->payments->initiate($booking);
+            $this->paymentOrder = $this->razorpay->checkoutPayload($booking);
+
+            $this->dispatch(
+                'razorpay-checkout-ready',
+                orderId: $this->paymentOrder['order_id'],
+                keyId: $this->paymentOrder['key_id'],
+                amountMinor: $this->paymentOrder['amount_minor'],
+                currency: $this->paymentOrder['currency'],
+                name: $this->name,
+                email: $this->email,
+            );
+        } catch (BookingException $exception) {
+            $this->paymentBanner = $exception->getMessage();
+        }
+    }
+
+    public function verifyPayment(string $orderId, string $paymentId, string $signature): void
+    {
+        $this->paymentBanner = '';
+
+        if ($this->bookingId === null) {
+            return;
+        }
+
+        try {
+            $booking = $this->bookings->findOrFail($this->bookingId);
+            $this->razorpay->verifyCheckout($booking, $orderId, $paymentId, $signature);
+
+            // Reload before the state check: a concurrent webhook delivery
+            // may have already settled this booking (see the guest
+            // controller's identical guard for why a fresh read matters).
+            $booking->refresh();
+
+            if ($booking->payment_status->isPayable()) {
+                $this->payments->markPaid($booking, (string) $booking->payment_reference);
+            }
+
+            $this->result = $this->wizard->result($booking->refresh());
+        } catch (InvalidPaymentWebhookException|BookingException $exception) {
+            $this->paymentBanner = $exception->getMessage();
         }
     }
 
@@ -226,6 +314,9 @@ final class BookingWizard extends Component
             'cfTurnstileResponse',
             'banner',
             'result',
+            'bookingId',
+            'paymentOrder',
+            'paymentBanner',
         ]);
 
         $this->step = 1;

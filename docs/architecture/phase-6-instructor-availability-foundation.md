@@ -647,3 +647,151 @@ Recommended Phase 6.1 scope:
 - Add optional `teacher_availability_exceptions` only if one-off positive availability is required.
 - Keep generated slots dynamic.
 - Keep booking creation and conflict authority inside the existing booking engine.
+
+## Phase 6.2 Strict Audit
+
+Phase 6.2 (`docs/audits/phase-6-instructor-availability-foundation-audit.md`) scored the
+foundation 88/100, **PROCEED WITH CAUTION** — no blocking issues, but four
+hardening gaps before Phase 7:
+
+1. Filament table row/bulk delete for Teacher Availability and Teacher
+   Leave bypassed the availability/time-off services.
+2. Services did not centrally assert actor ownership or admin
+   permission — enforcement lived only in callers/Filament policies.
+3. Cross-user, admin-permission, service-backed-Filament-action,
+   invalid-range, and UI delete/toggle test coverage was incomplete.
+4. Missing `user_profiles.timezone` silently fell back to the app
+   timezone with no UI warning.
+
+## Phase 6.3 Availability Admin, Policy & Test Hardening
+
+Closes all four Phase 6.2 gaps. No new tables, no booking/payment/
+wallet/meeting/homework/review expansion, no student booking UI.
+
+### 1. Service-backed Filament delete/bulk delete
+
+`TeacherAvailabilityTable` and `TeacherLeaveTable` no longer use a bare
+`DeleteAction::make()` / `DeleteBulkAction::make()`. Both now:
+
+- `->authorize()` (row) / `->authorizeIndividualRecords('delete')`
+  (bulk) against the resource's `delete` policy ability.
+- `->action()` a closure that calls
+  `InstructorAvailabilityService::delete()` /
+  `InstructorTimeOffService::delete()` — so audit logging, and the new
+  service-level ownership/permission guard (below), always run.
+- Catch `ValidationException` / `AuthorizationException` and surface a
+  Filament danger notification instead of a raw exception; bulk
+  actions report a partial-failure count if some records fail.
+
+### 2. Service-level ownership and admin permission guards
+
+`InstructorAvailabilityService` and `InstructorTimeOffService` gained
+`assertCanCreate()` / `assertCanManage()` / `isSelfService()` private
+guards, called at the top of every `create`/`update`/`delete`. An
+actor may proceed only if:
+
+- **Self-service**: `actor->id === teacher_id` and
+  `actor->hasRole('instructor')` — an instructor managing their own
+  record, matching the existing Livewire scoping
+  (`where('teacher_id', auth()->id())`).
+- **Admin**: `actor->can($ability, $record)` (or the model class for
+  `create`) resolves true via `TeacherAvailabilityPolicy` /
+  `TeacherUnavailabilityPolicy` — i.e. the actor holds the matching
+  Shield permission.
+
+Anything else — cross-instructor access, a student, an unpermitted
+manager, or an `update()` call that tries to reassign `teacher_id` to
+someone the actor doesn't own/administer — throws
+`Illuminate\Auth\Access\AuthorizationException`. This is defense in
+depth: Filament policies and Livewire's `teacher_id` scoping already
+blocked most of these paths, but the service itself is now the
+authoritative boundary regardless of caller.
+
+Two more service-level validations were added in the same pass:
+
+- `assertValidEffectiveRange()` — `effective_until` before
+  `effective_from` is rejected.
+- `assertTimezoneResolved()` — publishing (`is_active = true`) is
+  rejected when neither the call nor the instructor profile supplies
+  a timezone (see the timezone UX note below); draft creation is
+  unaffected.
+
+### 3. Missing timezone UX
+
+`AvailabilityManager` (`app/Livewire/Frontend/Instructor/AvailabilityManager.php`)
+exposes `hasProfileTimezone` and leaves `$timezone` blank (rather than
+defaulting to `config('app.timezone')`) when
+`user_profiles.timezone` is empty. The Blade view
+(`resources/views/livewire/frontend/instructor/availability-manager.blade.php`)
+shows a warning banner linking to `profile.show` in that state, and
+the timezone `<select>` gets an empty placeholder option so the
+instructor must explicitly choose one — Livewire's `required` rule on
+`timezone` then blocks submission until they do. The service-level
+`assertTimezoneResolved()` guard backs this up for every entry point
+(Filament included), so publishing can never silently use the app
+timezone. Drafts (`is_active = false`) may still be created without a
+timezone choice, per the documented exception in `docs/booking.md`.
+
+### 4–8. Test coverage
+
+`tests/Feature/Instructor/InstructorAvailabilityHardeningTest.php`
+(34 tests) adds: invalid time/timezone/effective-range rejection;
+cross-instructor denial at the service and Livewire layers; permitted
+vs. non-permitted admin create/update/delete for both services;
+Filament row/bulk delete proven service-backed (audit log assertion)
+and permission-gated (`assertTableActionHidden`); frontend toggle/
+delete/create-time-off/validation/missing-timezone-warning coverage;
+a no-out-of-scope-record-creation test (bookings, homework
+assignments, learning-plan reviews unchanged; no wallet/payment/
+meeting/reservation/slot tables exist); and a dynamically-computed DST
+spring-forward test (see `docs/booking.md`). The pre-existing
+`InstructorAvailabilityServiceTest` was updated to use an authorized
+actor (self-service instructor or a permitted admin) now that the
+service enforces authorization — it previously used an arbitrary
+unrelated user, which is exactly the gap this phase closes.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `app/Services/Instructor/InstructorAvailabilityService.php` | Ownership/admin guards, effective-range check, timezone-resolved guard. |
+| `app/Services/Instructor/InstructorTimeOffService.php` | Ownership/admin guards. |
+| `app/Filament/Resources/TeacherAvailability/Tables/TeacherAvailabilityTable.php` | Service-backed row/bulk delete. |
+| `app/Filament/Resources/TeacherLeave/Tables/TeacherLeaveTable.php` | Service-backed row/bulk delete. |
+| `app/Livewire/Frontend/Instructor/AvailabilityManager.php` | `hasProfileTimezone`, blank timezone default when missing. |
+| `resources/views/livewire/frontend/instructor/availability-manager.blade.php` | Warning banner, blank timezone placeholder option. |
+| `tests/Feature/Instructor/InstructorAvailabilityServiceTest.php` | Actors updated to satisfy the new authorization guard. |
+| `tests/Feature/Instructor/InstructorAvailabilityHardeningTest.php` | New — see above. |
+| `docs/booking.md` | DST note, timezone-UX note, service-backed delete/bulk-delete note, ownership-guard note. |
+| `docs/architecture/phase-6-instructor-availability-foundation.md` | This section. |
+
+No migrations were added — all four gaps were closable in the
+existing service/Filament/Livewire layer without schema changes.
+
+### Remaining gaps after Phase 6.3
+
+- Date-specific positive availability exceptions
+  (`teacher_availability_exceptions`) remain deferred, unchanged from
+  Phase 6.1 — still not required by any approved product requirement.
+- `InstructorSlotPreviewService` remains deferred.
+- DST coverage is a single dynamic spring-forward test on one
+  Southern Hemisphere timezone; it is not an exhaustive matrix of
+  every IANA timezone's transition rules. Documented as non-blocking:
+  the underlying mechanism (Carbon per-instant offset conversion) is
+  timezone-agnostic, so this is considered representative coverage
+  rather than a gap requiring further tests before Phase 7.
+
+### Phase 6.3 Completion Decision
+
+All four Phase 6.2 hardening items are closed: Filament delete/bulk
+delete no longer bypass services; services centrally assert
+ownership/admin permission; the missing-timezone UX warns and blocks
+publish; and the required test categories (invalid ranges, cross-user
+denial, admin permissions, Filament service-backed actions, frontend
+UI operations, out-of-scope record creation, DST) are covered. Ready
+for a Phase 6 final audit; see the top-level response for command
+output confirming `php artisan test`, `migrate:status`, `route:list`,
+`pint --test`, and `composer validate` all pass with no duplicate
+availability/booking/payment/wallet/meeting/homework/review/instructor/
+profile structures introduced and no booking/payment/wallet/meeting/
+homework/review expansion.

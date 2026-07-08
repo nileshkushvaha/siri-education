@@ -308,6 +308,22 @@
                                 </div>
                             @endif
 
+                            @if($result['requires_payment'] && $result['payment_status'] !== 'paid')
+                                <div class="mx-auto mt-5 max-w-md rounded-2xl border border-indigo-300/30 bg-indigo-400/10 p-4 text-left">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-indigo-200">Payment required</p>
+                                    <p class="mt-1 text-xs text-indigo-200">Your slot is reserved while payment is pending. Complete payment to confirm.</p>
+
+                                    @if($paymentBanner)
+                                        <p class="mt-3 rounded-lg bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-200">{{ $paymentBanner }}</p>
+                                    @endif
+
+                                    <x-ui.button type="button" class="mt-3 w-full justify-center" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
+                                        <span wire:loading.remove wire:target="initiatePayment">Pay with Razorpay</span>
+                                        <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
+                                    </x-ui.button>
+                                </div>
+                            @endif
+
                             <div class="mt-6 flex flex-wrap justify-center gap-3">
                                 @if($result['manage_url'])
                                     <x-ui.button href="{{ $result['manage_url'] }}">Manage booking</x-ui.button>
@@ -368,3 +384,7 @@
         </div>
     </div>
 </div>
+
+@script
+@include('livewire.frontend.booking.partials.razorpay-checkout-script')
+@endscript

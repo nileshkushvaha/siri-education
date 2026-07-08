@@ -10,4 +10,7 @@ enum PaymentWebhookEvent: string
     case Succeeded = 'succeeded';
     case Failed = 'failed';
     case Refunded = 'refunded';
+
+    /** Verified but not actionable (e.g. payment.authorized) — acknowledge, do not process. */
+    case Ignored = 'ignored';
 }

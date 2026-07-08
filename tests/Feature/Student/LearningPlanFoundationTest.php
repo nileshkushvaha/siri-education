@@ -14,6 +14,7 @@ use App\Models\StudentLearningGoal;
 use App\Models\StudentLearningPlan;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Student\LearningPlanService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,7 +108,9 @@ class LearningPlanFoundationTest extends TestCase
 
         $this->assertSame(0, Booking::count());
         $this->assertSame(0, HomeworkAssignment::count());
-        $this->assertFalse(Schema::hasTable('wallets'));
+        // wallets is the approved Phase 9 foundation; learning-plan creation
+        // must still never touch it.
+        $this->assertSame(0, Wallet::count());
         $this->assertFalse(Schema::hasTable('payments'));
     }
 

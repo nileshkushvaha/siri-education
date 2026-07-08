@@ -59,6 +59,9 @@ final class DashboardOverview extends Component
     /** @var array<string, string> */
     public array $safePlaceholders = [];
 
+    /** @var array<string, mixed>|null */
+    public ?array $wallet = null;
+
     public function boot(): void
     {
         $this->nextClasses = new Collection;
@@ -89,6 +92,7 @@ final class DashboardOverview extends Component
         $this->favoriteInstructorCount = $summary['favorite_instructor_count'];
         $this->bookableFavoriteInstructorCount = $summary['bookable_favorite_instructor_count'];
         $this->safePlaceholders = $summary['safe_placeholders'];
+        $this->wallet = $summary['wallet'];
         $this->recommendedNextAction = $summary['recommended_next_action'];
     }
 

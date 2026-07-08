@@ -1,4 +1,15 @@
 <div class="space-y-6">
+    @unless($hasProfileTimezone)
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+            <p class="font-semibold">Your profile timezone is not set.</p>
+            <p class="mt-1 leading-6">
+                Choose a timezone below for each window, or
+                <a href="{{ route('profile.show') }}" class="underline hover:text-amber-100">set your profile timezone</a>
+                so it fills in automatically next time. A timezone is required before you can add a weekly window.
+            </p>
+        </div>
+    @endunless
+
     <x-account.card>
         <div class="grid gap-4 lg:grid-cols-[1fr_14rem] lg:items-end">
             <div>
@@ -10,6 +21,7 @@
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Timezone</label>
                 <select wire:model.live="timezone" class="mt-2 w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-indigo-400">
+                    <option value="">Select timezone…</option>
                     @foreach(timezone_identifiers_list() as $zone)
                         <option value="{{ $zone }}">{{ $zone }}</option>
                     @endforeach

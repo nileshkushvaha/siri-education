@@ -74,6 +74,39 @@ class BookingPaymentInfolist
                             ->dateTime(),
                     ]),
                 ]),
+
+            Section::make('Resolution')
+                ->description('Phase 10.2B — a payment that settled after its booking went terminal (cancelled/expired). Never the raw webhook payload.')
+                ->visible(fn (BookingPayment $record): bool => ($record->metadata['late_terminal_handled'] ?? false) === true)
+                ->schema([
+                    Grid::make(2)->schema([
+                        TextEntry::make('resolution_state')
+                            ->label('State')
+                            ->badge()
+                            ->state(fn (BookingPayment $record): string => match (true) {
+                                (bool) ($record->metadata['manual_resolution_required'] ?? false) => 'Needs manual resolution',
+                                (bool) ($record->metadata['wallet_ledger_entry_id'] ?? false) => 'Wallet credited',
+                                default => 'Handled',
+                            })
+                            ->color(fn (BookingPayment $record): string => match (true) {
+                                (bool) ($record->metadata['manual_resolution_required'] ?? false) => 'danger',
+                                (bool) ($record->metadata['wallet_ledger_entry_id'] ?? false) => 'info',
+                                default => 'gray',
+                            }),
+                        TextEntry::make('wallet_ledger_entry_id')
+                            ->label('Wallet ledger entry')
+                            ->state(fn (BookingPayment $record): ?string => isset($record->metadata['wallet_ledger_entry_id'])
+                                ? (string) $record->metadata['wallet_ledger_entry_id']
+                                : null)
+                            ->placeholder('—')
+                            ->copyable(),
+                    ]),
+                    TextEntry::make('manual_resolution_reason')
+                        ->label('Manual resolution reason')
+                        ->state(fn (BookingPayment $record): ?string => $record->metadata['manual_resolution_reason'] ?? null)
+                        ->placeholder('—')
+                        ->visible(fn (BookingPayment $record): bool => ($record->metadata['manual_resolution_required'] ?? false) === true),
+                ]),
         ]);
     }
 }

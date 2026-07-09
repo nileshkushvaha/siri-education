@@ -29,10 +29,12 @@ use App\Booking\Exceptions\DuplicateBookingException;
 use App\Booking\Exceptions\SlotUnavailableException;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Validation\BookingValidationPipeline;
+use App\Booking\Validation\Rules\AuthenticatedAttendeeRule;
 use App\Booking\Validation\Rules\BookingWindowRule;
 use App\Booking\Validation\Rules\DuplicateBookingRule;
 use App\Booking\Validation\Rules\SelfBookingRule;
 use App\Booking\Validation\Rules\TeacherAvailabilityRule;
+use App\Booking\Validation\Rules\VerifiedActiveStudentRule;
 use App\Models\Booking;
 use App\Models\BookingType;
 use App\Models\User;
@@ -51,6 +53,16 @@ final class BookingService implements BookingServiceInterface
 {
     /** @var list<class-string> fast-fail rules run before the host lock */
     private const array GLOBAL_RULES = [
+        // Identity/eligibility checks first — fail with the clearest,
+        // most specific message before any scheduling/pricing rule runs.
+        // Billing-profile completeness (country/currency) is checked at
+        // payment-initiation time instead (BookingPaymentService::initiate()),
+        // not here — a student may still create/hold a paid reservation
+        // with an incomplete profile, but is asked to complete it before
+        // paying, which is both the natural UX point and a much narrower
+        // blast radius than blocking booking creation outright.
+        AuthenticatedAttendeeRule::class,
+        VerifiedActiveStudentRule::class,
         BookingWindowRule::class,
         SelfBookingRule::class,
         DuplicateBookingRule::class,
@@ -101,10 +113,22 @@ final class BookingService implements BookingServiceInterface
                 // Paid bookings are reservations: they hold the slot as
                 // Pending until payment settles (BookingPaymentService
                 // confirms) or the hold lapses (booking:release-expired).
-                // A paid type explicitly configured with a zero price is
-                // treated as free (BookingPriceCalculator), never as an
-                // unpaid reservation.
-                $price = $this->priceCalculator->calculate($type, $this->attendeeFor($data));
+                // A paid type with no valid price configured anywhere
+                // (pricing matrix miss AND no legacy price/currency) is a
+                // configuration error, not a free booking — calculate()
+                // throws rather than silently waiving the fee (Phase
+                // 10.2C-Fix). subject/grade (Phase 10.2D) come from
+                // $data->meta the same way StudentBookingResource reads
+                // them back — see CreateBookingData's meta doc comment.
+                // $data->hostId (Phase 10.2F) lets an instructor-specific
+                // price override the base price when one is configured.
+                $price = $this->priceCalculator->calculate(
+                    $type,
+                    $this->attendeeFor($data),
+                    $data->meta['subject'] ?? null,
+                    $data->meta['grade'] ?? null,
+                    $data->hostId,
+                );
                 $autoConfirm = ! $type->requires_approval && $price->isFreeBooking;
                 $status = $autoConfirm ? BookingStatus::Confirmed : BookingStatus::Pending;
 

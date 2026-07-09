@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Booking\Services\PaymentGatewayConfigurationService;
 use App\Settings\BankSettings;
 use App\Settings\PaymentAdvancedSettings;
 use App\Settings\PaymentConfigurationSettings;
@@ -112,8 +113,8 @@ abstract class PaymentSettingsPage extends Page
             'stripe_publishable_key' => $gateways->stripe_publishable_key,
             'stripe_secret_key' => null,
             'stripe_webhook_secret' => null,
-            'stripe_success_url' => $gateways->stripe_success_url,
-            'stripe_failure_url' => $gateways->stripe_failure_url,
+            'stripe_success_url' => $gateways->stripe_success_url ?? url('/payments/stripe/success'),
+            'stripe_failure_url' => $gateways->stripe_failure_url ?? url('/payments/stripe/failure'),
             'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/payments/stripe'),
 
             'razorpay_enabled' => $gateways->razorpay_enabled,
@@ -121,8 +122,8 @@ abstract class PaymentSettingsPage extends Page
             'razorpay_key_id' => $gateways->razorpay_key_id,
             'razorpay_key_secret' => null,
             'razorpay_webhook_secret' => null,
-            'razorpay_success_url' => $gateways->razorpay_success_url,
-            'razorpay_failure_url' => $gateways->razorpay_failure_url,
+            'razorpay_success_url' => $gateways->razorpay_success_url ?? url('/payments/razorpay/success'),
+            'razorpay_failure_url' => $gateways->razorpay_failure_url ?? url('/payments/razorpay/failure'),
             'razorpay_webhook_url' => $gateways->razorpay_webhook_url ?? url('/api/webhooks/payments/razorpay'),
 
             'paypal_enabled' => $gateways->paypal_enabled,
@@ -130,8 +131,8 @@ abstract class PaymentSettingsPage extends Page
             'paypal_client_id' => $gateways->paypal_client_id,
             'paypal_client_secret' => null,
             'paypal_webhook_secret' => null,
-            'paypal_success_url' => $gateways->paypal_success_url,
-            'paypal_failure_url' => $gateways->paypal_failure_url,
+            'paypal_success_url' => $gateways->paypal_success_url ?? url('/payments/paypal/success'),
+            'paypal_failure_url' => $gateways->paypal_failure_url ?? url('/payments/paypal/failure'),
             'paypal_webhook_url' => $gateways->paypal_webhook_url ?? url('/api/webhooks/payments/paypal'),
 
             'cashfree_enabled' => $gateways->cashfree_enabled,
@@ -139,8 +140,8 @@ abstract class PaymentSettingsPage extends Page
             'cashfree_app_id' => $gateways->cashfree_app_id,
             'cashfree_secret_key' => null,
             'cashfree_webhook_secret' => null,
-            'cashfree_success_url' => $gateways->cashfree_success_url,
-            'cashfree_failure_url' => $gateways->cashfree_failure_url,
+            'cashfree_success_url' => $gateways->cashfree_success_url ?? url('/payments/cashfree/success'),
+            'cashfree_failure_url' => $gateways->cashfree_failure_url ?? url('/payments/cashfree/failure'),
             'cashfree_webhook_url' => $gateways->cashfree_webhook_url ?? url('/api/webhooks/payments/cashfree'),
 
             'payu_enabled' => $gateways->payu_enabled,
@@ -149,8 +150,8 @@ abstract class PaymentSettingsPage extends Page
             'payu_public_key' => $gateways->payu_public_key,
             'payu_private_key' => null,
             'payu_webhook_secret' => null,
-            'payu_success_url' => $gateways->payu_success_url,
-            'payu_failure_url' => $gateways->payu_failure_url,
+            'payu_success_url' => $gateways->payu_success_url ?? url('/payments/payu/success'),
+            'payu_failure_url' => $gateways->payu_failure_url ?? url('/payments/payu/failure'),
             'payu_webhook_url' => $gateways->payu_webhook_url ?? url('/api/webhooks/payments/payu'),
 
             'phonepe_enabled' => $gateways->phonepe_enabled,
@@ -159,8 +160,8 @@ abstract class PaymentSettingsPage extends Page
             'phonepe_salt_key' => null,
             'phonepe_salt_index' => $gateways->phonepe_salt_index,
             'phonepe_webhook_secret' => null,
-            'phonepe_success_url' => $gateways->phonepe_success_url,
-            'phonepe_failure_url' => $gateways->phonepe_failure_url,
+            'phonepe_success_url' => $gateways->phonepe_success_url ?? url('/payments/phonepe/success'),
+            'phonepe_failure_url' => $gateways->phonepe_failure_url ?? url('/payments/phonepe/failure'),
             'phonepe_webhook_url' => $gateways->phonepe_webhook_url ?? url('/api/webhooks/payments/phonepe'),
 
             'manual_enabled' => $gateways->manual_enabled,
@@ -264,6 +265,13 @@ abstract class PaymentSettingsPage extends Page
                             ->requiresConfirmation()
                             ->modalDescription('This clears all stored encrypted credentials for every gateway.')
                             ->action(fn () => $this->resetGatewayCredentials()),
+                        Action::make('mark_production_reviewed')
+                            ->label('Mark Production Checklist Reviewed')
+                            ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+                            ->color('success')
+                            ->requiresConfirmation()
+                            ->modalDescription('Confirms an admin has walked through docs/architecture/payment-gateway-production-checklist.md for the currently enabled gateways before enabling them for real traffic.')
+                            ->action(fn () => $this->markProductionChecklistReviewed()),
                     ])->key('form-actions'),
                 ]),
         ]);
@@ -411,7 +419,8 @@ abstract class PaymentSettingsPage extends Page
     {
         return Tab::make('Stripe')
             ->icon(Heroicon::OutlinedCreditCard)
-            ->badge(fn (): string => $this->enabledBadge('stripe_enabled'))
+            ->badge(fn (): string => $this->configStatusBadge('stripe'))
+            ->badgeColor(fn (): string => $this->configStatusColor('stripe'))
             ->schema([
                 Section::make('Stripe')
                     ->description('Stripe • Publishable / Secret keys')
@@ -441,7 +450,8 @@ abstract class PaymentSettingsPage extends Page
     {
         return Tab::make('Razorpay')
             ->icon(Heroicon::OutlinedCreditCard)
-            ->badge(fn (): string => $this->enabledBadge('razorpay_enabled'))
+            ->badge(fn (): string => $this->configStatusBadge('razorpay'))
+            ->badgeColor(fn (): string => $this->configStatusColor('razorpay'))
             ->schema([
                 Section::make('Razorpay')
                     ->schema([
@@ -916,8 +926,32 @@ abstract class PaymentSettingsPage extends Page
             ->send();
     }
 
+    /**
+     * Records a review timestamp only — never flips payments_enabled or
+     * any *_enabled toggle. See docs/architecture/payment-gateway-production-checklist.md
+     * for what "reviewed" is supposed to mean before this is clicked.
+     */
+    protected function markProductionChecklistReviewed(): void
+    {
+        $settings = app(PaymentGatewaySettings::class);
+        $settings->production_ready_at = now()->toIso8601String();
+        $settings->save();
+
+        Notification::make()
+            ->title('Production checklist marked reviewed')
+            ->body('Recorded at '.$settings->production_ready_at.'. This does not enable any gateway by itself.')
+            ->success()
+            ->send();
+    }
+
     protected function validateGatewayCredentials(string $gateway): void
     {
+        if (in_array($gateway, ['razorpay', 'stripe'], true)) {
+            $this->validateAndPersistGatewayReadiness($gateway);
+
+            return;
+        }
+
         $settings = app(PaymentGatewaySettings::class);
         $errors = [];
 
@@ -945,6 +979,83 @@ abstract class PaymentSettingsPage extends Page
             ->body(Str::title($gateway).' credentials look complete.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Persists only the credential fields for the gateway being
+     * validated — never the whole tab's `$this->data` (a prior version
+     * of this method called saveGatewaySettings($this->data) directly,
+     * which silently persisted *every* gateway's current, possibly
+     * unsaved form state — e.g. clicking "Validate Credentials" for
+     * Razorpay would also commit an in-progress, not-yet-saved
+     * `stripe_enabled` toggle. Reproduced and fixed during the Phase
+     * 10.2A audit). Then runs PaymentGatewayConfigurationService's
+     * format-only check against what was just persisted — this never
+     * calls Razorpay/Stripe over the network.
+     */
+    protected function validateAndPersistGatewayReadiness(string $gateway): void
+    {
+        $this->persistCredentialFieldsForValidation($gateway);
+
+        $result = match ($gateway) {
+            'razorpay' => app(PaymentGatewayConfigurationService::class)->checkRazorpay(),
+            'stripe' => app(PaymentGatewayConfigurationService::class)->checkStripe(),
+            default => null,
+        };
+
+        if ($result === null) {
+            return;
+        }
+
+        if (! $result->isReady()) {
+            Notification::make()
+                ->title(Str::title($gateway).' is not ready')
+                ->body(
+                    ($result->issues !== [] ? implode(' ', $result->issues).' ' : '')
+                    .'Random or placeholder credentials are not valid. Checkout will remain disabled until credentials pass validation.',
+                )
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Credentials validated')
+            ->body(Str::title($gateway).' credentials look complete and correctly formatted.')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Writes only the enabled flag + credential fields for the given
+     * gateway — deliberately narrower than saveGatewaySettings(), which
+     * commits every gateway's URLs/mode/enabled flags in one call and
+     * is correct for the page's main "Save" button but wrong for a
+     * per-gateway validation action (see validateAndPersistGatewayReadiness()).
+     */
+    protected function persistCredentialFieldsForValidation(string $gateway): void
+    {
+        $settings = app(PaymentGatewaySettings::class);
+        $data = $this->data;
+
+        $settings->{"{$gateway}_enabled"} = (bool) ($data["{$gateway}_enabled"] ?? false);
+
+        match ($gateway) {
+            'razorpay' => (function () use ($settings, $data): void {
+                $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
+                $this->saveEncryptedField($settings, 'razorpay_key_secret', $data['razorpay_key_secret'] ?? null);
+                $this->saveEncryptedField($settings, 'razorpay_webhook_secret', $data['razorpay_webhook_secret'] ?? null);
+            })(),
+            'stripe' => (function () use ($settings, $data): void {
+                $settings->stripe_publishable_key = $data['stripe_publishable_key'] ?? null;
+                $this->saveEncryptedField($settings, 'stripe_secret_key', $data['stripe_secret_key'] ?? null);
+                $this->saveEncryptedField($settings, 'stripe_webhook_secret', $data['stripe_webhook_secret'] ?? null);
+            })(),
+            default => null,
+        };
+
+        $settings->save();
     }
 
     protected function testGatewayConnection(string $gateway): void
@@ -1014,6 +1125,36 @@ abstract class PaymentSettingsPage extends Page
     protected function enabledBadge(string $field): string
     {
         return (bool) ($this->data[$field] ?? false) ? 'Enabled' : 'Disabled';
+    }
+
+    /**
+     * Phase 10.2A: reflects PaymentGatewaySettings::{provider}_config_status
+     * (set by PaymentGatewayConfigurationService, never hand-edited) —
+     * distinct from the enabled/disabled toggle, since a gateway can be
+     * enabled with credentials that are missing/random/incomplete.
+     */
+    protected function configStatusBadge(string $provider): string
+    {
+        $status = app(PaymentGatewaySettings::class)->{"{$provider}_config_status"} ?? 'not_configured';
+
+        return match ($status) {
+            'ready' => 'Ready',
+            'incomplete' => 'Incomplete',
+            'invalid' => 'Invalid credentials',
+            default => 'Not configured',
+        };
+    }
+
+    protected function configStatusColor(string $provider): string
+    {
+        $status = app(PaymentGatewaySettings::class)->{"{$provider}_config_status"} ?? 'not_configured';
+
+        return match ($status) {
+            'ready' => 'success',
+            'incomplete' => 'warning',
+            'invalid' => 'danger',
+            default => 'gray',
+        };
     }
 
     protected function copyWebhookUrl(string $gateway): void

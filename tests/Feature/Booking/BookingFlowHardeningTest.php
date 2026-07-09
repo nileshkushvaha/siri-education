@@ -274,14 +274,17 @@ class BookingFlowHardeningTest extends TestCase
         // itself — not just the caller — enforces the rule.
         $this->expectException(SlotUnavailableException::class);
 
+        // Phase 10.2C-Fix: attendeeId must be a real, authenticated
+        // student now (AuthenticatedAttendeeRule rejects null outright,
+        // before this test's own target rule ever runs) — this test's
+        // actual purpose is the availability guard, not guest booking,
+        // so it uses $this->student rather than the old guest shape.
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: null,
+            attendeeId: $this->student->id,
             hostId: $rejected->id,
             startsAt: $this->slot(),
             durationMinutes: 30,
-            guestName: 'Guest',
-            guestEmail: 'guest-race@example.com',
         ));
     }
 
@@ -329,9 +332,10 @@ class BookingFlowHardeningTest extends TestCase
             ->set('lockedInstructorId', $otherTeacher->id);
     }
 
-    // ── Guest booking ────────────────────────────────────────────────────
+    // ── Guest booking (Phase 10.2C-Fix: no guest booking — every guest
+    // API request now fails safely, never creates a booking) ────────────
 
-    public function test_guest_can_request_a_safe_booking(): void
+    public function test_guest_cannot_request_a_booking(): void
     {
         $response = $this->postJson('/api/v1/guest/bookings', [
             'type' => 'free_demo',
@@ -340,9 +344,10 @@ class BookingFlowHardeningTest extends TestCase
             'starts_at' => $this->slot()->toIso8601String(),
             'name' => 'Guest Parent',
             'email' => 'guest-safe@example.com',
-        ])->assertCreated();
+        ]);
 
-        $this->assertDatabaseHas('bookings', ['reference' => $response->json('data.reference')]);
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('bookings', ['guest_email' => 'guest-safe@example.com']);
     }
 
     public function test_guest_cannot_book_invalid_or_stale_slot(): void
@@ -370,20 +375,18 @@ class BookingFlowHardeningTest extends TestCase
 
     public function test_guest_booking_creates_no_out_of_scope_records(): void
     {
-        $response = $this->postJson('/api/v1/guest/bookings', [
+        $this->postJson('/api/v1/guest/bookings', [
             'type' => 'free_demo',
             'subject' => 'maths',
             'grade' => 5,
             'starts_at' => $this->slot()->toIso8601String(),
             'name' => 'Guest Parent',
             'email' => 'guest-scope@example.com',
-        ])->assertCreated();
+        ])->assertStatus(422);
 
-        $booking = Booking::query()->where('reference', $response->json('data.reference'))->firstOrFail();
-        $this->assertNull($booking->meeting_provider);
-        $this->assertNull($booking->meeting_url);
-        $this->assertSame('not_required', $booking->payment_status->value);
-
+        // The rejected attempt creates nothing at all — not a booking,
+        // not a meeting, not a wallet, not a payment table.
+        $this->assertDatabaseMissing('bookings', ['guest_email' => 'guest-scope@example.com']);
         $this->assertSame(0, Wallet::count());
         $this->assertSame(0, WalletLedgerEntry::count());
 

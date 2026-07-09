@@ -5,21 +5,23 @@ declare(strict_types=1);
 namespace App\Booking\Payments;
 
 use App\Booking\Contracts\PaymentProviderInterface;
+use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\GatewayRequestException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
+use App\Booking\Services\PaymentProviderConfigValidator;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Currency;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
-use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 
 /**
  * Razorpay Orders API + Checkout.js integration. INR-only in this
@@ -44,12 +46,12 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 {
     private const KEY = 'razorpay';
 
-    private const API_BASE = 'https://api.razorpay.com/v1';
-
     private const SUPPORTED_CURRENCY = 'INR';
 
     public function __construct(
         private readonly PaymentGatewaySettings $settings,
+        private readonly PaymentProviderConfigValidator $configValidator,
+        private readonly RazorpayGatewayClient $client,
     ) {}
 
     public function key(): string
@@ -85,46 +87,53 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 
         $amountMinor = $this->toMinorUnits((float) $booking->price);
 
-        $payment = BookingPayment::query()->create([
-            'booking_id' => $booking->id,
-            'user_id' => $booking->attendee_id,
-            'provider' => self::KEY,
-            'amount_minor' => $amountMinor,
-            'currency_code' => self::SUPPORTED_CURRENCY,
-            'status' => BookingPaymentRecordStatus::Pending,
-            'idempotency_key' => $reference,
-            'metadata' => ['receipt' => $reference],
-            'created_by' => Auth::id(),
-        ]);
+        try {
+            $payment = BookingPayment::query()->create([
+                'booking_id' => $booking->id,
+                'user_id' => $booking->attendee_id,
+                'provider' => self::KEY,
+                'amount_minor' => $amountMinor,
+                'currency_code' => self::SUPPORTED_CURRENCY,
+                'status' => BookingPaymentRecordStatus::Pending,
+                'idempotency_key' => $reference,
+                'metadata' => ['receipt' => $reference],
+                'created_by' => Auth::id(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Lost the race to a concurrent request for the same reference
+            // (double-click, retried request). Its row already exists;
+            // reuse it once it has an order_id, or ask the caller to retry
+            // rather than surfacing the raw constraint violation.
+            $existing = BookingPayment::query()
+                ->where('booking_id', $booking->id)
+                ->where('idempotency_key', $reference)
+                ->latest('created_at')
+                ->first();
+
+            if ($existing?->provider_order_id !== null) {
+                return $this->intentFrom($booking, $reference, $existing);
+            }
+
+            throw new BookingException('Payment order creation is already in progress — please retry.');
+        }
 
         try {
-            $response = Http::timeout(15)
-                ->withBasicAuth($this->keyId(), $this->keySecret())
-                ->acceptJson()
-                ->post(self::API_BASE.'/orders', [
-                    'amount' => $amountMinor,
-                    'currency' => self::SUPPORTED_CURRENCY,
-                    'receipt' => $reference,
-                    'notes' => [
-                        'booking_id' => $booking->id,
-                        'booking_reference' => $booking->reference,
-                    ],
-                ]);
-        } catch (ConnectionException $e) {
+            $order = $this->client->createOrder($this->keyId(), $this->keySecret(), [
+                'amount' => $amountMinor,
+                'currency' => self::SUPPORTED_CURRENCY,
+                'receipt' => $reference,
+                'notes' => [
+                    'booking_id' => $booking->id,
+                    'booking_reference' => $booking->reference,
+                ],
+            ]);
+        } catch (GatewayRequestException $e) {
             $payment->forceFill(['status' => BookingPaymentRecordStatus::Failed, 'failed_at' => now()])->save();
 
-            throw new BookingException('Unable to reach Razorpay: '.$e->getMessage());
+            throw new BookingException('Razorpay order creation failed: '.$e->getMessage());
         }
 
-        if (! $response->successful()) {
-            $payment->forceFill(['status' => BookingPaymentRecordStatus::Failed, 'failed_at' => now()])->save();
-
-            throw new BookingException(
-                'Razorpay order creation failed: '.(string) $response->json('error.description', 'unknown error'),
-            );
-        }
-
-        $payment->forceFill(['provider_order_id' => (string) $response->json('id')])->save();
+        $payment->forceFill(['provider_order_id' => (string) ($order['id'] ?? '')])->save();
 
         return $this->intentFrom($booking, $reference, $payment);
     }
@@ -145,20 +154,11 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         }
 
         try {
-            $response = Http::timeout(15)
-                ->withBasicAuth($this->keyId(), $this->keySecret())
-                ->acceptJson()
-                ->post(self::API_BASE."/payments/{$payment->provider_payment_id}/refund", [
-                    'amount' => $payment->amount_minor,
-                ]);
-        } catch (ConnectionException $e) {
-            throw new BookingException('Unable to reach Razorpay: '.$e->getMessage());
-        }
-
-        if (! $response->successful()) {
-            throw new BookingException(
-                'Razorpay refund failed: '.(string) $response->json('error.description', 'unknown error'),
-            );
+            $this->client->refundPayment($this->keyId(), $this->keySecret(), (string) $payment->provider_payment_id, [
+                'amount' => $payment->amount_minor,
+            ]);
+        } catch (GatewayRequestException $e) {
+            throw new BookingException('Razorpay refund failed: '.$e->getMessage());
         }
 
         $payment->forceFill(['status' => BookingPaymentRecordStatus::Refunded])->save();
@@ -209,8 +209,12 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 
     public function parseWebhook(Request $request): PaymentWebhookData
     {
-        $this->assertConfigured();
-
+        // Deliberately does not call assertConfigured(): webhook signature
+        // verification only needs razorpay_webhook_secret, not the
+        // enabled flag or key_id/key_secret. Gating on those would make a
+        // disabled-but-still-receiving-webhooks gateway throw a generic
+        // BookingException (422) instead of the 401 a bad/missing
+        // signature should produce.
         $secret = PaymentWebhookSignatureService::decryptSecret($this->settings, 'razorpay_webhook_secret');
         $signature = $request->header('X-Razorpay-Signature');
 
@@ -249,11 +253,94 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             throw new InvalidPaymentWebhookException('Razorpay webhook did not reference a known booking payment.');
         }
 
+        $this->assertAmountAndCurrencyMatch($event, $entity, $reference);
+
+        $normalizedEvent = $this->normalizeEvent($event);
+
+        // If a payment settles via webhook alone (the client closed the
+        // tab before Checkout.js's success callback fired), verifyCheckout()
+        // never runs — this webhook is then the only place the
+        // booking_payments row itself gets marked captured/failed, which
+        // refund() depends on to find a capturable row later. A no-op for
+        // refund.* events (handled by BookingPaymentService::recordRefund()
+        // instead) since normalizeEvent() maps those to Refunded, not
+        // Succeeded/Failed.
+        $this->settlePaymentRow($normalizedEvent, $entity, $reference);
+
         return new PaymentWebhookData(
-            event: $this->normalizeEvent($event),
+            event: $normalizedEvent,
             reference: $reference,
             reason: is_array($entity) ? ($entity['error_description'] ?? null) : null,
         );
+    }
+
+    /**
+     * A signature-verified webhook is authentic, but that only proves
+     * Razorpay sent it — not that it matches the order we created. Only
+     * checked for the event that settles a booking as paid; a mismatch
+     * here means the notes/receipt matched a booking by reference but
+     * the amount on record disagrees, which must never silently settle.
+     *
+     * @param  array<string, mixed>|null  $entity
+     */
+    private function assertAmountAndCurrencyMatch(string $event, ?array $entity, string $reference): void
+    {
+        if (! in_array($event, ['payment.captured', 'order.paid'], true) || $entity === null) {
+            return;
+        }
+
+        $payment = isset($entity['order_id'])
+            ? BookingPayment::query()->where('provider_order_id', $entity['order_id'])->first()
+            : BookingPayment::query()->where('idempotency_key', $reference)->latest('created_at')->first();
+
+        if ($payment === null) {
+            return;
+        }
+
+        $amountMatches = (int) ($entity['amount'] ?? -1) === $payment->amount_minor;
+        $currencyMatches = strtoupper((string) ($entity['currency'] ?? '')) === $payment->currency_code;
+
+        if (! $amountMatches || ! $currencyMatches) {
+            throw new InvalidPaymentWebhookException(sprintf(
+                'Razorpay webhook amount/currency does not match booking payment %s.',
+                $payment->id,
+            ));
+        }
+    }
+
+    /**
+     * Idempotent by construction: a row already in a terminal status
+     * (e.g. already Captured by verifyCheckout() or an earlier delivery
+     * of this same event) is left untouched.
+     *
+     * @param  array<string, mixed>|null  $entity
+     */
+    private function settlePaymentRow(PaymentWebhookEvent $event, ?array $entity, string $reference): void
+    {
+        if ($entity === null) {
+            return;
+        }
+
+        $payment = isset($entity['order_id'])
+            ? BookingPayment::query()->where('provider_order_id', $entity['order_id'])->first()
+            : BookingPayment::query()->where('idempotency_key', $reference)->latest('created_at')->first();
+
+        if ($payment === null || $payment->status->isTerminal()) {
+            return;
+        }
+
+        match ($event) {
+            PaymentWebhookEvent::Succeeded => $payment->forceFill([
+                'status' => BookingPaymentRecordStatus::Captured,
+                'provider_payment_id' => (string) ($entity['id'] ?? $payment->provider_payment_id),
+                'paid_at' => now(),
+            ])->save(),
+            PaymentWebhookEvent::Failed => $payment->forceFill([
+                'status' => BookingPaymentRecordStatus::Failed,
+                'failed_at' => now(),
+            ])->save(),
+            default => null,
+        };
     }
 
     private function normalizeEvent(string $event): PaymentWebhookEvent
@@ -295,11 +382,25 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             ->firstOrFail();
 
         return [
+            'provider' => self::KEY,
             'order_id' => (string) $payment->provider_order_id,
             'key_id' => $this->keyId(),
             'amount_minor' => $payment->amount_minor,
             'currency' => $payment->currency_code,
         ];
+    }
+
+    /** Enabled AND key_id passes format validation AND a secret is present. */
+    public function isConfigured(): bool
+    {
+        return $this->settings->razorpay_enabled
+            && $this->configValidator->isValidRazorpayKeyId($this->settings->razorpay_key_id)
+            && filled($this->settings->razorpay_key_secret);
+    }
+
+    public function supportedCurrencies(): array
+    {
+        return [self::SUPPORTED_CURRENCY];
     }
 
     private function assertConfigured(): void
@@ -310,6 +411,10 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 
         if (blank($this->settings->razorpay_key_id) || blank($this->settings->razorpay_key_secret)) {
             throw new BookingException('Razorpay credentials are not configured.');
+        }
+
+        if (! $this->configValidator->isValidRazorpayKeyId($this->settings->razorpay_key_id)) {
+            throw new BookingException('Razorpay key_id does not look like a valid Razorpay key — refusing to use it.');
         }
     }
 

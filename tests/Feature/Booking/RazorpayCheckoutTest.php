@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Booking;
 
 use App\Booking\Contracts\BookingPaymentServiceInterface;
-use App\Booking\Contracts\GuestBookingServiceInterface;
+use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StudentBookingServiceInterface;
-use App\Booking\DTOs\GuestBookingData;
 use App\Booking\DTOs\StudentBookingData;
+use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\GatewayRequestException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Filament\Resources\BookingPayments\BookingPaymentResource;
@@ -29,14 +30,18 @@ use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Mockery;
+use Mockery\MockInterface;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 class RazorpayCheckoutTest extends TestCase
 {
+    use CreatesStudentLessonPrices;
     use RefreshDatabase;
 
     private const KEY_SECRET = 'test_key_secret';
@@ -46,6 +51,8 @@ class RazorpayCheckoutTest extends TestCase
     private User $student;
 
     private User $teacher;
+
+    private RazorpayGatewayClient&MockInterface $razorpayGateway;
 
     protected function setUp(): void
     {
@@ -61,11 +68,11 @@ class RazorpayCheckoutTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        BookingType::factory()->paid(499.00, 'INR')->create([
-            'key' => 'paid_one_to_one',
-            'duration_minutes' => 60,
-            'max_attendees' => 1,
-        ]);
+        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
+        // longer carries a price — createPaidBookingTypeWithPrice() also
+        // seeds the matching StudentLessonPrice (INR, all levels, 60min).
+        $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 499.00, 'INR');
+        $this->assignBillingCountry($this->student, $priced['country']);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
@@ -83,11 +90,14 @@ class RazorpayCheckoutTest extends TestCase
         app(BookingSettings::class)->save();
     }
 
+    /** Binds a fake RazorpayGatewayClient — the seam the SDK is isolated behind — instead of stubbing HTTP/cURL. */
     private function fakeRazorpayOrderApi(string $orderId = 'order_TEST123'): void
     {
-        Http::fake([
-            'api.razorpay.com/v1/orders' => Http::response(['id' => $orderId, 'amount' => 49900, 'currency' => 'INR'], 200),
-        ]);
+        $this->razorpayGateway = Mockery::mock(RazorpayGatewayClient::class);
+        $this->razorpayGateway->shouldReceive('createOrder')
+            ->andReturn(['id' => $orderId, 'amount' => 49900, 'currency' => 'INR']);
+
+        $this->app->instance(RazorpayGatewayClient::class, $this->razorpayGateway);
     }
 
     private function reserveStudent(int $daysAhead = 3, int $hour = 10): Booking
@@ -97,26 +107,43 @@ class RazorpayCheckoutTest extends TestCase
             studentId: $this->student->id,
             teacherId: $this->teacher->id,
             startsAt: now('UTC')->addDays($daysAhead)->setTime($hour, 0)->toImmutable(),
+            subject: 'maths',
+            grade: 7,
         ));
 
         return $booking->refresh();
     }
 
-    /** @return array{0: Booking, 1: string} booking + plain manage token */
+    /**
+     * A legacy guest booking, as if created before Phase 10.2C-Fix's "no
+     * guest booking" rule shipped — built directly, since
+     * GuestBookingServiceInterface::book() can no longer produce one. The
+     * token-authorized payment routes stay reachable for bookings like
+     * this so an already-reserved guest booking's payment isn't stranded.
+     *
+     * @return array{0: Booking, 1: string} booking + plain manage token
+     */
     private function reserveGuest(int $daysAhead = 4, int $hour = 11): array
     {
-        $booking = app(GuestBookingServiceInterface::class)->book(new GuestBookingData(
-            typeKey: 'paid_one_to_one',
-            subject: 'maths',
-            grade: 8,
-            startsAt: now('UTC')->addDays($daysAhead)->setTime($hour, 0)->toImmutable(),
-            timezone: 'UTC',
-            guestName: 'Guest Student',
-            guestEmail: 'guest@example.com',
-            guestPhone: null,
-        ));
+        $plainToken = Str::random(64);
 
-        return [$booking->refresh(), (string) $booking->plainManageToken];
+        $booking = Booking::factory()->create([
+            'booking_type_id' => BookingType::query()->where('key', 'paid_one_to_one')->firstOrFail()->id,
+            'attendee_id' => null,
+            'host_id' => $this->teacher->id,
+            'status' => BookingStatus::Pending,
+            'payment_status' => BookingPaymentStatus::Pending,
+            'price' => 499.00,
+            'currency' => 'INR',
+            'guest_name' => 'Guest Student',
+            'guest_email' => 'guest@example.com',
+            'guest_phone' => null,
+            'manage_token' => hash('sha256', $plainToken),
+            'starts_at' => now('UTC')->addDays($daysAhead)->setTime($hour, 0),
+            'ends_at' => now('UTC')->addDays($daysAhead)->setTime($hour + 1, 0),
+        ]);
+
+        return [$booking, $plainToken];
     }
 
     /** Reads the payment reference generated by initiate() — never set at booking creation time. */
@@ -252,14 +279,45 @@ class RazorpayCheckoutTest extends TestCase
     public function test_order_creation_is_idempotent_on_repeated_initiate(): void
     {
         $this->configureRazorpay();
-        $this->fakeRazorpayOrderApi('order_ABC');
+
+        $this->razorpayGateway = Mockery::mock(RazorpayGatewayClient::class);
+        $this->razorpayGateway->shouldReceive('createOrder')
+            ->once()
+            ->andReturn(['id' => 'order_ABC', 'amount' => 49900, 'currency' => 'INR']);
+        $this->app->instance(RazorpayGatewayClient::class, $this->razorpayGateway);
 
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         app(BookingPaymentServiceInterface::class)->initiate($booking->refresh());
 
         $this->assertSame(1, BookingPayment::query()->where('booking_id', $booking->id)->count());
-        Http::assertSentCount(1);
+    }
+
+    public function test_order_creation_recovers_from_a_concurrent_duplicate_idempotency_key(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderApi('order_RACE');
+
+        $booking = $this->reserveStudent();
+        app(BookingPaymentServiceInterface::class)->initiate($booking);
+        $reference = $this->paymentReference($booking);
+
+        // Simulate a concurrent request that has already inserted its row
+        // (same idempotency_key) but has not yet received the order_id
+        // back from Razorpay — the reusable-lookup requires a non-null
+        // provider_order_id, so it won't match this in-flight row, and a
+        // second insert with the same idempotency_key hits the DB's
+        // unique constraint. That must be recovered, not surfaced raw.
+        BookingPayment::query()->where('booking_id', $booking->id)->delete();
+        BookingPayment::factory()->create([
+            'booking_id' => $booking->id,
+            'idempotency_key' => $reference,
+            'status' => BookingPaymentRecordStatus::Pending,
+            'provider_order_id' => null,
+        ]);
+
+        $this->expectExceptionMessageMatches('/already in progress/');
+        app(BookingPaymentServiceInterface::class)->initiate($booking->refresh());
     }
 
     public function test_order_creation_does_not_mark_booking_paid_or_create_meeting(): void
@@ -280,7 +338,10 @@ class RazorpayCheckoutTest extends TestCase
     public function test_order_creation_failure_marks_payment_row_failed(): void
     {
         $this->configureRazorpay();
-        Http::fake(['api.razorpay.com/v1/orders' => Http::response(['error' => ['description' => 'bad request']], 400)]);
+
+        $mock = Mockery::mock(RazorpayGatewayClient::class);
+        $mock->shouldReceive('createOrder')->andThrow(new GatewayRequestException('bad request'));
+        $this->app->instance(RazorpayGatewayClient::class, $mock);
 
         $booking = $this->reserveStudent();
 
@@ -380,6 +441,53 @@ class RazorpayCheckoutTest extends TestCase
         $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
     }
 
+    public function test_webhook_signature_is_still_verified_when_gateway_is_disabled(): void
+    {
+        $this->configureRazorpay(enabled: false);
+
+        $body = (string) json_encode(['event' => 'payment.captured']);
+
+        $this->call('POST', '/api/webhooks/bookings/payments/razorpay', [], [], [], [
+            'HTTP_X_RAZORPAY_SIGNATURE' => 'forged',
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+        ], $body)->assertStatus(401);
+    }
+
+    public function test_webhook_amount_mismatch_fails_safely(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderApi('order_MISMATCH');
+
+        $booking = $this->reserveStudent();
+        app(BookingPaymentServiceInterface::class)->initiate($booking);
+        $reference = $this->paymentReference($booking);
+
+        $payload = $this->capturedWebhookPayload('order_MISMATCH', 'pay_MISMATCH', $reference);
+        $payload['payload']['payment']['entity']['amount'] = 1;
+
+        $this->postWebhook($payload)->assertStatus(401);
+
+        $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
+    }
+
+    public function test_webhook_currency_mismatch_fails_safely(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderApi('order_MISMATCH2');
+
+        $booking = $this->reserveStudent();
+        app(BookingPaymentServiceInterface::class)->initiate($booking);
+        $reference = $this->paymentReference($booking);
+
+        $payload = $this->capturedWebhookPayload('order_MISMATCH2', 'pay_MISMATCH2', $reference);
+        $payload['payload']['payment']['entity']['currency'] = 'USD';
+
+        $this->postWebhook($payload)->assertStatus(401);
+
+        $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
+    }
+
     public function test_webhook_payment_failed_keeps_reservation_for_retry(): void
     {
         $this->configureRazorpay();
@@ -418,6 +526,51 @@ class RazorpayCheckoutTest extends TestCase
         $this->assertSame(BookingStatus::Cancelled, $booking->status);
     }
 
+    public function test_active_refund_calls_razorpay_and_cancels_booking(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderApi('order_REFUND');
+
+        $booking = $this->reserveStudent();
+        app(BookingPaymentServiceInterface::class)->initiate($booking);
+
+        $signature = $this->checkoutSignature('order_REFUND', 'pay_REFUND');
+        app(RazorpayPaymentProvider::class)->verifyCheckout($booking, 'order_REFUND', 'pay_REFUND', $signature);
+        app(BookingPaymentServiceInterface::class)->markPaid($booking->refresh(), $this->paymentReference($booking));
+
+        $this->razorpayGateway->shouldReceive('refundPayment')
+            ->once()
+            ->withArgs(fn (string $keyId, string $keySecret, string $paymentId, array $params): bool => $paymentId === 'pay_REFUND'
+                && $params['amount'] === 49900)
+            ->andReturn(['id' => 'rfnd_active']);
+
+        app(BookingPaymentServiceInterface::class)->refund($booking->refresh(), 'change of plans');
+
+        $booking->refresh();
+        $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
+        $this->assertSame(BookingStatus::Cancelled, $booking->status);
+        $this->assertDatabaseHas('booking_payments', ['provider_payment_id' => 'pay_REFUND', 'status' => 'refunded']);
+    }
+
+    public function test_active_refund_fails_safely_when_razorpay_rejects_it(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderApi('order_REFUND2');
+
+        $booking = $this->reserveStudent();
+        app(BookingPaymentServiceInterface::class)->initiate($booking);
+
+        $signature = $this->checkoutSignature('order_REFUND2', 'pay_REFUND2');
+        app(RazorpayPaymentProvider::class)->verifyCheckout($booking, 'order_REFUND2', 'pay_REFUND2', $signature);
+        app(BookingPaymentServiceInterface::class)->markPaid($booking->refresh(), $this->paymentReference($booking));
+
+        $this->razorpayGateway->shouldReceive('refundPayment')
+            ->andThrow(new GatewayRequestException('already refunded'));
+
+        $this->expectExceptionMessageMatches('/Razorpay refund failed/');
+        app(BookingPaymentServiceInterface::class)->refund($booking->refresh(), 'change of plans');
+    }
+
     public function test_webhook_unrecognized_event_is_acknowledged_not_processed(): void
     {
         $this->configureRazorpay();
@@ -449,68 +602,36 @@ class RazorpayCheckoutTest extends TestCase
         $this->assertSame(BookingPaymentStatus::Paid, $booking->refresh()->payment_status);
     }
 
-    // ── F. Guest checkout ───────────────────────────────────────────
+    // ── F. Guest checkout is disabled ───────────────────────────────
+    //
+    // Phase 10.2C-Fix: "No unauthenticated user may initiate payment" /
+    // "No guest payment UI" — GuestBookingPaymentController is no longer
+    // routed (see routes/api.php), for any guest booking, legacy or not.
 
-    public function test_guest_can_initiate_and_verify_payment_with_valid_token(): void
+    public function test_guest_payment_initiate_route_no_longer_exists(): void
     {
         $this->configureRazorpay();
-        $this->fakeRazorpayOrderApi('order_GUEST1');
-
         [$booking, $token] = $this->reserveGuest();
 
         $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/initiate", ['token' => $token])
-            ->assertOk()
-            ->assertJsonPath('data.order_id', 'order_GUEST1');
-
-        $signature = $this->checkoutSignature('order_GUEST1', 'pay_GUEST1');
-        $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/verify", [
-            'token' => $token,
-            'razorpay_order_id' => 'order_GUEST1',
-            'razorpay_payment_id' => 'pay_GUEST1',
-            'razorpay_signature' => $signature,
-        ])->assertOk()->assertJsonPath('status', 'paid');
-
-        $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
-        $this->assertSame(BookingStatus::Confirmed, $booking->status);
-    }
-
-    public function test_guest_cannot_initiate_payment_with_invalid_token(): void
-    {
-        $this->configureRazorpay();
-        $this->fakeRazorpayOrderApi();
-
-        [$booking] = $this->reserveGuest();
-
-        $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/initiate", [
-            'token' => str_repeat('x', 64),
-        ])->assertStatus(404);
-    }
-
-    public function test_guest_verify_rejects_forged_signature(): void
-    {
-        $this->configureRazorpay();
-        $this->fakeRazorpayOrderApi('order_GUEST2');
-
-        [$booking, $token] = $this->reserveGuest();
-        $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/initiate", ['token' => $token])->assertOk();
-
-        $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/verify", [
-            'token' => $token,
-            'razorpay_order_id' => 'order_GUEST2',
-            'razorpay_payment_id' => 'pay_GUEST2',
-            'razorpay_signature' => 'forged',
-        ])->assertStatus(401);
+            ->assertStatus(404);
 
         $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
     }
 
-    public function test_guest_payment_initiate_is_blocked_when_razorpay_is_not_the_active_provider(): void
+    public function test_guest_payment_verify_route_no_longer_exists(): void
     {
+        $this->configureRazorpay();
         [$booking, $token] = $this->reserveGuest();
 
-        $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/initiate", ['token' => $token])
-            ->assertStatus(422);
+        $this->postJson("/api/v1/guest/bookings/{$booking->reference}/payments/razorpay/verify", [
+            'token' => $token,
+            'razorpay_order_id' => 'order_GONE',
+            'razorpay_payment_id' => 'pay_GONE',
+            'razorpay_signature' => 'irrelevant',
+        ])->assertStatus(404);
+
+        $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
     }
 
     // ── Wallet & meeting boundary ────────────────────────────────────

@@ -27,12 +27,20 @@ class BookingTypeFactory extends Factory
         ];
     }
 
+    /**
+     * @param  float  $price  unused since Phase 10.2D-Cleanup — `booking_types`
+     *                        no longer has a price column. Kept as a
+     *                        no-op parameter so every existing call site
+     *                        across the test suite still compiles; a
+     *                        paid type built this way has no price until
+     *                        a `StudentLessonPrice::factory()` row is
+     *                        created for it (see StudentLessonPriceFactory).
+     * @param  string  $currency  unused, see $price
+     */
     public function paid(float $price = 49.99, string $currency = 'USD'): static
     {
         return $this->state([
             'is_paid' => true,
-            'price' => $price,
-            'currency' => $currency,
         ]);
     }
 

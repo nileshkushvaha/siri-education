@@ -23,10 +23,12 @@ use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 class PaymentWorkflowTest extends TestCase
 {
+    use CreatesStudentLessonPrices;
     use RefreshDatabase;
 
     private User $student;
@@ -47,11 +49,11 @@ class PaymentWorkflowTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        BookingType::factory()->paid(49.99, 'USD')->create([
-            'key' => 'paid_one_to_one',
-            'duration_minutes' => 60,
-            'max_attendees' => 1,
-        ]);
+        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
+        // longer carries a price — createPaidBookingTypeWithPrice() also
+        // seeds the matching StudentLessonPrice (USD, all levels, 60min).
+        $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 49.99, 'USD');
+        $this->assignBillingCountry($this->student, $priced['country']);
     }
 
     /** @return array{Booking, string} booking + payment reference */
@@ -62,6 +64,8 @@ class PaymentWorkflowTest extends TestCase
             studentId: $this->student->id,
             teacherId: $this->teacher->id,
             startsAt: now('UTC')->addDays($daysAhead)->setTime($hour, 0)->toImmutable(),
+            subject: 'maths',
+            grade: 7,
         ));
 
         $intent = app(BookingPaymentServiceInterface::class)->initiate($booking);

@@ -17,6 +17,19 @@ enum WalletLedgerEntryType: string
     case AdminAdjustment = 'admin_adjustment';
     case Expiry = 'expiry';
 
+    /**
+     * Phase 10.2B — Option B: a gateway payment that settled successfully
+     * after its booking had already gone terminal (cancelled/expired/
+     * completed/no_show). The charge is real and captured at the
+     * gateway, but the booking can no longer be confirmed for it, so
+     * the amount is credited to the student's wallet instead of being
+     * retained as booking revenue or refunded to the original payment
+     * method. Distinct from Refund (an existing paid booking being
+     * actively refunded) — this money was never "paid" from the
+     * booking's own perspective in the first place.
+     */
+    case LatePaymentCredit = 'late_payment_credit';
+
     public function label(): string
     {
         return match ($this) {
@@ -30,6 +43,7 @@ enum WalletLedgerEntryType: string
             self::PromotionalCredit => 'Promotional Credit',
             self::AdminAdjustment => 'Admin Adjustment',
             self::Expiry => 'Expiry',
+            self::LatePaymentCredit => 'Late Payment Credit',
         };
     }
 }

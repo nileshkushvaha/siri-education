@@ -235,25 +235,81 @@ final class BookingWizard extends Component
     public function initiatePayment(): void
     {
         $this->paymentBanner = '';
+        $this->paymentOrder = [];
 
         if ($this->bookingId === null) {
+            return;
+        }
+
+        // Phase 10.2C-Fix: see BookingHistory::initiatePayment() for the
+        // identical check and rationale (billing country required before
+        // checkout, enforced at the UI entry point rather than inside
+        // BookingPaymentService::initiate() itself).
+        if (auth()->user()?->profile?->country_id === null) {
+            $this->paymentBanner = 'Please complete your profile (country) before paying for this booking.';
+
             return;
         }
 
         try {
             $booking = $this->bookings->findOrFail($this->bookingId);
             $this->payments->initiate($booking);
-            $this->paymentOrder = $this->razorpay->checkoutPayload($booking);
+            $payload = $this->payments->checkoutPayload($booking);
 
-            $this->dispatch(
-                'razorpay-checkout-ready',
-                orderId: $this->paymentOrder['order_id'],
-                keyId: $this->paymentOrder['key_id'],
-                amountMinor: $this->paymentOrder['amount_minor'],
-                currency: $this->paymentOrder['currency'],
-                name: $this->name,
-                email: $this->email,
-            );
+            // Gateway-neutral: backend decides the provider. See
+            // BookingHistory::initiatePayment() for the identical pattern
+            // and rationale (Stripe/fake have no client checkout step here).
+            if (($payload['provider'] ?? null) === 'razorpay') {
+                $this->paymentOrder = $payload;
+                $this->dispatch(
+                    'razorpay-checkout-ready',
+                    orderId: $payload['order_id'],
+                    keyId: $payload['key_id'],
+                    amountMinor: $payload['amount_minor'],
+                    currency: $payload['currency'],
+                    name: $this->name,
+                    email: $this->email,
+                );
+            } elseif (($payload['provider'] ?? null) === 'stripe') {
+                // Deliberately not stored on $paymentOrder (a public,
+                // client-hydrated property) — see BookingHistory::initiatePayment()
+                // for the identical rationale (checkoutPayload() for Stripe
+                // includes a live, usable client_secret with no consumer
+                // while the frontend stays deferred).
+                $this->paymentOrder = ['provider' => 'stripe'];
+                $this->paymentBanner = 'Card payment via Stripe is coming soon. Please contact support to complete this payment.';
+            } else {
+                $this->paymentOrder = $payload;
+            }
+        } catch (BookingException $exception) {
+            $this->paymentBanner = $exception->getMessage();
+        }
+    }
+
+    /** Local/testing-only — see BookingHistory::simulateFakePayment() for the identical rationale. */
+    public function simulateFakePayment(bool $success): void
+    {
+        if ($this->bookingId === null || ! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $this->paymentBanner = '';
+
+        try {
+            $booking = $this->bookings->findOrFail($this->bookingId)->refresh();
+            $reference = (string) $booking->payment_reference;
+
+            if ($success) {
+                if ($booking->payment_status->isPayable()) {
+                    $this->payments->markPaid($booking, $reference);
+                }
+            } else {
+                if ($booking->payment_status->isPayable()) {
+                    $this->payments->markFailed($booking, $reference, 'Simulated failure (fake provider).');
+                }
+            }
+
+            $this->result = $this->wizard->result($booking->refresh());
         } catch (BookingException $exception) {
             $this->paymentBanner = $exception->getMessage();
         }

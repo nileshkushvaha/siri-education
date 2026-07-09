@@ -18,6 +18,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -197,20 +198,54 @@ final class BookingHistory extends Component
         Gate::authorize('pay', $this->selectedBooking);
 
         $this->modalBanner = '';
+        $this->paymentOrder = [];
+
+        // Phase 10.2C-Fix: a resolvable billing country is required before
+        // checkout — PaymentProviderResolver's country-aware routing (Phase
+        // 10.2B) would otherwise silently fall through to the platform
+        // default, which is correct for *routing* but not a substitute for
+        // asking the student to complete their profile first. Checked here
+        // (the UI entry point), not inside BookingPaymentService::initiate()
+        // itself, which many other callers (webhooks, direct service tests)
+        // also use for concerns unrelated to profile completeness.
+        if (auth()->user()?->profile?->country_id === null) {
+            $this->modalBanner = 'Please complete your profile (country) before paying for this booking.';
+
+            return;
+        }
 
         try {
             $this->payments->initiate($this->selectedBooking);
-            $this->paymentOrder = $this->razorpay->checkoutPayload($this->selectedBooking);
+            $payload = $this->payments->checkoutPayload($this->selectedBooking);
 
-            $this->dispatch(
-                'razorpay-checkout-ready',
-                orderId: $this->paymentOrder['order_id'],
-                keyId: $this->paymentOrder['key_id'],
-                amountMinor: $this->paymentOrder['amount_minor'],
-                currency: $this->paymentOrder['currency'],
-                name: auth()->user()?->name ?? '',
-                email: auth()->user()?->email ?? '',
-            );
+            // Gateway-neutral: backend decides the provider, frontend only
+            // reacts to it. Only Razorpay has a client-side checkout step
+            // today — Stripe Elements/Checkout is intentionally deferred
+            // (see docs/architecture/phase-10-razorpay-checkout-payment-capture.md,
+            // Phase 10.2C), and the fake provider has no real checkout UI
+            // at all, only the "Simulate payment" controls below.
+            if (($payload['provider'] ?? null) === 'razorpay') {
+                $this->paymentOrder = $payload;
+                $this->dispatch(
+                    'razorpay-checkout-ready',
+                    orderId: $payload['order_id'],
+                    keyId: $payload['key_id'],
+                    amountMinor: $payload['amount_minor'],
+                    currency: $payload['currency'],
+                    name: auth()->user()?->name ?? '',
+                    email: auth()->user()?->email ?? '',
+                );
+            } elseif (($payload['provider'] ?? null) === 'stripe') {
+                // Deliberately not stored on $paymentOrder (a public,
+                // client-hydrated property): checkoutPayload() for Stripe
+                // includes a live, usable client_secret — real, sensitive
+                // gateway data with no consumer while the frontend stays
+                // deferred. Only the provider name is public state.
+                $this->paymentOrder = ['provider' => 'stripe'];
+                $this->modalBanner = 'Card payment via Stripe is coming soon. Please contact support to complete this payment.';
+            } else {
+                $this->paymentOrder = $payload;
+            }
         } catch (BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
         }
@@ -239,6 +274,62 @@ final class BookingHistory extends Component
         } catch (InvalidPaymentWebhookException|BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
         }
+    }
+
+    /**
+     * Local/testing-only convenience: the fake provider has no real
+     * checkout UI to complete, so this is the only way to exercise the
+     * "success"/"failure" paths from the browser without real gateway
+     * credentials. Mirrors PaymentProviderResolver's own environment
+     * guard rather than trusting the button being hidden — the button
+     * not rendering in production is a UX nicety, not the safety
+     * boundary.
+     */
+    public function simulateFakePayment(bool $success): void
+    {
+        if (! $this->selectedBooking || ! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        Gate::authorize('pay', $this->selectedBooking);
+
+        $this->modalBanner = '';
+
+        try {
+            $booking = $this->selectedBooking->refresh();
+            $reference = (string) $booking->payment_reference;
+
+            if ($success) {
+                if ($booking->payment_status->isPayable()) {
+                    $this->payments->markPaid($booking, $reference);
+                }
+            } else {
+                if ($booking->payment_status->isPayable()) {
+                    $this->payments->markFailed($booking, $reference, 'Simulated failure (fake provider).');
+                }
+            }
+
+            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'host']);
+        } catch (BookingException $exception) {
+            $this->modalBanner = $exception->getMessage();
+        }
+    }
+
+    /**
+     * Whether the selected booking's payment was recovered as a wallet
+     * credit (Phase 10.2B Option B) rather than actively refunded —
+     * cheap, safe metadata check, no sensitive payload exposed.
+     */
+    public function paymentWasCreditedToWallet(): bool
+    {
+        if (! $this->selectedBooking) {
+            return false;
+        }
+
+        return BookingPayment::query()
+            ->where('booking_id', $this->selectedBooking->id)
+            ->whereNotNull('metadata->wallet_ledger_entry_id')
+            ->exists();
     }
 
     public function render(): View

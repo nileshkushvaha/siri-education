@@ -6,15 +6,21 @@ namespace Tests\Feature\Student;
 
 use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\Weekday;
+use App\Models\AcademicCategory;
 use App\Models\Booking;
 use App\Models\BookingActivity;
 use App\Models\BookingType;
+use App\Models\Country;
+use App\Models\Currency;
+use App\Models\StudentLessonPrice;
+use App\Models\Subject;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\TeacherUnavailability;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class StudentBookingTest extends TestCase
@@ -31,12 +37,32 @@ class StudentBookingTest extends TestCase
     {
         parent::setUp();
 
+        $currency = Currency::factory()->create(['code' => 'USD']);
+        $country = Country::factory()->create(['default_currency_id' => $currency->id]);
+        $category = AcademicCategory::create(['name' => 'Mathematics', 'slug' => 'mathematics']);
+        $subject = Subject::create(['academic_category_id' => $category->id, 'name' => 'Maths', 'slug' => 'maths']);
+
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        UserProfile::updateOrCreate(['user_id' => $this->student->id], ['country_id' => $country->id]);
+
         $this->teacher = $this->makeTeacher('maths');
-        $this->paidType = BookingType::factory()->paid(49.99, 'USD')->create([
+        $this->paidType = BookingType::factory()->paid()->create([
             'key' => 'paid_one_to_one',
             'duration_minutes' => 60,
             'max_attendees' => 1,
+        ]);
+
+        // academic_level_id: null — applies to every grade, so every
+        // test's `grade` value (5, or the default in payload()) resolves.
+        StudentLessonPrice::factory()->create([
+            'booking_type_id' => $this->paidType->id,
+            'subject_id' => $subject->id,
+            'academic_level_id' => null,
+            'country_id' => $country->id,
+            'currency_id' => $currency->id,
+            'currency_code' => 'USD',
+            'duration_minutes' => 60,
+            'amount_minor' => 4999, // $49.99
         ]);
     }
 
@@ -77,7 +103,10 @@ class StudentBookingTest extends TestCase
 
     public function test_student_books_paid_session_with_chosen_teacher(): void
     {
-        $response = $this->actingAs($this->student)
+        // Phase 10.2C-Hotfix: store() no longer auto-initiates a gateway
+        // payment order (that was the profile-completeness bypass) — the
+        // response carries the reserved, still-unpaid booking only.
+        $this->actingAs($this->student)
             ->postJson('/dashboard/bookings', [
                 'type' => 'paid_one_to_one',
                 'teacher_id' => $this->teacher->id,
@@ -88,41 +117,36 @@ class StudentBookingTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.teacher.id', $this->teacher->id)
             ->assertJsonPath('data.payment_status', 'pending')
-            ->assertJsonPath('data.price', '49.99');
-
-        $this->assertNotNull($response->json('payment.reference'));
-        $this->assertSame('pending', $response->json('payment.status'));
+            ->assertJsonPath('data.price', '49.99')
+            ->assertJsonMissingPath('payment');
     }
 
-    public function test_payment_placeholder_marks_booking_paid(): void
+    public function test_unsafe_pay_route_no_longer_exists(): void
     {
+        // Phase 10.2C-Hotfix: the endpoint that let a student mark their
+        // own booking paid from a client-submitted `payment_reference`,
+        // with no provider signature verification, is removed entirely —
+        // see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md.
         $store = $this->actingAs($this->student)->postJson('/dashboard/bookings', [
             'type' => 'paid_one_to_one',
             'teacher_id' => $this->teacher->id,
             'starts_at' => $this->slot(),
+            'subject' => 'maths',
+            'grade' => 5,
         ])->assertCreated();
 
         $booking = Booking::query()->where('reference', $store->json('data.reference'))->firstOrFail();
-        $reference = $store->json('payment.reference');
 
-        // Wrong reference rejected
+        $this->assertFalse(Route::has('dashboard.bookings.pay'));
+
         $this->actingAs($this->student)
-            ->postJson("/dashboard/bookings/{$booking->id}/pay", ['reference' => 'WRONG'])
-            ->assertStatus(422);
+            ->postJson("/dashboard/bookings/{$booking->id}/pay", ['reference' => 'anything-at-all'])
+            ->assertNotFound();
 
-        // Someone else's booking is forbidden
-        $other = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $this->actingAs($other)
-            ->postJson("/dashboard/bookings/{$booking->id}/pay", ['reference' => $reference])
-            ->assertForbidden();
-
-        // Owner pays
-        $this->actingAs($this->student)
-            ->postJson("/dashboard/bookings/{$booking->id}/pay", ['reference' => $reference])
-            ->assertOk()
-            ->assertJsonPath('data.payment_status', 'paid');
-
-        $this->assertTrue(
+        // Booking is unaffected — still pending, no activity log entry, and
+        // no BookingPayment row exists for this reference at all.
+        $this->assertSame('pending', $booking->refresh()->payment_status->value);
+        $this->assertFalse(
             BookingActivity::query()
                 ->where('booking_id', $booking->id)
                 ->where('action', BookingActivityAction::PaymentStatusChanged)
@@ -136,6 +160,8 @@ class StudentBookingTest extends TestCase
             'type' => 'paid_one_to_one',
             'teacher_id' => $this->teacher->id,
             'starts_at' => $this->slot(),
+            'subject' => 'maths',
+            'grade' => 5,
         ])->assertCreated();
 
         $this->actingAs($this->student)
@@ -159,6 +185,8 @@ class StudentBookingTest extends TestCase
                 'type' => 'paid_one_to_one',
                 'teacher_id' => $this->teacher->id,
                 'starts_at' => $this->slot(),
+                'subject' => 'maths',
+                'grade' => 5,
                 'recurring' => true,
                 'occurrences' => 4,
             ])

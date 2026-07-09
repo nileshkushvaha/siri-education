@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Countries\Schemas;
 
+use App\Booking\Enums\PaymentProviderCode;
 use App\Models\Currency;
 use App\Models\Language;
 use DateTimeZone;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -141,6 +143,35 @@ class CountryForm
                                 ->nullable()
                                 ->placeholder('+91 00000 00000'),
                         ]),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Payment Routing')
+                    ->description('Optional per-country payment gateway override — see PaymentProviderResolver. Leave the provider empty to fall through to the platform default.')
+                    ->icon('heroicon-o-credit-card')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            Select::make('payment_routing.provider')
+                                ->label('Provider')
+                                ->options(collect(PaymentProviderCode::cases())
+                                    ->reject(fn (PaymentProviderCode $c): bool => $c === PaymentProviderCode::Fake)
+                                    ->mapWithKeys(fn (PaymentProviderCode $c): array => [$c->value => $c->label()]))
+                                ->nullable()
+                                ->native(false)
+                                ->helperText('e.g. Razorpay for India, Stripe for US/UK.'),
+
+                            Toggle::make('payment_routing.enabled')
+                                ->label('Routing Enabled')
+                                ->default(true)
+                                ->helperText('Disable to fall through to the platform default without clearing the provider choice.'),
+                        ]),
+
+                        Textarea::make('payment_routing.notes')
+                            ->label('Notes')
+                            ->rows(2)
+                            ->nullable()
+                            ->maxLength(500)
+                            ->placeholder('Internal notes about this country\'s gateway choice (optional).'),
                     ])
                     ->columnSpanFull(),
 

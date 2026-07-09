@@ -318,9 +318,21 @@
                                     @endif
 
                                     <x-ui.button type="button" class="mt-3 w-full justify-center" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
-                                        <span wire:loading.remove wire:target="initiatePayment">Pay with Razorpay</span>
+                                        <span wire:loading.remove wire:target="initiatePayment">Pay now</span>
                                         <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
                                     </x-ui.button>
+
+                                    <p class="mt-2 text-[11px] text-slate-500">Pay with wallet balance — coming soon.</p>
+
+                                    @if(($paymentOrder['provider'] ?? null) === 'fake' && app()->environment(['local', 'testing']))
+                                        <div class="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3">
+                                            <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200">Test mode — fake provider</p>
+                                            <div class="mt-2 flex gap-2">
+                                                <x-ui.button type="button" size="sm" wire:click="simulateFakePayment(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
+                                                <x-ui.button type="button" size="sm" variant="ghost" wire:click="simulateFakePayment(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
 

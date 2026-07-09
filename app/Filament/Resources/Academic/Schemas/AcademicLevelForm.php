@@ -8,6 +8,8 @@ use App\Models\AcademicLevel;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -15,52 +17,86 @@ class AcademicLevelForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $isCreate = $schema->getLivewire() instanceof CreateRecord;
+
         return $schema
             ->components([
                 Section::make('Level Information')
+                    ->columnSpanFull()
                     ->schema([
-                        TextInput::make('name')
-                            ->required()
-                            ->maxLength(100)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, $set): void {
-                                if (blank($state)) {
-                                    return;
-                                }
+                        // Identity — name drives the auto-generated slug, so they
+                        // stay paired. The slug itself is hidden on create (it's
+                        // generated silently from the name) and only exposed for
+                        // correction once the record exists — editing it later is
+                        // a deliberate action since it changes the public URL.
+                        Grid::make(2)->schema([
+                            TextInput::make('name')
+                                ->required()
+                                ->maxLength(100)
+                                ->placeholder('e.g. Middle School')
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function ($state, $set): void {
+                                    if (blank($state)) {
+                                        return;
+                                    }
 
-                                $set('slug', app(GeneratePageSlugAction::class)->execute($state, null, AcademicLevel::class));
-                            }),
-                        TextInput::make('slug')
-                            ->required()
-                            ->unique('academic_levels', 'slug', ignoreRecord: true)
-                            ->maxLength(100)
-                            ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/'),
+                                    $set('slug', app(GeneratePageSlugAction::class)->execute($state, null, AcademicLevel::class));
+                                }),
+                            TextInput::make('slug')
+                                ->required()
+                                ->unique('academic_levels', 'slug', ignoreRecord: true)
+                                ->maxLength(100)
+                                ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
+                                ->placeholder('e.g. middle-school')
+                                ->helperText('Changing this changes the public URL.')
+                                ->hidden($isCreate)
+                                ->dehydratedWhenHidden()
+                                ->dehydrateStateUsing(fn (?string $state, $get): string => filled($state)
+                                    ? $state
+                                    : app(GeneratePageSlugAction::class)->execute((string) $get('name'), null, AcademicLevel::class)),
+                        ]),
+
+                        // Content — long-form text always gets the full row.
                         Textarea::make('description')
                             ->rows(3)
-                            ->maxLength(1000),
-                        TextInput::make('min_grade')
-                            ->label('Min Grade')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(12)
-                            ->helperText('Leave blank for levels not bound to a grade range (e.g. Undergraduate).'),
-                        TextInput::make('max_grade')
-                            ->label('Max Grade')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(12),
-                        Select::make('status')
-                            ->options(
-                                collect(AcademicStatus::cases())
-                                    ->mapWithKeys(fn (AcademicStatus $s) => [$s->value => $s->label()])
-                                    ->toArray()
-                            )
-                            ->default(AcademicStatus::Active->value)
-                            ->required(),
-                        TextInput::make('display_order')
-                            ->numeric()
-                            ->default(0)
-                            ->minValue(0),
+                            ->maxLength(1000)
+                            ->placeholder('Brief overview of this academic level…')
+                            ->columnSpanFull(),
+
+                        // Grade range — a logical pair.
+                        Grid::make(2)->schema([
+                            TextInput::make('min_grade')
+                                ->label('Min Grade')
+                                ->numeric()
+                                ->minValue(1)
+                                ->maxValue(12)
+                                ->placeholder('e.g. 6')
+                                ->helperText('Leave blank for levels not bound to a grade range (e.g. Undergraduate).'),
+                            TextInput::make('max_grade')
+                                ->label('Max Grade')
+                                ->numeric()
+                                ->minValue(1)
+                                ->maxValue(12)
+                                ->placeholder('e.g. 8'),
+                        ]),
+
+                        // Display settings.
+                        Grid::make(2)->schema([
+                            Select::make('status')
+                                ->options(
+                                    collect(AcademicStatus::cases())
+                                        ->mapWithKeys(fn (AcademicStatus $s) => [$s->value => $s->label()])
+                                        ->toArray()
+                                )
+                                ->default(AcademicStatus::Active->value)
+                                ->required()
+                                ->placeholder('Select status'),
+                            TextInput::make('display_order')
+                                ->numeric()
+                                ->default(0)
+                                ->minValue(0)
+                                ->placeholder('0'),
+                        ]),
                     ]),
             ]);
     }

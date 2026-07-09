@@ -8,6 +8,47 @@ use Spatie\LaravelSettings\Settings;
 
 class PaymentGatewaySettings extends Settings
 {
+    // Platform-wide gateway routing/kill-switch (Phase 10.2A). None of
+    // these are read by PaymentProviderResolver unless explicitly set —
+    // see PaymentProviderResolver's routing-order docblock. Adding these
+    // does not change existing behavior: default_provider starts null,
+    // so BookingSettings::payment_provider (the pre-existing, already
+    // load-bearing selection knob) remains authoritative until an admin
+    // deliberately sets one.
+    public ?string $default_provider;
+
+    public bool $payments_enabled;
+
+    public bool $allow_guest_checkout;
+
+    public bool $allow_student_checkout;
+
+    /** @var list<string> Provider keys permitted platform-wide; empty = no platform-level restriction. */
+    public array $allowed_providers;
+
+    public ?string $production_ready_at;
+
+    public ?string $last_configuration_checked_at;
+
+    public bool $fake_enabled;
+
+    // Per-provider readiness bookkeeping, set by PaymentGatewayConfigurationService
+    // — never by hand. Distinct from *_enabled (an admin's on/off switch):
+    // *_config_status reflects whether credentials actually pass validation.
+    public string $razorpay_config_status;
+
+    public ?string $razorpay_last_checked_at;
+
+    /** @var list<string> */
+    public array $razorpay_supported_currencies;
+
+    public string $stripe_config_status;
+
+    public ?string $stripe_last_checked_at;
+
+    /** @var list<string> */
+    public array $stripe_supported_currencies;
+
     public bool $stripe_enabled;
 
     public bool $stripe_sandbox_mode;

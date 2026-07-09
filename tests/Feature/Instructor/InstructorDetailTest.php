@@ -224,4 +224,27 @@ class InstructorDetailTest extends TestCase
             ->assertSee('type=free_demo', false)
             ->assertSee('type=paid_one_to_one', false);
     }
+
+    public function test_unauthenticated_visitor_following_a_book_button_is_redirected_to_login(): void
+    {
+        // Phase 10.2C-Fix: the profile page itself stays public, but both
+        // Book buttons point at booking.create, which now requires auth —
+        // this follows that link end-to-end rather than asserting the
+        // route in isolation (see BookingWizardLivewireTest for that).
+        $instructor = $this->makeInstructor();
+        TeacherSubject::factory()->create([
+            'teacher_id' => $instructor->id,
+            'subject' => 'maths',
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+
+        $this->get(route('instructors.show', $instructor))->assertOk();
+
+        $this->get(route('instructors.booking.create', [
+            'instructor' => $instructor->slug,
+            'subject' => 'maths',
+            'type' => 'free_demo',
+        ]))->assertRedirect(route('auth.login'));
+    }
 }

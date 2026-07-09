@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\BookingTypes\Schemas;
 
 use App\Booking\Registry\BookingTypeRegistry;
-use App\Models\Currency;
-use App\Settings\GeneralSettings;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -70,23 +69,15 @@ class BookingTypeForm
                             ->helperText('When off, bookings auto-confirm.'),
                     ]),
 
-                Section::make('Pricing & visibility')
+                Section::make('Behavior & visibility')
                     ->schema([
-                        Grid::make(3)->schema([
-                            Toggle::make('is_paid')
-                                ->live()
-                                ->label('Paid type'),
-                            TextInput::make('price')
-                                ->numeric()
-                                ->minValue(0)
-                                ->visible(fn (Get $get): bool => (bool) $get('is_paid'))
-                                ->requiredIfAccepted('is_paid'),
-                            Select::make('currency')
-                                ->options(fn (): array => Currency::query()->active()->orderBy('code')->pluck('code', 'code')->all())
-                                ->searchable()
-                                ->default(fn (): string => app(GeneralSettings::class)->default_currency)
-                                ->visible(fn (Get $get): bool => (bool) $get('is_paid')),
-                        ]),
+                        Toggle::make('is_paid')
+                            ->label('Paid type')
+                            ->helperText('Whether this type requires payment at all — not what it costs.'),
+                        Placeholder::make('pricing_matrix_notice')
+                            ->label('')
+                            ->content('Student-facing paid prices are managed from Student Lesson Prices.')
+                            ->visible(fn (Get $get): bool => (bool) $get('is_paid')),
                         Grid::make(2)->schema([
                             Toggle::make('is_active')
                                 ->default(true)

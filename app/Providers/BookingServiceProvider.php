@@ -18,11 +18,17 @@ use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\GuestBookingServiceInterface;
+use App\Booking\Contracts\RazorpayGatewayClient;
+use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\Contracts\StudentBookingServiceInterface;
+use App\Booking\Contracts\StudentLessonPriceRepositoryInterface;
 use App\Booking\Contracts\TeacherAssignmentServiceInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
+use App\Booking\Gateways\RazorpaySdkClient;
+use App\Booking\Gateways\StripeSdkClient;
 use App\Booking\Payments\FakePaymentProvider;
 use App\Booking\Payments\RazorpayPaymentProvider;
+use App\Booking\Payments\StripePaymentProvider;
 use App\Booking\Registry\AssignmentStrategyRegistry;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Registry\PaymentProviderRegistry;
@@ -30,12 +36,14 @@ use App\Booking\Repositories\AvailabilityRepository;
 use App\Booking\Repositories\BookingAnalyticsRepository;
 use App\Booking\Repositories\BookingRepository;
 use App\Booking\Repositories\BookingTypeRepository;
+use App\Booking\Repositories\StudentLessonPriceRepository;
 use App\Booking\Repositories\TeacherCandidateRepository;
 use App\Booking\Services\AvailabilityService;
 use App\Booking\Services\BookingAnalyticsService;
 use App\Booking\Services\BookingPaymentService;
 use App\Booking\Services\BookingService;
 use App\Booking\Services\GuestBookingService;
+use App\Booking\Services\PaymentProviderResolver;
 use App\Booking\Services\StudentBookingService;
 use App\Booking\Services\TeacherAssignmentService;
 use App\Booking\Types\CounsellingType;
@@ -71,6 +79,14 @@ class BookingServiceProvider extends ServiceProvider
         $this->app->bind(BookingPaymentServiceInterface::class, BookingPaymentService::class);
         $this->app->bind(BookingAnalyticsRepositoryInterface::class, BookingAnalyticsRepository::class);
         $this->app->bind(BookingAnalyticsServiceInterface::class, BookingAnalyticsService::class);
+        $this->app->bind(StudentLessonPriceRepositoryInterface::class, StudentLessonPriceRepository::class);
+
+        // Official SDKs (razorpay/razorpay, stripe/stripe-php) are isolated
+        // behind these two adapters — RazorpayPaymentProvider/StripePaymentProvider
+        // never instantiate \Razorpay\Api\Api or \Stripe\StripeClient directly.
+        // Tests bind a fake implementation instead of stubbing HTTP/cURL.
+        $this->app->bind(RazorpayGatewayClient::class, RazorpaySdkClient::class);
+        $this->app->bind(StripeGatewayClient::class, StripeSdkClient::class);
     }
 
     private function bindSingletons(): void
@@ -79,12 +95,17 @@ class BookingServiceProvider extends ServiceProvider
         $this->app->singleton(BookingValidationPipeline::class);
         $this->app->singleton(AssignmentStrategyRegistry::class);
         $this->app->singleton(PaymentProviderRegistry::class);
+        $this->app->singleton(PaymentProviderResolver::class);
 
         // New gateways: implement PaymentProviderInterface, register here,
-        // switch via BookingSettings::payment_provider.
+        // switch via BookingSettings::payment_provider. Selection safety
+        // (fake outside local/testing, misconfigured credentials) lives
+        // in PaymentProviderResolver, not here — this only wires up what
+        // exists.
         $this->app->afterResolving(PaymentProviderRegistry::class, function (PaymentProviderRegistry $registry, Application $app): void {
             $registry->register($app->make(FakePaymentProvider::class));
             $registry->register($app->make(RazorpayPaymentProvider::class));
+            $registry->register($app->make(StripePaymentProvider::class));
         });
     }
 

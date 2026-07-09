@@ -66,8 +66,17 @@ Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
-// ── Guest Booking wizard + manage page (public, no auth — consumes /api/v1/guest) ──
-Route::get('/book', [GuestBookingPageController::class, 'create'])->name('booking.create');
+// ── Booking wizard (Phase 10.2C-Fix: authenticated students only — no
+// guest booking. Unauthenticated visitors are redirected to login by
+// the 'auth' middleware, which preserves this URL as the post-login
+// intended redirect) ──────────────────────────────────────────────
+Route::get('/book', [GuestBookingPageController::class, 'create'])
+    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required'])
+    ->name('booking.create');
+
+// Manage page stays public/token-authorized — it never creates a new
+// booking, only manages one that already exists (including any legacy
+// guest booking created before this phase).
 Route::get('/book/manage/{reference}', [GuestBookingPageController::class, 'manage'])->name('booking.manage');
 
 // ── FAQ / Help Center (public — published, public-audience only) ──────
@@ -224,19 +233,28 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
     // ── Student booking (JSON, session-auth — reuses the Booking Engine) ──
+    // Phase 10.2C-Hotfix: the `pay` route is intentionally not registered.
+    // It accepted a client-submitted `payment_reference` with no gateway
+    // verification, letting a student mark their own booking paid without
+    // ever paying (see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md).
+    // Payment confirmation is only reachable through a verified provider
+    // callback/webhook (BookingPaymentWebhookController,
+    // RazorpayPaymentProvider::verifyCheckout()) or the fake provider's
+    // local/testing-only simulate action.
     Route::prefix('bookings')->name('bookings.')->group(function (): void {
         Route::get('/', [StudentBookingController::class, 'index'])->name('index');
         Route::get('/teachers', [StudentBookingController::class, 'teachers'])->name('teachers');
         Route::get('/previous-teachers', [StudentBookingController::class, 'previousTeachers'])->name('previous-teachers');
         Route::get('/slots', [StudentBookingController::class, 'slots'])->name('slots');
         Route::post('/', [StudentBookingController::class, 'store'])->name('store');
-        Route::post('/{booking}/pay', [StudentBookingController::class, 'pay'])->name('pay');
     });
 });
 
 // ── Instructors (public — visibility enforced in the controller) ──────
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
-Route::get('/instructors/book', [GuestBookingPageController::class, 'create'])->name('instructors.booking.create');
+Route::get('/instructors/book', [GuestBookingPageController::class, 'create'])
+    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required'])
+    ->name('instructors.booking.create');
 Route::get('/instructors/{user:slug}', [InstructorController::class, 'show'])->name('instructors.show');
 
 // ── Public Profile (guests + authenticated — visibility enforced in the controller) ──

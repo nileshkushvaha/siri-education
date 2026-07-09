@@ -110,13 +110,38 @@
                 </p>
             @endif
 
-            @if($booking->payment_status->value === 'pending' || $booking->payment_status->value === 'failed')
+            @if($booking->payment_status->value === 'paid')
+                <p class="mt-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-300">Paid</p>
+            @elseif($booking->payment_status->value === 'refunded')
+                <p class="mt-4 rounded-xl bg-slate-500/10 border border-slate-500/20 px-4 py-3 text-sm text-slate-300">
+                    @if($this->paymentWasCreditedToWallet())
+                        Payment received after this booking's slot was released — the amount was credited to your wallet.
+                    @else
+                        Refunded
+                    @endif
+                </p>
+            @endif
+
+            @if($isActive && ($booking->payment_status->value === 'pending' || $booking->payment_status->value === 'failed'))
                 <div class="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3">
                     <p class="text-sm text-indigo-200">Payment is {{ $booking->payment_status->label() }}. Complete payment to confirm this booking.</p>
+
                     <x-ui.button type="button" class="mt-3" size="sm" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
-                        <span wire:loading.remove wire:target="initiatePayment">Pay with Razorpay</span>
+                        <span wire:loading.remove wire:target="initiatePayment">Pay now</span>
                         <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
                     </x-ui.button>
+
+                    <p class="mt-2 text-[11px] text-slate-500">Pay with wallet balance — coming soon.</p>
+
+                    @if(($paymentOrder['provider'] ?? null) === 'fake' && app()->environment(['local', 'testing']))
+                        <div class="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200">Test mode — fake provider</p>
+                            <div class="mt-2 flex gap-2">
+                                <x-ui.button type="button" size="sm" wire:click="simulateFakePayment(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
+                                <x-ui.button type="button" size="sm" variant="ghost" wire:click="simulateFakePayment(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @endif
 

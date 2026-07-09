@@ -27,11 +27,15 @@ class BookingPermissionSeeder extends Seeder
         'ViewAny:BookingType', 'View:BookingType', 'Create:BookingType', 'Update:BookingType', 'Delete:BookingType', 'Restore:BookingType',
         'ViewAny:TeacherAvailability', 'View:TeacherAvailability', 'Create:TeacherAvailability', 'Update:TeacherAvailability', 'Delete:TeacherAvailability',
         'ViewAny:TeacherUnavailability', 'View:TeacherUnavailability', 'Create:TeacherUnavailability', 'Update:TeacherUnavailability', 'Delete:TeacherUnavailability',
+        // Student-facing pricing matrix (Phase 10.2D) — admin only, never
+        // granted to the instructor role.
+        'ViewAny:StudentLessonPrice', 'View:StudentLessonPrice', 'Create:StudentLessonPrice', 'Update:StudentLessonPrice', 'Delete:StudentLessonPrice', 'Restore:StudentLessonPrice',
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [
         'ForceDelete:Booking',
         'ForceDelete:BookingType',
+        'ForceDelete:StudentLessonPrice',
     ];
 
     public function run(): void

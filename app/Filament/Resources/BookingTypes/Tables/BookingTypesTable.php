@@ -45,10 +45,9 @@ class BookingTypesTable
                 TextColumn::make('max_attendees')
                     ->label('Capacity')
                     ->placeholder('Unlimited'),
-                TextColumn::make('price')
-                    ->money(fn (BookingType $record): string => $record->currency ?? 'USD')
-                    ->placeholder('Free')
-                    ->sortable(),
+                IconColumn::make('is_paid')
+                    ->boolean()
+                    ->label('Paid'),
                 IconColumn::make('requires_approval')
                     ->boolean()
                     ->label('Approval'),
@@ -100,8 +99,6 @@ class BookingTypesTable
                             'Buffer (min)' => 'buffer_minutes',
                             'Capacity' => fn (BookingType $t): string => (string) ($t->max_attendees ?? 'Unlimited'),
                             'Paid' => fn (BookingType $t): string => $t->is_paid ? 'Yes' : 'No',
-                            'Price' => 'price',
-                            'Currency' => 'currency',
                             'Requires approval' => fn (BookingType $t): string => $t->requires_approval ? 'Yes' : 'No',
                             'Active' => fn (BookingType $t): string => $t->is_active ? 'Yes' : 'No',
                         ], 'booking-types.csv'))

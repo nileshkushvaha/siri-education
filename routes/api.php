@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\Guest\GuestAvailabilityController;
 use App\Http\Controllers\Api\Guest\GuestBookingController;
-use App\Http\Controllers\Api\Guest\GuestBookingPaymentController;
 use App\Http\Controllers\Api\Guest\GuestCatalogController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -30,10 +29,21 @@ Route::prefix('v1/guest')->name('api.guest.')->group(function (): void {
     });
 
     Route::middleware('throttle:guest-booking-write')->group(function (): void {
+        // Phase 10.2C-Fix: store() itself now always rejects (see
+        // GuestBookingController::store() / AuthenticatedAttendeeRule) —
+        // kept mounted only so it returns a clean 422 instead of a 404,
+        // matching every other "no guest booking" surface.
         Route::post('/bookings', [GuestBookingController::class, 'store'])->name('bookings.store');
         Route::post('/bookings/{reference}/cancel', [GuestBookingController::class, 'cancel'])->name('bookings.cancel');
         Route::post('/bookings/{reference}/reschedule', [GuestBookingController::class, 'reschedule'])->name('bookings.reschedule');
-        Route::post('/bookings/{reference}/payments/razorpay/initiate', [GuestBookingPaymentController::class, 'initiate'])->name('bookings.payments.initiate');
-        Route::post('/bookings/{reference}/payments/razorpay/verify', [GuestBookingPaymentController::class, 'verify'])->name('bookings.payments.verify');
     });
+
+    // Phase 10.2C-Fix: guest payment is disabled outright ("No
+    // unauthenticated user may initiate payment" / "No guest payment
+    // UI") — GuestBookingPaymentController is kept for reference but is
+    // deliberately unrouted, not reachable from any public route. A
+    // guest booking that already has a Pending payment_status (legacy
+    // data only — new ones can no longer be created) has no path to pay
+    // through this API; it is a manual/admin resolution case, same as a
+    // late-arriving webhook after cancellation (Phase 10.2B Option B).
 });

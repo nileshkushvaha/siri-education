@@ -26,6 +26,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -51,6 +52,10 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Sphere Education')
             ->brandLogo(null)
             ->favicon(fn (): ?string => $this->faviconUrl())
+            // Filament defaults every page's content to max-w-7xl (1280px)
+            // when unset — on wide monitors that leaves a large dead zone
+            // next to every form/table. Use the full available width instead.
+            ->maxContentWidth(Width::Full)
 
             // ── Profile page: adds "My Profile" to user menu automatically ──
             ->profile(AdminProfile::class, isSimple: false)

@@ -17,5 +17,9 @@ final readonly class PaymentIntentData
         public ?string $currency,
         public string $status,
         public ?string $checkoutUrl = null,
+        /** Non-secret, provider-issued client key (e.g. Stripe's publishable key). */
+        public ?string $publicKey = null,
+        /** Single-use frontend confirmation token (Stripe only) — never persisted. */
+        public ?string $clientSecret = null,
     ) {}
 }

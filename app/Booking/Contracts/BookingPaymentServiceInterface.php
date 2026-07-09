@@ -48,4 +48,14 @@ interface BookingPaymentServiceInterface
      * @throws BookingException when the booking is not paid
      */
     public function recordRefund(Booking $booking, ?string $reason = null): Booking;
+
+    /**
+     * Gateway-neutral frontend checkout payload (never a secret) for the
+     * currently configured provider.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws BookingException when the provider cannot be used, or no pending payment exists
+     */
+    public function checkoutPayload(Booking $booking): array;
 }

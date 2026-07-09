@@ -75,4 +75,26 @@ final class FakePaymentProvider implements PaymentProviderInterface
             reason: $request->json('reason'),
         );
     }
+
+    /** Always "configured" — no credentials exist to validate. */
+    public function isConfigured(): bool
+    {
+        return true;
+    }
+
+    /** Accepts any currency — no real gateway constraint applies. */
+    public function supportedCurrencies(): array
+    {
+        return ['INR', 'USD', 'EUR', 'GBP', 'AED'];
+    }
+
+    public function checkoutPayload(Booking $booking): array
+    {
+        return [
+            'provider' => self::KEY,
+            'reference' => $booking->payment_reference,
+            'amount' => $booking->price,
+            'currency' => $booking->currency,
+        ];
+    }
 }

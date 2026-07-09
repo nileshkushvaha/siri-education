@@ -18,8 +18,12 @@ use Illuminate\Http\JsonResponse;
 /**
  * Guest checkout for a paid booking, authorized by the same manage_token
  * every other guest endpoint uses — no session, no new credential.
- * Covers both the golden path (pay immediately after booking) and the
- * retry path (guest returns via the manage link after a failed attempt).
+ *
+ * DEACTIVATED as of Phase 10.2C-Fix: the product decision is "no guest
+ * booking," which extends to "no guest payment." routes/api.php no
+ * longer mounts initiate()/verify() — this class is kept only so a
+ * future guest-checkout reactivation doesn't have to be rebuilt from
+ * scratch, not because it is reachable today.
  */
 final class GuestBookingPaymentController extends Controller
 {
@@ -41,7 +45,7 @@ final class GuestBookingPaymentController extends Controller
         try {
             $this->payments->initiate($booking);
 
-            return response()->json(['data' => $this->razorpay->checkoutPayload($booking)]);
+            return response()->json(['data' => $this->payments->checkoutPayload($booking)]);
         } catch (BookingException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

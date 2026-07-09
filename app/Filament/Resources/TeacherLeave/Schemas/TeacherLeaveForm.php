@@ -22,36 +22,48 @@ class TeacherLeaveForm
             ->components([
                 Section::make('Leave period')
                     ->description('Blocks all bookings for the teacher during this window. Enter times in the selected instructor timezone.')
+                    ->columnSpanFull()
                     ->schema([
-                        Select::make('teacher_id')
-                            ->label('Teacher')
-                            ->relationship(
-                                'teacher',
-                                'name',
-                                fn (Builder $query) => $query->whereHas('profile', fn (Builder $q) => $q->whereIn(
-                                    'instructor_status',
-                                    InstructorStatus::bookable(),
-                                )),
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->required(),
+                        // Who + which timezone the times below are entered in.
+                        Grid::make(2)->schema([
+                            Select::make('teacher_id')
+                                ->label('Teacher')
+                                ->relationship(
+                                    'teacher',
+                                    'name',
+                                    fn (Builder $query) => $query->whereHas('profile', fn (Builder $q) => $q->whereIn(
+                                        'instructor_status',
+                                        InstructorStatus::bookable(),
+                                    )),
+                                )
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->placeholder('Select a teacher'),
+                            Select::make('timezone')
+                                ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
+                                ->searchable()
+                                ->placeholder('Defaults to the instructor profile timezone')
+                                ->helperText('Defaults to the instructor profile timezone and is stored for audit/display clarity.'),
+                        ]),
+
+                        // The leave window itself.
                         Grid::make(2)->schema([
                             DateTimePicker::make('starts_at')
                                 ->seconds(false)
-                                ->required(),
+                                ->required()
+                                ->placeholder('Leave start'),
                             DateTimePicker::make('ends_at')
                                 ->seconds(false)
                                 ->required()
-                                ->after('starts_at'),
+                                ->after('starts_at')
+                                ->placeholder('Leave end'),
                         ]),
-                        Select::make('timezone')
-                            ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
-                            ->searchable()
-                            ->helperText('Defaults to the instructor profile timezone and is stored for audit/display clarity.'),
+
                         TextInput::make('reason')
                             ->maxLength(255)
-                            ->placeholder('Annual leave, sick day, training…'),
+                            ->placeholder('Annual leave, sick day, training…')
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

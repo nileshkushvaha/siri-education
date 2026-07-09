@@ -14,11 +14,25 @@ use App\Models\UserProfile;
 use App\Settings\BookingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
+/**
+ * Phase 10.2C-Fix: no guest booking — POST /api/v1/guest/bookings can
+ * never create a new booking anymore (AuthenticatedAttendeeRule rejects
+ * every request through this endpoint, since it never carries an
+ * authenticated session by design). The manage/view/cancel/reschedule
+ * endpoints stay reachable for *legacy* guest bookings (created before
+ * this phase, or by direct admin action) — simulated here via a
+ * directly-built fixture rather than the now-blocked create endpoint.
+ */
 class GuestBookingTest extends TestCase
 {
     use RefreshDatabase;
+
+    private User $teacher;
+
+    private BookingType $freeDemo;
 
     protected function setUp(): void
     {
@@ -31,8 +45,10 @@ class GuestBookingTest extends TestCase
             TeacherAvailability::factory()->state(['teacher_id' => $teacher->id])
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
+        $this->teacher = $teacher;
 
-        BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30, 'max_attendees' => 1]);
+        $this->freeDemo = BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30, 'max_attendees' => 1]);
+        BookingType::factory()->paid(499.00, 'INR')->create(['key' => 'paid_one_to_one', 'duration_minutes' => 60, 'max_attendees' => 1]);
     }
 
     private function payload(array $overrides = []): array
@@ -48,26 +64,93 @@ class GuestBookingTest extends TestCase
         ];
     }
 
-    public function test_manage_token_is_returned_once_and_stored_hashed(): void
+    /**
+     * A pre-existing guest booking, as if created before the Phase
+     * 10.2C-Fix "no guest booking" rule shipped — built directly, since
+     * the create endpoint itself can no longer produce one.
+     *
+     * @return array{0: Booking, 1: string} booking + plain manage token
+     */
+    private function legacyGuestBooking(): array
     {
-        $response = $this->postJson('/api/v1/guest/bookings', $this->payload())->assertCreated();
+        $plainToken = Str::random(64);
 
-        $plain = $response->json('manage_token');
-        $reference = $response->json('data.reference');
+        $booking = Booking::factory()->create([
+            'booking_type_id' => $this->freeDemo->id,
+            'attendee_id' => null,
+            'host_id' => $this->teacher->id,
+            'guest_name' => 'Guest Parent',
+            'guest_email' => 'parent@example.com',
+            'guest_phone' => null,
+            'manage_token' => hash('sha256', $plainToken),
+            'starts_at' => now('UTC')->addDays(3)->setTime(10, 0),
+            'ends_at' => now('UTC')->addDays(3)->setTime(10, 30),
+        ]);
 
-        $this->assertSame(64, strlen((string) $plain));
-        $this->assertStringContainsString("/book/manage/{$reference}?token={$plain}", $response->json('manage_url'));
-
-        $stored = Booking::query()->where('reference', $reference)->value('manage_token');
-        $this->assertSame(hash('sha256', $plain), $stored);
-        $this->assertNotSame($plain, $stored);
+        return [$booking, $plainToken];
     }
 
-    public function test_plain_token_authorizes_view_cancel_and_reschedule(): void
+    // ── Guest booking creation is denied ──────────────────────────────
+
+    public function test_guest_booking_creation_is_denied(): void
     {
-        $store = $this->postJson('/api/v1/guest/bookings', $this->payload())->assertCreated();
-        $reference = $store->json('data.reference');
-        $token = $store->json('manage_token');
+        $response = $this->postJson('/api/v1/guest/bookings', $this->payload());
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('bookings', ['guest_email' => 'parent@example.com']);
+    }
+
+    public function test_guest_cannot_create_a_paid_booking(): void
+    {
+        $response = $this->postJson('/api/v1/guest/bookings', $this->payload(['type' => 'paid_one_to_one']));
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('bookings', ['guest_email' => 'parent@example.com']);
+    }
+
+    public function test_honeypot_still_rejects_bots(): void
+    {
+        $this->postJson('/api/v1/guest/bookings', $this->payload(['website' => 'http://spam.example']))
+            ->assertStatus(422);
+    }
+
+    public function test_captcha_enabled_still_denies_guest_booking(): void
+    {
+        $settings = app(BookingSettings::class);
+        $settings->captcha_enabled = true;
+        $settings->turnstile_site_key = 'site-key';
+        $settings->turnstile_secret_key = 'secret-key';
+        $settings->save();
+
+        // No token → rejected before any booking is created (captcha still checked first).
+        $this->postJson('/api/v1/guest/bookings', $this->payload())
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('cf_turnstile_response');
+
+        // A verified, valid captcha token no longer results in a booking —
+        // the "no guest booking" rule denies it regardless.
+        Http::fake([
+            'challenges.cloudflare.com/*' => Http::response(['success' => true]),
+        ]);
+
+        $this->postJson('/api/v1/guest/bookings', $this->payload(['cf_turnstile_response' => 'good-token']))
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('bookings', ['guest_email' => 'parent@example.com']);
+    }
+
+    public function test_captcha_disabled_still_denies_guest_booking(): void
+    {
+        $this->postJson('/api/v1/guest/bookings', $this->payload())->assertStatus(422);
+        $this->assertDatabaseMissing('bookings', ['guest_email' => 'parent@example.com']);
+    }
+
+    // ── Legacy guest booking management still works ──────────────────
+
+    public function test_legacy_guest_booking_manage_token_authorizes_view_cancel_and_reschedule(): void
+    {
+        [$booking, $token] = $this->legacyGuestBooking();
+        $reference = $booking->reference;
 
         $this->getJson("/api/v1/guest/bookings/{$reference}?token={$token}")
             ->assertOk()
@@ -88,52 +171,11 @@ class GuestBookingTest extends TestCase
         ])->assertOk()->assertJsonPath('data.status', 'cancelled');
     }
 
-    public function test_honeypot_still_rejects_bots(): void
+    public function test_legacy_guest_manage_page_still_renders(): void
     {
-        $this->postJson('/api/v1/guest/bookings', $this->payload(['website' => 'http://spam.example']))
-            ->assertStatus(422);
-    }
+        [$booking, $token] = $this->legacyGuestBooking();
 
-    public function test_captcha_blocks_when_enabled_and_verifies_with_turnstile(): void
-    {
-        $settings = app(BookingSettings::class);
-        $settings->captcha_enabled = true;
-        $settings->turnstile_site_key = 'site-key';
-        $settings->turnstile_secret_key = 'secret-key';
-        $settings->save();
-
-        // No token → rejected before any booking is created.
-        $this->postJson('/api/v1/guest/bookings', $this->payload())
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('cf_turnstile_response');
-
-        // First verification fails, second succeeds.
-        Http::fake([
-            'challenges.cloudflare.com/*' => Http::sequence()
-                ->push(['success' => false])
-                ->push(['success' => true]),
-        ]);
-
-        $this->postJson('/api/v1/guest/bookings', $this->payload(['cf_turnstile_response' => 'bad-token']))
-            ->assertStatus(422);
-
-        $this->postJson('/api/v1/guest/bookings', $this->payload(['cf_turnstile_response' => 'good-token']))
-            ->assertCreated();
-
-        Http::assertSent(fn ($request) => str_contains($request->url(), 'turnstile/v0/siteverify')
-            && $request['secret'] === 'secret-key');
-    }
-
-    public function test_captcha_disabled_requires_no_token(): void
-    {
-        $this->postJson('/api/v1/guest/bookings', $this->payload())->assertCreated();
-    }
-
-    public function test_manage_page_renders_for_guests(): void
-    {
-        $store = $this->postJson('/api/v1/guest/bookings', $this->payload())->assertCreated();
-
-        $this->get('/book/manage/'.$store->json('data.reference').'?token='.$store->json('manage_token'))
+        $this->get('/book/manage/'.$booking->reference.'?token='.$token)
             ->assertOk()
             ->assertSee('Manage Booking')
             ->assertSee('manageBooking', escape: false);

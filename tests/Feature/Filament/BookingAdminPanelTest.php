@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Resources\BookingTypes\Pages\CreateBookingType;
 use App\Models\BookingType;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherUnavailability;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -62,5 +64,51 @@ class BookingAdminPanelTest extends TestCase
 
         $this->actingAs($user)->get('/admin/bookings')->assertForbidden();
         $this->actingAs($user)->get('/admin/booking-reports')->assertForbidden();
+    }
+
+    public function test_booking_type_form_no_longer_exposes_price_or_currency_fields(): void
+    {
+        // Phase 10.2D-Cleanup: student-facing paid prices are managed
+        // exclusively from Student Lesson Prices — the columns backing
+        // these fields no longer exist on booking_types at all.
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateBookingType::class)
+            ->assertFormFieldDoesNotExist('price')
+            ->assertFormFieldDoesNotExist('currency');
+    }
+
+    public function test_paid_booking_type_saves_without_any_price_field(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateBookingType::class)
+            ->fillForm([
+                'key' => 'paid_one_to_one',
+                'name' => 'Paid One To One',
+                'duration_minutes' => 60,
+                'is_paid' => true,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('booking_types', ['key' => 'paid_one_to_one', 'is_paid' => true]);
+    }
+
+    public function test_free_booking_type_does_not_require_price(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateBookingType::class)
+            ->fillForm([
+                'key' => 'free_demo',
+                'name' => 'Free Demo',
+                'duration_minutes' => 30,
+                'is_paid' => false,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('booking_types', ['key' => 'free_demo']);
     }
 }

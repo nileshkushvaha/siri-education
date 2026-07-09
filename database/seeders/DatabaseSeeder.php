@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             AcademicPermissionSeeder::class,
             AcademicCategorySeeder::class,
             SubjectSeeder::class,
+            StudentLessonPriceSeeder::class,
             AcademicLevelSeeder::class,
             SkillLevelSeeder::class,
             InstructorSeeder::class,

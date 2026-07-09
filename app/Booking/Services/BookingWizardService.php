@@ -33,8 +33,6 @@ final class BookingWizardService
                 'description' => $type->description,
                 'duration_minutes' => $type->duration_minutes,
                 'is_paid' => $type->is_paid,
-                'price' => $type->is_paid ? $type->price : null,
-                'currency' => $type->is_paid ? $type->currency : null,
                 'requires_approval' => $type->requires_approval,
             ])
             ->values();

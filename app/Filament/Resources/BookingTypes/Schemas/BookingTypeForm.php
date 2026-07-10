@@ -23,6 +23,7 @@ class BookingTypeForm
             ->components([
                 Section::make('Type')
                     ->description('The key links this row to its code driver — rows hold tunable values, drivers hold behavior.')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('key')
@@ -33,17 +34,22 @@ class BookingTypeForm
                                 ->unique(ignoreRecord: true)
                                 ->disabledOn('edit')
                                 ->dehydratedWhenHidden()
+                                ->placeholder('Select a driver')
                                 ->helperText('New keys require a BookingTypeInterface driver (see docs/booking.md).'),
                             TextInput::make('name')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->placeholder('e.g. Paid 1-to-1 Session'),
                         ]),
                         Textarea::make('description')
                             ->rows(2)
-                            ->maxLength(1000),
+                            ->maxLength(1000)
+                            ->placeholder('Brief description of this booking type…')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Scheduling')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
                             TextInput::make('duration_minutes')
@@ -51,18 +57,21 @@ class BookingTypeForm
                                 ->required()
                                 ->minValue(5)
                                 ->maxValue(600)
-                                ->suffix('min'),
+                                ->suffix('min')
+                                ->placeholder('e.g. 60'),
                             TextInput::make('buffer_minutes')
                                 ->numeric()
                                 ->default(0)
                                 ->minValue(0)
                                 ->maxValue(120)
                                 ->suffix('min')
+                                ->placeholder('0')
                                 ->helperText('Gap enforced before and after each booking.'),
                             TextInput::make('max_attendees')
                                 ->numeric()
                                 ->minValue(1)
                                 ->nullable()
+                                ->placeholder('Unlimited')
                                 ->helperText('Leave empty for unlimited (webinars).'),
                         ]),
                         Toggle::make('requires_approval')
@@ -70,6 +79,7 @@ class BookingTypeForm
                     ]),
 
                 Section::make('Behavior & visibility')
+                    ->columnSpanFull()
                     ->schema([
                         Toggle::make('is_paid')
                             ->label('Paid type')
@@ -84,7 +94,8 @@ class BookingTypeForm
                                 ->helperText('Inactive types stop accepting bookings immediately.'),
                             TextInput::make('sort_order')
                                 ->numeric()
-                                ->default(0),
+                                ->default(0)
+                                ->placeholder('0'),
                         ]),
                     ]),
             ]);

@@ -40,6 +40,7 @@ class StudentLessonPriceForm
             ->components([
                 Section::make('Match criteria')
                     ->description('Who this price applies to — the resolver picks the most specific active row that matches all of these.')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('booking_type_id')
@@ -49,6 +50,7 @@ class StudentLessonPriceForm
                                 ->preload()
                                 ->required()
                                 ->live()
+                                ->placeholder('Select a booking type')
                                 ->afterStateUpdated(function (Set $set, ?string $state): void {
                                     $duration = $state !== null ? BookingType::query()->find($state)?->duration_minutes : null;
 
@@ -62,7 +64,8 @@ class StudentLessonPriceForm
                                 ->options(fn () => Subject::query()->active()->orderBy('name')->pluck('name', 'id')->all())
                                 ->searchable()
                                 ->preload()
-                                ->required(),
+                                ->required()
+                                ->placeholder('Select a subject'),
                         ]),
                         Select::make('instructor_id')
                             ->label('Instructor Override')
@@ -74,6 +77,7 @@ class StudentLessonPriceForm
                             ->searchable()
                             ->preload()
                             ->nullable()
+                            ->placeholder('Leave blank for all instructors')
                             ->helperText('Leave blank to apply this price to all instructors. Select an instructor only for a special student-facing price override.'),
                         Grid::make(2)->schema([
                             Select::make('academic_level_id')
@@ -81,6 +85,7 @@ class StudentLessonPriceForm
                                 ->options(fn () => AcademicLevel::query()->active()->orderBy('display_order')->orderBy('name')->pluck('name', 'id')->all())
                                 ->searchable()
                                 ->preload()
+                                ->placeholder('Leave empty for every level')
                                 ->helperText('Leave empty to apply to every academic level.'),
                             TextInput::make('duration_minutes')
                                 ->label('Duration')
@@ -89,6 +94,7 @@ class StudentLessonPriceForm
                                 ->minValue(5)
                                 ->maxValue(600)
                                 ->suffix('min')
+                                ->placeholder('e.g. 60')
                                 // Two active rows matching the exact same
                                 // criteria would make resolution ambiguous
                                 // (priority is a tie-breaker for edge cases,
@@ -124,17 +130,20 @@ class StudentLessonPriceForm
                                 ->options(fn () => Country::query()->active()->orderBy('name')->pluck('name', 'id')->all())
                                 ->searchable()
                                 ->preload()
-                                ->required(),
+                                ->required()
+                                ->placeholder('Select a country'),
                             Select::make('currency_id')
                                 ->label('Currency')
                                 ->options(fn () => Currency::query()->active()->orderBy('code')->pluck('code', 'id')->all())
                                 ->searchable()
                                 ->preload()
-                                ->required(),
+                                ->required()
+                                ->placeholder('Select a currency'),
                         ]),
                     ]),
 
                 Section::make('Price')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
                             TextInput::make('amount')
@@ -143,6 +152,7 @@ class StudentLessonPriceForm
                                 ->minValue(0.01)
                                 ->required()
                                 ->prefix(fn (Get $get): ?string => Currency::query()->find($get('currency_id'))?->symbol)
+                                ->placeholder('0.00')
                                 ->helperText('The full amount the student is charged — never negative or zero.'),
                             Toggle::make('is_active')
                                 ->label('Active')
@@ -151,12 +161,15 @@ class StudentLessonPriceForm
                             TextInput::make('priority')
                                 ->numeric()
                                 ->default(0)
+                                ->placeholder('0')
                                 ->helperText('Tie-breaker when more than one active row matches — higher wins.'),
                         ]),
                         Grid::make(2)->schema([
                             DateTimePicker::make('effective_from')
+                                ->placeholder('Immediately')
                                 ->helperText('Leave empty to apply immediately.'),
                             DateTimePicker::make('effective_until')
+                                ->placeholder('No expiry')
                                 ->helperText('Leave empty for no expiry.')
                                 ->after('effective_from'),
                         ]),

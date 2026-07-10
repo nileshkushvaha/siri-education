@@ -24,6 +24,7 @@ class StudentLearningGoalForm
         return $schema
             ->components([
                 Section::make('Goal')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('user_id')
@@ -31,42 +32,51 @@ class StudentLearningGoalForm
                                 ->relationship('user', 'name', fn (Builder $query) => $query->whereHas('roles', fn (Builder $q) => $q->where('name', 'student')))
                                 ->searchable()
                                 ->preload()
-                                ->required(),
+                                ->required()
+                                ->placeholder('Select a student'),
                             Select::make('subject_id')
                                 ->label('Subject')
                                 ->options(fn () => Subject::availableForAssignment()->orderBy('name')->pluck('name', 'id')->all())
                                 ->searchable()
                                 ->preload()
-                                ->required(),
+                                ->required()
+                                ->placeholder('Select a subject'),
                         ]),
                         Grid::make(2)->schema([
                             Select::make('type')
                                 ->options(collect(LearningGoalType::cases())->mapWithKeys(fn (LearningGoalType $type) => [$type->value => $type->label()])->all())
-                                ->required(),
+                                ->required()
+                                ->placeholder('Select a type'),
                             Select::make('academic_level_id')
                                 ->label('Academic Level')
                                 ->options(fn () => AcademicLevel::availableForAssignment()->orderBy('display_order')->orderBy('name')->pluck('name', 'id')->all())
                                 ->searchable()
-                                ->preload(),
+                                ->preload()
+                                ->placeholder('Select an academic level'),
                         ]),
                         TextInput::make('title')
                             ->required()
                             ->maxLength(255)
+                            ->placeholder('e.g. Improve algebra fluency')
                             ->columnSpanFull(),
                         Textarea::make('description')
                             ->maxLength(2000)
+                            ->placeholder('Details about this goal…')
                             ->columnSpanFull(),
                         Grid::make(3)->schema([
                             DatePicker::make('target_date')
-                                ->after('today'),
+                                ->after('today')
+                                ->placeholder('Select a target date'),
                             TextInput::make('priority')
                                 ->numeric()
                                 ->minValue(1)
-                                ->maxValue(5),
+                                ->maxValue(5)
+                                ->placeholder('1-5'),
                             Select::make('status')
                                 ->options(collect(LearningGoalStatus::cases())->mapWithKeys(fn (LearningGoalStatus $status) => [$status->value => $status->label()])->all())
                                 ->required()
-                                ->default(LearningGoalStatus::Active->value),
+                                ->default(LearningGoalStatus::Active->value)
+                                ->placeholder('Select status'),
                         ]),
                     ]),
             ]);

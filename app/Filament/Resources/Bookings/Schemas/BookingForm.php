@@ -27,6 +27,7 @@ class BookingForm
         return $schema
             ->components([
                 Section::make('Booking')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
                             $readonly(TextInput::make('reference')),
@@ -51,6 +52,7 @@ class BookingForm
 
                 Section::make('Payment')
                     ->description('Snapshotted at booking time by BookingPriceCalculator — settlement happens through the payment workflow, never edited here.')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
                             $readonly(TextInput::make('payment_status_label')->label('Payment status')
@@ -65,17 +67,19 @@ class BookingForm
 
                 Section::make('Meeting')
                     ->description('Provider linkage — filled by the meeting integration or manually. Disabled until payment is settled (or not required) so an unpaid booking can never carry a meeting link.')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
-                            TextInput::make('meeting_provider')->maxLength(50)->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
-                            TextInput::make('meeting_ref')->maxLength(255)->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
-                            TextInput::make('meeting_url')->url()->maxLength(2048)->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
+                            TextInput::make('meeting_provider')->maxLength(50)->placeholder('e.g. zoom')->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
+                            TextInput::make('meeting_ref')->maxLength(255)->placeholder('Provider meeting ID')->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
+                            TextInput::make('meeting_url')->url()->maxLength(2048)->placeholder('https://…')->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
                         ]),
                     ]),
 
                 Section::make('Notes')
+                    ->columnSpanFull()
                     ->schema([
-                        Textarea::make('notes')->rows(3)->maxLength(1000),
+                        Textarea::make('notes')->rows(3)->maxLength(1000)->placeholder('Internal admin notes…'),
                     ]),
             ]);
     }

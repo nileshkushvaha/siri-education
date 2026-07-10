@@ -17,8 +17,10 @@ class AcademicPermissionSeeder extends Seeder
     private const MODULES = [
         'AcademicCategory',
         'Subject',
+        'SubjectTopic',
         'AcademicLevel',
         'SkillLevel',
+        'InstructorSubjectTopic',
     ];
 
     private const MANAGER_ACTIONS = [

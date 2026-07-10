@@ -80,6 +80,18 @@ class AcademicLevelForm
                                 ->placeholder('e.g. 8'),
                         ]),
 
+                        // Education-system scoping (Phase 12.5): UK "Year 10"
+                        // and US "Grade 9" can coexist as country-scoped rows;
+                        // blank = global. min/max grade above keep every level
+                        // bridged to the universal 1-12 ints booking matches on.
+                        Select::make('country_id')
+                            ->label('Education System (Country)')
+                            ->relationship('country', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Global (all countries)')
+                            ->helperText('Scope this level to one country\'s education system (e.g. UK Year groups, US Grades). Leave blank for global levels.'),
+
                         // Display settings.
                         Grid::make(2)->schema([
                             Select::make('status')

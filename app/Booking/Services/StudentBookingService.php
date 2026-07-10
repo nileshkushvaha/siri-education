@@ -17,6 +17,7 @@ use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
+use App\Models\SubjectTopic;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -128,6 +129,7 @@ final class StudentBookingService implements StudentBookingServiceInterface
         $type = $this->types->requireActiveByKey($data->typeKey);
 
         $this->assertTeacherBookable($data);
+        $topic = $this->resolveTopic($data);
 
         return $this->bookings->request(new CreateBookingData(
             typeKey: $data->typeKey,
@@ -140,9 +142,50 @@ final class StudentBookingService implements StudentBookingServiceInterface
             meta: array_filter([
                 'subject' => $data->subject,
                 'grade' => $data->grade,
+                // Snapshot both: the slug mirrors meta.subject's style for
+                // display/analytics; the id survives topic renames.
+                'topic' => $topic?->slug,
+                'topic_id' => $topic?->id,
                 ...$extraMeta,
             ]),
         ));
+    }
+
+    /**
+     * Resolves and validates the optional topic selection (Phase 12.5):
+     * the topic must be an active topic of the selected subject, and
+     * the chosen teacher must hold active, admin-approved coverage for
+     * it at the requested grade. Whole-subject rows never imply topic
+     * coverage. No topic selected → subject-level rules alone apply,
+     * exactly as before this phase.
+     *
+     * @throws BookingException
+     */
+    private function resolveTopic(StudentBookingData $data): ?SubjectTopic
+    {
+        if ($data->topic === null) {
+            return null;
+        }
+
+        if ($data->subject === null) {
+            throw new BookingException('A subject is required when selecting a topic.');
+        }
+
+        $topic = SubjectTopic::query()
+            ->active()
+            ->where('slug', $data->topic)
+            ->whereHas('subject', fn ($q) => $q->availableForAssignment()->where('slug', $data->subject))
+            ->first();
+
+        if ($topic === null) {
+            throw new BookingException('The selected topic is not available.');
+        }
+
+        if (! $this->teachers->teachesTopic($data->teacherId, $topic, $data->grade)) {
+            throw new BookingException('This teacher does not teach the selected topic.');
+        }
+
+        return $topic;
     }
 
     private function assertTeacherBookable(StudentBookingData $data): void

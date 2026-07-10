@@ -148,6 +148,12 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(TeacherSubject::class, 'teacher_id');
     }
 
+    /** Explicit topic-level coverage (Phase 12.5) — see InstructorSubjectTopic. */
+    public function instructorSubjectTopics(): HasMany
+    {
+        return $this->hasMany(InstructorSubjectTopic::class, 'teacher_id');
+    }
+
     public function teacherAvailability(): HasMany
     {
         return $this->hasMany(TeacherAvailability::class, 'teacher_id');

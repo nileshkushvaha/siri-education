@@ -111,6 +111,15 @@
                 </div>
 
                 <div class="lg:col-span-4">
+                    <x-ui.select name="topic" label="Topic">
+                        <option value="">All topics</option>
+                        @foreach($filters['topics'] as $topic)
+                            <option value="{{ $topic['value'] }}" @selected(request('topic') === $topic['value'])>{{ $topic['label'] }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </div>
+
+                <div class="lg:col-span-4">
                     <x-ui.select name="academic_level" label="Academic level">
                         <option value="">All levels</option>
                         @foreach($filters['academic_levels'] as $level)

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\AssignmentCriteriaData;
+use App\Models\SubjectTopic;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -27,4 +28,13 @@ interface TeacherCandidateRepositoryInterface
 
     /** The user is an approved/published instructor (no subject check). */
     public function isApprovedTeacher(int $teacherId): bool;
+
+    /**
+     * The teacher has active, admin-approved coverage for this exact
+     * topic (Phase 12.5), at a level covering $grade (null coverage
+     * level = all levels; null $grade = any level accepted). Explicit
+     * coverage is required when a topic is selected — whole-subject
+     * rows never imply topic coverage.
+     */
+    public function teachesTopic(int $teacherId, SubjectTopic $topic, ?int $grade): bool;
 }

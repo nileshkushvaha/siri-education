@@ -8,6 +8,7 @@ use App\Enums\AcademicStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -46,6 +47,7 @@ class AcademicLevel extends Model
         'description',
         'min_grade',
         'max_grade',
+        'country_id',
         'status',
         'display_order',
     ];
@@ -58,6 +60,24 @@ class AcademicLevel extends Model
             'max_grade' => 'integer',
             'display_order' => 'integer',
         ];
+    }
+
+    /**
+     * The education system this level belongs to (UK "Year 10", US
+     * "Grade 9"); null = global. A full education_systems module is
+     * deliberately deferred — see phase-12.5 architecture doc.
+     */
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
+    }
+
+    /** Levels usable in the given country: its own system's plus global ones. */
+    public function scopeForCountry(Builder $query, ?int $countryId): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->whereNull('country_id')
+            ->when($countryId !== null, fn (Builder $inner) => $inner->orWhere('country_id', $countryId)));
     }
 
     /** Active levels only — the pool eligible for new teacher/subject assignments. */

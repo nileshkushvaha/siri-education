@@ -83,6 +83,12 @@ class Subject extends Model
         return $this->hasMany(TeacherSubject::class, 'subject_id');
     }
 
+    /** Teachable parts of this subject (Phase 12.5). */
+    public function topics(): HasMany
+    {
+        return $this->hasMany(SubjectTopic::class)->orderBy('display_order');
+    }
+
     public function preferredByStudents(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'student_preferred_subjects')

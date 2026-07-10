@@ -7,6 +7,8 @@ namespace App\Booking\Repositories;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\DTOs\AssignmentCriteriaData;
 use App\Enums\InstructorStatus;
+use App\Models\InstructorSubjectTopic;
+use App\Models\SubjectTopic;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -50,6 +52,16 @@ final class TeacherCandidateRepository implements TeacherCandidateRepositoryInte
             ->whereKey($teacherId)
             ->where('status', User::STATUS_ACTIVE)
             ->whereHas('profile', fn ($q) => $q->whereIn('instructor_status', InstructorStatus::bookable()))
+            ->exists();
+    }
+
+    public function teachesTopic(int $teacherId, SubjectTopic $topic, ?int $grade): bool
+    {
+        return InstructorSubjectTopic::query()
+            ->where('teacher_id', $teacherId)
+            ->where('subject_topic_id', $topic->id)
+            ->bookable()
+            ->coveringGrade($grade)
             ->exists();
     }
 

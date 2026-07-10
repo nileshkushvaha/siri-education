@@ -171,6 +171,15 @@
                                 </div>
                             @endforeach
                         </div>
+
+                        @if($topics->isNotEmpty())
+                            <h3 class="mt-6 text-sm font-bold uppercase tracking-wide text-slate-400">Topics taught</h3>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @foreach($topics as $topic)
+                                    <span class="rounded-full bg-white/[0.05] px-3 py-1.5 text-sm text-slate-200 ring-1 ring-white/10">{{ $topic['subject'] }} · {{ $topic['name'] }}</span>
+                                @endforeach
+                            </div>
+                        @endif
                     </x-ui.card>
                 @endif
 

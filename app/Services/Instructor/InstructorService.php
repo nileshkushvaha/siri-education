@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Enums\AcademicStatus;
 use App\Enums\InstructorStatus;
 use App\Models\AcademicLevel;
 use App\Models\Country;
+use App\Models\InstructorSubjectTopic;
 use App\Models\Language;
 use App\Models\Subject;
+use App\Models\SubjectTopic;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -39,6 +42,10 @@ final class InstructorService
 
         if ($subject = $request->string('subject')->trim()->toString()) {
             $this->applySubjectFilter($query, $subject);
+        }
+
+        if ($topic = $request->string('topic')->trim()->toString()) {
+            $this->applyTopicFilter($query, $topic);
         }
 
         if ($academicLevel = $request->string('academic_level')->trim()->toString()) {
@@ -84,6 +91,7 @@ final class InstructorService
     {
         return [
             'subjects' => $this->availableSubjects(),
+            'topics' => $this->availableTopics(),
             'academic_levels' => $this->availableAcademicLevels(),
             'languages' => $this->availableLanguages(),
             'countries' => $this->availableCountries(),
@@ -143,6 +151,7 @@ final class InstructorService
         $currentPosition = $this->experienceService->currentPosition($instructor);
         $stats = $this->stats($instructor);
         $subjects = $this->subjectsFor($instructor);
+        $topics = $this->topicsFor($instructor);
         $languages = $this->languagesFor($instructor);
         $ratings = $this->ratingsFor($instructor);
         $availabilityPreview = $this->availabilityPreview($instructor);
@@ -164,6 +173,7 @@ final class InstructorService
             'currentPosition',
             'stats',
             'subjects',
+            'topics',
             'languages',
             'ratings',
             'availabilityPreview',
@@ -226,6 +236,25 @@ final class InstructorService
                 'booking_value' => (string) $subject->subject,
                 'grade_range' => $this->formatGradeRange($subject->grade_from, $subject->grade_to),
             ])
+            ->values();
+    }
+
+    /** Active, admin-approved topic coverage for public display — never pricing data. */
+    public function topicsFor(User $instructor): Collection
+    {
+        $instructor->loadMissing('instructorSubjectTopics.topic.subject');
+
+        return $instructor->instructorSubjectTopics
+            ->filter(fn (InstructorSubjectTopic $coverage): bool => $coverage->is_active
+                && $coverage->approved_at !== null
+                && $coverage->topic?->status === AcademicStatus::Active)
+            ->map(fn (InstructorSubjectTopic $coverage): array => [
+                'name' => (string) $coverage->topic->name,
+                'slug' => (string) $coverage->topic->slug,
+                'subject' => (string) $coverage->topic->subject?->name,
+            ])
+            ->unique('slug')
+            ->sortBy('name')
             ->values();
     }
 
@@ -347,6 +376,27 @@ final class InstructorService
         $query->whereHas('teacherSubjects', fn (Builder $subjectQuery) => $subjectQuery->where('subject', $subject));
     }
 
+    /** Only instructors with active, admin-approved coverage for the topic (Phase 12.5). */
+    private function applyTopicFilter(Builder $query, string $topic): void
+    {
+        $topicMaster = SubjectTopic::query()
+            ->active()
+            ->where(fn (Builder $topicQuery) => $topicQuery
+                ->whereKey($topic)
+                ->orWhere('slug', $topic))
+            ->first();
+
+        if (! $topicMaster) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereHas('instructorSubjectTopics', fn (Builder $coverageQuery) => $coverageQuery
+            ->where('subject_topic_id', $topicMaster->id)
+            ->bookable());
+    }
+
     private function applyAcademicLevelFilter(Builder $query, string $academicLevel): void
     {
         $level = AcademicLevel::query()
@@ -460,6 +510,31 @@ final class InstructorService
         return $linked
             ->merge($legacy)
             ->unique('value')
+            ->values();
+    }
+
+    /** Active topics with at least one bookable instructor holding active, approved coverage. */
+    private function availableTopics(): Collection
+    {
+        return SubjectTopic::query()
+            ->active()
+            ->whereHas('subject', fn (Builder $subjectQuery) => $subjectQuery->availableForAssignment())
+            ->whereHas('instructorCoverage', fn (Builder $coverageQuery) => $coverageQuery
+                ->bookable()
+                ->whereHas('teacher', fn (Builder $teacherQuery) => $teacherQuery
+                    ->where('users.status', 'active')
+                    ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'instructor'))
+                    ->whereHas('profile', fn (Builder $profileQuery) => $profileQuery
+                        ->whereNull('deleted_at')
+                        ->where('profile_visibility', 'public')
+                        ->whereIn('instructor_status', InstructorStatus::bookableValues()))))
+            ->with('subject:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'subject_id'])
+            ->map(fn (SubjectTopic $topic): array => [
+                'value' => $topic->id,
+                'label' => sprintf('%s — %s', $topic->subject?->name, $topic->name),
+            ])
             ->values();
     }
 

@@ -3,7 +3,7 @@
 ## Stack
 
 - Laravel 13 · PHP 8.5 · MySQL
-- Filament v4 · Admin panel at `/admin`
+- Filament v5.6 · Admin panel at `/admin`
 - Spatie Permission · Spatie Activitylog · Spatie Laravel Settings · Spatie Media Library
 - Kalnoy NestedSet (navigation tree)
 
@@ -31,10 +31,12 @@ Controller → FormRequest → Service → Repository → Model
 `PortalResolver` (`app/Services/PortalResolver.php`) is the single source of truth for portal selection.
 
 Portals:
+
 - **Admin Portal** — Filament `/admin` — `super_admin`, `manager`
 - **Frontend Portal** — Blade `/dashboard` — `instructor`, `student`, future roles
 
 Responsibilities owned exclusively by `PortalResolver`:
+
 - `usesAdminPortal(User)` / `usesFrontendPortal(User)`
 - `loginRedirect(User)` — where to send after successful login
 - `logoutRedirect(User)` — where to send after logout

@@ -10,6 +10,7 @@ use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingActivity;
@@ -181,7 +182,7 @@ final class BookingRepository implements BookingRepositoryInterface
             ->active()
             ->upcoming()
             ->where(fn (Builder $q) => $q->where('attendee_id', $userId)->orWhere('host_id', $userId))
-            ->with(['type', 'host'])
+            ->with(['type', 'host', 'meeting'])
             ->orderBy('starts_at')
             ->get();
     }
@@ -190,7 +191,7 @@ final class BookingRepository implements BookingRepositoryInterface
     {
         return Booking::query()
             ->forAttendee($userId)
-            ->with(['type', 'host'])
+            ->with(['type', 'host', 'meeting'])
             ->when($status, fn (Builder $q) => $q->withStatus($status))
             ->orderByDesc('starts_at')
             ->paginate($perPage);
@@ -287,6 +288,14 @@ final class BookingRepository implements BookingRepositoryInterface
     public function clearReservation(Booking $booking): Booking
     {
         $booking->fill(['reserved_until' => null]);
+        $booking->save();
+
+        return $booking->refresh();
+    }
+
+    public function updateMeeting(Booking $booking, MeetingStatus $status, array $attributes = []): Booking
+    {
+        $booking->fill(['meeting_status' => $status, ...$attributes]);
         $booking->save();
 
         return $booking->refresh();

@@ -378,3 +378,49 @@ gates.
 - Country-based routing **is wired into checkout** (Phase 10.2B) but
   only for the student flow — guest bookings have no country field to
   route by at all (confirmed by direct inspection, not just untested).
+
+## Meeting creation (Phase 11: Manual + Google Meet) — checklist additions
+
+- [ ] A verified payment success creates **exactly one** meeting per
+      booking — `BookingMeetingService::createMeeting()` is idempotent
+      (checked before and again inside the write transaction, and
+      `booking_meetings.booking_id` is unique); a duplicate/replayed
+      webhook cannot re-trigger it in the first place, since
+      `BookingPaymentService::markPaid()` only re-confirms (and thus
+      only re-dispatches `BookingConfirmed`) on the first,
+      not-yet-`Paid` delivery.
+- [ ] Cancelled/expired/failed/refunded bookings never get a meeting —
+      `BookingMeetingService::isEligible()` requires
+      `status === Confirmed` plus a payment_status matching the
+      booking kind (`Paid` for paid types, `NotRequired` for demo/free).
+- [ ] A meeting provider failure (misconfigured credentials, a thrown
+      exception mid create/update, or an unregistered provider key)
+      never corrupts payment/booking state — it only ever sets
+      `booking_meetings.status = failed` with a sanitized
+      `failure_reason` and logs via `AuditTrailService`; no rollback,
+      no wallet mutation, no booking cancellation.
+- [ ] Google configuration tested via the admin "Test Google
+      Configuration" action (`GoogleCalendarConfigurationService::check()`)
+      before go-live — confirm it reports `ready`, not
+      `incomplete`/`invalid`/`not_configured`. This is pure
+      settings/format inspection (no network call), so a `ready` status
+      does not by itself prove the service account has calendar
+      write access — pair it with the sandbox pass below.
+- [ ] Manual provider fallback tested: with Google intentionally
+      misconfigured, confirm the admin "Create/Update Meeting" action
+      can still create a `manual` meeting for the same booking
+      (`saveManualMeeting()`), and that it is idempotent (re-submitting
+      updates the existing row, never creates a second one).
+- [ ] `MeetingSettings::meetings_enabled` and `default_provider`
+      confirmed intentional before go-live — `default_provider = manual`
+      is a real, working provider now (not an off switch); the
+      platform-wide off switch is `meetings_enabled = false`.
+- [ ] Before enabling `google_meet_enabled` in production, complete a
+      sandbox pass: create a real Google Calendar event end-to-end for
+      a real confirmed booking on the configured `google_calendar_id`,
+      confirm the Meet join link actually resolves, and confirm no
+      credential/token value appears in `booking_meetings.metadata`,
+      `failure_reason`, logs, or the Activity Log. `ZoomMeetingProvider`
+      remains an unimplemented placeholder (`isConfigured()` hardcoded
+      `false`) — this checklist item does not apply until a future
+      phase builds it.

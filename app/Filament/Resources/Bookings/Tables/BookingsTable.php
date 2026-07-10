@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Bookings\Tables;
 
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\DTOs\CancelBookingData;
+use App\Booking\DTOs\MeetingUpdateContext;
 use App\Booking\DTOs\RescheduleBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Meetings\GoogleCalendarMeetProvider;
+use App\Booking\Meetings\ManualMeetingProvider;
+use App\Booking\Meetings\ZoomMeetingProvider;
 use App\Filament\Support\CsvExport;
 use App\Models\Booking;
+use App\Models\BookingMeeting;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -23,8 +30,11 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -43,6 +53,9 @@ class BookingsTable
     public static function configure(Table $table): Table
     {
         return $table
+            // The meeting badge/reference columns and the meeting actions all
+            // read $record->meeting — eager-load it once per page, not per row.
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('meeting'))
             ->columns([
                 TextColumn::make('reference')
                     ->searchable()
@@ -79,6 +92,20 @@ class BookingsTable
                     ->placeholder('Free')
                     ->sortable()
                     ->toggleable(),
+                TextColumn::make('meeting.status')
+                    ->label('Meeting')
+                    ->badge()
+                    ->state(fn (Booking $record): ?MeetingStatus => $record->meeting?->status)
+                    ->formatStateUsing(fn (?MeetingStatus $state): string => $state?->label() ?? 'None')
+                    ->color(fn (?MeetingStatus $state): string => $state?->color() ?? 'gray')
+                    ->toggleable(),
+                TextColumn::make('meeting.provider')
+                    ->label('Meeting Provider')
+                    ->toggleable(),
+                TextColumn::make('meeting_reference')
+                    ->label('Meeting Ref')
+                    ->state(fn (Booking $record): ?string => self::maskedMeetingReference($record))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -187,6 +214,105 @@ class BookingsTable
                         fn (BookingServiceInterface $service) => $service->markNoShow($record),
                         'Booking marked as no-show',
                     )),
+
+                Action::make('create_update_meeting')
+                    ->label('Create/Update Meeting')
+                    ->icon('heroicon-m-video-camera')
+                    ->color('info')
+                    ->authorize(fn (Booking $record): bool => auth()->user()?->can('manageMeeting', $record) ?? false)
+                    ->visible(fn (Booking $record): bool => app(BookingMeetingServiceInterface::class)->isEligible($record))
+                    ->form([
+                        Select::make('provider')
+                            // Zoom is offered only once its credentials pass
+                            // isConfigured() — an admin can't pick a provider
+                            // that is guaranteed to fail. Manual/Google keep
+                            // their existing behavior (resolver fails safely).
+                            ->options(fn (): array => array_filter([
+                                ManualMeetingProvider::KEY => 'Manual',
+                                GoogleCalendarMeetProvider::KEY => 'Google Meet',
+                                ZoomMeetingProvider::KEY => app(ZoomMeetingProvider::class)->isConfigured() ? 'Zoom' : null,
+                            ]))
+                            ->default(ManualMeetingProvider::KEY)
+                            ->live()
+                            ->required()
+                            ->native(false),
+                        Select::make('manual_label')
+                            ->label('Link Type')
+                            ->options([
+                                'manual' => 'Manual',
+                                'zoom_manual' => 'Zoom (manually created)',
+                                'google_meet_manual' => 'Google Meet (manually created)',
+                                'other' => 'Other',
+                            ])
+                            ->visible(fn (Get $get): bool => $get('provider') === ManualMeetingProvider::KEY)
+                            ->native(false),
+                        TextInput::make('join_url')
+                            ->label('Join URL')
+                            ->url()
+                            ->maxLength(2048)
+                            ->visible(fn (Get $get): bool => $get('provider') === ManualMeetingProvider::KEY),
+                        TextInput::make('password')
+                            ->label('Password')
+                            ->maxLength(255)
+                            ->visible(fn (Get $get): bool => $get('provider') === ManualMeetingProvider::KEY),
+                    ])
+                    ->fillForm(fn (Booking $record): array => [
+                        'provider' => $record->meeting?->provider ?? ManualMeetingProvider::KEY,
+                        'manual_label' => $record->meeting?->metadata['manual_label'] ?? null,
+                        'join_url' => $record->meeting?->provider === ManualMeetingProvider::KEY ? $record->meeting?->join_url : null,
+                    ])
+                    ->action(function (Booking $record, array $data): void {
+                        $service = app(BookingMeetingServiceInterface::class);
+
+                        $meeting = $data['provider'] === ManualMeetingProvider::KEY
+                            ? $service->saveManualMeeting($record, new MeetingUpdateContext(
+                                requestedBy: auth()->id(),
+                                providerLabel: $data['manual_label'] ?? null,
+                                joinUrl: $data['join_url'] ?? null,
+                                password: $data['password'] ?? null,
+                            ))
+                            : $service->createMeeting($record, $data['provider']);
+
+                        self::notifyMeetingOutcome($meeting);
+                    }),
+
+                Action::make('retry_google_meet')
+                    ->label('Retry Google Meet')
+                    ->icon('heroicon-m-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->authorize(fn (Booking $record): bool => auth()->user()?->can('manageMeeting', $record) ?? false)
+                    ->visible(fn (Booking $record): bool => $record->meeting?->provider === GoogleCalendarMeetProvider::KEY
+                        && in_array($record->meeting?->status, [MeetingStatus::Pending, MeetingStatus::Failed], true))
+                    ->action(function (Booking $record): void {
+                        $meeting = app(BookingMeetingServiceInterface::class)->createMeeting($record, GoogleCalendarMeetProvider::KEY);
+                        self::notifyMeetingOutcome($meeting);
+                    }),
+
+                Action::make('retry_zoom_meeting')
+                    ->label('Retry Zoom Meeting')
+                    ->icon('heroicon-m-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->authorize(fn (Booking $record): bool => auth()->user()?->can('manageMeeting', $record) ?? false)
+                    ->visible(fn (Booking $record): bool => $record->meeting?->provider === ZoomMeetingProvider::KEY
+                        && in_array($record->meeting?->status, [MeetingStatus::Pending, MeetingStatus::Failed], true))
+                    ->action(function (Booking $record): void {
+                        $meeting = app(BookingMeetingServiceInterface::class)->createMeeting($record, ZoomMeetingProvider::KEY);
+                        self::notifyMeetingOutcome($meeting);
+                    }),
+
+                Action::make('cancel_meeting')
+                    ->label('Mark Meeting Cancelled')
+                    ->icon('heroicon-m-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->authorize(fn (Booking $record): bool => auth()->user()?->can('manageMeeting', $record) ?? false)
+                    ->visible(fn (Booking $record): bool => $record->meeting !== null && $record->meeting->status !== MeetingStatus::Cancelled)
+                    ->action(function (Booking $record): void {
+                        app(BookingMeetingServiceInterface::class)->cancelMeeting($record);
+                        Notification::make()->title('Meeting marked cancelled')->success()->send();
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -291,5 +417,37 @@ class BookingsTable
         } catch (BookingException $e) {
             Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
         }
+    }
+
+    /**
+     * BookingMeetingService never throws — it records a failure instead
+     * — so success/failure is read back from the resulting meeting's
+     * status rather than a try/catch.
+     */
+    private static function notifyMeetingOutcome(?BookingMeeting $meeting): void
+    {
+        if ($meeting?->status === MeetingStatus::Created) {
+            Notification::make()->title('Meeting created')->success()->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Meeting not created')
+            ->body($meeting?->failure_reason ?? 'Check the Meeting provider settings and retry.')
+            ->danger()
+            ->send();
+    }
+
+    /** Truncated provider event/meeting id — never the full raw reference. */
+    private static function maskedMeetingReference(Booking $record): ?string
+    {
+        $reference = $record->meeting?->provider_event_id ?? $record->meeting?->provider_meeting_id;
+
+        if ($reference === null) {
+            return null;
+        }
+
+        return strlen($reference) <= 8 ? $reference : substr($reference, 0, 4).'…'.substr($reference, -4);
     }
 }

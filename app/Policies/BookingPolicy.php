@@ -87,6 +87,12 @@ class BookingPolicy
             || $this->hasPermission($user, 'Update:Booking');
     }
 
+    public function manageMeeting(User $user, Booking $booking): bool
+    {
+        return $this->isHost($user, $booking)
+            || $this->hasPermission($user, 'Manage:BookingMeeting');
+    }
+
     private function isParticipant(User $user, Booking $booking): bool
     {
         return $user->id === $booking->attendee_id || $this->isHost($user, $booking);

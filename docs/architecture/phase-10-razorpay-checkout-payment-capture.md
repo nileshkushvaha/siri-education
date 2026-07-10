@@ -1605,12 +1605,33 @@ raw `BookingPayment.metadata`) is ever rendered to a student — the
 only `BookingPayment` read from student-facing code is a boolean
 existence check for the wallet-credit banner.
 
-### No wallet debit, no meeting creation, no guest checkout
+### No wallet debit, no meeting creation from checkout code, no guest checkout
 
 Unchanged and re-confirmed: no wallet-debit code path exists in either
-Livewire component; no `meeting_*` field is ever written from the
-checkout flow; the guest payment routes remain unrouted
+Livewire component; the guest payment routes remain unrouted
 (`routes/api.php`, Phase 10.2C-Fix/Hotfix, untouched this phase).
+
+**Phase 11 update**: a verified payment success (webhook-driven
+`BookingPaymentService::markPaid()` → `BookingService::confirm()`) may
+now trigger meeting creation — but only through the `BookingConfirmed`
+event → `CreateMeetingOnBookingConfirmed` listener →
+`BookingMeetingService`, never from checkout/webhook code directly (no
+`meeting_*` field is written inline in `BookingPaymentService`,
+`BookingPaymentWebhookController`, or either Livewire component).
+Frontend success alone (`verifyCheckout()`'s signature check, before
+`markPaid()` is ever called) still cannot create a meeting — see
+`docs/architecture/phase-11-meeting-creation-foundation.md`. Option
+B's late-terminal-payment path (`handleLateTerminalPayment()`) never
+calls `confirm()` and therefore never dispatches `BookingConfirmed` —
+it still cannot create a meeting either.
+
+**Revision** (Manual + Google Meet phase): meeting data now lives in a
+dedicated `booking_meetings` table (not `bookings.meeting_status`,
+which was dropped) with two working providers, `ManualMeetingProvider`
+and `GoogleCalendarMeetProvider` — no fake provider was built. The
+trigger point and every guarantee above are unchanged; see
+`docs/architecture/phase-11-meeting-creation-foundation.md` for the
+current design.
 
 ### Tests added in Phase 10.2E
 

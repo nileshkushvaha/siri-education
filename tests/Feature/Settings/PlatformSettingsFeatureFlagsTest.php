@@ -43,7 +43,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(120, $booking->minimum_booking_notice_minutes);
         $this->assertSame(90, $booking->maximum_advance_booking_days);
         $this->assertSame(100.0, $wallet->minimum_recharge_amount);
-        $this->assertSame('manual', $meeting->active_provider);
+        $this->assertSame('manual', $meeting->default_provider);
         $this->assertTrue($instructor->approval_required);
         $this->assertSame('wallet_credit', $referral->reward_type);
         $this->assertSame('IN', $localization->default_country);
@@ -98,8 +98,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.maximum_advance_booking_days', 45)
             ->set('data.minimum_recharge_amount', 250)
             ->set('data.maximum_recharge_amount', 25000)
-            ->set('data.active_provider', 'zoom')
-            ->set('data.meeting_recording_enabled', true)
             ->set('data.wallet_enabled', true)
             ->set('data.referral_enabled', true)
             ->set('data.recording_enabled', true)
@@ -113,8 +111,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(45, $booking->maximum_advance_booking_days);
 
         $this->assertSame(250.0, app()->make(WalletSettings::class)->refresh()->minimum_recharge_amount);
-        $this->assertSame('zoom', app()->make(MeetingSettings::class)->refresh()->active_provider);
-        $this->assertTrue(app()->make(MeetingSettings::class)->refresh()->recording_enabled);
 
         $features = app()->make(FeatureSettings::class)->refresh();
         $this->assertTrue($features->wallet_enabled);

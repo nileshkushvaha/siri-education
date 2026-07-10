@@ -19,6 +19,7 @@ use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -339,6 +340,7 @@ final class BookingHistory extends Component
         return view('livewire.frontend.student.booking-history', [
             'history' => $this->bookings->bookingHistory(auth()->user(), 10, $status),
             'statuses' => BookingStatus::cases(),
+            'joinUrlVisible' => app(MeetingSettings::class)->student_join_url_visible,
         ]);
     }
 

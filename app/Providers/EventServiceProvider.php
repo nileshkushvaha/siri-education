@@ -19,6 +19,7 @@ use App\Listeners\Auth\LogLoginActivity;
 use App\Listeners\Auth\SendApprovalNotification;
 use App\Listeners\Auth\SendRegistrationNotifications;
 use App\Listeners\Auth\SendWelcomeNotification;
+use App\Listeners\Booking\CreateMeetingOnBookingConfirmed;
 use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
@@ -115,6 +116,7 @@ class EventServiceProvider extends ServiceProvider
         BookingConfirmed::class => [
             [SendBookingNotifications::class, 'handleConfirmed'],
             [RecordBookingLifecycleAudit::class, 'handleConfirmed'],
+            CreateMeetingOnBookingConfirmed::class,
         ],
         BookingCancelled::class => [
             [SendBookingNotifications::class, 'handleCancelled'],

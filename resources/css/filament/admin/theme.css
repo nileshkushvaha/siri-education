@@ -6,6 +6,15 @@
 
 /* ── Enterprise Admin Theme ─────────────────────────────────── */
 
+/* Filament v5 badge columns: the cell wrapper carries both .fi-ta-text
+   (width: 100%) and .fi-ta-text-item (line-clamp → display:-webkit-box);
+   the legacy box model then stretches the badge pill to the full column
+   width. Shrink badge-bearing cells to their content instead — plain
+   text columns keep w-full for truncation/line-clamp. */
+.fi-ta-text.fi-ta-text-has-badges {
+    width: fit-content;
+}
+
 /* Page heading — larger, bolder */
 .fi-header-heading {
     font-size: 1.5rem;

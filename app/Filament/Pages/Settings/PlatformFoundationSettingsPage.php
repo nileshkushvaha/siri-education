@@ -8,7 +8,6 @@ use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
 use App\Settings\LocalizationSettings;
-use App\Settings\MeetingSettings;
 use App\Settings\ReferralSettings;
 use App\Settings\WalletSettings;
 use BackedEnum;
@@ -58,7 +57,7 @@ class PlatformFoundationSettingsPage extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Prepare booking, wallet, meeting, instructor, referral, localization, and feature flag defaults.';
+        return 'Prepare booking, wallet, instructor, referral, localization, and feature flag defaults. Meeting providers live under Meeting Settings.';
     }
 
     public function getBreadcrumbs(): array
@@ -74,7 +73,6 @@ class PlatformFoundationSettingsPage extends Page
     {
         $booking = app(BookingSettings::class);
         $wallet = app(WalletSettings::class);
-        $meeting = app(MeetingSettings::class);
         $instructor = app(InstructorSettings::class);
         $referral = app(ReferralSettings::class);
         $localization = app(LocalizationSettings::class);
@@ -93,12 +91,6 @@ class PlatformFoundationSettingsPage extends Page
             'maximum_recharge_amount' => $wallet->maximum_recharge_amount,
             'low_balance_threshold' => $wallet->low_balance_threshold,
             'recurring_deduction_hours_before_lesson' => $wallet->recurring_deduction_hours_before_lesson,
-            'active_provider' => $meeting->active_provider,
-            'platform_meeting_account' => $meeting->platform_meeting_account,
-            'meeting_link_visible_before_minutes' => $meeting->meeting_link_visible_before_minutes,
-            'meeting_link_visible_after_minutes' => $meeting->meeting_link_visible_after_minutes,
-            'meeting_recording_enabled' => $meeting->recording_enabled,
-            'recording_retention_days' => $meeting->recording_retention_days,
             'approval_required' => $instructor->approval_required,
             'profile_publish_requires_approval' => $instructor->profile_publish_requires_approval,
             'featured_instructor_limit' => $instructor->featured_instructor_limit,
@@ -172,32 +164,6 @@ class PlatformFoundationSettingsPage extends Page
                         ]),
                     ]),
 
-                Section::make('Meeting')
-                    ->description('Meeting provider and per-session recording defaults, once the Recording feature flag is on.')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('active_provider')
-                                ->options([
-                                    'manual' => 'Manual',
-                                    'zoom' => 'Zoom',
-                                    'google_meet' => 'Google Meet',
-                                    'teams' => 'Microsoft Teams',
-                                ])
-                                ->required()
-                                ->native(false),
-
-                            TextInput::make('platform_meeting_account')
-                                ->maxLength(255),
-
-                            $this->integerInput('meeting_link_visible_before_minutes', 'Visible Before', 0, 10080),
-                            $this->integerInput('meeting_link_visible_after_minutes', 'Visible After', 0, 10080),
-                            Toggle::make('meeting_recording_enabled')
-                                ->label('Record Sessions by Default')
-                                ->helperText('Applies once the Recording feature flag is enabled.'),
-                            $this->integerInput('recording_retention_days', 'Retention Days', 0, 3650),
-                        ]),
-                    ]),
-
                 Section::make('Instructor')
                     ->description('Instructor approval and public profile controls.')
                     ->schema([
@@ -268,7 +234,6 @@ class PlatformFoundationSettingsPage extends Page
 
         $this->saveBooking($data);
         $this->saveWallet($data);
-        $this->saveMeeting($data);
         $this->saveInstructor($data);
         $this->saveReferral($data);
         $this->saveLocalization($data);
@@ -325,21 +290,6 @@ class PlatformFoundationSettingsPage extends Page
         $settings->maximum_recharge_amount = (float) $data['maximum_recharge_amount'];
         $settings->low_balance_threshold = (float) $data['low_balance_threshold'];
         $settings->recurring_deduction_hours_before_lesson = (int) $data['recurring_deduction_hours_before_lesson'];
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
-    }
-
-    /** @param array<string, mixed> $data */
-    private function saveMeeting(array $data): void
-    {
-        $settings = app(MeetingSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->active_provider = $data['active_provider'];
-        $settings->platform_meeting_account = $data['platform_meeting_account'] ?? null;
-        $settings->meeting_link_visible_before_minutes = (int) $data['meeting_link_visible_before_minutes'];
-        $settings->meeting_link_visible_after_minutes = (int) $data['meeting_link_visible_after_minutes'];
-        $settings->recording_enabled = (bool) ($data['meeting_recording_enabled'] ?? false);
-        $settings->recording_retention_days = (int) $data['recording_retention_days'];
         $settings->save();
         $this->logSettingsUpdate('settings', $settings, $before);
     }

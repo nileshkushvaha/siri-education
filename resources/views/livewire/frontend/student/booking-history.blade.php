@@ -93,10 +93,17 @@
                         @endif
                     </dd>
                 </div>
-                @if($booking->meeting_url && $booking->status->value === 'confirmed')
+                @if($booking->status->value === 'confirmed' && $joinUrlVisible)
                     <div>
                         <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Meeting</dt>
-                        <dd class="mt-1"><a href="{{ $booking->meeting_url }}" target="_blank" rel="noopener" class="font-semibold text-indigo-300 underline underline-offset-2">Join link</a></dd>
+                        @if($booking->meeting?->status?->value === 'created' && $booking->meeting?->join_url)
+                            <dd class="mt-1"><a href="{{ $booking->meeting->join_url }}" target="_blank" rel="noopener" class="font-semibold text-indigo-300 underline underline-offset-2">Join link</a></dd>
+                            @if($booking->meeting->password)
+                                <dd class="mt-1 text-xs text-slate-400">Passcode: {{ $booking->meeting->password }}</dd>
+                            @endif
+                        @else
+                            <dd class="mt-1 text-sm text-slate-400">Meeting link is being prepared.</dd>
+                        @endif
                     </div>
                 @endif
             </dl>

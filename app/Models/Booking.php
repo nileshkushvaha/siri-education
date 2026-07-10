@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -127,6 +128,11 @@ class Booking extends Model
     public function guests(): HasMany
     {
         return $this->hasMany(BookingGuest::class);
+    }
+
+    public function meeting(): HasOne
+    {
+        return $this->hasOne(BookingMeeting::class);
     }
 
     public function activities(): HasMany

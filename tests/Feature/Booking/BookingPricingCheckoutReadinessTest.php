@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\DTOs\CreateBookingData;
+use App\Booking\DTOs\MeetingUpdateContext;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
@@ -28,6 +30,7 @@ use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Settings\BookingSettings;
 use App\Settings\GeneralSettings;
+use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -355,7 +358,16 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
     // ── Admin cannot bypass payment status ───────────────────────────────
 
-    public function test_admin_cannot_edit_payment_status_or_meeting_fields_on_unpaid_booking(): void
+    /**
+     * Phase 11 note: the Meeting section on EditBooking is now a
+     * read-only summary of the booking_meetings relationship — mutating
+     * it goes exclusively through BookingsTable's "Create/Update
+     * Meeting" action (BookingMeetingService), not editable form
+     * fields. Payment-status gating is therefore enforced by
+     * BookingMeetingService::isEligible() (payment_status must be Paid
+     * for a paid type), not by a disabled form field.
+     */
+    public function test_admin_cannot_create_meeting_fields_on_unpaid_booking(): void
     {
         $this->paidTypeWithPrice();
 
@@ -373,17 +385,14 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(EditBooking::class, ['record' => $booking->getRouteKey()])
-            ->assertFormFieldDisabled('meeting_provider')
-            ->assertFormFieldDisabled('meeting_url')
-            ->assertSchemaStateSet(['meeting_url' => null])
-            ->call('save');
+            ->assertFormFieldDisabled('meeting_status_label')
+            ->assertFormFieldDisabled('meeting_join_url');
 
-        $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
-        $this->assertNull($booking->meeting_url);
+        $this->assertFalse(app(BookingMeetingServiceInterface::class)->isEligible($booking));
+        $this->assertNull($booking->refresh()->meeting);
     }
 
-    public function test_admin_can_edit_meeting_fields_once_payment_is_settled(): void
+    public function test_admin_can_see_meeting_summary_once_payment_is_settled_and_meeting_created(): void
     {
         BookingType::factory()->create(['key' => 'free_demo', 'is_paid' => false, 'duration_minutes' => 30]);
 
@@ -396,11 +405,23 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         ));
         $this->assertSame(BookingPaymentStatus::NotRequired, $booking->payment_status);
 
+        app(MeetingSettings::class)->fill([
+            'meetings_enabled' => true,
+            'manual_provider_enabled' => true,
+        ])->save();
+        app(BookingMeetingServiceInterface::class)->saveManualMeeting(
+            $booking,
+            new MeetingUpdateContext(joinUrl: 'https://meet.example.test/settled'),
+        );
+
         $admin = $this->permittedManager();
 
         Livewire::actingAs($admin)
             ->test(EditBooking::class, ['record' => $booking->getRouteKey()])
-            ->assertFormFieldEnabled('meeting_url');
+            ->assertFormFieldDisabled('meeting_status_label')
+            ->assertSuccessful();
+
+        $this->assertSame('created', $booking->refresh()->meeting?->status->value);
     }
 
     private function permittedManager(): User

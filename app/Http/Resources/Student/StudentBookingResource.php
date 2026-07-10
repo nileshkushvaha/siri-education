@@ -6,7 +6,9 @@ namespace App\Http\Resources\Student;
 
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingStatus;
 use App\Models\Booking;
+use App\Settings\MeetingSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -40,9 +42,28 @@ final class StudentBookingResource extends JsonResource
             'recurring_group' => $this->meta['recurring_group'] ?? null,
             'notes' => $this->notes,
             'meeting_url' => $this->when(
-                $this->status === BookingStatus::Confirmed && $this->meeting_url !== null,
-                $this->meeting_url,
+                $this->meetingVisible(),
+                $this->meeting?->join_url,
             ),
+            // A join password (when the provider issued one) is not a
+            // secret the same way host_url is — a student cannot join
+            // without it. meeting.host_url/meeting.metadata are never
+            // included here.
+            'meeting_password' => $this->when(
+                $this->meetingVisible() && $this->meeting?->password !== null,
+                $this->meeting?->password,
+            ),
+            'meeting_message' => $this->status === BookingStatus::Confirmed && ! $this->meetingVisible()
+                ? 'Meeting link is being prepared.'
+                : null,
         ];
+    }
+
+    /** Student-visible only once confirmed, created, and the admin hasn't turned off student visibility. */
+    private function meetingVisible(): bool
+    {
+        return $this->status === BookingStatus::Confirmed
+            && $this->meeting?->status === MeetingStatus::Created
+            && app(MeetingSettings::class)->student_join_url_visible;
     }
 }

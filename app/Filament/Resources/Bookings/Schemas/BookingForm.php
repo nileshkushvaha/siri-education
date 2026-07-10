@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Bookings\Schemas;
 
-use App\Booking\Enums\BookingPaymentStatus;
 use App\Models\Booking;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Textarea;
@@ -66,13 +65,22 @@ class BookingForm
                     ]),
 
                 Section::make('Meeting')
-                    ->description('Provider linkage — filled by the meeting integration or manually. Disabled until payment is settled (or not required) so an unpaid booking can never carry a meeting link.')
+                    ->description('Read-only summary of the booking_meetings row — use the "Create/Update Meeting", "Retry Google Meet", and "Mark Meeting Cancelled" table actions to make changes, so eligibility, provider selection, and idempotency always run through BookingMeetingService.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
-                            TextInput::make('meeting_provider')->maxLength(50)->placeholder('e.g. zoom')->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
-                            TextInput::make('meeting_ref')->maxLength(255)->placeholder('Provider meeting ID')->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
-                            TextInput::make('meeting_url')->url()->maxLength(2048)->placeholder('https://…')->disabled(fn (?Booking $record): bool => ! self::paymentSettled($record)),
+                            $readonly(TextInput::make('meeting_status_label')->label('Status')
+                                ->formatStateUsing(fn (?Booking $record): ?string => $record?->meeting?->status?->label() ?? 'None')),
+                            $readonly(TextInput::make('meeting_provider_label')->label('Provider')
+                                ->formatStateUsing(fn (?Booking $record): ?string => $record?->meeting?->provider)),
+                            $readonly(TextInput::make('meeting_failure_reason')->label('Failure reason')
+                                ->formatStateUsing(fn (?Booking $record): ?string => $record?->meeting?->failure_reason)),
+                        ]),
+                        Grid::make(2)->schema([
+                            $readonly(TextInput::make('meeting_join_url')->label('Join URL')
+                                ->formatStateUsing(fn (?Booking $record): ?string => $record?->meeting?->status?->value === 'created' ? $record?->meeting?->join_url : null)),
+                            $readonly(TextInput::make('meeting_updated_at')->label('Last updated')
+                                ->formatStateUsing(fn (?Booking $record): ?string => $record?->meeting?->updated_at?->toDayDateTimeString())),
                         ]),
                     ]),
 
@@ -82,10 +90,5 @@ class BookingForm
                         Textarea::make('notes')->rows(3)->maxLength(1000)->placeholder('Internal admin notes…'),
                     ]),
             ]);
-    }
-
-    private static function paymentSettled(?Booking $record): bool
-    {
-        return in_array($record?->payment_status, [BookingPaymentStatus::Paid, BookingPaymentStatus::NotRequired], true);
     }
 }

@@ -23,7 +23,7 @@ class BookingPermissionSeeder extends Seeder
     /** Everything except force-delete — that stays super_admin-only. */
     private const array MANAGER_PERMISSIONS = [
         'ViewAny:Booking', 'View:Booking', 'Create:Booking', 'Update:Booking', 'Delete:Booking', 'Restore:Booking',
-        'Confirm:Booking', 'Cancel:Booking', 'Reschedule:Booking', 'Complete:Booking',
+        'Confirm:Booking', 'Cancel:Booking', 'Reschedule:Booking', 'Complete:Booking', 'Manage:BookingMeeting',
         'ViewAny:BookingType', 'View:BookingType', 'Create:BookingType', 'Update:BookingType', 'Delete:BookingType', 'Restore:BookingType',
         'ViewAny:TeacherAvailability', 'View:TeacherAvailability', 'Create:TeacherAvailability', 'Update:TeacherAvailability', 'Delete:TeacherAvailability',
         'ViewAny:TeacherUnavailability', 'View:TeacherUnavailability', 'Create:TeacherUnavailability', 'Update:TeacherUnavailability', 'Delete:TeacherUnavailability',

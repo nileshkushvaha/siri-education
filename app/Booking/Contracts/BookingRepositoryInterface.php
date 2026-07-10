@@ -9,6 +9,7 @@ use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\User;
@@ -106,6 +107,14 @@ interface BookingRepositoryInterface
 
     /** Release the payment hold once payment settles. */
     public function clearReservation(Booking $booking): Booking;
+
+    /**
+     * Persist a meeting status change plus any extra meeting attributes
+     * (provider, ref, url, host url, password, metadata).
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateMeeting(Booking $booking, MeetingStatus $status, array $attributes = []): Booking;
 
     /** @return Collection<int, Booking> pending bookings whose payment hold has lapsed */
     public function expiredReservations(): Collection;

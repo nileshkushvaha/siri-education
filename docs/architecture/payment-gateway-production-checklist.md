@@ -424,3 +424,29 @@ gates.
       remains an unimplemented placeholder (`isConfigured()` hardcoded
       `false`) — this checklist item does not apply until a future
       phase builds it.
+
+## Lifecycle notifications (Phase 12) — checklist additions
+
+- [ ] Payment success notification tested end-to-end: a
+      provider-verified webhook (not a frontend return) produces exactly
+      one `BookingPaymentSucceededNotification` to the student, with
+      amount/currency but no order/payment/provider id
+      (`PaymentNotificationsTest` proves all of this with a real webhook
+      round-trip — re-verify once against the live mailer).
+- [ ] Duplicate webhook replayed against a settled booking is answered
+      `ignored` and sends **no** additional payment-success or
+      meeting-created notification.
+- [ ] Instructor copies inspected for leakage: the confirmed/cancelled/
+      meeting notifications sent to the host contain no student price,
+      pricing-rule id, payment provider id, wallet data, or platform
+      margin.
+- [ ] Meeting-link notification tested: student and instructor both
+      receive the join URL (+ passcode when present) only after
+      `booking_meetings.status = created`; the student copy never
+      contains a host/start URL.
+- [ ] Provider failure notification tested: a forced meeting-provider
+      failure produces the "Meeting Creation Failed" admin alert with a
+      sanitized reason — and nothing to the student/instructor.
+- [ ] `notifications` queue worker confirmed running in production —
+      every Phase 12 notification is queued; nothing is delivered
+      without the worker.

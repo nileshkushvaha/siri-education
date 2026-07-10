@@ -7,8 +7,11 @@ namespace App\Providers;
 use App\Booking\Events\BookingCancelled;
 use App\Booking\Events\BookingCompleted;
 use App\Booking\Events\BookingConfirmed;
+use App\Booking\Events\BookingPaymentSucceeded;
 use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
+use App\Booking\Events\MeetingCreated;
+use App\Booking\Events\MeetingUpdated;
 use App\Events\ActivityCreated;
 use App\Events\Auth\LoginFailed;
 use App\Events\Auth\UserApproved;
@@ -22,6 +25,7 @@ use App\Listeners\Auth\SendWelcomeNotification;
 use App\Listeners\Booking\CreateMeetingOnBookingConfirmed;
 use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
+use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
 use App\Listeners\Mail\LogMailSending;
 use App\Listeners\Mail\LogMailSent;
@@ -130,6 +134,15 @@ class EventServiceProvider extends ServiceProvider
         BookingCompleted::class => [
             [SendBookingNotifications::class, 'handleCompleted'],
             [RecordBookingLifecycleAudit::class, 'handleCompleted'],
+        ],
+        BookingPaymentSucceeded::class => [
+            [SendBookingNotifications::class, 'handlePaymentSucceeded'],
+        ],
+        MeetingCreated::class => [
+            [SendMeetingNotifications::class, 'handleCreated'],
+        ],
+        MeetingUpdated::class => [
+            [SendMeetingNotifications::class, 'handleUpdated'],
         ],
     ];
 

@@ -14,6 +14,7 @@ use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Events\BookingPaymentSucceeded;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingPayment;
@@ -98,7 +99,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
         // Atomic: settle + release hold + confirm succeed or fail together,
         // so a crash can never leave a paid-but-still-reserved booking.
-        return DB::transaction(function () use ($booking, $reference): Booking {
+        $booking = DB::transaction(function () use ($booking, $reference): Booking {
             $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Paid, $reference);
             $booking = $this->bookings->clearReservation($booking);
 
@@ -111,6 +112,14 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
             return $booking;
         });
+
+        // After commit only — and never for Option B's late-terminal path,
+        // which returned above without settling this booking. A duplicate
+        // webhook cannot re-fire this: assertReference() already rejected
+        // any delivery that finds payment_status !== Pending.
+        BookingPaymentSucceeded::dispatch($booking);
+
+        return $booking;
     }
 
     public function markFailed(Booking $booking, string $reference, ?string $reason = null): Booking

@@ -15,6 +15,8 @@ use App\Booking\Enums\BookingLocationType;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingStatus;
+use App\Booking\Events\MeetingCreated;
+use App\Booking\Events\MeetingUpdated;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Models\Booking;
@@ -85,7 +87,10 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
             return $this->persistFailure($booking, $key, $e->getMessage());
         }
 
-        return DB::transaction(function () use ($booking, $existing, $provider): BookingMeeting {
+        $previousStatus = $existing?->status;
+        $previousJoinUrl = $existing?->join_url;
+
+        $meeting = DB::transaction(function () use ($booking, $existing, $provider): BookingMeeting {
             try {
                 $context = new MeetingCreationContext(requestedBy: Auth::id());
                 // Same-provider retry updates the provider-side resource;
@@ -101,6 +106,10 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
 
             return $this->persistResult($booking, $result);
         });
+
+        $this->dispatchTransitionEvents($booking, $meeting, $previousStatus, $previousJoinUrl);
+
+        return $meeting;
     }
 
     public function saveManualMeeting(Booking $booking, MeetingUpdateContext $context): ?BookingMeeting
@@ -116,8 +125,10 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
         }
 
         $existing = $this->findForBooking($booking);
+        $previousStatus = $existing?->status;
+        $previousJoinUrl = $existing?->join_url;
 
-        return DB::transaction(function () use ($booking, $existing, $provider, $context): BookingMeeting {
+        $meeting = DB::transaction(function () use ($booking, $existing, $provider, $context): BookingMeeting {
             try {
                 $result = $existing !== null
                     ? $provider->updateMeeting($existing, $context)
@@ -128,6 +139,10 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
 
             return $this->persistResult($booking, $result);
         });
+
+        $this->dispatchTransitionEvents($booking, $meeting, $previousStatus, $previousJoinUrl);
+
+        return $meeting;
     }
 
     public function cancelMeeting(Booking $booking): ?BookingMeeting
@@ -196,6 +211,36 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
     public function findForBooking(Booking $booking): ?BookingMeeting
     {
         return BookingMeeting::query()->where('booking_id', $booking->id)->first();
+    }
+
+    /**
+     * Participant-facing lifecycle events, fired after the write
+     * transaction and only on genuine transitions: entering Created
+     * fires MeetingCreated; an already-created meeting whose join URL
+     * actually changed fires MeetingUpdated; a re-save with no real
+     * change (or a failure) fires nothing here. Admin-facing failure
+     * notifications flow separately through the Activity Log pipeline
+     * (persistFailure's audit entry → NotificationMapper).
+     */
+    private function dispatchTransitionEvents(
+        Booking $booking,
+        BookingMeeting $meeting,
+        ?MeetingStatus $previousStatus,
+        ?string $previousJoinUrl,
+    ): void {
+        if ($meeting->status !== MeetingStatus::Created) {
+            return;
+        }
+
+        if ($previousStatus !== MeetingStatus::Created) {
+            MeetingCreated::dispatch($booking, $meeting);
+
+            return;
+        }
+
+        if ($meeting->join_url !== $previousJoinUrl) {
+            MeetingUpdated::dispatch($booking, $meeting);
+        }
     }
 
     private function persistResult(Booking $booking, MeetingCreationResult $result): BookingMeeting

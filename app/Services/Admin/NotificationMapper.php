@@ -308,6 +308,26 @@ final class NotificationMapper
                 'priority' => 1,
             ],
 
+            // ── Meetings (Phase 12) — audit entries written by
+            //     BookingMeetingService; failure reasons are pre-sanitized ──
+            $log === 'bookings' && $event === 'meeting_creation_failed' => [
+                'title' => 'Meeting Creation Failed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-video-camera-slash',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
+            // ── Payments — Option B late-terminal capture that could not be
+            //     auto-credited; needs admin/support follow-up ──────────────
+            $log === 'payments' && $event === 'payment_late_terminal_manual_resolution' => [
+                'title' => 'Payment Needs Manual Resolution',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
             // ── Everything else: silence ──────────────────────────────────
             default => null,
         };

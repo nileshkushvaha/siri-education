@@ -31,6 +31,7 @@ class ReleaseExpiredBookingReservations extends Command
                 $service->cancel($booking, new CancelBookingData(
                     BookingActor::System,
                     'Payment was not completed within the reservation window.',
+                    expired: true,
                 ));
                 $released++;
             } catch (BookingException $e) {

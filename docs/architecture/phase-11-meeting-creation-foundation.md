@@ -265,6 +265,18 @@ admin choice, not a malfunction). No exception detail is surfaced to
 students/instructors. Admins can always fall back to
 `saveManualMeeting()` regardless of why a Google or Zoom attempt failed.
 
+**Phase 12 update**: meeting lifecycle transitions now emit
+notifications — a genuine transition into `created` dispatches
+`MeetingCreated` (student + instructor get the join link via
+`SendMeetingNotifications`), a real join-URL change dispatches
+`MeetingUpdated`, and a failure's existing `meeting_creation_failed`
+audit entry now reaches admins through `NotificationMapper`. Provider
+secrets remain excluded from every notification: failure reasons are
+sanitized before the audit entry is written, and participant
+notifications only ever carry the join URL/passcode — never
+host/start URLs or provider metadata. See
+`docs/architecture/phase-12-notifications-booking-payment-meeting.md`.
+
 ## Admin manual fallback
 
 The "Create/Update Meeting" admin action lets an admin pick Manual,

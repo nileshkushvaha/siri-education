@@ -139,6 +139,20 @@ final class AccountMenuService
                 'permission' => null,
             ],
             [
+                'label' => 'Payout Methods',
+                'route' => 'dashboard.instructor.payout-methods',
+                'icon' => 'credit-card',
+                'audience' => 'instructor',
+                'permission' => null,
+            ],
+            [
+                'label' => 'Withdrawals',
+                'route' => 'dashboard.instructor.withdrawals',
+                'icon' => 'credit-card',
+                'audience' => 'instructor',
+                'permission' => null,
+            ],
+            [
                 'label' => 'Certificates',
                 'route' => 'dashboard.certificates',
                 'icon' => 'badge',

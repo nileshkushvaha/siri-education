@@ -19,6 +19,7 @@ use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Settings\GeneralSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Actions\Action;
+use Filament\FontProviders\SpatieGoogleFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -35,6 +36,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use pxlrbt\FilamentEnvironmentIndicator\EnvironmentIndicatorPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -46,6 +48,9 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login(Login::class)
+            // Self-hosts the panel's Inter font instead of loading it from
+            // Google's CDN (spatie/laravel-google-fonts fetches + caches it).
+            ->font('Inter', provider: SpatieGoogleFontProvider::class)
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -112,6 +117,10 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
+                // Shows a colored border + badge on non-production environments
+                // so admins never mistake staging for production. Defaults to
+                // visible only to super_admin (Spatie permissions detected).
+                EnvironmentIndicatorPlugin::make(),
             ])
             ->authMiddleware([
                 Authenticate::class,

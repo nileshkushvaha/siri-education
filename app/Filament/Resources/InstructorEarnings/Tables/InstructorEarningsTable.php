@@ -9,6 +9,7 @@ use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Models\InstructorEarning;
+use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
@@ -21,9 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Every lifecycle mutation routes through InstructorEarningService.
- * This is an admin-only surface — student_amount / platform_margin
- * columns are deliberately present here (admin may see them) while the
- * model hides them from every serialization an instructor could reach.
+ * Admin-only surface; amounts are agreement-based — no student-pricing
+ * column exists anywhere on this table by design (Phase 14.4).
  */
 class InstructorEarningsTable
 {
@@ -47,18 +47,6 @@ class InstructorEarningsTable
                     ->label('Earning')
                     ->state(fn (InstructorEarning $record): string => self::money($record->earning_amount_minor, $record->currency_code))
                     ->sortable(),
-                TextColumn::make('student_amount_minor')
-                    ->label('Student Paid (admin)')
-                    ->state(fn (InstructorEarning $record): string => $record->student_amount_minor !== null
-                        ? self::money($record->student_amount_minor, $record->currency_code)
-                        : '—')
-                    ->toggleable(),
-                TextColumn::make('platform_margin_minor')
-                    ->label('Margin (admin)')
-                    ->state(fn (InstructorEarning $record): string => $record->platform_margin_minor !== null
-                        ? self::money($record->platform_margin_minor, $record->currency_code)
-                        : '—')
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('calculation_type')
                     ->label('Rule')
                     ->formatStateUsing(fn (EarningCalculationType $state): string => $state->label())
@@ -140,7 +128,7 @@ class InstructorEarningsTable
     /** Admin display only — storage stays integer minor units. */
     private static function money(int $minor, string $currency): string
     {
-        return sprintf('%s %s', number_format($minor / 100, 2), $currency);
+        return MoneyFormatter::format($minor, $currency);
     }
 
     private static function callService(callable $callback, string $successTitle): void

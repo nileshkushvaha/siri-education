@@ -1,5 +1,9 @@
 # Phase 14 — Instructor Earnings & Settlement Foundation
 
+> **⚠️ Superseded (Phase 14.4).** This document describes the ORIGINAL Phase 14 commission model (percentage of student price), which was **removed** in Phase 14.2/14.4 — instructor compensation now comes exclusively from effective-dated agreements, and the student-amount/margin columns no longer exist. The canonical, current
+> reference is [docs/financial-domain-architecture.md](../financial-domain-architecture.md);
+> this file remains as a historical phase record only.
+
 A clean earnings ledger for instructors: one earning per eligible
 completed lesson, a hold → release → settle lifecycle, admin-configured
 payout rules, and settlement batches. **No external payout is executed

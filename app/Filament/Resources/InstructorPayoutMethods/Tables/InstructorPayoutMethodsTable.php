@@ -1,0 +1,191 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\InstructorPayoutMethods\Tables;
+
+use App\Earnings\Contracts\InstructorPayoutMethodServiceInterface;
+use App\Earnings\Enums\PayoutMethodStatus;
+use App\Earnings\Enums\PayoutMethodType;
+use App\Earnings\Exceptions\EarningException;
+use App\Models\InstructorPayoutMethod;
+use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+
+/**
+ * Masked data only — no column here (or anywhere in the panel) renders
+ * account numbers, IBANs, or routing data. Decryption happens solely
+ * inside the "View details" action's modal render, which requires the
+ * dedicated ViewSensitive permission and is audit-logged by the
+ * service. Lifecycle mutations route through
+ * InstructorPayoutMethodService; there is no edit or delete.
+ */
+class InstructorPayoutMethodsTable
+{
+    public static function configure(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('instructor.name')
+                    ->label('Instructor')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('type')
+                    ->label('Type')
+                    ->formatStateUsing(fn (PayoutMethodType $state): string => $state->label()),
+                TextColumn::make('masked_identifier')
+                    ->label('Destination'),
+                TextColumn::make('country.name')
+                    ->label('Country')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('currency_code')
+                    ->label('Currency'),
+                TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (PayoutMethodStatus $state): string => $state->label())
+                    ->color(fn (PayoutMethodStatus $state): string => $state->color()),
+                IconColumn::make('is_default')
+                    ->label('Default')
+                    ->boolean(),
+                TextColumn::make('submitted_at')
+                    ->label('Submitted')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('verified_at')
+                    ->label('Verified')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('verifier.name')
+                    ->label('Verified By')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('rejection_reason')
+                    ->label('Rejection Reason')
+                    ->limit(40)
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('disabled_at')
+                    ->label('Disabled')
+                    ->dateTime()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->options(collect(PayoutMethodStatus::cases())
+                        ->mapWithKeys(fn (PayoutMethodStatus $s) => [$s->value => $s->label()])
+                        ->toArray()),
+                SelectFilter::make('type')
+                    ->options(collect(PayoutMethodType::cases())
+                        ->mapWithKeys(fn (PayoutMethodType $t) => [$t->value => $t->label()])
+                        ->toArray()),
+                SelectFilter::make('country_id')
+                    ->label('Country')
+                    ->relationship('country', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('currency_code')
+                    ->label('Currency')
+                    ->options(fn (): array => InstructorPayoutMethod::query()
+                        ->distinct()
+                        ->pluck('currency_code', 'currency_code')
+                        ->toArray()),
+                TernaryFilter::make('is_default')
+                    ->label('Default method'),
+                Filter::make('submitted_between')
+                    ->form([
+                        DatePicker::make('from'),
+                        DatePicker::make('until'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('submitted_at', '>=', $date))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('submitted_at', '<=', $date))),
+            ])
+            ->recordActions([
+                Action::make('view_sensitive')
+                    ->label('View Details')
+                    ->icon('heroicon-m-eye')
+                    ->color('gray')
+                    ->authorize(fn (InstructorPayoutMethod $record): bool => auth()->user()?->can('viewSensitive', $record) ?? false)
+                    ->modalHeading('Sensitive payout details')
+                    ->modalDescription('This access is recorded in the audit trail.')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    // Decrypted only at modal render, inside the service
+                    // (permission re-check + access audit log); nothing is
+                    // serialized into the table or the URL.
+                    ->modalContent(fn (InstructorPayoutMethod $record): View => view('filament.payouts.sensitive-details', [
+                        'details' => app(InstructorPayoutMethodServiceInterface::class)
+                            ->viewSensitiveDetails($record, auth()->user()),
+                    ])),
+
+                Action::make('verify')
+                    ->icon('heroicon-m-check-badge')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalDescription('Confirm the bank details were checked. The method becomes usable for withdrawals and its details become immutable.')
+                    ->authorize(fn (InstructorPayoutMethod $record): bool => auth()->user()?->can('verify', $record) ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->status === PayoutMethodStatus::PendingVerification)
+                    ->action(fn (InstructorPayoutMethod $record) => self::callService(
+                        fn (InstructorPayoutMethodServiceInterface $service) => $service->verify($record, auth()->user()),
+                        'Payout method verified',
+                    )),
+
+                Action::make('reject')
+                    ->icon('heroicon-m-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->authorize(fn (InstructorPayoutMethod $record): bool => auth()->user()?->can('reject', $record) ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->status === PayoutMethodStatus::PendingVerification)
+                    ->form([
+                        Textarea::make('reason')
+                            ->required()
+                            ->maxLength(1000)
+                            ->helperText('Shown to the instructor — keep it actionable and free of account data.'),
+                    ])
+                    ->action(fn (InstructorPayoutMethod $record, array $data) => self::callService(
+                        fn (InstructorPayoutMethodServiceInterface $service) => $service->reject($record, auth()->user(), $data['reason']),
+                        'Payout method rejected',
+                    )),
+
+                Action::make('disable')
+                    ->icon('heroicon-m-no-symbol')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalDescription('The method can no longer be used for new withdrawals. Existing withdrawal snapshots are unaffected.')
+                    ->authorize(fn (InstructorPayoutMethod $record): bool => auth()->user()?->can('disable', $record) ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->status->canTransitionTo(PayoutMethodStatus::Disabled))
+                    ->form([
+                        Textarea::make('reason')->maxLength(1000),
+                    ])
+                    ->action(fn (InstructorPayoutMethod $record, array $data) => self::callService(
+                        fn (InstructorPayoutMethodServiceInterface $service) => $service->disable($record, auth()->user(), $data['reason'] ?? null),
+                        'Payout method disabled',
+                    )),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    private static function callService(callable $callback, string $successTitle): void
+    {
+        try {
+            $callback(app(InstructorPayoutMethodServiceInterface::class));
+            Notification::make()->title($successTitle)->success()->send();
+        } catch (EarningException $e) {
+            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+        }
+    }
+}

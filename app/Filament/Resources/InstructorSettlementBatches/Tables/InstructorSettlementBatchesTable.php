@@ -8,6 +8,7 @@ use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Enums\SettlementBatchStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Models\InstructorSettlementBatch;
+use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -40,7 +41,7 @@ class InstructorSettlementBatchesTable
                     ->label('Currency'),
                 TextColumn::make('total_amount_minor')
                     ->label('Total')
-                    ->state(fn (InstructorSettlementBatch $record): string => sprintf('%s %s', number_format($record->total_amount_minor / 100, 2), $record->currency_code))
+                    ->state(fn (InstructorSettlementBatch $record): string => MoneyFormatter::format($record->total_amount_minor, $record->currency_code))
                     ->sortable(),
                 TextColumn::make('earnings_count')
                     ->label('Earnings')

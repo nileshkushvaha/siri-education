@@ -25,6 +25,7 @@ use App\Http\Controllers\Instructor\InstructorAvailabilityController;
 use App\Http\Controllers\Instructor\InstructorController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
+use App\Http\Controllers\Instructor\InstructorPayoutController;
 use App\Http\Controllers\NewsletterUnsubscribeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
@@ -221,6 +222,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
     Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
     Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
+    // Phase 15 — payout methods & withdrawals (authenticated instructors
+    // only; page shells — no route here can move money).
+    Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');
+    Route::get('/instructor/withdrawals', [InstructorPayoutController::class, 'withdrawals'])->name('instructor.withdrawals');
     Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');
     Route::post('/instructor/submit', [InstructorOnboardingController::class, 'submit'])->name('instructor.submit');
 

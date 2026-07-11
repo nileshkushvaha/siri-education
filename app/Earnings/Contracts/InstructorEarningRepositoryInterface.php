@@ -35,10 +35,13 @@ interface InstructorEarningRepositoryInterface
     public function dueForRelease(CarbonInterface $now): LazyCollection;
 
     /**
-     * Releasable, unassigned earnings for one instructor + currency,
-     * optionally bounded by released_at date range.
+     * Releasable, unassigned, reservation-free earnings for one
+     * instructor + currency, optionally bounded by released_at date
+     * range. Pass forUpdate=true only inside a transaction — the final
+     * settlement eligibility decision must be made on locked rows,
+     * never on a stale unlocked read.
      *
      * @return Collection<int, InstructorEarning>
      */
-    public function settleable(int $instructorId, string $currencyCode, ?CarbonInterface $from = null, ?CarbonInterface $until = null): Collection;
+    public function settleable(int $instructorId, string $currencyCode, ?CarbonInterface $from = null, ?CarbonInterface $until = null, bool $forUpdate = false): Collection;
 }

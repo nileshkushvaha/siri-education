@@ -6,21 +6,24 @@ namespace App\Models;
 
 use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
+use App\Earnings\Enums\WithdrawalAllocationStatus;
 use Database\Factories\InstructorEarningFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * One earning per lesson (unique lesson_id). Status changes go
- * exclusively through InstructorEarningService — never mutate `status`
- * or amounts directly. Instructor earnings are NOT the student price:
- * the student-facing amount and the platform margin are admin-only and
- * hidden from every serialization by default.
+ * One earning per canonical source (unique lesson_id for lesson
+ * compensation; unique source_type+source_id for every category).
+ * Status changes go exclusively through InstructorEarningService —
+ * never mutate `status` or amounts directly. Amounts come from the
+ * instructor's compensation agreement and are fully independent of
+ * student pricing (the commission-era columns were removed in 14.4).
  */
 class InstructorEarning extends Model
 {
@@ -37,11 +40,8 @@ class InstructorEarning extends Model
         'academic_level_id',
         'currency_id',
         'currency_code',
-        'student_amount_minor',
         'earning_amount_minor',
-        'platform_margin_minor',
         'calculation_type',
-        'calculation_value',
         'status',
         'hold_until',
         'released_at',
@@ -57,14 +57,10 @@ class InstructorEarning extends Model
     ];
 
     /**
-     * Admin-only money and internals — the instructor must never see
-     * the student paid amount, the platform margin, the pricing rule,
-     * or admin notes through any serialization.
+     * Admin internals — the calculation snapshot (metadata) and admin
+     * notes must never reach any serialization an instructor can see.
      */
     protected $hidden = [
-        'student_amount_minor',
-        'platform_margin_minor',
-        'calculation_value',
         'notes',
         'metadata',
     ];
@@ -74,10 +70,7 @@ class InstructorEarning extends Model
         return [
             'status' => InstructorEarningStatus::class,
             'calculation_type' => EarningCalculationType::class,
-            'student_amount_minor' => 'integer',
             'earning_amount_minor' => 'integer',
-            'platform_margin_minor' => 'integer',
-            'calculation_value' => 'decimal:4',
             'hold_until' => 'immutable_datetime',
             'released_at' => 'immutable_datetime',
             'settled_at' => 'immutable_datetime',
@@ -121,6 +114,11 @@ class InstructorEarning extends Model
         return $this->belongsTo(InstructorSettlementBatch::class, 'settlement_batch_id');
     }
 
+    public function withdrawalAllocations(): HasMany
+    {
+        return $this->hasMany(InstructorWithdrawalAllocation::class, 'instructor_earning_id');
+    }
+
     public function scopeForInstructor(Builder $query, int $instructorId): Builder
     {
         return $query->where('instructor_id', $instructorId);
@@ -131,10 +129,31 @@ class InstructorEarning extends Model
         return $query->where('status', $status);
     }
 
-    /** Released, unassigned earnings — the pool settlement batches draw from. */
+    /**
+     * Released, unassigned earnings — the pool settlement batches draw
+     * from. Earnings reserved (even partially) by a live withdrawal
+     * request are excluded: the same money must never be batch-settled
+     * and withdrawal-reserved at once.
+     */
     public function scopeSettleable(Builder $query): Builder
     {
         return $query
+            ->where('status', InstructorEarningStatus::Releasable)
+            ->whereNull('settlement_batch_id')
+            ->whereDoesntHave('withdrawalAllocations', fn (Builder $q) => $q
+                ->where('status', WithdrawalAllocationStatus::Reserved));
+    }
+
+    /**
+     * The withdrawal pool: released, unassigned earnings in one currency.
+     * Reserved allocation amounts are subtracted per row (partial
+     * reservations are possible), not by excluding the row.
+     */
+    public function scopeWithdrawable(Builder $query, int $instructorId, string $currencyCode): Builder
+    {
+        return $query
+            ->where('instructor_id', $instructorId)
+            ->where('currency_code', $currencyCode)
             ->where('status', InstructorEarningStatus::Releasable)
             ->whereNull('settlement_batch_id');
     }

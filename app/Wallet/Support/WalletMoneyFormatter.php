@@ -5,19 +5,21 @@ declare(strict_types=1);
 namespace App\Wallet\Support;
 
 use App\Models\Currency;
+use App\Support\MoneyFormatter;
 
 /**
- * The single place minor units are turned into a display string.
- * Never used for storage or arithmetic — those stay integer minor
- * units end to end.
+ * Wallet-domain facade over the single canonical currency-aware
+ * formatter (App\Support\MoneyFormatter). Kept for the wallet views'
+ * existing call sites; the float division it previously performed was
+ * removed in Phase 14.4 so every money string in the application now
+ * comes from one integer-safe implementation.
  */
 final class WalletMoneyFormatter
 {
     public static function format(int $amountMinor, ?Currency $currency, string $fallbackCode = 'INR'): string
     {
-        $units = $currency?->minor_units ?? 2;
-        $major = $amountMinor / (10 ** $units);
+        $code = $currency?->code ?? $fallbackCode;
 
-        return number_format($major, $units).' '.($currency?->code ?? $fallbackCode);
+        return MoneyFormatter::format($amountMinor, $code, $currency?->minor_units);
     }
 }

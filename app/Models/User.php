@@ -107,6 +107,12 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasOne(UserProfile::class);
     }
 
+    /** Effective-dated compensation agreements (instructors only). */
+    public function compensationAgreements(): HasMany
+    {
+        return $this->hasMany(InstructorCompensationAgreement::class, 'instructor_id');
+    }
+
     public function loginHistories(): HasMany
     {
         return $this->hasMany(LoginHistory::class)->latest('logged_in_at');

@@ -348,6 +348,37 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
+            // ── Instructor payouts (Phase 15) — only the two entry points
+            //     needing staff action map here; the audit descriptions are
+            //     pre-sanitized (reference + masked label only, no bank
+            //     details ever) ─────────────────────────────────────────────
+            $log === 'instructor_payouts' && $event === 'payout_method_submitted' => [
+                'title' => 'Payout Method Awaiting Verification',
+                'actor_label' => 'Submitted by',
+                'icon' => 'heroicon-o-building-library',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
+            $log === 'instructor_payouts' && $event === 'withdrawal_requested' => [
+                'title' => 'New Withdrawal Request',
+                'actor_label' => 'Requested by',
+                'icon' => 'heroicon-o-banknotes',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
+            // ── Instructor compensation (Phase 14.2) — a completed lesson
+            //     with no applicable agreement needs an admin to configure
+            //     compensation, then the lesson can be retried ─────────────
+            $log === 'instructor_compensation' && $event === 'earning_blocked_no_agreement' => [
+                'title' => 'Lesson Earning Blocked — No Compensation Agreement',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
             // ── Everything else: silence ──────────────────────────────────
             default => null,
         };

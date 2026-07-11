@@ -4,25 +4,23 @@ declare(strict_types=1);
 
 namespace App\Earnings\Services;
 
-use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Earnings\Actions\CreateInstructorEarningFromLessonAction;
 use App\Earnings\Actions\TransitionInstructorEarningAction;
+use App\Earnings\Contracts\InstructorCompensationResolverInterface;
 use App\Earnings\Contracts\InstructorEarningRepositoryInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
-use App\Earnings\DTOs\EarningCalculation;
-use App\Earnings\Enums\EarningCalculationType;
+use App\Earnings\Enums\CompensationExceptionCategory;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\SettlementBatchStatus;
 use App\Earnings\Events\InstructorEarningCreated;
 use App\Earnings\Events\InstructorEarningReleased;
 use App\Earnings\Events\InstructorSettlementPaid;
+use App\Earnings\Exceptions\CompensationBlockedException;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Exceptions\InvalidEarningTransitionException;
 use App\Lessons\Enums\LessonStatus;
-use App\Models\Booking;
-use App\Models\Currency;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
 use App\Models\Lesson;
@@ -30,17 +28,19 @@ use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Settings\InstructorEarningSettings;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Orchestrates instructor earnings: creation from eligible completed
  * lessons, the hold → release → settle lifecycle, dispute holds,
- * reversals, and settlement batches. Instructor earnings are NOT the
- * student price — the platform rule (percentage/fixed) computes them
- * from the booking's paid snapshot, and the student amount / platform
- * margin stay admin-only. All money is integer minor units; no floats
- * are ever stored. No student wallet is touched and no external payout
- * is executed anywhere in this service.
+ * reversals, and settlement batches. Phase 14.2: instructor
+ * compensation comes exclusively from the instructor's effective-dated
+ * compensation agreement (InstructorCompensationResolver) — it is never
+ * calculated from the student-facing price, which does not enter this
+ * service's compensation path at all. All money is integer minor units;
+ * no floats are ever stored. No student wallet is touched and no
+ * external payout is executed anywhere in this service.
  */
 final class InstructorEarningService implements InstructorEarningServiceInterface
 {
@@ -50,6 +50,8 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         private readonly InstructorEarningRepositoryInterface $earnings,
         private readonly CreateInstructorEarningFromLessonAction $createAction,
         private readonly TransitionInstructorEarningAction $transition,
+        private readonly InstructorCompensationResolverInterface $resolver,
+        private readonly CompensationExceptionService $exceptions,
         private readonly AuditTrailService $audit,
         private readonly InstructorEarningSettings $settings,
     ) {}
@@ -77,23 +79,63 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         if (($reason = $this->ineligibilityReason($lesson)) !== null) {
             $this->audit->logSystem(self::LOG_NAME, 'earning_skipped', sprintf('No earning for lesson %s: %s', $lesson->id, $reason), $lesson);
 
-            return null;
-        }
-
-        $calculation = $this->calculate($lesson->booking);
-
-        if (is_string($calculation)) {
-            // Calculation blocked — needs a manual admin decision; never guess money.
-            $this->audit->logSystem(self::LOG_NAME, 'earning_calculation_blocked', sprintf('Earning for lesson %s needs manual handling: %s', $lesson->id, $calculation), $lesson);
+            // A lesson that was queued for recovery but has since left the
+            // eligible state can never earn — stop retrying, stay visible.
+            $this->exceptions->markPermanentlyIneligible($lesson, 'Lesson is no longer eligible: '.$reason.'.');
 
             return null;
         }
 
-        $earning = $this->createAction->execute(
-            $lesson,
-            $calculation,
-            $lesson->completed_at?->addDays($this->settings->hold_days),
-        );
+        // Phase 14.2/14.3: compensation comes exclusively from the
+        // agreement in force at the lesson's SCHEDULED start — the
+        // resolver has no student-price input. Categorized blocks land in
+        // the compensation-exception queue for the retry sweep; benign
+        // skips (periodic basis, demo policy none) return null.
+        try {
+            $resolution = $this->resolver->resolveForLesson($lesson);
+        } catch (CompensationBlockedException $blocked) {
+            $this->exceptions->record($lesson, $blocked->category, $blocked->getMessage());
+
+            return null;
+        }
+
+        if ($resolution === null) {
+            return null;
+        }
+
+        try {
+            $earning = $this->createAction->execute(
+                $lesson,
+                $resolution,
+                $lesson->completed_at?->addDays($this->settings->hold_days),
+            );
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent worker created this lesson's earning between our
+            // idempotency check and the insert — that is the idempotent
+            // replay, never a transient failure (which would wrongly
+            // re-open a just-resolved compensation exception).
+            $existing = $this->earnings->findForLesson($lesson);
+
+            if ($existing !== null) {
+                $this->exceptions->resolve($lesson, $existing);
+
+                return $existing;
+            }
+
+            $this->exceptions->record($lesson, CompensationExceptionCategory::TransientFailure, 'Earning creation failed transiently and will be retried automatically.');
+
+            return null;
+        } catch (\Throwable $failure) {
+            // Unexpected infrastructure failure — queue for a separate
+            // transient retry rather than losing the lesson silently.
+            $this->exceptions->record($lesson, CompensationExceptionCategory::TransientFailure, 'Earning creation failed transiently and will be retried automatically.');
+
+            report($failure);
+
+            return null;
+        }
+
+        $this->exceptions->resolve($lesson, $earning);
 
         $this->audit->logSystem(
             self::LOG_NAME,
@@ -188,25 +230,34 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         ?User $actor = null,
         ?string $notes = null,
     ): InstructorSettlementBatch {
-        $earnings = $this->earnings->settleable($instructorId, $currencyCode, $periodStart, $periodEnd);
+        // Canonical financial lock order (Phase 15.1): the instructor's
+        // user row is the owner lock every financial writer for this
+        // instructor takes first — settlement drafting and withdrawal
+        // reservation serialize here, so the settleable set can never
+        // change between the eligibility decision and the assignment.
+        [$batch, $count, $total] = DB::transaction(function () use ($instructorId, $currencyCode, $periodStart, $periodEnd, $notes): array {
+            User::query()->whereKey($instructorId)->lockForUpdate()->first();
 
-        if ($earnings->isEmpty()) {
-            throw new EarningException('No releasable, unassigned earnings match this instructor, currency, and period.');
-        }
+            // The final eligibility decision is made on locked rows —
+            // never on a stale pre-lock read.
+            $earnings = $this->earnings->settleable($instructorId, $currencyCode, $periodStart, $periodEnd, forUpdate: true);
 
-        $total = (int) $earnings->sum('earning_amount_minor');
+            if ($earnings->isEmpty()) {
+                throw new EarningException('No releasable, unassigned earnings match this instructor, currency, and period.');
+            }
 
-        if ($total <= 0) {
-            throw new EarningException('A settlement batch total must be positive.');
-        }
+            $total = (int) $earnings->sum('earning_amount_minor');
 
-        $minimum = $this->settings->minimum_settlement_amount_minor;
+            if ($total <= 0) {
+                throw new EarningException('A settlement batch total must be positive.');
+            }
 
-        if ($minimum !== null && $total < $minimum) {
-            throw new EarningException(sprintf('Batch total %d is below the minimum settlement amount %d.', $total, $minimum));
-        }
+            $minimum = $this->settings->minimum_settlement_amount_minor;
 
-        $batch = DB::transaction(function () use ($instructorId, $currencyCode, $periodStart, $periodEnd, $notes, $earnings, $total): InstructorSettlementBatch {
+            if ($minimum !== null && $total < $minimum) {
+                throw new EarningException(sprintf('Batch total %d is below the minimum settlement amount %d.', $total, $minimum));
+            }
+
             $batch = InstructorSettlementBatch::query()->create([
                 'instructor_id' => $instructorId,
                 'currency_code' => $currencyCode,
@@ -217,14 +268,23 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
                 'notes' => $notes,
             ]);
 
-            InstructorEarning::query()
+            // Guarded assignment: only rows that are still releasable and
+            // unassigned may enter the batch, and every locked row must
+            // make it — anything else means the invariant broke mid-flight.
+            $assigned = InstructorEarning::query()
                 ->whereIn('id', $earnings->pluck('id'))
+                ->where('status', InstructorEarningStatus::Releasable)
+                ->whereNull('settlement_batch_id')
                 ->update(['settlement_batch_id' => $batch->id]);
 
-            return $batch;
+            if ($assigned !== $earnings->count()) {
+                throw new EarningException('Settlement assignment integrity check failed — the eligible earnings changed mid-transaction.');
+            }
+
+            return [$batch, $earnings->count(), $total];
         });
 
-        $this->log($actor, 'settlement_batch_created', sprintf('Settlement batch %s drafted: %d earning(s), %d %s (minor units).', $batch->batch_reference, $earnings->count(), $total, $currencyCode), $batch);
+        $this->log($actor, 'settlement_batch_created', sprintf('Settlement batch %s drafted: %d earning(s), %d %s (minor units).', $batch->batch_reference, $count, $total, $currencyCode), $batch);
 
         return $batch;
     }
@@ -316,105 +376,6 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         }
 
         return null;
-    }
-
-    /**
-     * Integer-minor-unit calculation, or a block reason string when the
-     * amount cannot be derived safely (never guess money).
-     */
-    private function calculate(Booking $booking): EarningCalculation|string
-    {
-        [$studentMinor, $currencyCode] = $this->resolveStudentAmount($booking);
-
-        $type = EarningCalculationType::tryFrom($this->settings->default_calculation_type)
-            ?? EarningCalculationType::Percentage;
-
-        // Percentage needs a student amount; free/demo lessons fall back
-        // to the fixed rate when one is configured.
-        if ($type === EarningCalculationType::Percentage && $studentMinor === null) {
-            $type = EarningCalculationType::Fixed;
-        }
-
-        if ($type === EarningCalculationType::Percentage) {
-            $percentage = $this->settings->default_percentage;
-
-            if ($percentage < 0 || $percentage > 100) {
-                return sprintf('default_percentage %s is outside 0-100', $percentage);
-            }
-
-            $earning = (int) floor($studentMinor * $percentage / 100);
-
-            return new EarningCalculation(
-                type: EarningCalculationType::Percentage,
-                currencyCode: $currencyCode,
-                earningAmountMinor: $earning,
-                studentAmountMinor: $studentMinor,
-                platformMarginMinor: $studentMinor - $earning,
-                value: $percentage,
-            );
-        }
-
-        $fixed = $this->settings->default_fixed_amount_minor;
-
-        if ($fixed === null || $fixed < 0) {
-            return 'no student amount and no fixed rate configured';
-        }
-
-        $fixedCurrency = $currencyCode ?? $this->settings->default_currency_code;
-
-        if ($fixedCurrency === null) {
-            return 'fixed rate has no currency (set default_currency_code)';
-        }
-
-        if ($studentMinor !== null && $fixed > $studentMinor) {
-            return 'fixed rate exceeds the student paid amount (negative margin)';
-        }
-
-        return new EarningCalculation(
-            type: EarningCalculationType::Fixed,
-            currencyCode: $fixedCurrency,
-            earningAmountMinor: $fixed,
-            studentAmountMinor: $studentMinor,
-            platformMarginMinor: $studentMinor !== null ? $studentMinor - $fixed : null,
-            value: null,
-        );
-    }
-
-    /**
-     * The student paid snapshot, admin-only: the captured BookingPayment
-     * row is authoritative (already integer minor units); the booking's
-     * decimal price is the fallback, converted via the currency's minor
-     * units. Free/demo bookings (payment not required) return null.
-     *
-     * @return array{0: ?int, 1: ?string}
-     */
-    private function resolveStudentAmount(Booking $booking): array
-    {
-        if ($booking->payment_status !== BookingPaymentStatus::Paid) {
-            return [null, null];
-        }
-
-        $captured = $booking->payments()
-            ->where('status', BookingPaymentRecordStatus::Captured)
-            ->latest('paid_at')
-            ->first();
-
-        if ($captured !== null) {
-            return [(int) $captured->amount_minor, $captured->currency_code];
-        }
-
-        if ($booking->price === null || $booking->currency === null) {
-            return [null, null];
-        }
-
-        $minorUnits = Currency::query()->where('code', $booking->currency)->value('minor_units') ?? 2;
-
-        // decimal:2 cast yields a string — integer math on the split parts
-        // avoids float drift entirely.
-        [$whole, $fraction] = array_pad(explode('.', (string) $booking->price, 2), 2, '0');
-        $fraction = substr(str_pad($fraction, $minorUnits, '0'), 0, $minorUnits);
-
-        return [((int) $whole) * (10 ** $minorUnits) + (int) $fraction, $booking->currency];
     }
 
     /** @param array<string, mixed> $extra */

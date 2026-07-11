@@ -3,6 +3,9 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\InstructorStatus;
+use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
+use App\Models\InstructorCompensationAgreement;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -143,6 +146,17 @@ class UsersTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                // Phase 14.2 — jump to the instructor's compensation
+                // agreements (amounts are managed there, never here).
+                Action::make('manage_compensation')
+                    ->label('Manage Compensation')
+                    ->icon('heroicon-m-briefcase')
+                    ->color('gray')
+                    ->visible(fn ($record): bool => $record->hasRole('instructor')
+                        && (auth()->user()?->can('viewAny', InstructorCompensationAgreement::class) ?? false))
+                    ->url(fn ($record): string => InstructorCompensationAgreementResource::getUrl(parameters: [
+                        'tableFilters' => ['instructor_id' => ['value' => $record->id]],
+                    ])),
                 DeleteAction::make()
                     ->hidden(fn ($record): bool => $record->id === auth()->id()
                         || $record->isSuperAdmin()

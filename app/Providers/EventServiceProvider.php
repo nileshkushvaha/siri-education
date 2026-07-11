@@ -43,6 +43,7 @@ use App\Listeners\Mail\LogNotificationSending;
 use App\Listeners\Mail\LogNotificationSent;
 use App\Listeners\Mail\LogResendEmailEvent;
 use App\Listeners\NotifyAdminsOnActivity;
+use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -65,6 +66,7 @@ class EventServiceProvider extends ServiceProvider
         ActivityCreated::class => [
             NotifyAdminsOnActivity::class,
             NotifyInstructorOnProfileActivity::class,
+            NotifyInstructorOnPayoutActivity::class,
         ],
         UserRegistered::class => [
             SendRegistrationNotifications::class,

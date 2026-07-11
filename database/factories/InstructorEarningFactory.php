@@ -16,24 +16,26 @@ class InstructorEarningFactory extends Factory
 {
     public function definition(): array
     {
-        $student = 50000;
-        $earning = 35000;
-
+        // Agreement-based hourly compensation — independent of student
+        // pricing by construction.
         return [
             'lesson_id' => Lesson::factory(),
             'booking_id' => fn (array $attributes) => Lesson::query()->findOrFail($attributes['lesson_id'])->booking_id,
             'instructor_id' => User::factory(),
             'student_id' => User::factory(),
             'currency_code' => 'INR',
-            'student_amount_minor' => $student,
-            'earning_amount_minor' => $earning,
-            'platform_margin_minor' => $student - $earning,
-            'calculation_type' => EarningCalculationType::Percentage,
-            'calculation_value' => 70,
+            'earning_amount_minor' => 35000,
+            'calculation_type' => EarningCalculationType::Hourly,
             'status' => InstructorEarningStatus::PendingHold,
             'hold_until' => now()->addDays(7),
             'source_type' => 'lesson',
             'source_id' => fn (array $attributes) => $attributes['lesson_id'],
+            'metadata' => [
+                'pay_basis' => 'hourly',
+                'rate_minor' => 35000,
+                'eligible_minutes' => 60,
+                'rounding_policy' => 'half_up_minor',
+            ],
         ];
     }
 

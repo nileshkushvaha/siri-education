@@ -41,7 +41,7 @@ final class InstructorEarningRepository implements InstructorEarningRepositoryIn
             ->cursor();
     }
 
-    public function settleable(int $instructorId, string $currencyCode, ?CarbonInterface $from = null, ?CarbonInterface $until = null): Collection
+    public function settleable(int $instructorId, string $currencyCode, ?CarbonInterface $from = null, ?CarbonInterface $until = null, bool $forUpdate = false): Collection
     {
         return InstructorEarning::query()
             ->settleable()
@@ -50,6 +50,9 @@ final class InstructorEarningRepository implements InstructorEarningRepositoryIn
             ->when($from, fn ($q) => $q->where('released_at', '>=', $from))
             ->when($until, fn ($q) => $q->where('released_at', '<=', $until))
             ->orderBy('released_at')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->when($forUpdate, fn ($q) => $q->lockForUpdate())
             ->get();
     }
 }

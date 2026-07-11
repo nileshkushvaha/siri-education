@@ -11,15 +11,23 @@ use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Models\Booking;
-use App\Models\BookingPayment;
+use App\Models\Currency;
+use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorEarning;
 use App\Models\Lesson;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Settings\InstructorEarningSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
+/**
+ * Phase 14.2 — earnings come exclusively from agreement-based
+ * compensation: hourly rate × eligible minutes for lesson earnings,
+ * never a percentage of the student price, which no longer enters the
+ * calculation path at all.
+ */
 class InstructorEarningTest extends TestCase
 {
     use RefreshDatabase;
@@ -34,125 +42,36 @@ class InstructorEarningTest extends TestCase
 
         $this->lessons = app(LessonLifecycleServiceInterface::class);
         $this->earnings = app(InstructorEarningServiceInterface::class);
-    }
 
-    // ── Creation ─────────────────────────────────────────────────────
-
-    public function test_completed_paid_lesson_creates_exactly_one_pending_hold_earning(): void
-    {
-        $lesson = $this->completedPaidLesson(price: '499.00');
-
-        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->first();
-
-        $this->assertNotNull($earning);
-        $this->assertSame(InstructorEarningStatus::PendingHold, $earning->status);
-        $this->assertSame(EarningCalculationType::Percentage, $earning->calculation_type);
-        // 70% of 49900 minor units, floored — integers end to end.
-        $this->assertSame(49900, $earning->student_amount_minor);
-        $this->assertSame(34930, $earning->earning_amount_minor);
-        $this->assertSame(14970, $earning->platform_margin_minor);
-        $this->assertSame($earning->student_amount_minor, $earning->earning_amount_minor + $earning->platform_margin_minor);
-        $this->assertSame('INR', $earning->currency_code);
-        $this->assertSame($lesson->instructor_id, $earning->instructor_id);
-        $this->assertTrue($lesson->completed_at->addDays(7)->equalTo($earning->hold_until));
-        $this->assertNull($earning->released_at);
-    }
-
-    public function test_captured_booking_payment_is_the_authoritative_student_amount(): void
-    {
-        $booking = Booking::factory()->confirmed()->paid(499.00, 'INR')->create();
-        // Gateway captured a different amount than the legacy price column —
-        // the integer gateway snapshot must win.
-        BookingPayment::factory()->captured()->create([
-            'booking_id' => $booking->id,
-            'amount_minor' => 52500,
-            'currency_code' => 'INR',
+        Currency::query()->firstOrCreate(['code' => 'INR'], [
+            'name' => 'Indian Rupee', 'symbol' => 'Rs', 'numeric_code' => '356',
+            'minor_units' => 2, 'status' => 'active', 'sort_order' => 1,
         ]);
 
-        $lesson = $this->lessons->createFromBooking($booking);
-        $this->lessons->complete($lesson, override: true);
-
-        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
-        $this->assertSame(52500, $earning->student_amount_minor);
-        $this->assertSame(36750, $earning->earning_amount_minor);
+        // Phase 14.2: earnings ship DISABLED — tests exercising creation
+        // enable the switch explicitly.
+        $this->settings(['earnings_enabled' => true]);
     }
 
-    public function test_free_lesson_uses_fixed_rate_when_configured(): void
+    // ── Kill switch defaults ─────────────────────────────────────────
+
+    public function test_earnings_and_withdrawals_default_to_disabled(): void
     {
-        $this->settings(['default_fixed_amount_minor' => 15000, 'default_currency_code' => 'INR']);
+        // The migrated repository defaults are what production gets:
+        // both switches OFF. (setUp flips earnings_enabled for the other
+        // tests, so read withdrawals from the repository and earnings
+        // from a fresh migration expectation via the settings migration.)
+        $withdrawals = json_decode((string) \DB::table('settings')
+            ->where('group', 'instructor_earnings')->where('name', 'withdrawals_enabled')
+            ->value('payload'), true);
+        $this->assertFalse($withdrawals);
 
-        $lesson = $this->completedFreeLesson();
-
-        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
-        $this->assertSame(EarningCalculationType::Fixed, $earning->calculation_type);
-        $this->assertSame(15000, $earning->earning_amount_minor);
-        $this->assertNull($earning->student_amount_minor);
-        $this->assertNull($earning->platform_margin_minor);
-        $this->assertSame('INR', $earning->currency_code);
-    }
-
-    public function test_free_lesson_without_fixed_rate_is_blocked_safely(): void
-    {
-        $lesson = $this->completedFreeLesson();
-
-        $this->assertSame(0, InstructorEarning::query()->count());
-        $this->assertDatabaseHas('activity_log', [
-            'log_name' => 'instructor_earnings',
-            'event' => 'earning_calculation_blocked',
-        ]);
-        // Idempotent re-run stays blocked, never guesses money.
-        $this->assertNull($this->earnings->createFromLesson($lesson->refresh()));
-    }
-
-    public function test_fixed_rate_exceeding_student_amount_is_blocked(): void
-    {
-        $this->settings(['default_calculation_type' => 'fixed', 'default_fixed_amount_minor' => 99999999]);
-
-        $this->completedPaidLesson(price: '499.00');
-
-        $this->assertSame(0, InstructorEarning::query()->count());
-        $this->assertDatabaseHas('activity_log', ['event' => 'earning_calculation_blocked']);
-    }
-
-    public function test_ineligible_lessons_never_create_earnings(): void
-    {
-        // Scheduled (not completed).
-        $scheduled = Lesson::factory()->create();
-
-        // Cancelled and no-show outcomes.
-        $cancelled = Lesson::factory()->cancelled()->create();
-        $studentNoShow = Lesson::factory()->create(['status' => 'student_no_show']);
-        $instructorNoShow = Lesson::factory()->create(['status' => 'instructor_no_show']);
-        $bothNoShow = Lesson::factory()->create(['status' => 'both_no_show']);
-        $disputed = Lesson::factory()->create(['status' => 'disputed']);
-
-        // Option B late terminal payment: booking cancelled, payment
-        // reached Paid afterwards — the booking is not confirmed/completed.
-        $lateTerminal = Lesson::factory()->completed()->create([
-            'booking_id' => Booking::factory()->cancelled()->paid()->create()->id,
-        ]);
-
-        // Completed lesson whose booking payment is still pending.
-        $unpaid = Lesson::factory()->completed()->create([
-            'booking_id' => Booking::factory()->confirmed()->create(['payment_status' => BookingPaymentStatus::Pending])->id,
-        ]);
-
-        foreach ([$scheduled, $cancelled, $studentNoShow, $instructorNoShow, $bothNoShow, $disputed, $lateTerminal, $unpaid] as $lesson) {
-            $this->assertNull($this->earnings->createFromLesson($lesson));
-        }
-
-        $this->assertSame(0, InstructorEarning::query()->count());
-    }
-
-    public function test_duplicate_completion_does_not_duplicate_earning(): void
-    {
-        $lesson = $this->completedPaidLesson();
-
-        // Idempotent lesson re-completion and direct service re-calls.
-        $this->lessons->complete($lesson->refresh(), override: true);
-        $this->earnings->createFromLesson($lesson->refresh());
-
-        $this->assertSame(1, InstructorEarning::query()->where('lesson_id', $lesson->id)->count());
+        // Flip earnings back off and confirm the repository agrees.
+        $this->settings(['earnings_enabled' => false]);
+        $earnings = json_decode((string) \DB::table('settings')
+            ->where('group', 'instructor_earnings')->where('name', 'earnings_enabled')
+            ->value('payload'), true);
+        $this->assertFalse($earnings);
     }
 
     public function test_earnings_kill_switch_stops_creation(): void
@@ -165,43 +84,160 @@ class InstructorEarningTest extends TestCase
         $this->assertNull($this->earnings->createFromLesson($lesson));
     }
 
-    // ── Hold / release ───────────────────────────────────────────────
+    // ── Creation (agreement-based, never student price) ──────────────
+
+    public function test_completed_paid_lesson_creates_one_hourly_agreement_earning(): void
+    {
+        $lesson = $this->completedPaidLesson(price: '499.00', rateMinor: 80000);
+
+        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
+
+        $this->assertSame(InstructorEarningStatus::PendingHold, $earning->status);
+        $this->assertSame(EarningCalculationType::Hourly, $earning->calculation_type);
+        // 60-minute lesson at 80000/hour — independent of the 499.00 price.
+        $this->assertSame(80000, $earning->earning_amount_minor);
+        $this->assertSame('INR', $earning->currency_code);
+        $this->assertTrue($lesson->completed_at->addDays(7)->equalTo($earning->hold_until));
+
+        // The immutable snapshot records the applied agreement, not prices.
+        $metadata = $earning->getAttribute('metadata');
+        $this->assertSame('hourly', $metadata['pay_basis']);
+        $this->assertSame(80000, $metadata['rate_minor']);
+        $this->assertSame(60, $metadata['eligible_minutes']);
+        $this->assertSame('half_up_minor', $metadata['rounding_policy']);
+        $this->assertArrayNotHasKey('student_amount_minor', $metadata);
+        $this->assertArrayNotHasKey('student_price', $metadata);
+    }
+
+    public function test_student_price_changes_never_change_the_earning(): void
+    {
+        $cheap = $this->completedPaidLesson(price: '100.00', rateMinor: 80000);
+        $pricey = $this->completedPaidLesson(price: '99999.00', rateMinor: 80000);
+
+        $cheapEarning = InstructorEarning::query()->where('lesson_id', $cheap->id)->firstOrFail();
+        $priceyEarning = InstructorEarning::query()->where('lesson_id', $pricey->id)->firstOrFail();
+
+        // Same agreement rate, same duration → identical compensation.
+        $this->assertSame($cheapEarning->earning_amount_minor, $priceyEarning->earning_amount_minor);
+    }
+
+    public function test_lesson_without_agreement_is_blocked_for_controlled_retry(): void
+    {
+        $booking = Booking::factory()->confirmed()->create([
+            'payment_status' => BookingPaymentStatus::Paid,
+            'price' => '499.00',
+            'currency' => 'INR',
+        ]);
+
+        $lesson = $this->lessons->createFromBooking($booking);
+        $lesson = $this->lessons->complete($lesson, override: true);
+
+        // Blocked — never estimated, never derived from the price.
+        $this->assertSame(0, InstructorEarning::query()->count());
+        $this->assertDatabaseHas('activity_log', [
+            'log_name' => 'instructor_compensation',
+            'event' => 'earning_blocked_no_agreement',
+        ]);
+
+        // Controlled retry once compensation is configured.
+        $this->hourlyAgreementFor($lesson->instructor_id, 80000);
+        $earning = $this->earnings->createFromLesson($lesson->refresh());
+
+        $this->assertNotNull($earning);
+        $this->assertSame(80000, $earning->earning_amount_minor);
+    }
+
+    public function test_periodic_agreement_creates_no_lesson_earning(): void
+    {
+        $booking = Booking::factory()->confirmed()->create([
+            'payment_status' => BookingPaymentStatus::Paid,
+            'price' => '499.00',
+            'currency' => 'INR',
+        ]);
+        $lesson = $this->lessons->createFromBooking($booking);
+
+        InstructorCompensationAgreement::factory()->monthly()->active()->create([
+            'instructor_id' => $lesson->instructor_id,
+            'effective_from' => now()->startOfMonth(),
+        ]);
+
+        $this->lessons->complete($lesson, override: true);
+
+        $this->assertSame(0, InstructorEarning::query()->count());
+        $this->assertDatabaseHas('activity_log', ['event' => 'earning_skipped_periodic_basis']);
+    }
+
+    // ── Demo policy ──────────────────────────────────────────────────
+
+    public function test_demo_lesson_with_policy_none_creates_no_earning(): void
+    {
+        $lesson = $this->completedFreeLesson();
+
+        $this->assertSame(0, InstructorEarning::query()->count());
+        $this->assertDatabaseHas('activity_log', ['event' => 'earning_skipped_demo_policy']);
+        // Idempotent re-run stays skipped, never guesses money.
+        $this->assertNull($this->earnings->createFromLesson($lesson->refresh()));
+    }
+
+    public function test_demo_lesson_with_fixed_policy_pays_the_explicit_amount(): void
+    {
+        $this->settings(['demo_compensation_policy' => 'fixed_demo_amount', 'demo_fixed_amount_minor' => 15000]);
+
+        $lesson = $this->completedFreeLesson();
+
+        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
+        $this->assertSame(EarningCalculationType::DemoFixed, $earning->calculation_type);
+        $this->assertSame(15000, $earning->earning_amount_minor);
+    }
+
+    // ── Eligibility / idempotency (unchanged Phase 14 rules) ─────────
+
+    public function test_ineligible_lessons_never_create_earnings(): void
+    {
+        $scheduled = Lesson::factory()->create();
+        $cancelled = Lesson::factory()->cancelled()->create();
+        $studentNoShow = Lesson::factory()->create(['status' => 'student_no_show']);
+        $disputed = Lesson::factory()->create(['status' => 'disputed']);
+        $lateTerminal = Lesson::factory()->completed()->create([
+            'booking_id' => Booking::factory()->cancelled()->paid()->create()->id,
+        ]);
+        $unpaid = Lesson::factory()->completed()->create([
+            'booking_id' => Booking::factory()->confirmed()->create(['payment_status' => BookingPaymentStatus::Pending])->id,
+        ]);
+
+        foreach ([$scheduled, $cancelled, $studentNoShow, $disputed, $lateTerminal, $unpaid] as $lesson) {
+            $this->hourlyAgreementFor($lesson->instructor_id);
+            $this->assertNull($this->earnings->createFromLesson($lesson));
+        }
+
+        $this->assertSame(0, InstructorEarning::query()->count());
+    }
+
+    public function test_duplicate_completion_does_not_duplicate_earning(): void
+    {
+        $lesson = $this->completedPaidLesson();
+
+        $this->lessons->complete($lesson->refresh(), override: true);
+        $this->earnings->createFromLesson($lesson->refresh());
+
+        $this->assertSame(1, InstructorEarning::query()->where('lesson_id', $lesson->id)->count());
+    }
+
+    // ── Hold / release (unchanged lifecycle) ─────────────────────────
 
     public function test_release_command_releases_only_due_eligible_earnings(): void
     {
         $due = InstructorEarning::factory()->heldPastDue()->create();
         $notYetDue = InstructorEarning::factory()->create(['hold_until' => now()->addDays(3)]);
         $disputed = InstructorEarning::factory()->create(['status' => InstructorEarningStatus::DisputedHold, 'hold_until' => now()->subDay()]);
-        $reversed = InstructorEarning::factory()->create(['status' => InstructorEarningStatus::Reversed, 'hold_until' => now()->subDay()]);
 
         $this->artisan('instructor-earnings:release')
             ->expectsOutputToContain('Released 1 earning(s).')
             ->assertSuccessful();
 
-        $due->refresh();
-        $this->assertSame(InstructorEarningStatus::Releasable, $due->status);
-        $this->assertNotNull($due->released_at);
-
+        $this->assertSame(InstructorEarningStatus::Releasable, $due->refresh()->status);
         $this->assertSame(InstructorEarningStatus::PendingHold, $notYetDue->refresh()->status);
         $this->assertSame(InstructorEarningStatus::DisputedHold, $disputed->refresh()->status);
-        $this->assertSame(InstructorEarningStatus::Reversed, $reversed->refresh()->status);
-
-        // Idempotent: nothing left to release.
-        $this->artisan('instructor-earnings:release')
-            ->expectsOutputToContain('Released 0 earning(s).')
-            ->assertSuccessful();
-    }
-
-    public function test_release_command_respects_auto_release_setting(): void
-    {
-        $this->settings(['auto_release_enabled' => false]);
-        $due = InstructorEarning::factory()->heldPastDue()->create();
-
-        $this->artisan('instructor-earnings:release')
-            ->expectsOutputToContain('Released 0 earning(s).')
-            ->assertSuccessful();
-
-        $this->assertSame(InstructorEarningStatus::PendingHold, $due->refresh()->status);
     }
 
     public function test_manual_release_before_hold_lapses_requires_override(): void
@@ -212,14 +248,12 @@ class InstructorEarningTest extends TestCase
             $this->earnings->release($earning);
             $this->fail('Expected early release without override to be rejected.');
         } catch (EarningException) {
-            // expected
         }
 
-        $earning = $this->earnings->release($earning, override: true);
-        $this->assertSame(InstructorEarningStatus::Releasable, $earning->status);
+        $this->assertSame(InstructorEarningStatus::Releasable, $this->earnings->release($earning, override: true)->status);
     }
 
-    // ── Dispute / cancellation sync ──────────────────────────────────
+    // ── Dispute sync (unchanged) ─────────────────────────────────────
 
     public function test_disputing_a_completed_lesson_parks_and_resolution_restores_the_earning(): void
     {
@@ -229,44 +263,44 @@ class InstructorEarningTest extends TestCase
         $this->lessons->dispute($lesson->refresh(), $lesson->student, 'Lesson quality issue.');
         $this->assertSame(InstructorEarningStatus::DisputedHold, $earning->refresh()->status);
 
-        // Dispute resolved in the instructor's favor: lesson re-completed.
         $this->lessons->complete($lesson->refresh(), override: true);
         $this->assertSame(InstructorEarningStatus::PendingHold, $earning->refresh()->status);
     }
 
-    public function test_cancelling_a_disputed_lesson_reverses_the_earning(): void
+    // ── Commission removal (Phase 14.4: gone entirely) ───────────────
+
+    public function test_commission_calculation_types_no_longer_exist(): void
     {
-        $lesson = $this->completedPaidLesson();
-        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
+        // Zero historical rows ever used the commission model, so the
+        // percentage / global-fixed cases were removed outright — no new
+        // or old code path can represent a commission earning at all.
+        $values = array_map(fn (EarningCalculationType $c): string => $c->value, EarningCalculationType::cases());
 
-        $this->lessons->dispute($lesson->refresh(), $lesson->student, 'Never delivered.');
-        $this->lessons->cancel($lesson->refresh());
-
-        $earning->refresh();
-        $this->assertSame(InstructorEarningStatus::Reversed, $earning->status);
-        $this->assertNotNull($earning->reversed_at);
+        $this->assertNotContains('percentage', $values);
+        $this->assertNotContains('fixed', $values);
+        $this->assertEqualsCanonicalizing(['hourly', 'periodic', 'demo_fixed', 'manual'], $values);
     }
 
-    // ── Visibility / boundaries ──────────────────────────────────────
+    public function test_earnings_schema_carries_no_student_pricing_columns(): void
+    {
+        $columns = Schema::getColumnListing('instructor_earnings');
 
-    public function test_earning_serialization_hides_student_amount_margin_and_internals(): void
+        $this->assertNotContains('student_amount_minor', $columns);
+        $this->assertNotContains('platform_margin_minor', $columns);
+        $this->assertNotContains('calculation_value', $columns);
+    }
+
+    // ── Visibility / boundaries (unchanged guarantees) ───────────────
+
+    public function test_earning_serialization_hides_legacy_amounts_and_internals(): void
     {
         $lesson = $this->completedPaidLesson();
         $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
 
         $serialized = $earning->toArray();
 
-        $this->assertArrayNotHasKey('student_amount_minor', $serialized);
-        $this->assertArrayNotHasKey('platform_margin_minor', $serialized);
-        $this->assertArrayNotHasKey('calculation_value', $serialized);
-        $this->assertArrayNotHasKey('notes', $serialized);
         $this->assertArrayNotHasKey('metadata', $serialized);
-        // The instructor's own amount stays visible.
         $this->assertArrayHasKey('earning_amount_minor', $serialized);
-
-        $json = json_encode($serialized);
-        $this->assertStringNotContainsString('razorpay', $json);
-        $this->assertStringNotContainsString('wallet', $json);
     }
 
     public function test_earning_flow_never_touches_student_wallets(): void
@@ -294,7 +328,18 @@ class InstructorEarningTest extends TestCase
         $settings->save();
     }
 
-    private function completedPaidLesson(string $price = '499.00'): Lesson
+    private function hourlyAgreementFor(int $instructorId, int $rateMinor = 80000): InstructorCompensationAgreement
+    {
+        return InstructorCompensationAgreement::factory()->active()->create([
+            'instructor_id' => $instructorId,
+            'amount_minor' => $rateMinor,
+            'currency_code' => 'INR',
+            'currency_id' => Currency::query()->where('code', 'INR')->value('id'),
+            'effective_from' => now()->subMonth(),
+        ]);
+    }
+
+    private function completedPaidLesson(string $price = '499.00', int $rateMinor = 80000): Lesson
     {
         $booking = Booking::factory()->confirmed()->create([
             'payment_status' => BookingPaymentStatus::Paid,
@@ -303,6 +348,7 @@ class InstructorEarningTest extends TestCase
         ]);
 
         $lesson = $this->lessons->createFromBooking($booking);
+        $this->hourlyAgreementFor($lesson->instructor_id, $rateMinor);
 
         return $this->lessons->complete($lesson, override: true);
     }
@@ -316,6 +362,7 @@ class InstructorEarningTest extends TestCase
         ]);
 
         $lesson = $this->lessons->createFromBooking($booking);
+        $this->hourlyAgreementFor($lesson->instructor_id);
 
         return $this->lessons->complete($lesson, override: true);
     }

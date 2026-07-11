@@ -1,9 +1,11 @@
 <?php
 
+use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
+use App\Console\Commands\RetryBlockedLessons;
 use App\Models\LoginHistory;
 use App\Models\SchedulerHistory;
 use Illuminate\Console\Scheduling\Schedule;
@@ -59,6 +61,24 @@ app(Schedule::class)
     ->hourly()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/instructor-earnings-release.log'));
+
+// Accrue closed daily/weekly/monthly compensation periods (Phase 14.2).
+// Hourly so day boundaries in every agreement timezone are caught
+// promptly; idempotent and gated by earnings_enabled inside the service.
+app(Schedule::class)
+    ->command(AccruePeriodicCompensation::class)
+    ->hourly()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/instructor-earnings-accrual.log'));
+
+// Recover compensation-blocked lessons (Phase 14.3). Idempotent;
+// resolution is pinned to each lesson's scheduled start time, and the
+// earnings kill switch still gates every attempt.
+app(Schedule::class)
+    ->command(RetryBlockedLessons::class)
+    ->hourly()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/instructor-earnings-retry.log'));
 
 // Release unpaid booking reservations whose payment hold has lapsed.
 // Idempotent: only touches pending bookings with reserved_until < now().

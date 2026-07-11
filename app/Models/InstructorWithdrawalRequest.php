@@ -86,6 +86,8 @@ class InstructorWithdrawalRequest extends Model
             'processing_at' => 'immutable_datetime',
             'paid_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
+            'reversed_at' => 'immutable_datetime',
+            'recovered_at' => 'immutable_datetime',
         ];
     }
 
@@ -117,6 +119,16 @@ class InstructorWithdrawalRequest extends Model
     public function allocations(): HasMany
     {
         return $this->hasMany(InstructorWithdrawalAllocation::class, 'withdrawal_request_id');
+    }
+
+    public function payoutAttempts(): HasMany
+    {
+        return $this->hasMany(InstructorPayoutAttempt::class, 'withdrawal_request_id');
+    }
+
+    public function reconciliationIssues(): HasMany
+    {
+        return $this->hasMany(InstructorPayoutReconciliationIssue::class, 'withdrawal_request_id');
     }
 
     public function scopeForInstructor(Builder $query, int $instructorId): Builder

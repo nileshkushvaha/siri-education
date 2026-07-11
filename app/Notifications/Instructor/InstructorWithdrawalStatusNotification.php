@@ -47,6 +47,9 @@ final class InstructorWithdrawalStatusNotification extends Notification implemen
             InstructorWithdrawalStatus::Approved => 'Your withdrawal request has been approved',
             InstructorWithdrawalStatus::Rejected => 'Your withdrawal request was rejected',
             InstructorWithdrawalStatus::Cancelled => 'Your withdrawal request has been cancelled',
+            InstructorWithdrawalStatus::Paid => 'Your withdrawal has been paid',
+            InstructorWithdrawalStatus::Failed => 'Your withdrawal payout could not be completed',
+            InstructorWithdrawalStatus::Reversed => 'Your withdrawal payout was reversed',
             default => 'Your withdrawal request status has been updated',
         };
 
@@ -56,6 +59,9 @@ final class InstructorWithdrawalStatusNotification extends Notification implemen
             InstructorWithdrawalStatus::Approved => sprintf('Your withdrawal request %s for %s has been approved. The payout will be processed in an upcoming payout run.', $this->reference, $amount),
             InstructorWithdrawalStatus::Rejected => sprintf('Your withdrawal request %s for %s was rejected. The reserved amount is available again.', $this->reference, $amount),
             InstructorWithdrawalStatus::Cancelled => sprintf('Your withdrawal request %s for %s has been cancelled. The reserved amount is available again.', $this->reference, $amount),
+            InstructorWithdrawalStatus::Paid => sprintf('Your withdrawal %s for %s to %s has been paid.', $this->reference, $amount, $this->payoutMethodLabel),
+            InstructorWithdrawalStatus::Failed => sprintf('Your withdrawal %s for %s could not be completed.', $this->reference, $amount),
+            InstructorWithdrawalStatus::Reversed => sprintf('Your withdrawal %s for %s was paid but has since been reversed by the receiving bank. Our finance team is reviewing it.', $this->reference, $amount),
             default => sprintf('Your withdrawal request %s is now: %s.', $this->reference, $this->status->label()),
         };
 
@@ -64,7 +70,7 @@ final class InstructorWithdrawalStatusNotification extends Notification implemen
             ->greeting('Hello, '.$notifiable->name.'!')
             ->line($message);
 
-        if ($this->reason !== null && $this->status === InstructorWithdrawalStatus::Rejected) {
+        if ($this->reason !== null && in_array($this->status, [InstructorWithdrawalStatus::Rejected, InstructorWithdrawalStatus::Failed], true)) {
             $mail->line('Reason: '.$this->reason);
         }
 
@@ -81,7 +87,7 @@ final class InstructorWithdrawalStatusNotification extends Notification implemen
             'amount_minor' => $this->amountMinor,
             'currency' => $this->currencyCode,
             'message' => sprintf('Withdrawal %s is now: %s.', $this->reference, $this->status->label()),
-            'reason' => $this->status === InstructorWithdrawalStatus::Rejected ? $this->reason : null,
+            'reason' => in_array($this->status, [InstructorWithdrawalStatus::Rejected, InstructorWithdrawalStatus::Failed], true) ? $this->reason : null,
             'url' => route('dashboard.instructor.withdrawals'),
         ];
     }

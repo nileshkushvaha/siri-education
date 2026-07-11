@@ -131,9 +131,13 @@ class InstructorEarning extends Model
 
     /**
      * Released, unassigned earnings — the pool settlement batches draw
-     * from. Earnings reserved (even partially) by a live withdrawal
-     * request are excluded: the same money must never be batch-settled
-     * and withdrawal-reserved at once.
+     * from. Earnings touched (even partially) by a live or paid-out
+     * withdrawal allocation are excluded entirely: settlement batches
+     * settle a whole earning at once (no partial-remainder batching),
+     * so the same money must never be batch-settled while any portion
+     * of it is withdrawal-reserved (Phase 15) or already paid out via a
+     * withdrawal (Phase 16A `consumed` — invariant #17: settlement and
+     * payout execution must never consume the same earning amount).
      */
     public function scopeSettleable(Builder $query): Builder
     {
@@ -141,7 +145,7 @@ class InstructorEarning extends Model
             ->where('status', InstructorEarningStatus::Releasable)
             ->whereNull('settlement_batch_id')
             ->whereDoesntHave('withdrawalAllocations', fn (Builder $q) => $q
-                ->where('status', WithdrawalAllocationStatus::Reserved));
+                ->whereIn('status', [WithdrawalAllocationStatus::Reserved, WithdrawalAllocationStatus::Consumed]));
     }
 
     /**

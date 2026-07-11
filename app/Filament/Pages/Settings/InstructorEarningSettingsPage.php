@@ -10,6 +10,8 @@ use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\CompensationException;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Models\InstructorCompensationAgreement;
+use App\Models\InstructorPayoutAttempt;
+use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\User;
 use App\Settings\InstructorEarningSettings;
 use BackedEnum;
@@ -89,6 +91,13 @@ class InstructorEarningSettingsPage extends Page
             'payout_method_verification_required' => $settings->payout_method_verification_required,
             'instructor_cancellation_enabled' => $settings->instructor_cancellation_enabled,
             'withdrawal_review_required' => $settings->withdrawal_review_required,
+            'payout_execution_enabled' => $settings->payout_execution_enabled,
+            'payout_provider' => $settings->payout_provider,
+            'payout_maker_checker_enabled' => $settings->payout_maker_checker_enabled,
+            'payout_auto_retry_enabled' => $settings->payout_auto_retry_enabled,
+            'payout_reconciliation_enabled' => $settings->payout_reconciliation_enabled,
+            'payout_max_attempts' => $settings->payout_max_attempts,
+            'payout_unknown_timeout_minutes' => $settings->payout_unknown_timeout_minutes,
         ]);
     }
 
@@ -241,6 +250,47 @@ class InstructorEarningSettingsPage extends Page
                         Toggle::make('instructor_cancellation_enabled')
                             ->label('Instructors may cancel their own open requests'),
                     ]),
+
+                Section::make('Payout Execution')
+                    ->description('Phase 16A: executes approved withdrawals via a provider-neutral internal pipeline. Only the deterministic fake provider is registered — no external payout API exists in this phase.')
+                    ->columnSpanFull()
+                    ->schema([
+                        Placeholder::make('payout_execution_overview')
+                            ->hiddenLabel()
+                            ->content(fn (): HtmlString => $this->payoutExecutionOverview()),
+                        Grid::make(3)->schema([
+                            Toggle::make('payout_execution_enabled')
+                                ->label('Payout execution enabled')
+                                ->helperText('Off = no provider is ever called. Enabling runs a server-side preflight and requires the Configure:InstructorPayoutExecution permission (enforced on save, not just in this form).'),
+                            Select::make('payout_provider')
+                                ->label('Provider')
+                                ->options(['fake' => 'Fake (deterministic, no network calls)'])
+                                ->required()
+                                ->native(false)
+                                ->helperText('Only the fake provider is registered in Phase 16A.'),
+                            Toggle::make('payout_maker_checker_enabled')
+                                ->label('Maker-checker enabled')
+                                ->helperText('On = the withdrawal approver cannot also execute its payout.'),
+                        ]),
+                        Grid::make(3)->schema([
+                            Toggle::make('payout_auto_retry_enabled')
+                                ->label('Automatic retry enabled')
+                                ->helperText('Off by default. Only safe categories retry, bounded by the attempt ceiling.'),
+                            Toggle::make('payout_reconciliation_enabled')
+                                ->label('Reconciliation sweep enabled')
+                                ->helperText('Gates instructor-payouts:reconcile.'),
+                            TextInput::make('payout_max_attempts')
+                                ->label('Max attempts per execution')
+                                ->numeric()
+                                ->minValue(1)
+                                ->required(),
+                        ]),
+                        TextInput::make('payout_unknown_timeout_minutes')
+                            ->label('Unknown/processing reconciliation timeout (minutes)')
+                            ->numeric()
+                            ->minValue(1)
+                            ->required(),
+                    ]),
             ]),
         ]);
     }
@@ -267,6 +317,16 @@ class InstructorEarningSettingsPage extends Page
             // disableEarnings() auto-disables periodic — refresh view state.
             $this->applySwitch($configuration, 'periodic_compensation_enabled', (bool) $data['periodic_compensation_enabled'], $settings->periodic_compensation_enabled);
             $this->applySwitch($configuration, 'withdrawals_enabled', (bool) $data['withdrawals_enabled'], $settings->withdrawals_enabled);
+
+            $requestedPayoutExecutionEnabled = (bool) ($data['payout_execution_enabled'] ?? $settings->payout_execution_enabled);
+
+            if ($requestedPayoutExecutionEnabled !== $settings->payout_execution_enabled) {
+                if (! (auth()->user()?->can('Configure:InstructorPayoutExecution') ?? false)) {
+                    throw new CompensationException('You do not have permission to change payout execution.');
+                }
+
+                $this->applySwitch($configuration, 'payout_execution_enabled', $requestedPayoutExecutionEnabled, $settings->payout_execution_enabled);
+            }
         } catch (CompensationException $e) {
             Notification::make()
                 ->title('Feature cannot be enabled yet')
@@ -298,6 +358,12 @@ class InstructorEarningSettingsPage extends Page
         $settings->payout_method_verification_required = (bool) $data['payout_method_verification_required'];
         $settings->instructor_cancellation_enabled = (bool) $data['instructor_cancellation_enabled'];
         $settings->withdrawal_review_required = (bool) $data['withdrawal_review_required'];
+        $settings->payout_provider = $data['payout_provider'];
+        $settings->payout_maker_checker_enabled = (bool) $data['payout_maker_checker_enabled'];
+        $settings->payout_auto_retry_enabled = (bool) $data['payout_auto_retry_enabled'];
+        $settings->payout_reconciliation_enabled = (bool) $data['payout_reconciliation_enabled'];
+        $settings->payout_max_attempts = max(1, (int) $data['payout_max_attempts']);
+        $settings->payout_unknown_timeout_minutes = max(1, (int) $data['payout_unknown_timeout_minutes']);
 
         $settings->save();
 
@@ -323,7 +389,35 @@ class InstructorEarningSettingsPage extends Page
             ['periodic_compensation_enabled', false] => $configuration->disablePeriodicCompensation(auth()->user()),
             ['withdrawals_enabled', true] => $configuration->enableWithdrawals(auth()->user()),
             ['withdrawals_enabled', false] => $configuration->disableWithdrawals(auth()->user()),
+            ['payout_execution_enabled', true] => $configuration->enablePayoutExecution(auth()->user()),
+            ['payout_execution_enabled', false] => $configuration->disablePayoutExecution(auth()->user()),
         };
+    }
+
+    /** Read-only operational counts for the payout execution section. */
+    private function payoutExecutionOverview(): HtmlString
+    {
+        $byStatus = InstructorPayoutAttempt::query()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $openIssues = InstructorPayoutReconciliationIssue::query()->open()->count();
+
+        $line = fn (string $label, int $value): string => sprintf('<div class="flex justify-between gap-8"><span>%s</span><strong>%d</strong></div>', e($label), $value);
+
+        return new HtmlString(
+            '<div class="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">'
+            .$line('Processing attempts', (int) ($byStatus['processing'] ?? 0) + (int) ($byStatus['submitted'] ?? 0) + (int) ($byStatus['acknowledged'] ?? 0))
+            .$line('Unknown outcome attempts', (int) ($byStatus['unknown'] ?? 0))
+            .$line('Succeeded attempts', (int) ($byStatus['succeeded'] ?? 0))
+            .$line('Open reconciliation issues', $openIssues)
+            .sprintf(
+                '<div class="mt-3 text-sm sm:col-span-2"><strong>Payout execution activation readiness:</strong> %s</div>',
+                e(app(FinancialFeatureConfigurationServiceInterface::class)->evaluatePayoutExecutionReadiness()->summary()),
+            )
+            .'</div>'
+        );
     }
 
     /** Read-only operational counts for the compensation section. */

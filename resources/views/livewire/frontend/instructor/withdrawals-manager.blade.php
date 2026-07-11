@@ -148,6 +148,14 @@
                         </p>
                         @if ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Rejected && $withdrawal->rejection_reason)
                             <p class="mt-1 text-xs text-rose-300">Rejected: {{ $withdrawal->rejection_reason }}</p>
+                        @elseif ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Failed)
+                            <p class="mt-1 text-xs text-rose-300">{{ $withdrawal->failure_reason ?: 'This payout could not be completed. Our team has been notified.' }}</p>
+                        @elseif ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Reversed)
+                            <p class="mt-1 text-xs text-rose-300">This payout was returned by the receiving bank after being paid. Our finance team is reviewing it.</p>
+                        @elseif ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Processing)
+                            <p class="mt-1 text-xs text-slate-400">Your payout is being processed.</p>
+                        @elseif ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Paid)
+                            <p class="mt-1 text-xs text-emerald-300">Paid{{ $withdrawal->paid_at ? ' on '.$withdrawal->paid_at->format('M j, Y') : '' }}.</p>
                         @endif
                     </div>
                     <div class="flex items-center gap-4">

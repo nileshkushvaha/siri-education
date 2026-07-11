@@ -3,6 +3,7 @@
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\PublishScheduledContent;
+use App\Console\Commands\ReconcileInstructorPayouts;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
@@ -87,3 +88,15 @@ app(Schedule::class)
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/booking-reservations.log'));
+
+// Reconcile due payout attempts against the provider (Phase 16A — fake
+// provider only). Gated by payout_reconciliation_enabled inside the
+// service; idempotent, so an overlapping run is merely wasted work,
+// never a duplicate financial effect — onOneServer() avoids that waste
+// on a multi-node deployment.
+app(Schedule::class)
+    ->command(ReconcileInstructorPayouts::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/instructor-payouts-reconcile.log'));

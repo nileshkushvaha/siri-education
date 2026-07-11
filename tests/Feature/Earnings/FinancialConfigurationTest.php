@@ -17,6 +17,8 @@ use App\Models\Currency;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorCompensationException;
 use App\Models\InstructorEarning;
+use App\Models\InstructorPayoutAttempt;
+use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Settings\InstructorEarningSettings;
@@ -113,7 +115,7 @@ class FinancialConfigurationTest extends TestCase
 
             $code = file_get_contents($file->getPathname());
 
-            if (preg_match('/(earnings_enabled|withdrawals_enabled|periodic_compensation_enabled)\s*=\s*(?!=)/', $code)
+            if (preg_match('/(earnings_enabled|withdrawals_enabled|periodic_compensation_enabled|payout_execution_enabled)\s*=\s*(?!=)/', $code)
                 || str_contains($code, 'FinancialFeatureToggle::unguarded')) {
                 $offenders[] = $file->getPathname();
             }
@@ -207,6 +209,98 @@ class FinancialConfigurationTest extends TestCase
         $this->assertFalse(app(InstructorEarningSettings::class)->refresh()->earnings_enabled);
     }
 
+    // ── Phase 16A: payout execution readiness ────────────────────────
+
+    public function test_payout_execution_cannot_enable_while_withdrawals_disabled(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true]);
+
+        $readiness = $this->configuration->evaluatePayoutExecutionReadiness();
+        $this->assertContains('withdrawals_disabled', $readiness->blockingCodes);
+
+        $this->expectException(CompensationException::class);
+        $this->configuration->enablePayoutExecution($this->superAdmin());
+    }
+
+    public function test_payout_execution_enable_succeeds_when_earnings_and_withdrawals_are_on(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true]);
+
+        $readiness = $this->configuration->enablePayoutExecution($this->superAdmin());
+
+        $this->assertTrue($readiness->isReady, $readiness->summary());
+        $this->assertTrue(app(InstructorEarningSettings::class)->refresh()->payout_execution_enabled);
+
+        $this->configuration->disablePayoutExecution($this->superAdmin());
+        $this->assertFalse(app(InstructorEarningSettings::class)->refresh()->payout_execution_enabled);
+    }
+
+    public function test_payout_execution_readiness_fails_for_an_unregistered_provider(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true, 'payout_provider' => 'razorpayx']);
+
+        $readiness = $this->configuration->evaluatePayoutExecutionReadiness();
+        $this->assertFalse($readiness->isReady);
+        $this->assertContains('provider_not_configured', $readiness->blockingCodes);
+
+        $this->setFinancialSettings(['payout_provider' => 'fake']);
+    }
+
+    public function test_disabling_payout_execution_does_not_touch_withdrawals(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true, 'payout_execution_enabled' => true]);
+
+        $this->configuration->disablePayoutExecution($this->superAdmin());
+
+        $settings = app(InstructorEarningSettings::class)->refresh();
+        $this->assertFalse($settings->payout_execution_enabled);
+        $this->assertTrue($settings->withdrawals_enabled, 'Withdrawals must stay independent of payout-execution readiness (§17).');
+    }
+
+    public function test_filament_page_blocks_payout_execution_switch_without_the_configure_permission(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true]);
+
+        // A manager without Configure:InstructorPayoutExecution must be
+        // refused server-side. Also needs the unrelated settings.* page-
+        // access permission (HasSettingsAccess) just to load this page.
+        $manager = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $manager->assignRole('manager');
+        Permission::firstOrCreate(['name' => 'settings.instructor-earnings', 'guard_name' => 'web']);
+        $manager->givePermissionTo('settings.instructor-earnings');
+
+        Livewire::actingAs($manager)
+            ->test(InstructorEarningSettingsPage::class)
+            ->set('data.payout_execution_enabled', true)
+            ->call('save');
+
+        $this->assertFalse(app(InstructorEarningSettings::class)->refresh()->payout_execution_enabled, 'A manager without Configure:InstructorPayoutExecution must not be able to enable it.');
+
+        $this->setFinancialSettings(['earnings_enabled' => false, 'withdrawals_enabled' => false]);
+    }
+
+    public function test_filament_page_routes_payout_execution_switch_through_the_service_with_permission(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true]);
+
+        $manager = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $manager->assignRole('manager');
+        Permission::firstOrCreate(['name' => 'Configure:InstructorPayoutExecution', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'settings.instructor-earnings', 'guard_name' => 'web']);
+        $manager->givePermissionTo(['Configure:InstructorPayoutExecution', 'settings.instructor-earnings']);
+
+        Livewire::actingAs($manager)
+            ->test(InstructorEarningSettingsPage::class)
+            ->set('data.payout_execution_enabled', true)
+            ->call('save');
+
+        $this->assertTrue(app(InstructorEarningSettings::class)->refresh()->payout_execution_enabled);
+
+        $this->setFinancialSettings(['earnings_enabled' => false, 'withdrawals_enabled' => false, 'payout_execution_enabled' => false]);
+    }
+
     // ── Retry backoff ────────────────────────────────────────────────
 
     public function test_retry_selection_respects_backoff_and_exhaustion(): void
@@ -294,6 +388,29 @@ class FinancialConfigurationTest extends TestCase
         $this->assertContains('iwr_instructor_idempotency_unique', $indexNames('instructor_withdrawal_requests'));
         $this->assertContains('iwa_request_earning_unique', $indexNames('instructor_withdrawal_allocations'));
         $this->assertContains('next_retry_at', Schema::getColumnListing('instructor_compensation_exceptions'));
+
+        // Phase 16A
+        $this->assertContains('ipa_withdrawal_sequence_unique', $indexNames('instructor_payout_attempts'));
+        $this->assertContains('ipa_provider_idempotency_unique', $indexNames('instructor_payout_attempts'));
+        $this->assertContains('ippe_provider_event_unique', $indexNames('instructor_payout_provider_events'));
+        $this->assertContains('ipri_open_dedupe_unique', $indexNames('instructor_payout_reconciliation_issues'));
+        $this->assertContains('reversed_at', Schema::getColumnListing('instructor_withdrawal_allocations'));
+        $this->assertContains('reversed_at', Schema::getColumnListing('instructor_withdrawal_requests'));
+    }
+
+    public function test_payout_attempts_and_reconciliation_issues_can_never_be_edited_or_deleted(): void
+    {
+        $manager = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $manager->assignRole('manager');
+
+        $attempt = InstructorPayoutAttempt::factory()->create();
+        $issue = InstructorPayoutReconciliationIssue::factory()->create();
+
+        $this->assertFalse($manager->can('update', $attempt));
+        $this->assertFalse($manager->can('delete', $attempt));
+        $this->assertFalse($manager->can('update', $issue));
+        $this->assertFalse($manager->can('delete', $issue));
     }
 
     public function test_earnings_can_never_be_edited_or_deleted_by_anyone_below_super_admin(): void

@@ -16,7 +16,8 @@
 | Resend Transactional Email | resend.md |
 | Activity Log | activity-log.md |
 | Booking Engine | booking.md |
-| Financial Domain (Earnings · Compensation · Settlement · Withdrawals) | financial-domain-architecture.md |
+| Financial Domain (Earnings · Compensation · Settlement · Withdrawals · Payout Execution) | financial-domain-architecture.md |
+| Phase 16A — Payout Execution & Reconciliation Foundation | phase-16a-payout-execution-reconciliation-foundation.md |
 | Lesson Lifecycle | lessons.md |
 | Cache Manager | cache-manager.md |
 | Scheduler Monitor | scheduler.md |

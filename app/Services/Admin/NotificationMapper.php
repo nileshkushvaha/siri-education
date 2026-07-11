@@ -379,6 +379,50 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
+            // ── Payout execution (Phase 16A) — finance-facing outcomes.
+            //     "processing_started" and successful payment stay
+            //     silent here (routine; the instructor is notified
+            //     separately) — only what needs finance attention maps. ──
+            $log === 'instructor_payouts' && $event === 'withdrawal_failed' => [
+                'title' => 'Withdrawal Payout Failed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-x-circle',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
+            $log === 'instructor_payouts' && $event === 'withdrawal_reversed' => [
+                'title' => 'Withdrawal Payout Reversed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-arrow-uturn-left',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
+            $log === 'instructor_payout_execution' && $event === 'payout_attempt_queued' => [
+                'title' => 'Payout Queued for Execution',
+                'actor_label' => 'Queued by',
+                'icon' => 'heroicon-o-paper-airplane',
+                'color' => 'info',
+                'priority' => 1,
+            ],
+
+            $log === 'instructor_payout_execution' && $event === 'payout_reconciliation_issue_detected' => [
+                'title' => 'Payout Reconciliation Issue',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
+            $log === 'instructor_payout_execution' && $event === 'payout_retry_exhausted' => [
+                'title' => 'Payout Retry Budget Exhausted',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-clock',
+                'color' => 'danger',
+                'priority' => 2,
+            ],
+
             // ── Everything else: silence ──────────────────────────────────
             default => null,
         };

@@ -3,15 +3,19 @@
 declare(strict_types=1);
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
+use App\Earnings\Contracts\InstructorPayoutExecutionServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutMethodServiceInterface;
 use App\Earnings\Contracts\InstructorPeriodicCompensationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
+use App\Earnings\DTOs\NormalizedPayoutEvent;
+use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\Lesson;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 
 /**
@@ -130,6 +134,46 @@ try {
                 ->setDefault($method, $instructor);
 
             return ['method_id' => $method->id];
+        })(),
+
+        // Phase 16A — payout execution races.
+        'queue-execution' => (function () use ($args) {
+            $withdrawal = InstructorWithdrawalRequest::query()->findOrFail($args['withdrawal_id']);
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            $attempt = app(InstructorPayoutExecutionServiceInterface::class)
+                ->queueExecution($withdrawal, $actor);
+
+            return ['attempt_id' => $attempt->id, 'reference' => $attempt->reference, 'sequence' => $attempt->execution_sequence];
+        })(),
+
+        'retry-payout' => (function () use ($args) {
+            $withdrawal = InstructorWithdrawalRequest::query()->findOrFail($args['withdrawal_id']);
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            $attempt = app(InstructorPayoutExecutionServiceInterface::class)
+                ->retry($withdrawal, $actor, $args['reason'] ?? 'Concurrency test retry.');
+
+            return ['attempt_id' => $attempt->id, 'reference' => $attempt->reference, 'sequence' => $attempt->execution_sequence];
+        })(),
+
+        'apply-payout-event' => (function () use ($args) {
+            $event = new NormalizedPayoutEvent(
+                provider: $args['provider'],
+                providerEventId: $args['provider_event_id'],
+                eventType: $args['event_type'] ?? 'status_changed',
+                providerPayoutId: $args['provider_payout_id'],
+                attemptStatus: InstructorPayoutAttemptStatus::from($args['status']),
+                amountMinor: $args['amount_minor'] ?? null,
+                currencyCode: $args['currency_code'] ?? null,
+                occurredAt: CarbonImmutable::now(),
+                payloadHash: hash('sha256', $args['provider_event_id']),
+                signatureValid: true,
+            );
+
+            app(InstructorPayoutExecutionServiceInterface::class)->handleNormalizedEvent($event);
+
+            return ['handled' => true];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

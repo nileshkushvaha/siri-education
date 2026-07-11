@@ -5,21 +5,25 @@ declare(strict_types=1);
 namespace App\Earnings\Services;
 
 use App\Console\Commands\AccruePeriodicCompensation;
+use App\Console\Commands\ReconcileInstructorPayouts;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
 use App\Earnings\Contracts\FinancialFeatureConfigurationServiceInterface;
+use App\Earnings\Contracts\InstructorPayoutProviderRegistryInterface;
 use App\Earnings\Contracts\InstructorWithdrawalAllocationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalBalanceServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\DTOs\FeatureReadiness;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
+use App\Earnings\Enums\PayoutReconciliationSeverity;
 use App\Earnings\Exceptions\CompensationException;
 use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorCompensationException;
 use App\Models\InstructorEarning;
+use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Settings\InstructorEarningSettings;
@@ -45,6 +49,7 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
         private readonly InstructorEarningSettings $settings,
         private readonly CompensationActivationPreflight $preflight,
         private readonly AuditTrailService $audit,
+        private readonly InstructorPayoutProviderRegistryInterface $providers,
     ) {}
 
     // ── Readiness evaluation ─────────────────────────────────────────
@@ -157,6 +162,61 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
         return $this->readiness('withdrawals', $this->settings->withdrawals_enabled, $failures);
     }
 
+    public function evaluatePayoutExecutionReadiness(): FeatureReadiness
+    {
+        $failures = [];
+
+        if (! $this->settings->earnings_enabled) {
+            $failures[] = ['check' => 'earnings_disabled', 'message' => 'Earnings must be enabled before payout execution.', 'subjects' => []];
+        }
+
+        if (! $this->settings->withdrawals_enabled) {
+            $failures[] = ['check' => 'withdrawals_disabled', 'message' => 'Withdrawals must be enabled before payout execution.', 'subjects' => []];
+        }
+
+        $providerKey = $this->settings->payout_provider;
+
+        if (! $this->providers->has($providerKey)) {
+            $failures[] = ['check' => 'provider_not_configured', 'message' => sprintf('Payout provider "%s" is not registered.', $providerKey), 'subjects' => []];
+        } else {
+            $health = $this->providers->get($providerKey)->healthCheck();
+
+            if (! $health->healthy) {
+                $failures[] = ['check' => 'provider_unhealthy', 'message' => $health->safeMessage ?? 'Payout provider health check failed.', 'subjects' => []];
+            }
+        }
+
+        if (! class_exists(ReconcileInstructorPayouts::class)) {
+            $failures[] = ['check' => 'missing_schedule', 'message' => 'The payout reconciliation command is not registered.', 'subjects' => []];
+        }
+
+        foreach ([
+            ['instructor_payout_attempts', 'ipa_withdrawal_sequence_unique'],
+            ['instructor_payout_attempts', 'ipa_provider_idempotency_unique'],
+            ['instructor_withdrawal_requests', 'iwr_instructor_idempotency_unique'],
+        ] as [$table, $index]) {
+            if (! $this->indexExists($table, $index)) {
+                $failures[] = ['check' => 'missing_execution_constraint', 'message' => sprintf('Database constraint %s on %s is missing.', $index, $table), 'subjects' => []];
+            }
+        }
+
+        if (! Schema::hasColumn('instructor_withdrawal_allocations', 'reversed_at')) {
+            $failures[] = ['check' => 'missing_allocation_reversal_support', 'message' => 'The withdrawal allocation reversal column is missing.', 'subjects' => []];
+        }
+
+        $queueConnection = config('queue.default');
+
+        if (blank($queueConnection) || config("queue.connections.{$queueConnection}") === null) {
+            $failures[] = ['check' => 'missing_queue_connection', 'message' => 'No queue connection is configured for the payout execution job.', 'subjects' => []];
+        }
+
+        if (InstructorPayoutReconciliationIssue::query()->open()->where('severity', PayoutReconciliationSeverity::Critical)->exists()) {
+            $failures[] = ['check' => 'unresolved_critical_reconciliation_issue', 'message' => 'A critical, unresolved reconciliation issue exists.', 'subjects' => []];
+        }
+
+        return $this->readiness('payout_execution', $this->settings->payout_execution_enabled, $failures);
+    }
+
     // ── Toggles (audited; the only unguarded writers) ────────────────
 
     public function enableEarnings(User $actor): FeatureReadiness
@@ -219,6 +279,24 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
     public function disableWithdrawals(User $actor): void
     {
         $this->writeSwitch('withdrawals_enabled', false, $actor);
+    }
+
+    public function enablePayoutExecution(User $actor): FeatureReadiness
+    {
+        $readiness = $this->evaluatePayoutExecutionReadiness();
+
+        if (! $readiness->isReady) {
+            throw new CompensationException('Payout execution cannot be enabled: '.$readiness->summary());
+        }
+
+        $this->writeSwitch('payout_execution_enabled', true, $actor);
+
+        return $readiness;
+    }
+
+    public function disablePayoutExecution(User $actor): void
+    {
+        $this->writeSwitch('payout_execution_enabled', false, $actor);
     }
 
     // ── Internals ─────────────────────────────────────────────────────────

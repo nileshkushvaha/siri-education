@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Earnings\Enums;
 
 /**
- * Withdrawal request lifecycle. Phase 15 operates only the review
- * segment (submitted → under_review → approved/rejected/cancelled);
- * processing/paid/failed exist in the matrix for the future payout-
- * execution phase and are unreachable from any Phase 15 UI or service
- * method. InstructorWithdrawalService guards every write.
+ * Withdrawal request lifecycle. The review segment (submitted →
+ * under_review → approved/rejected/cancelled) is owned by
+ * InstructorWithdrawalService; the execution segment (approved →
+ * processing → paid/failed/reversed) is owned exclusively by
+ * InstructorPayoutExecutionService (Phase 16A) — no other caller may
+ * perform those transitions. `failed → approved` exists only for an
+ * explicit, authorized recovery of a pre-acceptance failure (the
+ * provider never confirmed receipt), never an automatic retry.
  */
 enum InstructorWithdrawalStatus: string
 {
@@ -21,6 +24,7 @@ enum InstructorWithdrawalStatus: string
     case Processing = 'processing';
     case Paid = 'paid';
     case Failed = 'failed';
+    case Reversed = 'reversed';
 
     public function label(): string
     {
@@ -33,6 +37,7 @@ enum InstructorWithdrawalStatus: string
             self::Processing => 'Processing',
             self::Paid => 'Paid',
             self::Failed => 'Failed',
+            self::Reversed => 'Reversed',
         };
     }
 
@@ -47,6 +52,7 @@ enum InstructorWithdrawalStatus: string
             self::Processing => 'warning',
             self::Paid => 'success',
             self::Failed => 'danger',
+            self::Reversed => 'danger',
         };
     }
 
@@ -59,11 +65,11 @@ enum InstructorWithdrawalStatus: string
         };
     }
 
-    /** Terminal in Phase 15 — no further transition is possible. */
+    /** No further transition can ever occur from this state. */
     public function isTerminal(): bool
     {
         return match ($this) {
-            self::Rejected, self::Cancelled, self::Paid => true,
+            self::Rejected, self::Cancelled, self::Reversed => true,
             default => false,
         };
     }
@@ -86,6 +92,12 @@ enum InstructorWithdrawalStatus: string
         };
     }
 
+    /** Paid requests can never be retried or re-queued; only reversed. */
+    public function isExecutable(): bool
+    {
+        return $this === self::Approved;
+    }
+
     public function canTransitionTo(self $next): bool
     {
         return in_array($next, $this->allowedTransitions(), strict: true);
@@ -97,12 +109,16 @@ enum InstructorWithdrawalStatus: string
         return match ($this) {
             self::Submitted => [self::UnderReview, self::Approved, self::Rejected, self::Cancelled],
             self::UnderReview => [self::Approved, self::Rejected, self::Cancelled],
-            // Reserved for the payout-execution phase — no Phase 15 code path
-            // performs these transitions.
+            // Execution segment — InstructorPayoutExecutionService only.
             self::Approved => [self::Processing],
-            self::Processing => [self::Paid, self::Failed],
-            self::Failed => [self::Processing],
-            self::Rejected, self::Cancelled, self::Paid => [],
+            // processing -> reversed is reconciliation-only: provider
+            // evidence of a completed-then-reversed payout that was
+            // never locally observed as paid.
+            self::Processing => [self::Approved, self::Paid, self::Failed, self::Reversed],
+            self::Paid => [self::Reversed],
+            // Explicit authorized recovery only — never an automatic retry.
+            self::Failed => [self::Approved],
+            self::Rejected, self::Cancelled, self::Reversed => [],
         };
     }
 }

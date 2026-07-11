@@ -24,6 +24,8 @@ interface FinancialFeatureConfigurationServiceInterface
 
     public function evaluateWithdrawalReadiness(): FeatureReadiness;
 
+    public function evaluatePayoutExecutionReadiness(): FeatureReadiness;
+
     /** @throws CompensationException when the preflight blocks */
     public function enableEarnings(User $actor): FeatureReadiness;
 
@@ -39,4 +41,9 @@ interface FinancialFeatureConfigurationServiceInterface
     public function enableWithdrawals(User $actor): FeatureReadiness;
 
     public function disableWithdrawals(User $actor): void;
+
+    /** @throws CompensationException when the preflight blocks */
+    public function enablePayoutExecution(User $actor): FeatureReadiness;
+
+    public function disablePayoutExecution(User $actor): void;
 }

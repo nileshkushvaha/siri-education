@@ -32,6 +32,7 @@ class InstructorWithdrawalAllocation extends Model
         'reserved_at',
         'released_at',
         'consumed_at',
+        'reversed_at',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class InstructorWithdrawalAllocation extends Model
             'reserved_at' => 'immutable_datetime',
             'released_at' => 'immutable_datetime',
             'consumed_at' => 'immutable_datetime',
+            'reversed_at' => 'immutable_datetime',
         ];
     }
 
@@ -59,6 +61,12 @@ class InstructorWithdrawalAllocation extends Model
     public function scopeReserved(Builder $query): Builder
     {
         return $query->where('status', WithdrawalAllocationStatus::Reserved);
+    }
+
+    /** Reserved or consumed — both count as "unavailable" for balance purposes. */
+    public function scopeLive(Builder $query): Builder
+    {
+        return $query->whereIn('status', [WithdrawalAllocationStatus::Reserved, WithdrawalAllocationStatus::Consumed]);
     }
 
     public function getActivitylogOptions(): LogOptions

@@ -80,6 +80,22 @@ class InstructorWithdrawalRequestPolicy
         return $this->hasPermission($user, 'Cancel:InstructorWithdrawalRequest');
     }
 
+    /**
+     * Queues an approved withdrawal for payout execution (Phase 16A).
+     * Permission-only here — maker-checker separation (approver cannot
+     * also execute) is a financial invariant enforced authoritatively by
+     * InstructorPayoutExecutionService, not duplicated here.
+     */
+    public function executePayout(User $user, InstructorWithdrawalRequest $request): bool
+    {
+        return $this->hasPermission($user, 'Execute:InstructorPayoutAttempt');
+    }
+
+    public function retryPayout(User $user, InstructorWithdrawalRequest $request): bool
+    {
+        return $this->hasPermission($user, 'Retry:InstructorPayoutAttempt');
+    }
+
     private function hasPermission(User $user, string $permission): bool
     {
         try {

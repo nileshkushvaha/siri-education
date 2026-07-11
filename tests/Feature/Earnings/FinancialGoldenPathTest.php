@@ -7,12 +7,14 @@ namespace Tests\Feature\Earnings;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
+use App\Earnings\Contracts\InstructorPayoutProviderResolverInterface;
 use App\Earnings\Contracts\InstructorWithdrawalBalanceServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\WithdrawalAllocationStatus;
+use App\Earnings\Exceptions\PayoutProviderException;
 use App\Earnings\Exceptions\WithdrawalException;
 use App\Earnings\Services\CompensationActivationPreflight;
 use App\Enums\InstructorStatus;
@@ -176,6 +178,14 @@ class FinancialGoldenPathTest extends TestCase
 
         $this->expectException(WithdrawalException::class);
         app(InstructorWithdrawalServiceInterface::class)->requestWithdrawal($instructor, $method, 20000);
+    }
+
+    public function test_payout_execution_disabled_by_default_blocks_the_provider_resolver(): void
+    {
+        $this->assertFalse(app(InstructorEarningSettings::class)->payout_execution_enabled);
+
+        $this->expectException(PayoutProviderException::class);
+        app(InstructorPayoutProviderResolverInterface::class)->resolve('fake', 'INR');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

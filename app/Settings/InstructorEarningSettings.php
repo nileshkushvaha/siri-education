@@ -46,21 +46,50 @@ class InstructorEarningSettings extends Settings
     public int $compensation_retry_max_attempts;
 
     /**
-     * Phase 14.5 write guard: the three financial feature switches may
-     * only change through FinancialFeatureConfigurationService (which
-     * runs the activation preflights). Every other save() that flips
-     * one of them — Filament, commands, seeders, controllers, direct
-     * calls — throws. Non-switch settings save normally.
+     * Phase 16A — platform-wide payout execution switch. False stops
+     * InstructorPayoutExecutionService::queueExecution() and the
+     * execution job from ever calling a provider.
+     */
+    public bool $payout_execution_enabled;
+
+    /** Registered InstructorPayoutProviderInterface key; 'fake' is the only adapter Phase 16A ships. */
+    public string $payout_provider;
+
+    /** True = the withdrawal approver and the payout executor must be different users. */
+    public bool $payout_maker_checker_enabled;
+
+    /** Gates the bounded automatic retry policy (§25); manual, permission-gated retry is unaffected. */
+    public bool $payout_auto_retry_enabled;
+
+    /** Gates the instructor-payouts:reconcile sweep. */
+    public bool $payout_reconciliation_enabled;
+
+    /** Bounded automatic + manual retry ceiling per logical execution. */
+    public int $payout_max_attempts;
+
+    /** How long an attempt may sit unsynced in processing/unknown before reconciliation treats it as due. */
+    public int $payout_unknown_timeout_minutes;
+
+    /** Lets the fake provider be selected in a non-local/testing (e.g. staging) environment. Never makes it a real provider. */
+    public bool $payout_fake_provider_staging_enabled;
+
+    /**
+     * Phase 14.5 write guard, extended in Phase 16A: the four financial
+     * feature switches may only change through
+     * FinancialFeatureConfigurationService (which runs the activation
+     * preflights). Every other save() that flips one of them —
+     * Filament, commands, seeders, controllers, direct calls — throws.
+     * Non-switch settings save normally.
      */
     public function save(): static
     {
         if (! FinancialFeatureToggle::isUnguarded()) {
             $persisted = DB::table('settings')
                 ->where('group', static::group())
-                ->whereIn('name', ['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled'])
+                ->whereIn('name', ['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled', 'payout_execution_enabled'])
                 ->pluck('payload', 'name');
 
-            foreach (['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled'] as $switch) {
+            foreach (['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled', 'payout_execution_enabled'] as $switch) {
                 if ($persisted->has($switch) && json_decode((string) $persisted[$switch]) !== $this->{$switch}) {
                     throw new CompensationException(sprintf(
                         'The %s switch can only be changed through FinancialFeatureConfigurationService, which enforces the activation preflight.',

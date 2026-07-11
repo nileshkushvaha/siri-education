@@ -79,6 +79,13 @@ final class NotifyInstructorOnPayoutActivity implements ShouldQueue
             'withdrawal_approved' => InstructorWithdrawalStatus::Approved,
             'withdrawal_rejected' => InstructorWithdrawalStatus::Rejected,
             'withdrawal_cancelled' => InstructorWithdrawalStatus::Cancelled,
+            // Phase 16A execution segment — "processing_started" covers
+            // both the initial queue and a pre-acceptance auto-return, so
+            // it is intentionally silent (no separate instructor email
+            // for an internal retry loop the instructor cannot act on).
+            'withdrawal_paid' => InstructorWithdrawalStatus::Paid,
+            'withdrawal_failed' => InstructorWithdrawalStatus::Failed,
+            'withdrawal_reversed' => InstructorWithdrawalStatus::Reversed,
             default => null,
         };
 
@@ -86,13 +93,19 @@ final class NotifyInstructorOnPayoutActivity implements ShouldQueue
             return;
         }
 
+        $reason = match ($status) {
+            InstructorWithdrawalStatus::Rejected => $withdrawal->rejection_reason,
+            InstructorWithdrawalStatus::Failed => $withdrawal->failure_reason,
+            default => null,
+        };
+
         $withdrawal->instructor->notify(new InstructorWithdrawalStatusNotification(
             $status,
             $withdrawal->reference,
             $withdrawal->amount_minor,
             $withdrawal->currency_code,
             $withdrawal->payout_method_label,
-            $status === InstructorWithdrawalStatus::Rejected ? $withdrawal->rejection_reason : null,
+            $reason,
         ));
     }
 }

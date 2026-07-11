@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorWithdrawalRequests\Tables;
 
+use App\Earnings\Contracts\InstructorPayoutExecutionServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Resources\InstructorPayoutAttempts\InstructorPayoutAttemptResource;
+use App\Filament\Resources\InstructorPayoutReconciliationIssues\InstructorPayoutReconciliationIssueResource;
+use App\Models\InstructorPayoutAttempt;
+use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\InstructorWithdrawalRequest;
 use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
@@ -178,6 +183,59 @@ class InstructorWithdrawalRequestsTable
                         fn (InstructorWithdrawalServiceInterface $service) => $service->cancelByAdmin($record, auth()->user(), $data['reason'] ?? null),
                         'Withdrawal cancelled — reservations released',
                     )),
+
+                // ── Phase 16A execution segment ──────────────────────────
+                Action::make('queue_for_execution')
+                    ->label('Queue for Execution')
+                    ->icon('heroicon-m-paper-airplane')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalDescription(fn (InstructorWithdrawalRequest $record): string => sprintf(
+                        'Queues %s (%s) for payout execution against its immutable payout snapshot to %s. This dispatches a background job — no provider is called while this dialog is open.',
+                        $record->reference,
+                        self::money($record->amount_minor, $record->currency_code),
+                        $record->masked_identifier,
+                    ))
+                    ->authorize(fn (InstructorWithdrawalRequest $record): bool => auth()->user()?->can('executePayout', $record) ?? false)
+                    ->visible(fn (InstructorWithdrawalRequest $record): bool => $record->status->isExecutable())
+                    ->action(fn (InstructorWithdrawalRequest $record) => self::callService(
+                        fn () => app(InstructorPayoutExecutionServiceInterface::class)->queueExecution($record, auth()->user()),
+                        'Withdrawal queued for payout execution',
+                    )),
+
+                Action::make('retry_payout')
+                    ->label('Retry Payout')
+                    ->icon('heroicon-m-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalDescription('Manually retries this withdrawal\'s payout execution, bypassing the automatic backoff schedule. A reason is required for the audit trail.')
+                    ->authorize(fn (InstructorWithdrawalRequest $record): bool => auth()->user()?->can('retryPayout', $record) ?? false)
+                    ->visible(fn (InstructorWithdrawalRequest $record): bool => in_array($record->status, [InstructorWithdrawalStatus::Failed, InstructorWithdrawalStatus::Processing], true))
+                    ->form([
+                        Textarea::make('reason')
+                            ->required()
+                            ->maxLength(1000),
+                    ])
+                    ->action(fn (InstructorWithdrawalRequest $record, array $data) => self::callService(
+                        fn () => app(InstructorPayoutExecutionServiceInterface::class)->retry($record, auth()->user(), $data['reason']),
+                        'Payout retry requested',
+                    )),
+
+                Action::make('view_payout_attempts')
+                    ->label('View Payout Attempts')
+                    ->icon('heroicon-m-list-bullet')
+                    ->color('gray')
+                    ->authorize(fn (InstructorWithdrawalRequest $record): bool => auth()->user()?->can('viewAny', InstructorPayoutAttempt::class) ?? false)
+                    ->visible(fn (InstructorWithdrawalRequest $record): bool => $record->payoutAttempts()->exists())
+                    ->url(fn (InstructorWithdrawalRequest $record): string => InstructorPayoutAttemptResource::getUrl('index', ['tableSearch' => $record->reference])),
+
+                Action::make('view_reconciliation_issues')
+                    ->label('View Reconciliation Issues')
+                    ->icon('heroicon-m-shield-exclamation')
+                    ->color('danger')
+                    ->authorize(fn (InstructorWithdrawalRequest $record): bool => auth()->user()?->can('viewAny', InstructorPayoutReconciliationIssue::class) ?? false)
+                    ->visible(fn (InstructorWithdrawalRequest $record): bool => $record->reconciliationIssues()->open()->exists())
+                    ->url(fn (InstructorWithdrawalRequest $record): string => InstructorPayoutReconciliationIssueResource::getUrl('index')),
             ])
             ->defaultSort('requested_at', 'desc');
     }

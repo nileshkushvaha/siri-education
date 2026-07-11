@@ -14,6 +14,9 @@ use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonRepositoryInterface;
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonStatus;
+use App\Lessons\Events\LessonCancelled;
+use App\Lessons\Events\LessonCompleted;
+use App\Lessons\Events\LessonDisputed;
 use App\Lessons\Exceptions\LessonException;
 use App\Models\Booking;
 use App\Models\Lesson;
@@ -135,6 +138,8 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
 
         $this->syncBookingOutcome($lesson, BookingStatus::Completed);
 
+        LessonCompleted::dispatch($lesson);
+
         return $lesson;
     }
 
@@ -170,6 +175,8 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
             ['reason' => $reason],
         );
 
+        LessonDisputed::dispatch($lesson);
+
         return $lesson;
     }
 
@@ -180,6 +187,8 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
         ]);
 
         $this->log($actor, 'lesson_cancelled', sprintf('Lesson %s cancelled.', $lesson->id), $lesson);
+
+        LessonCancelled::dispatch($lesson);
 
         return $lesson;
     }
@@ -266,6 +275,8 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
         );
 
         $this->syncBookingOutcome($lesson, BookingStatus::Completed);
+
+        LessonCompleted::dispatch($lesson);
 
         return $lesson;
     }

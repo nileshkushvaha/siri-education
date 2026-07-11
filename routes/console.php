@@ -3,6 +3,7 @@
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
+use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Models\LoginHistory;
 use App\Models\SchedulerHistory;
 use Illuminate\Console\Scheduling\Schedule;
@@ -49,6 +50,15 @@ app(Schedule::class)
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/lessons-auto-complete.log'));
+
+// Release instructor earnings whose hold period (dispute window) has
+// lapsed. Idempotent; gated by InstructorEarningSettings; no external
+// payout runs — settlement stays a manual admin action.
+app(Schedule::class)
+    ->command(ReleaseInstructorEarnings::class)
+    ->hourly()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/instructor-earnings-release.log'));
 
 // Release unpaid booking reservations whose payment hold has lapsed.
 // Idempotent: only touches pending bookings with reserved_until < now().

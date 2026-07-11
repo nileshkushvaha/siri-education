@@ -140,6 +140,11 @@ class Booking extends Model
         return $this->hasOne(Lesson::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(BookingPayment::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(BookingActivity::class)->latest('created_at');

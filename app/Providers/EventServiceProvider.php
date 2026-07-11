@@ -18,6 +18,9 @@ use App\Events\Auth\UserApproved;
 use App\Events\Auth\UserLoggedIn;
 use App\Events\Auth\UserLoggedOut;
 use App\Events\Auth\UserRegistered;
+use App\Lessons\Events\LessonCancelled;
+use App\Lessons\Events\LessonCompleted;
+use App\Lessons\Events\LessonDisputed;
 use App\Listeners\Auth\LogLoginActivity;
 use App\Listeners\Auth\SendApprovalNotification;
 use App\Listeners\Auth\SendRegistrationNotifications;
@@ -27,6 +30,9 @@ use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
+use App\Listeners\Earnings\CreateEarningOnLessonCompleted;
+use App\Listeners\Earnings\ReverseEarningOnLessonCancelled;
+use App\Listeners\Earnings\SyncEarningOnLessonDisputed;
 use App\Listeners\Lesson\CreateLessonOnBookingConfirmed;
 use App\Listeners\Lesson\SyncLessonOnBookingCancelled;
 use App\Listeners\Lesson\SyncLessonOnBookingCompleted;
@@ -149,6 +155,15 @@ class EventServiceProvider extends ServiceProvider
         ],
         MeetingUpdated::class => [
             [SendMeetingNotifications::class, 'handleUpdated'],
+        ],
+        LessonCompleted::class => [
+            CreateEarningOnLessonCompleted::class,
+        ],
+        LessonDisputed::class => [
+            SyncEarningOnLessonDisputed::class,
+        ],
+        LessonCancelled::class => [
+            ReverseEarningOnLessonCancelled::class,
         ],
     ];
 

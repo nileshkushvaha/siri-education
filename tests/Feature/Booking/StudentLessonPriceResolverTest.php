@@ -559,7 +559,9 @@ class StudentLessonPriceResolverTest extends TestCase
 
     public function test_no_instructor_payout_wallet_debit_meeting_or_duplicate_tables_were_introduced(): void
     {
-        foreach (['instructor_payouts', 'instructor_earnings', 'wallet_debits', 'meetings', 'payments'] as $table) {
+        // instructor_earnings exists since Phase 14 — a separate liability
+        // ledger, not a payout executor and not part of the pricing matrix.
+        foreach (['instructor_payouts', 'wallet_debits', 'meetings', 'payments'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
         }
 

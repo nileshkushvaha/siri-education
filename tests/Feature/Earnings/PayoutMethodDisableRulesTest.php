@@ -9,6 +9,7 @@ use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\PayoutMethodStatus;
 use App\Earnings\Exceptions\PayoutMethodException;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\Currency;
 use App\Models\InstructorEarning;
@@ -159,7 +160,7 @@ class PayoutMethodDisableRulesTest extends TestCase
         $settings = app(InstructorEarningSettings::class);
         $settings->withdrawals_enabled = true;
         $settings->minimum_withdrawal_minor = 10000;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
 
         InstructorEarning::factory()->releasable()->create([
             'instructor_id' => $instructor->id,

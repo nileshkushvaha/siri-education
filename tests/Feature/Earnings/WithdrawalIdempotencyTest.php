@@ -6,6 +6,7 @@ namespace Tests\Feature\Earnings;
 
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Exceptions\WithdrawalException;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\Activity;
 use App\Models\Currency;
@@ -47,7 +48,7 @@ class WithdrawalIdempotencyTest extends TestCase
         $settings->withdrawals_enabled = true;
         $settings->minimum_withdrawal_minor = 10000;
         $settings->maximum_active_requests_per_instructor = 5;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     public function test_identical_replay_returns_the_original_request(): void

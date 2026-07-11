@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -50,6 +51,21 @@ return new class extends Migration
             $table->index('status');
             $table->index('type');
         });
+
+        DB::statement(<<<'SQL'
+            ALTER TABLE instructor_payout_methods
+                ADD COLUMN active_default_owner_key BIGINT UNSIGNED
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN is_default = 1
+                             AND status = 'verified'
+                             AND deleted_at IS NULL
+                            THEN instructor_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD UNIQUE INDEX ipm_active_default_owner_unique (active_default_owner_key)
+        SQL);
     }
 
     public function down(): void

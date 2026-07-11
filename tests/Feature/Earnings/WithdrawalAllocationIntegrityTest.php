@@ -8,6 +8,7 @@ use App\Earnings\Contracts\InstructorWithdrawalAllocationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Enums\WithdrawalAllocationStatus;
 use App\Earnings\Exceptions\WithdrawalException;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\Currency;
 use App\Models\InstructorEarning;
@@ -50,7 +51,7 @@ class WithdrawalAllocationIntegrityTest extends TestCase
         $settings->withdrawals_enabled = true;
         $settings->minimum_withdrawal_minor = 10000;
         $settings->maximum_active_requests_per_instructor = 5;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     public function test_database_check_constraint_rejects_non_positive_amounts(): void

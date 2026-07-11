@@ -37,12 +37,15 @@ class InstructorSettlementBatchPolicy
 
     public function update(User $user, InstructorSettlementBatch $batch): bool
     {
-        return $this->hasPermission($user, 'Update:InstructorSettlementBatch');
+        // Batches mutate only through the precise approve/mark-paid/cancel
+        // permissions — no generic edit exists.
+        return false;
     }
 
     public function delete(User $user, InstructorSettlementBatch $batch): bool
     {
-        return $this->hasPermission($user, 'Delete:InstructorSettlementBatch');
+        // Financial history is never deleted.
+        return false;
     }
 
     public function approve(User $user, InstructorSettlementBatch $batch): bool

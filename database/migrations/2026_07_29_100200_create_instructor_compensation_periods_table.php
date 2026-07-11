@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 14.2 — canonical immutable source records for periodic
+ * Phase 14.5 consolidated baseline (originally Phase 14.2) — canonical immutable source records for periodic
  * (daily/weekly/monthly) compensation accrual. One row per agreement +
  * closed period, DB-unique, so scheduled-job retries can never create a
  * duplicate; the resulting instructor_earnings row references this row

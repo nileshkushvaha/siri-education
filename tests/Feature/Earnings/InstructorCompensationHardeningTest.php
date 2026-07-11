@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
@@ -38,6 +39,7 @@ use Tests\TestCase;
  */
 class InstructorCompensationHardeningTest extends TestCase
 {
+    use ManagesFinancialSettings;
     use RefreshDatabase;
 
     private InstructorEarningServiceInterface $earnings;
@@ -173,6 +175,10 @@ class InstructorCompensationHardeningTest extends TestCase
             'effective_from' => now()->subWeek(),
             'effective_until' => now()->subDay(),
         ]);
+
+        // Attempt 2 sits behind the +2h backoff window (Phase 14.5) —
+        // travel past it so the sweep picks the exception up again.
+        Carbon::setTestNow(now()->addHours(3));
 
         $this->artisan('instructor-earnings:retry-blocked-lessons')
             ->expectsOutputToContain('recovered 1')
@@ -417,13 +423,7 @@ class InstructorCompensationHardeningTest extends TestCase
     /** @param array<string, mixed> $overrides */
     private function settings(array $overrides): void
     {
-        $settings = app(InstructorEarningSettings::class);
-
-        foreach ($overrides as $key => $value) {
-            $settings->{$key} = $value;
-        }
-
-        $settings->save();
+        $this->setFinancialSettings($overrides);
     }
 
     private function instructor(): User

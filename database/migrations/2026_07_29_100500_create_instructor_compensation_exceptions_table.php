@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 14.3 — the admin queue of unresolved compensation exceptions:
+ * Phase 14.5 consolidated baseline (originally Phase 14.3) — the admin queue of unresolved compensation exceptions:
  * completed lessons whose earning creation was blocked (missing/invalid
  * agreement, invalid currency, unsupported duration, transient failure,
  * or permanently ineligible). One open row per lesson (unique), updated
@@ -30,11 +30,14 @@ return new class extends Migration
             $table->unsignedInteger('attempt_count')->default(1);
             $table->timestamp('first_failed_at');
             $table->timestamp('last_attempt_at');
+            $table->timestamp('next_retry_at')->nullable();
             $table->timestamp('resolved_at')->nullable();
             $table->foreignUuid('resolved_earning_id')->nullable()->constrained('instructor_earnings');
+            $table->timestamp('retry_exhausted_at')->nullable();
             $table->timestamps();
 
             $table->index(['resolved_at', 'retry_eligible'], 'ice_open_retryable_index');
+            $table->index('next_retry_at');
             $table->index('category');
             $table->index('instructor_id');
         });

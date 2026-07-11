@@ -17,9 +17,9 @@ use App\Models\InstructorEarning;
 use App\Models\Lesson;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
-use App\Settings\InstructorEarningSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
@@ -30,6 +30,7 @@ use Tests\TestCase;
  */
 class InstructorEarningTest extends TestCase
 {
+    use ManagesFinancialSettings;
     use RefreshDatabase;
 
     private LessonLifecycleServiceInterface $lessons;
@@ -319,13 +320,7 @@ class InstructorEarningTest extends TestCase
     /** @param array<string, mixed> $overrides */
     private function settings(array $overrides): void
     {
-        $settings = app(InstructorEarningSettings::class);
-
-        foreach ($overrides as $key => $value) {
-            $settings->{$key} = $value;
-        }
-
-        $settings->save();
+        $this->setFinancialSettings($overrides);
     }
 
     private function hourlyAgreementFor(int $instructorId, int $rateMinor = 80000): InstructorCompensationAgreement

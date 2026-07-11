@@ -28,6 +28,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
@@ -40,6 +41,7 @@ use Tests\TestCase;
  */
 class FinancialGoldenPathTest extends TestCase
 {
+    use ManagesFinancialSettings;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -83,8 +85,7 @@ class FinancialGoldenPathTest extends TestCase
         // 2. The activation preflight passes, then (and only then)
         //    earnings are enabled — the exact operational sequence.
         $this->assertSame([], app(CompensationActivationPreflight::class)->failures());
-        $settings->earnings_enabled = true;
-        $settings->save();
+        $this->setFinancialSettings(['earnings_enabled' => true]);
 
         // 3. A paid 90-minute lesson completes; the earning derives from
         //    the agreement at the scheduled start — never from the price.
@@ -118,9 +119,7 @@ class FinancialGoldenPathTest extends TestCase
         $this->assertSame(120000, $balance->availableMinor);
 
         // 6. …and a withdrawal request reserves it end to end.
-        $settings->withdrawals_enabled = true;
-        $settings->minimum_withdrawal_minor = 10000;
-        $settings->save();
+        $this->setFinancialSettings(['withdrawals_enabled' => true, 'minimum_withdrawal_minor' => 10000]);
 
         $method = InstructorPayoutMethod::factory()->verified()->create([
             'instructor_id' => $instructor->id,
@@ -139,9 +138,7 @@ class FinancialGoldenPathTest extends TestCase
         $this->assertFalse(InstructorEarning::query()->settleable()->whereKey($earning->id)->exists());
 
         // Restore the safe development state.
-        $settings->earnings_enabled = false;
-        $settings->withdrawals_enabled = false;
-        $settings->save();
+        $this->setFinancialSettings(['earnings_enabled' => false, 'withdrawals_enabled' => false]);
     }
 
     public function test_all_switches_disabled_means_no_financial_activity_anywhere(): void

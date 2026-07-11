@@ -9,6 +9,7 @@ use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\SettlementBatchStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Exceptions\InvalidEarningTransitionException;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
 use App\Models\User;
@@ -173,7 +174,7 @@ class InstructorSettlementTest extends TestCase
 
         $settings = app(InstructorEarningSettings::class);
         $settings->minimum_settlement_amount_minor = 100000;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
 
         InstructorEarning::factory()->releasable()->create(['instructor_id' => $instructor->id, 'earning_amount_minor' => 5000, 'currency_code' => 'INR']);
 

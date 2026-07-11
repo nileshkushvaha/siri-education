@@ -7,6 +7,7 @@ namespace Tests\Feature\Earnings;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\PayoutMethodStatus;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Livewire\Frontend\Instructor\PayoutMethodsManager;
 use App\Livewire\Frontend\Instructor\WithdrawalsManager;
@@ -40,7 +41,7 @@ class InstructorPayoutLivewireTest extends TestCase
         $settings = app(InstructorEarningSettings::class);
         $settings->withdrawals_enabled = true;
         $settings->minimum_withdrawal_minor = 10000;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     // ── Route protection ─────────────────────────────────────────────
@@ -187,7 +188,7 @@ class InstructorPayoutLivewireTest extends TestCase
 
         $settings = app(InstructorEarningSettings::class);
         $settings->maximum_active_requests_per_instructor = 5;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
 
         $component = Livewire::actingAs($instructor)
             ->test(WithdrawalsManager::class)

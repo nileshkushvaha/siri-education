@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Earnings\Concurrency;
 
 use App\Earnings\Enums\InstructorEarningStatus;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\Currency;
 use App\Models\InstructorEarning;
@@ -60,7 +61,7 @@ abstract class ConcurrencyTestCase extends TestCase
         // High enough that the active-request limit never masks the
         // balance/locking behavior under test.
         $settings->maximum_active_requests_per_instructor = 5;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     public static function tearDownAfterClass(): void

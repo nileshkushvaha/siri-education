@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Earnings\Contracts\FinancialFeatureConfigurationServiceInterface;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
-use App\Earnings\Services\CompensationActivationPreflight;
+use App\Earnings\Exceptions\CompensationException;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\User;
@@ -255,38 +256,30 @@ class InstructorEarningSettingsPage extends Page
         $settings = app(InstructorEarningSettings::class);
         $before = $this->snapshotSettings($settings);
 
-        // Phase 14.3 — enabling earnings requires a passing server-side
-        // preflight: every payable instructor agreed, no overlaps, active
-        // currencies, no open compensation exceptions, periodic gate
-        // consistent. Failures block the save and name the subjects.
-        if ((bool) $data['earnings_enabled'] && ! $settings->earnings_enabled) {
-            // The periodic gate the admin is saving now is part of the
-            // preflight input — apply it (in memory) before checking.
-            $originalPeriodicGate = $settings->periodic_compensation_enabled;
-            $settings->periodic_compensation_enabled = (bool) $data['periodic_compensation_enabled'];
+        // Phase 14.5 — the three financial feature switches flow ONLY
+        // through FinancialFeatureConfigurationService, which enforces
+        // the activation preflights regardless of caller. This page just
+        // relays the request and displays the service's readiness result.
+        $configuration = app(FinancialFeatureConfigurationServiceInterface::class);
 
-            $failures = app(CompensationActivationPreflight::class)->failures();
+        try {
+            $this->applySwitch($configuration, 'earnings_enabled', (bool) $data['earnings_enabled'], $settings->earnings_enabled);
+            // disableEarnings() auto-disables periodic — refresh view state.
+            $this->applySwitch($configuration, 'periodic_compensation_enabled', (bool) $data['periodic_compensation_enabled'], $settings->periodic_compensation_enabled);
+            $this->applySwitch($configuration, 'withdrawals_enabled', (bool) $data['withdrawals_enabled'], $settings->withdrawals_enabled);
+        } catch (CompensationException $e) {
+            Notification::make()
+                ->title('Feature cannot be enabled yet')
+                ->body($e->getMessage())
+                ->danger()
+                ->persistent()
+                ->send();
 
-            if ($failures !== []) {
-                $settings->periodic_compensation_enabled = $originalPeriodicGate;
-                $body = collect($failures)
-                    ->map(fn (array $failure): string => $failure['message']
-                        .($failure['subjects'] !== [] ? ' — '.implode(', ', array_slice($failure['subjects'], 0, 10)).(count($failure['subjects']) > 10 ? '…' : '') : ''))
-                    ->implode(' • ');
+            $this->mount(); // reset the form to the persisted state
 
-                Notification::make()
-                    ->title('Earnings cannot be enabled yet')
-                    ->body($body)
-                    ->danger()
-                    ->persistent()
-                    ->send();
-
-                return;
-            }
+            return;
         }
 
-        $settings->earnings_enabled = (bool) $data['earnings_enabled'];
-        $settings->periodic_compensation_enabled = (bool) $data['periodic_compensation_enabled'];
         $settings->demo_compensation_policy = $data['demo_compensation_policy'];
         $settings->demo_fixed_amount_minor = $data['demo_fixed_amount_minor'] !== null && $data['demo_fixed_amount_minor'] !== ''
             ? (int) $data['demo_fixed_amount_minor']
@@ -297,7 +290,6 @@ class InstructorEarningSettingsPage extends Page
             ? (int) $data['minimum_settlement_amount_minor']
             : null;
         $settings->settlement_frequency = $data['settlement_frequency'];
-        $settings->withdrawals_enabled = (bool) $data['withdrawals_enabled'];
         $settings->minimum_withdrawal_minor = (int) $data['minimum_withdrawal_minor'];
         $settings->maximum_withdrawal_minor = $data['maximum_withdrawal_minor'] !== null && $data['maximum_withdrawal_minor'] !== ''
             ? (int) $data['maximum_withdrawal_minor']
@@ -312,6 +304,26 @@ class InstructorEarningSettingsPage extends Page
         $this->logSettingsUpdate('settings', $settings, $before);
 
         Notification::make()->title('Instructor earning settings saved')->success()->send();
+    }
+
+    private function applySwitch(
+        FinancialFeatureConfigurationServiceInterface $configuration,
+        string $switch,
+        bool $requested,
+        bool $current,
+    ): void {
+        if ($requested === $current) {
+            return;
+        }
+
+        match ([$switch, $requested]) {
+            ['earnings_enabled', true] => $configuration->enableEarnings(auth()->user()),
+            ['earnings_enabled', false] => $configuration->disableEarnings(auth()->user()),
+            ['periodic_compensation_enabled', true] => $configuration->enablePeriodicCompensation(auth()->user()),
+            ['periodic_compensation_enabled', false] => $configuration->disablePeriodicCompensation(auth()->user()),
+            ['withdrawals_enabled', true] => $configuration->enableWithdrawals(auth()->user()),
+            ['withdrawals_enabled', false] => $configuration->disableWithdrawals(auth()->user()),
+        };
     }
 
     /** Read-only operational counts for the compensation section. */
@@ -344,6 +356,10 @@ class InstructorEarningSettingsPage extends Page
             .$line('Daily agreements (active)', (int) ($byBasis[CompensationPayBasis::Daily->value] ?? 0))
             .$line('Weekly agreements (active)', (int) ($byBasis[CompensationPayBasis::Weekly->value] ?? 0))
             .$line('Monthly agreements (active)', (int) ($byBasis[CompensationPayBasis::Monthly->value] ?? 0))
+            .sprintf(
+                '<div class="mt-3 text-sm sm:col-span-2"><strong>Earnings activation readiness:</strong> %s</div>',
+                e(app(FinancialFeatureConfigurationServiceInterface::class)->evaluateEarningsReadiness()->summary()),
+            )
             .'</div>'
         );
     }

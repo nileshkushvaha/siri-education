@@ -10,6 +10,7 @@ use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\PayoutMethodStatus;
 use App\Earnings\Enums\WithdrawalAllocationStatus;
 use App\Earnings\Exceptions\WithdrawalException;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\Currency;
 use App\Models\InstructorEarning;
@@ -55,7 +56,7 @@ class WithdrawalApprovalIntegrityTest extends TestCase
         $settings->minimum_withdrawal_minor = 10000;
         // Approval integrity is the subject here — not the review gate.
         $settings->withdrawal_review_required = false;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
 
         $this->admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         Permission::firstOrCreate(['name' => 'Approve:InstructorWithdrawalRequest', 'guard_name' => 'web']);

@@ -7,12 +7,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * One earning per lesson (unique lesson_id), created only after an
- * eligible lesson completion. Money is integer minor units only —
- * never floats. student_amount_minor / platform_margin_minor are
- * admin-only (hidden on the model); the instructor sees only
- * earning_amount_minor. This table is a platform liability ledger —
- * it never touches the Phase 9 student wallets.
+ * Phase 14.5 consolidated baseline. One earning per canonical source:
+ * unique lesson_id for lesson compensation (nullable — periodic
+ * compensation carries no lesson) and unique source_type+source_id for
+ * every category. Money is integer minor units only — never floats,
+ * and amounts come exclusively from compensation agreements: no
+ * student-pricing column exists here by design. This table is a
+ * platform liability ledger — it never touches student wallets.
  */
 return new class extends Migration
 {
@@ -20,8 +21,8 @@ return new class extends Migration
     {
         Schema::create('instructor_earnings', function (Blueprint $table): void {
             $table->uuid('id')->primary();
-            $table->foreignUuid('lesson_id')->unique()->constrained('lessons')->cascadeOnDelete();
-            $table->foreignUuid('booking_id')->constrained('bookings');
+            $table->foreignUuid('lesson_id')->nullable()->unique()->constrained('lessons')->cascadeOnDelete();
+            $table->foreignUuid('booking_id')->nullable()->constrained('bookings');
             $table->foreignId('instructor_id')->constrained('users');
             $table->foreignId('student_id')->nullable()->constrained('users');
             $table->foreignUuid('subject_id')->nullable()->constrained('subjects')->nullOnDelete();
@@ -29,11 +30,8 @@ return new class extends Migration
             $table->foreignUuid('academic_level_id')->nullable()->constrained('academic_levels')->nullOnDelete();
             $table->foreignId('currency_id')->nullable()->constrained('currencies')->nullOnDelete();
             $table->string('currency_code', 3);
-            $table->unsignedBigInteger('student_amount_minor')->nullable();
             $table->unsignedBigInteger('earning_amount_minor');
-            $table->unsignedBigInteger('platform_margin_minor')->nullable();
             $table->string('calculation_type', 16);
-            $table->decimal('calculation_value', 10, 4)->nullable();
             $table->string('status', 32)->default('pending_hold');
             $table->timestamp('hold_until')->nullable();
             $table->timestamp('released_at')->nullable();
@@ -51,6 +49,7 @@ return new class extends Migration
             $table->index(['instructor_id', 'status']);
             $table->index(['status', 'hold_until']);
             $table->index(['currency_code', 'status']);
+            $table->unique(['source_type', 'source_id'], 'ie_source_unique');
         });
     }
 

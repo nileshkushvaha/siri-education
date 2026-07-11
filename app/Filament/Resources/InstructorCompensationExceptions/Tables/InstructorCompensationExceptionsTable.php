@@ -61,6 +61,16 @@ class InstructorCompensationExceptionsTable
                     ->label('Last Attempt')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('next_retry_at')
+                    ->label('Next Auto-Retry')
+                    ->dateTime()
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('retry_exhausted_at')
+                    ->label('Auto-Retry Exhausted')
+                    ->dateTime()
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('resolved_at')
                     ->label('Resolved')
                     ->dateTime()
@@ -91,7 +101,7 @@ class InstructorCompensationExceptionsTable
                     ->icon('heroicon-m-arrow-path')
                     ->color('info')
                     ->requiresConfirmation()
-                    ->modalDescription('Re-runs the normal earning creation. The agreement is resolved at the lesson\'s scheduled start time; the earnings kill switch still applies.')
+                    ->modalDescription('Re-runs the normal earning creation immediately, ignoring the automatic backoff/exhaustion schedule. The agreement is resolved at the lesson\'s scheduled start time; the earnings kill switch still applies.')
                     ->authorize(fn (InstructorCompensationException $record): bool => auth()->user()?->can('retry', $record) ?? false)
                     ->visible(fn (InstructorCompensationException $record): bool => $record->resolved_at === null && $record->retry_eligible)
                     ->action(function (InstructorCompensationException $record): void {

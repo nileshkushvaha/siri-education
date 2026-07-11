@@ -8,6 +8,7 @@ use App\Earnings\Contracts\InstructorPeriodicCompensationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\Currency;
 use App\Models\InstructorCompensationAgreement;
@@ -51,7 +52,7 @@ class InstructorPeriodicCompensationTest extends TestCase
         // Phase 14.3: periodic accrual has its own rollout gate — these
         // tests exercise the accrual mechanics, so both switches are on.
         $settings->periodic_compensation_enabled = true;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     protected function tearDown(): void
@@ -145,7 +146,7 @@ class InstructorPeriodicCompensationTest extends TestCase
 
         $settings = app(InstructorEarningSettings::class);
         $settings->earnings_enabled = false;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
 
         $this->assertSame(0, $this->service->accrueClosedPeriods());
 
@@ -191,7 +192,7 @@ class InstructorPeriodicCompensationTest extends TestCase
         $settings = app(InstructorEarningSettings::class);
         $settings->withdrawals_enabled = true;
         $settings->minimum_withdrawal_minor = 10000;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
 
         $method = InstructorPayoutMethod::factory()->verified()->create([
             'instructor_id' => $agreement->instructor_id,
@@ -205,7 +206,7 @@ class InstructorPeriodicCompensationTest extends TestCase
         $this->assertSame(100000, (int) $request->allocations()->sum('amount_minor'));
 
         $settings->withdrawals_enabled = false;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     public function test_periodic_agreement_never_creates_hourly_lesson_earnings(): void

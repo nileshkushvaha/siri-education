@@ -29,8 +29,11 @@ final class RetryBlockedLessons extends Command
         $attempted = 0;
 
         InstructorCompensationException::query()
-            ->retryable()
+            // Backoff-aware: only due, non-exhausted retryables — the
+            // escalating schedule lives on next_retry_at (Phase 14.5).
+            ->dueForRetry()
             ->orderBy('first_failed_at')
+            ->orderBy('id')
             ->with('lesson')
             ->cursor()
             ->each(function (InstructorCompensationException $exception) use ($earnings, &$recovered, &$attempted): void {

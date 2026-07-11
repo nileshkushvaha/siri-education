@@ -38,12 +38,15 @@ class InstructorEarningPolicy
 
     public function update(User $user, InstructorEarning $earning): bool
     {
-        return $this->hasPermission($user, 'Update:InstructorEarning');
+        // Earnings are immutable records — lifecycle changes go through
+        // the precise release/reverse/settlement permissions only.
+        return false;
     }
 
     public function delete(User $user, InstructorEarning $earning): bool
     {
-        return $this->hasPermission($user, 'Delete:InstructorEarning');
+        // Financial history is never deleted.
+        return false;
     }
 
     public function release(User $user, InstructorEarning $earning): bool

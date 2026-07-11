@@ -31,6 +31,8 @@ class InstructorCompensationException extends Model
         'attempt_count',
         'first_failed_at',
         'last_attempt_at',
+        'next_retry_at',
+        'retry_exhausted_at',
         'resolved_at',
         'resolved_earning_id',
     ];
@@ -44,6 +46,8 @@ class InstructorCompensationException extends Model
             'scheduled_start_at' => 'immutable_datetime',
             'first_failed_at' => 'immutable_datetime',
             'last_attempt_at' => 'immutable_datetime',
+            'next_retry_at' => 'immutable_datetime',
+            'retry_exhausted_at' => 'immutable_datetime',
             'resolved_at' => 'immutable_datetime',
         ];
     }
@@ -76,5 +80,13 @@ class InstructorCompensationException extends Model
     public function scopeRetryable(Builder $query): Builder
     {
         return $query->open()->where('retry_eligible', true);
+    }
+
+    /** What the automatic sweep picks up: retryable, not exhausted, and due per the backoff schedule. */
+    public function scopeDueForRetry(Builder $query): Builder
+    {
+        return $query->retryable()
+            ->whereNull('retry_exhausted_at')
+            ->where(fn (Builder $q) => $q->whereNull('next_retry_at')->orWhere('next_retry_at', '<=', now()));
     }
 }

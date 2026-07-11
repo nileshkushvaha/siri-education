@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Earnings\Contracts\FinancialFeatureConfigurationServiceInterface;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorCompensationResolverInterface;
 use App\Earnings\Contracts\InstructorEarningRepositoryInterface;
@@ -16,6 +17,7 @@ use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Contracts\PayoutMethodFingerprintServiceInterface;
 use App\Earnings\Contracts\PayoutMethodSnapshotServiceInterface;
 use App\Earnings\Repositories\InstructorEarningRepository;
+use App\Earnings\Services\FinancialFeatureConfigurationService;
 use App\Earnings\Services\InstructorCompensationAgreementService;
 use App\Earnings\Services\InstructorCompensationResolver;
 use App\Earnings\Services\InstructorEarningService;
@@ -39,6 +41,7 @@ class EarningServiceProvider extends ServiceProvider
         $this->app->singleton(InstructorCompensationAgreementServiceInterface::class, InstructorCompensationAgreementService::class);
         $this->app->singleton(InstructorCompensationResolverInterface::class, InstructorCompensationResolver::class);
         $this->app->singleton(InstructorPeriodicCompensationServiceInterface::class, InstructorPeriodicCompensationService::class);
+        $this->app->singleton(FinancialFeatureConfigurationServiceInterface::class, FinancialFeatureConfigurationService::class);
 
         // Phase 15 — payout methods & withdrawals (no money movement).
         $this->app->singleton(PayoutMethodFingerprintServiceInterface::class, PayoutMethodFingerprintService::class);

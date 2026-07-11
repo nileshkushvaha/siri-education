@@ -10,6 +10,7 @@ use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\CompensationException;
 use App\Earnings\Support\CompensationMath;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Models\AcademicCategory;
 use App\Models\AcademicLevel;
 use App\Models\Booking;
@@ -50,7 +51,7 @@ class InstructorHourlyCompensationTest extends TestCase
 
         $settings = app(InstructorEarningSettings::class);
         $settings->earnings_enabled = true;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     // ── Duration proportions ─────────────────────────────────────────

@@ -21,25 +21,35 @@ class InstructorEarningPermissionSeeder extends Seeder
     use WithoutModelEvents;
 
     private const array MANAGER_PERMISSIONS = [
-        'ViewAny:InstructorEarning', 'View:InstructorEarning', 'Update:InstructorEarning',
+        'ViewAny:InstructorEarning', 'View:InstructorEarning',
         'Release:InstructorEarning', 'Reverse:InstructorEarning',
         'ViewAny:InstructorSettlementBatch', 'View:InstructorSettlementBatch',
-        'Create:InstructorSettlementBatch', 'Update:InstructorSettlementBatch',
+        'Create:InstructorSettlementBatch',
         'Approve:InstructorSettlementBatch', 'MarkPaid:InstructorSettlementBatch',
         'Cancel:InstructorSettlementBatch',
     ];
 
-    /** Destructive/irreversible — stays super_admin-only. */
-    private const array SUPER_ONLY_PERMISSIONS = [
+    /**
+     * Phase 14.5 cleanup: earnings and settlement batches are immutable
+     * financial records — no workflow edits or deletes them, so the
+     * Update/Delete permissions were removed entirely (policies return
+     * false for everyone; lifecycle mutations use the precise Release /
+     * Reverse / Approve / MarkPaid / Cancel permissions above).
+     */
+    private const array REMOVED_PERMISSIONS = [
+        'Update:InstructorEarning',
         'Delete:InstructorEarning',
+        'Update:InstructorSettlementBatch',
         'Delete:InstructorSettlementBatch',
     ];
 
     public function run(): void
     {
-        foreach ([...self::MANAGER_PERMISSIONS, ...self::SUPER_ONLY_PERMISSIONS] as $permission) {
+        foreach (self::MANAGER_PERMISSIONS as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
+
+        Permission::query()->whereIn('name', self::REMOVED_PERMISSIONS)->delete();
 
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web'])
             ->givePermissionTo(self::MANAGER_PERMISSIONS);

@@ -23,7 +23,6 @@ use App\Models\InstructorWithdrawalAllocation;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\User;
 use App\Notifications\Instructor\InstructorWithdrawalStatusNotification;
-use App\Settings\InstructorEarningSettings;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +30,12 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 class InstructorWithdrawalTest extends TestCase
 {
+    use ManagesFinancialSettings;
     use RefreshDatabase;
 
     private InstructorWithdrawalServiceInterface $withdrawals;
@@ -661,12 +662,6 @@ class InstructorWithdrawalTest extends TestCase
 
     private function settings(array $overrides): void
     {
-        $settings = app(InstructorEarningSettings::class);
-
-        foreach ($overrides as $key => $value) {
-            $settings->{$key} = $value;
-        }
-
-        $settings->save();
+        $this->setFinancialSettings($overrides);
     }
 }

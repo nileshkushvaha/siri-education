@@ -8,6 +8,7 @@ use App\Booking\Enums\BookingPaymentStatus;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationExceptionCategory;
 use App\Earnings\Services\CompensationExceptionService;
+use App\Earnings\Support\FinancialFeatureToggle;
 use App\Models\Booking;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorCompensationException;
@@ -33,7 +34,7 @@ class CompensationConcurrencyTest extends ConcurrencyTestCase
         $settings = app(InstructorEarningSettings::class);
         $settings->earnings_enabled = true;
         $settings->periodic_compensation_enabled = true;
-        $settings->save();
+        FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
 
     public function test_concurrent_activation_of_two_agreements_leaves_exactly_one_active(): void

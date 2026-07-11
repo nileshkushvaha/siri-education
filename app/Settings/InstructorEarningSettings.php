@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Settings;
 
+use App\Earnings\Exceptions\CompensationException;
+use App\Earnings\Support\FinancialFeatureToggle;
+use Illuminate\Support\Facades\DB;
 use Spatie\LaravelSettings\Settings;
 
 class InstructorEarningSettings extends Settings
@@ -38,6 +41,37 @@ class InstructorEarningSettings extends Settings
 
     /** Explicit demo compensation in minor units; required when the policy is fixed_demo_amount. */
     public ?int $demo_fixed_amount_minor;
+
+    /** Automatic retry attempts per blocked lesson before the exception is marked exhausted. */
+    public int $compensation_retry_max_attempts;
+
+    /**
+     * Phase 14.5 write guard: the three financial feature switches may
+     * only change through FinancialFeatureConfigurationService (which
+     * runs the activation preflights). Every other save() that flips
+     * one of them — Filament, commands, seeders, controllers, direct
+     * calls — throws. Non-switch settings save normally.
+     */
+    public function save(): static
+    {
+        if (! FinancialFeatureToggle::isUnguarded()) {
+            $persisted = DB::table('settings')
+                ->where('group', static::group())
+                ->whereIn('name', ['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled'])
+                ->pluck('payload', 'name');
+
+            foreach (['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled'] as $switch) {
+                if ($persisted->has($switch) && json_decode((string) $persisted[$switch]) !== $this->{$switch}) {
+                    throw new CompensationException(sprintf(
+                        'The %s switch can only be changed through FinancialFeatureConfigurationService, which enforces the activation preflight.',
+                        $switch,
+                    ));
+                }
+            }
+        }
+
+        return parent::save();
+    }
 
     /** Days after lesson completion before an earning may be released. */
     public int $hold_days;

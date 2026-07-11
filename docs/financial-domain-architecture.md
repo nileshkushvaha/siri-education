@@ -182,14 +182,23 @@ currency codes are immutable copies.
 
 ## 8. Settings & kill switches (`InstructorEarningSettings`)
 
-`earnings_enabled` (master, default **false**; enabling runs the
-`CompensationActivationPreflight`), `periodic_compensation_enabled`
-(default **false**; gates daily/weekly/monthly activation, promotion,
-and accrual), `withdrawals_enabled` (default **false**), plus
-hold/release, settlement minimum + informational frequency, withdrawal
-limits/verification/cancellation/review, demo policy
-(`none`/`fixed_demo_amount`), all enforced **inside domain services** —
-no command, event, or UI can bypass them.
+`earnings_enabled`, `periodic_compensation_enabled`, and
+`withdrawals_enabled` all default **false** and can only change through
+**`FinancialFeatureConfigurationService`** (Phase 14.5): the settings
+class itself rejects any other save that flips one of them, every
+enable operation runs its activation preflight regardless of caller
+(Filament merely relays and displays the typed `FeatureReadiness`
+result), and each toggle is audited with the acting admin. Documented
+rule: **disabling earnings transactionally auto-disables periodic
+compensation.** Withdrawal enablement does not require Phase 16
+provider credentials — requests only reserve earnings. Operational
+settings (hold/release, settlement minimum + informational frequency,
+withdrawal limits/verification/cancellation/review, demo policy,
+`compensation_retry_max_attempts`) save normally, and gating is still
+enforced inside the domain services — no command, event, or UI can
+bypass a switch. The only test-side bypass is
+`Tests\Support\ManagesFinancialSettings` (fixture setup; absent from
+production namespaces, architecture-tested).
 
 ## 9. Events, listeners, notifications
 
@@ -213,13 +222,21 @@ prohibited and architecture-tested.
 |---|---|---|
 | `instructor-earnings:release` | hourly | `auto_release_enabled` |
 | `instructor-earnings:accrue-periodic-compensation` | hourly | `earnings_enabled` + `periodic_compensation_enabled` |
-| `instructor-earnings:retry-blocked-lessons` | hourly | `earnings_enabled` (inside the service call) |
+| `instructor-earnings:retry-blocked-lessons` | hourly | `earnings_enabled`; backoff-aware (`next_retry_at`) |
+
+**Retry backoff (Phase 14.5):** attempt 1 retries at the next sweep,
+then +2 h, +6 h, +24 h, then daily, until
+`compensation_retry_max_attempts` (default 10) marks the exception
+**exhausted** (`retry_exhausted_at`) — excluded from the sweep forever,
+still visible in the queue, still manually retryable by admins holding
+`Configure:InstructorCompensationAgreement`. Permanent failures never
+enter the schedule at all.
 
 ## 11. Permission matrix (Shield naming, manager via seeders, super-admin bypass)
 
 | Seeder | Grants |
 |---|---|
-| `InstructorEarningPermissionSeeder` | ViewAny/View/Update/Release/Reverse:InstructorEarning · ViewAny/View/Create/Update/Approve/MarkPaid/Cancel:InstructorSettlementBatch (Delete = super-admin only) |
+| `InstructorEarningPermissionSeeder` | ViewAny/View/Release/Reverse:InstructorEarning · ViewAny/View/Create/Approve/MarkPaid/Cancel:InstructorSettlementBatch — Update/Delete permissions were **removed** in 14.5: earnings and batches are immutable records; the seeder also deletes the stale rows idempotently |
 | `InstructorPayoutPermissionSeeder` | ViewAny/View/ViewSensitive/Verify/Reject/Disable:InstructorPayoutMethod · ViewAny/View/StartReview/Approve/Reject/Cancel:InstructorWithdrawalRequest |
 | `InstructorCompensationPermissionSeeder` | ViewAny/View/Create/Schedule/Activate/End/Cancel/ViewHistory/Configure:InstructorCompensationAgreement (exceptions page reuses ViewAny; retry reuses Configure) |
 
@@ -255,6 +272,33 @@ corrupted payloads fail with safe domain messages.
    attendance/leave/partial-period rules are formally defined.
 10. Phase 16 payout execution remains unbuilt — settlement "mark paid"
     is a manual money-moved record only.
+
+## 13a. Canonical migrations & database rebuild (Phase 14.5)
+
+The financial schema lives in **ten consolidated migrations**
+(`2026_07_29_1000xx`): agreements → overrides → periods → settlement
+batches → earnings → compensation exceptions → payout methods →
+withdrawal requests → withdrawal allocations → financial settings.
+They encode every guarantee directly (generated-column uniques, CHECK
+constraints, named composite indexes, restrictive FKs, switch defaults
+OFF) — no commission-era history exists in the baseline. Fresh install:
+`php artisan migrate --force` + the three permission seeders. Disposable
+dev rebuild: `php artisan migrate:fresh --force` (dev/testing only —
+production would use the same set from day one). Schema parity between
+the consolidated set and the previously applied chain was machine-
+verified across columns, types, nullability, defaults, indexes, unique
+constraints, generated columns, CHECK constraints, and FK delete rules.
+
+## 13b. Phase 16 handoff requirements
+
+Payout execution must: consume **approved** withdrawal requests via the
+reserved `approved → processing → paid/failed` transitions; pay from
+the **encrypted snapshot**, never the live payout method; convert
+reservations to `consumed` and earnings to `settled` on `paid`; define
+the release rule for terminal `failed`; add its own provider
+credentials/webhooks/reconciliation without touching any Phase ≤15
+invariant; and keep `withdrawals_enabled` gating requests independently
+of execution readiness.
 
 ## 14. Troubleshooting
 

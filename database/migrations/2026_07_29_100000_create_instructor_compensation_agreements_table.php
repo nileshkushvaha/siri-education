@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 14.2 — effective-dated, admin-managed instructor compensation
+ * Phase 14.5 consolidated baseline (originally Phase 14.2) — effective-dated, admin-managed instructor compensation
  * agreements. Compensation is decided internally per instructor
  * (hourly/daily/weekly/monthly, integer minor units) and is never
  * derived from student-facing pricing. Financial terms are immutable

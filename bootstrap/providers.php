@@ -7,6 +7,7 @@ use App\Providers\Filament\AdminPanelProvider;
 use App\Providers\FormsServiceProvider;
 use App\Providers\FrontendServiceProvider;
 use App\Providers\HomeworkServiceProvider;
+use App\Providers\LessonServiceProvider;
 use App\Providers\NavigationServiceProvider;
 
 return [
@@ -16,6 +17,7 @@ return [
     FormsServiceProvider::class,
     FrontendServiceProvider::class,
     HomeworkServiceProvider::class,
+    LessonServiceProvider::class,
     NavigationServiceProvider::class,
     AdminPanelProvider::class,
 ];

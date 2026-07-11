@@ -324,3 +324,16 @@ offered only while the row belongs to that provider and `status` is
   a visibility check — same gap as before).
 - Wallet debit, wallet recharge, instructor payout, recording storage,
   attendance tracking, class completion — unchanged, not built here.
+
+## Phase 13 addendum — lessons alongside meetings
+
+A confirmed booking may now create **both** a meeting and a lesson,
+through two separate services triggered by the same `BookingConfirmed`
+event (`CreateMeetingOnBookingConfirmed` and
+`CreateLessonOnBookingConfirmed` — each queued, idempotent, and
+eligibility-guarded independently). Meeting creation failure (or a
+pending/failed meeting row) does **not** block or cancel the lesson —
+the lesson stays `scheduled` and the meeting can be retried from the
+Booking admin as before. This stays true unless a later policy makes
+meetings mandatory for lessons. See
+`phase-13-lesson-lifecycle-attendance-completion.md`.

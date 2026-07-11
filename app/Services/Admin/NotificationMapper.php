@@ -318,6 +318,26 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
+            // ── Lessons (Phase 13) — only the outcomes needing admin
+            //     attention map here. lesson_completed stays silent: the
+            //     booking sync already raises "Booking Completed" for the
+            //     same event, and mapping both would double-notify. ──────
+            $log === 'lessons' && $event === 'lesson_no_show' => [
+                'title' => 'Lesson No-Show',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-eye-slash',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
+            $log === 'lessons' && $event === 'lesson_disputed' => [
+                'title' => 'Lesson Disputed',
+                'actor_label' => 'Disputed by',
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
             // ── Payments — Option B late-terminal capture that could not be
             //     auto-credited; needs admin/support follow-up ──────────────
             $log === 'payments' && $event === 'payment_late_terminal_manual_resolution' => [

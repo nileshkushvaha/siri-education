@@ -135,6 +135,11 @@ class Booking extends Model
         return $this->hasOne(BookingMeeting::class);
     }
 
+    public function lesson(): HasOne
+    {
+        return $this->hasOne(Lesson::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(BookingActivity::class)->latest('created_at');

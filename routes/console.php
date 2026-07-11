@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Models\LoginHistory;
@@ -39,6 +40,15 @@ app(Schedule::class)
     ->command('activitylog:clean')
     ->weekly()
     ->appendOutputTo(storage_path('logs/activitylog-clean.log'));
+
+// Finalize open lessons past the auto-completion grace period (24h after
+// ends_at): recorded no-shows become no-show outcomes, the rest complete.
+// Idempotent: finalized lessons never re-enter the sweep.
+app(Schedule::class)
+    ->command(AutoCompleteLessons::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/lessons-auto-complete.log'));
 
 // Release unpaid booking reservations whose payment hold has lapsed.
 // Idempotent: only touches pending bookings with reserved_until < now().

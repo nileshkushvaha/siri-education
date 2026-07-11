@@ -18,6 +18,7 @@ use App\Booking\Meetings\GoogleCalendarMeetProvider;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
 use App\Filament\Support\CsvExport;
+use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use Carbon\CarbonImmutable;
@@ -53,9 +54,9 @@ class BookingsTable
     public static function configure(Table $table): Table
     {
         return $table
-            // The meeting badge/reference columns and the meeting actions all
-            // read $record->meeting — eager-load it once per page, not per row.
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('meeting'))
+            // The meeting/lesson badge columns and the meeting actions read
+            // $record->meeting / $record->lesson — eager-load once per page.
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['meeting', 'lesson']))
             ->columns([
                 TextColumn::make('reference')
                     ->searchable()
@@ -101,6 +102,13 @@ class BookingsTable
                     ->toggleable(),
                 TextColumn::make('meeting.provider')
                     ->label('Meeting Provider')
+                    ->toggleable(),
+                TextColumn::make('lesson.status')
+                    ->label('Lesson')
+                    ->badge()
+                    ->state(fn (Booking $record): ?LessonStatus => $record->lesson?->status)
+                    ->formatStateUsing(fn (?LessonStatus $state): string => $state?->label() ?? 'None')
+                    ->color(fn (?LessonStatus $state): string => $state?->color() ?? 'gray')
                     ->toggleable(),
                 TextColumn::make('meeting_reference')
                     ->label('Meeting Ref')

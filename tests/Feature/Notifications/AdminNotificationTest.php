@@ -471,6 +471,30 @@ class AdminNotificationTest extends TestCase
         ]);
     }
 
+    // ── NotificationMapper: lesson lifecycle (Phase 13) ────────────────────
+
+    public function test_mapper_returns_payload_for_lesson_no_show_and_dispute(): void
+    {
+        $noShow = $this->mapper()->map($this->makeActivity('lessons', 'lesson_no_show'));
+        $this->assertNotNull($noShow);
+        $this->assertSame('Lesson No-Show', $noShow->title);
+        $this->assertSame('warning', $noShow->color);
+
+        $disputed = $this->mapper()->map($this->makeActivity('lessons', 'lesson_disputed'));
+        $this->assertNotNull($disputed);
+        $this->assertSame('Lesson Disputed', $disputed->title);
+        $this->assertSame('danger', $disputed->color);
+    }
+
+    public function test_mapper_keeps_lesson_completion_silent(): void
+    {
+        // The booking sync already raises "Booking Completed" for the same
+        // event — mapping lesson completion too would double-notify admins.
+        $this->assertNull($this->mapper()->map($this->makeActivity('lessons', 'lesson_completed')));
+        $this->assertNull($this->mapper()->map($this->makeActivity('lessons', 'lesson_auto_completed')));
+        $this->assertNull($this->mapper()->map($this->makeActivity('lessons', 'lesson_created')));
+    }
+
     private function mapper(): NotificationMapper
     {
         return app(NotificationMapper::class);

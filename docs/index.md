@@ -16,6 +16,7 @@
 | Resend Transactional Email | resend.md |
 | Activity Log | activity-log.md |
 | Booking Engine | booking.md |
+| Lesson Lifecycle | lessons.md |
 | Cache Manager | cache-manager.md |
 | Scheduler Monitor | scheduler.md |
 | Queue Monitor | queue-monitor.md |

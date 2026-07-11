@@ -109,3 +109,17 @@ notification preference center, marketing campaigns, chat, wallet
 debit/recharge notifications, instructor payout notifications,
 recording/attendance/homework/review notifications, and no new tables
 of any kind.
+
+## Phase 13 addendum — lesson lifecycle notifications
+
+Lesson lifecycle notifications are **minimal by design**. Phase 13
+records every lesson mutation to the activity log via
+`AuditTrailService` (log name `lessons`); `NotificationMapper` raises
+admin notifications for exactly two of them — `lesson_no_show`
+(warning) and `lesson_disputed` (danger). Lesson completion stays
+silent on purpose (the booking sync below already notifies), and no
+participant-facing lesson notifications exist yet.
+Booking-level notifications still fire when a lesson outcome syncs the
+parent booking (lesson completion/no-show runs through
+`BookingServiceInterface::complete()/markNoShow()`, so the existing
+`BookingCompleted` notification path is reused, not duplicated).

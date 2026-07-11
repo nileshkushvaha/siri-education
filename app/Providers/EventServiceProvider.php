@@ -27,6 +27,9 @@ use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
+use App\Listeners\Lesson\CreateLessonOnBookingConfirmed;
+use App\Listeners\Lesson\SyncLessonOnBookingCancelled;
+use App\Listeners\Lesson\SyncLessonOnBookingCompleted;
 use App\Listeners\Mail\LogMailSending;
 use App\Listeners\Mail\LogMailSent;
 use App\Listeners\Mail\LogNotificationFailed;
@@ -121,11 +124,13 @@ class EventServiceProvider extends ServiceProvider
             [SendBookingNotifications::class, 'handleConfirmed'],
             [RecordBookingLifecycleAudit::class, 'handleConfirmed'],
             CreateMeetingOnBookingConfirmed::class,
+            CreateLessonOnBookingConfirmed::class,
         ],
         BookingCancelled::class => [
             [SendBookingNotifications::class, 'handleCancelled'],
             [RecordBookingLifecycleAudit::class, 'handleCancelled'],
             SyncPaymentOnCancellation::class,
+            SyncLessonOnBookingCancelled::class,
         ],
         BookingRescheduled::class => [
             [SendBookingNotifications::class, 'handleRescheduled'],
@@ -134,6 +139,7 @@ class EventServiceProvider extends ServiceProvider
         BookingCompleted::class => [
             [SendBookingNotifications::class, 'handleCompleted'],
             [RecordBookingLifecycleAudit::class, 'handleCompleted'],
+            SyncLessonOnBookingCompleted::class,
         ],
         BookingPaymentSucceeded::class => [
             [SendBookingNotifications::class, 'handlePaymentSucceeded'],

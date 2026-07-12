@@ -12,27 +12,31 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Booking payment record permissions (Filament Shield naming).
- * Idempotent. Read-only module — there is no Manage/Create/Update
- * permission because the admin panel never edits a payment attempt;
- * it is only ever written by RazorpayPaymentProvider and the webhook/
- * checkout-verification flow.
+ * Idempotent. Still no Manage/Create/Update/Delete permission — a
+ * payment attempt is only ever written by the providers and the
+ * webhook/checkout-verification flow. Phase 16A.1 adds exactly one
+ * mutation: `RefundViaProvider:BookingPayment`, the separately-
+ * permissioned exception action for a direct gateway refund (the
+ * normal cancellation path is automatic and needs no permission — it
+ * credits the wallet, never the gateway).
  */
 class BookingPaymentPermissionSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    private const array MANAGER_READ_PERMISSIONS = [
+    private const array MANAGER_PERMISSIONS = [
         'ViewAny:BookingPayment', 'View:BookingPayment',
+        'RefundViaProvider:BookingPayment',
     ];
 
     public function run(): void
     {
-        foreach (self::MANAGER_READ_PERMISSIONS as $permission) {
+        foreach (self::MANAGER_PERMISSIONS as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web'])
-            ->givePermissionTo(self::MANAGER_READ_PERMISSIONS);
+            ->givePermissionTo(self::MANAGER_PERMISSIONS);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

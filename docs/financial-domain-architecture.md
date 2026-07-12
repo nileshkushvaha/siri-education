@@ -5,7 +5,11 @@ financial flow** (Phases 14 → 16A, consolidated by the 14.4 cleanup).
 The per-phase documents under `docs/architecture/phase-14*` and
 `phase-15*` are historical records; where they conflict with this
 document, this document wins. Phase 16A's own detailed record is
-`docs/phase-16a-payout-execution-reconciliation-foundation.md`.
+`docs/phase-16a-payout-execution-reconciliation-foundation.md`; the
+unified collection/payout provider-routing audit (Phase 16A.1) is
+`docs/payment-collection-and-payout-provider-routing.md` — read that
+one for how student payment collection and instructor payouts share an
+architectural pattern while staying two separate financial domains.
 
 ## 1. Business rules (SRS-derived, non-negotiable)
 
@@ -26,6 +30,16 @@ document, this document wins. Phase 16A's own detailed record is
    fake provider only; no external payout API, credential, or webhook
    exists. `payout_execution_enabled` — like the other three switches —
    defaults false and stays false until explicitly authorized.
+6. **Student payment collection and instructor payouts are the same
+   architectural pattern (registry → resolver → capabilities →
+   eligibility → attempt → reconciliation) applied twice, never one
+   shared implementation.** A student's collection provider never
+   determines an instructor's payout provider and vice versa (Phase
+   16A.1) — see the dedicated routing doc for the full boundary.
+7. **Refunds are wallet-first (Phase 16A.1).** Cancelling a paid booking
+   credits the student's wallet by default; a direct gateway refund is
+   a separately-permissioned exception action, never the default, and
+   the two are mutually exclusive per payment.
 
 ## 2. Complete architecture
 
@@ -336,6 +350,7 @@ manual retry until reconciled).
 | `InstructorPayoutPermissionSeeder` | ViewAny/View/ViewSensitive/Verify/Reject/Disable:InstructorPayoutMethod · ViewAny/View/StartReview/Approve/Reject/Cancel:InstructorWithdrawalRequest |
 | `InstructorCompensationPermissionSeeder` | ViewAny/View/Create/Schedule/Activate/End/Cancel/ViewHistory/Configure:InstructorCompensationAgreement (exceptions page reuses ViewAny; retry reuses Configure) |
 | `InstructorPayoutExecutionPermissionSeeder` (Phase 16A) | ViewAny/View/Execute/Retry/Cancel/Reconcile:InstructorPayoutAttempt · ViewAny/View/Assign/Resolve:InstructorPayoutReconciliationIssue · Configure:InstructorPayoutExecution — no Update/Delete permission exists for either resource (immutable records); no manual mark-paid permission exists anywhere |
+| `BookingPaymentPermissionSeeder` (extended, Phase 16A.1) | ViewAny/View:BookingPayment · `RefundViaProvider:BookingPayment` — the separately-permissioned direct-gateway-refund exception action; the normal wallet-credit refund path needs no permission (it is automatic) |
 
 Instructor self-service (own payout methods, own withdrawals, own
 agreement visibility) is ownership-scoped in policies, permission-free.

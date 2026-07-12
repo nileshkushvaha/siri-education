@@ -8,10 +8,12 @@ use App\Earnings\Contracts\InstructorPayoutProviderInterface;
 use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\DTOs\PayoutInitiationRequest;
 use App\Earnings\DTOs\PayoutInitiationResult;
+use App\Earnings\DTOs\PayoutProviderCapabilities;
 use App\Earnings\DTOs\PayoutProviderHealth;
 use App\Earnings\DTOs\PayoutStatusResult;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Enums\PayoutFailureCategory;
+use App\Earnings\Enums\PayoutMethodType;
 use App\Earnings\Exceptions\PayoutProviderException;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -233,6 +235,37 @@ final class FakeInstructorPayoutProvider implements InstructorPayoutProviderInte
         Log::debug('FakeInstructorPayoutProvider: health check (no network call).');
 
         return new PayoutProviderHealth(healthy: true, safeMessage: 'Fake provider — always healthy, no network dependency.');
+    }
+
+    /**
+     * Deliberately unrestricted (empty country/currency lists = no
+     * restriction) — the fake provider exists to prove the routing and
+     * eligibility machinery works, not to simulate a specific real
+     * provider's actual approved markets. A real adapter's capabilities
+     * are its own account's verified, current approvals — never
+     * hardcoded optimistic assumptions.
+     */
+    public function capabilities(): PayoutProviderCapabilities
+    {
+        return new PayoutProviderCapabilities(
+            provider: self::KEY,
+            environment: app()->environment(),
+            supportedInstructorCountries: [],
+            supportedDestinationCountries: [],
+            supportedCurrencies: ['INR', 'USD', 'EUR', 'GBP', 'AED'],
+            supportedDestinationTypes: [PayoutMethodType::BankTransfer],
+            supportedTransferModes: [],
+            supportsStatusFetch: true,
+            supportsWebhooks: true,
+            supportsCancellation: true,
+            supportsReversalEvents: true,
+            supportsIdempotency: true,
+            requiresContact: false,
+            requiresFundAccount: false,
+            requiresIpAllowlisting: false,
+            healthStatus: $this->healthCheck(),
+            capabilityVersion: 1,
+        );
     }
 
     /**

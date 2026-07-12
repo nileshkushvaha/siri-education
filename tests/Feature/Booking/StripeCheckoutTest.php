@@ -490,7 +490,8 @@ class StripeCheckoutTest extends TestCase
             ->andReturn(['id' => 're_1', 'status' => 'succeeded']);
 
         $booking->refresh();
-        app(BookingPaymentServiceInterface::class)->refund($booking, 'Test refund');
+        $financeAdmin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        app(BookingPaymentServiceInterface::class)->refundViaProvider($booking, $financeAdmin, 'Test refund');
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
@@ -506,6 +507,10 @@ class StripeCheckoutTest extends TestCase
         $intent = app(BookingPaymentServiceInterface::class)->initiate($booking);
 
         $this->assertSame('pending', $intent->status);
-        $this->assertSame(0, BookingPayment::query()->count());
+        // Phase 16A.1: the fake provider now creates its own (Pending,
+        // then Captured on webhook success) BookingPayment row too,
+        // matching every real adapter.
+        $this->assertSame(1, BookingPayment::query()->count());
+        $this->assertSame('pending', BookingPayment::sole()->status->value);
     }
 }

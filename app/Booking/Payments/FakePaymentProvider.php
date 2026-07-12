@@ -6,10 +6,15 @@ namespace App\Booking\Payments;
 
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\DTOs\PaymentIntentData;
+use App\Booking\DTOs\PaymentProviderCapabilities;
+use App\Booking\DTOs\PaymentProviderHealth;
 use App\Booking\DTOs\PaymentWebhookData;
+use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Models\Booking;
+use App\Models\BookingPayment;
+use App\Support\MoneyFormatter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -34,6 +39,24 @@ final class FakePaymentProvider implements PaymentProviderInterface
             'booking' => $booking->reference,
             'payment_reference' => $reference,
         ]);
+
+        // Mirrors Razorpay/Stripe's own createPayment(): a Pending row
+        // now, captured later — here, by parseWebhook() on a 'succeeded'
+        // event. Keeps the fake provider's BookingPayment trail
+        // consistent with every real adapter (refundToWallet()/
+        // refundViaProvider() both require a captured row to exist),
+        // rather than a fake-only gap.
+        BookingPayment::query()->firstOrCreate(
+            ['booking_id' => $booking->id, 'idempotency_key' => $reference],
+            [
+                'user_id' => $booking->attendee_id,
+                'provider' => self::KEY,
+                'amount_minor' => (int) round(((float) $booking->price) * (10 ** MoneyFormatter::minorUnitsFor((string) $booking->currency))),
+                'currency_code' => (string) $booking->currency,
+                'status' => BookingPaymentRecordStatus::Pending,
+                'metadata' => ['fake' => true],
+            ],
+        );
 
         return new PaymentIntentData(
             bookingId: $booking->id,
@@ -69,6 +92,18 @@ final class FakePaymentProvider implements PaymentProviderInterface
             throw new InvalidPaymentWebhookException('Webhook payload is malformed.');
         }
 
+        if ($event === PaymentWebhookEvent::Succeeded) {
+            BookingPayment::query()
+                ->where('idempotency_key', $reference)
+                ->where('status', BookingPaymentRecordStatus::Pending)
+                ->update(['status' => BookingPaymentRecordStatus::Captured]);
+        } elseif ($event === PaymentWebhookEvent::Failed) {
+            BookingPayment::query()
+                ->where('idempotency_key', $reference)
+                ->where('status', BookingPaymentRecordStatus::Pending)
+                ->update(['status' => BookingPaymentRecordStatus::Failed]);
+        }
+
         return new PaymentWebhookData(
             event: $event,
             reference: $reference,
@@ -96,5 +131,32 @@ final class FakePaymentProvider implements PaymentProviderInterface
             'amount' => $booking->price,
             'currency' => $booking->currency,
         ];
+    }
+
+    /** Deliberately unrestricted — exists to prove routing/eligibility works, not to simulate a real provider's actual approvals. */
+    public function capabilities(): PaymentProviderCapabilities
+    {
+        return new PaymentProviderCapabilities(
+            provider: self::KEY,
+            environment: app()->environment(),
+            supportedStudentCountries: [],
+            supportedBillingCurrencies: $this->supportedCurrencies(),
+            supportedCollectionCurrencies: $this->supportedCurrencies(),
+            supportedTransactionTypes: ['wallet_recharge', 'booking_payment', 'recurring_wallet_funding'],
+            supportedPaymentMethods: [],
+            supportsWalletRecharge: true,
+            supportsDirectBookingPayment: true,
+            supportsStatusFetch: false,
+            supportsWebhooks: true,
+            supportsRefunds: true,
+            supportsPartialRefunds: false,
+            supportsAsyncConfirmation: true,
+            supportsIdempotency: true,
+            requiresCustomerCreation: false,
+            requiresReturnUrl: false,
+            requiresWebhookSignature: true,
+            healthStatus: new PaymentProviderHealth(healthy: true, safeMessage: 'Fake provider — always healthy, no network dependency.'),
+            capabilityVersion: 1,
+        );
     }
 }

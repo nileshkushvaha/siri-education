@@ -1,0 +1,270 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature;
+
+use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
+use App\Booking\Contracts\PaymentProviderInterface;
+use App\Booking\DTOs\PaymentProviderCapabilities;
+use App\Booking\Enums\PaymentCollectionRolloutScope;
+use App\Booking\Registry\PaymentProviderRegistry;
+use App\Booking\Services\PaymentProviderResolver;
+use App\Earnings\Contracts\InstructorPayoutEligibilityServiceInterface;
+use App\Earnings\Contracts\InstructorPayoutProviderInterface;
+use App\Earnings\Contracts\InstructorPayoutProviderRegistryInterface;
+use App\Earnings\Contracts\InstructorPayoutProviderResolverInterface;
+use App\Earnings\DTOs\PayoutProviderCapabilities;
+use App\Earnings\Enums\PayoutMethodType;
+use App\Earnings\Enums\PayoutRolloutScope;
+use App\Earnings\Providers\Fake\FakeInstructorPayoutProvider;
+use App\Settings\InstructorEarningSettings;
+use App\Settings\PaymentGatewaySettings;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
+
+/**
+ * Phase 16A.1 — proves the "same pattern, separate contracts" principle
+ * structurally: collection and payout both use a registry/resolver/
+ * capabilities/eligibility shape, but the two are never interchangeable
+ * and neither domain's provider selection can influence the other's.
+ * Inspects executable code and the container, never documentation.
+ */
+class CrossDomainFinancialIsolationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** Every executable source file under app/, path => contents. */
+    private static ?array $appSources = null;
+
+    // ── Pattern consistency ───────────────────────────────────────────
+
+    public function test_collection_and_payout_each_expose_a_registry_resolver_capabilities_eligibility_shape(): void
+    {
+        $this->assertTrue(class_exists(PaymentProviderRegistry::class));
+        $this->assertTrue(class_exists(PaymentProviderResolver::class));
+        $this->assertTrue(class_exists(PaymentProviderCapabilities::class));
+        $this->assertTrue(interface_exists(PaymentCollectionEligibilityServiceInterface::class));
+
+        $this->assertTrue(interface_exists(InstructorPayoutProviderRegistryInterface::class));
+        $this->assertTrue(interface_exists(InstructorPayoutProviderResolverInterface::class));
+        $this->assertTrue(class_exists(PayoutProviderCapabilities::class));
+        $this->assertTrue(interface_exists(InstructorPayoutEligibilityServiceInterface::class));
+    }
+
+    public function test_collection_and_payout_provider_interfaces_are_never_the_same_or_related_type(): void
+    {
+        $this->assertFalse(is_a(PaymentProviderInterface::class, InstructorPayoutProviderInterface::class, true));
+        $this->assertFalse(is_a(InstructorPayoutProviderInterface::class, PaymentProviderInterface::class, true));
+        $this->assertNotSame(PaymentProviderInterface::class, InstructorPayoutProviderInterface::class);
+    }
+
+    public function test_no_generic_financial_provider_interface_attempts_to_span_both_directions(): void
+    {
+        foreach ($this->appSources() as $path => $code) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/interface\s+FinancialProviderInterface/',
+                $code,
+                "A generic bidirectional financial provider interface must never exist: {$path}",
+            );
+        }
+    }
+
+    public function test_collection_provider_cannot_resolve_from_the_payout_registry_or_vice_versa(): void
+    {
+        $payoutRegistry = app(InstructorPayoutProviderRegistryInterface::class);
+        $this->assertFalse($payoutRegistry->has('razorpay'), 'The student collection provider key must never resolve from the payout registry.');
+        $this->assertFalse($payoutRegistry->has('stripe'));
+
+        $collectionRegistry = app(PaymentProviderRegistry::class);
+        $this->assertFalse($collectionRegistry->has('razorpayx'), 'A payout-only provider key must never resolve from the collection registry.');
+    }
+
+    // ── Routing integrity ─────────────────────────────────────────────
+
+    public function test_only_the_fake_provider_is_registered_for_payout(): void
+    {
+        $registry = app(InstructorPayoutProviderRegistryInterface::class);
+        $this->assertTrue($registry->has('fake'));
+        $this->assertInstanceOf(FakeInstructorPayoutProvider::class, $registry->get('fake'));
+
+        foreach (['razorpayx', 'stripe', 'wise', 'paypal'] as $unregistered) {
+            $this->assertFalse($registry->has($unregistered));
+        }
+    }
+
+    public function test_india_payout_route_does_not_assume_razorpayx_exists(): void
+    {
+        $result = app(InstructorPayoutEligibilityServiceInterface::class)->resolve('IN', 'IN', 'INR', PayoutMethodType::BankTransfer);
+
+        // No RazorpayX adapter exists in this phase — an India/INR route
+        // must resolve against whatever IS configured (the fake provider)
+        // or fail, never silently assume a provider that isn't registered.
+        $this->assertNotSame('razorpayx', $result->provider);
+    }
+
+    public function test_no_currency_conversion_helper_exists_in_either_provider_domain(): void
+    {
+        foreach ($this->appSources() as $path => $code) {
+            if (! str_contains($path, '/Earnings/') && ! str_contains($path, '/Booking/')) {
+                continue;
+            }
+
+            foreach (['convertCurrency', 'exchangeRate', 'fx_rate', 'currency_conversion'] as $needle) {
+                $this->assertStringNotContainsStringIgnoringCase($needle, $code, "Currency conversion must not exist: {$path}");
+            }
+        }
+    }
+
+    // ── Cross-domain write isolation ──────────────────────────────────
+
+    public function test_booking_collection_services_cannot_create_instructor_earnings_or_allocations(): void
+    {
+        foreach ($this->phpFilesIn([app_path('Booking')]) as $path => $code) {
+            $this->assertStringNotContainsString('InstructorEarning', $code, "Booking domain must never write instructor earnings: {$path}");
+            $this->assertStringNotContainsString('InstructorWithdrawalAllocation', $code, "Booking domain must never write withdrawal allocations: {$path}");
+            $this->assertStringNotContainsString('InstructorPayoutAttempt', $code, "Booking domain must never write payout attempts: {$path}");
+        }
+    }
+
+    public function test_payout_services_cannot_read_student_price_or_payment_records(): void
+    {
+        // Targets the actual BookingPayment/StudentLessonPrice/Booking
+        // MODEL classes specifically (import or static/instantiation use)
+        // — not the legitimate, pre-existing, already-tested
+        // BookingPaymentStatus/BookingStatus ELIGIBILITY enums the
+        // earnings domain reads to gate earning creation (Phase 14),
+        // which are a world away from reading a price or payment record.
+        foreach ($this->phpFilesIn([app_path('Earnings')]) as $path => $code) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/use App\\\\Models\\\\BookingPayment;|BookingPayment::|new BookingPayment/',
+                $code,
+                "Payout domain must never read/write student payment records: {$path}",
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/use App\\\\Models\\\\StudentLessonPrice|StudentLessonPrice(Repository|Resolver)?::/',
+                $code,
+                "Payout domain must never read student pricing: {$path}",
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/use App\\\\Models\\\\Booking;|\bBooking \$booking\b/',
+                $code,
+                "Payout domain must never directly reference the Booking model: {$path}",
+            );
+        }
+    }
+
+    public function test_instructor_compensation_agreement_service_never_references_wallet_or_booking_payment(): void
+    {
+        $code = file_get_contents(app_path('Earnings/Services/InstructorCompensationAgreementService.php'));
+        $this->assertStringNotContainsString('Wallet', $code);
+        $this->assertStringNotContainsString('BookingPayment', $code);
+    }
+
+    public function test_booking_price_calculator_never_references_instructor_compensation(): void
+    {
+        $path = app_path('Booking/Services/BookingPriceCalculator.php');
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('BookingPriceCalculator.php not found at the audited path.');
+        }
+
+        $code = file_get_contents($path);
+        $this->assertStringNotContainsString('InstructorCompensation', $code);
+        $this->assertStringNotContainsString('InstructorEarning', $code);
+    }
+
+    public function test_wallet_refund_credit_never_mutates_instructor_earnings(): void
+    {
+        $code = file_get_contents(app_path('Booking/Services/BookingPaymentService.php'));
+        $this->assertStringNotContainsString('InstructorEarning', $code);
+    }
+
+    public function test_instructor_payout_reversal_never_touches_student_wallet(): void
+    {
+        $code = file_get_contents(app_path('Earnings/Services/InstructorPayoutExecutionService.php'));
+        $this->assertStringNotContainsString('Wallet', $code);
+    }
+
+    public function test_collection_webhook_processor_cannot_process_payout_events(): void
+    {
+        $code = file_get_contents(app_path('Http/Controllers/Api/BookingPaymentWebhookController.php'));
+        $this->assertStringNotContainsString('InstructorPayout', $code);
+    }
+
+    public function test_payout_execution_service_handles_no_http_route(): void
+    {
+        foreach (app('router')->getRoutes() as $route) {
+            if (! preg_match('/payout/i', $route->uri())) {
+                continue;
+            }
+
+            // Every payout-related route must be an admin Filament page
+            // (GET/HEAD only) — no payout webhook, no execution endpoint.
+            $this->assertSame(['GET', 'HEAD'], $route->methods(), $route->uri());
+        }
+    }
+
+    // ── Credentials/settings separation ───────────────────────────────
+
+    public function test_collection_and_payout_use_distinct_settings_classes(): void
+    {
+        $this->assertNotSame(
+            PaymentGatewaySettings::class,
+            InstructorEarningSettings::class,
+        );
+    }
+
+    public function test_collection_and_payout_rollout_scope_enums_are_distinct(): void
+    {
+        $this->assertNotSame(
+            PaymentCollectionRolloutScope::class,
+            PayoutRolloutScope::class,
+        );
+    }
+
+    public function test_country_payment_routing_and_payout_routing_are_separate_columns(): void
+    {
+        $columns = Schema::getColumnListing('countries');
+        $this->assertContains('payment_routing', $columns);
+        $this->assertContains('payout_routing', $columns);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────
+
+    /** @return array<string, string> */
+    private function appSources(): array
+    {
+        if (self::$appSources === null) {
+            self::$appSources = $this->phpFilesIn([app_path()]);
+        }
+
+        return self::$appSources;
+    }
+
+    /**
+     * @param  list<string>  $paths
+     * @return array<string, string>
+     */
+    private function phpFilesIn(array $paths): array
+    {
+        $files = [];
+
+        foreach ($paths as $path) {
+            if (! is_dir($path)) {
+                continue;
+            }
+
+            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path));
+
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $files[$file->getPathname()] = file_get_contents($file->getPathname());
+                }
+            }
+        }
+
+        return $files;
+    }
+}

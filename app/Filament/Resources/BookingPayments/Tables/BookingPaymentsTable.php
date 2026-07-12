@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BookingPayments\Tables;
 
+use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentProviderCode;
+use App\Booking\Exceptions\BookingException;
 use App\Models\BookingPayment;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -55,19 +60,22 @@ class BookingPaymentsTable
                 TextColumn::make('resolution')
                     ->label('Resolution')
                     ->badge()
-                    ->state(fn (BookingPayment $record): ?string => match (true) {
-                        (bool) ($record->metadata['manual_resolution_required'] ?? false) => 'manual',
-                        (bool) ($record->metadata['wallet_ledger_entry_id'] ?? false) => 'wallet_credited',
-                        default => null,
-                    })
+                    ->state(fn (BookingPayment $record): ?string => $record->metadata['refund_resolution']
+                        ?? ((bool) ($record->metadata['manual_resolution_required'] ?? false) ? 'manual_resolution_required' : null)
+                        ?? ((bool) ($record->metadata['wallet_ledger_entry_id'] ?? false) ? 'wallet_credited' : null))
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'manual' => 'Needs manual resolution',
+                        'manual_resolution_required' => 'Needs manual resolution',
                         'wallet_credited' => 'Wallet credited',
+                        'provider_refund_pending' => 'Provider refund pending',
+                        'provider_refunded' => 'Refunded via provider',
+                        'provider_refunded_externally' => 'Refunded via provider (webhook)',
                         default => '—',
                     })
                     ->color(fn (?string $state): string => match ($state) {
-                        'manual' => 'danger',
+                        'manual_resolution_required' => 'danger',
                         'wallet_credited' => 'info',
+                        'provider_refund_pending' => 'warning',
+                        'provider_refunded', 'provider_refunded_externally' => 'success',
                         default => 'gray',
                     }),
             ])
@@ -106,6 +114,31 @@ class BookingPaymentsTable
             ])
             ->recordActions([
                 ViewAction::make(),
+
+                Action::make('refund_via_provider')
+                    ->label('Refund via Provider')
+                    ->icon('heroicon-m-arrow-uturn-left')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalDescription('Exception path only — calls the real gateway directly. The normal cancellation flow already credits the wallet automatically; use this only for a duplicate charge, compliance requirement, or finance correction.')
+                    ->authorize(fn (BookingPayment $record): bool => auth()->user()?->can('refundViaProvider', $record) ?? false)
+                    ->visible(fn (BookingPayment $record): bool => $record->status === BookingPaymentRecordStatus::Captured
+                        && ($record->metadata['refund_resolution'] ?? null) === null
+                        && $record->booking?->payment_status?->value === 'paid')
+                    ->form([
+                        Textarea::make('reason')
+                            ->required()
+                            ->maxLength(1000)
+                            ->helperText('Mandatory — recorded on the audit trail.'),
+                    ])
+                    ->action(function (BookingPayment $record, array $data): void {
+                        try {
+                            app(BookingPaymentServiceInterface::class)->refundViaProvider($record->booking, auth()->user(), $data['reason']);
+                            Notification::make()->title('Refunded via provider')->success()->send();
+                        } catch (BookingException $e) {
+                            Notification::make()->title('Refund failed')->body($e->getMessage())->danger()->send();
+                        }
+                    }),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc');

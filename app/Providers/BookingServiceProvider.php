@@ -20,6 +20,7 @@ use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\GoogleCalendarClient;
 use App\Booking\Contracts\GuestBookingServiceInterface;
+use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\Contracts\StudentBookingServiceInterface;
@@ -54,6 +55,7 @@ use App\Booking\Services\BookingPaymentService;
 use App\Booking\Services\BookingService;
 use App\Booking\Services\GuestBookingService;
 use App\Booking\Services\MeetingProviderResolver;
+use App\Booking\Services\PaymentCollectionEligibilityService;
 use App\Booking\Services\PaymentProviderResolver;
 use App\Booking\Services\StudentBookingService;
 use App\Booking\Services\TeacherAssignmentService;
@@ -92,6 +94,10 @@ class BookingServiceProvider extends ServiceProvider
         $this->app->bind(BookingAnalyticsRepositoryInterface::class, BookingAnalyticsRepository::class);
         $this->app->bind(BookingAnalyticsServiceInterface::class, BookingAnalyticsService::class);
         $this->app->bind(StudentLessonPriceRepositoryInterface::class, StudentLessonPriceRepository::class);
+
+        // Phase 16A.1 — provider-neutral collection route eligibility, the
+        // collection-side counterpart of InstructorPayoutEligibilityService.
+        $this->app->bind(PaymentCollectionEligibilityServiceInterface::class, PaymentCollectionEligibilityService::class);
 
         // Official SDKs (razorpay/razorpay, stripe/stripe-php) are isolated
         // behind these two adapters — RazorpayPaymentProvider/StripePaymentProvider

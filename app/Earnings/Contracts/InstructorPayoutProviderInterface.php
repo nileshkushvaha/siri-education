@@ -7,6 +7,7 @@ namespace App\Earnings\Contracts;
 use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\DTOs\PayoutInitiationRequest;
 use App\Earnings\DTOs\PayoutInitiationResult;
+use App\Earnings\DTOs\PayoutProviderCapabilities;
 use App\Earnings\DTOs\PayoutProviderHealth;
 use App\Earnings\DTOs\PayoutStatusResult;
 use App\Earnings\Exceptions\PayoutProviderException;
@@ -56,4 +57,13 @@ interface InstructorPayoutProviderInterface
 
     /** Never a network call for the fake provider; a real adapter may probe a lightweight status endpoint. */
     public function healthCheck(): PayoutProviderHealth;
+
+    /**
+     * The provider's static, declared shape (§5/§6 of the Phase 16A.1
+     * routing audit). The generic payout domain reads this instead of
+     * ever branching on a provider name — see
+     * `InstructorPayoutEligibilityService`, which is the only caller
+     * that should need it.
+     */
+    public function capabilities(): PayoutProviderCapabilities;
 }

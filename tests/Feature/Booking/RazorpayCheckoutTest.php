@@ -544,7 +544,8 @@ class RazorpayCheckoutTest extends TestCase
                 && $params['amount'] === 49900)
             ->andReturn(['id' => 'rfnd_active']);
 
-        app(BookingPaymentServiceInterface::class)->refund($booking->refresh(), 'change of plans');
+        $financeAdmin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        app(BookingPaymentServiceInterface::class)->refundViaProvider($booking->refresh(), $financeAdmin, 'change of plans');
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
@@ -567,8 +568,9 @@ class RazorpayCheckoutTest extends TestCase
         $this->razorpayGateway->shouldReceive('refundPayment')
             ->andThrow(new GatewayRequestException('already refunded'));
 
+        $financeAdmin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->expectExceptionMessageMatches('/Razorpay refund failed/');
-        app(BookingPaymentServiceInterface::class)->refund($booking->refresh(), 'change of plans');
+        app(BookingPaymentServiceInterface::class)->refundViaProvider($booking->refresh(), $financeAdmin, 'change of plans');
     }
 
     public function test_webhook_unrecognized_event_is_acknowledged_not_processed(): void
@@ -720,6 +722,11 @@ class RazorpayCheckoutTest extends TestCase
         ], $body)->assertOk()->assertJsonPath('status', 'processed');
 
         $this->assertSame(BookingPaymentStatus::Paid, $booking->refresh()->payment_status);
-        $this->assertSame(0, BookingPayment::count());
+        // Phase 16A.1: the fake provider now creates (and captures) its own
+        // BookingPayment row too, matching every real adapter — needed so
+        // a fake-provider booking's cancellation refund has a captured
+        // row to resolve, same as Razorpay/Stripe.
+        $this->assertSame(1, BookingPayment::count());
+        $this->assertSame('captured', BookingPayment::sole()->status->value);
     }
 }

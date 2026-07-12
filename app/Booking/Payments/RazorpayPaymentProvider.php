@@ -7,6 +7,8 @@ namespace App\Booking\Payments;
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\DTOs\PaymentIntentData;
+use App\Booking\DTOs\PaymentProviderCapabilities;
+use App\Booking\DTOs\PaymentProviderHealth;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
@@ -433,5 +435,34 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         $minorUnits = Currency::query()->where('code', self::SUPPORTED_CURRENCY)->value('minor_units') ?? 2;
 
         return (int) round($amount * (10 ** $minorUnits));
+    }
+
+    /** India-focused, INR-only in this phase — a real account may later be verified for additional currencies/methods, never assumed here. */
+    public function capabilities(): PaymentProviderCapabilities
+    {
+        return new PaymentProviderCapabilities(
+            provider: self::KEY,
+            environment: app()->environment(),
+            supportedStudentCountries: ['IN'],
+            supportedBillingCurrencies: [self::SUPPORTED_CURRENCY],
+            supportedCollectionCurrencies: [self::SUPPORTED_CURRENCY],
+            supportedTransactionTypes: ['booking_payment'],
+            supportedPaymentMethods: [],
+            supportsWalletRecharge: false,
+            supportsDirectBookingPayment: true,
+            supportsStatusFetch: false,
+            supportsWebhooks: true,
+            supportsRefunds: true,
+            supportsPartialRefunds: false,
+            supportsAsyncConfirmation: true,
+            supportsIdempotency: true,
+            requiresCustomerCreation: false,
+            requiresReturnUrl: false,
+            requiresWebhookSignature: true,
+            healthStatus: $this->isConfigured()
+                ? new PaymentProviderHealth(healthy: true)
+                : new PaymentProviderHealth(healthy: false, safeMessage: 'Razorpay is not enabled or its credentials are missing/invalid.'),
+            capabilityVersion: 1,
+        );
     }
 }

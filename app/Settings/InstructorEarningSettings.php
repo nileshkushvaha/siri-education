@@ -73,6 +73,9 @@ class InstructorEarningSettings extends Settings
     /** Lets the fake provider be selected in a non-local/testing (e.g. staging) environment. Never makes it a real provider. */
     public bool $payout_fake_provider_staging_enabled;
 
+    /** Phase 16A.1 — rollout policy (not a kill switch); see App\Earnings\Enums\PayoutRolloutScope. */
+    public string $payout_rollout_scope;
+
     /**
      * Phase 14.5 write guard, extended in Phase 16A: the four financial
      * feature switches may only change through

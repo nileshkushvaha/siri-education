@@ -7,6 +7,8 @@ namespace App\Booking\Payments;
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\DTOs\PaymentIntentData;
+use App\Booking\DTOs\PaymentProviderCapabilities;
+use App\Booking\DTOs\PaymentProviderHealth;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
@@ -416,5 +418,40 @@ final class StripePaymentProvider implements PaymentProviderInterface
         $minorUnits = Currency::query()->where('code', $currencyCode)->value('minor_units') ?? 2;
 
         return (int) round($amount * (10 ** $minorUnits));
+    }
+
+    /**
+     * International-currency focused; INR is deliberately excluded (see
+     * SUPPORTED_CURRENCIES) — reserved for Razorpay by routing
+     * convention. No frontend Stripe.js/Elements integration exists yet
+     * (this class is the tested backend half only), so no student
+     * country is asserted as verified — empty list until that changes.
+     */
+    public function capabilities(): PaymentProviderCapabilities
+    {
+        return new PaymentProviderCapabilities(
+            provider: self::KEY,
+            environment: app()->environment(),
+            supportedStudentCountries: [],
+            supportedBillingCurrencies: self::SUPPORTED_CURRENCIES,
+            supportedCollectionCurrencies: self::SUPPORTED_CURRENCIES,
+            supportedTransactionTypes: ['booking_payment'],
+            supportedPaymentMethods: [],
+            supportsWalletRecharge: false,
+            supportsDirectBookingPayment: true,
+            supportsStatusFetch: true,
+            supportsWebhooks: true,
+            supportsRefunds: true,
+            supportsPartialRefunds: false,
+            supportsAsyncConfirmation: true,
+            supportsIdempotency: true,
+            requiresCustomerCreation: false,
+            requiresReturnUrl: false,
+            requiresWebhookSignature: true,
+            healthStatus: $this->isConfigured()
+                ? new PaymentProviderHealth(healthy: true)
+                : new PaymentProviderHealth(healthy: false, safeMessage: 'Stripe is not enabled or its credentials are missing/invalid.'),
+            capabilityVersion: 1,
+        );
     }
 }

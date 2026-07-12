@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutExecutionServiceInterface;
@@ -10,6 +11,7 @@ use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
+use App\Models\Booking;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
@@ -174,6 +176,24 @@ try {
             app(InstructorPayoutExecutionServiceInterface::class)->handleNormalizedEvent($event);
 
             return ['handled' => true];
+        })(),
+
+        // Phase 16A.1 — booking refund races.
+        'refund-to-wallet' => (function () use ($args) {
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+
+            $booking = app(BookingPaymentServiceInterface::class)->refundToWallet($booking, 'Concurrency test: wallet path.');
+
+            return ['payment_status' => $booking->payment_status->value];
+        })(),
+
+        'refund-via-provider' => (function () use ($args) {
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            $booking = app(BookingPaymentServiceInterface::class)->refundViaProvider($booking, $actor, 'Concurrency test: provider path.');
+
+            return ['payment_status' => $booking->payment_status->value];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

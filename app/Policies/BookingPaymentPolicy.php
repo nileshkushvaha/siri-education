@@ -44,6 +44,12 @@ class BookingPaymentPolicy
         return false;
     }
 
+    /** The separately-permissioned exception action (Phase 16A.1) — never the default refund path. */
+    public function refundViaProvider(User $user, BookingPayment $bookingPayment): bool
+    {
+        return $this->hasPermission($user, 'RefundViaProvider:BookingPayment');
+    }
+
     private function hasPermission(User $user, string $permission): bool
     {
         try {

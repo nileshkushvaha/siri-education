@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\PaymentIntentData;
+use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
@@ -70,4 +71,13 @@ interface PaymentProviderInterface
      * @throws BookingException when no pending payment exists for the booking
      */
     public function checkoutPayload(Booking $booking): array;
+
+    /**
+     * The provider's static, declared shape (Phase 16A.1 routing
+     * audit). The generic booking domain reads this instead of ever
+     * branching on a provider name — see
+     * `PaymentCollectionEligibilityService`, which is the only caller
+     * that should need it. Never a network call.
+     */
+    public function capabilities(): PaymentProviderCapabilities;
 }

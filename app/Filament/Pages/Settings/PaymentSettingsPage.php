@@ -115,7 +115,15 @@ abstract class PaymentSettingsPage extends Page
             'stripe_webhook_secret' => null,
             'stripe_success_url' => $gateways->stripe_success_url ?? url('/payments/stripe/success'),
             'stripe_failure_url' => $gateways->stripe_failure_url ?? url('/payments/stripe/failure'),
-            'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/payments/stripe'),
+            // Phase 16A.1 fix: this must be the real settlement route
+            // (api/webhooks/bookings/payments/{provider}) — the generic
+            // api/webhooks/payments/{gateway} path only logs/audits and
+            // never settles a booking (see PaymentWebhookProcessor).
+            // Stripe/Razorpay are the only gateways with a registered
+            // PaymentProviderInterface adapter, so only their defaults
+            // change here; paypal/cashfree/payu/phonepe/manual have no
+            // adapter at all and genuinely have nowhere else to point.
+            'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/bookings/payments/stripe'),
 
             'razorpay_enabled' => $gateways->razorpay_enabled,
             'razorpay_sandbox_mode' => $gateways->razorpay_sandbox_mode,
@@ -124,7 +132,7 @@ abstract class PaymentSettingsPage extends Page
             'razorpay_webhook_secret' => null,
             'razorpay_success_url' => $gateways->razorpay_success_url ?? url('/payments/razorpay/success'),
             'razorpay_failure_url' => $gateways->razorpay_failure_url ?? url('/payments/razorpay/failure'),
-            'razorpay_webhook_url' => $gateways->razorpay_webhook_url ?? url('/api/webhooks/payments/razorpay'),
+            'razorpay_webhook_url' => $gateways->razorpay_webhook_url ?? url('/api/webhooks/bookings/payments/razorpay'),
 
             'paypal_enabled' => $gateways->paypal_enabled,
             'paypal_mode' => $gateways->paypal_mode,

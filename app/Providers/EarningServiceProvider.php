@@ -9,6 +9,7 @@ use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorCompensationResolverInterface;
 use App\Earnings\Contracts\InstructorEarningRepositoryInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
+use App\Earnings\Contracts\InstructorPayoutEligibilityServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutExecutionServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutMethodServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutProviderRegistryInterface;
@@ -28,6 +29,7 @@ use App\Earnings\Services\FinancialFeatureConfigurationService;
 use App\Earnings\Services\InstructorCompensationAgreementService;
 use App\Earnings\Services\InstructorCompensationResolver;
 use App\Earnings\Services\InstructorEarningService;
+use App\Earnings\Services\InstructorPayoutEligibilityService;
 use App\Earnings\Services\InstructorPayoutExecutionService;
 use App\Earnings\Services\InstructorPayoutMethodService;
 use App\Earnings\Services\InstructorPayoutProviderResolver;
@@ -73,5 +75,9 @@ class EarningServiceProvider extends ServiceProvider
         $this->app->singleton(InstructorPayoutProviderResolverInterface::class, InstructorPayoutProviderResolver::class);
         $this->app->singleton(InstructorPayoutExecutionServiceInterface::class, InstructorPayoutExecutionService::class);
         $this->app->singleton(InstructorPayoutReconciliationServiceInterface::class, InstructorPayoutReconciliationService::class);
+
+        // Phase 16A.1 — provider-neutral route eligibility (distinct from
+        // account-level InstructorPayoutEligibility, Phase 15).
+        $this->app->singleton(InstructorPayoutEligibilityServiceInterface::class, InstructorPayoutEligibilityService::class);
     }
 }

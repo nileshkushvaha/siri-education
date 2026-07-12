@@ -12,13 +12,22 @@ use Throwable;
 
 final class PaymentWebhookSignatureService
 {
+    /** Gateways with a real signature-verification implementation below — a blank secret must fail closed for these. */
+    private const array VERIFIABLE_GATEWAYS = ['stripe', 'razorpay', 'cashfree'];
+
     public function isValid(string $gateway, Request $request, PaymentGatewaySettings $settings): bool
     {
         $secret = $this->decryptSecret($settings, "{$gateway}_webhook_secret");
 
         if (blank($secret)) {
-            // Allow if no secret configured (safe default for setup phase)
-            return true;
+            // Phase 16A.1 fix: a blank secret used to fail OPEN ("safe
+            // default for setup phase") — accepting an entirely unsigned
+            // request. It now fails closed for every gateway this class
+            // actually knows how to verify; only a gateway with no
+            // verification implemented at all (payu/phonepe — no real
+            // adapter exists yet — and manual, which by definition has no
+            // signature) still passes through unsigned.
+            return ! in_array($gateway, self::VERIFIABLE_GATEWAYS, true);
         }
 
         $payload = (string) $request->getContent();

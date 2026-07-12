@@ -23,7 +23,7 @@ class Country extends Model
         'flag', 'default_currency_id', 'default_language_id',
         'default_timezone', 'support_email', 'support_phone',
         'date_format', 'time_format', 'number_format',
-        'feature_flags', 'payment_routing', 'sort_order', 'status', 'remarks',
+        'feature_flags', 'payment_routing', 'payout_routing', 'sort_order', 'status', 'remarks',
     ];
 
     protected function casts(): array
@@ -31,6 +31,7 @@ class Country extends Model
         return [
             'feature_flags' => 'array',
             'payment_routing' => 'array',
+            'payout_routing' => 'array',
             'sort_order' => 'integer',
         ];
     }

@@ -32,6 +32,9 @@ class PaymentGatewaySettings extends Settings
 
     public bool $fake_enabled;
 
+    /** Phase 16A.1 — rollout policy (not a kill switch); see App\Booking\Enums\PaymentCollectionRolloutScope. */
+    public string $payment_collection_rollout_scope;
+
     // Per-provider readiness bookkeeping, set by PaymentGatewayConfigurationService
     // — never by hand. Distinct from *_enabled (an admin's on/off switch):
     // *_config_status reflects whether credentials actually pass validation.

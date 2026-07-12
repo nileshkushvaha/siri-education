@@ -12,12 +12,14 @@ use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
+use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Events\BookingPaymentSucceeded;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Wallet\Enums\WalletLedgerEntryType;
 use App\Wallet\Services\WalletLedgerService;
@@ -133,13 +135,136 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         return $booking;
     }
 
-    public function refund(Booking $booking, ?string $reason = null): Booking
+    /**
+     * Version 1 refund policy (Phase 16A.1): the default, normal-path
+     * refund never touches the gateway. It locks the booking (the
+     * serialization point shared with refundViaProvider — whichever
+     * path's transaction commits first wins; the loser sees
+     * payment_status no longer Paid or the resolution already tagged),
+     * credits the student's wallet in the payment's original currency,
+     * and finalizes in the same transaction — there is no external
+     * call here to hold the lock open for.
+     */
+    public function refundToWallet(Booking $booking, ?string $reason = null): Booking
     {
-        $this->assertPaid($booking);
+        return DB::transaction(function () use ($booking, $reason): Booking {
+            $booking = $this->lockedPaidBooking($booking);
+            $payment = $this->lockedUnresolvedCapturedPayment($booking);
 
-        $this->provider()->refund($booking);
+            $student = $booking->attendee;
+            // tryCreditWalletForRefund() mutates $payment's own metadata
+            // (wallet_ledger_entry_id) on success before we add the
+            // resolution tag here, so it is never overwritten below.
+            $credited = $student !== null && $this->tryCreditWalletForRefund($booking, $payment, $student);
 
-        return $this->recordRefund($booking, $reason);
+            $payment->forceFill([
+                'metadata' => $credited
+                    ? [...($payment->metadata ?? []), 'refund_resolution' => 'wallet_credited', 'refund_reason' => $reason]
+                    : [
+                        ...($payment->metadata ?? []),
+                        'refund_resolution' => 'manual_resolution_required',
+                        'manual_resolution_required' => true,
+                        'manual_resolution_reason' => $student === null
+                            ? 'Guest booking has no user account to hold a wallet credit — use refundViaProvider() or resolve manually.'
+                            : 'Automatic wallet credit failed — needs manual admin/support resolution.',
+                        'refund_reason' => $reason,
+                    ],
+            ])->save();
+
+            return $this->finalizeRefundedBooking($booking, $reason);
+        });
+    }
+
+    /** @throws never — see tryCreditStudentWallet()'s docblock for why every failure mode is caught here too. */
+    private function tryCreditWalletForRefund(Booking $booking, BookingPayment $payment, User $student): bool
+    {
+        try {
+            $wallet = $this->wallets->getOrCreateWallet($student, $payment->currency_code);
+
+            $entry = $this->walletLedger->credit(
+                $wallet,
+                $payment->amount_minor,
+                WalletLedgerEntryType::Refund,
+                $student,
+                idempotencyKey: sprintf('cancellation-refund:%s', $payment->id),
+                description: sprintf('Booking %s cancelled; amount credited to wallet.', $booking->reference),
+                sourceType: BookingPayment::class,
+                sourceId: (string) $payment->id,
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $payment->forceFill(['metadata' => [...($payment->metadata ?? []), 'wallet_ledger_entry_id' => $entry->id]])->save();
+
+        return true;
+    }
+
+    /**
+     * Exception-path refund. The gateway call happens with no database
+     * lock held (§16 of the Phase 16A.1 routing audit — the same rule
+     * as instructor payout execution): a short transaction claims the
+     * payment first, the network call happens outside it, then a
+     * second short transaction finalizes.
+     */
+    public function refundViaProvider(Booking $booking, User $actor, string $reason): Booking
+    {
+        if (trim($reason) === '') {
+            throw new BookingException('A reason is required for a direct provider refund.');
+        }
+
+        $payment = DB::transaction(function () use ($booking): BookingPayment {
+            $booking = $this->lockedPaidBooking($booking);
+            $payment = $this->lockedUnresolvedCapturedPayment($booking);
+
+            $payment->forceFill([
+                'metadata' => [...($payment->metadata ?? []), 'refund_resolution' => 'provider_refund_pending'],
+            ])->save();
+
+            return $payment;
+        });
+
+        try {
+            $this->provider()->refund($booking);
+        } catch (\Throwable $e) {
+            // The claim already committed — clear it so a retry (or the
+            // wallet-credit path) is not permanently locked out by a
+            // provider call that never actually moved money.
+            DB::transaction(function () use ($payment): void {
+                $payment = BookingPayment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $metadata = $payment->metadata ?? [];
+                unset($metadata['refund_resolution']);
+                $payment->forceFill(['metadata' => $metadata])->save();
+            });
+
+            throw $e;
+        }
+
+        return DB::transaction(function () use ($booking, $payment, $actor, $reason): Booking {
+            $payment = BookingPayment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            $payment->forceFill([
+                'metadata' => [
+                    ...($payment->metadata ?? []),
+                    'refund_resolution' => 'provider_refunded',
+                    'refund_reason' => $reason,
+                    'refunded_by' => $actor->id,
+                ],
+            ])->save();
+
+            $booking = $this->finalizeRefundedBooking($booking, $reason);
+
+            $this->audit->logOverride(
+                $actor,
+                'payments',
+                'payment_refunded_via_provider',
+                sprintf('Booking %s payment refunded directly via provider.', $booking->reference),
+                $reason,
+                $booking,
+            );
+
+            return $booking;
+        });
     }
 
     public function recordRefund(Booking $booking, ?string $reason = null): Booking
@@ -147,20 +272,74 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         $this->assertPaid($booking);
 
         return DB::transaction(function () use ($booking, $reason): Booking {
-            $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Refunded);
+            // Best-effort resolution tag for dashboard consistency — this
+            // path is a provider-initiated notification (e.g. a dashboard
+            // refund), so a matching captured row may already be tagged
+            // by refundViaProvider(), already resolved, or (in older
+            // fixtures/tests) absent entirely; none of those block the
+            // booking-status sync below, which is this method's contract.
+            $payment = BookingPayment::query()
+                ->where('booking_id', $booking->id)
+                ->where('status', BookingPaymentRecordStatus::Captured)
+                ->latest('created_at')
+                ->lockForUpdate()
+                ->first();
 
-            $this->logPayment($booking, BookingPaymentStatus::Refunded, array_filter(['reason' => $reason]));
-
-            // Sync: a refunded booking cannot stay bookable.
-            if (! $booking->status->isTerminal()) {
-                $booking = $this->bookingService->cancel($booking, new CancelBookingData(
-                    BookingActor::forUser(Auth::user(), $booking),
-                    $reason ?? 'Payment refunded',
-                ));
+            if ($payment !== null && ($payment->metadata['refund_resolution'] ?? null) === null) {
+                $payment->forceFill(['metadata' => [...($payment->metadata ?? []), 'refund_resolution' => 'provider_refunded_externally']])->save();
             }
 
-            return $booking;
+            return $this->finalizeRefundedBooking($booking, $reason);
         });
+    }
+
+    /** Shared status-sync tail for every refund path: Refunded + cancel if still active. */
+    private function finalizeRefundedBooking(Booking $booking, ?string $reason): Booking
+    {
+        $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Refunded);
+
+        $this->logPayment($booking, BookingPaymentStatus::Refunded, array_filter(['reason' => $reason]));
+
+        if (! $booking->status->isTerminal()) {
+            $booking = $this->bookingService->cancel($booking, new CancelBookingData(
+                BookingActor::forUser(Auth::user(), $booking),
+                $reason ?? 'Payment refunded',
+            ));
+        }
+
+        return $booking;
+    }
+
+    private function lockedPaidBooking(Booking $booking): Booking
+    {
+        $booking = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+
+        if ($booking->payment_status !== BookingPaymentStatus::Paid) {
+            throw new BookingException(sprintf('Booking %s is not paid — nothing to refund.', $booking->reference));
+        }
+
+        return $booking;
+    }
+
+    /** The same amount can never be refunded to both wallet and provider — this is the guard. */
+    private function lockedUnresolvedCapturedPayment(Booking $booking): BookingPayment
+    {
+        $payment = BookingPayment::query()
+            ->where('booking_id', $booking->id)
+            ->where('status', BookingPaymentRecordStatus::Captured)
+            ->latest('created_at')
+            ->lockForUpdate()
+            ->first();
+
+        if ($payment === null) {
+            throw new BookingException(sprintf('Booking %s has no captured payment to refund.', $booking->reference));
+        }
+
+        if (($payment->metadata['refund_resolution'] ?? null) !== null) {
+            throw new BookingException(sprintf('Booking %s payment was already resolved (%s).', $booking->reference, $payment->metadata['refund_resolution']));
+        }
+
+        return $payment;
     }
 
     /**

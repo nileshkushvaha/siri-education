@@ -7,13 +7,22 @@ namespace App\Booking\Contracts;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
+use App\Models\User;
 
 /**
  * Payment workflow for paid bookings. Provider-agnostic: gateway calls
  * go through PaymentProviderInterface (BookingSettings picks which).
  * Booking status stays synchronized: success confirms reserved
- * bookings, refunds cancel active ones, cancellation of a paid
- * booking triggers a refund (SyncPaymentOnCancellation).
+ * bookings, cancellation of a paid booking triggers a refund
+ * (SyncPaymentOnCancellation).
+ *
+ * Refund policy (Phase 16A.1, "Version 1"): the normal path never
+ * touches the gateway — `refundToWallet()` credits the student's
+ * wallet and is what SyncPaymentOnCancellation always calls. A direct
+ * gateway refund (`refundViaProvider()`) is a separately-permissioned
+ * exception action, never the default, and the two are mutually
+ * exclusive per payment — `BookingPayment.metadata['refund_resolution']`
+ * is the guard.
  */
 interface BookingPaymentServiceInterface
 {
@@ -36,14 +45,31 @@ interface BookingPaymentServiceInterface
     public function markFailed(Booking $booking, string $reference, ?string $reason = null): Booking;
 
     /**
-     * Actively refund via the provider, then record it.
+     * The default, normal-path refund: credits the student's wallet in
+     * the payment's original currency, never calls the gateway. Used
+     * by every automatic cancellation flow. Idempotent — a duplicate
+     * call (e.g. a retried queued listener) has no additional effect.
      *
-     * @throws BookingException when the booking is not paid
+     * @throws BookingException when the booking is not paid, or the payment cannot be attributed to a user
      */
-    public function refund(Booking $booking, ?string $reason = null): Booking;
+    public function refundToWallet(Booking $booking, ?string $reason = null): Booking;
 
     /**
-     * Record a refund that already happened provider-side (webhook).
+     * Exception-path refund: calls the real gateway directly. Never
+     * the default — reserved for duplicate charges, payments collected
+     * without a valid obligation, compliance/legal requirements, or
+     * finance-admin correction. Requires the acting user and a
+     * mandatory reason; mutually exclusive with `refundToWallet()` for
+     * the same payment.
+     *
+     * @throws BookingException when the booking is not paid, or this payment was already resolved
+     */
+    public function refundViaProvider(Booking $booking, User $actor, string $reason): Booking;
+
+    /**
+     * Record a refund that already happened provider-side (webhook) —
+     * e.g. a dashboard-initiated refund reported asynchronously. No
+     * money moves here; this only synchronizes local state.
      *
      * @throws BookingException when the booking is not paid
      */

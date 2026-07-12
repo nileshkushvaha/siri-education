@@ -127,7 +127,21 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
                 'receipt' => $reference,
                 'notes' => [
                     'booking_id' => $booking->id,
-                    'booking_reference' => $booking->reference,
+                    // Deliberately the PAYMENT reference ($reference,
+                    // = booking_payments.idempotency_key, same value as
+                    // `receipt` above), not $booking->reference — mirrors
+                    // the identical Phase 16C fix in StripePaymentProvider.
+                    // parseWebhook() reads this back and hands it straight
+                    // to BookingRepository::findByPaymentReference(), which
+                    // queries the `payment_reference` column. Using the
+                    // booking's own human reference here meant a webhook
+                    // arriving without a prior verifyCheckout() (client tab
+                    // closed before the checkout.js callback fired) would
+                    // report "unknown reference" and never settle — masked
+                    // in prior tests only because they built webhook
+                    // payloads with the payment reference directly rather
+                    // than through this metadata.
+                    'booking_reference' => $reference,
                 ],
             ]);
         } catch (GatewayRequestException $e) {

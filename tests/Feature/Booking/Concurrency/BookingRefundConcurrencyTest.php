@@ -12,9 +12,6 @@ use App\Models\BookingType;
 use App\Models\Currency;
 use App\Models\User;
 use App\Models\Wallet;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Symfony\Component\Process\Process;
-use Tests\TestCase;
 
 /**
  * Real multi-process race for the Phase 16A.1 refund policy: two
@@ -25,20 +22,8 @@ use Tests\TestCase;
  * Exactly one must win; the same amount must never be refunded twice
  * (invariant #14 of the Phase 16A.1 routing audit).
  */
-class BookingRefundConcurrencyTest extends TestCase
+class BookingRefundConcurrencyTest extends ConcurrencyTestCase
 {
-    use RefreshDatabase;
-
-    /** Commit for real — child processes must see the fixtures. */
-    protected array $connectionsToTransact = [];
-
-    public static function tearDownAfterClass(): void
-    {
-        exec(sprintf('cd %s && php artisan migrate:fresh --env=testing --force 2>&1', escapeshellarg(base_path())));
-
-        parent::tearDownAfterClass();
-    }
-
     public function test_concurrent_wallet_and_provider_refunds_resolve_exactly_once(): void
     {
         Currency::query()->firstOrCreate(['code' => 'INR'], [
@@ -102,40 +87,5 @@ class BookingRefundConcurrencyTest extends TestCase
         } else {
             $this->assertTrue($wallet === null || $wallet->balance_minor === 0);
         }
-    }
-
-    /**
-     * @param  list<array{0: string, 1: array<string, mixed>}>  $operations
-     * @return list<array<string, mixed>>
-     */
-    private function race(array $operations): array
-    {
-        $startAtMs = (int) (microtime(true) * 1000) + 4000;
-
-        $processes = array_map(function (array $operation) use ($startAtMs): Process {
-            [$op, $args] = $operation;
-
-            $process = new Process([
-                PHP_BINARY,
-                base_path('tests/Concurrency/run-op.php'),
-                $op,
-                json_encode($args, JSON_THROW_ON_ERROR),
-                (string) $startAtMs,
-            ], base_path(), ['APP_ENV' => 'testing'], null, 60);
-
-            $process->start();
-
-            return $process;
-        }, $operations);
-
-        return array_map(function (Process $process): array {
-            $process->wait();
-
-            $decoded = json_decode($process->getOutput(), true);
-
-            $this->assertIsArray($decoded, 'Concurrency worker produced no JSON verdict: '.$process->getOutput().$process->getErrorOutput());
-
-            return $decoded;
-        }, $processes);
     }
 }

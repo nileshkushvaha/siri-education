@@ -24,12 +24,9 @@ use App\Models\UserProfile;
 use App\Models\Wallet;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Mockery;
-use Symfony\Component\Process\Process;
 use Tests\Support\CreatesStudentLessonPrices;
-use Tests\TestCase;
 
 /**
  * Real multi-process races for Phase 16C's Stripe collection additions
@@ -42,26 +39,15 @@ use Tests\TestCase;
  * here, just re-run as part of the same 3-consecutive-run verification
  * pass.
  */
-class StripePaymentConcurrencyTest extends TestCase
+class StripePaymentConcurrencyTest extends ConcurrencyTestCase
 {
     use CreatesStudentLessonPrices;
-    use RefreshDatabase;
 
     private const SECRET_KEY = 'sk_test_concurrency123';
 
     private const PUBLISHABLE_KEY = 'pk_test_concurrency123';
 
     private const WEBHOOK_SECRET = 'whsec_test_concurrency123';
-
-    /** Commit for real — child processes must see the fixtures. */
-    protected array $connectionsToTransact = [];
-
-    public static function tearDownAfterClass(): void
-    {
-        exec(sprintf('cd %s && php artisan migrate:fresh --env=testing --force 2>&1', escapeshellarg(base_path())));
-
-        parent::tearDownAfterClass();
-    }
 
     // ── 1. Concurrent Stripe payment initiation ─────────────────────────
 
@@ -354,40 +340,5 @@ class StripePaymentConcurrencyTest extends TestCase
             'booking_reference' => $payment->idempotency_key,
             'webhook_secret' => self::WEBHOOK_SECRET,
         ];
-    }
-
-    /**
-     * @param  list<array{0: string, 1: array<string, mixed>}>  $operations
-     * @return list<array<string, mixed>>
-     */
-    private function race(array $operations): array
-    {
-        $startAtMs = (int) (microtime(true) * 1000) + 4000;
-
-        $processes = array_map(function (array $operation) use ($startAtMs): Process {
-            [$op, $args] = $operation;
-
-            $process = new Process([
-                PHP_BINARY,
-                base_path('tests/Concurrency/run-op.php'),
-                $op,
-                json_encode($args, JSON_THROW_ON_ERROR),
-                (string) $startAtMs,
-            ], base_path(), ['APP_ENV' => 'testing'], null, 60);
-
-            $process->start();
-
-            return $process;
-        }, $operations);
-
-        return array_map(function (Process $process): array {
-            $process->wait();
-
-            $decoded = json_decode($process->getOutput(), true);
-
-            $this->assertIsArray($decoded, 'Concurrency worker produced no JSON verdict: '.$process->getOutput().$process->getErrorOutput());
-
-            return $decoded;
-        }, $processes);
     }
 }

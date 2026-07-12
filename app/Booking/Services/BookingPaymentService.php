@@ -98,41 +98,51 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
     public function markPaid(Booking $booking, string $reference): Booking
     {
-        $this->assertReference($booking, $reference, expected: BookingPaymentStatus::Pending);
+        // Locked, re-validated read: the webhook controller and
+        // applyProviderStatus() (reconciliation/retry-verification) can
+        // both reach markPaid() for the SAME booking concurrently.
+        // assertReference() checking the caller-supplied $booking object
+        // (fetched before either process started) let two racers both
+        // observe "still Pending" and both proceed — locking the row
+        // here and re-reading from it closes that gap; the loser now
+        // reliably sees the winner's already-committed transition.
+        [$path, $booking] = DB::transaction(function () use ($booking, $reference): array {
+            $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
 
-        // A booking can go terminal (cancelled/expired/completed/no_show)
-        // while its payment_status is still Pending — CancelBookingAction
-        // never touches payment_status, so a genuinely authentic,
-        // signature-verified gateway success can still arrive here after
-        // the booking itself no longer represents a lesson anyone can
-        // attend. Option B (Phase 10.2B): the charge is real, so it is
-        // preserved and redirected to the student's wallet rather than
-        // rejected outright or silently confirming a dead booking.
-        if ($booking->status->isTerminal()) {
-            return $this->handleLateTerminalPayment($booking, $reference);
-        }
+            $this->assertReference($locked, $reference, expected: BookingPaymentStatus::Pending);
 
-        // Atomic: settle + release hold + confirm succeed or fail together,
-        // so a crash can never leave a paid-but-still-reserved booking.
-        $booking = DB::transaction(function () use ($booking, $reference): Booking {
-            $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Paid, $reference);
-            $booking = $this->bookings->clearReservation($booking);
-
-            $this->logPayment($booking, BookingPaymentStatus::Paid, ['payment_reference' => $reference]);
-
-            // Sync: a paid reservation confirms itself unless the type needs approval.
-            if ($booking->status === BookingStatus::Pending && ! $booking->type->requires_approval) {
-                $booking = $this->bookingService->confirm($booking);
+            // A booking can go terminal (cancelled/expired/completed/no_show)
+            // while its payment_status is still Pending — CancelBookingAction
+            // never touches payment_status, so a genuinely authentic,
+            // signature-verified gateway success can still arrive here after
+            // the booking itself no longer represents a lesson anyone can
+            // attend. Option B (Phase 10.2B): the charge is real, so it is
+            // preserved and redirected to the student's wallet rather than
+            // rejected outright or silently confirming a dead booking.
+            if ($locked->status->isTerminal()) {
+                return ['late_terminal', $this->handleLateTerminalPayment($locked, $reference)];
             }
 
-            return $booking;
+            $locked = $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Paid, $reference);
+            $locked = $this->bookings->clearReservation($locked);
+
+            $this->logPayment($locked, BookingPaymentStatus::Paid, ['payment_reference' => $reference]);
+
+            // Sync: a paid reservation confirms itself unless the type needs approval.
+            if ($locked->status === BookingStatus::Pending && ! $locked->type->requires_approval) {
+                $locked = $this->bookingService->confirm($locked);
+            }
+
+            return ['normal', $locked];
         });
 
         // After commit only — and never for Option B's late-terminal path,
         // which returned above without settling this booking. A duplicate
         // webhook cannot re-fire this: assertReference() already rejected
         // any delivery that finds payment_status !== Pending.
-        BookingPaymentSucceeded::dispatch($booking);
+        if ($path === 'normal') {
+            BookingPaymentSucceeded::dispatch($booking);
+        }
 
         return $booking;
     }
@@ -193,13 +203,18 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
     public function markFailed(Booking $booking, string $reference, ?string $reason = null): Booking
     {
-        $this->assertReference($booking, $reference, expected: BookingPaymentStatus::Pending);
+        // Same locked-read discipline as markPaid() — see its docblock.
+        return DB::transaction(function () use ($booking, $reference, $reason): Booking {
+            $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
 
-        $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Failed, $reference);
+            $this->assertReference($locked, $reference, expected: BookingPaymentStatus::Pending);
 
-        $this->logPayment($booking, BookingPaymentStatus::Failed, array_filter(['reason' => $reason]));
+            $locked = $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Failed, $reference);
 
-        return $booking;
+            $this->logPayment($locked, BookingPaymentStatus::Failed, array_filter(['reason' => $reason]));
+
+            return $locked;
+        });
     }
 
     /**

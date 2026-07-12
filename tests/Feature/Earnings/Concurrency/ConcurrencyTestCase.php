@@ -13,6 +13,7 @@ use App\Models\InstructorPayoutMethod;
 use App\Models\User;
 use App\Settings\InstructorEarningSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
@@ -68,7 +69,53 @@ abstract class ConcurrencyTestCase extends TestCase
     {
         // Committed fixtures must not leak into the transaction-wrapped
         // remainder of the suite.
-        exec(sprintf('cd %s && php artisan migrate:fresh --env=testing --force 2>&1', escapeshellarg(base_path())));
+        //
+        // Phase 16C.1 root-cause fix: this call used to discard exec()'s
+        // exit code entirely — a transient migration failure (the
+        // just-finished race's child processes each hold their own MySQL
+        // connection; a connection's locks are not always guaranteed
+        // released the instant the client process exits, and
+        // migrate:fresh's DROP TABLE/metadata-lock acquisition can
+        // transiently collide with that) was completely invisible,
+        // silently leaving a later, unrelated test class to inherit a
+        // partially-rebuilt database (traced during Phase 16C.1's
+        // full-suite audit to exactly this). Fixed: the exit code is
+        // checked, a genuine failure now fails loudly instead of
+        // silently, and a bounded retry absorbs the transient case.
+        // (`DB::purge()` was tried here too and reverted — it throws
+        // "Target class [config] does not exist", since tearDownAfterClass()
+        // runs after Laravel's per-test application container is already
+        // torn down; each test class gets its own fresh connection via
+        // the normal testing bootstrap regardless, so no purge is needed.)
+        $attempts = 0;
+        $exitCode = null;
+        $output = [];
+
+        while ($attempts < 3) {
+            $attempts++;
+            $output = [];
+            exec(
+                sprintf('cd %s && php artisan migrate:fresh --env=testing --force 2>&1', escapeshellarg(base_path())),
+                $output,
+                $exitCode,
+            );
+
+            if ($exitCode === 0) {
+                break;
+            }
+
+            usleep(300_000);
+        }
+
+        if ($exitCode !== 0) {
+            throw new RuntimeException(sprintf(
+                "migrate:fresh failed while restoring the testing database after %s, even after %d attempts (exit %d):\n%s",
+                static::class,
+                $attempts,
+                $exitCode,
+                implode("\n", $output),
+            ));
+        }
 
         parent::tearDownAfterClass();
     }

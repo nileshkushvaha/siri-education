@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\PaymentIntentData;
+use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\User;
 
 /**
@@ -84,4 +86,14 @@ interface BookingPaymentServiceInterface
      * @throws BookingException when the provider cannot be used, or no pending payment exists
      */
     public function checkoutPayload(Booking $booking): array;
+
+    /**
+     * The single financial-effect path a fetchStatus() poll (manual
+     * "retry verification", scheduled reconciliation sweep) is ever
+     * allowed to apply — reuses markPaid()/markFailed() internally, so
+     * reconciliation and webhook processing can never disagree about
+     * what "success" does. Idempotent: a payment already in a terminal
+     * status is left untouched (only its last-synced timestamp advances).
+     */
+    public function applyProviderStatus(BookingPayment $payment, PaymentStatusResult $status): BookingPayment;
 }

@@ -1,7 +1,12 @@
 <?php
 
 declare(strict_types=1);
+use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
+use App\Booking\Contracts\BookingServiceInterface;
+use App\Booking\Contracts\StripeGatewayClient;
+use App\Booking\DTOs\CancelBookingData;
+use App\Booking\Enums\BookingActor;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutExecutionServiceInterface;
@@ -14,6 +19,7 @@ use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
@@ -22,7 +28,11 @@ use App\Models\User;
 use App\Settings\RazorpayXPayoutSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Tests\Support\RazorpayXConcurrencyFakeClient;
+use Tests\Support\StripeConcurrencyFakeClient;
 
 /**
  * Child-process worker for the real-MySQL concurrency tests
@@ -218,6 +228,96 @@ try {
             $link = app(RazorpayXDestinationProvisioningServiceInterface::class)->provision($method, $actor);
 
             return ['link_id' => $link->id, 'status' => $link->status->value, 'contact_id' => $link->provider_contact_id, 'fund_account_id' => $link->provider_fund_account_id];
+        })(),
+
+        // Phase 16C — Stripe collection concurrency races. Binds a
+        // network-free fake client (Mockery cannot cross a process
+        // boundary) — the property under test is the database/service
+        // layer's uniqueness/locking/idempotency, never this client's
+        // behavior.
+        'stripe-initiate' => (function () use ($args) {
+            app()->instance(StripeGatewayClient::class, new StripeConcurrencyFakeClient(
+                simulateTimeoutOnCreate: (bool) ($args['simulate_timeout'] ?? false),
+            ));
+
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+
+            $intent = app(BookingPaymentServiceInterface::class)->initiate($booking);
+
+            return ['booking_id' => $booking->id, 'status' => $intent->status];
+        })(),
+
+        // Dispatches a genuinely signed Stripe webhook POST through the
+        // real HTTP kernel (routing + middleware + BookingPaymentWebhookController),
+        // exactly as a real Stripe delivery would arrive — never a direct
+        // service call, so this proves the full settlement path is race-safe.
+        'stripe-webhook-succeed' => (function () use ($args, $app) {
+            $body = json_encode([
+                'type' => 'payment_intent.succeeded',
+                'data' => [
+                    'object' => [
+                        'id' => $args['intent_id'],
+                        'amount' => $args['amount_minor'],
+                        'currency' => $args['currency'],
+                        'metadata' => ['booking_reference' => $args['booking_reference']],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR);
+
+            $timestamp = time();
+            $signature = hash_hmac('sha256', "{$timestamp}.{$body}", $args['webhook_secret']);
+
+            $request = Request::create(
+                '/api/webhooks/bookings/payments/stripe',
+                'POST',
+                [], [], [],
+                [
+                    'HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}",
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_ACCEPT' => 'application/json',
+                ],
+                $body,
+            );
+
+            $response = $app->make(HttpKernel::class)->handle($request);
+
+            return ['status_code' => $response->getStatusCode(), 'content' => $response->getContent()];
+        })(),
+
+        'reconcile-booking-payment' => (function () use ($args) {
+            app()->instance(StripeGatewayClient::class, new StripeConcurrencyFakeClient);
+
+            $payment = BookingPayment::query()->findOrFail($args['payment_id']);
+
+            $updated = app(BookingPaymentReconciliationServiceInterface::class)->reconcileAttempt($payment);
+
+            return ['payment_id' => $updated->id, 'status' => $updated->status->value];
+        })(),
+
+        'reconcile-booking-payments-sweep' => (function () use ($args) {
+            app()->instance(StripeGatewayClient::class, new StripeConcurrencyFakeClient);
+
+            $examined = app(BookingPaymentReconciliationServiceInterface::class)->reconcileDue((int) ($args['limit'] ?? 200));
+
+            return ['examined' => $examined];
+        })(),
+
+        'release-expired-booking-reservations' => (function () {
+            Artisan::call('booking:release-expired');
+
+            return ['ran' => true];
+        })(),
+
+        'cancel-booking-as-user' => (function () use ($args) {
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(
+                BookingActor::forUser($actor, $booking),
+                'Concurrency test cancellation.',
+            ));
+
+            return ['cancelled' => true];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

@@ -14,6 +14,7 @@ use App\Booking\Contracts\AvailabilityServiceInterface;
 use App\Booking\Contracts\BookingAnalyticsRepositoryInterface;
 use App\Booking\Contracts\BookingAnalyticsServiceInterface;
 use App\Booking\Contracts\BookingMeetingServiceInterface;
+use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
@@ -51,6 +52,7 @@ use App\Booking\Repositories\TeacherCandidateRepository;
 use App\Booking\Services\AvailabilityService;
 use App\Booking\Services\BookingAnalyticsService;
 use App\Booking\Services\BookingMeetingService;
+use App\Booking\Services\BookingPaymentReconciliationService;
 use App\Booking\Services\BookingPaymentService;
 use App\Booking\Services\BookingService;
 use App\Booking\Services\GuestBookingService;
@@ -98,6 +100,10 @@ class BookingServiceProvider extends ServiceProvider
         // Phase 16A.1 — provider-neutral collection route eligibility, the
         // collection-side counterpart of InstructorPayoutEligibilityService.
         $this->app->bind(PaymentCollectionEligibilityServiceInterface::class, PaymentCollectionEligibilityService::class);
+
+        // Phase 16C — collection-side reconciliation, the counterpart of
+        // InstructorPayoutReconciliationService.
+        $this->app->bind(BookingPaymentReconciliationServiceInterface::class, BookingPaymentReconciliationService::class);
 
         // Official SDKs (razorpay/razorpay, stripe/stripe-php) are isolated
         // behind these two adapters — RazorpayPaymentProvider/StripePaymentProvider

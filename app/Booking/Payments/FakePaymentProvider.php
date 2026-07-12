@@ -8,6 +8,7 @@ use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentProviderHealth;
+use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
@@ -133,6 +134,22 @@ final class FakePaymentProvider implements PaymentProviderInterface
         ];
     }
 
+    /** No gateway to poll — reflects back whatever the local row already says. */
+    public function fetchStatus(string $providerReference): PaymentStatusResult
+    {
+        $payment = BookingPayment::query()
+            ->where('idempotency_key', $providerReference)
+            ->latest('created_at')
+            ->first();
+
+        return new PaymentStatusResult(
+            recordStatus: $payment?->status ?? BookingPaymentRecordStatus::Unknown,
+            providerPaymentId: $payment?->provider_payment_id,
+            providerStatus: $payment?->status->value,
+            safeReason: null,
+        );
+    }
+
     /** Deliberately unrestricted — exists to prove routing/eligibility works, not to simulate a real provider's actual approvals. */
     public function capabilities(): PaymentProviderCapabilities
     {
@@ -146,7 +163,7 @@ final class FakePaymentProvider implements PaymentProviderInterface
             supportedPaymentMethods: [],
             supportsWalletRecharge: true,
             supportsDirectBookingPayment: true,
-            supportsStatusFetch: false,
+            supportsStatusFetch: true,
             supportsWebhooks: true,
             supportsRefunds: true,
             supportsPartialRefunds: false,

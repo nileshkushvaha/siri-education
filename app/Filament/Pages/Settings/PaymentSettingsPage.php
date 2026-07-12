@@ -117,12 +117,13 @@ abstract class PaymentSettingsPage extends Page
             'stripe_failure_url' => $gateways->stripe_failure_url ?? url('/payments/stripe/failure'),
             // Phase 16A.1 fix: this must be the real settlement route
             // (api/webhooks/bookings/payments/{provider}) — the generic
-            // api/webhooks/payments/{gateway} path only logs/audits and
-            // never settles a booking (see PaymentWebhookProcessor).
+            // api/webhooks/payments/generic/{gateway} path only logs/audits
+            // and never settles a booking (see PaymentWebhookProcessor).
             // Stripe/Razorpay are the only gateways with a registered
             // PaymentProviderInterface adapter, so only their defaults
             // change here; paypal/cashfree/payu/phonepe/manual have no
-            // adapter at all and genuinely have nowhere else to point.
+            // adapter at all and genuinely have nowhere else to point —
+            // their defaults below intentionally still use the generic path.
             'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/bookings/payments/stripe'),
 
             'razorpay_enabled' => $gateways->razorpay_enabled,
@@ -141,7 +142,7 @@ abstract class PaymentSettingsPage extends Page
             'paypal_webhook_secret' => null,
             'paypal_success_url' => $gateways->paypal_success_url ?? url('/payments/paypal/success'),
             'paypal_failure_url' => $gateways->paypal_failure_url ?? url('/payments/paypal/failure'),
-            'paypal_webhook_url' => $gateways->paypal_webhook_url ?? url('/api/webhooks/payments/paypal'),
+            'paypal_webhook_url' => $gateways->paypal_webhook_url ?? url('/api/webhooks/payments/generic/paypal'),
 
             'cashfree_enabled' => $gateways->cashfree_enabled,
             'cashfree_environment' => $gateways->cashfree_environment,
@@ -150,7 +151,7 @@ abstract class PaymentSettingsPage extends Page
             'cashfree_webhook_secret' => null,
             'cashfree_success_url' => $gateways->cashfree_success_url ?? url('/payments/cashfree/success'),
             'cashfree_failure_url' => $gateways->cashfree_failure_url ?? url('/payments/cashfree/failure'),
-            'cashfree_webhook_url' => $gateways->cashfree_webhook_url ?? url('/api/webhooks/payments/cashfree'),
+            'cashfree_webhook_url' => $gateways->cashfree_webhook_url ?? url('/api/webhooks/payments/generic/cashfree'),
 
             'payu_enabled' => $gateways->payu_enabled,
             'payu_sandbox_mode' => $gateways->payu_sandbox_mode,
@@ -160,7 +161,7 @@ abstract class PaymentSettingsPage extends Page
             'payu_webhook_secret' => null,
             'payu_success_url' => $gateways->payu_success_url ?? url('/payments/payu/success'),
             'payu_failure_url' => $gateways->payu_failure_url ?? url('/payments/payu/failure'),
-            'payu_webhook_url' => $gateways->payu_webhook_url ?? url('/api/webhooks/payments/payu'),
+            'payu_webhook_url' => $gateways->payu_webhook_url ?? url('/api/webhooks/payments/generic/payu'),
 
             'phonepe_enabled' => $gateways->phonepe_enabled,
             'phonepe_sandbox_mode' => $gateways->phonepe_sandbox_mode,
@@ -170,7 +171,7 @@ abstract class PaymentSettingsPage extends Page
             'phonepe_webhook_secret' => null,
             'phonepe_success_url' => $gateways->phonepe_success_url ?? url('/payments/phonepe/success'),
             'phonepe_failure_url' => $gateways->phonepe_failure_url ?? url('/payments/phonepe/failure'),
-            'phonepe_webhook_url' => $gateways->phonepe_webhook_url ?? url('/api/webhooks/payments/phonepe'),
+            'phonepe_webhook_url' => $gateways->phonepe_webhook_url ?? url('/api/webhooks/payments/generic/phonepe'),
 
             'manual_enabled' => $gateways->manual_enabled,
             'manual_payment_instructions' => $gateways->manual_payment_instructions,

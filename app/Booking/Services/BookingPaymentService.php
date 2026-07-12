@@ -10,6 +10,7 @@ use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\PaymentIntentData;
+use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentRecordStatus;
@@ -75,12 +76,24 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             ));
         }
 
-        $reference = $booking->payment_reference ?? 'PAY-'.strtoupper(Str::random(12));
+        // Locked claim: two concurrent initiate() calls for the same
+        // booking (double-click, retried request) must agree on one
+        // reference. Reading payment_reference unlocked (the previous
+        // behavior) let both racers see null, mint their own random
+        // reference, and each successfully create its own BookingPayment
+        // row — a real duplicate-attempt bug a genuine MySQL race
+        // surfaces (Phase 16C concurrency tests). Locking the row before
+        // reading forces the loser to observe the winner's committed
+        // reference and reuse it instead.
+        $booking = DB::transaction(function () use ($booking): Booking {
+            $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            $reference = $locked->payment_reference ?? 'PAY-'.strtoupper(Str::random(12));
 
-        // A retry after failure goes back to pending with the same reference.
-        $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Pending, $reference);
+            // A retry after failure goes back to pending with the same reference.
+            return $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Pending, $reference);
+        });
 
-        return $this->provider($booking)->createPayment($booking, $reference);
+        return $this->provider($booking)->createPayment($booking, (string) $booking->payment_reference);
     }
 
     public function markPaid(Booking $booking, string $reference): Booking
@@ -122,6 +135,60 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         BookingPaymentSucceeded::dispatch($booking);
 
         return $booking;
+    }
+
+    /**
+     * The single financial-effect path a fetchStatus() poll (manual
+     * "retry verification", scheduled reconciliation sweep) is ever
+     * allowed to apply — deliberately reuses markPaid()/markFailed(),
+     * never a separate settlement code path, so reconciliation and
+     * webhook processing can never disagree about what "success" does
+     * (same discipline as InstructorPayoutExecutionService::applyProviderStatus()
+     * on the payout side).
+     *
+     * Idempotent: a payment row already in a terminal status is left
+     * untouched (only last_synced_at advances) — reconciliation
+     * confirms an already-settled outcome, it never re-applies one. A
+     * markPaid()/markFailed() call losing a race to a webhook that
+     * settled the same booking first is swallowed the same way the
+     * webhook controller itself swallows it (BookingException from
+     * assertReference() means "already handled," not a real failure).
+     */
+    public function applyProviderStatus(BookingPayment $payment, PaymentStatusResult $status): BookingPayment
+    {
+        $payment = BookingPayment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+        if ($payment->status->isTerminal()) {
+            $payment->forceFill(['last_synced_at' => now()])->save();
+
+            return $payment;
+        }
+
+        $payment->forceFill([
+            'status' => $status->recordStatus,
+            'provider_payment_id' => $status->providerPaymentId ?? $payment->provider_payment_id,
+            'last_synced_at' => now(),
+            ...($status->recordStatus === BookingPaymentRecordStatus::Captured ? ['paid_at' => now()] : []),
+            ...($status->recordStatus === BookingPaymentRecordStatus::Failed ? ['failed_at' => now()] : []),
+        ])->save();
+
+        $booking = $this->bookings->find($payment->booking_id);
+
+        if ($booking !== null && $status->recordStatus === BookingPaymentRecordStatus::Captured) {
+            try {
+                $this->markPaid($booking, $payment->idempotency_key);
+            } catch (BookingException) {
+                // Already settled by a concurrent webhook — no-op.
+            }
+        } elseif ($booking !== null && $status->recordStatus === BookingPaymentRecordStatus::Failed) {
+            try {
+                $this->markFailed($booking, $payment->idempotency_key, $status->safeReason);
+            } catch (BookingException) {
+                // Already settled by a concurrent webhook — no-op.
+            }
+        }
+
+        return BookingPayment::query()->whereKey($payment->id)->firstOrFail();
     }
 
     public function markFailed(Booking $booking, string $reference, ?string $reason = null): Booking

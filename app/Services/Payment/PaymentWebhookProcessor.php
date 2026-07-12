@@ -8,6 +8,19 @@ use App\Services\AuditTrailService;
 use App\Settings\PaymentAdvancedSettings;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * The generic gateway webhook path (routes/api.php:
+ * `/webhooks/payments/generic/{gateway}`) — logs/audits only. It never
+ * settles a booking payment, never credits a wallet, never touches any
+ * domain model. It belongs to the pre-booking generic-invoicing
+ * settings scaffold (`PaymentGatewaySettings`/`PaymentSettingsPage`),
+ * not to the Booking payment pipeline. The real, authoritative
+ * settlement route for Stripe/Razorpay is
+ * `BookingPaymentWebhookController` at
+ * `/webhooks/bookings/payments/{provider}` — never point a real
+ * gateway's webhook configuration at this class instead (see the
+ * default-URL comment in PaymentSettingsPage::mount()).
+ */
 final class PaymentWebhookProcessor
 {
     public function __construct(
@@ -48,6 +61,8 @@ final class PaymentWebhookProcessor
             );
         }
 
-        // Hook point: domain-specific payment reconciliation can be added here.
+        // This is a dead end by design — see the class docblock. Domain-
+        // specific reconciliation lives in BookingPaymentReconciliationService
+        // (Phase 16C), which never reads from this generic/inert path.
     }
 }

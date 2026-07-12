@@ -140,6 +140,20 @@
 
                     <p class="mt-2 text-[11px] text-slate-500">Pay with wallet balance — coming soon.</p>
 
+                    @if(($paymentOrder['provider'] ?? null) === 'stripe')
+                        {{-- wire:ignore: this subtree is polled by checkPaymentStatus() every few
+                             seconds while confirming — Livewire must never re-morph it, or the
+                             mounted Stripe Elements iframe (DOM Livewire doesn't know about) would
+                             be torn down mid-confirmation. --}}
+                        <div class="mt-3" wire:ignore>
+                            <div id="stripe-payment-element" class="rounded-lg bg-white p-3"></div>
+                            <p id="stripe-payment-errors" class="mt-2 text-xs font-semibold text-rose-300" role="alert"></p>
+                            <x-ui.button type="button" id="stripe-confirm-button" class="mt-3 w-full justify-center" disabled>
+                                Confirm card payment
+                            </x-ui.button>
+                        </div>
+                    @endif
+
                     @if(($paymentOrder['provider'] ?? null) === 'fake' && app()->environment(['local', 'testing']))
                         <div class="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3">
                             <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200">Test mode — fake provider</p>
@@ -205,4 +219,5 @@
 
 @script
 @include('livewire.frontend.booking.partials.razorpay-checkout-script')
+@include('livewire.frontend.booking.partials.stripe-checkout-script')
 @endscript

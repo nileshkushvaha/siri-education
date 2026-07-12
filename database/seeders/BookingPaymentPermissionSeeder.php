@@ -14,11 +14,14 @@ use Spatie\Permission\PermissionRegistrar;
  * Booking payment record permissions (Filament Shield naming).
  * Idempotent. Still no Manage/Create/Update/Delete permission — a
  * payment attempt is only ever written by the providers and the
- * webhook/checkout-verification flow. Phase 16A.1 adds exactly one
- * mutation: `RefundViaProvider:BookingPayment`, the separately-
- * permissioned exception action for a direct gateway refund (the
- * normal cancellation path is automatic and needs no permission — it
- * credits the wallet, never the gateway).
+ * webhook/checkout-verification flow. Phase 16A.1 adds one mutation:
+ * `RefundViaProvider:BookingPayment`, the separately-permissioned
+ * exception action for a direct gateway refund (the normal
+ * cancellation path is automatic and needs no permission — it credits
+ * the wallet, never the gateway). Phase 16C adds
+ * `RetryVerification:BookingPayment` — re-runs an authenticated
+ * provider status fetch (BookingPaymentReconciliationService::reconcileAttempt())
+ * on demand; never a status edit, never a mark-paid action.
  */
 class BookingPaymentPermissionSeeder extends Seeder
 {
@@ -26,7 +29,7 @@ class BookingPaymentPermissionSeeder extends Seeder
 
     private const array MANAGER_PERMISSIONS = [
         'ViewAny:BookingPayment', 'View:BookingPayment',
-        'RefundViaProvider:BookingPayment',
+        'RefundViaProvider:BookingPayment', 'RetryVerification:BookingPayment',
     ];
 
     public function run(): void

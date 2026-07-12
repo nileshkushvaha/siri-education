@@ -9,6 +9,7 @@ use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentProviderHealth;
+use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
@@ -392,6 +393,43 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         ];
     }
 
+    /**
+     * Authenticated order-status poll — reconciliation's boundary call,
+     * never the primary settlement path (verifyCheckout()/parseWebhook()
+     * remain that). Razorpay's order status (created/attempted/paid) is
+     * coarser than a payment's own status, but the order is the only
+     * reference reconciliation reliably has before a payment settles.
+     */
+    public function fetchStatus(string $providerReference): PaymentStatusResult
+    {
+        $this->assertConfigured();
+
+        $payment = BookingPayment::query()
+            ->where('provider_order_id', $providerReference)
+            ->latest('created_at')
+            ->first();
+
+        try {
+            $order = $this->client->fetchOrder($this->keyId(), $this->keySecret(), $providerReference);
+        } catch (GatewayRequestException $e) {
+            throw new BookingException('Unable to fetch Razorpay order status: '.$e->getMessage());
+        }
+
+        $orderStatus = (string) ($order['status'] ?? '');
+
+        return new PaymentStatusResult(
+            recordStatus: match ($orderStatus) {
+                'paid' => BookingPaymentRecordStatus::Captured,
+                'attempted' => BookingPaymentRecordStatus::Processing,
+                'created' => BookingPaymentRecordStatus::Pending,
+                default => BookingPaymentRecordStatus::Unknown,
+            },
+            providerPaymentId: $payment?->provider_payment_id,
+            providerStatus: $orderStatus !== '' ? $orderStatus : null,
+            safeReason: null,
+        );
+    }
+
     /** Enabled AND key_id passes format validation AND a secret is present. */
     public function isConfigured(): bool
     {
@@ -450,7 +488,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             supportedPaymentMethods: [],
             supportsWalletRecharge: false,
             supportsDirectBookingPayment: true,
-            supportsStatusFetch: false,
+            supportsStatusFetch: true,
             supportsWebhooks: true,
             supportsRefunds: true,
             supportsPartialRefunds: false,

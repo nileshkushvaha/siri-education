@@ -38,4 +38,15 @@ final class RazorpaySdkClient implements RazorpayGatewayClient
             throw new GatewayRequestException($e->getMessage(), previous: $e);
         }
     }
+
+    public function fetchOrder(string $keyId, string $keySecret, string $orderId): array
+    {
+        try {
+            $api = new Api($keyId, $keySecret);
+
+            return $api->order->fetch($orderId)->toArray();
+        } catch (Error|Throwable $e) {
+            throw new GatewayRequestException($e->getMessage(), previous: $e);
+        }
+    }
 }

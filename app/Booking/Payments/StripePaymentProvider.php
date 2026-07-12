@@ -9,6 +9,7 @@ use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentProviderHealth;
+use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
@@ -84,52 +85,64 @@ final class StripePaymentProvider implements PaymentProviderInterface
             ));
         }
 
-        $reusable = BookingPayment::query()
+        $existingAttempt = BookingPayment::query()
             ->where('booking_id', $booking->id)
             ->where('idempotency_key', $reference)
-            ->where('status', BookingPaymentRecordStatus::Pending)
-            ->whereNotNull('provider_order_id')
             ->latest('created_at')
             ->first();
 
-        if ($reusable !== null) {
+        if ($existingAttempt?->provider_order_id !== null) {
             // No re-fetch here: initiate()'s return value is not what the
             // frontend actually uses (checkoutPayload() is, called
             // explicitly, always fresh) — re-fetching on every reused
             // initiate() would turn a free idempotent no-op into an
             // avoidable Stripe API call.
-            return $this->intentFrom($booking, $reference, $reusable, clientSecret: '');
+            return $this->intentFrom($booking, $reference, $existingAttempt, clientSecret: '');
         }
 
         $amountMinor = $this->toMinorUnits((float) $booking->price, $currencyCode);
 
-        try {
-            $payment = BookingPayment::query()->create([
-                'booking_id' => $booking->id,
-                'user_id' => $booking->attendee_id,
-                'provider' => self::KEY,
-                'amount_minor' => $amountMinor,
-                'currency_code' => $currencyCode,
-                'status' => BookingPaymentRecordStatus::Pending,
-                'idempotency_key' => $reference,
-                'metadata' => ['receipt' => $reference],
-                'created_by' => Auth::id(),
-            ]);
-        } catch (UniqueConstraintViolationException) {
-            // Same concurrent-request race Razorpay guards against — a
-            // duplicate initiate() call for the same reference reuses
-            // the row the other request already created.
-            $existing = BookingPayment::query()
-                ->where('booking_id', $booking->id)
-                ->where('idempotency_key', $reference)
-                ->latest('created_at')
-                ->first();
+        if ($existingAttempt !== null) {
+            // A prior attempt for this exact reference exists but never
+            // reached the gateway (Pending — a concurrent request is
+            // likely still in flight — or Failed — the gateway call
+            // itself errored last time, e.g. a timeout). idempotency_key
+            // is unique, so a genuine retry after a definitive failure
+            // must reuse this row, never attempt a second INSERT: reset
+            // it in place and try the gateway call again.
+            $payment = $existingAttempt;
+            $payment->forceFill(['status' => BookingPaymentRecordStatus::Pending, 'failed_at' => null])->save();
+        } else {
+            try {
+                $payment = BookingPayment::query()->create([
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->attendee_id,
+                    'provider' => self::KEY,
+                    'amount_minor' => $amountMinor,
+                    'currency_code' => $currencyCode,
+                    'status' => BookingPaymentRecordStatus::Pending,
+                    'idempotency_key' => $reference,
+                    'metadata' => ['receipt' => $reference],
+                    'created_by' => Auth::id(),
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                // Lost the race to a concurrent request for the same
+                // reference (double-click, retried request). Its row
+                // already exists; reuse it once it has an order_id, or ask
+                // the caller to retry rather than surfacing the raw
+                // constraint violation.
+                $existing = BookingPayment::query()
+                    ->where('booking_id', $booking->id)
+                    ->where('idempotency_key', $reference)
+                    ->latest('created_at')
+                    ->first();
 
-            if ($existing?->provider_order_id !== null) {
-                return $this->intentFrom($booking, $reference, $existing, clientSecret: '');
+                if ($existing?->provider_order_id !== null) {
+                    return $this->intentFrom($booking, $reference, $existing, clientSecret: '');
+                }
+
+                throw new BookingException('Payment intent creation is already in progress — please retry.');
             }
-
-            throw new BookingException('Payment intent creation is already in progress — please retry.');
         }
 
         try {
@@ -141,7 +154,18 @@ final class StripePaymentProvider implements PaymentProviderInterface
                 'currency' => strtolower($currencyCode),
                 'metadata' => [
                     'booking_id' => $booking->id,
-                    'booking_reference' => $booking->reference,
+                    // Deliberately the PAYMENT reference ($reference,
+                    // = booking_payments.idempotency_key), not $booking->reference
+                    // — parseWebhook() reads this back and hands it straight to
+                    // BookingRepository::findByPaymentReference(), which queries
+                    // the `payment_reference` column. Using the booking's own
+                    // human reference here was a real bug: a genuine Stripe
+                    // webhook would report "unknown reference" and never settle,
+                    // since Stripe is the only settlement path this provider has
+                    // (no verifyCheckout() equivalent) — masked in prior tests
+                    // only because they built webhook payloads with the payment
+                    // reference directly rather than through this metadata.
+                    'booking_reference' => $reference,
                 ],
             ], $reference);
         } catch (GatewayRequestException $e) {
@@ -278,6 +302,11 @@ final class StripePaymentProvider implements PaymentProviderInterface
                 'status' => BookingPaymentRecordStatus::Failed,
                 'failed_at' => now(),
             ])->save(),
+            // SCA/3DS in progress — never touches the booking; a later
+            // webhook (succeeded/failed) is what actually settles it.
+            PaymentWebhookEvent::Processing => $payment->forceFill([
+                'status' => BookingPaymentRecordStatus::Processing,
+            ])->save(),
             default => null,
         };
     }
@@ -320,6 +349,45 @@ final class StripePaymentProvider implements PaymentProviderInterface
     }
 
     /**
+     * Authenticated PaymentIntent status poll — reconciliation's
+     * boundary call, never the primary settlement path (the webhook
+     * remains that). Reuses the same retrieve-intent call as
+     * retrieveClientSecret(), so no second gateway seam is introduced.
+     */
+    public function fetchStatus(string $providerReference): PaymentStatusResult
+    {
+        $this->assertConfigured();
+
+        $payment = BookingPayment::query()
+            ->where('provider_order_id', $providerReference)
+            ->latest('created_at')
+            ->first();
+
+        try {
+            $intent = $this->client->retrievePaymentIntent($this->secretKey(), $providerReference);
+        } catch (GatewayRequestException $e) {
+            throw new BookingException('Unable to fetch Stripe payment intent status: '.$e->getMessage());
+        }
+
+        $intentStatus = (string) ($intent['status'] ?? '');
+
+        return new PaymentStatusResult(
+            recordStatus: match ($intentStatus) {
+                'succeeded' => BookingPaymentRecordStatus::Captured,
+                'processing' => BookingPaymentRecordStatus::Processing,
+                'requires_payment_method', 'requires_confirmation', 'requires_action', 'requires_capture' => BookingPaymentRecordStatus::Pending,
+                'canceled' => BookingPaymentRecordStatus::Cancelled,
+                default => BookingPaymentRecordStatus::Unknown,
+            },
+            providerPaymentId: (string) ($intent['id'] ?? $payment?->provider_order_id) ?: null,
+            providerStatus: $intentStatus !== '' ? $intentStatus : null,
+            safeReason: is_array($intent['last_payment_error'] ?? null)
+                ? ($intent['last_payment_error']['message'] ?? null)
+                : null,
+        );
+    }
+
+    /**
      * A signature-verified webhook proves Stripe sent it, not that it
      * matches the order this integration created — only checked for the
      * event that settles a booking as paid, mirroring
@@ -357,6 +425,7 @@ final class StripePaymentProvider implements PaymentProviderInterface
         return match ($event) {
             'payment_intent.succeeded' => PaymentWebhookEvent::Succeeded,
             'payment_intent.payment_failed' => PaymentWebhookEvent::Failed,
+            'payment_intent.processing' => PaymentWebhookEvent::Processing,
             'charge.refunded' => PaymentWebhookEvent::Refunded,
             default => PaymentWebhookEvent::Ignored,
         };

@@ -35,6 +35,12 @@ class PaymentGatewaySettings extends Settings
     /** Phase 16A.1 — rollout policy (not a kill switch); see App\Booking\Enums\PaymentCollectionRolloutScope. */
     public string $payment_collection_rollout_scope;
 
+    /** Phase 16C — gates BookingPaymentReconciliationService::reconcileDue(); detection-only, moves no money. */
+    public bool $booking_payment_reconciliation_enabled;
+
+    /** Minutes a non-terminal payment must sit unsynced before a reconciliation sweep polls it again. */
+    public int $booking_payment_unknown_timeout_minutes;
+
     // Per-provider readiness bookkeeping, set by PaymentGatewayConfigurationService
     // — never by hand. Distinct from *_enabled (an admin's on/off switch):
     // *_config_status reflects whether credentials actually pass validation.

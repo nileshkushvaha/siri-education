@@ -271,13 +271,21 @@ final class BookingWizard extends Component
                     email: $this->email,
                 );
             } elseif (($payload['provider'] ?? null) === 'stripe') {
-                // Deliberately not stored on $paymentOrder (a public,
-                // client-hydrated property) — see BookingHistory::initiatePayment()
-                // for the identical rationale (checkoutPayload() for Stripe
-                // includes a live, usable client_secret with no consumer
-                // while the frontend stays deferred).
+                // client_secret/publishable_key travel only in the transient
+                // dispatch payload, never stored on $paymentOrder (a public,
+                // client-hydrated Livewire property) — see
+                // BookingHistory::initiatePayment() for the identical
+                // rationale. The frontend mounts Stripe's Payment Element
+                // and calls stripe.confirmPayment() directly with Stripe;
+                // this component never receives the outcome back from that
+                // call — only a signed webhook may settle the booking (see
+                // checkPaymentStatus(), which only ever reads state).
                 $this->paymentOrder = ['provider' => 'stripe'];
-                $this->paymentBanner = 'Card payment via Stripe is coming soon. Please contact support to complete this payment.';
+                $this->dispatch(
+                    'stripe-checkout-ready',
+                    clientSecret: $payload['client_secret'],
+                    publishableKey: $payload['publishable_key'],
+                );
             } else {
                 $this->paymentOrder = $payload;
             }
@@ -339,6 +347,30 @@ final class BookingWizard extends Component
             $this->result = $this->wizard->result($booking->refresh());
         } catch (InvalidPaymentWebhookException|BookingException $exception) {
             $this->paymentBanner = $exception->getMessage();
+        }
+    }
+
+    /**
+     * Polled by the Stripe Payment Element partial after
+     * stripe.confirmPayment() returns client-side — never trusted as
+     * settlement itself, only a signal to re-check what the server
+     * already knows. Only a signed webhook (StripePaymentProvider::parseWebhook())
+     * ever calls markPaid()/markFailed() for Stripe; this method makes
+     * no state change of its own, it only re-reads and re-renders.
+     */
+    public function checkPaymentStatus(): void
+    {
+        if ($this->bookingId === null) {
+            return;
+        }
+
+        $booking = $this->bookings->findOrFail($this->bookingId)->refresh();
+
+        if ($booking->payment_status->value === 'paid') {
+            $this->paymentBanner = '';
+            $this->result = $this->wizard->result($booking);
+        } elseif ($booking->payment_status->value === 'failed') {
+            $this->paymentBanner = 'Payment failed. Please try again.';
         }
     }
 

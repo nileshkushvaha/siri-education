@@ -228,6 +228,139 @@ class CrossDomainFinancialIsolationTest extends TestCase
         }
     }
 
+    // ── Phase 16C additions ─────────────────────────────────────────────
+
+    public function test_no_guest_payment_route_exists(): void
+    {
+        // GuestBookingPaymentController exists (Phase 10.2C-Fix, kept for
+        // reference) but must never be bound to any route — no
+        // unauthenticated user may initiate payment.
+        foreach (app('router')->getRoutes() as $route) {
+            $this->assertStringNotContainsStringIgnoringCase(
+                'GuestBookingPaymentController',
+                $route->getActionName(),
+                "No route may resolve to GuestBookingPaymentController: {$route->uri()}",
+            );
+        }
+    }
+
+    public function test_no_manual_mark_paid_action_exists_in_the_admin_panel(): void
+    {
+        // Neither the read-only BookingPaymentResource nor the
+        // reconciliation-issue resource may expose a generic status edit
+        // or a manual "mark paid" action — only markPaid()/applyProviderStatus(),
+        // reached exclusively via a signed webhook or an authenticated
+        // provider status fetch, may ever do that.
+        foreach ([
+            app_path('Filament/Resources/BookingPayments/Tables/BookingPaymentsTable.php'),
+            app_path('Filament/Resources/BookingPaymentReconciliationIssues/Tables/BookingPaymentReconciliationIssuesTable.php'),
+        ] as $path) {
+            $code = file_get_contents($path);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/status\s*=>\s*BookingPaymentRecordStatus::Captured|payment_status\s*=>\s*BookingPaymentStatus::Paid|->markPaid\(/',
+                $code,
+                "Admin table must never directly settle a payment: {$path}",
+            );
+        }
+    }
+
+    public function test_browser_code_cannot_set_payment_status(): void
+    {
+        // Every Livewire component under Booking must never assign
+        // payment_status/BookingPaymentRecordStatus directly — settlement
+        // is exclusively BookingPaymentService's job (markPaid()/
+        // markFailed()/applyProviderStatus()), reached only via a signed
+        // webhook or (client-side) an authenticated re-check that itself
+        // makes no write (checkPaymentStatus()).
+        foreach ($this->phpFilesIn([app_path('Livewire/Frontend/Booking'), app_path('Livewire/Frontend/Student')]) as $path => $code) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/->payment_status\s*=|payment_status\'\s*=>\s*[\'"]paid/i',
+                $code,
+                "Frontend Livewire code must never directly write payment_status: {$path}",
+            );
+        }
+    }
+
+    public function test_checkout_and_webhook_paths_never_trust_client_supplied_amount_or_currency(): void
+    {
+        // Amount/currency always come from the persisted BookingPayment
+        // row (set once at createPayment()-time from the price snapshot),
+        // never re-read from request input at checkout or webhook time.
+        foreach ($this->phpFilesIn([app_path('Booking/Payments'), app_path('Http/Controllers/Api')]) as $path => $code) {
+            if (! str_contains($path, 'Payment')) {
+                continue;
+            }
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/request\(\)->(input|get)\([\'"](amount|currency)/i',
+                $code,
+                "Payment code must never trust a client-supplied amount/currency: {$path}",
+            );
+        }
+    }
+
+    public function test_all_real_stripe_calls_pass_through_stripe_gateway_client(): void
+    {
+        foreach ($this->appSources() as $path => $code) {
+            if (str_ends_with($path, 'StripeSdkClient.php')) {
+                continue;
+            }
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/new\s+\\\\?Stripe\\\\StripeClient|Stripe\\\\StripeClient::/',
+                $code,
+                "Only StripeSdkClient may instantiate the Stripe SDK client: {$path}",
+            );
+        }
+    }
+
+    public function test_stripe_collection_provider_cannot_resolve_from_the_payout_registry(): void
+    {
+        // Reinforces test_only_the_fake_and_razorpayx_providers_are_registered_for_payout()
+        // with the exact Phase 16C wording the spec asks for.
+        $payoutRegistry = app(InstructorPayoutProviderRegistryInterface::class);
+        $this->assertFalse($payoutRegistry->has('stripe'), 'Stripe collection provider must never resolve as a payout provider.');
+    }
+
+    public function test_razorpayx_payout_provider_cannot_resolve_from_the_collection_registry(): void
+    {
+        // Reinforces test_collection_provider_cannot_resolve_from_the_payout_registry_or_vice_versa()
+        // with the exact Phase 16C wording the spec asks for.
+        $collectionRegistry = app(PaymentProviderRegistry::class);
+        $this->assertFalse($collectionRegistry->has('razorpayx'), 'RazorpayX payout provider must never resolve as a collection provider.');
+    }
+
+    public function test_no_currency_conversion_exists_anywhere_in_the_collection_reconciliation_subsystem(): void
+    {
+        foreach ($this->phpFilesIn([app_path('Booking')]) as $path => $code) {
+            if (! str_contains($path, 'Reconciliation')) {
+                continue;
+            }
+
+            foreach (['convertCurrency', 'exchangeRate', 'fx_rate', 'currency_conversion'] as $needle) {
+                $this->assertStringNotContainsStringIgnoringCase($needle, $code, "Currency conversion must not exist: {$path}");
+            }
+        }
+    }
+
+    public function test_payment_webhooks_and_payout_webhooks_remain_separate_including_the_renamed_generic_route(): void
+    {
+        $bookingSettlementUri = 'api/webhooks/bookings/payments/{provider}';
+        $genericCollectionUri = 'api/webhooks/payments/generic/{gateway}';
+        $razorpayXWebhookUri = 'api/webhooks/payouts/razorpayx';
+
+        $routes = collect(app('router')->getRoutes())->map(fn ($route) => $route->uri())->all();
+
+        $this->assertContains($bookingSettlementUri, $routes);
+        $this->assertContains($genericCollectionUri, $routes);
+        $this->assertContains($razorpayXWebhookUri, $routes);
+
+        // The old, unisolated generic path must no longer exist at all —
+        // nothing may be configured to point at it by accident.
+        $this->assertNotContains('api/webhooks/payments/{gateway}', $routes);
+    }
+
     // ── Credentials/settings separation ───────────────────────────────
 
     public function test_collection_and_payout_use_distinct_settings_classes(): void

@@ -32,4 +32,16 @@ interface RazorpayGatewayClient
      * @throws GatewayRequestException
      */
     public function refundPayment(string $keyId, string $keySecret, string $paymentId, array $params): array;
+
+    /**
+     * Fetches the order (not a specific payment) — reconciliation's
+     * `$providerReference` is always `booking_payments.provider_order_id`,
+     * the value known from the moment `createPayment()` runs, not the
+     * payment ID (only assigned once a payment settles).
+     *
+     * @return array<string, mixed>
+     *
+     * @throws GatewayRequestException
+     */
+    public function fetchOrder(string $keyId, string $keySecret, string $orderId): array;
 }

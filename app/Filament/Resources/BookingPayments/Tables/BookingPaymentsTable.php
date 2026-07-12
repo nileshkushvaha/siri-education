@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BookingPayments\Tables;
 
+use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentProviderCode;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\GatewayRequestException;
 use App\Models\BookingPayment;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -56,6 +58,19 @@ class BookingPaymentsTable
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('last_synced_at')
+                    ->label('Last Provider Sync')
+                    ->dateTime()
+                    ->placeholder('Never')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('failure_reason')
+                    ->label('Safe Failure Reason')
+                    ->state(fn (BookingPayment $record): ?string => $record->metadata['manual_resolution_reason']
+                        ?? $record->metadata['refund_reason']
+                        ?? null)
+                    ->placeholder('—')
+                    ->limit(60)
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('resolution')
                     ->label('Resolution')
@@ -114,6 +129,25 @@ class BookingPaymentsTable
             ])
             ->recordActions([
                 ViewAction::make(),
+
+                Action::make('retry_verification')
+                    ->label('Retry verification')
+                    ->icon('heroicon-m-arrow-path')
+                    ->authorize(fn (BookingPayment $record): bool => auth()->user()?->can('retryVerification', $record) ?? false)
+                    ->visible(fn (BookingPayment $record): bool => ! $record->status->isTerminal() && $record->provider_order_id !== null)
+                    ->action(function (BookingPayment $record): void {
+                        try {
+                            // Re-runs an authenticated provider status fetch
+                            // through BookingPaymentReconciliationService —
+                            // the exact same applyProviderStatus() path the
+                            // scheduled sweep and webhook use. Never edits
+                            // status directly, never marks the record paid.
+                            app(BookingPaymentReconciliationServiceInterface::class)->reconcileAttempt($record);
+                            Notification::make()->title('Verification re-checked')->success()->send();
+                        } catch (GatewayRequestException|BookingException $e) {
+                            Notification::make()->title('Verification failed')->body($e->getMessage())->danger()->send();
+                        }
+                    }),
 
                 Action::make('refund_via_provider')
                     ->label('Refund via Provider')

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Booking\Enums\BookingPaymentRecordStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\BookingPaymentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +40,7 @@ class BookingPayment extends Model
         'metadata',
         'paid_at',
         'failed_at',
+        'last_synced_at',
         'created_by',
     ];
 
@@ -49,6 +52,7 @@ class BookingPayment extends Model
             'metadata' => 'array',
             'paid_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
+            'last_synced_at' => 'immutable_datetime',
         ];
     }
 
@@ -65,6 +69,26 @@ class BookingPayment extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Rows a reconciliation sweep should poll: sent to the gateway
+     * (has an order/intent reference) but not yet settled, and either
+     * never synced or not synced since the cutoff. Mirrors
+     * InstructorPayoutAttempt::scopeReconciliationDue().
+     */
+    public function scopeReconciliationDue(Builder $query, CarbonInterface $cutoff): Builder
+    {
+        return $query
+            ->whereNotNull('provider_order_id')
+            ->whereIn('status', [
+                BookingPaymentRecordStatus::Pending,
+                BookingPaymentRecordStatus::Authorized,
+                BookingPaymentRecordStatus::Processing,
+                BookingPaymentRecordStatus::Unknown,
+                BookingPaymentRecordStatus::ResolutionRequired,
+            ])
+            ->where(fn (Builder $q) => $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<=', $cutoff));
     }
 
     public function getActivitylogOptions(): LogOptions

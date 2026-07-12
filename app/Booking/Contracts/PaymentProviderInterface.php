@@ -6,8 +6,10 @@ namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
+use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\GatewayRequestException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Models\Booking;
 use Illuminate\Http\Request;
@@ -71,6 +73,19 @@ interface PaymentProviderInterface
      * @throws BookingException when no pending payment exists for the booking
      */
     public function checkoutPayload(Booking $booking): array;
+
+    /**
+     * Authenticated provider status fetch — the boundary reconciliation
+     * polls through (never a raw gateway response, never trusted from
+     * a browser). `$providerReference` is the same value stored on
+     * `booking_payments.provider_order_id`. Distinct from the webhook
+     * path: this is a pull, used when an outcome is uncertain (missed/
+     * delayed webhook, reconciliation sweep), never the primary
+     * settlement path.
+     *
+     * @throws GatewayRequestException when the provider cannot be reached
+     */
+    public function fetchStatus(string $providerReference): PaymentStatusResult;
 
     /**
      * The provider's static, declared shape (Phase 16A.1 routing

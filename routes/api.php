@@ -10,8 +10,12 @@ use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/webhooks/payments/{gateway}', PaymentWebhookController::class)
-    ->name('api.payments.webhooks.handle');
+// Generic gateway webhook — logs/audits only, never settles a booking
+// payment (see PaymentWebhookProcessor's docblock). Deliberately
+// isolated under /generic/ and its own route name so it can never be
+// mistaken for the real booking-settlement route below.
+Route::post('/webhooks/payments/generic/{gateway}', PaymentWebhookController::class)
+    ->name('api.payments.webhooks.generic');
 
 // Booking payment provider notifications (signature-verified per provider).
 Route::post('/webhooks/bookings/payments/{provider}', BookingPaymentWebhookController::class)

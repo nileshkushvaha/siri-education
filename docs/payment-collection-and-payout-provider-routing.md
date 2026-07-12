@@ -471,16 +471,31 @@ and `payout_execution_enabled` remain the authoritative gates.
 
 ## 25. Deferred (Phase 16B.1+ and beyond)
 
+> **Superseded notice (Phase 16D):** this section is a historical
+> record of what Phase 16A.1 left deferred and is not rewritten here.
+> Two items below are no longer accurate: the Stripe frontend
+> Stripe.js/Elements integration and the collection-side
+> `PaymentReconciliationIssue` model/service were both built in Phase
+> 16C (see `docs/phase-16b-razorpayx-india-inr-payout-adapter.md`'s
+> sibling — no dedicated Phase 16C doc exists; see
+> `docs/financial-provider-activation-handoff.md` for the current,
+> canonical status of both provider integrations). Both remain
+> code-complete but **account-unverified** — no real Stripe or
+> RazorpayX credential has ever been used. Everything else below is
+> still accurate.
+
 Phase 16B (RazorpayX India/INR payout adapter) is now built — see
 `docs/phase-16b-razorpayx-india-inr-payout-adapter.md` — but its
 production activation (Phase 16B.1: a controlled test-mode audit with
 real sandbox credentials) has not run, and `payout_provider` still
 defaults to `fake`. Still deferred: a real, verified Stripe
 International collection account plus its frontend Stripe.js/Elements
-integration (Phase 16C); Razorpay International as a verified fallback
+integration (Phase 16C, now built at the code level — see the
+superseded notice above); Razorpay International as a verified fallback
 provider; international instructor payouts (RazorpayX is India/INR
 only by design); a `PaymentReconciliationIssue` model/service for the
-collection side (§20); wallet recharge and wallet-as-payment-method
+collection side (§20, now built at the code level — see the superseded
+notice above); wallet recharge and wallet-as-payment-method
 (§14) — both remain intentionally unbuilt, enum-ready only;
 `payu`/`phonepe`/`cashfree`/`paypal` real adapters (currently
 settings-only, no `PaymentProviderInterface` implementation for any of

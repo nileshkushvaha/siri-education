@@ -542,17 +542,29 @@ environment.
 | RazorpayX provider link shows `contact_unknown`/`fund_account_unknown` | A provisioning call may have reached RazorpayX before it timed out — use "Refresh" (never re-run "Provision", which only starts a fresh link) |
 | RazorpayX webhook returns 401 | Signature verification failed — check `razorpayx_webhook_secret` matches the RazorpayX dashboard exactly, and that a rotation didn't clear the previous secret too early |
 
-## 15. Deferred (Phase 16B.1+)
+## 15. Deferred
 
-Phase 16B.1 (controlled test-mode activation audit — real RazorpayX
-sandbox credentials, a genuine test-mode payout, verified webhook
-delivery — before any production credential is entered); Phase 16C
-(Stripe/international collection-side work, explicitly out of Phase
-16B's scope); international instructor payouts (RazorpayX is India/INR
-only by design); RazorpayX tax/TDS withholding (fees/tax are recorded
-as platform operational cost, never deducted from the instructor);
-withdrawal fees (schema-ready); currency conversion; incentive &
-adjustment earning sources; automatic tiers; demo-to-paid/hybrid demo
-policies; withdrawal↔settlement-batch linkage; bulk payout uploads;
-accounting exports; an emergency maker-checker bypass (deliberately not
-built in 16A — see its own doc §6).
+Both provider integrations (RazorpayX instructor payouts, Stripe
+international collection) are **code-complete and account-unverified**
+as of Phase 16C/16D — see `docs/financial-provider-activation-handoff.md`
+for the canonical current status and exact resume prerequisites for
+each. Deferred pending those external prerequisites: Phase 16B.1
+(controlled RazorpayX test-mode activation audit — real sandbox
+credentials, a genuine test-mode payout, verified webhook delivery);
+Phase 16C.1 (controlled Stripe test-mode activation audit — real Stripe
+test credentials, a genuine test-mode checkout, verified webhook
+delivery) — both before any production credential is entered.
+
+Also still deferred, independent of provider activation: international
+instructor payouts (RazorpayX is India/INR only by design); Razorpay
+International as a verified collection fallback; RazorpayX tax/TDS
+withholding (fees/tax are recorded as platform operational cost, never
+deducted from the instructor); withdrawal fees (schema-ready); currency
+conversion (explicitly never — both domains are single-currency-per-
+transaction by design); wallet recharge and wallet-as-payment-method;
+`payu`/`phonepe`/`cashfree`/`paypal` real collection adapters
+(settings-only, no implementation); incentive & adjustment earning
+sources; automatic tiers; demo-to-paid/hybrid demo policies;
+withdrawal↔settlement-batch linkage; bulk payout uploads; accounting
+exports; an emergency maker-checker bypass (deliberately not built in
+16A — see its own doc §6).

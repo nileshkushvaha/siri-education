@@ -24,7 +24,11 @@ use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+use JsonException;
 
 /**
  * Dedicated admin home for everything meeting-related: platform
@@ -101,6 +105,7 @@ class MeetingSettingsPage extends Page
             'google_credentials_configured' => $meeting->google_credentials_configured ? 'Yes' : 'No',
             'google_config_status' => $meeting->google_config_status,
             'google_last_checked_at' => $meeting->google_last_checked_at,
+            'google_credentials_updated_at' => $meeting->google_credentials_updated_at,
             'zoom_enabled' => $meeting->zoom_enabled,
             'zoom_account_id' => $meeting->zoom_account_id,
             'zoom_client_id' => $meeting->zoom_client_id,
@@ -209,6 +214,11 @@ class MeetingSettingsPage extends Page
                             ->label('Last Checked')
                             ->disabled()
                             ->dehydrated(false),
+                        TextInput::make('google_credentials_updated_at')
+                            ->label('Credentials Last Replaced')
+                            ->helperText('Set only when a new service account JSON is pasted and saved — proves a key rotation actually took effect.')
+                            ->disabled()
+                            ->dehydrated(false),
                     ]),
                     Textarea::make('google_credentials_json')
                         ->label('Service Account JSON')
@@ -267,74 +277,171 @@ class MeetingSettingsPage extends Page
             return;
         }
 
+        // A new (non-blank) Google credential is validated *before* any
+        // field is written — malformed JSON or a service-account JSON
+        // missing client_id/client_email/private_key must never reach
+        // the database, and must never take down the rest of this save
+        // (meetings_enabled, provider selection, Zoom fields, …).
+        $newGoogleCredentials = null;
+
+        if (filled($data['google_credentials_json'] ?? null)) {
+            try {
+                $newGoogleCredentials = $this->validateGoogleCredentialsJson((string) $data['google_credentials_json']);
+            } catch (InvalidArgumentException $e) {
+                Notification::make()
+                    ->title('Google credentials not saved')
+                    ->body($e->getMessage())
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+        }
+
         $settings = app(MeetingSettings::class);
         $before = $this->snapshotSettings($settings);
 
-        $settings->meetings_enabled = (bool) ($data['meetings_enabled'] ?? false);
-        $settings->default_provider = $data['default_provider'];
-        $settings->manual_provider_enabled = (bool) ($data['manual_provider_enabled'] ?? false);
-        $settings->platform_meeting_account = $data['platform_meeting_account'] ?? null;
-        $settings->meeting_link_visible_before_minutes = (int) $data['meeting_link_visible_before_minutes'];
-        $settings->meeting_link_visible_after_minutes = (int) $data['meeting_link_visible_after_minutes'];
-        $settings->recording_enabled = (bool) ($data['meeting_recording_enabled'] ?? false);
-        $settings->recording_retention_days = (int) $data['recording_retention_days'];
-        $settings->create_after_demo_booking_confirmation = (bool) ($data['create_after_demo_booking_confirmation'] ?? false);
-        $settings->create_after_paid_booking_confirmation = (bool) ($data['create_after_paid_booking_confirmation'] ?? false);
-        $settings->student_join_url_visible = (bool) ($data['student_join_url_visible'] ?? false);
-        $settings->instructor_join_url_visible = (bool) ($data['instructor_join_url_visible'] ?? false);
+        DB::transaction(function () use ($data, $settings, $newGoogleCredentials): void {
+            $settings->meetings_enabled = (bool) ($data['meetings_enabled'] ?? false);
+            $settings->default_provider = $data['default_provider'];
+            $settings->manual_provider_enabled = (bool) ($data['manual_provider_enabled'] ?? false);
+            $settings->platform_meeting_account = $data['platform_meeting_account'] ?? null;
+            $settings->meeting_link_visible_before_minutes = (int) $data['meeting_link_visible_before_minutes'];
+            $settings->meeting_link_visible_after_minutes = (int) $data['meeting_link_visible_after_minutes'];
+            $settings->recording_enabled = (bool) ($data['meeting_recording_enabled'] ?? false);
+            $settings->recording_retention_days = (int) $data['recording_retention_days'];
+            $settings->create_after_demo_booking_confirmation = (bool) ($data['create_after_demo_booking_confirmation'] ?? false);
+            $settings->create_after_paid_booking_confirmation = (bool) ($data['create_after_paid_booking_confirmation'] ?? false);
+            $settings->student_join_url_visible = (bool) ($data['student_join_url_visible'] ?? false);
+            $settings->instructor_join_url_visible = (bool) ($data['instructor_join_url_visible'] ?? false);
 
-        $settings->google_meet_enabled = (bool) ($data['google_meet_enabled'] ?? false);
-        $settings->google_auth_type = $data['google_auth_type'];
-        $settings->google_calendar_id = filled($data['google_calendar_id'] ?? null) ? $data['google_calendar_id'] : null;
+            $settings->google_meet_enabled = (bool) ($data['google_meet_enabled'] ?? false);
+            $settings->google_auth_type = $data['google_auth_type'];
+            $settings->google_calendar_id = filled($data['google_calendar_id'] ?? null) ? $data['google_calendar_id'] : null;
 
-        // Blank submit keeps the existing encrypted credential — never
-        // overwrite it with null just because the (deliberately never
-        // re-displayed) field was left empty on this save.
-        if (filled($data['google_credentials_json'] ?? null)) {
-            $settings->google_credentials_json = Crypt::encryptString((string) $data['google_credentials_json']);
-        }
+            // Blank submit keeps the existing encrypted credential — never
+            // overwrite it with null just because the (deliberately never
+            // re-displayed) field was left empty on this save.
+            if ($newGoogleCredentials !== null) {
+                $settings->google_credentials_json = Crypt::encryptString((string) $data['google_credentials_json']);
+                $settings->google_credentials_updated_at = Carbon::now()->toIso8601String();
+            }
 
-        $settings->zoom_enabled = (bool) ($data['zoom_enabled'] ?? false);
-        $settings->zoom_account_id = filled($data['zoom_account_id'] ?? null) ? $data['zoom_account_id'] : null;
-        $settings->zoom_client_id = filled($data['zoom_client_id'] ?? null) ? $data['zoom_client_id'] : null;
-        $settings->zoom_host_user_id = filled($data['zoom_host_user_id'] ?? null) ? $data['zoom_host_user_id'] : null;
-        $settings->zoom_host_email = filled($data['zoom_host_email'] ?? null) ? $data['zoom_host_email'] : null;
-        $settings->zoom_default_timezone = filled($data['zoom_default_timezone'] ?? null) ? $data['zoom_default_timezone'] : null;
+            $settings->zoom_enabled = (bool) ($data['zoom_enabled'] ?? false);
+            $settings->zoom_account_id = filled($data['zoom_account_id'] ?? null) ? $data['zoom_account_id'] : null;
+            $settings->zoom_client_id = filled($data['zoom_client_id'] ?? null) ? $data['zoom_client_id'] : null;
+            $settings->zoom_host_user_id = filled($data['zoom_host_user_id'] ?? null) ? $data['zoom_host_user_id'] : null;
+            $settings->zoom_host_email = filled($data['zoom_host_email'] ?? null) ? $data['zoom_host_email'] : null;
+            $settings->zoom_default_timezone = filled($data['zoom_default_timezone'] ?? null) ? $data['zoom_default_timezone'] : null;
 
-        // Same blank-preserves rule as the Google credential above.
-        if (filled($data['zoom_client_secret'] ?? null)) {
-            $settings->zoom_client_secret = Crypt::encryptString((string) $data['zoom_client_secret']);
-        }
+            // Same blank-preserves rule as the Google credential above.
+            if (filled($data['zoom_client_secret'] ?? null)) {
+                $settings->zoom_client_secret = Crypt::encryptString((string) $data['zoom_client_secret']);
+            }
 
-        $settings->save();
+            $settings->save();
+        });
+
         $this->logSettingsUpdate('settings', $settings, $before);
+        $this->mount();
 
         Notification::make()
             ->title('Meeting settings saved')
+            ->body($newGoogleCredentials !== null
+                ? sprintf(
+                    'Google credentials replaced — client_email: %s, client_id: %s',
+                    $newGoogleCredentials['client_email'],
+                    $newGoogleCredentials['client_id'],
+                )
+                : null)
             ->success()
             ->send();
     }
 
+    /**
+     * Fails closed on anything that isn't a well-formed service-account
+     * JSON — never partially trusts it, never logs it.
+     *
+     * @return array{client_id: string, client_email: string}
+     *
+     * @throws InvalidArgumentException with a message safe to show the admin (no JSON/key content)
+     */
+    private function validateGoogleCredentialsJson(string $json): array
+    {
+        try {
+            $decoded = json_decode($json, associative: true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new InvalidArgumentException('The service account JSON is not valid JSON.');
+        }
+
+        if (! is_array($decoded) || ($decoded['type'] ?? null) !== 'service_account') {
+            throw new InvalidArgumentException('The service account JSON must have "type": "service_account".');
+        }
+
+        foreach (['client_id', 'client_email', 'private_key'] as $field) {
+            if (blank($decoded[$field] ?? null)) {
+                throw new InvalidArgumentException(sprintf('The service account JSON is missing "%s".', $field));
+            }
+        }
+
+        return [
+            'client_id' => (string) $decoded['client_id'],
+            'client_email' => (string) $decoded['client_email'],
+        ];
+    }
+
     public function testGoogleConfiguration(): void
     {
-        $status = app(GoogleCalendarConfigurationService::class)->check();
+        $service = app(GoogleCalendarConfigurationService::class);
+        $status = $service->check();
+        $diagnostics = $service->lastDiagnostics();
+        $reason = $service->lastDiagnostic();
 
         $this->mount();
 
+        $body = $diagnostics !== null
+            ? implode("\n", array_filter([
+                sprintf('Client ID: %s', $diagnostics->clientId ?? 'unknown'),
+                sprintf('Client email: %s', $diagnostics->clientEmail ?? 'unknown'),
+                sprintf('Delegated subject: %s', $diagnostics->delegatedSubject ?? 'unknown'),
+                sprintf('Requested scopes: %s', implode(', ', $diagnostics->requestedScopes)),
+                sprintf('Calendar ID: %s', $diagnostics->calendarId ?? 'unknown'),
+                sprintf('Token acquired: %s', $diagnostics->tokenAcquired ? 'yes' : 'no'),
+                sprintf('Allowed conference types: [%s]', implode(', ', $diagnostics->allowedConferenceTypes) ?: 'none'),
+                $reason !== null ? sprintf('Reason: %s', $reason) : null,
+            ]))
+            : $reason;
+
         Notification::make()
             ->title('Google configuration: '.$status)
+            ->body($body)
             ->{$status === 'ready' ? 'success' : 'warning'}()
             ->send();
     }
 
     public function validateZoomConfiguration(): void
     {
-        $status = app(ZoomConfigurationService::class)->check();
+        $service = app(ZoomConfigurationService::class);
+        $status = $service->check();
+        $diagnostics = $service->lastDiagnostics();
+        $reason = $service->lastDiagnostic();
 
         $this->mount();
 
+        $body = $diagnostics !== null
+            ? implode("\n", array_filter([
+                sprintf('Account ID: %s', $diagnostics->accountId ?? 'unknown'),
+                sprintf('Client ID: %s', $diagnostics->clientId ?? 'unknown'),
+                sprintf('Host user: %s', $diagnostics->hostUser ?? 'unknown'),
+                sprintf('Token acquired: %s', $diagnostics->tokenAcquired ? 'yes' : 'no'),
+                sprintf('Meeting creation verified: %s', $diagnostics->meetingCreationVerified ? 'yes' : 'no'),
+                $reason !== null ? sprintf('Reason: %s', $reason) : null,
+            ]))
+            : $reason;
+
         Notification::make()
             ->title('Zoom configuration: '.$status)
+            ->body($body)
             ->{$status === 'ready' ? 'success' : 'warning'}()
             ->send();
     }

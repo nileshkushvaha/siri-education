@@ -124,7 +124,7 @@ class ZoomApiClientTest extends TestCase
         }
     }
 
-    public function test_token_mint_failure_throws_safe_exception(): void
+    public function test_token_mint_failure_throws_safe_exception_carrying_zooms_error_and_reason(): void
     {
         Http::fake([
             'zoom.us/oauth/token*' => Http::response(['reason' => 'Invalid client', 'error' => 'invalid_client'], 401),
@@ -134,6 +134,12 @@ class ZoomApiClientTest extends TestCase
             $this->client()->createMeeting('host-user-1', ['topic' => 'Lesson']);
             $this->fail('Expected a GatewayRequestException.');
         } catch (GatewayRequestException $e) {
+            // The OAuth endpoint reports failures in error/reason (not
+            // message) — an admin reading this must see why the token
+            // was refused, not a bare "HTTP 401".
+            $this->assertStringContainsString('HTTP 401', $e->getMessage());
+            $this->assertStringContainsString('invalid_client', $e->getMessage());
+            $this->assertStringContainsString('Invalid client', $e->getMessage());
             $this->assertStringNotContainsString(self::SECRET, $e->getMessage());
         }
     }

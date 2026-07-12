@@ -145,18 +145,93 @@ class ZoomMeetingProviderTest extends TestCase
         app(MeetingProviderResolver::class)->resolve(ZoomMeetingProvider::KEY);
     }
 
-    public function test_config_validation_marks_ready_only_through_successful_client_validation(): void
+    public function test_config_validation_marks_ready_only_through_token_and_live_meeting_verification(): void
     {
         $this->configureZoom();
         $client = $this->bindFakeClient();
 
         // Structurally-plausible credentials alone are not "ready" —
-        // the mocked token validation decides.
+        // the mocked token validation decides, and a token failure never
+        // proceeds to meeting creation.
         $client->shouldReceive('validateCredentials')->once()->andReturn(false);
-        $this->assertSame('invalid', app(ZoomConfigurationService::class)->check());
+        $client->shouldNotReceive('createMeeting');
+        $service = app(ZoomConfigurationService::class);
+        $this->assertSame('invalid', $service->check());
+        $this->assertFalse($service->lastDiagnostics()->tokenAcquired);
+
+        // A mintable token alone is not "ready" either — a real temporary
+        // meeting must be created under the configured host user and is
+        // always deleted afterwards.
+        $client->shouldReceive('validateCredentials')->once()->andReturn(true);
+        $client->shouldReceive('createMeeting')
+            ->once()
+            ->withArgs(fn (string $hostUser): bool => $hostUser === 'host-user-1')
+            ->andReturn($this->sanitizedZoomMeeting('777'));
+        $client->shouldReceive('deleteMeeting')->once()->with('777')->andReturn(true);
+
+        $service = app(ZoomConfigurationService::class);
+        $this->assertSame('ready', $service->check());
+        $this->assertNull($service->lastDiagnostic());
+
+        $diagnostics = $service->lastDiagnostics();
+        $this->assertSame('acct_123', $diagnostics->accountId);
+        $this->assertSame('client_abc', $diagnostics->clientId);
+        $this->assertSame('host-user-1', $diagnostics->hostUser);
+        $this->assertTrue($diagnostics->tokenAcquired);
+        $this->assertTrue($diagnostics->meetingCreationVerified);
+    }
+
+    public function test_config_validation_marks_invalid_when_test_meeting_creation_fails_and_never_leaks_secrets(): void
+    {
+        $this->configureZoom();
+        $client = $this->bindFakeClient();
 
         $client->shouldReceive('validateCredentials')->once()->andReturn(true);
-        $this->assertSame('ready', app(ZoomConfigurationService::class)->check());
+        $client->shouldReceive('createMeeting')
+            ->once()
+            ->andThrow(new GatewayRequestException('Zoom API failed to create meeting (HTTP 404): User does not exist: host-user-1.'));
+        $client->shouldNotReceive('deleteMeeting');
+
+        $service = app(ZoomConfigurationService::class);
+
+        $this->assertSame('invalid', $service->check());
+        $this->assertStringContainsString('Test meeting creation failed', (string) $service->lastDiagnostic());
+        $this->assertStringNotContainsString(self::SECRET, (string) $service->lastDiagnostic());
+        $this->assertFalse($service->lastDiagnostics()->meetingCreationVerified);
+    }
+
+    public function test_config_validation_deletes_the_temporary_meeting_even_when_it_has_no_join_url(): void
+    {
+        $this->configureZoom();
+        $client = $this->bindFakeClient();
+
+        $meeting = $this->sanitizedZoomMeeting('888');
+        $meeting['join_url'] = null;
+
+        $client->shouldReceive('validateCredentials')->once()->andReturn(true);
+        $client->shouldReceive('createMeeting')->once()->andReturn($meeting);
+        $client->shouldReceive('deleteMeeting')->once()->with('888')->andReturn(true);
+
+        $service = app(ZoomConfigurationService::class);
+
+        $this->assertSame('invalid', $service->check());
+        $this->assertStringContainsString('no join URL', (string) $service->lastDiagnostic());
+    }
+
+    public function test_config_validation_still_reports_invalid_when_temporary_meeting_cleanup_fails(): void
+    {
+        $this->configureZoom();
+        $client = $this->bindFakeClient();
+
+        $meeting = $this->sanitizedZoomMeeting('999');
+        $meeting['join_url'] = null;
+
+        $client->shouldReceive('validateCredentials')->once()->andReturn(true);
+        $client->shouldReceive('createMeeting')->once()->andReturn($meeting);
+        // Cleanup failure must never mask the already-diagnosed outcome.
+        $client->shouldReceive('deleteMeeting')->once()->andThrow(new GatewayRequestException('Zoom API failed to delete meeting (HTTP 500).'));
+
+        $this->assertSame('invalid', app(ZoomConfigurationService::class)->check());
     }
 
     public function test_config_validation_fails_closed_before_ever_calling_the_client(): void

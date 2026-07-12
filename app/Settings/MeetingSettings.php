@@ -54,6 +54,9 @@ class MeetingSettings extends Settings
 
     public ?string $google_last_checked_at;
 
+    /** Set only when the admin actually pastes a new credential JSON — never on an ordinary settings save. */
+    public ?string $google_credentials_updated_at;
+
     public bool $student_join_url_visible;
 
     public bool $instructor_join_url_visible;

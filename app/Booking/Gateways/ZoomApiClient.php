@@ -171,10 +171,24 @@ final class ZoomApiClient implements ZoomMeetingClient
         ];
     }
 
-    /** Status code + Zoom's short message only — never headers, tokens, or a body dump. */
+    /**
+     * Status code + Zoom's short error text only — never headers,
+     * tokens, or a body dump. The REST API reports failures in
+     * `message`; the OAuth token endpoint uses `error`/`reason` instead
+     * (e.g. "invalid_client: Invalid client_id or client_secret"), so
+     * both shapes are read — a token failure must say why, not just
+     * "HTTP 401".
+     */
     private function safeError(string $action, Response $response): string
     {
         $message = (string) ($response->json('message') ?? '');
+
+        if ($message === '') {
+            $message = trim(implode(': ', array_filter([
+                (string) ($response->json('error') ?? ''),
+                (string) ($response->json('reason') ?? ''),
+            ], static fn (string $part): bool => $part !== '')));
+        }
 
         return sprintf(
             'Zoom API failed to %s (HTTP %d)%s',

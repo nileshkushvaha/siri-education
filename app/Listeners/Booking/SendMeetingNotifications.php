@@ -36,7 +36,10 @@ final class SendMeetingNotifications implements ShouldQueue
         $notification = new MeetingCreatedNotification($event->booking, $event->meeting);
 
         $this->notifyAttendee($event->booking, $notification);
-        $event->booking->host->notify($notification);
+        // Null-safe: eligibility required a host at creation time, but this
+        // listener runs later on the queue — a since-removed host must not
+        // burn the job's retries and take the attendee's email with it.
+        $event->booking->host?->notify($notification);
     }
 
     public function handleUpdated(MeetingUpdated $event): void
@@ -44,7 +47,7 @@ final class SendMeetingNotifications implements ShouldQueue
         $notification = new MeetingUpdatedNotification($event->booking, $event->meeting);
 
         $this->notifyAttendee($event->booking, $notification);
-        $event->booking->host->notify($notification);
+        $event->booking->host?->notify($notification);
     }
 
     private function notifyAttendee(Booking $booking, Notification $notification): void

@@ -318,6 +318,17 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
+            // A cancellation that failed provider-side leaves a live,
+            // joinable meeting behind for a booking that no longer
+            // stands — someone must clean up the orphaned event manually.
+            $log === 'bookings' && $event === 'meeting_cancellation_failed' => [
+                'title' => 'Meeting Cancellation Failed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-video-camera-slash',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
             // ── Lessons (Phase 13) — only the outcomes needing admin
             //     attention map here. lesson_completed stays silent: the
             //     booking sync already raises "Booking Completed" for the

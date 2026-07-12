@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Services;
 
+use App\Models\User;
 use App\Notifications\Channels\SmsChannel;
 use App\Notifications\Channels\WhatsAppChannel;
 use App\Settings\BookingSettings;
@@ -23,6 +24,16 @@ final class NotificationChannelResolver
     public function channels(object $notifiable): array
     {
         $channels = [];
+
+        // In-app (database) notifications are the data source for the
+        // frontend dashboard's Notifications page — always on for real
+        // users, deliberately not one of the admin-toggleable external
+        // delivery channels below. Guests (AnonymousNotifiable routed to
+        // an email address) have no notifications table row to receive
+        // them.
+        if ($notifiable instanceof User) {
+            $channels[] = 'database';
+        }
 
         if ($this->settings->channel_email_enabled) {
             $channels[] = 'mail';

@@ -45,6 +45,14 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
 
     public const string KEY = 'google_meet';
 
+    /**
+     * The Google Calendar API's own conference-type constant —
+     * deliberately distinct from self::KEY ('google_meet'), which is
+     * this codebase's internal provider identifier, not something
+     * Google's API ever accepts.
+     */
+    private const string GOOGLE_MEET_CONFERENCE_TYPE = 'hangoutsMeet';
+
     public function __construct(
         private readonly GoogleCalendarClient $client,
         private readonly MeetingSettings $settings,
@@ -60,6 +68,11 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
         return $this->settings->google_meet_enabled
             && $this->settings->google_auth_type === 'service_account'
             && filled($this->settings->google_calendar_id)
+            // Domain-wide delegation requires an impersonated Workspace
+            // user — a bare service account has no Meet entitlement and
+            // fails with Google's "Invalid conference type value" (see
+            // GoogleCalendarSdkClient::service()).
+            && filled($this->settings->platform_meeting_account)
             && $this->settings->decryptedGoogleCredentials() !== null;
     }
 
@@ -67,13 +80,14 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
     {
         $requestId = 'meet-'.$booking->id.'-'.Str::random(8);
         $payload = $this->eventPayload($booking, $context, $requestId);
+        $credentials = $this->credentialsOrFail();
+        $calendarId = $this->calendarIdOrFail();
+        $subject = $this->delegatedSubjectOrFail();
+
+        $this->assertMeetSupported($credentials, $calendarId, $subject);
 
         try {
-            $event = $this->client->insertEvent(
-                $this->credentialsOrFail(),
-                $this->calendarIdOrFail(),
-                $payload,
-            );
+            $event = $this->client->insertEvent($credentials, $calendarId, $payload, $subject);
         } catch (Throwable $e) {
             throw new BookingException($this->sanitize($e->getMessage()));
         }
@@ -96,10 +110,16 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
             'conferenceRequestId' => $requestId,
         ];
 
+        $credentials = $this->credentialsOrFail();
+        $calendarId = $this->calendarIdOrFail();
+        $subject = $this->delegatedSubjectOrFail();
+
+        $this->assertMeetSupported($credentials, $calendarId, $subject);
+
         try {
             $event = $meeting->provider_event_id !== null
-                ? $this->client->updateEvent($this->credentialsOrFail(), $this->calendarIdOrFail(), $meeting->provider_event_id, $payload)
-                : $this->client->insertEvent($this->credentialsOrFail(), $this->calendarIdOrFail(), $payload);
+                ? $this->client->updateEvent($credentials, $calendarId, $meeting->provider_event_id, $payload, $subject)
+                : $this->client->insertEvent($credentials, $calendarId, $payload, $subject);
         } catch (Throwable $e) {
             throw new BookingException($this->sanitize($e->getMessage()));
         }
@@ -114,12 +134,36 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
         }
 
         try {
-            $this->client->deleteEvent($this->credentialsOrFail(), $this->calendarIdOrFail(), $meeting->provider_event_id);
+            $this->client->deleteEvent($this->credentialsOrFail(), $this->calendarIdOrFail(), $meeting->provider_event_id, $this->delegatedSubjectOrFail());
         } catch (Throwable $e) {
             return new MeetingCancellationResult(status: MeetingStatus::Failed, failureReason: $this->sanitize($e->getMessage()));
         }
 
         return new MeetingCancellationResult(status: MeetingStatus::Cancelled);
+    }
+
+    /**
+     * Fails fast with a clear domain exception before ever calling
+     * insert/update — a calendar/account that cannot create a
+     * hangoutsMeet conference will otherwise 400 with Google's opaque
+     * "Invalid conference type value.", which is exactly the bug this
+     * check exists to turn into an actionable error.
+     */
+    private function assertMeetSupported(string $credentials, string $calendarId, string $subject): void
+    {
+        try {
+            $allowed = $this->client->allowedConferenceTypes($credentials, $calendarId, $subject);
+        } catch (Throwable $e) {
+            throw new BookingException($this->sanitize($e->getMessage()));
+        }
+
+        if (! in_array(self::GOOGLE_MEET_CONFERENCE_TYPE, $allowed, true)) {
+            throw new BookingException(sprintf(
+                'Google Meet is not supported by the configured calendar for %s. Allowed conference types: [%s]',
+                $subject,
+                implode(', ', $allowed) ?: 'none',
+            ));
+        }
     }
 
     /** @param  array{id: string, hangoutLink: ?string, conferenceData: array<string, mixed>}  $event */
@@ -193,5 +237,11 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
     {
         return $this->settings->decryptedGoogleCredentials()
             ?? throw new BookingException('Google credentials are not configured.');
+    }
+
+    private function delegatedSubjectOrFail(): string
+    {
+        return $this->settings->platform_meeting_account
+            ?? throw new BookingException('Google Meet platform account (delegated Workspace user) is not configured.');
     }
 }

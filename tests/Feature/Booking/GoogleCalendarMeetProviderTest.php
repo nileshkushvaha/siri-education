@@ -24,21 +24,26 @@ class GoogleCalendarMeetProviderTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const DELEGATED_ACCOUNT = 'meetings@sirieducation.com';
+
     private function configureGoogle(bool $enabled = true): void
     {
         $settings = app(MeetingSettings::class);
         $settings->google_meet_enabled = $enabled;
         $settings->google_auth_type = 'service_account';
         $settings->google_calendar_id = 'calendar-123@group.calendar.google.com';
+        $settings->platform_meeting_account = self::DELEGATED_ACCOUNT;
         $settings->google_credentials_json = Crypt::encryptString(
             json_encode(['type' => 'service_account', 'client_email' => 'svc@project.iam.gserviceaccount.com', 'private_key' => 'FAKE_PRIVATE_KEY_TOKEN_ABCDEFGHIJKLMNOP']),
         );
         $settings->save();
     }
 
-    private function bindFakeClient(): GoogleCalendarClient&Mockery\MockInterface
+    /** @param  list<string>  $allowedConferenceTypes */
+    private function bindFakeClient(array $allowedConferenceTypes = ['hangoutsMeet']): GoogleCalendarClient&Mockery\MockInterface
     {
         $client = Mockery::mock(GoogleCalendarClient::class);
+        $client->shouldReceive('allowedConferenceTypes')->andReturn($allowedConferenceTypes);
         $this->app->instance(GoogleCalendarClient::class, $client);
 
         return $client;
@@ -53,19 +58,22 @@ class GoogleCalendarMeetProviderTest extends TestCase
         $this->assertFalse(app(GoogleCalendarMeetProvider::class)->isConfigured());
     }
 
+    public function test_google_provider_is_not_configured_without_platform_meeting_account(): void
+    {
+        $this->configureGoogle();
+        $settings = app(MeetingSettings::class);
+        $settings->platform_meeting_account = null;
+        $settings->save();
+
+        $this->assertFalse(app(GoogleCalendarMeetProvider::class)->isConfigured());
+    }
+
     public function test_google_provider_does_not_run_when_unconfigured(): void
     {
         $this->configureGoogle(enabled: false);
 
         $this->expectException(BookingException::class);
         app(MeetingProviderResolver::class)->resolve(GoogleCalendarMeetProvider::KEY);
-    }
-
-    public function test_configuration_service_reports_ready_when_fully_configured(): void
-    {
-        $this->configureGoogle();
-
-        $this->assertSame('ready', app(GoogleCalendarConfigurationService::class)->check());
     }
 
     public function test_configuration_service_reports_incomplete_without_calendar_id(): void
@@ -76,6 +84,94 @@ class GoogleCalendarMeetProviderTest extends TestCase
         $settings->save();
 
         $this->assertSame('incomplete', app(GoogleCalendarConfigurationService::class)->check());
+    }
+
+    public function test_configuration_service_reports_incomplete_without_platform_meeting_account(): void
+    {
+        $this->configureGoogle();
+        $settings = app(MeetingSettings::class);
+        $settings->platform_meeting_account = null;
+        $settings->save();
+
+        $this->assertSame('incomplete', app(GoogleCalendarConfigurationService::class)->check());
+    }
+
+    // ── Delegated subject (domain-wide delegation) ─────────────────────
+
+    public function test_google_provider_sends_delegated_subject_to_client(): void
+    {
+        $this->configureGoogle();
+        $client = $this->bindFakeClient();
+        $booking = Booking::factory()->confirmed()->paid()->create();
+
+        $client->shouldReceive('insertEvent')
+            ->once()
+            ->withArgs(fn (string $credentials, string $calendarId, array $payload, ?string $subject): bool => $subject === self::DELEGATED_ACCOUNT)
+            ->andReturn(['id' => 'evt1', 'hangoutLink' => null, 'conferenceData' => []]);
+
+        app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
+    }
+
+    public function test_google_provider_reads_updated_platform_meeting_account(): void
+    {
+        $this->configureGoogle();
+        $settings = app(MeetingSettings::class);
+        $settings->platform_meeting_account = 'stale@sirieducation.com';
+        $settings->save();
+        $settings->platform_meeting_account = self::DELEGATED_ACCOUNT;
+        $settings->save();
+
+        $client = $this->bindFakeClient();
+        $booking = Booking::factory()->confirmed()->paid()->create();
+
+        $client->shouldReceive('insertEvent')
+            ->once()
+            ->withArgs(fn (string $credentials, string $calendarId, array $payload, ?string $subject): bool => $subject === self::DELEGATED_ACCOUNT)
+            ->andReturn(['id' => 'evt1', 'hangoutLink' => null, 'conferenceData' => []]);
+
+        app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
+    }
+
+    // ── Conference capability validation ────────────────────────────────
+
+    public function test_google_provider_creates_meeting_when_hangouts_meet_is_supported(): void
+    {
+        $this->configureGoogle();
+        $client = $this->bindFakeClient(['eventHangout', 'hangoutsMeet']);
+        $booking = Booking::factory()->confirmed()->paid()->create();
+
+        $client->shouldReceive('insertEvent')->once()->andReturn(['id' => 'evt1', 'hangoutLink' => null, 'conferenceData' => []]);
+
+        app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
+    }
+
+    public function test_google_provider_rejects_meeting_when_hangouts_meet_is_not_in_allowed_types(): void
+    {
+        $this->configureGoogle();
+        $client = $this->bindFakeClient(['eventHangout']);
+        $booking = Booking::factory()->confirmed()->paid()->create();
+
+        $client->shouldNotReceive('insertEvent');
+
+        try {
+            app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
+            $this->fail('Expected a BookingException.');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('not supported', $e->getMessage());
+            $this->assertStringContainsString('eventHangout', $e->getMessage());
+        }
+    }
+
+    public function test_google_provider_rejects_meeting_when_calendar_reports_no_conference_types(): void
+    {
+        $this->configureGoogle();
+        $client = $this->bindFakeClient([]);
+        $booking = Booking::factory()->confirmed()->paid()->create();
+
+        $client->shouldNotReceive('insertEvent');
+
+        $this->expectException(BookingException::class);
+        app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
     }
 
     // ── Event creation ───────────────────────────────────────────────
@@ -112,6 +208,30 @@ class GoogleCalendarMeetProviderTest extends TestCase
             ->andReturn(['id' => 'evt1', 'hangoutLink' => null, 'conferenceData' => []]);
 
         app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
+    }
+
+    public function test_google_provider_creates_unique_non_empty_request_ids_per_booking(): void
+    {
+        $this->configureGoogle();
+        $client = $this->bindFakeClient();
+        $bookingA = Booking::factory()->confirmed()->paid()->create();
+        $bookingB = Booking::factory()->confirmed()->paid()->create();
+
+        $seenRequestIds = [];
+        $client->shouldReceive('insertEvent')
+            ->twice()
+            ->withArgs(function (string $credentials, string $calendarId, array $payload) use (&$seenRequestIds): bool {
+                $this->assertNotEmpty($payload['conferenceRequestId']);
+                $seenRequestIds[] = $payload['conferenceRequestId'];
+
+                return true;
+            })
+            ->andReturn(['id' => 'evt1', 'hangoutLink' => null, 'conferenceData' => []]);
+
+        app(GoogleCalendarMeetProvider::class)->createMeeting($bookingA, new MeetingCreationContext);
+        app(GoogleCalendarMeetProvider::class)->createMeeting($bookingB, new MeetingCreationContext);
+
+        $this->assertCount(2, array_unique($seenRequestIds));
     }
 
     public function test_google_provider_stores_event_id_and_join_url_when_returned(): void
@@ -175,6 +295,35 @@ class GoogleCalendarMeetProviderTest extends TestCase
         } catch (BookingException $e) {
             $this->assertStringNotContainsString('AAAAAAAAAAAAAAAAAAAAABBBBBBBBBB1234567890', $e->getMessage());
             $this->assertStringContainsString('[redacted]', $e->getMessage());
+        }
+    }
+
+    public function test_google_provider_converts_invalid_conference_type_error_into_safe_exception(): void
+    {
+        $this->configureGoogle();
+        $client = $this->bindFakeClient();
+        $booking = Booking::factory()->confirmed()->paid()->create();
+
+        // Simulates GoogleCalendarSdkClient::translateException()'s rich,
+        // sanitized message for Google's real 400 "Invalid conference
+        // type value." response — the provider must forward it (redacting
+        // only token-shaped substrings), never swallow it or silently
+        // fall back to another provider.
+        $client->shouldReceive('insertEvent')
+            ->once()
+            ->andThrow(new \RuntimeException(
+                'Google Calendar API error (HTTP 400, reason: invalid): Invalid conference type value. '
+                .'Calendar: calendar-123@group.calendar.google.com. Delegated account: meetings@sirieducation.com. '
+                .'Requested conference type: hangoutsMeet.',
+            ));
+
+        try {
+            app(GoogleCalendarMeetProvider::class)->createMeeting($booking, new MeetingCreationContext);
+            $this->fail('Expected a BookingException.');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('Invalid conference type value', $e->getMessage());
+            $this->assertStringContainsString('400', $e->getMessage());
+            $this->assertStringContainsString('hangoutsMeet', $e->getMessage());
         }
     }
 

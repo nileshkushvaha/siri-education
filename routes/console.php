@@ -8,6 +8,7 @@ use App\Console\Commands\ReconcileInstructorPayouts;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
+use App\Console\Commands\SyncPendingMeetings;
 use App\Models\LoginHistory;
 use App\Models\SchedulerHistory;
 use Illuminate\Console\Scheduling\Schedule;
@@ -114,3 +115,17 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/booking-payments-reconcile.log'));
+
+// Re-sync meetings whose Google conference creation is still pending —
+// conference creation is asynchronous, so an event insert can succeed
+// while the Meet link only materializes later. Idempotent: resolved
+// meetings transition to Created (firing participant notifications
+// exactly once via BookingMeetingService's transition guard) and leave
+// the sweep; a conference Google reports as failed lands in the normal
+// meeting_creation_failed audit/notification path.
+app(Schedule::class)
+    ->command(SyncPendingMeetings::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/meetings-sync-pending.log'));

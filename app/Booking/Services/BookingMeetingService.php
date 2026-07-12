@@ -149,21 +149,40 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
     {
         $meeting = $this->findForBooking($booking);
 
-        if ($meeting === null) {
-            return null;
+        if ($meeting === null || $meeting->status === MeetingStatus::Cancelled) {
+            return $meeting;
+        }
+
+        // Nothing exists on the provider side (creation failed before an
+        // event/meeting id was assigned, or the provider is manual-like):
+        // mark cancelled directly. Resolving the provider here would only
+        // add failure modes — e.g. the admin already disabled it — for a
+        // remote deletion that has nothing to delete.
+        if ($meeting->provider_event_id === null && $meeting->provider_meeting_id === null) {
+            $meeting = $this->upsert($booking, [
+                'provider' => $meeting->provider,
+                'status' => MeetingStatus::Cancelled,
+                'failure_reason' => null,
+            ]);
+
+            $this->syncLegacyBookingColumns($booking, $meeting);
+
+            return $meeting;
         }
 
         try {
             $provider = $this->providers->resolve($meeting->provider);
             $result = $provider->cancelMeeting($meeting);
         } catch (Throwable $e) {
-            $meeting = $this->upsert($booking, [
-                'provider' => $meeting->provider,
-                'status' => MeetingStatus::Failed,
-                'failure_reason' => Str::limit($e->getMessage(), 500),
-            ]);
+            return $this->persistCancellationFailure($booking, $meeting->provider, $e->getMessage());
+        }
 
-            return $meeting;
+        if ($result->status === MeetingStatus::Failed) {
+            return $this->persistCancellationFailure(
+                $booking,
+                $meeting->provider,
+                $result->failureReason ?? 'Meeting provider reported a cancellation failure.',
+            );
         }
 
         $meeting = $this->upsert($booking, [
@@ -171,6 +190,8 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
             'status' => $result->status,
             'failure_reason' => $result->failureReason,
         ]);
+
+        $this->syncLegacyBookingColumns($booking, $meeting);
 
         $this->audit->logSystem(
             'bookings',
@@ -245,8 +266,15 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
 
     private function persistResult(Booking $booking, MeetingCreationResult $result): BookingMeeting
     {
+        $failureReason = $result->status === MeetingStatus::Failed
+            ? 'Meeting provider reported a conference creation failure.'
+            : null;
+
         $meeting = $this->upsert($booking, [
             'provider' => $result->provider,
+            // Kept even on failure: Google's async conference can fail on
+            // an event that was inserted successfully — the retry path
+            // must update that event, not insert a duplicate.
             'provider_meeting_id' => $result->providerMeetingId,
             'provider_event_id' => $result->providerEventId,
             'join_url' => $result->joinUrl,
@@ -256,11 +284,27 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
             'ends_at' => $result->endsAt,
             'timezone' => $result->timezone,
             'status' => $result->status,
-            'failure_reason' => null,
+            'failure_reason' => $failureReason,
             'metadata' => $result->metadata,
         ]);
 
         $this->syncLegacyBookingColumns($booking, $meeting);
+
+        // A provider can report failure as a *result* (Google's async
+        // conference creation resolving to status "failure") rather than
+        // an exception — still a creation failure, and it must leave the
+        // same audit/notification trail as the exception path.
+        if ($result->status === MeetingStatus::Failed) {
+            $this->audit->logSystem(
+                'bookings',
+                'meeting_creation_failed',
+                sprintf('Meeting creation failed for booking %s: %s', $booking->reference, $failureReason),
+                $booking,
+                ['provider' => $result->provider, 'reason' => $failureReason],
+            );
+
+            return $meeting;
+        }
 
         if ($result->status === MeetingStatus::Created) {
             $this->bookings->logActivity(
@@ -278,6 +322,33 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
                 ['provider' => $result->provider],
             );
         }
+
+        return $meeting;
+    }
+
+    /**
+     * A provider-side cancellation that failed leaves a live, joinable
+     * meeting behind for a booking that no longer stands — always
+     * audited (→ admin notification via NotificationMapper) so someone
+     * can clean up the orphaned event manually.
+     */
+    private function persistCancellationFailure(Booking $booking, string $providerKey, string $reason): BookingMeeting
+    {
+        $meeting = $this->upsert($booking, [
+            'provider' => $providerKey,
+            'status' => MeetingStatus::Failed,
+            'failure_reason' => Str::limit($reason, 500),
+        ]);
+
+        $this->syncLegacyBookingColumns($booking, $meeting);
+
+        $this->audit->logSystem(
+            'bookings',
+            'meeting_cancellation_failed',
+            sprintf('Meeting cancellation failed for booking %s: %s', $booking->reference, $reason),
+            $booking,
+            ['provider' => $providerKey, 'reason' => $reason],
+        );
 
         return $meeting;
     }

@@ -131,8 +131,20 @@ class BookingServiceProvider extends ServiceProvider
         $this->app->singleton(AssignmentStrategyRegistry::class);
         $this->app->singleton(PaymentProviderRegistry::class);
         $this->app->singleton(PaymentProviderResolver::class);
-        $this->app->singleton(MeetingProviderRegistry::class);
-        $this->app->singleton(MeetingProviderResolver::class);
+
+        // scoped(), not singleton(): MeetingSettings itself is scoped
+        // (Spatie's SettingsContainer), and Laravel resets scoped
+        // bindings between queue jobs (QueueServiceProvider calls
+        // forgetScopedInstances() after each job) but never resets
+        // plain singletons. A singleton registry would build its
+        // registered GoogleCalendarMeetProvider once per worker
+        // process — including its injected MeetingSettings snapshot —
+        // and keep serving that stale snapshot (old credentials, old
+        // platform_meeting_account) to every job the worker processes
+        // afterward, until the worker restarts. scoped() rebuilds the
+        // registry (and every provider in it) fresh per request/job.
+        $this->app->scoped(MeetingProviderRegistry::class);
+        $this->app->scoped(MeetingProviderResolver::class);
 
         // New gateways: implement PaymentProviderInterface, register here,
         // switch via BookingSettings::payment_provider. Selection safety

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ActivityActorType;
 use App\Lessons\Enums\LessonAttendanceStatus;
+use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use Database\Factories\LessonFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -46,6 +49,14 @@ class Lesson extends Model
         'auto_completed_at',
         'completion_notes',
         'dispute_reason',
+        'outcome',
+        'outcome_reason_code',
+        'outcome_notes',
+        'outcome_finalized_at',
+        'outcome_finalized_by_type',
+        'outcome_finalized_by',
+        'attendance_record_id',
+        'outcome_version',
         'metadata',
     ];
 
@@ -61,6 +72,10 @@ class Lesson extends Model
             'instructor_attended_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
             'auto_completed_at' => 'immutable_datetime',
+            'outcome' => LessonOutcome::class,
+            'outcome_finalized_at' => 'immutable_datetime',
+            'outcome_finalized_by_type' => ActivityActorType::class,
+            'outcome_version' => 'integer',
             'metadata' => 'array',
         ];
     }
@@ -100,6 +115,27 @@ class Lesson extends Model
         return $this->belongsTo(User::class, 'completed_by');
     }
 
+    /** The attendance record referenced by the finalized outcome (may lag attendanceRecord until finalization). */
+    public function outcomeAttendanceRecord(): BelongsTo
+    {
+        return $this->belongsTo(LessonAttendanceRecord::class, 'attendance_record_id');
+    }
+
+    public function attendanceRecord(): HasOne
+    {
+        return $this->hasOne(LessonAttendanceRecord::class);
+    }
+
+    public function outcomeFinalizer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'outcome_finalized_by');
+    }
+
+    public function hasFinalizedOutcome(): bool
+    {
+        return $this->outcome !== LessonOutcome::Pending && $this->outcome_finalized_at !== null;
+    }
+
     /** Lessons still awaiting an outcome: scheduled or live. */
     public function scopeOpen(Builder $query): Builder
     {
@@ -119,7 +155,7 @@ class Lesson extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['status', 'student_attendance_status', 'instructor_attendance_status', 'completed_at'])
+            ->logOnly(['status', 'outcome', 'student_attendance_status', 'instructor_attendance_status', 'completed_at'])
             ->useLogName('lessons')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

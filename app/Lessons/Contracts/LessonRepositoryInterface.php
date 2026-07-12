@@ -17,6 +17,9 @@ interface LessonRepositoryInterface
     /** @param array<string, mixed> $attributes */
     public function create(array $attributes): Lesson;
 
+    /** Refetch the lesson with a row lock — call only inside a transaction. */
+    public function lockForUpdate(Lesson $lesson): Lesson;
+
     /**
      * Persist a guarded status change plus any extra attribute updates.
      * Guarding (canTransitionTo) is the action's job — this only writes.

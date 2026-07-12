@@ -23,6 +23,9 @@ class LessonSettings extends Settings
     /** Completion requires student attendance = attended (admin override bypasses; also gates the auto sweep). */
     public bool $require_student_attendance;
 
+    /** Merged seconds a party must attend to qualify (0 = any recorded join qualifies — disabled-safe default). */
+    public int $min_attendance_seconds;
+
     public static function group(): string
     {
         return 'lessons';

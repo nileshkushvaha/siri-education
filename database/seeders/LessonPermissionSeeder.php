@@ -24,6 +24,7 @@ class LessonPermissionSeeder extends Seeder
     private const array MANAGER_PERMISSIONS = [
         'ViewAny:Lesson', 'View:Lesson', 'Update:Lesson', 'Delete:Lesson', 'Restore:Lesson',
         'MarkAttendance:Lesson', 'Complete:Lesson', 'Cancel:Lesson', 'Dispute:Lesson',
+        'OverrideOutcome:Lesson', 'InspectAttendance:Lesson',
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [

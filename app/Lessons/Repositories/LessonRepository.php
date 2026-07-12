@@ -23,6 +23,11 @@ final class LessonRepository implements LessonRepositoryInterface
         return Lesson::query()->create($attributes);
     }
 
+    public function lockForUpdate(Lesson $lesson): Lesson
+    {
+        return Lesson::query()->whereKey($lesson->getKey())->lockForUpdate()->firstOrFail();
+    }
+
     public function transitionStatus(Lesson $lesson, LessonStatus $status, array $extra = []): Lesson
     {
         $lesson->fill([...$extra, 'status' => $status]);

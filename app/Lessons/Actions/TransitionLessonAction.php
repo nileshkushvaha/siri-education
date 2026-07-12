@@ -22,13 +22,18 @@ final class TransitionLessonAction
     ) {}
 
     /**
+     * $force bypasses the state machine and is reserved for
+     * OverrideLessonOutcomeAction's admin corrections — an authorized,
+     * reasoned, audited override may need to move a finalized lesson
+     * between outcomes the normal machine forbids.
+     *
      * @param  array<string, mixed>  $extra
      *
      * @throws InvalidLessonTransitionException
      */
-    public function execute(Lesson $lesson, LessonStatus $next, array $extra = []): Lesson
+    public function execute(Lesson $lesson, LessonStatus $next, array $extra = [], bool $force = false): Lesson
     {
-        if (! $lesson->status->canTransitionTo($next)) {
+        if (! $force && ! $lesson->status->canTransitionTo($next)) {
             throw InvalidLessonTransitionException::between($lesson->status, $next);
         }
 

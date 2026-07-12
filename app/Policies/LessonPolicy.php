@@ -68,6 +68,25 @@ class LessonPolicy
             || $this->hasPermission($user, 'Complete:Lesson');
     }
 
+    /**
+     * Correct a finalized lesson outcome — explicit staff permission
+     * only; participants can never rewrite outcomes.
+     */
+    public function overrideOutcome(User $user, Lesson $lesson): bool
+    {
+        return $this->hasPermission($user, 'OverrideOutcome:Lesson');
+    }
+
+    /**
+     * Inspect the attendance record and its evidence log — staff
+     * permission, or a participant looking at their own lesson.
+     */
+    public function inspectAttendance(User $user, Lesson $lesson): bool
+    {
+        return $this->isParticipant($user, $lesson)
+            || $this->hasPermission($user, 'InspectAttendance:Lesson');
+    }
+
     public function dispute(User $user, Lesson $lesson): bool
     {
         return $this->isParticipant($user, $lesson)

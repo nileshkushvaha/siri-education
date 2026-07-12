@@ -156,17 +156,96 @@ lessons are engine-created.
    listeners are queued.
 4. Scheduler cron — gates `lessons:auto-complete` (every 15 min).
 
+## Attendance & Lesson Outcome (Phase 17A)
+
+Evidence-grade attendance and an authoritative finalized outcome,
+layered on top of (never replacing) the Phase 13 lifecycle.
+
+### Data model
+
+- `lesson_attendance_records` — one per lesson (unique `lesson_id`);
+  merged per-party aggregates (first joined / last left / attended
+  seconds / join count), latest `source`, `provider_reference`,
+  sanitized `metadata`, `technical_issue_reported_at`, `finalized_at`.
+- `lesson_attendance_events` — append-only evidence log; unique
+  `(lesson_id, fingerprint)` (sha256 of the provider event id, or the
+  normalized evidence tuple) is the idempotency guarantee. Aggregates
+  are recomputed from this log as an interval **union**, so replays,
+  out-of-order arrival, and overlapping sessions merge identically.
+- `lessons` outcome columns — `outcome` (`LessonOutcome`: pending /
+  completed / student_no_show / instructor_no_show / both_absent /
+  technical_issue / cancelled), `outcome_reason_code`, `outcome_notes`
+  (sanitized), `outcome_finalized_at/by/by_type`,
+  `attendance_record_id`, `outcome_version` (concurrency lock value).
+  Pre-17A finalized lessons were backfilled
+  (`outcome_reason_code = backfill_phase_17a`).
+
+### Services & actions
+
+`LessonAttendanceServiceInterface` (record / finalize evidence) and
+`LessonOutcomeServiceInterface` (determine / finalize / override) are
+the only entry points. Under them: `RecordAttendanceAction`,
+`FinalizeAttendanceAction`, `DetermineLessonOutcomeAction`,
+`FinalizeLessonOutcomeAction`, `OverrideLessonOutcomeAction`.
+
+- **`FinalizeLessonOutcomeAction` is the single writer of the outcome**
+  — the outcome service *and* every legacy lifecycle finalization
+  (manual complete, no-show, cancel, auto-complete sweep) funnel
+  through it, so outcome and status can never diverge. It runs under a
+  `lockForUpdate` row lock; re-finalizing the same outcome is a no-op;
+  changing a terminal outcome throws `TerminalLessonOutcomeException`.
+- **`LessonOutcomeFinalized` fires exactly once per lesson** — it is
+  dispatched inside the finalizing transaction and implements
+  `ShouldDispatchAfterCommit` (as do `AttendanceRecorded`,
+  `AttendanceFinalized`, `LessonOutcomeOverridden`). No earnings,
+  refund, homework, review, or notification listeners are attached in
+  17A; the existing `LessonCompleted` → earnings pipeline still fires
+  through the lifecycle sync.
+
+### Rules
+
+- Attendance is **evidence, not mutation**: only confirmed bookings
+  with an open lesson accept it; a cancelled booking rejects both
+  recording and finalization and can never be reactivated.
+- Qualifying attendance = explicit human `Attended` mark, or join
+  evidence with merged duration ≥ `lessons.min_attendance_seconds`
+  (default 0 = disabled-safe). No-show outcomes are rejected when they
+  contradict qualifying attendance.
+- Completion is impossible before `ends_at` (only the pre-existing
+  admin/booking override-completion path may complete early); a
+  reported technical issue blocks *system* completion — the sweep
+  skips the lesson, and finalizing the determined `TechnicalIssue`
+  outcome parks the status as Disputed for a human decision.
+- Explicit human attendance marks win over provider evidence:
+  `FinalizeAttendanceAction` only fills party statuses still Pending.
+- Admin correction goes through `override()` — requires
+  `OverrideOutcome:Lesson` + a reason, writes previous/new values via
+  `AuditTrailService::logOverride`, bumps `outcome_version`, and may
+  force the status machine (`TransitionLessonAction` `$force`).
+- All timestamps are stored UTC; audit events (`lessons` log):
+  `lesson_attendance_recorded`, `lesson_attendance_finalized`,
+  `lesson_outcome_finalized`, `lesson_outcome_overridden`.
+- New permissions (seeded by `LessonPermissionSeeder`, granted to
+  managers): `OverrideOutcome:Lesson`, `InspectAttendance:Lesson`.
+  Instructor confirmation reuses `markAttendance` policy (own lessons).
+
 ## Deferred (do not build yet)
 
 Homework, reviews, certificates, instructor payout, wallet
 debit/recharge, recording storage, group classes, recurring lesson
 generation, full learning-progress engine, advanced attendance
 analytics, lesson notifications mapping, student/instructor frontend
-lesson UI, join-click-based automatic attendance.
+lesson UI, join-click-based automatic attendance, meeting-provider
+webhook endpoints / sync jobs feeding the attendance layer (17B+),
+outcome-driven financial corrections after an admin override.
 
 ## Tests
 
 `tests/Feature/Lesson/` — `LessonLifecycleTest` (creation trigger,
 eligibility, snapshot, transitions, attendance, completion, no-show,
 dispute, booking↔lesson sync both directions, auto-complete command),
-`LessonPermissionSeederTest`, `LessonAdminPanelTest`.
+`LessonAttendanceOutcomeTest` (Phase 17A: evidence recording,
+idempotent/out-of-order/overlapping ingestion, authorization,
+determinations, terminal protection, override + audit, concurrency,
+exactly-once event, UTC safety), `LessonPermissionSeederTest`,
+`LessonAdminPanelTest`.

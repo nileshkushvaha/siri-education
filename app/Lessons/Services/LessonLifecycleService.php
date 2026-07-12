@@ -8,16 +8,21 @@ use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
+use App\Enums\ActivityActorType;
 use App\Lessons\Actions\CreateLessonFromBookingAction;
+use App\Lessons\Actions\FinalizeLessonOutcomeAction;
 use App\Lessons\Actions\TransitionLessonAction;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonRepositoryInterface;
+use App\Lessons\DTOs\OutcomeFinalizationData;
 use App\Lessons\Enums\LessonAttendanceStatus;
+use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use App\Lessons\Events\LessonCancelled;
 use App\Lessons\Events\LessonCompleted;
 use App\Lessons\Events\LessonDisputed;
 use App\Lessons\Exceptions\LessonException;
+use App\Lessons\Exceptions\TerminalLessonOutcomeException;
 use App\Models\Booking;
 use App\Models\Lesson;
 use App\Models\User;
@@ -47,6 +52,7 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
         private readonly LessonRepositoryInterface $lessons,
         private readonly CreateLessonFromBookingAction $createAction,
         private readonly TransitionLessonAction $transition,
+        private readonly FinalizeLessonOutcomeAction $outcomeFinalize,
         private readonly BookingServiceInterface $bookings,
         private readonly AuditTrailService $audit,
         private readonly LessonSettings $settings,
@@ -124,15 +130,23 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
             $this->assertCompletable($lesson);
         }
 
-        $lesson = $this->transition->execute($lesson, LessonStatus::Completed, [
-            'completed_at' => now(),
-            'completed_by' => $actor?->id,
-            'completion_notes' => $notes,
-            // Confirming completion asserts the lesson was delivered —
-            // parties never flagged either way count as attended.
-            'student_attendance_status' => $this->attendedUnlessNoShow($lesson->student_attendance_status),
-            'instructor_attendance_status' => $this->attendedUnlessNoShow($lesson->instructor_attendance_status),
-        ]);
+        // Status transition and outcome finalization commit atomically —
+        // a rejected outcome (e.g. technical issue) rolls the status back.
+        $lesson = DB::transaction(function () use ($lesson, $actor, $notes, $override): Lesson {
+            $lesson = $this->transition->execute($lesson, LessonStatus::Completed, [
+                'completed_at' => now(),
+                'completed_by' => $actor?->id,
+                'completion_notes' => $notes,
+                // Confirming completion asserts the lesson was delivered —
+                // parties never flagged either way count as attended.
+                'student_attendance_status' => $this->attendedUnlessNoShow($lesson->student_attendance_status),
+                'instructor_attendance_status' => $this->attendedUnlessNoShow($lesson->instructor_attendance_status),
+            ]);
+
+            $this->finalizeOutcome($lesson, LessonOutcome::Completed, 'lesson_completed', $actor, $notes, allowEarlyCompletion: $override);
+
+            return $lesson;
+        });
 
         $this->log($actor, 'lesson_completed', sprintf('Lesson %s completed.', $lesson->id), $lesson);
 
@@ -151,7 +165,17 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
             throw new LessonException('Neither party is marked as a no-show — record attendance first.');
         }
 
-        $lesson = $this->transition->execute($lesson, $outcome);
+        $lesson = DB::transaction(function () use ($lesson, $outcome, $actor): Lesson {
+            $lesson = $this->transition->execute($lesson, $outcome);
+
+            $this->finalizeOutcome($lesson, match ($outcome) {
+                LessonStatus::StudentNoShow => LessonOutcome::StudentNoShow,
+                LessonStatus::InstructorNoShow => LessonOutcome::InstructorNoShow,
+                default => LessonOutcome::BothAbsent,
+            }, 'no_show_recorded', $actor);
+
+            return $lesson;
+        });
 
         $this->log($actor, 'lesson_no_show', sprintf('Lesson %s finalized as %s.', $lesson->id, $outcome->label()), $lesson);
 
@@ -182,9 +206,15 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
 
     public function cancel(Lesson $lesson, ?User $actor = null, ?string $reason = null): Lesson
     {
-        $lesson = $this->transition->execute($lesson, LessonStatus::Cancelled, [
-            'metadata' => [...($lesson->metadata ?? []), ...array_filter(['cancellation_reason' => $reason])],
-        ]);
+        $lesson = DB::transaction(function () use ($lesson, $actor, $reason): Lesson {
+            $lesson = $this->transition->execute($lesson, LessonStatus::Cancelled, [
+                'metadata' => [...($lesson->metadata ?? []), ...array_filter(['cancellation_reason' => $reason])],
+            ]);
+
+            $this->finalizeOutcome($lesson, LessonOutcome::Cancelled, 'lesson_cancelled', $actor, $reason);
+
+            return $lesson;
+        });
 
         $this->log($actor, 'lesson_cancelled', sprintf('Lesson %s cancelled.', $lesson->id), $lesson);
 
@@ -261,11 +291,19 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
     {
         // Attendance statuses are deliberately left as recorded — an
         // auto-completion asserts "nobody reported a problem in time",
-        // not verified attendance.
-        $lesson = $this->transition->execute($lesson, LessonStatus::Completed, [
-            'completed_at' => now(),
-            'auto_completed_at' => now(),
-        ]);
+        // not verified attendance. A reported technical issue makes the
+        // outcome action throw, rolling the transition back so the sweep
+        // can never auto-complete a broken meeting.
+        $lesson = DB::transaction(function () use ($lesson): Lesson {
+            $lesson = $this->transition->execute($lesson, LessonStatus::Completed, [
+                'completed_at' => now(),
+                'auto_completed_at' => now(),
+            ]);
+
+            $this->finalizeOutcome($lesson, LessonOutcome::Completed, 'auto_completed', null);
+
+            return $lesson;
+        });
 
         $this->audit->logSystem(
             self::LOG_NAME,
@@ -318,6 +356,31 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
         );
 
         return $lesson;
+    }
+
+    /**
+     * Record the equivalent finalized outcome for a lifecycle-driven
+     * finalization (Phase 17A). Idempotent through the action; a
+     * dispute resolution moving the status away from an already-terminal
+     * outcome is tolerated — correcting the outcome itself requires the
+     * explicit LessonOutcomeServiceInterface::override() API.
+     */
+    private function finalizeOutcome(Lesson $lesson, LessonOutcome $outcome, string $reasonCode, ?User $actor, ?string $notes = null, bool $allowEarlyCompletion = false): void
+    {
+        try {
+            $this->outcomeFinalize->execute($lesson, new OutcomeFinalizationData(
+                outcome: $outcome,
+                reasonCode: $reasonCode,
+                byType: $actor !== null ? ActivityActorType::User : ActivityActorType::System,
+                actor: $actor,
+                notes: $notes,
+                allowEarlyCompletion: $allowEarlyCompletion,
+            ));
+        } catch (TerminalLessonOutcomeException) {
+            // The outcome was already finalized differently (e.g. a
+            // dispute resolved after completion) — the recorded outcome
+            // stands until an authorized admin override corrects it.
+        }
     }
 
     private function attendedUnlessNoShow(LessonAttendanceStatus $current): LessonAttendanceStatus

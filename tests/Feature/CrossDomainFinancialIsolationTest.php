@@ -83,13 +83,18 @@ class CrossDomainFinancialIsolationTest extends TestCase
 
     // ── Routing integrity ─────────────────────────────────────────────
 
-    public function test_only_the_fake_provider_is_registered_for_payout(): void
+    public function test_only_the_fake_and_razorpayx_providers_are_registered_for_payout(): void
     {
         $registry = app(InstructorPayoutProviderRegistryInterface::class);
         $this->assertTrue($registry->has('fake'));
         $this->assertInstanceOf(FakeInstructorPayoutProvider::class, $registry->get('fake'));
 
-        foreach (['razorpayx', 'stripe', 'wise', 'paypal'] as $unregistered) {
+        // Phase 16B — a RazorpayX adapter now exists (registered), but
+        // it is disabled/uncredentialed by default; every other
+        // provider key remains genuinely unregistered.
+        $this->assertTrue($registry->has('razorpayx'));
+
+        foreach (['stripe', 'wise', 'paypal'] as $unregistered) {
             $this->assertFalse($registry->has($unregistered));
         }
     }
@@ -98,9 +103,11 @@ class CrossDomainFinancialIsolationTest extends TestCase
     {
         $result = app(InstructorPayoutEligibilityServiceInterface::class)->resolve('IN', 'IN', 'INR', PayoutMethodType::BankTransfer);
 
-        // No RazorpayX adapter exists in this phase — an India/INR route
-        // must resolve against whatever IS configured (the fake provider)
-        // or fail, never silently assume a provider that isn't registered.
+        // A RazorpayX adapter is registered (Phase 16B), but
+        // InstructorEarningSettings::payout_provider still defaults to
+        // 'fake' — an India/INR route must resolve against whatever IS
+        // actually configured, never silently switch to RazorpayX just
+        // because its adapter now exists.
         $this->assertNotSame('razorpayx', $result->provider);
     }
 
@@ -195,14 +202,29 @@ class CrossDomainFinancialIsolationTest extends TestCase
 
     public function test_payout_execution_service_handles_no_http_route(): void
     {
+        // Phase 16B's one deliberate exception: the RazorpayX payout
+        // webhook — public, unauthenticated, signature-verified — never
+        // touches a Filament/Livewire session and never calls
+        // InstructorPayoutExecutionService directly (it normalizes the
+        // event first; see RazorpayXPayoutWebhookController).
+        $razorpayXWebhookUri = 'api/webhooks/payouts/razorpayx';
+
         foreach (app('router')->getRoutes() as $route) {
-            if (! preg_match('/payout/i', $route->uri())) {
+            $uri = $route->uri();
+
+            if ($uri === $razorpayXWebhookUri) {
+                $this->assertSame(['POST'], $route->methods(), $uri);
+
                 continue;
             }
 
-            // Every payout-related route must be an admin Filament page
-            // (GET/HEAD only) — no payout webhook, no execution endpoint.
-            $this->assertSame(['GET', 'HEAD'], $route->methods(), $route->uri());
+            if (! preg_match('/payout/i', $uri)) {
+                continue;
+            }
+
+            // Every other payout-related route must be an admin Filament
+            // page (GET/HEAD only) — no execution endpoint.
+            $this->assertSame(['GET', 'HEAD'], $route->methods(), $uri);
         }
     }
 

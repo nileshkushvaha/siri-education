@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -105,6 +106,13 @@ class InstructorPayoutMethod extends Model
     public function withdrawalRequests(): HasMany
     {
         return $this->hasMany(InstructorWithdrawalRequest::class, 'payout_method_id');
+    }
+
+    /** Phase 16B — RazorpayX Contact/Fund Account provisioning state. Null until provisioning has been attempted at least once. */
+    public function razorpayXProviderLink(): HasOne
+    {
+        return $this->hasOne(InstructorPayoutDestinationProviderLink::class, 'payout_method_id')
+            ->where('provider', 'razorpayx');
     }
 
     public function scopeForInstructor(Builder $query, int $instructorId): Builder

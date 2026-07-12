@@ -22,7 +22,12 @@ use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Contracts\PayoutMethodFingerprintServiceInterface;
 use App\Earnings\Contracts\PayoutMethodSnapshotServiceInterface;
 use App\Earnings\Contracts\PayoutRequestFingerprintServiceInterface;
+use App\Earnings\Contracts\RazorpayXDestinationProvisioningServiceInterface;
 use App\Earnings\Providers\Fake\FakeInstructorPayoutProvider;
+use App\Earnings\Providers\RazorpayX\RazorpayXDestinationProvisioningService;
+use App\Earnings\Providers\RazorpayX\RazorpayXHttpPayoutClient;
+use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
+use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
 use App\Earnings\Registry\InstructorPayoutProviderRegistry;
 use App\Earnings\Repositories\InstructorEarningRepository;
 use App\Earnings\Services\FinancialFeatureConfigurationService;
@@ -69,6 +74,7 @@ class EarningServiceProvider extends ServiceProvider
         $this->app->singleton(InstructorPayoutProviderRegistryInterface::class, function (): InstructorPayoutProviderRegistry {
             $registry = new InstructorPayoutProviderRegistry;
             $registry->register(new FakeInstructorPayoutProvider);
+            $registry->register($this->app->make(RazorpayXInstructorPayoutProvider::class));
 
             return $registry;
         });
@@ -79,5 +85,11 @@ class EarningServiceProvider extends ServiceProvider
         // Phase 16A.1 — provider-neutral route eligibility (distinct from
         // account-level InstructorPayoutEligibility, Phase 15).
         $this->app->singleton(InstructorPayoutEligibilityServiceInterface::class, InstructorPayoutEligibilityService::class);
+
+        // Phase 16B — RazorpayX India/INR payout adapter. The client
+        // interface is the only thing that ever touches Http:: for
+        // RazorpayX; everything above it is transport-agnostic.
+        $this->app->singleton(RazorpayXPayoutClientInterface::class, RazorpayXHttpPayoutClient::class);
+        $this->app->singleton(RazorpayXDestinationProvisioningServiceInterface::class, RazorpayXDestinationProvisioningService::class);
     }
 }

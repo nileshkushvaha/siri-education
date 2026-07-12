@@ -8,17 +8,21 @@ use App\Earnings\Contracts\InstructorPayoutExecutionServiceInterface;
 use App\Earnings\Contracts\InstructorPayoutMethodServiceInterface;
 use App\Earnings\Contracts\InstructorPeriodicCompensationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
+use App\Earnings\Contracts\RazorpayXDestinationProvisioningServiceInterface;
 use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
+use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
 use App\Models\Booking;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Settings\RazorpayXPayoutSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
+use Tests\Support\RazorpayXConcurrencyFakeClient;
 
 /**
  * Child-process worker for the real-MySQL concurrency tests
@@ -194,6 +198,26 @@ try {
             $booking = app(BookingPaymentServiceInterface::class)->refundViaProvider($booking, $actor, 'Concurrency test: provider path.');
 
             return ['payment_status' => $booking->payment_status->value];
+        })(),
+
+        // Phase 16B — RazorpayX destination provisioning race. Binds a
+        // network-free fake client (Mockery cannot cross a process
+        // boundary) — the property under test is the database layer's
+        // uniqueness/locking, never this client's behavior.
+        'razorpayx-provision' => (function () use ($args) {
+            app()->instance(RazorpayXPayoutClientInterface::class, new RazorpayXConcurrencyFakeClient);
+
+            $settings = app(RazorpayXPayoutSettings::class);
+            $settings->razorpayx_contact_provisioning_enabled = true;
+            $settings->razorpayx_fund_account_provisioning_enabled = true;
+            $settings->save();
+
+            $method = InstructorPayoutMethod::query()->findOrFail($args['method_id']);
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            $link = app(RazorpayXDestinationProvisioningServiceInterface::class)->provision($method, $actor);
+
+            return ['link_id' => $link->id, 'status' => $link->status->value, 'contact_id' => $link->provider_contact_id, 'fund_account_id' => $link->provider_fund_account_id];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

@@ -27,6 +27,7 @@ use App\Earnings\Contracts\PayoutRequestFingerprintServiceInterface;
 use App\Earnings\DTOs\CompensationResolution;
 use App\Earnings\DTOs\PayoutInitiationRequest;
 use App\Earnings\Providers\Fake\FakeInstructorPayoutProvider;
+use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
 use App\Earnings\Registry\InstructorPayoutProviderRegistry;
 use App\Earnings\Repositories\InstructorEarningRepository;
 use App\Earnings\Services\InstructorCompensationAgreementService;
@@ -153,26 +154,42 @@ class FinancialArchitectureTest extends TestCase
 
     // ── Phase 16A: provider-neutral payout execution ─────────────────
 
-    public function test_only_the_fake_payout_provider_is_registered(): void
+    public function test_only_fake_and_razorpayx_payout_providers_are_registered(): void
     {
         $registry = app(InstructorPayoutProviderRegistryInterface::class);
 
         $this->assertTrue($registry->has('fake'));
         $this->assertInstanceOf(FakeInstructorPayoutProvider::class, $registry->get('fake'));
 
-        foreach (['razorpayx', 'stripe', 'wise', 'paypal', 'stripe_connect'] as $key) {
-            $this->assertFalse($registry->has($key), "No adapter for \"{$key}\" may be registered in Phase 16A.");
+        // Phase 16B — RazorpayX is registered (an adapter exists) but
+        // never enabled/credentialed by a test; disabled/unhealthy by
+        // default, exactly like every other financial switch.
+        $this->assertTrue($registry->has('razorpayx'));
+        $this->assertInstanceOf(RazorpayXInstructorPayoutProvider::class, $registry->get('razorpayx'));
+
+        foreach (['stripe', 'wise', 'paypal', 'stripe_connect'] as $key) {
+            $this->assertFalse($registry->has($key), "No adapter for \"{$key}\" may be registered yet.");
         }
     }
 
-    public function test_no_external_payout_provider_adapter_or_http_call_exists(): void
+    /**
+     * Phase 16B: RazorpayX is a legitimate external provider now, so
+     * this test's job narrows to "only the RazorpayX client boundary
+     * ever touches Http::/curl_/etc, and no OTHER external provider
+     * (Wise, PayPal, Stripe Connect) has crept in".
+     */
+    public function test_no_undeclared_external_payout_provider_or_stray_http_call_exists(): void
     {
+        $allowedHttpCaller = app_path('Earnings/Providers/RazorpayX/RazorpayXHttpPayoutClient.php');
+
         foreach ($this->phpFilesIn([app_path('Earnings')]) as $path => $code) {
-            foreach (['Http::', 'GuzzleHttp\\', 'curl_init', 'curl_exec', "file_get_contents('http", 'file_get_contents("http'] as $needle) {
-                $this->assertStringNotContainsString($needle, $code, "Unexpected network call in {$path}");
+            if ($path !== $allowedHttpCaller) {
+                foreach (['Http::', 'GuzzleHttp\\', 'curl_init', 'curl_exec', "file_get_contents('http", 'file_get_contents("http'] as $needle) {
+                    $this->assertStringNotContainsString($needle, $code, "Unexpected network call in {$path}");
+                }
             }
 
-            foreach (['razorpayx', 'razorpay x', 'stripe connect', 'api.razorpay'] as $needle) {
+            foreach (['razorpay x', 'stripe connect', 'wise api', 'paypal payout'] as $needle) {
                 $this->assertStringNotContainsStringIgnoringCase($needle, $code, "Unexpected external-provider reference in {$path}");
             }
         }
@@ -274,8 +291,23 @@ class FinancialArchitectureTest extends TestCase
 
     public function test_no_public_financial_mutation_or_payout_execution_route_exists(): void
     {
+        // Phase 16B's one deliberate exception: the RazorpayX payout
+        // webhook is a public, unauthenticated, signature-verified POST
+        // endpoint (see RazorpayXPayoutWebhookController) — it never
+        // touches a Filament/Livewire session and never mutates
+        // financial state outside the verified-and-normalized-event
+        // pipeline. Every other financial route must remain a GET-only
+        // shell.
+        $razorpayXWebhookUri = 'api/webhooks/payouts/razorpayx';
+
         foreach (app('router')->getRoutes() as $route) {
             $uri = $route->uri();
+
+            if ($uri === $razorpayXWebhookUri) {
+                $this->assertSame(['POST'], $route->methods(), $uri);
+
+                continue;
+            }
 
             if (! preg_match('/payout|withdraw|settlement|earning|compensation/i', $uri)) {
                 continue;

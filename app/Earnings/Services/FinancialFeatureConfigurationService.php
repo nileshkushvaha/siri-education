@@ -17,7 +17,10 @@ use App\Earnings\DTOs\FeatureReadiness;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Enums\PayoutReconciliationSeverity;
+use App\Earnings\Enums\PayoutRolloutScope;
 use App\Earnings\Exceptions\CompensationException;
+use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
+use App\Earnings\Providers\RazorpayX\RazorpayXPayoutConfigurationValidator;
 use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
 use App\Models\InstructorCompensationAgreement;
@@ -27,6 +30,7 @@ use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Settings\InstructorEarningSettings;
+use App\Settings\RazorpayXPayoutSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Schema;
 
@@ -50,6 +54,8 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
         private readonly CompensationActivationPreflight $preflight,
         private readonly AuditTrailService $audit,
         private readonly InstructorPayoutProviderRegistryInterface $providers,
+        private readonly RazorpayXPayoutSettings $razorpayXSettings,
+        private readonly RazorpayXPayoutConfigurationValidator $razorpayXConfigValidator,
     ) {}
 
     // ── Readiness evaluation ─────────────────────────────────────────
@@ -214,7 +220,55 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
             $failures[] = ['check' => 'unresolved_critical_reconciliation_issue', 'message' => 'A critical, unresolved reconciliation issue exists.', 'subjects' => []];
         }
 
+        if ($providerKey === RazorpayXInstructorPayoutProvider::KEY) {
+            array_push($failures, ...$this->razorpayXReadinessFailures());
+        }
+
         return $this->readiness('payout_execution', $this->settings->payout_execution_enabled, $failures);
+    }
+
+    /**
+     * RazorpayX-specific preflight (Phase 16B) — only evaluated when the
+     * configured payout provider actually resolves to `razorpayx`.
+     * Structural only; the provider's own healthCheck() (a genuine
+     * network probe) is already covered above via the generic
+     * provider_unhealthy check.
+     *
+     * @return list<array{check: string, message: string, subjects: list<string>}>
+     */
+    private function razorpayXReadinessFailures(): array
+    {
+        $failures = [];
+
+        if (! $this->razorpayXSettings->razorpayx_enabled) {
+            $failures[] = ['check' => 'razorpayx_disabled', 'message' => 'RazorpayX is not enabled.', 'subjects' => []];
+        }
+
+        foreach ($this->razorpayXConfigValidator->issues($this->razorpayXSettings) as $issue) {
+            $failures[] = ['check' => 'razorpayx_configuration_invalid', 'message' => $issue, 'subjects' => []];
+        }
+
+        if (! $this->razorpayXSettings->razorpayx_contact_provisioning_enabled) {
+            $failures[] = ['check' => 'razorpayx_contact_provisioning_disabled', 'message' => 'RazorpayX Contact provisioning is disabled.', 'subjects' => []];
+        }
+
+        if (! $this->razorpayXSettings->razorpayx_fund_account_provisioning_enabled) {
+            $failures[] = ['check' => 'razorpayx_fund_account_provisioning_disabled', 'message' => 'RazorpayX Fund Account provisioning is disabled.', 'subjects' => []];
+        }
+
+        $scope = PayoutRolloutScope::tryFrom($this->settings->payout_rollout_scope) ?? PayoutRolloutScope::Disabled;
+
+        if ($scope === PayoutRolloutScope::Disabled) {
+            $failures[] = ['check' => 'razorpayx_rollout_scope_disabled', 'message' => 'The payout rollout scope does not permit any India/INR routing.', 'subjects' => []];
+        }
+
+        if (! Schema::hasTable('instructor_payout_destination_provider_links')) {
+            $failures[] = ['check' => 'razorpayx_destination_link_table_missing', 'message' => 'The RazorpayX destination provider link table is missing.', 'subjects' => []];
+        } elseif (! $this->indexExists('instructor_payout_destination_provider_links', 'ipdpl_method_provider_unique')) {
+            $failures[] = ['check' => 'razorpayx_destination_link_constraint_missing', 'message' => 'The RazorpayX destination provider link uniqueness constraint is missing.', 'subjects' => []];
+        }
+
+        return $failures;
     }
 
     // ── Toggles (audited; the only unguarded writers) ────────────────

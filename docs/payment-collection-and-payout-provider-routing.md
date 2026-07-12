@@ -165,11 +165,19 @@ duplicate charge is possible.
 ## 10. India/INR payout strategy
 
 `payout_rollout_scope` defaults to `india_inr_only`, matching the
-recommended policy for the upcoming Phase 16B RazorpayX integration.
-Today, with only the fake provider registered, an India/INR route
-resolves against `fake` (or fails if disabled) — never RazorpayX,
-which does not exist as an adapter yet (architecture-tested: the
-payout registry never resolves `razorpayx`).
+policy the Phase 16B RazorpayX adapter was built against.
+`RazorpayXInstructorPayoutProvider` is now registered (Phase 16B), but
+`InstructorEarningSettings::payout_provider` still defaults to `fake`
+— an India/INR route resolves against `fake` today unless an admin
+explicitly changes `payout_provider` to `razorpayx` *and* completes
+RazorpayX configuration, provisioning, and IP-allowlisting
+confirmation (`docs/phase-16b-razorpayx-india-inr-payout-adapter.md`).
+The architecture guarantee changed shape accordingly: it used to be
+"the payout registry never resolves `razorpayx`" (no adapter existed);
+it is now "`razorpayx` is registered but `razorpayx_enabled` defaults
+false and no credential is configured, so `InstructorPayoutProviderResolver::resolve('razorpayx', …)`
+still fails its health check by default" — see
+`FinancialArchitectureTest::test_only_fake_and_razorpayx_payout_providers_are_registered()`.
 
 ## 11. Unsupported international payout behavior
 
@@ -461,18 +469,23 @@ geography (Phase 16B+). Both rollout-scope settings are policy, not
 kill switches — flipping them alone enables nothing; `payments_enabled`
 and `payout_execution_enabled` remain the authoritative gates.
 
-## 25. Deferred (Phase 16B+ and beyond)
+## 25. Deferred (Phase 16B.1+ and beyond)
 
-RazorpayX (or equivalent) payout adapter and everything it requires
-(Phase 16A §21/22); a real, verified Stripe International collection
-account plus its frontend Stripe.js/Elements integration; Razorpay
-International as a verified fallback provider; a `PaymentReconciliationIssue`
-model/service for the collection side (§20); wallet recharge and
-wallet-as-payment-method (§14) — both remain intentionally unbuilt,
-enum-ready only; `payu`/`phonepe`/`cashfree`/`paypal` real adapters
-(currently settings-only, no `PaymentProviderInterface` implementation
-for any of them — a pre-existing gap this audit surfaced but did not
-attempt to close, since building four more real gateway integrations
-is well outside "routing audit and hardening"); currency conversion
+Phase 16B (RazorpayX India/INR payout adapter) is now built — see
+`docs/phase-16b-razorpayx-india-inr-payout-adapter.md` — but its
+production activation (Phase 16B.1: a controlled test-mode audit with
+real sandbox credentials) has not run, and `payout_provider` still
+defaults to `fake`. Still deferred: a real, verified Stripe
+International collection account plus its frontend Stripe.js/Elements
+integration (Phase 16C); Razorpay International as a verified fallback
+provider; international instructor payouts (RazorpayX is India/INR
+only by design); a `PaymentReconciliationIssue` model/service for the
+collection side (§20); wallet recharge and wallet-as-payment-method
+(§14) — both remain intentionally unbuilt, enum-ready only;
+`payu`/`phonepe`/`cashfree`/`paypal` real adapters (currently
+settings-only, no `PaymentProviderInterface` implementation for any of
+them — a pre-existing gap this audit surfaced but did not attempt to
+close, since building four more real gateway integrations is well
+outside "routing audit and hardening"); currency conversion
 (explicitly never — both domains are single-currency-per-transaction
 by design).

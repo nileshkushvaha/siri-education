@@ -1,7 +1,7 @@
 # Financial Domain Architecture (Canonical)
 
 **The single authoritative developer document for the instructor
-financial flow** (Phases 14 → 16A, consolidated by the 14.4 cleanup).
+financial flow** (Phases 14 → 16B, consolidated by the 14.4 cleanup).
 The per-phase documents under `docs/architecture/phase-14*` and
 `phase-15*` are historical records; where they conflict with this
 document, this document wins. Phase 16A's own detailed record is
@@ -10,6 +10,12 @@ unified collection/payout provider-routing audit (Phase 16A.1) is
 `docs/payment-collection-and-payout-provider-routing.md` — read that
 one for how student payment collection and instructor payouts share an
 architectural pattern while staying two separate financial domains.
+Phase 16B's own detailed record is
+`docs/phase-16b-razorpayx-india-inr-payout-adapter.md` — the RazorpayX
+India/INR payout adapter: code-complete, registered, and covered by
+real tests, but **not enabled** — see that doc's readiness section for
+the exact distinction between code readiness and account/live
+readiness.
 
 ## 1. Business rules (SRS-derived, non-negotiable)
 
@@ -25,11 +31,16 @@ architectural pattern while staying two separate financial domains.
    recalculated, rewritten, or hard-deleted.
 4. Every earning, settlement, reservation, and withdrawal is traceable:
    immutable per-row snapshots + `AuditTrailService` entries.
-5. **No external money movement exists anywhere.** Phase 16A builds the
-   internal payout-execution pipeline end-to-end against a deterministic
-   fake provider only; no external payout API, credential, or webhook
-   exists. `payout_execution_enabled` — like the other three switches —
-   defaults false and stays false until explicitly authorized.
+5. **No external money movement has ever occurred.** Phase 16A builds
+   the internal payout-execution pipeline end-to-end against a
+   deterministic fake provider; Phase 16B adds a real adapter
+   (`RazorpayXInstructorPayoutProvider`, India/INR only) that can call
+   the live RazorpayX API, but it ships **disabled and uncredentialed**
+   — `razorpayx_enabled` defaults false, no key/secret is configured,
+   and `payout_execution_enabled` — like the other three switches —
+   defaults false and stays false until explicitly authorized. A
+   controlled test-mode activation audit (Phase 16B.1) is required
+   before any RazorpayX credential is ever entered in production.
 6. **Student payment collection and instructor payouts are the same
    architectural pattern (registry → resolver → capabilities →
    eligibility → attempt → reconciliation) applied twice, never one
@@ -80,8 +91,13 @@ flowchart TD
     PA -.uncertain outcome.-> RI
     PE --> PA
     FP[FakeInstructorPayoutProvider\nno network calls] <--> PA
-    S -.->|Phase 16B| PAYX[External provider adapter\nNOT BUILT]
-    PA -.->|Phase 16B| PAYX
+    subgraph "RazorpayX adapter (Phase 16B, registered · disabled)"
+        DL[InstructorPayoutDestinationProviderLink\nContact → Fund Account]
+        RX[RazorpayXInstructorPayoutProvider\nIndia/INR only]
+    end
+    M -.->|Provision| DL
+    PA -.-> RX
+    RX -.-> DL
 ```
 
 ## 3. Domain ownership (one owner per fact)
@@ -351,6 +367,7 @@ manual retry until reconciled).
 | `InstructorCompensationPermissionSeeder` | ViewAny/View/Create/Schedule/Activate/End/Cancel/ViewHistory/Configure:InstructorCompensationAgreement (exceptions page reuses ViewAny; retry reuses Configure) |
 | `InstructorPayoutExecutionPermissionSeeder` (Phase 16A) | ViewAny/View/Execute/Retry/Cancel/Reconcile:InstructorPayoutAttempt · ViewAny/View/Assign/Resolve:InstructorPayoutReconciliationIssue · Configure:InstructorPayoutExecution — no Update/Delete permission exists for either resource (immutable records); no manual mark-paid permission exists anywhere |
 | `BookingPaymentPermissionSeeder` (extended, Phase 16A.1) | ViewAny/View:BookingPayment · `RefundViaProvider:BookingPayment` — the separately-permissioned direct-gateway-refund exception action; the normal wallet-credit refund path needs no permission (it is automatic) |
+| `RazorpayXPayoutPermissionSeeder` (Phase 16B) | `Configure/TestConnection/ConfirmIpAllowlisting/ProvisionDestination/RefreshDestination/ViewProviderDetails/ProcessWebhook/Reconcile:RazorpayXPayout` — configuration and destination provisioning only; deliberately no Manage/MarkPaid/Delete/Edit/Execute permission. Actual payout execution still requires the existing `Execute:InstructorPayoutAttempt` permission — RazorpayX adds no new way to move money |
 
 Instructor self-service (own payout methods, own withdrawals, own
 agreement visibility) is ownership-scoped in policies, permission-free.
@@ -401,17 +418,22 @@ DB backups; rotation requires explicit re-encryption via
    attendance/leave/partial-period rules are formally defined.
 10. Settlement "mark paid" remains a manual money-moved record only —
     unaffected by Phase 16A.
-11. Phase 16A payout execution is built (fake provider only) but
-    `payout_execution_enabled` stays off in production until a real
-    provider adapter exists (Phase 16B) — enabling it today would only
-    let the fake provider "execute" payouts, which is a testing/staging
-    convenience, never a production path (the resolver itself refuses
-    the fake provider outside local/testing unless
-    `payout_fake_provider_staging_enabled` is explicitly set).
-12. When Phase 16B ships a real adapter: seed
-    `InstructorPayoutExecutionPermissionSeeder`, set `payout_provider`
-    to the new adapter's key, verify `evaluatePayoutExecutionReadiness()`
-    passes, then enable `payout_execution_enabled` through
+11. Phase 16A payout execution is built (fake provider only) and Phase
+    16B adds the RazorpayX India/INR adapter, but `payout_execution_enabled`
+    stays off in production until Phase 16B.1's controlled test-mode
+    activation audit has run — enabling it today, with `payout_provider`
+    still `fake`, would only let the fake provider "execute" payouts,
+    which is a testing/staging convenience, never a production path
+    (the resolver itself refuses the fake provider outside
+    local/testing unless `payout_fake_provider_staging_enabled` is
+    explicitly set).
+12. To go live with RazorpayX (Phase 16B.1, not yet performed): seed
+    `RazorpayXPayoutPermissionSeeder`; configure real credentials,
+    account number, and outbound IPs on `RazorpayXPayoutSettingsPage`;
+    explicitly confirm IP allowlisting; enable `razorpayx_enabled` +
+    both provisioning switches; set `payout_provider` to `razorpayx`;
+    verify `evaluatePayoutExecutionReadiness()` passes; then enable
+    `payout_execution_enabled` through
     `FinancialFeatureConfigurationService`.
 
 ## 13a. Canonical migrations & database rebuild (Phase 14.5, extended in 16A)
@@ -424,10 +446,16 @@ Phase 16A adds **six further migrations** on top
 (`2026_08_01_1000xx`) rather than re-consolidating: payout attempts →
 provider events → reconciliation issues → withdrawal-requests execution
 columns (`reversed_at`/`reversed_by`/`recovered_*`) →
-withdrawal-allocations `reversed_at` → payout-execution settings. This
-is the normal, expected way schema grows after a consolidation — only a
-fresh *pre-production* consolidation event (like 14.5) collapses
-migration history; ordinary feature work always adds new migrations.
+withdrawal-allocations `reversed_at` → payout-execution settings. Phase
+16A.1 adds country-routing columns/settings (`2026_08_05_1000xx`).
+Phase 16B adds **two further migrations** (`2026_08_10_1000xx`):
+`razorpayx_payout` settings group, and
+`instructor_payout_destination_provider_links` (Contact/Fund Account
+provisioning state, unique on `(payout_method_id, provider)`, soft
+deletes only). This is the normal, expected way schema grows after a
+consolidation — only a fresh *pre-production* consolidation event (like
+14.5) collapses migration history; ordinary feature work always adds
+new migrations.
 Every new table encodes its own guarantees directly (generated-column
 unique for `open_dedupe_key`, explicit short-named constraints where
 the default auto-generated name would exceed MySQL's 64-char identifier
@@ -467,24 +495,33 @@ created: a partially/fully consumed earning can no longer be
 settlement-batched, preserving invariant #17 (settlement and payout
 execution never consume the same earning amount).
 
-## 13c. Phase 16B handoff requirements
+## 13c. Phase 16B handoff — fulfilled
 
-A real provider adapter must: implement
-`InstructorPayoutProviderInterface` (never reuse
-`Booking\Contracts\PaymentProviderInterface` — payout semantics are not
-checkout semantics); register in `EarningServiceProvider`; centralize
-its own provider-status → `InstructorPayoutAttemptStatus` mapping
-inside the adapter (never let a raw provider status branch anywhere
-else); add a signed public webhook endpoint that normalizes into
+The Phase 16A handoff note asked for a real provider adapter that:
+implements `InstructorPayoutProviderInterface` (never reusing
+`Booking\Contracts\PaymentProviderInterface`); registers in
+`EarningServiceProvider`; centralizes its own provider-status →
+`InstructorPayoutAttemptStatus` mapping inside the adapter; adds a
+signed public webhook endpoint that normalizes into
 `NormalizedPayoutEvent` and calls the existing
-`InstructorPayoutExecutionService::handleNormalizedEvent()` — the
-foundation (`instructor_payout_provider_events`, dedup, mismatch
-detection) is already built and needs no changes; supply real
-credentials via a dedicated settings/secret-store path (never inline in
-code); and pass the exact same fake-provider-proven test suite
-(`tests/Feature/Earnings/PayoutExecutionTest.php` +
-`Concurrency/PayoutExecutionConcurrencyTest.php`) against a sandbox
-before `payout_execution_enabled` is ever considered for production.
+`InstructorPayoutExecutionService::handleNormalizedEvent()`; supplies
+credentials via a dedicated settings path; and passes the same
+fake-provider-proven test suite pattern. `RazorpayXInstructorPayoutProvider`
+(India/INR only) does all of this — see
+`docs/phase-16b-razorpayx-india-inr-payout-adapter.md` for the full
+record: Contact→Fund Account provisioning
+(`InstructorPayoutDestinationProviderLink`), the
+`X-Payout-Idempotency`-header payout creation path, raw-body HMAC
+webhook verification with secret rotation support, RazorpayX-specific
+failure categories and reconciliation issue types, and a dedicated
+`RazorpayXPayoutSettingsPage`.
+
+**Two things are deliberately still open, by design, not oversight:**
+`payout_execution_enabled` and `razorpayx_enabled` both remain **off**
+— Phase 16B is a code/adapter phase, never a production-activation
+phase — and Phase 16B.1 (a controlled test-mode activation audit) must
+run before any RazorpayX credential is entered anywhere but a local/CI
+environment.
 
 ## 14. Troubleshooting
 
@@ -501,15 +538,21 @@ before `payout_execution_enabled` is ever considered for production.
 | Reconciliation issue won't go away | Open issues dedupe per withdrawal+type — resolving requires a mandatory evidence note; resolving never marks anything paid, so a still-uncertain payout needs the underlying attempt fixed first |
 | Payout attempt failed but withdrawal is still `approved` | Expected for a pre-acceptance failure (provider never confirmed receipt) — a fresh execution can be queued immediately, no recovery action needed |
 | Payout attempt failed and withdrawal is `failed` | The provider confirmed the failure. If permanent (destination invalid), reservations were released — the instructor needs a new withdrawal. If retryable/exhausted, reservations are intact — use the manual retry action (which performs the `failed → approved` recovery) |
+| RazorpayX payout method stuck "Not provisioned" | Contact/Fund Account provisioning switches (`RazorpayXPayoutSettingsPage`) may be off, or the "Provision" action hasn't been run yet — see `docs/phase-16b-razorpayx-india-inr-payout-adapter.md` |
+| RazorpayX provider link shows `contact_unknown`/`fund_account_unknown` | A provisioning call may have reached RazorpayX before it timed out — use "Refresh" (never re-run "Provision", which only starts a fresh link) |
+| RazorpayX webhook returns 401 | Signature verification failed — check `razorpayx_webhook_secret` matches the RazorpayX dashboard exactly, and that a rotation didn't clear the previous secret too early |
 
-## 15. Deferred (Phase 16B+)
+## 15. Deferred (Phase 16B.1+)
 
-External payout provider adapter (RazorpayX or equivalent), its
-credentials/IP-allowlisting/signed webhook endpoint, provider-specific
-status mapping and sandbox verification, production rollout of
-`payout_execution_enabled`; withdrawal fees (schema-ready);
-tax/TDS/GST; currency conversion; incentive & adjustment earning
-sources; automatic tiers; demo-to-paid/hybrid demo policies;
-withdrawal↔settlement-batch linkage; bulk payout uploads; accounting
-exports; an emergency maker-checker bypass (deliberately not built in
-16A — see its own doc §6).
+Phase 16B.1 (controlled test-mode activation audit — real RazorpayX
+sandbox credentials, a genuine test-mode payout, verified webhook
+delivery — before any production credential is entered); Phase 16C
+(Stripe/international collection-side work, explicitly out of Phase
+16B's scope); international instructor payouts (RazorpayX is India/INR
+only by design); RazorpayX tax/TDS withholding (fees/tax are recorded
+as platform operational cost, never deducted from the instructor);
+withdrawal fees (schema-ready); currency conversion; incentive &
+adjustment earning sources; automatic tiers; demo-to-paid/hybrid demo
+policies; withdrawal↔settlement-batch linkage; bulk payout uploads;
+accounting exports; an emergency maker-checker bypass (deliberately not
+built in 16A — see its own doc §6).

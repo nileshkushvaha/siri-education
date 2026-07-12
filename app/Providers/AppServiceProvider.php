@@ -290,5 +290,14 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perDay(20)->by($request->ip()),
             ];
         });
+
+        // RazorpayX instructor payout webhook — separate from every
+        // booking-payment webhook limiter (Phase 16B, a distinct
+        // financial domain). Generous enough for legitimate retry
+        // storms from RazorpayX, tight enough to bound abuse of a
+        // public, unauthenticated endpoint.
+        RateLimiter::for('razorpayx-payout-webhook', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
+        });
     }
 }

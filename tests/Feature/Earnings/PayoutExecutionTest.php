@@ -83,11 +83,14 @@ class PayoutExecutionTest extends TestCase
 
     // ── Provider contract ─────────────────────────────────────────────
 
-    public function test_fake_provider_resolves_and_is_the_only_registered_provider(): void
+    public function test_fake_provider_resolves_and_razorpayx_is_also_registered(): void
     {
         $registry = app(InstructorPayoutProviderRegistryInterface::class);
         $this->assertTrue($registry->has('fake'));
-        $this->assertFalse($registry->has('razorpayx'));
+        // Phase 16B — an adapter exists, but it is disabled/uncredentialed
+        // by default, so resolving it still fails (see the unhealthy-
+        // provider test below).
+        $this->assertTrue($registry->has('razorpayx'));
 
         $provider = app(InstructorPayoutProviderResolverInterface::class)->resolve('fake', 'INR');
         $this->assertInstanceOf(FakeInstructorPayoutProvider::class, $provider);
@@ -95,6 +98,15 @@ class PayoutExecutionTest extends TestCase
 
     public function test_unregistered_provider_is_rejected(): void
     {
+        $this->expectException(PayoutProviderException::class);
+        app(InstructorPayoutProviderResolverInterface::class)->resolve('stripe_connect', 'INR');
+    }
+
+    public function test_registered_but_unconfigured_razorpayx_provider_is_rejected(): void
+    {
+        // Registered (an adapter exists) but never enabled/credentialed —
+        // resolve() must still refuse it via the health check, exactly
+        // like any other misconfigured provider.
         $this->expectException(PayoutProviderException::class);
         app(InstructorPayoutProviderResolverInterface::class)->resolve('razorpayx', 'INR');
     }

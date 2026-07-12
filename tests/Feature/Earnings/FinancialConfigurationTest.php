@@ -237,7 +237,10 @@ class FinancialConfigurationTest extends TestCase
 
     public function test_payout_execution_readiness_fails_for_an_unregistered_provider(): void
     {
-        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true, 'payout_provider' => 'razorpayx']);
+        // 'razorpayx' is a registered adapter as of Phase 16B — use a
+        // key that is genuinely never registered to keep testing this
+        // failure mode specifically.
+        $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true, 'payout_provider' => 'stripe_connect']);
 
         $readiness = $this->configuration->evaluatePayoutExecutionReadiness();
         $this->assertFalse($readiness->isReady);

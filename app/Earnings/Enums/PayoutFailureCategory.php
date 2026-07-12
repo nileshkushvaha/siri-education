@@ -27,6 +27,15 @@ enum PayoutFailureCategory: string
     case InsufficientProviderBalance = 'insufficient_provider_balance';
     case ConfigurationError = 'configuration_error';
 
+    /** RazorpayX-specific (Phase 16B) — IP allowlisting/auth/config problems are never the instructor's fault and never auto-retried. */
+    case ProviderIpNotAllowlisted = 'provider_ip_not_allowlisted';
+
+    /** RazorpayX-specific — the provisioned Contact was rejected or no longer resolves; requires provisioning to be redone, not a retry. */
+    case ProviderContactInvalid = 'provider_contact_invalid';
+
+    /** RazorpayX-specific — the provisioned Fund Account was rejected or no longer resolves; a permanent destination failure requiring a new payout method. */
+    case ProviderFundAccountInvalid = 'provider_fund_account_invalid';
+
     public function label(): string
     {
         return match ($this) {
@@ -42,6 +51,9 @@ enum PayoutFailureCategory: string
             self::DestinationInvalid => 'Destination invalid',
             self::InsufficientProviderBalance => 'Insufficient provider balance',
             self::ConfigurationError => 'Configuration error',
+            self::ProviderIpNotAllowlisted => 'Provider IP not allowlisted',
+            self::ProviderContactInvalid => 'Provider Contact invalid',
+            self::ProviderFundAccountInvalid => 'Provider Fund Account invalid',
         };
     }
 
@@ -55,7 +67,8 @@ enum PayoutFailureCategory: string
     public function releasesReservation(): bool
     {
         return match ($this) {
-            self::ProviderPermanent, self::DestinationInvalid => true,
+            self::ProviderPermanent, self::DestinationInvalid,
+            self::ProviderContactInvalid, self::ProviderFundAccountInvalid => true,
             default => false,
         };
     }
@@ -81,7 +94,7 @@ enum PayoutFailureCategory: string
     {
         return match ($this) {
             self::ProviderUnavailable, self::InsufficientProviderBalance, self::LocalPersistenceFailure,
-            self::ConfigurationError, self::ReconciliationRequired => true,
+            self::ConfigurationError, self::ReconciliationRequired, self::ProviderIpNotAllowlisted => true,
             default => false,
         };
     }

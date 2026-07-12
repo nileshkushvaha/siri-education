@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorPayoutMethods\Tables;
 
 use App\Earnings\Contracts\InstructorPayoutMethodServiceInterface;
+use App\Earnings\Contracts\RazorpayXDestinationProvisioningServiceInterface;
 use App\Earnings\Enums\PayoutMethodStatus;
 use App\Earnings\Enums\PayoutMethodType;
+use App\Earnings\Enums\RazorpayXProviderLinkStatus;
 use App\Earnings\Exceptions\EarningException;
+use App\Earnings\Providers\RazorpayX\RazorpayXProvisioningException;
+use App\Models\InstructorPayoutDestinationProviderLink;
 use App\Models\InstructorPayoutMethod;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -35,6 +39,7 @@ class InstructorPayoutMethodsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('razorpayXProviderLink'))
             ->columns([
                 TextColumn::make('instructor.name')
                     ->label('Instructor')
@@ -82,6 +87,12 @@ class InstructorPayoutMethodsTable
                     ->dateTime()
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('razorpayx_status')
+                    ->label('RazorpayX')
+                    ->badge()
+                    ->state(fn (InstructorPayoutMethod $record): string => ($record->razorpayXProviderLink?->status ?? null)?->label() ?? 'Not provisioned')
+                    ->color(fn (InstructorPayoutMethod $record): string => $record->razorpayXProviderLink?->status?->color() ?? 'gray')
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -175,6 +186,71 @@ class InstructorPayoutMethodsTable
                         fn (InstructorPayoutMethodServiceInterface $service) => $service->disable($record, auth()->user(), $data['reason'] ?? null),
                         'Payout method disabled',
                     )),
+
+                // Phase 16B — RazorpayX Contact/Fund Account provisioning.
+                // Deliberately separate from the payout-method lifecycle
+                // actions above: provisioning failure never blocks
+                // verification, and verification never auto-provisions.
+                Action::make('razorpayx_provision')
+                    ->label('Provision (RazorpayX)')
+                    ->icon('heroicon-m-link')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalDescription('Creates (or reuses) the RazorpayX Contact and Fund Account for this destination.')
+                    ->authorize(fn (): bool => auth()->user()?->can('ProvisionDestination:RazorpayXPayout') ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->razorpayXProviderLink === null
+                        && $record->status === PayoutMethodStatus::Verified
+                        && $record->currency_code === 'INR')
+                    ->action(fn (InstructorPayoutMethod $record) => self::callProvisioning(
+                        fn (RazorpayXDestinationProvisioningServiceInterface $service) => $service->provision($record, auth()->user()),
+                        'RazorpayX provisioning attempted',
+                    )),
+
+                Action::make('razorpayx_refresh')
+                    ->label('Refresh (RazorpayX)')
+                    ->icon('heroicon-m-arrow-path')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalDescription('Re-attempts provisioning from wherever it last stopped. Never creates a duplicate Contact or Fund Account.')
+                    ->authorize(fn (): bool => auth()->user()?->can('RefreshDestination:RazorpayXPayout') ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->razorpayXProviderLink !== null
+                        && ! in_array($record->razorpayXProviderLink->status, [RazorpayXProviderLinkStatus::Ready, RazorpayXProviderLinkStatus::Disabled, RazorpayXProviderLinkStatus::Stale, RazorpayXProviderLinkStatus::Failed], true))
+                    ->action(fn (InstructorPayoutMethod $record) => self::callProvisioning(
+                        fn (RazorpayXDestinationProvisioningServiceInterface $service) => $service->refresh($record->razorpayXProviderLink, auth()->user()),
+                        'RazorpayX provisioning refreshed',
+                    )),
+
+                Action::make('razorpayx_mark_stale')
+                    ->label('Mark Stale (RazorpayX)')
+                    ->icon('heroicon-m-exclamation-triangle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->authorize(fn (): bool => auth()->user()?->can('Reconcile:RazorpayXPayout') ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->razorpayXProviderLink?->status === RazorpayXProviderLinkStatus::Ready)
+                    ->form([
+                        Textarea::make('reason')
+                            ->required()
+                            ->maxLength(1000)
+                            ->helperText('Mandatory — recorded on the audit trail.'),
+                    ])
+                    ->action(fn (InstructorPayoutMethod $record, array $data) => self::callProvisioning(
+                        fn (RazorpayXDestinationProvisioningServiceInterface $service) => $service->markStale($record->razorpayXProviderLink, auth()->user(), $data['reason']),
+                        'RazorpayX provider link marked stale',
+                    )),
+
+                Action::make('razorpayx_disable_link')
+                    ->label('Disable Link (RazorpayX)')
+                    ->icon('heroicon-m-no-symbol')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalDescription('This destination can no longer be used for a RazorpayX payout. The Contact and Fund Account at RazorpayX are left untouched.')
+                    ->authorize(fn (): bool => auth()->user()?->can('Configure:RazorpayXPayout') ?? false)
+                    ->visible(fn (InstructorPayoutMethod $record): bool => $record->razorpayXProviderLink !== null
+                        && $record->razorpayXProviderLink->status->canTransitionTo(RazorpayXProviderLinkStatus::Disabled))
+                    ->action(fn (InstructorPayoutMethod $record) => self::callProvisioning(
+                        fn (RazorpayXDestinationProvisioningServiceInterface $service) => $service->disable($record->razorpayXProviderLink, auth()->user()),
+                        'RazorpayX provider link disabled',
+                    )),
             ])
             ->defaultSort('created_at', 'desc');
     }
@@ -186,6 +262,17 @@ class InstructorPayoutMethodsTable
             Notification::make()->title($successTitle)->success()->send();
         } catch (EarningException $e) {
             Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+        }
+    }
+
+    private static function callProvisioning(callable $callback, string $successTitle): void
+    {
+        try {
+            $link = $callback(app(RazorpayXDestinationProvisioningServiceInterface::class));
+            $status = $link instanceof InstructorPayoutDestinationProviderLink ? $link->status->label() : null;
+            Notification::make()->title($successTitle)->body($status !== null ? "Current state: {$status}." : null)->success()->send();
+        } catch (RazorpayXProvisioningException $e) {
+            Notification::make()->title('RazorpayX action failed')->body($e->getMessage())->danger()->send();
         }
     }
 }

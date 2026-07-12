@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\Guest\GuestAvailabilityController;
 use App\Http\Controllers\Api\Guest\GuestBookingController;
 use App\Http\Controllers\Api\Guest\GuestCatalogController;
+use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,13 @@ Route::post('/webhooks/payments/{gateway}', PaymentWebhookController::class)
 Route::post('/webhooks/bookings/payments/{provider}', BookingPaymentWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('api.bookings.payments.webhook');
+
+// RazorpayX instructor payout provider notifications (Phase 16B) — a
+// separate financial domain from booking payments; never shares a
+// route, controller, or rate limiter with the collection side.
+Route::post('/webhooks/payouts/razorpayx', RazorpayXPayoutWebhookController::class)
+    ->middleware('throttle:razorpayx-payout-webhook')
+    ->name('api.payouts.razorpayx.webhook');
 
 // Public guest booking API — no authentication; manage_token authorizes
 // per-booking actions, named rate limiters throttle by IP.

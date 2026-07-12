@@ -43,9 +43,14 @@ final class RecordAttendanceAction
         return DB::transaction(function () use ($lesson, $evidence, $recorder): AttendanceRecordingResult {
             $record = $this->attendance->lockOrCreateForLesson($lesson);
 
-            if ($record->isFinalized()) {
-                throw new LessonAttendanceException('The attendance record is finalized — no further evidence is accepted.');
-            }
+            // Evidence arriving after the record is sealed (or after the
+            // lesson left its open state) is late: stored for audit,
+            // flagged for administrative inspection, and never merged into
+            // the aggregates — it must not silently rewrite a finalized
+            // lesson outcome (Phase 17B).
+            $late = $record->isFinalized()
+                || ! $lesson->status->isOpen()
+                || $lesson->booking?->status !== BookingStatus::Confirmed;
 
             $fingerprint = $evidence->fingerprint();
 
@@ -64,9 +69,18 @@ final class RecordAttendanceAction
                 'joined_at' => $evidence->joinedAtUtc(),
                 'left_at' => $evidence->leftAtUtc(),
                 'attended_seconds' => $evidence->attendedSeconds,
+                'is_late' => $late,
                 'metadata' => $this->sanitizeMetadata($evidence->metadata) ?: null,
                 'recorded_by' => $recorder?->id,
             ]);
+
+            if ($late) {
+                if ($record->late_evidence_reported_at === null) {
+                    $record->fill(['late_evidence_reported_at' => now()->toImmutable()->utc()])->save();
+                }
+
+                return new AttendanceRecordingResult($record->refresh(), applied: false, late: true);
+            }
 
             $record->fill([
                 ...$this->aggregatesFor($record),
@@ -83,8 +97,10 @@ final class RecordAttendanceAction
 
     /**
      * Attendance may only be received by an eligible occurrence: a
-     * confirmed booking whose lesson is still awaiting an outcome.
-     * A cancelled booking can never be made active again by evidence.
+     * confirmed booking whose lesson is awaiting an outcome takes the
+     * normal path; evidence for an already-finalized lesson lands in
+     * the late-evidence log. A cancelled (or never-confirmed) booking
+     * rejects evidence outright — it can never be made active again.
      *
      * @throws LessonAttendanceException
      */
@@ -92,12 +108,8 @@ final class RecordAttendanceAction
     {
         $booking = $lesson->booking;
 
-        if ($booking === null || $booking->status !== BookingStatus::Confirmed) {
+        if ($booking === null || in_array($booking->status, [BookingStatus::Cancelled, BookingStatus::Pending], strict: true)) {
             throw new LessonAttendanceException('Attendance can only be recorded for a confirmed booking.');
-        }
-
-        if (! $lesson->status->isOpen()) {
-            throw new LessonAttendanceException('Attendance can only be recorded while the lesson is scheduled or live.');
         }
 
         if ($evidence->joinedAt === null && $evidence->attendedSeconds === null && ! $evidence->technicalIssueReported) {
@@ -120,7 +132,8 @@ final class RecordAttendanceAction
      */
     private function aggregatesFor(LessonAttendanceRecord $record): array
     {
-        $events = $this->attendance->eventsForRecord($record);
+        // Late evidence is audit-only — never merged into the aggregates.
+        $events = $this->attendance->eventsForRecord($record)->reject(fn ($e) => $e->is_late);
         $aggregates = [];
 
         foreach (LessonParticipant::cases() as $participant) {

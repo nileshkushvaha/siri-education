@@ -26,6 +26,34 @@ class LessonSettings extends Settings
     /** Merged seconds a party must attend to qualify (0 = any recorded join qualifies — disabled-safe default). */
     public int $min_attendance_seconds;
 
+    /**
+     * Master switch for the Phase 17B evidence-driven finalization engine
+     * (lessons:finalize-due). Ships OFF: while off, nothing changes and the
+     * legacy lenient sweep (lessons:auto-complete) keeps running; while on,
+     * the legacy sweep defers so exactly one automation policy is active.
+     */
+    public bool $automated_finalization_enabled;
+
+    /** Minutes after ends_at before the attendance record is sealed — the window in which provider evidence may still arrive. */
+    public int $attendance_finalize_delay_minutes;
+
+    /** Minutes after ends_at before a StudentNoShow outcome may be auto-finalized. */
+    public int $student_no_show_grace_minutes;
+
+    /** Minutes after ends_at before an InstructorNoShow outcome may be auto-finalized. */
+    public int $instructor_no_show_grace_minutes;
+
+    /**
+     * Minutes after ends_at during which a reported technical issue keeps
+     * every automated outcome on hold; once closed, the outcome finalizes
+     * as TechnicalIssue (status Disputed) for a human decision.
+     * Auto-completion delay reuses auto_complete_grace_minutes.
+     */
+    public int $technical_issue_window_minutes;
+
+    /** Lessons per processing chunk in lessons:finalize-due (memory/batch determinism). */
+    public int $finalize_batch_size;
+
     public static function group(): string
     {
         return 'lessons';

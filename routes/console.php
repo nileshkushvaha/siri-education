@@ -2,6 +2,7 @@
 
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
+use App\Console\Commands\FinalizeDueLessons;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReconcileBookingPayments;
 use App\Console\Commands\ReconcileInstructorPayouts;
@@ -49,12 +50,25 @@ app(Schedule::class)
 
 // Finalize open lessons past the auto-completion grace period (24h after
 // ends_at): recorded no-shows become no-show outcomes, the rest complete.
-// Idempotent: finalized lessons never re-enter the sweep.
+// Idempotent: finalized lessons never re-enter the sweep. Defers (no-op)
+// while lessons.automated_finalization_enabled hands automation to the
+// evidence-driven finalizer below.
 app(Schedule::class)
     ->command(AutoCompleteLessons::class)
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/lessons-auto-complete.log'));
+
+// Phase 17B evidence-driven finalizer: seals due attendance records,
+// determines outcomes from evidence, and finalizes through the outcome
+// pipeline. Idempotent, concurrent-safe (row locks + terminal-outcome
+// protection), and a no-op until lessons.automated_finalization_enabled
+// is switched on.
+app(Schedule::class)
+    ->command(FinalizeDueLessons::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/lessons-finalize-due.log'));
 
 // Release instructor earnings whose hold period (dispute window) has
 // lapsed. Idempotent; gated by InstructorEarningSettings; no external

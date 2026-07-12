@@ -50,6 +50,28 @@ final class LessonAttendanceService implements LessonAttendanceServiceInterface
 
         $result = $this->recordAction->execute($lesson, $evidence, $actor);
 
+        // Late evidence never rewrites a finalized outcome — it is stored,
+        // audited, and the record is flagged for administrative inspection
+        // (the automated finalizer holds off flagged lessons).
+        if ($result->late) {
+            $this->log(
+                $actor,
+                'lesson_attendance_late_evidence',
+                sprintf('Lesson %s: late %s attendance evidence recorded after finalization — flagged for review.', $lesson->id, $evidence->participant->label()),
+                $lesson,
+                [
+                    'participant' => $evidence->participant->value,
+                    'source' => $evidence->source->value,
+                    'provider_reference' => $evidence->providerReference,
+                    'attendance_record_id' => $result->record->id,
+                    'booking_id' => $lesson->booking_id,
+                    'lesson_outcome' => $lesson->outcome?->value,
+                ],
+            );
+
+            return $result;
+        }
+
         if ($result->applied) {
             $this->log(
                 $actor,

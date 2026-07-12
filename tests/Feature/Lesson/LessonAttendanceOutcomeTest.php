@@ -465,9 +465,14 @@ class LessonAttendanceOutcomeTest extends TestCase
         $this->assertSame('attended', $lesson->instructor_attendance_status->value);
         $this->assertSame('no_show', $lesson->student_attendance_status->value);
 
-        // Finalized record accepts no further evidence.
-        $this->expectException(LessonAttendanceException::class);
-        $this->attendance->record($lesson, $this->webhookEvidence($lesson, LessonParticipant::Student, 5, 10, eventId: 'evt-late'));
+        // A sealed record never absorbs further evidence into the
+        // aggregates — it lands in the late-evidence log instead (17B).
+        $late = $this->attendance->record($lesson, $this->webhookEvidence($lesson, LessonParticipant::Student, 5, 10, eventId: 'evt-late'));
+
+        $this->assertFalse($late->applied);
+        $this->assertTrue($late->late);
+        $this->assertNotNull($late->record->late_evidence_reported_at);
+        $this->assertSame(0, $late->record->student_join_count);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

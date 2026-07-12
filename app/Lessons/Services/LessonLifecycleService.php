@@ -229,6 +229,13 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
             return 0;
         }
 
+        // Phase 17B: while the evidence-driven finalizer owns automation
+        // (lessons:finalize-due), the lenient sweep defers — exactly one
+        // automated finalization policy runs at a time.
+        if ($this->settings->automated_finalization_enabled) {
+            return 0;
+        }
+
         $cutoff = now()->subMinutes($this->settings->auto_complete_grace_minutes);
         $finalized = 0;
 

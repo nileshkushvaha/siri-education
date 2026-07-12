@@ -31,6 +31,7 @@ class LessonAttendanceEvent extends Model
         'joined_at',
         'left_at',
         'attended_seconds',
+        'is_late',
         'metadata',
         'recorded_by',
     ];
@@ -43,6 +44,7 @@ class LessonAttendanceEvent extends Model
             'joined_at' => 'immutable_datetime',
             'left_at' => 'immutable_datetime',
             'attended_seconds' => 'integer',
+            'is_late' => 'boolean',
             'metadata' => 'array',
         ];
     }

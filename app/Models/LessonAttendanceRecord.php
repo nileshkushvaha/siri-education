@@ -41,6 +41,7 @@ class LessonAttendanceRecord extends Model
         'provider_reference',
         'metadata',
         'technical_issue_reported_at',
+        'late_evidence_reported_at',
         'finalized_at',
         'finalized_by',
     ];
@@ -59,6 +60,7 @@ class LessonAttendanceRecord extends Model
             'instructor_join_count' => 'integer',
             'metadata' => 'array',
             'technical_issue_reported_at' => 'immutable_datetime',
+            'late_evidence_reported_at' => 'immutable_datetime',
             'finalized_at' => 'immutable_datetime',
         ];
     }

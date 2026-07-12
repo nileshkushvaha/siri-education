@@ -229,6 +229,48 @@ the only entry points. Under them: `RecordAttendanceAction`,
   managers): `OverrideOutcome:Lesson`, `InspectAttendance:Lesson`.
   Instructor confirmation reuses `markAttendance` policy (own lessons).
 
+## Automated Finalization (Phase 17B)
+
+`lessons:finalize-due` (scheduled every 5 min, `withoutOverlapping`,
+logs to `lessons-finalize-due.log`) — the evidence-driven finalizer:
+`LessonFinalizationService` seals due attendance records, runs
+`DetermineLessonOutcomeAction`, and finalizes through
+`LessonOutcomeService` → `FinalizeLessonOutcomeAction`. It never
+writes outcomes, statuses, bookings, or earnings itself.
+
+- **Master switch** `lessons.automated_finalization_enabled` ships
+  **OFF** — do not enable until providers feed attendance evidence,
+  or evidence-less lessons would finalize as both-absent instead of
+  auto-completing. While ON, the legacy lenient sweep
+  (`lessons:auto-complete` / `autoCompleteDue`) defers (returns 0), so
+  exactly one automation policy runs at a time.
+- **Timing** (all minutes after `ends_at`): pickup requires the
+  evidence window closed (`attendance_finalize_delay_minutes`, 30);
+  then per-outcome gates — Completed waits
+  `auto_complete_grace_minutes` (reused, 1440), no-shows their
+  `student_/instructor_no_show_grace_minutes` (0), BothAbsent the max
+  of both, TechnicalIssue holds everything until
+  `technical_issue_window_minutes` (1440) closes, then finalizes as
+  TechnicalIssue → Disputed for a human decision.
+  `finalize_batch_size` (100) chunks the `openEndedBefore` cursor —
+  deterministic order, never the full set in memory.
+- **Protection**: skips non-open lessons, finalized outcomes (manual
+  instructor completion, admin overrides, concurrent workers — the row
+  lock + terminal guard make racers no-op), and lessons under an
+  administrative hold (`late_evidence_reported_at` on the record).
+  Cancelled bookings are only synchronized to the Cancelled outcome.
+  Per-lesson `Throwable` isolation: one failure is logged
+  (message only, no payloads) and the batch continues; the lesson
+  stays open for the next run.
+- **Late evidence**: once the record is sealed (or the lesson leaves
+  its open state), new evidence is stored in the event log flagged
+  `is_late` — excluded from aggregates, audited
+  (`lesson_attendance_late_evidence`), and the record's
+  `late_evidence_reported_at` flags the lesson for administrative
+  inspection (and holds automation). Duplicates of late evidence stay
+  fingerprint-deduped. Cancelled/pending bookings still reject
+  evidence outright.
+
 ## Deferred (do not build yet)
 
 Homework, reviews, certificates, instructor payout, wallet
@@ -247,5 +289,9 @@ dispute, booking↔lesson sync both directions, auto-complete command),
 `LessonAttendanceOutcomeTest` (Phase 17A: evidence recording,
 idempotent/out-of-order/overlapping ingestion, authorization,
 determinations, terminal protection, override + audit, concurrency,
-exactly-once event, UTC safety), `LessonPermissionSeederTest`,
-`LessonAdminPanelTest`.
+exactly-once event, UTC safety), `LessonAutomatedFinalizationTest`
+(Phase 17B: kill switch + legacy deferral, determination matrix,
+technical-issue window, delays, manual/override protection, cancelled
+sync, idempotent/concurrent runs, batch isolation, late evidence,
+earnings exactly-once, scheduler registration, UTC safety),
+`LessonPermissionSeederTest`, `LessonAdminPanelTest`.

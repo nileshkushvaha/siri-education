@@ -33,6 +33,9 @@ class BookingMeeting extends Model
         'timezone',
         'status',
         'failure_reason',
+        'attendance_synced_at',
+        'attendance_sync_attempts',
+        'attendance_sync_status',
         'metadata',
         'created_by',
         'updated_by',
@@ -51,6 +54,8 @@ class BookingMeeting extends Model
             'metadata' => 'array',
             'starts_at' => 'immutable_datetime',
             'ends_at' => 'immutable_datetime',
+            'attendance_synced_at' => 'immutable_datetime',
+            'attendance_sync_attempts' => 'integer',
         ];
     }
 

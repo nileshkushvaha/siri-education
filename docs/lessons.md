@@ -271,15 +271,73 @@ writes outcomes, statuses, bookings, or earnings itself.
   fingerprint-deduped. Cancelled/pending bookings still reject
   evidence outright.
 
+## Provider Attendance Ingestion (Phase 17C)
+
+Provider-agnostic ingestion feeding the 17A evidence layer. Everything
+accepted flows through `LessonAttendanceService` →
+`RecordAttendanceAction` — the ingestion layer never writes aggregates
+or outcomes, so fingerprint idempotency, interval-union overlap
+merging, late-evidence flagging, and cancelled-booking rejection all
+hold unchanged. Both switches ship **OFF**
+(`meeting.attendance_webhooks_enabled`, `meeting.attendance_sync_enabled`);
+enabling them feeds evidence only — automated outcomes stay separately
+gated behind `lessons.automated_finalization_enabled`.
+
+- **Capability contract** `MeetingAttendanceProviderInterface`
+  (verify signature / parse webhook / fetch attendance / supports
+  flags) — discovered via `instanceof` on registry providers; existing
+  providers unchanged. Normalized DTOs (`ProviderAttendanceEvent`,
+  `ProviderAttendanceWebhook`) are the only shapes that cross into the
+  domain: participant references are **sha256-hashed at construction**
+  (raw refs/emails never persist or log) and metadata passes
+  `AttendanceMetadataSanitizer` (no tokens/emails/phones/links/
+  transcripts/raw payloads).
+- **Webhook** `POST /api/webhooks/meetings/attendance/{provider}`
+  (`throttle:60,1`): signature verified before parsing (401), unknown/
+  disabled/attendance-incapable providers 404, malformed payloads 422
+  with a generic message, replays 200 "duplicate" via the unique
+  `(provider, provider_event_id)` index on
+  `meeting_attendance_provider_events` (an ops log that stores only
+  sanitized normalized events — never raw payloads, unlike the payment
+  side's encrypted copies, by design). Accepted envelopes queue
+  `ProcessMeetingAttendanceWebhook` (notifications queue, 5 tries,
+  backoff, `ShouldBeUnique` + row-lock claim).
+- **Participant resolution**
+  (`MeetingAttendanceParticipantResolver`): stored data only — the
+  meeting's `metadata.attendance_participants` map, then the
+  `user:{id}` convention — compared hash-to-hash. A provider role hint
+  may only corroborate; contradiction (spoof), unknown, or ambiguous
+  participants settle the event as an operational `review` row and
+  never create attendance. Unknown meetings likewise.
+- **Reconciliation** `meetings:sync-attendance {--force}` (scheduled
+  every 15 min, `withoutOverlapping` + `onOneServer`): pulls sessions
+  for Created meetings ended within
+  [`attendance_sync_max_age_hours`, `attendance_sync_delay_minutes`],
+  chunked by `attendance_sync_batch_size`, per-meeting failure
+  isolation, bounded retries (`attendance_sync_max_attempts` within
+  `attendance_sync_retry_minutes` of the meeting end, then
+  `failed_permanent`), settled meetings never re-fetched unless
+  `--force`. Providers without sync support are marked `unsupported`
+  and skipped. Webhook+sync overlap can't double count — different
+  sources, interval union.
+- **FakeMeetingProvider** (`fake`) exists for attendance simulation
+  and is registered **only in the testing environment** — the guard
+  test in `BookingMeetingTest` now asserts exactly that. No real
+  adapter yet: Zoom's integration has no attendance-report API surface
+  or webhook secret token configured, and Google Meet/manual expose no
+  attendance API — documented dependency for a later phase.
+
 ## Deferred (do not build yet)
 
 Homework, reviews, certificates, instructor payout, wallet
 debit/recharge, recording storage, group classes, recurring lesson
 generation, full learning-progress engine, advanced attendance
 analytics, lesson notifications mapping, student/instructor frontend
-lesson UI, join-click-based automatic attendance, meeting-provider
-webhook endpoints / sync jobs feeding the attendance layer (17B+),
-outcome-driven financial corrections after an admin override.
+lesson UI, join-click-based automatic attendance, real provider
+attendance adapters (Zoom attendance-report API + webhook secret
+token; Google Meet has no attendance API) and admin UI for the
+attendance review queue (17D+), outcome-driven financial corrections
+after an admin override.
 
 ## Tests
 
@@ -294,4 +352,9 @@ exactly-once event, UTC safety), `LessonAutomatedFinalizationTest`
 technical-issue window, delays, manual/override protection, cancelled
 sync, idempotent/concurrent runs, batch isolation, late evidence,
 earnings exactly-once, scheduler registration, UTC safety),
-`LessonPermissionSeederTest`, `LessonAdminPanelTest`.
+`LessonPermissionSeederTest`, `LessonAdminPanelTest`;
+`tests/Feature/Booking/MeetingAttendanceIngestionTest` (Phase 17C:
+signed webhooks, signature/malformed/unknown rejections, participant
+resolution + spoof protection, normalization semantics, webhook+sync
+overlap, sync idempotency/failure isolation/retries, privacy
+guarantees, finalization-stays-off).

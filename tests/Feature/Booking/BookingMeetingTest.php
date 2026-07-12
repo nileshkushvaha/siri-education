@@ -19,6 +19,7 @@ use App\Booking\Enums\MeetingStatus;
 use App\Booking\Enums\Weekday;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Booking\Payments\RazorpayPaymentProvider;
+use App\Booking\Registry\MeetingProviderRegistry;
 use App\Http\Resources\Student\StudentBookingResource;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
@@ -608,10 +609,22 @@ class BookingMeetingTest extends TestCase
         $this->assertNull(app(BookingMeetingServiceInterface::class)->createMeeting($booking));
     }
 
-    public function test_no_fake_meeting_provider_exists(): void
+    public function test_fake_meeting_provider_is_testing_environment_only(): void
     {
-        $this->assertFalse(class_exists('App\Booking\Meetings\FakeMeetingProvider', false));
-        $this->assertFileDoesNotExist(app_path('Booking/Meetings/FakeMeetingProvider.php'));
+        // Phase 17C narrowed the original "no fake meeting provider"
+        // decision: FakeMeetingProvider exists for attendance simulation,
+        // but its registration is wrapped in an environment('testing')
+        // guard, and no production settings path can select it
+        // (MeetingSettings::default_provider documents manual|google_meet).
+        $registration = file_get_contents(app_path('Providers/BookingServiceProvider.php'));
+
+        $this->assertMatchesRegularExpression(
+            '/environment\(\'testing\'\)[^}]*FakeMeetingProvider/s',
+            $registration,
+            'FakeMeetingProvider must only ever be registered behind the testing-environment guard.',
+        );
+
+        $this->assertTrue(app(MeetingProviderRegistry::class)->has('fake'));
     }
 
     public function test_no_wallet_side_effects_from_meeting_creation(): void

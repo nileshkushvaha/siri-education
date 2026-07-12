@@ -9,6 +9,7 @@ use App\Console\Commands\ReconcileInstructorPayouts;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
+use App\Console\Commands\SyncMeetingAttendance;
 use App\Console\Commands\SyncPendingMeetings;
 use App\Models\LoginHistory;
 use App\Models\SchedulerHistory;
@@ -143,3 +144,14 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-sync-pending.log'));
+
+// Phase 17C attendance reconciliation: pulls participant sessions for
+// recently ended meetings from attendance-capable providers into the
+// lesson evidence layer. Idempotent, per-meeting failure isolation,
+// bounded retries; a no-op until meeting.attendance_sync_enabled is on.
+app(Schedule::class)
+    ->command(SyncMeetingAttendance::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/meetings-attendance-sync.log'));

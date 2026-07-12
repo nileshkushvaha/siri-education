@@ -10,6 +10,7 @@ use App\Lessons\DTOs\AttendanceEvidenceData;
 use App\Lessons\DTOs\AttendanceRecordingResult;
 use App\Lessons\Enums\LessonParticipant;
 use App\Lessons\Exceptions\LessonAttendanceException;
+use App\Lessons\Support\AttendanceMetadataSanitizer;
 use App\Models\Lesson;
 use App\Models\LessonAttendanceRecord;
 use App\Models\User;
@@ -26,11 +27,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class RecordAttendanceAction
 {
-    /** Metadata keys that may carry secrets or PII — always excluded. */
-    private const string SENSITIVE_KEY_PATTERN = '/token|secret|password|passcode|authorization|api[_-]?key|email|phone|address|url|ip/i';
-
-    private const int MAX_METADATA_ENTRIES = 20;
-
     public function __construct(
         private readonly LessonAttendanceRepositoryInterface $attendance,
     ) {}
@@ -70,7 +66,7 @@ final class RecordAttendanceAction
                 'left_at' => $evidence->leftAtUtc(),
                 'attended_seconds' => $evidence->attendedSeconds,
                 'is_late' => $late,
-                'metadata' => $this->sanitizeMetadata($evidence->metadata) ?: null,
+                'metadata' => AttendanceMetadataSanitizer::sanitize($evidence->metadata) ?: null,
                 'recorded_by' => $recorder?->id,
             ]);
 
@@ -181,35 +177,5 @@ final class RecordAttendanceAction
         }
 
         return $total + ($end - $start);
-    }
-
-    /**
-     * Keep only scalar values under non-sensitive keys — provider
-     * payloads are summarized, never stored raw.
-     *
-     * @param  array<string, mixed>  $metadata
-     * @return array<string, scalar>
-     */
-    private function sanitizeMetadata(array $metadata): array
-    {
-        $clean = [];
-
-        foreach ($metadata as $key => $value) {
-            if (! is_string($key) || preg_match(self::SENSITIVE_KEY_PATTERN, $key) === 1) {
-                continue;
-            }
-
-            if (! is_scalar($value)) {
-                continue;
-            }
-
-            $clean[$key] = is_string($value) ? mb_substr($value, 0, 500) : $value;
-
-            if (count($clean) >= self::MAX_METADATA_ENTRIES) {
-                break;
-            }
-        }
-
-        return $clean;
     }
 }

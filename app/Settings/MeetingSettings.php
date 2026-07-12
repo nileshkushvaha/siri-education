@@ -83,6 +83,27 @@ class MeetingSettings extends Settings
 
     public ?string $zoom_last_checked_at;
 
+    /** Accept meeting-attendance webhooks (Phase 17C). Ships OFF — evidence only, never outcomes. */
+    public bool $attendance_webhooks_enabled;
+
+    /** Run meetings:sync-attendance pulls (Phase 17C). Ships OFF. */
+    public bool $attendance_sync_enabled;
+
+    /** Minutes after the booking end before the first attendance pull. */
+    public int $attendance_sync_delay_minutes;
+
+    /** Transient sync failures retry until this many minutes after the booking end, then become permanent. */
+    public int $attendance_sync_retry_minutes;
+
+    /** Meetings whose booking ended longer ago than this are never sync candidates. */
+    public int $attendance_sync_max_age_hours;
+
+    /** Meetings per processing chunk in meetings:sync-attendance. */
+    public int $attendance_sync_batch_size;
+
+    /** Bounded retries per meeting before a sync failure is marked permanent. */
+    public int $attendance_sync_max_attempts;
+
     public static function group(): string
     {
         return 'meeting';

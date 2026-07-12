@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\Guest\GuestAvailabilityController;
 use App\Http\Controllers\Api\Guest\GuestBookingController;
 use App\Http\Controllers\Api\Guest\GuestCatalogController;
+use App\Http\Controllers\Api\MeetingAttendanceWebhookController;
 use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,13 @@ Route::post('/webhooks/payments/generic/{gateway}', PaymentWebhookController::cl
 Route::post('/webhooks/bookings/payments/{provider}', BookingPaymentWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('api.bookings.payments.webhook');
+
+// Meeting attendance provider notifications (Phase 17C) — signature
+// verified before parsing; gated by meeting.attendance_webhooks_enabled;
+// evidence only, never outcome or booking mutations.
+Route::post('/webhooks/meetings/attendance/{provider}', MeetingAttendanceWebhookController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.meetings.attendance.webhook');
 
 // RazorpayX instructor payout provider notifications (Phase 16B) — a
 // separate financial domain from booking payments; never shares a

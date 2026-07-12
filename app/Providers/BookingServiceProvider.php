@@ -13,6 +13,7 @@ use App\Booking\Contracts\AvailabilityRepositoryInterface;
 use App\Booking\Contracts\AvailabilityServiceInterface;
 use App\Booking\Contracts\BookingAnalyticsRepositoryInterface;
 use App\Booking\Contracts\BookingAnalyticsServiceInterface;
+use App\Booking\Contracts\BookingMeetingRepositoryInterface;
 use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
@@ -21,6 +22,8 @@ use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\GoogleCalendarClient;
 use App\Booking\Contracts\GuestBookingServiceInterface;
+use App\Booking\Contracts\MeetingAttendanceIngestionServiceInterface;
+use App\Booking\Contracts\MeetingAttendanceSyncServiceInterface;
 use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
@@ -33,6 +36,7 @@ use App\Booking\Gateways\GoogleCalendarSdkClient;
 use App\Booking\Gateways\RazorpaySdkClient;
 use App\Booking\Gateways\StripeSdkClient;
 use App\Booking\Gateways\ZoomApiClient;
+use App\Booking\Meetings\FakeMeetingProvider;
 use App\Booking\Meetings\GoogleCalendarMeetProvider;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
@@ -45,6 +49,7 @@ use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Registry\PaymentProviderRegistry;
 use App\Booking\Repositories\AvailabilityRepository;
 use App\Booking\Repositories\BookingAnalyticsRepository;
+use App\Booking\Repositories\BookingMeetingRepository;
 use App\Booking\Repositories\BookingRepository;
 use App\Booking\Repositories\BookingTypeRepository;
 use App\Booking\Repositories\StudentLessonPriceRepository;
@@ -56,6 +61,8 @@ use App\Booking\Services\BookingPaymentReconciliationService;
 use App\Booking\Services\BookingPaymentService;
 use App\Booking\Services\BookingService;
 use App\Booking\Services\GuestBookingService;
+use App\Booking\Services\MeetingAttendanceIngestionService;
+use App\Booking\Services\MeetingAttendanceSyncService;
 use App\Booking\Services\MeetingProviderResolver;
 use App\Booking\Services\PaymentCollectionEligibilityService;
 use App\Booking\Services\PaymentProviderResolver;
@@ -122,6 +129,13 @@ class BookingServiceProvider extends ServiceProvider
         // ZoomMeetingProvider never builds HTTP requests or sees tokens;
         // tests bind a fake ZoomMeetingClient.
         $this->app->bind(ZoomMeetingClient::class, ZoomApiClient::class);
+
+        // Phase 17C — meeting attendance ingestion & reconciliation.
+        // Evidence only: everything funnels into LessonAttendanceService,
+        // never into aggregates or outcomes directly.
+        $this->app->bind(BookingMeetingRepositoryInterface::class, BookingMeetingRepository::class);
+        $this->app->bind(MeetingAttendanceIngestionServiceInterface::class, MeetingAttendanceIngestionService::class);
+        $this->app->bind(MeetingAttendanceSyncServiceInterface::class, MeetingAttendanceSyncService::class);
     }
 
     private function bindSingletons(): void
@@ -167,6 +181,12 @@ class BookingServiceProvider extends ServiceProvider
             $registry->register($app->make(ManualMeetingProvider::class));
             $registry->register($app->make(GoogleCalendarMeetProvider::class));
             $registry->register($app->make(ZoomMeetingProvider::class));
+
+            // Testing only — attendance-simulation provider (Phase 17C).
+            // Production keeps the "no fake meeting provider" decision.
+            if ($app->environment('testing')) {
+                $registry->register($app->make(FakeMeetingProvider::class));
+            }
         });
     }
 

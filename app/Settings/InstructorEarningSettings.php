@@ -45,6 +45,15 @@ class InstructorEarningSettings extends Settings
     /** Automatic retry attempts per blocked lesson before the exception is marked exhausted. */
     public int $compensation_retry_max_attempts;
 
+    /** Phase 17E — gates the lesson financial-disposition bridge (classification only, never money movement). Ships OFF. */
+    public bool $financial_disposition_enabled;
+
+    /** 'manual_review' | 'normal_earning' | 'no_earning' — instructor compensation when the student no-shows. */
+    public string $student_no_show_compensation_policy;
+
+    /** 'manual_review' | 'refund' | 'forfeit' — student money when both parties are absent. */
+    public string $both_absent_financial_policy;
+
     /**
      * Phase 16A — platform-wide payout execution switch. False stops
      * InstructorPayoutExecutionService::queueExecution() and the

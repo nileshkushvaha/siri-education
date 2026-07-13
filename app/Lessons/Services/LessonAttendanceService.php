@@ -9,6 +9,8 @@ use App\Lessons\Actions\RecordAttendanceAction;
 use App\Lessons\Contracts\LessonAttendanceServiceInterface;
 use App\Lessons\DTOs\AttendanceEvidenceData;
 use App\Lessons\DTOs\AttendanceRecordingResult;
+use App\Lessons\Enums\AttendanceSource;
+use App\Lessons\Enums\LessonParticipant;
 use App\Lessons\Events\AttendanceFinalized;
 use App\Lessons\Events\AttendanceRecorded;
 use App\Models\Lesson;
@@ -35,15 +37,18 @@ final class LessonAttendanceService implements LessonAttendanceServiceInterface
 
     public function record(Lesson $lesson, AttendanceEvidenceData $evidence, ?User $actor = null): AttendanceRecordingResult
     {
-        // Manual evidence is a human assertion — the actor must be the
-        // lesson's own instructor or hold MarkAttendance:Lesson. System
-        // sources (webhook/sync/fallback) carry no actor by design.
+        // Manual evidence is a human assertion — the actor must hold
+        // MarkAttendance:Lesson (or be the instructor, via the policy),
+        // or be the lesson participant recording their OWN
+        // confirmation-source evidence (Phase 17D student/instructor
+        // self-claims). System sources (webhook/sync/fallback) carry no
+        // actor by design.
         if ($evidence->source->isManual()) {
             if ($actor === null) {
                 throw new AuthorizationException('Manual attendance evidence requires an acting user.');
             }
 
-            if (! $actor->can('markAttendance', $lesson)) {
+            if (! $actor->can('markAttendance', $lesson) && ! $this->isOwnConfirmation($lesson, $evidence, $actor)) {
                 throw new AuthorizationException('You may not record attendance for this lesson.');
             }
         }
@@ -121,6 +126,21 @@ final class LessonAttendanceService implements LessonAttendanceServiceInterface
         }
 
         return $result;
+    }
+
+    /**
+     * A participant may assert their own attendance under their own
+     * confirmation source — never the other party's, never another role.
+     */
+    private function isOwnConfirmation(Lesson $lesson, AttendanceEvidenceData $evidence, User $actor): bool
+    {
+        $source = match ($evidence->participant) {
+            LessonParticipant::Student => AttendanceSource::StudentConfirmation,
+            LessonParticipant::Instructor => AttendanceSource::InstructorConfirmation,
+        };
+
+        return $evidence->source === $source
+            && $actor->id === $evidence->participant->userIdOn($lesson);
     }
 
     /** @param array<string, mixed> $properties */

@@ -19,6 +19,7 @@ use App\Earnings\Contracts\InstructorPeriodicCompensationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalAllocationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalBalanceServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
+use App\Earnings\Contracts\LessonFinancialDispositionServiceInterface;
 use App\Earnings\Contracts\PayoutMethodFingerprintServiceInterface;
 use App\Earnings\Contracts\PayoutMethodSnapshotServiceInterface;
 use App\Earnings\Contracts\PayoutRequestFingerprintServiceInterface;
@@ -43,6 +44,7 @@ use App\Earnings\Services\InstructorPeriodicCompensationService;
 use App\Earnings\Services\InstructorWithdrawalAllocationService;
 use App\Earnings\Services\InstructorWithdrawalBalanceService;
 use App\Earnings\Services\InstructorWithdrawalService;
+use App\Earnings\Services\LessonFinancialDispositionService;
 use App\Earnings\Services\PayoutMethodFingerprintService;
 use App\Earnings\Services\PayoutMethodSnapshotService;
 use App\Earnings\Services\PayoutRequestFingerprintService;
@@ -54,6 +56,10 @@ class EarningServiceProvider extends ServiceProvider
     {
         $this->app->singleton(InstructorEarningRepositoryInterface::class, InstructorEarningRepository::class);
         $this->app->singleton(InstructorEarningServiceInterface::class, InstructorEarningService::class);
+
+        // Phase 17E — lesson financial-disposition bridge (classification
+        // and holds only; execution belongs to a later phase).
+        $this->app->singleton(LessonFinancialDispositionServiceInterface::class, LessonFinancialDispositionService::class);
 
         // Phase 14.2 — agreement-based compensation (never student price).
         $this->app->singleton(InstructorCompensationAgreementServiceInterface::class, InstructorCompensationAgreementService::class);

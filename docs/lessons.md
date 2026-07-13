@@ -327,6 +327,100 @@ gated behind `lessons.automated_finalization_enabled`.
   or webhook secret token configured, and Google Meet/manual expose no
   attendance API — documented dependency for a later phase.
 
+## Manual Confirmation & Technical-Issue Review (Phase 17D)
+
+The participant fallback when provider attendance is unavailable, plus
+the admin review desk. No pre-existing support/dispute module existed
+to integrate with, so both submission types share one small review
+lifecycle (`LessonReviewStatus`: pending → under_review →
+accepted/rejected, plus duplicate/withdrawn/expired) — settled rows
+are never edited, only re-decided via a new decision that conflicts.
+
+- **Attendance confirmations**
+  (`lesson_attendance_confirmations`, append-only):
+  `LessonConfirmationService::submitConfirmation()` — participant role
+  is always derived from the lesson's stored participants (request
+  roles/ids are never trusted), submission requires the lesson to have
+  started, cancelled lessons reject, identical claims dedup on a
+  fingerprint, conflicting claims create new rows (history preserved).
+  A claim needs a join time or attended minutes — a bare "I attended"
+  never invents duration. Claims touch nothing until an admin accepts.
+- **Technical-issue reports** (`lesson_technical_issue_reports`,
+  categories: unable_to_join / invalid_meeting_link / audio / video /
+  internet_disconnection / provider_outage / other; optional media
+  evidence via a Spatie collection, images/PDF only): an in-window,
+  pre-finalization report places the **outcome hold** through the
+  existing evidence pathway (attendance-record
+  `technical_issue_reported_at` → 17B never auto-completes or
+  no-shows). Late or post-finalization reports are stored flagged
+  (`flagged_late` / `after_finalization`) for review only — they can
+  never hijack or rewrite an outcome. `AttendanceSource` gained
+  `student_confirmation`; a participant may record evidence under
+  their OWN confirmation source (LessonAttendanceService authorization
+  extension) — never the other party's.
+- **Admin review** (`LessonReviewService`, permission
+  `ReviewAttendance:Lesson`, seeded to managers): accept/reject
+  confirmations (acceptance feeds `LessonAttendanceService` with a
+  stable `confirmation:{id}` event id — re-acceptance dedups), confirm/
+  reject technical issues (rejecting the last supporting report
+  releases the hold), request additional evidence (back to
+  under_review), resolve ambiguous 17C provider events by assigning
+  the participant, and finalize/override outcomes strictly through the
+  Phase 17A outcome service. Every decision: row-locked (two admins
+  can't resolve differently — the loser conflicts; repeats are
+  idempotent), mandatory reason, audited with previous/new status
+  (`lesson_attendance_confirmation_*`, `lesson_technical_issue_*`,
+  `lesson_review_evidence_requested`,
+  `lesson_ambiguous_evidence_resolved`).
+- Policies: `submitAttendance` / `reportTechnicalIssue` (participants
+  only), `reviewAttendance` (staff). No financial, homework, review,
+  or notification side effects.
+
+## Financial Disposition & Hold Foundation (Phase 17E)
+
+The idempotent decision bridge between finalized outcomes and the
+Wallet / Instructor Earnings / Settlement domains — classification and
+holds only; it never credits refunds, reverses ledger entries, creates
+earnings, or changes amounts. Gated by
+`instructor_earnings.financial_disposition_enabled` (ships **OFF**).
+
+- **One record per lesson** (`lesson_financial_dispositions`, unique
+  `lesson_id`): outcome snapshot, student/instructor dispositions,
+  processing status, reason code, linked earning + payment reference,
+  admin-hold flag, version, `history` (previous snapshots appended on
+  re-evaluation — never deleted).
+- **Classification** — `ClassifyLessonFinancialDisposition` (queued)
+  consumes `LessonOutcomeFinalized` exactly once per lesson:
+  Completed-paid → existing completion earning (linked, no action);
+  Completed-demo → no earning; StudentNoShow → no refund +
+  compensation policy (`student_no_show_compensation_policy`, default
+  manual_review); InstructorNoShow → full wallet refund required
+  (ready) + no earning; BothAbsent → `both_absent_financial_policy`
+  (default manual_review); TechnicalIssue → policy review + hold
+  existing earning; Cancelled → existing cancellation pipeline,
+  untouched. Never inferred from booking status alone; earning
+  creation stays exclusively with `CreateEarningOnLessonCompleted`.
+- **Holds** reuse `InstructorEarningService::holdForDispute()` —
+  DisputedHold detaches from open batches and is excluded by the
+  `settleable` scope, so held earnings can never enter a settlement
+  batch. Idempotent (already-held earnings are left alone). Settled/
+  reversed earnings are NEVER altered: conflicts set `admin_hold` +
+  manual review (`settled_earning_conflict`).
+- **Overrides** — `ReevaluateLessonFinancialDisposition` consumes
+  `LessonOutcomeOverridden`: history preserved, version bumped,
+  resolution cleared (a new decision is required). Completed→other
+  holds the unsettled earning; other→Completed with no earning records
+  `earning_reconciliation_required` (creation deferred); an
+  already-refunded booking routes to `refund_already_completed`
+  manual review.
+- **Admin resolution** (`LessonFinancialDispositionService`,
+  permission `ResolveFinancialDisposition:Lesson`, seeded to
+  managers): approve / keep on hold / reject / mark ready for wallet
+  refund execution / mark ready for earning reconciliation. Row-locked,
+  reason mandatory, audited (`instructor_earnings` log,
+  `lesson_financial_disposition_*` events with previous/new state).
+  Resolved records re-open only via an outcome override.
+
 ## Deferred (do not build yet)
 
 Homework, reviews, certificates, instructor payout, wallet
@@ -357,4 +451,11 @@ earnings exactly-once, scheduler registration, UTC safety),
 signed webhooks, signature/malformed/unknown rejections, participant
 resolution + spoof protection, normalization semantics, webhook+sync
 overlap, sync idempotency/failure isolation/retries, privacy
-guarantees, finalization-stays-off).
+guarantees, finalization-stays-off), `LessonManualReviewTest`
+(Phase 17D: participant claims + authorization, idempotency/history,
+technical-issue windows + holds, sanitization, admin review
+accept/reject/conflict, outcome delegation, no side effects),
+`tests/Feature/Earnings/LessonFinancialDispositionTest` (Phase 17E:
+classification matrix, earning holds + settlement exclusion, override
+history, settled-money protection, admin resolution, kill switch,
+no-money-movement guarantees).

@@ -26,10 +26,12 @@ class CurrencyMinorUnitFormattingTest extends TestCase
 
         MoneyFormatter::flushCache();
 
-        foreach ([['INR', 2], ['USD', 2], ['JPY', 0], ['KWD', 3]] as [$code, $units]) {
+        // Deterministic numeric codes — random_int draws occasionally
+        // collided with each other under the unique constraint (flake).
+        foreach ([['INR', 2, '901'], ['USD', 2, '902'], ['JPY', 0, '903'], ['KWD', 3, '904']] as [$code, $units, $numeric]) {
             Currency::query()->firstOrCreate(['code' => $code], [
                 'name' => $code.' test currency', 'symbol' => $code,
-                'numeric_code' => (string) random_int(100, 999),
+                'numeric_code' => $numeric,
                 'minor_units' => $units, 'status' => 'active', 'sort_order' => 1,
             ]);
         }

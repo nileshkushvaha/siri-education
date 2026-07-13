@@ -21,6 +21,8 @@ use App\Events\Auth\UserRegistered;
 use App\Lessons\Events\LessonCancelled;
 use App\Lessons\Events\LessonCompleted;
 use App\Lessons\Events\LessonDisputed;
+use App\Lessons\Events\LessonOutcomeFinalized;
+use App\Lessons\Events\LessonOutcomeOverridden;
 use App\Listeners\Auth\LogLoginActivity;
 use App\Listeners\Auth\SendApprovalNotification;
 use App\Listeners\Auth\SendRegistrationNotifications;
@@ -31,7 +33,9 @@ use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
+use App\Listeners\Earnings\ClassifyLessonFinancialDisposition;
 use App\Listeners\Earnings\CreateEarningOnLessonCompleted;
+use App\Listeners\Earnings\ReevaluateLessonFinancialDisposition;
 use App\Listeners\Earnings\ReverseEarningOnLessonCancelled;
 use App\Listeners\Earnings\SyncEarningOnLessonDisputed;
 use App\Listeners\Lesson\CreateLessonOnBookingConfirmed;
@@ -168,6 +172,15 @@ class EventServiceProvider extends ServiceProvider
         ],
         LessonCancelled::class => [
             ReverseEarningOnLessonCancelled::class,
+        ],
+        // Phase 17E — the financial-decision bridge: classification and
+        // holds only, gated by financial_disposition_enabled; earning
+        // creation stays exclusively with CreateEarningOnLessonCompleted.
+        LessonOutcomeFinalized::class => [
+            ClassifyLessonFinancialDisposition::class,
+        ],
+        LessonOutcomeOverridden::class => [
+            ReevaluateLessonFinancialDisposition::class,
         ],
     ];
 

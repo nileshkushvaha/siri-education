@@ -77,6 +77,30 @@ class LessonPolicy
         return $this->hasPermission($user, 'OverrideOutcome:Lesson');
     }
 
+    /** Submit an attendance claim for one's own lesson (either participant). */
+    public function submitAttendance(User $user, Lesson $lesson): bool
+    {
+        return $this->isParticipant($user, $lesson);
+    }
+
+    /** Report a meeting problem for one's own lesson (either participant). */
+    public function reportTechnicalIssue(User $user, Lesson $lesson): bool
+    {
+        return $this->isParticipant($user, $lesson);
+    }
+
+    /** Review attendance claims, technical-issue reports, and ambiguous evidence — staff only. */
+    public function reviewAttendance(User $user, Lesson $lesson): bool
+    {
+        return $this->hasPermission($user, 'ReviewAttendance:Lesson');
+    }
+
+    /** Resolve the lesson's financial disposition (Phase 17E) — staff only, never participants. */
+    public function resolveFinancialDisposition(User $user, Lesson $lesson): bool
+    {
+        return $this->hasPermission($user, 'ResolveFinancialDisposition:Lesson');
+    }
+
     /**
      * Inspect the attendance record and its evidence log — staff
      * permission, or a participant looking at their own lesson.

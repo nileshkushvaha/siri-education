@@ -108,16 +108,20 @@ class InstructorAvailabilityServiceTest extends TestCase
             ])
             ->create();
 
+        // Next week's Monday — always in the future, inside the booking
+        // window (the previous hardcoded date expired when it arrived).
+        $monday = CarbonImmutable::now('America/New_York')->addWeek()->startOfWeek();
+
         $slots = app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
             hostId: $teacher->id,
             typeKey: 'free_demo',
-            from: CarbonImmutable::parse('2026-07-13 00:00:00', 'America/New_York'),
-            to: CarbonImmutable::parse('2026-07-14 00:00:00', 'America/New_York'),
+            from: $monday->startOfDay(),
+            to: $monday->addDay()->startOfDay(),
             timezone: 'America/New_York',
         ));
 
-        $this->assertSame('2026-07-13 09:00', $slots->first()->startsAt->format('Y-m-d H:i'));
-        $this->assertSame('2026-07-13 10:00', $slots->first()->endsAt->format('Y-m-d H:i'));
+        $this->assertSame($monday->format('Y-m-d').' 09:00', $slots->first()->startsAt->format('Y-m-d H:i'));
+        $this->assertSame($monday->format('Y-m-d').' 10:00', $slots->first()->endsAt->format('Y-m-d H:i'));
     }
 
     public function test_time_off_service_stores_local_input_as_utc_and_blocks_slots(): void
@@ -140,22 +144,27 @@ class InstructorAvailabilityServiceTest extends TestCase
             ])
             ->create();
 
+        // Next week's Monday — always in the future, inside the booking
+        // window (the previous hardcoded date expired when it arrived).
+        $monday = CarbonImmutable::now('Asia/Kolkata')->addWeek()->startOfWeek();
+
         $leave = app(InstructorTimeOffService::class)->create([
             'teacher_id' => $teacher->id,
-            'starts_at' => '2026-07-13 09:00:00',
-            'ends_at' => '2026-07-13 10:00:00',
+            'starts_at' => $monday->format('Y-m-d').' 09:00:00',
+            'ends_at' => $monday->format('Y-m-d').' 10:00:00',
             'timezone' => 'Asia/Kolkata',
             'reason' => 'Personal appointment',
         ], $actor);
 
         $this->assertInstanceOf(TeacherUnavailability::class, $leave);
-        $this->assertSame('2026-07-13 03:30', $leave->starts_at->format('Y-m-d H:i'));
+        // IST is UTC+05:30 with no DST — 09:00 local is always 03:30 UTC.
+        $this->assertSame($monday->format('Y-m-d').' 03:30', $leave->starts_at->format('Y-m-d H:i'));
 
         $slots = app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
             hostId: $teacher->id,
             typeKey: 'free_demo',
-            from: CarbonImmutable::parse('2026-07-13 00:00:00', 'Asia/Kolkata'),
-            to: CarbonImmutable::parse('2026-07-14 00:00:00', 'Asia/Kolkata'),
+            from: $monday->startOfDay(),
+            to: $monday->addDay()->startOfDay(),
             timezone: 'Asia/Kolkata',
         ));
 

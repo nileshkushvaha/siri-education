@@ -10,6 +10,7 @@ enum AttendanceSource: string
     case ProviderWebhook = 'provider_webhook';
     case ProviderSync = 'provider_sync';
     case InstructorConfirmation = 'instructor_confirmation';
+    case StudentConfirmation = 'student_confirmation';
     case AdminOverride = 'admin_override';
     case SystemFallback = 'system_fallback';
 
@@ -19,6 +20,7 @@ enum AttendanceSource: string
             self::ProviderWebhook => 'Provider Webhook',
             self::ProviderSync => 'Provider Sync',
             self::InstructorConfirmation => 'Instructor Confirmation',
+            self::StudentConfirmation => 'Student Confirmation',
             self::AdminOverride => 'Administrator Override',
             self::SystemFallback => 'System Fallback',
         };
@@ -28,7 +30,7 @@ enum AttendanceSource: string
     public function isManual(): bool
     {
         return match ($this) {
-            self::InstructorConfirmation, self::AdminOverride => true,
+            self::InstructorConfirmation, self::StudentConfirmation, self::AdminOverride => true,
             default => false,
         };
     }

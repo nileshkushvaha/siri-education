@@ -2,6 +2,7 @@
 
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
+use App\Console\Commands\ExpireLessonReviewEligibility;
 use App\Console\Commands\FinalizeDueLessons;
 use App\Console\Commands\ProcessLessonEarningReconciliation;
 use App\Console\Commands\ProcessLessonRefunds;
@@ -168,6 +169,16 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/lessons-earning-reconciliation.log'));
+
+// Phase 17H review-eligibility expiration: expires open windows whose
+// review deadline has passed. Idempotent, batched, per-record failure
+// isolation; low frequency is fine — a multi-day review window.
+app(Schedule::class)
+    ->command(ExpireLessonReviewEligibility::class)
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/reviews-expire-eligibility.log'));
 
 // Phase 17C attendance reconciliation: pulls participant sessions for
 // recently ended meetings from attendance-capable providers into the

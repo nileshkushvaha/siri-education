@@ -50,6 +50,8 @@ use App\Listeners\Mail\LogResendEmailEvent;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
+use App\Listeners\Reviews\OpenReviewEligibilityOnLessonOutcomeFinalized;
+use App\Listeners\Reviews\ReevaluateReviewEligibilityOnLessonOutcomeOverridden;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Mail\Events\MessageSending;
@@ -178,9 +180,11 @@ class EventServiceProvider extends ServiceProvider
         // creation stays exclusively with CreateEarningOnLessonCompleted.
         LessonOutcomeFinalized::class => [
             ClassifyLessonFinancialDisposition::class,
+            OpenReviewEligibilityOnLessonOutcomeFinalized::class,
         ],
         LessonOutcomeOverridden::class => [
             ReevaluateLessonFinancialDisposition::class,
+            ReevaluateReviewEligibilityOnLessonOutcomeOverridden::class,
         ],
     ];
 

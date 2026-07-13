@@ -10,6 +10,7 @@ use App\Providers\FrontendServiceProvider;
 use App\Providers\HomeworkServiceProvider;
 use App\Providers\LessonServiceProvider;
 use App\Providers\NavigationServiceProvider;
+use App\Providers\ReviewServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -21,5 +22,6 @@ return [
     HomeworkServiceProvider::class,
     LessonServiceProvider::class,
     NavigationServiceProvider::class,
+    ReviewServiceProvider::class,
     AdminPanelProvider::class,
 ];

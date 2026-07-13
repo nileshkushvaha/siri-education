@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Earnings\Contracts;
 
+use App\Earnings\Exceptions\CompensationBlockedException;
 use App\Earnings\Exceptions\EarningException;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
@@ -29,6 +30,22 @@ interface InstructorEarningServiceInterface
     public function createFromLesson(Lesson $lesson): ?InstructorEarning;
 
     /**
+     * Phase 17G — create an admin-approved reconciliation earning for a
+     * lesson that never completed (approved student no-show / both-absent
+     * compensation, or an override to Completed whose earning is
+     * missing). Same compensation resolver, creation action, and
+     * snapshot as createFromLesson — only the completed-status
+     * requirement is replaced by the explicit approval. Idempotent
+     * (returns the existing earning); returns null when compensation
+     * legitimately does not apply (earnings disabled, demo policy none,
+     * periodic basis).
+     *
+     * @throws EarningException when the booking is missing/cancelled/unpaid
+     * @throws CompensationBlockedException when no agreement covers the lesson
+     */
+    public function createForReconciliation(Lesson $lesson, ?User $actor = null, ?string $reasonCode = null): ?InstructorEarning;
+
+    /**
      * Promote pending_hold → releasable. Without $override the hold
      * period must have lapsed; admin actions pass override.
      *
@@ -41,6 +58,15 @@ interface InstructorEarningServiceInterface
 
     /** Park a non-settled earning while its lesson is disputed. */
     public function holdForDispute(InstructorEarning $earning): InstructorEarning;
+
+    /**
+     * Restore a disputed-hold earning to pending_hold after the dispute
+     * resolved in the instructor's favour (the existing restore
+     * transition, exposed for Phase 17G reconciliation). Idempotent.
+     *
+     * @throws EarningException
+     */
+    public function holdRestore(InstructorEarning $earning, ?User $actor = null): InstructorEarning;
 
     /** Release sweep: promote every due pending_hold earning. Returns the count. */
     public function releaseDue(): int;

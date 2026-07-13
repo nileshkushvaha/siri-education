@@ -36,6 +36,8 @@ class LessonFinancialDisposition extends Model
         'admin_hold',
         'version',
         'history',
+        'refund_ledger_entry_id',
+        'refund_executed_at',
         'evaluated_at',
         'resolved_at',
         'resolved_by',
@@ -52,6 +54,7 @@ class LessonFinancialDisposition extends Model
             'admin_hold' => 'boolean',
             'version' => 'integer',
             'history' => 'array',
+            'refund_executed_at' => 'immutable_datetime',
             'evaluated_at' => 'immutable_datetime',
             'resolved_at' => 'immutable_datetime',
         ];
@@ -75,6 +78,11 @@ class LessonFinancialDisposition extends Model
     public function resolver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function refundLedgerEntry(): BelongsTo
+    {
+        return $this->belongsTo(WalletLedgerEntry::class, 'refund_ledger_entry_id');
     }
 
     /** @return array<string, mixed> */

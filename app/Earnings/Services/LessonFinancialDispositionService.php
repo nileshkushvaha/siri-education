@@ -111,8 +111,21 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
             $disposition->version = $disposition->version + 1;
             $disposition->forceFill(['resolved_at' => null, 'resolved_by' => null, 'resolution_reason' => null]);
 
-            $this->applyEvaluation($disposition, $lesson, $newOutcome, override: true);
-            $disposition->save();
+            // Phase 17F: a refund already went out for the previous outcome.
+            // Never silently debit the wallet and never delete the refund —
+            // the record keeps its ledger linkage and a human reconciles.
+            if ($disposition->refund_ledger_entry_id !== null) {
+                $disposition->fill([
+                    'outcome' => $newOutcome,
+                    'processing_status' => LessonFinancialDispositionStatus::ManualReview,
+                    'admin_hold' => true,
+                    'reason_code' => 'refund_reconciliation_required',
+                    'evaluated_at' => now()->toImmutable()->utc(),
+                ])->save();
+            } else {
+                $this->applyEvaluation($disposition, $lesson, $newOutcome, override: true);
+                $disposition->save();
+            }
 
             $this->audit->logSystem(
                 self::LOG_NAME,
@@ -139,6 +152,7 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
     {
         return $this->resolve($disposition, $admin, $reason, 'lesson_financial_disposition_approved', function (LessonFinancialDisposition $d): void {
             $d->processing_status = LessonFinancialDispositionStatus::Resolved;
+            $d->admin_hold = false;
             $d->reason_code = 'admin_approved';
         });
     }
@@ -164,8 +178,11 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
 
     public function markReadyForRefund(LessonFinancialDisposition $disposition, User $admin, string $reason): LessonFinancialDisposition
     {
+        // An explicit approval IS the human decision an admin hold was
+        // waiting for — it lifts the hold so execution can proceed.
         return $this->resolve($disposition, $admin, $reason, 'lesson_financial_disposition_refund_ready', function (LessonFinancialDisposition $d): void {
             $d->processing_status = LessonFinancialDispositionStatus::Ready;
+            $d->admin_hold = false;
             $d->student_disposition = LessonStudentDisposition::FullWalletRefundRequired;
             $d->reason_code = 'refund_execution_ready';
         });
@@ -175,6 +192,7 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
     {
         return $this->resolve($disposition, $admin, $reason, 'lesson_financial_disposition_earning_ready', function (LessonFinancialDisposition $d): void {
             $d->processing_status = LessonFinancialDispositionStatus::Ready;
+            $d->admin_hold = false;
             $d->reason_code = 'earning_reconciliation_required';
         });
     }

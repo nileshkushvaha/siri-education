@@ -3,6 +3,8 @@
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\FinalizeDueLessons;
+use App\Console\Commands\ProcessLessonEarningReconciliation;
+use App\Console\Commands\ProcessLessonRefunds;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReconcileBookingPayments;
 use App\Console\Commands\ReconcileInstructorPayouts;
@@ -144,6 +146,28 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-sync-pending.log'));
+
+// Phase 17F wallet refunds: credits approved lesson-outcome refund
+// dispositions through the wallet domain. Idempotent (ledger
+// idempotency keys), per-record failure isolation; a no-op until
+// instructor_earnings.lesson_refund_execution_enabled is on.
+app(Schedule::class)
+    ->command(ProcessLessonRefunds::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/lessons-process-refunds.log'));
+
+// Phase 17G earning reconciliation: executes approved instructor
+// earning create/hold/release/reverse decisions through the earning
+// domain. Idempotent, per-record failure isolation; a no-op until
+// instructor_earnings.earning_reconciliation_execution_enabled is on.
+app(Schedule::class)
+    ->command(ProcessLessonEarningReconciliation::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/lessons-earning-reconciliation.log'));
 
 // Phase 17C attendance reconciliation: pulls participant sessions for
 // recently ended meetings from attendance-capable providers into the

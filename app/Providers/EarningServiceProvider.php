@@ -19,6 +19,7 @@ use App\Earnings\Contracts\InstructorPeriodicCompensationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalAllocationServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalBalanceServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
+use App\Earnings\Contracts\LessonEarningReconciliationServiceInterface;
 use App\Earnings\Contracts\LessonFinancialDispositionServiceInterface;
 use App\Earnings\Contracts\PayoutMethodFingerprintServiceInterface;
 use App\Earnings\Contracts\PayoutMethodSnapshotServiceInterface;
@@ -44,10 +45,13 @@ use App\Earnings\Services\InstructorPeriodicCompensationService;
 use App\Earnings\Services\InstructorWithdrawalAllocationService;
 use App\Earnings\Services\InstructorWithdrawalBalanceService;
 use App\Earnings\Services\InstructorWithdrawalService;
+use App\Earnings\Services\LessonEarningReconciliationService;
 use App\Earnings\Services\LessonFinancialDispositionService;
 use App\Earnings\Services\PayoutMethodFingerprintService;
 use App\Earnings\Services\PayoutMethodSnapshotService;
 use App\Earnings\Services\PayoutRequestFingerprintService;
+use App\Wallet\Contracts\LessonWalletRefundServiceInterface;
+use App\Wallet\Services\LessonWalletRefundService;
 use Illuminate\Support\ServiceProvider;
 
 class EarningServiceProvider extends ServiceProvider
@@ -60,6 +64,12 @@ class EarningServiceProvider extends ServiceProvider
         // Phase 17E — lesson financial-disposition bridge (classification
         // and holds only; execution belongs to a later phase).
         $this->app->singleton(LessonFinancialDispositionServiceInterface::class, LessonFinancialDispositionService::class);
+
+        // Phase 17F — wallet-only refund execution for approved dispositions.
+        $this->app->singleton(LessonWalletRefundServiceInterface::class, LessonWalletRefundService::class);
+
+        // Phase 17G — instructor-side earning reconciliation execution.
+        $this->app->singleton(LessonEarningReconciliationServiceInterface::class, LessonEarningReconciliationService::class);
 
         // Phase 14.2 — agreement-based compensation (never student price).
         $this->app->singleton(InstructorCompensationAgreementServiceInterface::class, InstructorCompensationAgreementService::class);

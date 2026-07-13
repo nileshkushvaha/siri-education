@@ -421,6 +421,98 @@ earnings, or changes amounts. Gated by
   `lesson_financial_disposition_*` events with previous/new state).
   Resolved records re-open only via an outcome override.
 
+## Wallet Refund Execution (Phase 17F)
+
+Executes approved 17E refund dispositions — **wallet-only** (Version 1
+never calls a gateway refund API; gateway-paid lessons are credited to
+the student wallet with the original payment record preserved) and
+**student-side only**. Gated by
+`instructor_earnings.lesson_refund_execution_enabled` (ships **OFF**).
+
+- **Domain home**: `app/Wallet/` (`ExecuteLessonWalletRefundAction`,
+  `LessonWalletRefundService` + contract, `LessonRefundCompleted`
+  event) — deliberately NOT `app/Earnings`, whose cross-domain
+  isolation guard forbids reading `BookingPayment`; the refund is
+  student-money work and lives with the wallet.
+- **Eligibility** (revalidated under a row lock): status Ready +
+  student disposition FullWalletRefundRequired + no admin hold + no
+  existing refund. That covers instructor no-show (auto-Ready),
+  both-absent under the `refund` policy, and any admin
+  `markReadyForRefund` approval (e.g. technical issue). Policy-review
+  cases are never auto-refunded.
+- **Original charge**: the single Captured `BookingPayment` row —
+  actual charged amount and currency, never current pricing, never
+  converted, never more than charged. Missing/ambiguous charges and
+  currency mismatches defer to manual review (`admin_hold`);
+  unpaid/demo bookings never refund (the 17E matrix downgrades the
+  refund for unpaid bookings).
+- **Ledger**: one immutable credit via `WalletLedgerService::credit()`
+  with idempotency key `lesson-refund:{disposition}:v{version}` —
+  duplicate runs, concurrent workers, and post-crash retries all
+  resolve to the single entry. The entry links lesson, booking, source
+  payment, and disposition (`source_type`/`source_id` + metadata); the
+  disposition stores `refund_ledger_entry_id` + `refund_executed_at`
+  and resolves as `refund_completed`. Cancellation-flow refunds are
+  detected by their `cancellation-refund:{payment}` key and linked,
+  never duplicated; provider-side refunds defer to manual review.
+- **Failure safety**: eligibility problems are committed *decisions*
+  (manual review + reason); infrastructure failures throw and roll
+  back — a disposition can never be Resolved without its ledger entry.
+  An outcome override after a refund never debits the wallet and never
+  deletes the credit: the disposition re-opens as
+  `refund_reconciliation_required` (manual review + admin hold) with
+  refund linkage and history preserved.
+- **Trigger**: `lessons:process-refunds` (scheduled every 15 min,
+  `withoutOverlapping` + `onOneServer`, batched, per-record failure
+  isolation) or immediate admin execution through the service
+  (permission `ResolveFinancialDisposition:Lesson`). Audited via
+  `AuditTrailService` (`lesson_refund_executed` with actor, amount,
+  currency, previous/new balance, reason).
+
+## Earning Reconciliation Execution (Phase 17G)
+
+Instructor-side counterpart of 17F: executes approved reconciliation
+dispositions (status Ready + reason `earning_reconciliation_required`
+or `student_no_show_earning_reconciliation_required`) through the
+existing earning domain — never a second calculator, model, or
+settlement path, never student wallets/payments, never settled money.
+Gated by `instructor_earnings.earning_reconciliation_execution_enabled`
+(ships **OFF**).
+
+- **Creation** — `InstructorEarningService::createForReconciliation()`
+  (new): same compensation resolver (agreement in force at scheduled
+  start, never student price), same creation action, same snapshot as
+  `createFromLesson`; only the completed-status requirement is
+  replaced by the explicit approval. Covers a completed paid lesson
+  missing its earning, approved student no-show compensation (policy
+  `normal_earning` routes straight to Ready), and approved both-absent
+  compensation. Demo-policy-none and periodic bases stay benign
+  non-creations; instructor no-show, cancelled, unpaid, and
+  agreement-less lessons defer to manual review — approval cannot
+  conjure eligibility.
+- **Corrections on existing earnings**
+  (`ExecuteLessonEarningReconciliationAction`): outcome Completed +
+  DisputedHold → restore (`holdRestore()`, the newly-exposed
+  DisputedHold→PendingHold transition) then release;
+  TechnicalIssue → `holdForDispute()` (idempotent); corrected against
+  the instructor → reverse (detaching from any open batch via the hold
+  first); already Reversed → idempotent no-op; Settled/terminal →
+  never mutated, parked as `settled_earning_manual_recovery`.
+  Snapshots are immutable through every correction.
+- **Approvals lift holds**: 17E's `approve`/`markReadyFor*` now clear
+  `admin_hold` — an explicit approval IS the decision the hold was
+  waiting for.
+- **Trigger** — `lessons:process-earning-reconciliation` (every
+  15 min, `withoutOverlapping` + `onOneServer`, batched, per-record
+  isolation) or direct admin execution
+  (`ResolveFinancialDisposition:Lesson`). Row-locked and revalidated;
+  duplicate/concurrent execution adjusts once. Audited
+  (`lesson_earning_reconciled` with action, previous/new earning
+  status, amount, currency, actor); adjustment history = these audit
+  entries + the earning domain's own transition audits (no new
+  adjustment model needed). After-commit event:
+  `LessonEarningReconciled` (no listeners yet).
+
 ## Deferred (do not build yet)
 
 Homework, reviews, certificates, instructor payout, wallet
@@ -458,4 +550,13 @@ accept/reject/conflict, outcome delegation, no side effects),
 `tests/Feature/Earnings/LessonFinancialDispositionTest` (Phase 17E:
 classification matrix, earning holds + settlement exclusion, override
 history, settled-money protection, admin resolution, kill switch,
-no-money-movement guarantees).
+no-money-movement guarantees), `tests/Feature/Earnings/
+LessonWalletRefundTest` (Phase 17F: eligibility matrix, original-charge
+amounts/currency, gateway-untouched wallet credits, ledger linkage,
+idempotency/concurrency, cancellation dedup, failure safety,
+override-after-refund reconciliation, earning isolation),
+`tests/Feature/Earnings/LessonEarningReconciliationTest` (Phase 17G:
+creation eligibility matrix, agreement-not-price compensation,
+snapshot immutability, hold/restore-release/reverse corrections,
+settled-money protection, idempotency/concurrency, audit history,
+wallet/payment isolation).

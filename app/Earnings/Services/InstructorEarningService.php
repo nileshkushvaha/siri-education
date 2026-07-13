@@ -149,6 +149,63 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         return $earning;
     }
 
+    public function createForReconciliation(Lesson $lesson, ?User $actor = null, ?string $reasonCode = null): ?InstructorEarning
+    {
+        if (! $this->settings->earnings_enabled) {
+            return null;
+        }
+
+        $existing = $this->earnings->findForLesson($lesson);
+
+        if ($existing !== null) {
+            return $existing; // idempotent — one earning per lesson, ever
+        }
+
+        if ($lesson->instructor_id === null) {
+            throw new EarningException('The lesson has no instructor to compensate.');
+        }
+
+        $booking = $lesson->booking;
+
+        if ($booking === null || $booking->status === BookingStatus::Cancelled) {
+            throw new EarningException('A cancelled or missing booking cannot grow a reconciliation earning.');
+        }
+
+        if (! in_array($booking->payment_status, [BookingPaymentStatus::Paid, BookingPaymentStatus::NotRequired], strict: true)) {
+            throw new EarningException('The booking payment is not settled — no compensation applies.');
+        }
+
+        // Same resolver, same snapshot, same creation action as
+        // createFromLesson — instructor pay comes exclusively from the
+        // agreement in force at the lesson's scheduled start, never from
+        // student price. CompensationBlockedException propagates: an
+        // explicitly approved reconciliation must not silently queue.
+        $resolution = $this->resolver->resolveForLesson($lesson);
+
+        if ($resolution === null) {
+            return null; // benign: demo policy none / periodic basis
+        }
+
+        try {
+            $earning = $this->createAction->execute($lesson, $resolution, now()->addDays($this->settings->hold_days));
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent worker won the insert — idempotent replay.
+            return $this->earnings->findForLesson($lesson);
+        }
+
+        $this->log(
+            $actor,
+            'earning_created',
+            sprintf('Reconciliation earning of %d %s (minor units) created for lesson %s.', $earning->earning_amount_minor, $earning->currency_code, $lesson->id),
+            $earning,
+            array_filter(['reconciliation_reason' => $reasonCode]),
+        );
+
+        InstructorEarningCreated::dispatch($earning);
+
+        return $earning;
+    }
+
     public function release(InstructorEarning $earning, ?User $actor = null, bool $override = false): InstructorEarning
     {
         if (! $override && $earning->hold_until !== null && $earning->hold_until->isFuture()) {
@@ -178,6 +235,19 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         ]);
 
         $this->log($actor, 'earning_reversed', sprintf('Earning %s reversed.', $earning->id), $earning, array_filter(['reason' => $reason]));
+
+        return $earning;
+    }
+
+    public function holdRestore(InstructorEarning $earning, ?User $actor = null): InstructorEarning
+    {
+        if ($earning->status === InstructorEarningStatus::PendingHold) {
+            return $earning; // idempotent — already restored
+        }
+
+        $earning = $this->transition->execute($earning, InstructorEarningStatus::PendingHold);
+
+        $this->log($actor, 'earning_dispute_resolved', sprintf('Earning %s restored to hold after dispute resolution.', $earning->id), $earning);
 
         return $earning;
     }

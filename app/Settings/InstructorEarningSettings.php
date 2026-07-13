@@ -54,6 +54,12 @@ class InstructorEarningSettings extends Settings
     /** 'manual_review' | 'refund' | 'forfeit' — student money when both parties are absent. */
     public string $both_absent_financial_policy;
 
+    /** Phase 17F — gates lessons:process-refunds wallet-refund execution. Ships OFF. */
+    public bool $lesson_refund_execution_enabled;
+
+    /** Phase 17G — gates lessons:process-earning-reconciliation execution. Ships OFF. */
+    public bool $earning_reconciliation_execution_enabled;
+
     /**
      * Phase 16A — platform-wide payout execution switch. False stops
      * InstructorPayoutExecutionService::queueExecution() and the

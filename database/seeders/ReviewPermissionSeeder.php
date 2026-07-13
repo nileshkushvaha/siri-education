@@ -11,11 +11,11 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Review-eligibility permissions (Filament Shield naming). Idempotent —
- * required after deploy: the policy denies unknown permissions, so
- * without this only super_admin can inspect eligibility. Instructors
- * receive nothing here by design — they never see or alter a student's
- * review eligibility.
+ * Review-eligibility and submitted-review permissions (Filament Shield
+ * naming). Idempotent — required after deploy: policies deny unknown
+ * permissions, so without this only super_admin can inspect either.
+ * Instructors receive nothing here by design — they never see or alter
+ * a student's review eligibility or submitted review.
  */
 class ReviewPermissionSeeder extends Seeder
 {
@@ -23,6 +23,7 @@ class ReviewPermissionSeeder extends Seeder
 
     private const array MANAGER_PERMISSIONS = [
         'ViewAny:LessonReviewEligibility', 'View:LessonReviewEligibility',
+        'ViewAny:LessonReview', 'View:LessonReview',
     ];
 
     public function run(): void

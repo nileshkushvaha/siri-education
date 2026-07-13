@@ -33,6 +33,16 @@ class LessonReviewEligibilityPolicy
             || $this->hasPermission($user, 'View:LessonReviewEligibility');
     }
 
+    /**
+     * Submit a review against this eligibility — the eligibility's own
+     * student only. Deliberately no staff bypass: nobody submits AS
+     * the student, not even an administrator.
+     */
+    public function submitReview(User $user, LessonReviewEligibility $eligibility): bool
+    {
+        return $user->id === $eligibility->student_id;
+    }
+
     private function hasPermission(User $user, string $permission): bool
     {
         try {

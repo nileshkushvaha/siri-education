@@ -45,6 +45,12 @@ class ReviewSettings extends Settings
     /** Master override: when off, nothing auto-publishes regardless of moderation_model. */
     public bool $auto_publish_clean_reviews;
 
+    /** 'anonymous' | 'first_name_initial' | 'first_name_only' — how a reviewing student is labeled on a public profile. */
+    public string $public_review_identity_mode;
+
+    /** Master switch — false blocks new report submissions for every review (existing reports are unaffected). */
+    public bool $review_reporting_enabled;
+
     public static function group(): string
     {
         return 'reviews';

@@ -52,7 +52,17 @@ use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
 use App\Listeners\Reviews\ModerateReviewOnStudentReviewSubmitted;
 use App\Listeners\Reviews\OpenReviewEligibilityOnLessonOutcomeFinalized;
+use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewArchived;
+use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewHidden;
+use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewPublished;
+use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewRejected;
+use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewRestored;
 use App\Listeners\Reviews\ReevaluateReviewEligibilityOnLessonOutcomeOverridden;
+use App\Reviews\Events\StudentReviewArchived;
+use App\Reviews\Events\StudentReviewHidden;
+use App\Reviews\Events\StudentReviewPublished;
+use App\Reviews\Events\StudentReviewRejected;
+use App\Reviews\Events\StudentReviewRestored;
 use App\Reviews\Events\StudentReviewSubmitted;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -191,6 +201,24 @@ class EventServiceProvider extends ServiceProvider
         // Phase 17J — automatic moderation of a newly submitted review.
         StudentReviewSubmitted::class => [
             ModerateReviewOnStudentReviewSubmitted::class,
+        ],
+        // Phase 17K — instructor rating aggregate reconciliation. All five
+        // listeners delegate to the same idempotent reconcile() entry
+        // point; no aggregate mutation happens inside moderation services.
+        StudentReviewPublished::class => [
+            ReconcileRatingContributionOnStudentReviewPublished::class,
+        ],
+        StudentReviewHidden::class => [
+            ReconcileRatingContributionOnStudentReviewHidden::class,
+        ],
+        StudentReviewRestored::class => [
+            ReconcileRatingContributionOnStudentReviewRestored::class,
+        ],
+        StudentReviewRejected::class => [
+            ReconcileRatingContributionOnStudentReviewRejected::class,
+        ],
+        StudentReviewArchived::class => [
+            ReconcileRatingContributionOnStudentReviewArchived::class,
         ],
     ];
 

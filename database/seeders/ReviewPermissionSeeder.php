@@ -11,11 +11,14 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Review-eligibility and submitted-review permissions (Filament Shield
- * naming). Idempotent — required after deploy: policies deny unknown
- * permissions, so without this only super_admin can inspect either.
- * Instructors receive nothing here by design — they never see or alter
- * a student's review eligibility or submitted review.
+ * Review-eligibility, submitted-review, and review-report permissions
+ * (Filament Shield naming). Idempotent — required after deploy:
+ * policies deny unknown permissions, so without this only super_admin
+ * can inspect eligibility/review records, and no one but super_admin
+ * can report or resolve reports. `Report:LessonReview` (Phase 17M) is
+ * the one permission here that is NOT staff-only — it goes to student
+ * and instructor, the two frontend-portal roles that browse public
+ * profiles; every other permission here stays manager-only.
  */
 class ReviewPermissionSeeder extends Seeder
 {
@@ -25,11 +28,18 @@ class ReviewPermissionSeeder extends Seeder
         'ViewAny:LessonReviewEligibility', 'View:LessonReviewEligibility',
         'ViewAny:LessonReview', 'View:LessonReview',
         'Moderate:LessonReview', 'Hide:LessonReview',
+        'ViewAny:ReviewReport', 'View:ReviewReport', 'Resolve:ReviewReport',
     ];
+
+    private const array REPORTER_PERMISSIONS = [
+        'Report:LessonReview',
+    ];
+
+    private const array REPORTER_ROLES = ['student', 'instructor'];
 
     public function run(): void
     {
-        foreach (self::MANAGER_PERMISSIONS as $permission) {
+        foreach ([...self::MANAGER_PERMISSIONS, ...self::REPORTER_PERMISSIONS] as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
@@ -43,6 +53,11 @@ class ReviewPermissionSeeder extends Seeder
 
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web'])
             ->givePermissionTo(self::MANAGER_PERMISSIONS);
+
+        foreach (self::REPORTER_ROLES as $role) {
+            Role::firstOrCreate(['name' => $role, 'guard_name' => 'web'])
+                ->givePermissionTo(self::REPORTER_PERMISSIONS);
+        }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

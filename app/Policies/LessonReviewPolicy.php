@@ -17,7 +17,9 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  * any policy path. Status moderation (approve/reject/restore/archive
  * vs. hide) is staff-only via two explicit permissions; students
  * cannot publish, reject, hide, or restore their own review, and the
- * instructor being reviewed has no ability here at all.
+ * instructor being reviewed has no ability here at all. `report`
+ * (Phase 17M) is the one ability here open to any active authenticated
+ * user, not staff-only.
  */
 class LessonReviewPolicy
 {
@@ -44,6 +46,12 @@ class LessonReviewPolicy
     public function hide(User $user, LessonReview $review): bool
     {
         return $this->hasPermission($user, 'Hide:LessonReview');
+    }
+
+    /** Any authenticated, active user may report an eligible public review — not staff-only, unlike every other ability here. */
+    public function report(User $user, LessonReview $review): bool
+    {
+        return $user->isActive() && $this->hasPermission($user, 'Report:LessonReview');
     }
 
     private function hasPermission(User $user, string $permission): bool

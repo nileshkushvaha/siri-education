@@ -15,6 +15,7 @@ use App\Models\SubjectTopic;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Services\Profile\UserExperienceService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,6 +31,7 @@ final class InstructorService
 {
     public function __construct(
         private readonly UserExperienceService $experienceService,
+        private readonly InstructorRatingAggregateServiceInterface $ratings,
     ) {}
 
     public function listing(Request $request): LengthAwarePaginator
@@ -125,7 +127,7 @@ final class InstructorService
             'experience_count' => $instructor->experiences()->active()->count(),
             'education_count' => $instructor->educations()->active()->count(),
             'students_count' => 0,
-            'avg_rating' => null,
+            'avg_rating' => $this->ratingsFor($instructor)['average'],
         ];
     }
 
@@ -297,11 +299,14 @@ final class InstructorService
             ->values();
     }
 
+    /** Delegates to Phase 17K's durable aggregate — never recalculated from review rows here. */
     public function ratingsFor(User $instructor): array
     {
+        $summary = $this->ratings->summaryFor($instructor->id);
+
         return [
-            'average' => null,
-            'count' => 0,
+            'average' => $summary->averageRating,
+            'count' => $summary->reviewCount,
         ];
     }
 

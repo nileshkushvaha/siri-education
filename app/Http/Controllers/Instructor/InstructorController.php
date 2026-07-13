@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Reviews\Contracts\PublicInstructorReviewServiceInterface;
+use App\Reviews\DTOs\InstructorRatingSummaryData;
 use App\Services\Instructor\InstructorService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -14,6 +16,7 @@ class InstructorController extends Controller
 {
     public function __construct(
         private readonly InstructorService $instructorService,
+        private readonly PublicInstructorReviewServiceInterface $publicReviews,
     ) {}
 
     public function index(Request $request): View
@@ -26,6 +29,17 @@ class InstructorController extends Controller
 
     public function show(Request $request, User $user): View
     {
-        return view('instructors.show', $this->instructorService->publicProfile($user, $request->user()));
+        $profile = $this->instructorService->publicProfile($user, $request->user());
+
+        $reviewSummary = $this->publicReviews->summaryFor($user);
+        $reviews = $this->publicReviews->paginatedReviewsFor($user);
+        $dimensionLabels = InstructorRatingSummaryData::dimensionLabels();
+
+        return view('instructors.show', [
+            ...$profile,
+            'reviewSummary' => $reviewSummary,
+            'reviews' => $reviews,
+            'dimensionLabels' => $dimensionLabels,
+        ]);
     }
 }

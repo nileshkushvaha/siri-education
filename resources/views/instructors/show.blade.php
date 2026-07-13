@@ -244,7 +244,13 @@
                     <dl class="mt-5 space-y-4 text-sm">
                         <div class="flex items-center justify-between gap-4">
                             <dt class="text-slate-400">Rating</dt>
-                            <dd class="font-bold text-white">{{ $ratings['average'] !== null ? number_format($ratings['average'], 1) : 'Not rated' }}</dd>
+                            <dd class="font-bold text-white">
+                                @if($reviewSummary->averageRating !== null)
+                                    {{ number_format($reviewSummary->averageRating, 1) }} <span class="font-normal text-slate-400">({{ $reviewSummary->reviewCount }})</span>
+                                @else
+                                    No ratings yet
+                                @endif
+                            </dd>
                         </div>
                         <div class="flex items-center justify-between gap-4">
                             <dt class="text-slate-400">Experience</dt>
@@ -308,12 +314,117 @@
 
                 <x-ui.card class="border-white/10 bg-white/[0.04]">
                     <h2 class="text-lg font-bold text-white">Ratings</h2>
-                    <p class="mt-4 text-sm text-slate-400">
-                        Ratings will appear here once course reviews are available.
-                    </p>
+                    @if($reviewSummary->reviewCount > 0)
+                        <div class="mt-4 space-y-1.5">
+                            @for($star = 5; $star >= 1; $star--)
+                                <div class="flex items-center gap-2 text-xs">
+                                    <span class="w-8 shrink-0 text-slate-400">{{ $star }}★</span>
+                                    <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                                        <span class="block h-full rounded-full bg-amber-400" style="width: {{ round((($reviewSummary->ratingDistribution[(string) $star] ?? 0) / $reviewSummary->reviewCount) * 100) }}%"></span>
+                                    </span>
+                                    <span class="w-6 shrink-0 text-right text-slate-500">{{ $reviewSummary->ratingDistribution[(string) $star] ?? 0 }}</span>
+                                </div>
+                            @endfor
+                        </div>
+                    @else
+                        <p class="mt-4 text-sm text-slate-400">
+                            Ratings will appear here once course reviews are available.
+                        </p>
+                    @endif
                 </x-ui.card>
             </aside>
         </div>
+
+        <section class="mt-12 border-t border-white/10 pt-8" id="reviews">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-emerald-200">Student feedback</p>
+                    <h2 class="mt-2 text-2xl font-black text-white">Reviews &amp; Ratings</h2>
+                </div>
+            </div>
+
+            @if($reviewSummary->reviewCount > 0)
+                <div class="mt-6 grid gap-6 lg:grid-cols-3">
+                    <x-ui.card class="border-white/10 bg-white/[0.04] lg:col-span-1">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-black text-white">{{ number_format($reviewSummary->averageRating, 1) }}</span>
+                            <span class="text-sm text-slate-400">/ 5</span>
+                        </div>
+                        <p class="mt-1 text-sm text-slate-400">Based on {{ $reviewSummary->reviewCount }} {{ Str::plural('review', $reviewSummary->reviewCount) }}</p>
+
+                        <div class="mt-5 space-y-1.5">
+                            @for($star = 5; $star >= 1; $star--)
+                                <div class="flex items-center gap-2 text-xs">
+                                    <span class="w-8 shrink-0 text-slate-400">{{ $star }}★</span>
+                                    <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                                        <span class="block h-full rounded-full bg-amber-400" style="width: {{ round((($reviewSummary->ratingDistribution[(string) $star] ?? 0) / $reviewSummary->reviewCount) * 100) }}%"></span>
+                                    </span>
+                                    <span class="w-6 shrink-0 text-right text-slate-500">{{ $reviewSummary->ratingDistribution[(string) $star] ?? 0 }}</span>
+                                </div>
+                            @endfor
+                        </div>
+
+                        @if(collect($reviewSummary->dimensionAverages)->filter()->isNotEmpty())
+                            <dl class="mt-5 space-y-2 border-t border-white/10 pt-4 text-xs">
+                                @foreach($reviewSummary->dimensionAverages as $key => $average)
+                                    @continue($average === null)
+                                    <div class="flex items-center justify-between gap-4">
+                                        <dt class="text-slate-400">{{ $dimensionLabels[$key] ?? Str::headline($key) }}</dt>
+                                        <dd class="font-bold text-white">{{ number_format($average, 1) }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        @endif
+
+                        @if($reviewSummary->paidReviewCount > 0 || $reviewSummary->demoReviewCount > 0)
+                            <p class="mt-5 border-t border-white/10 pt-4 text-xs text-slate-500">
+                                {{ $reviewSummary->paidReviewCount }} paid · {{ $reviewSummary->demoReviewCount }} demo
+                            </p>
+                        @endif
+                    </x-ui.card>
+
+                    <div class="space-y-4 lg:col-span-2">
+                        @foreach($reviews as $review)
+                            <x-ui.card class="border-white/10 bg-white/[0.04]">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-bold text-white">{{ $review->reviewerLabel }}</p>
+                                        <p class="mt-0.5 text-xs text-slate-400">{{ $review->submittedAt->format('M j, Y') }}</p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        @if($review->verifiedLesson)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-200 ring-1 ring-emerald-300/20">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
+                                                {{ $review->isDemo() ? 'Verified Demo Lesson' : 'Verified Lesson' }}
+                                            </span>
+                                        @endif
+                                        <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-200 ring-1 ring-amber-300/20">{{ $review->overallRating }} ★</span>
+                                    </div>
+                                </div>
+
+                                @if($review->content)
+                                    <p class="mt-3 text-sm leading-6 text-slate-300">{{ $review->content }}</p>
+                                @endif
+
+                                @if(!empty($review->tags))
+                                    <div class="mt-3 flex flex-wrap gap-2">
+                                        @foreach($review->tags as $tag)
+                                            <span class="rounded-full bg-white/[0.05] px-2.5 py-1 text-xs text-slate-300 ring-1 ring-white/10">{{ $tag['label'] ?? $tag['key'] ?? '' }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </x-ui.card>
+                        @endforeach
+
+                        <x-ui.pagination :paginator="$reviews" />
+                    </div>
+                </div>
+            @else
+                <x-ui.card class="mt-6 border-white/10 bg-white/[0.04] text-center">
+                    <p class="text-sm text-slate-400">No reviews yet — {{ Str::before($instructor->name, ' ') }} hasn't received a published review.</p>
+                </x-ui.card>
+            @endif
+        </section>
 
         @if($related->isNotEmpty())
             <section class="mt-12 border-t border-white/10 pt-8">

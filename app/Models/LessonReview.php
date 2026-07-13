@@ -15,12 +15,14 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * One student review per eligibility (and per booking). Written
- * exclusively by SubmitLessonReviewAction — never physically deleted.
+ * One student review per eligibility (and per booking). Created
+ * exclusively by SubmitLessonReviewAction; status transitions
+ * exclusively by ModerateSubmittedReviewAction (automatic) and
+ * ReviewModerationService (admin) — never physically deleted, and the
+ * rating/text/tags a student submitted are never edited by moderation.
  * `content` is always the sanitized plain-text form; raw submitted
- * text never reaches this table. Phase 17I never publishes, aggregates,
- * or exposes any review — `status` staying Submitted/Private/Flagged
- * is itself the "invisible until moderation" guarantee.
+ * text never reaches this table. `Published` is the only status a
+ * future public-display/aggregate phase may ever surface.
  */
 class LessonReview extends Model
 {
@@ -47,6 +49,10 @@ class LessonReview extends Model
         'settings_snapshot',
         'sanitization_metadata',
         'version',
+        'moderated_at',
+        'moderated_by',
+        'moderation_reason',
+        'moderation_snapshot',
     ];
 
     protected function casts(): array
@@ -65,6 +71,8 @@ class LessonReview extends Model
             'settings_snapshot' => 'array',
             'sanitization_metadata' => 'array',
             'version' => 'integer',
+            'moderated_at' => 'immutable_datetime',
+            'moderation_snapshot' => 'array',
         ];
     }
 
@@ -91,6 +99,11 @@ class LessonReview extends Model
     public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function moderator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moderated_by');
     }
 
     public function isPrivate(): bool

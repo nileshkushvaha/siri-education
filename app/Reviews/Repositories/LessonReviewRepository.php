@@ -19,4 +19,12 @@ final class LessonReviewRepository implements LessonReviewRepositoryInterface
     {
         return LessonReview::query()->create($attributes);
     }
+
+    public function lock(LessonReview $review): LessonReview
+    {
+        return LessonReview::query()
+            ->whereKey($review->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
 }

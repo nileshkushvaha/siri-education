@@ -39,6 +39,12 @@ class ReviewSettings extends Settings
     /** Maximum number of tags a single submission may select. */
     public int $review_max_tags;
 
+    /** 'pre_moderation' | 'post_moderation' | 'risk_based' — governs automatic moderation of newly submitted reviews. */
+    public string $moderation_model;
+
+    /** Master override: when off, nothing auto-publishes regardless of moderation_model. */
+    public bool $auto_publish_clean_reviews;
+
     public static function group(): string
     {
         return 'reviews';

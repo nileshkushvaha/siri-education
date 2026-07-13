@@ -1,14 +1,16 @@
-# Reviews (Student Review Eligibility & Submission)
+# Reviews (Eligibility, Submission & Moderation)
 
 Phase 17H built durable, verified eligibility for a student to review
 the instructor of a completed lesson (create/revoke/restore/expire
-windows only). Phase 17I adds submission on top of it: an eligible
-student can submit a rated, optionally-tagged review — a public-review
-candidate or private feedback, per the eligibility's mode. Neither
-phase implements moderation, publication, public display, rating
-aggregates, or notifications. No Review/Rating/Feedback domain existed
-before Phase 17H (`StudentReviewsController` was a "coming soon"
-placeholder).
+windows only). Phase 17I added submission: an eligible student submits
+a rated, optionally-tagged review — a public-review candidate or
+private feedback, per the eligibility's mode. Phase 17J adds the
+moderation/publication lifecycle on top: automatic moderation of every
+newly submitted review under a configurable model, plus administrator
+approve/reject/hide/restore/archive actions. None of the three phases
+implement public display, rating aggregates, instructor responses, or
+notifications. No Review/Rating/Feedback domain existed before Phase
+17H (`StudentReviewsController` was a "coming soon" placeholder).
 
 ## Data model
 
@@ -44,14 +46,19 @@ prior state is appended to `history` before a transition.
 | `review_min_length` / `review_max_length` | 10 / 2000 | Character bounds on the sanitized text |
 | `rating_dimensions_enabled` | true | Whether the five optional per-dimension ratings may be submitted at all |
 | `review_max_tags` | 5 | Maximum tags a single submission may select |
+| `moderation_model` | `risk_based` | `pre_moderation` \| `post_moderation` \| `risk_based` |
+| `auto_publish_clean_reviews` | true | Master override — off means nothing auto-publishes regardless of model |
 
 **Policy snapshot, not live settings**: every eligibility record stores
 the exact settings values in force when it was opened, in `metadata`;
 every submitted review likewise stores the rating/text/tag settings in
-force at submission time, in `settings_snapshot`. A later settings
-change (e.g. `review_window_days` 14 → 30, or `rating_max` 5 → 10)
-never retroactively changes an already-open window or an already
--submitted review.
+force at submission time (`settings_snapshot`) and the moderation
+settings in force when automatic moderation last evaluated it
+(`moderation_snapshot`). A later settings change (e.g.
+`review_window_days` 14 → 30, `rating_max` 5 → 10, or `moderation_model`
+`risk_based` → `pre_moderation`) never retroactively changes an
+already-open window, an already-submitted review, or a past moderation
+decision.
 
 ## Eligibility matrix
 
@@ -215,8 +222,82 @@ submission attempts resolve to exactly one review.
 `student_id` only, with **no staff bypass** (nobody submits *as* the
 student, not even an administrator). `LessonReviewPolicy::view()`
 mirrors the eligibility policy (own student or permissioned staff);
-no create/update/delete ability exists on either policy — all writes
-are exclusively through the service/action.
+no create/update/delete ability exists on either policy — all content
+writes are exclusively through `SubmitLessonReviewAction`.
+
+## Moderation & Publication (Phase 17J)
+
+Adds `Published` to `StudentReviewStatus` (Hidden/Rejected/Archived
+were reserved in 17I, unused until now) and a guarded state machine —
+`canTransitionTo()`, mirroring `LessonStatus`/`InstructorEarningStatus`:
+
+```
+Submitted → Published | Flagged | Rejected
+Flagged   → Published | Private | Rejected
+Published → Hidden
+Hidden    → Published | Archived
+Private   → Rejected  | Archived
+Rejected, Archived → (terminal)
+```
+
+`TransitionReviewStatusAction` is the single writer of `status` —
+every automatic and admin path funnels through it, throwing
+`InvalidReviewTransitionException` on any transition the table above
+doesn't allow. Moderation **never edits** the student's rating, text,
+or tags — status (and `moderated_at`/`moderated_by`/
+`moderation_reason`/`moderation_snapshot`) only. History is preserved
+through the existing activity log (`AuditTrailService`), not a new
+column — no review row is ever physically deleted.
+
+### Automatic moderation
+
+`StudentReviewSubmitted` → queued listener →
+`ModerateSubmittedReviewAction`, which **only ever acts on a review
+still `Submitted`** (a duplicate/replayed event, or one arriving after
+a human already decided, is an idempotent no-op) and **never touches**
+`Private` or `Flagged` reviews — private feedback must never become
+public automatically, and anything Phase 17I's sanitizer already
+flagged always waits for a human, in every model. It never resanitizes
+text or re-validates rating/tag rules — it only reads what 17I already
+stored (`review_mode`, `sanitization_metadata.had_unsafe_content`) plus
+the *current* moderation settings, snapshotting the latter onto the
+review (`moderation_snapshot`) so a later settings change can never
+retroactively reinterpret a past decision.
+
+| `moderation_model` | `auto_publish_clean_reviews` | Clean `Submitted` review |
+|---|---|---|
+| `pre_moderation` | any | stays `Submitted` (always needs a human) |
+| `post_moderation` | true | → `Published` |
+| `risk_based` | true | → `Published` |
+| any | false | stays `Submitted` (master override) |
+
+A `Submitted` review is, by construction, already the "safe" branch of
+Phase 17I's own risk split (unsafe content is `Flagged` at submission,
+never `Submitted`) — so `post_moderation` and `risk_based` currently
+produce identical automatic outcomes; the distinction is preserved as
+a configuration option for a future phase that might score risk
+independently of 17I's sanitizer.
+
+### Administrator actions (`ReviewModerationService`)
+
+`approve` (target derives from `review_mode` — `Published` for a
+public candidate, `Private` for private feedback; reason optional for
+this one "straightforward" action), `reject`, `hide`, `restore`,
+`archive` (all require a non-empty reason). Every action: permission
+check → row lock → **idempotent no-op if already at the target
+status** → state-machine-guarded transition → audit → after-commit
+event. A decision that conflicts with a status someone else already
+changed (not "already there", but genuinely incompatible) throws
+`InvalidReviewTransitionException` rather than silently applying —
+concurrent admins resolve to exactly one winner, loudly.
+
+### Permissions
+
+Two new abilities, both staff-only with **no student or instructor
+bypass**: `moderate` (approve/reject/restore/archive) and `hide`
+(separately permissioned — pulling a *live* review is treated as more
+sensitive than any other transition). Seeded as `Moderate:LessonReview`
+and `Hide:LessonReview`.
 
 ## Authorization
 
@@ -231,16 +312,20 @@ policy path. All writes happen exclusively through
 the system paths — the same pattern as every other system-authored
 record in this codebase). Permissions
 (`ViewAny:LessonReviewEligibility`, `View:LessonReviewEligibility`,
-`ViewAny:LessonReview`, `View:LessonReview`) are seeded by
-`ReviewPermissionSeeder` to the `manager` role.
+`ViewAny:LessonReview`, `View:LessonReview`, `Moderate:LessonReview`,
+`Hide:LessonReview`) are seeded by `ReviewPermissionSeeder` to the
+`manager` role.
 
 ## Events
 
 `LessonReviewEligibilityOpened` (creation and restore-after-override),
 `LessonReviewEligibilityExpired`, `LessonReviewEligibilityRevoked`,
-`StudentReviewSubmitted` — all `ShouldDispatchAfterCommit`. No
-notification, moderation, or publication listeners are attached in
-either phase.
+`StudentReviewSubmitted`, `StudentReviewPublished`,
+`StudentReviewRejected`, `StudentReviewHidden`, `StudentReviewRestored`,
+`StudentReviewArchived` — all `ShouldDispatchAfterCommit`, each fired
+exactly once per actual transition (never on an idempotent no-op). No
+notification, aggregate, or public-display listeners are attached in
+any of the three phases.
 
 ## Audit
 
@@ -248,54 +333,61 @@ Every transition is recorded via `AuditTrailService` under the
 `reviews` log name: `review_eligibility_opened`,
 `review_eligibility_restored`, `review_eligibility_revoked`,
 `review_eligibility_flagged_manual_review`,
-`review_eligibility_expired`, `student_review_submitted` (the last via
+`review_eligibility_expired`, `student_review_submitted` (via
 `logUser`, since a student always causes it — properties carry ids,
-mode, status, and content-flag *categories* only, never raw text).
+mode, status, and content-flag *categories* only, never raw text),
+`review_moderation_evaluated` / `review_auto_published` (system,
+automatic moderation), `review_approved` / `review_rejected` /
+`review_hidden` / `review_restored` / `review_archived` (via `logUser`
+— actor, previous/new status, reason, version).
 
 ## Folder structure
 
 ```
 app/Reviews/
 ├── Actions/        OpenLessonReviewEligibilityAction, ReevaluateLessonReviewEligibilityAction,
-│                   ExpireLessonReviewEligibilityAction, SubmitLessonReviewAction
+│                   ExpireLessonReviewEligibilityAction, SubmitLessonReviewAction,
+│                   ModerateSubmittedReviewAction, TransitionReviewStatusAction
 ├── Contracts/      ReviewEligibilityServiceInterface, LessonReviewEligibilityRepositoryInterface,
-│                   StudentReviewServiceInterface, LessonReviewRepositoryInterface
+│                   StudentReviewServiceInterface, LessonReviewRepositoryInterface,
+│                   ReviewModerationServiceInterface
 ├── DTOs/           SanitizedReviewContent, SubmitStudentReviewData, SubmitReviewResult
 ├── Enums/          LessonReviewEligibilityMode, LessonReviewEligibilityStatus, ReviewableLessonType,
 │                   StudentReviewStatus, ReviewContentFlag
-├── Events/         LessonReviewEligibilityOpened/Expired/Revoked, StudentReviewSubmitted
-├── Exceptions/     ReviewEligibilityException, ReviewValidationException
+├── Events/         LessonReviewEligibilityOpened/Expired/Revoked, StudentReviewSubmitted,
+│                   StudentReviewPublished/Rejected/Hidden/Restored/Archived
+├── Exceptions/     ReviewEligibilityException, ReviewValidationException, InvalidReviewTransitionException
 ├── Repositories/   LessonReviewEligibilityRepository, LessonReviewRepository
-├── Services/       ReviewEligibilityService, StudentReviewService
+├── Services/       ReviewEligibilityService, StudentReviewService, ReviewModerationService
 └── Support/        ReviewContentSanitizer
 
 app/Models/LessonReviewEligibility.php, LessonReview.php, ReviewTag.php
 app/Policies/LessonReviewEligibilityPolicy.php, LessonReviewPolicy.php
-app/Listeners/Reviews/  (thin triggers — no eligibility logic)
+app/Listeners/Reviews/  (thin triggers — no eligibility/moderation logic)
 app/Providers/ReviewServiceProvider.php (bootstrap/providers.php)
 ```
 
 ## Deployment runbook
 
 1. `php artisan migrate --force` — creates `lesson_review_eligibilities`,
-   `review_tags`, `lesson_reviews`, and seeds the `reviews.*` settings
-   defaults.
+   `review_tags`, `lesson_reviews` (+ its Phase 17J moderation columns),
+   and seeds the `reviews.*` settings defaults.
 2. `php artisan db:seed --class=ReviewPermissionSeeder --force` —
-   mandatory: without it only `super_admin` can view eligibility or
-   review records at all.
+   mandatory: without it only `super_admin` can view or moderate
+   eligibility/review records at all.
 3. `php artisan db:seed --class=ReviewTagSeeder --force` — idempotent
    default tag catalog; without it no tags exist to select.
-4. Queue worker (`notifications` queue) — the two outcome listeners are
-   queued.
+4. Queue worker (`notifications` queue) — the outcome listeners and
+   the automatic-moderation listener are all queued.
 5. Scheduler cron — gates `reviews:expire-eligibility` (hourly).
 
 ## Deferred (do not build yet)
 
-Moderation decisions, publication, public profile/review display,
-rating aggregates, instructor responses/visibility, review
-notifications, review editing (the model is deliberately prepared for
-it — open `status` vocabulary, `version` column — but no code path
-edits), homework, learning-plan progress, and all frontend UI.
+Public profile/review display, rating aggregates, instructor
+responses/visibility, review notifications, review editing (the model
+is deliberately prepared for it — open `status` vocabulary, `version`
+column — but no code path edits), homework, learning-plan progress,
+and all frontend UI.
 
 ## Tests
 
@@ -319,3 +411,27 @@ tag validation + dedup, submission/eligibility-used atomicity on
 failure, concurrent-submission idempotency, and the guarantee that
 nothing publishes, aggregates, notifies, or touches any
 financial/booking/lesson-outcome/earning record.
+
+`tests/Feature/Reviews/ReviewModerationTest.php` (Phase 17J) — all
+three automatic-moderation models (clean and flagged, public and
+private), admin approve/reject/hide/restore/archive including the
+mode-derived approve target, reason requirements, invalid-transition
+rejection, duplicate-decision idempotency, conflicting-concurrent-
+decision resolution, content immutability across moderation, audit
+records and exactly-once event dispatch, and the guarantee that
+nothing publishes to an aggregate, notifies, or touches any
+financial/booking/lesson/earning record.
+
+### A pre-existing seeder fix surfaced during Phase 17J
+
+`ReviewPermissionSeeder` created permission rows and then called
+`Role::givePermissionTo()` before clearing Spatie's in-memory
+permission cache — if anything (e.g. a policy check inside
+`StudentReviewService::submit()`, exercised earlier in the same test)
+had already primed that cache as empty, the newly created rows were
+invisible to `givePermissionTo()`, which threw `PermissionDoesNotExist`
+despite the rows existing. Fixed by clearing the cache immediately
+after creating the permissions, before assigning them to the role (in
+addition to the existing clear at the end). This is a real,
+previously-latent defect — no prior test happened to prime the cache
+before seeding ran — not a workaround.

@@ -24,6 +24,7 @@ class ReviewPermissionSeeder extends Seeder
     private const array MANAGER_PERMISSIONS = [
         'ViewAny:LessonReviewEligibility', 'View:LessonReviewEligibility',
         'ViewAny:LessonReview', 'View:LessonReview',
+        'Moderate:LessonReview', 'Hide:LessonReview',
     ];
 
     public function run(): void
@@ -31,6 +32,14 @@ class ReviewPermissionSeeder extends Seeder
         foreach (self::MANAGER_PERMISSIONS as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
+
+        // Spatie caches its permission collection in-memory; if anything
+        // (e.g. an earlier policy check in the same request/test) already
+        // primed that cache before the rows above were created,
+        // givePermissionTo() below would validate against the stale
+        // (permission-less) cache and throw PermissionDoesNotExist even
+        // though the rows now exist. Clear it before, not just after.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web'])
             ->givePermissionTo(self::MANAGER_PERMISSIONS);

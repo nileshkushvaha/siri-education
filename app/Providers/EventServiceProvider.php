@@ -50,8 +50,10 @@ use App\Listeners\Mail\LogResendEmailEvent;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
+use App\Listeners\Reviews\ModerateReviewOnStudentReviewSubmitted;
 use App\Listeners\Reviews\OpenReviewEligibilityOnLessonOutcomeFinalized;
 use App\Listeners\Reviews\ReevaluateReviewEligibilityOnLessonOutcomeOverridden;
+use App\Reviews\Events\StudentReviewSubmitted;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Mail\Events\MessageSending;
@@ -185,6 +187,10 @@ class EventServiceProvider extends ServiceProvider
         LessonOutcomeOverridden::class => [
             ReevaluateLessonFinancialDisposition::class,
             ReevaluateReviewEligibilityOnLessonOutcomeOverridden::class,
+        ],
+        // Phase 17J — automatic moderation of a newly submitted review.
+        StudentReviewSubmitted::class => [
+            ModerateReviewOnStudentReviewSubmitted::class,
         ],
     ];
 

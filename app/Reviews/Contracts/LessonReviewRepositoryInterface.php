@@ -13,4 +13,7 @@ interface LessonReviewRepositoryInterface
 
     /** @param array<string, mixed> $attributes */
     public function create(array $attributes): LessonReview;
+
+    /** Refetch with a row lock — call only inside a transaction. */
+    public function lock(LessonReview $review): LessonReview;
 }

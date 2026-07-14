@@ -50,6 +50,14 @@ use App\Listeners\Mail\LogResendEmailEvent;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
+use App\Listeners\Quality\DetectInstructorCancellationQualityRiskOnBookingCancelled;
+use App\Listeners\Quality\DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized;
+use App\Listeners\Quality\DetectLowRatingQualityRiskOnStudentReviewPublished;
+use App\Listeners\Quality\DetectSeriousReviewReportQualityRiskOnReviewReportUpheld;
+use App\Listeners\Quality\ReevaluateQualityAlertOnLessonOutcomeOverridden;
+use App\Listeners\Quality\ReevaluateQualityAlertOnStudentReviewArchived;
+use App\Listeners\Quality\ReevaluateQualityAlertOnStudentReviewHidden;
+use App\Listeners\Quality\ReevaluateQualityAlertOnStudentReviewRejected;
 use App\Listeners\Reviews\ModerateReviewOnStudentReviewSubmitted;
 use App\Listeners\Reviews\OpenReviewEligibilityOnLessonOutcomeFinalized;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewArchived;
@@ -58,6 +66,7 @@ use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewPublished;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewRejected;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewRestored;
 use App\Listeners\Reviews\ReevaluateReviewEligibilityOnLessonOutcomeOverridden;
+use App\Reviews\Events\ReviewReportUpheld;
 use App\Reviews\Events\StudentReviewArchived;
 use App\Reviews\Events\StudentReviewHidden;
 use App\Reviews\Events\StudentReviewPublished;
@@ -159,6 +168,7 @@ class EventServiceProvider extends ServiceProvider
             SyncPaymentOnCancellation::class,
             SyncLessonOnBookingCancelled::class,
             CancelMeetingOnBookingCancelled::class,
+            DetectInstructorCancellationQualityRiskOnBookingCancelled::class,
         ],
         BookingRescheduled::class => [
             [SendBookingNotifications::class, 'handleRescheduled'],
@@ -193,10 +203,12 @@ class EventServiceProvider extends ServiceProvider
         LessonOutcomeFinalized::class => [
             ClassifyLessonFinancialDisposition::class,
             OpenReviewEligibilityOnLessonOutcomeFinalized::class,
+            DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized::class,
         ],
         LessonOutcomeOverridden::class => [
             ReevaluateLessonFinancialDisposition::class,
             ReevaluateReviewEligibilityOnLessonOutcomeOverridden::class,
+            ReevaluateQualityAlertOnLessonOutcomeOverridden::class,
         ],
         // Phase 17J — automatic moderation of a newly submitted review.
         StudentReviewSubmitted::class => [
@@ -207,18 +219,29 @@ class EventServiceProvider extends ServiceProvider
         // point; no aggregate mutation happens inside moderation services.
         StudentReviewPublished::class => [
             ReconcileRatingContributionOnStudentReviewPublished::class,
+            DetectLowRatingQualityRiskOnStudentReviewPublished::class,
         ],
         StudentReviewHidden::class => [
             ReconcileRatingContributionOnStudentReviewHidden::class,
+            ReevaluateQualityAlertOnStudentReviewHidden::class,
         ],
         StudentReviewRestored::class => [
             ReconcileRatingContributionOnStudentReviewRestored::class,
         ],
         StudentReviewRejected::class => [
             ReconcileRatingContributionOnStudentReviewRejected::class,
+            ReevaluateQualityAlertOnStudentReviewRejected::class,
         ],
         StudentReviewArchived::class => [
             ReconcileRatingContributionOnStudentReviewArchived::class,
+            ReevaluateQualityAlertOnStudentReviewArchived::class,
+        ],
+        // Phase 17N — instructor quality-alert detection from an upheld
+        // serious review report. Fingerprint keys on the review, not the
+        // report, so multiple reports against the same review collapse
+        // to one alert.
+        ReviewReportUpheld::class => [
+            DetectSeriousReviewReportQualityRiskOnReviewReportUpheld::class,
         ],
     ];
 

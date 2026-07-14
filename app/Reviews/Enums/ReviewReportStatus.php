@@ -33,6 +33,17 @@ enum ReviewReportStatus: string
         };
     }
 
+    public function color(): string
+    {
+        return match ($this) {
+            self::Pending => 'warning',
+            self::UnderReview => 'info',
+            self::Upheld => 'danger',
+            self::Dismissed => 'success',
+            self::Duplicate, self::Withdrawn => 'gray',
+        };
+    }
+
     /** Not yet resolved — the only states a duplicate-report check considers "active". */
     public function isActive(): bool
     {

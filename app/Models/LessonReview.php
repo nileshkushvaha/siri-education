@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -104,6 +105,11 @@ class LessonReview extends Model
     public function moderator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'moderated_by');
+    }
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(ReviewReport::class, 'review_id');
     }
 
     public function isPrivate(): bool

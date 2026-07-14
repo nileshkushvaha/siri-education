@@ -18,11 +18,19 @@ Lesson badge, reusing the Phase 17K aggregate for the summary. Phase
 17M lets any active user report a published public review and lets an
 authorized administrator resolve it — every resolution that changes
 review visibility delegates to the *same* `ReviewModerationService`
-Phase 17J already built, never a second moderation system. None of the
-six phases implement instructor responses, notifications, quality
-alerts, marketplace ranking, or reporting/analytics dashboards. No
-Review/Rating/Feedback domain existed before Phase 17H
-(`StudentReviewsController` was a "coming soon" placeholder).
+Phase 17J already built, never a second moderation system. Phase 17N
+detects instructor quality risk (low ratings, no-shows, cancellations,
+upheld serious reports) from those same events and records durable,
+deduplicated alerts for staff review — recommendations only, never an
+automatic suspension, profile change, or compensation/ranking effect.
+Phase 17O adds a read-only Filament admin dashboard surfacing all of
+the above for operational triage — moderation workload, reports,
+quality alerts, and instructor rating health — with every action
+delegating to the same services Phases 17J/17M/17N already built.
+None of the eight phases implement instructor responses, notifications,
+public quality scores, marketplace ranking, or instructor-facing
+quality insights. No Review/Rating/Feedback domain existed before
+Phase 17H (`StudentReviewsController` was a "coming soon" placeholder).
 
 ## Data model
 
@@ -785,10 +793,338 @@ compensation, raw audit payloads, or unrelated lesson data.
 
 ### Deferred
 
-Quality alerts, instructor quality scores, notifications (the five
-events above have zero listeners attached in this phase — reserved
-vocabulary), review analytics, instructor responses, marketplace
-ranking changes, and Filament/admin UI.
+Quality alerts (Phase 17N), instructor quality scores, notifications
+(the five events above have zero listeners attached in this phase —
+reserved vocabulary), review analytics, instructor responses,
+marketplace ranking changes, and Filament/admin UI.
+
+## Instructor Quality Alert Foundation (Phase 17N)
+
+A new `App\Quality\*` domain (parallel to `App\Reviews\*`,
+`App\Lessons\*`, `App\Booking\*` — Eloquent models still live in
+`app/Models/` per the codebase-wide convention) that detects
+instructor quality risk from four existing signal sources and records
+durable, deduplicated alerts for staff review. **No second review,
+lesson, booking, or instructor-performance system was created** —
+every detector consumes an existing domain event
+(`StudentReviewPublished/Hidden/Rejected/Archived`,
+`LessonOutcomeFinalized/Overridden`, `BookingCancelled`,
+`ReviewReportUpheld`) and writes only to its own new `quality_alerts`
+table.
+
+### Schema (`quality_alerts`)
+
+`instructor_id`, `alert_type`, `severity`, `status`, `source_type` +
+`source_id` (a label pair, not a functioning polymorphic relation — no
+admin UI consumes it yet), `detection_fingerprint` (**unique** — the
+sole dedup mechanism), `triggered_at`, `signal_window_start/end`,
+`signal_count`, `threshold_snapshot` (JSON), `summary_metadata` (JSON
+— sanitized evidence references only), `needs_reevaluation` +
+`reevaluated_at` (a non-destructive staleness flag, separate from
+`status`), `assigned_to`, `reviewed_at`/`reviewed_by`, `resolved_at`,
+`resolution_action`/`resolution_reason`, `version`. Nothing here is
+ever physically deleted.
+
+**Types**: `SingleLowRating`, `RepeatedLowRatings`, `InstructorNoShow`,
+`RepeatedInstructorNoShows`, `RepeatedInstructorCancellations`,
+`SeriousReviewReport`, `SuspiciousReviewPattern` (reserved — no
+detector produces it in this phase, same precedent as
+`ReviewReportStatus::Withdrawn`). **Severities**: Low/Medium/High/
+Critical, centralized in `QualityAlertSeverityPolicy`. **Statuses**,
+guarded exactly like `StudentReviewStatus`/`ReviewReportStatus`:
+
+```
+Open        → UnderReview | Resolved | Dismissed | Duplicate | Expired
+UnderReview → Resolved | Dismissed | Duplicate | Expired
+Resolved, Dismissed, Duplicate, Expired → (terminal)
+```
+
+`Expired` is reserved vocabulary, unused in this phase.
+
+### Settings (all on the existing `ReviewSettings`)
+
+`quality_alerts_enabled` (**default false** — every detector's first
+line is this guard clause), `low_rating_threshold` (2),
+`single_low_rating_alert_enabled` (true), `repeated_low_rating_count`
+(3) / `repeated_low_rating_window_days` (30), `repeated_no_show_count`
+(2) / `repeated_no_show_window_days` (30), `repeated_cancellation_count`
+(3) / `repeated_cancellation_window_days` (30). Every alert stores a
+`threshold_snapshot` at creation time (`QualityAlertThresholdSnapshot::capture()`)
+— a later settings change never retroactively reinterprets an
+already-created alert, the identical discipline every other
+settings-snapshot in this domain follows.
+
+### Detection flow
+
+Every "detect" action follows the same shape: guard on
+`quality_alerts_enabled` → check the specific signal condition → build
+a `QualitySignalData` → hand it to `RecordQualityAlertSignalAction`,
+the single writer of new rows. Deduplication is **never** a pre-check
+— it's the fingerprint's unique index. Every create attempt actually
+runs; a `UniqueConstraintViolationException` is caught and treated as
+"a concurrent or replayed detector already won," the identical
+convention `OpenLessonReviewEligibilityAction` (Phase 17H) already
+uses. This is what makes duplicate events, replayed events, and
+concurrent evaluations all converge to exactly one alert with no
+locking or pre-existing parent row required.
+
+**Single-occurrence types** (`SingleLowRating`, `InstructorNoShow`,
+`SeriousReviewReport`) key their fingerprint on the triggering source
+record (`quality-alert:{type}:{instructor}:{source-id}`) — that record
+can only ever produce one alert, by construction.
+
+**Repeated/threshold types** key on an **episode number** instead
+(`quality-alert:{type}:{instructor}:episode-{n}`), where `n` = 1 +
+however many *terminal* alerts of that type already exist for the
+instructor. Two concurrent evaluations of the same still-open episode
+both compute the same `n` and collide into one row (satisfying
+"concurrent processing must create one alert"); once that episode is
+resolved/dismissed/marked-duplicate, the next threshold crossing
+computes `n+1` and is free to create a genuinely new alert — this is
+what "a new alert may be created only for a genuinely new window or
+escalation" means concretely, without needing a lockable row to exist
+before the first alert does. `InstructorQualityAlertEscalated` fires
+alongside `InstructorQualityAlertCreated` specifically when `n > 1` —
+the same quality problem recurring after a past resolution.
+
+### Signal rules
+
+| Signal | Source event | Rule |
+|---|---|---|
+| Low rating | `StudentReviewPublished` | Only `Published` + `PublicReview` reviews; private feedback never triggers anything automatically. Rating ≤ `low_rating_threshold` may create `SingleLowRating`. Count of *actual* low published reviews (never the rounded aggregate average) within the rolling window ≥ `repeated_low_rating_count` creates `RepeatedLowRatings`. |
+| Instructor no-show | `LessonOutcomeFinalized` | Only `LessonOutcome::InstructorNoShow` — `StudentNoShow`/`BothAbsent`/`TechnicalIssue`/`Cancelled` are different enum values and structurally excluded, never inferred. Creates `InstructorNoShow`; window count ≥ `repeated_no_show_count` also creates `RepeatedInstructorNoShows`. |
+| Instructor cancellation | `BookingCancelled` | Only `BookingActor::Host`-attributed cancellations (`InstructorCancellationAttribution`) — student (`Attendee`), system-expiry/payment-failure (`System`), and admin-correction (`Admin`) cancellations are different actor values, excluded by construction, never by parsing the free-text `cancellation_reason`. No singular per-cancellation alert type exists — only `RepeatedInstructorCancellations` at the window threshold, per spec. |
+| Serious review report | `ReviewReportUpheld` | Only 5 reasons count: Personal Information, Off-Platform Solicitation, Hate or Harassment, Abusive Language, Fake or Misleading — Spam/Irrelevant/PrivacyConcern/Other never do, regardless of upheld status. Dismissed/Duplicate reports never reach this action at all (only `Upheld` dispatches it). Fingerprint keys on the *review*, not the report, so several reports against one review — resolved separately or together — still collapse to one alert. |
+
+### Non-destructive reevaluation
+
+`StudentReviewHidden`/`Rejected`/`Archived` and a no-show-reversing
+`LessonOutcomeOverridden` never delete or silently mutate an existing
+alert's resolution status — they flag `needs_reevaluation = true` via
+`ReevaluateInstructorQualityAlertAction`, preserving full history for
+a human (or the reconciliation command) to look at again. The reverse
+direction of an outcome override — correcting a lesson *into*
+`InstructorNoShow` — runs the normal detector instead, exactly as if
+it had been finalized that way originally.
+
+### Administrative review (`InstructorQualityAlertService`)
+
+`startReview`, `resolve`, `dismiss`, `markDuplicate`, `assign` —
+`resolve`/`dismiss` require a reason; every method is idempotent on
+repeat (a second identical call is a no-op, silently discarding a
+differing recommendation) and throws
+`InvalidInstructorQualityAlertTransitionException` on a genuine
+conflict. **This phase records recommendations only** —
+`InstructorQualityAlertResolutionAction` (`NoAction`,
+`MonitorInstructor`, `ContactInstructor`, `IssueWarning`,
+`RequestQualityReview`, `ReferForSuspensionReview`, including the
+dormant `ReferForSuspensionReview` value, which never itself touches
+`InstructorStatus::Suspended` or anything else) is a note for a human
+to act on later — nothing here ever suspends an instructor, hides a
+profile, removes availability, changes compensation, or alters
+marketplace ranking. Every decision is audited via `AuditTrailService`
+under the `quality` log name.
+
+### Authorization
+
+`ViewAny:InstructorQualityAlert`, `View:InstructorQualityAlert`,
+`Resolve:InstructorQualityAlert` — all manager-only (seeded via the
+same `ReviewPermissionSeeder` used for every review-cluster
+permission). **No instructor or student ever sees a quality alert in
+this phase** — there is no public quality score and no self-service
+visibility. `resolve` additionally denies the instructor the alert is
+about, mirroring `ReviewReportPolicy`'s identical self-resolution
+exclusion.
+
+### Reconciliation (`reviews:reconcile-quality-alerts`)
+
+A repair tool, not the primary update path — disabled-safe (returns
+immediately when `quality_alerts_enabled` is off) and idempotent
+(re-running produces no new alerts). Per spec, re-evaluates only
+*recent published reviews and finalized lesson outcomes* — not
+cancellations or report signals — cursored via `lazyById()` so the
+full table is never loaded into memory, with per-record failure
+isolation (`Log::warning`, one bad record never aborts the batch),
+identical to `ReviewEligibilityService::expireDue()` /
+`InstructorRatingAggregateService::rebuildAll()`. **Not scheduled.**
+
+### Read projection (`InstructorQualityAlertAdminData`)
+
+For a future admin UI — instructor reference/name, alert type/
+severity/status, signal count, threshold snapshot, source reference, a
+200-char review-content excerpt, triggered date, assignment/resolution
+details. **Never**: student contact details, private feedback text,
+payment information, instructor compensation, raw provider metadata,
+or raw report explanations.
+
+### Deferred
+
+Instructor quality scores (numeric/public), warning enforcement,
+instructor suspension (the enum value exists to record a
+*recommendation*; no code path ever transitions
+`InstructorStatus::Suspended`), notifications (all 5 events dispatch
+with zero listeners), an admin quality dashboard (Phase 17O), and
+marketplace ranking changes.
+
+## Admin Review & Quality Assurance Dashboard (Phase 17O)
+
+A read-only Filament admin page (`/admin/reports/reviews-quality`,
+`Reports` nav group) surfacing Phase 17H–17N's data for operational
+triage — moderation workload, review reports, instructor quality
+alerts, and instructor rating health. **No new moderation, reporting,
+rating, or alert records were created** — every number and row is a
+live aggregation over `lesson_reviews`, `review_reports`,
+`quality_alerts`, and `instructor_rating_aggregates`, and every action
+delegates to the existing `ReviewModerationService`/
+`ReviewReportService`/`InstructorQualityAlertService`.
+
+### Read service (`AdminQualityDashboardService`)
+
+The single, fully-tested read boundary — six methods, each returning
+privacy-safe DTOs (`QualityDashboardSummaryData`,
+`ModerationQueueRowData`, `ReportQueueRowData`,
+`InstructorQualityAlertAdminData` (reused from Phase 17N — no
+duplicate DTO was created for the alert queue), `InstructorRatingHealthRow`)
+or a bounded array trend series, never a raw Eloquent model. Backed by
+`AdminQualityDashboardRepositoryInterface` (new — read-only aggregation
+queries against the four tables above) and the existing
+`QualitySignalRepositoryInterface` (Phase 17N, reused as-is for
+per-instructor no-show/cancellation counts on the rating-health rows).
+
+### Summary metrics
+
+Submitted/flagged/published/hidden/rejected review counts, pending/
+under-review report counts, open/under-review alert counts,
+high/critical-severity **active** alert counts (a workload metric —
+resolved alerts of any severity don't count), instructors-with-
+published-ratings count, platform eligible published review count,
+platform average rating (summed across every `instructor_rating_aggregates`
+row — `null`, never `0`, when nothing is eligible yet), and a
+configurable-window (default 30 days) instructor no-show / instructor-
+attributed-cancellation count. Private feedback and hidden/rejected/
+archived reviews are structurally absent from every rating metric —
+they're computed from `instructor_rating_aggregates`, which Phase 17K
+already excludes them from.
+
+### Review moderation queue
+
+`ModerationQueueRowData::fromReview()` — review id, instructor,
+**masked** student label (reusing Phase 17L's exact
+`PublicReviewerIdentity::label()` — staff see no more of a student's
+identity here than a public visitor would), review mode, rating,
+submitted date, status, sanitization flags, report count. Filters:
+status, instructor, rating, paid/demo lesson type (via the
+eligibility relation), submitted date range. The Filament widget links
+each row's instructor to their existing admin detail page
+(`UserResource::getUrl('view', ...)`) rather than adding a new
+instructor-detail route.
+
+### Review-report queue
+
+`ReportQueueRowData::fromReport()` — report id, review id, instructor,
+reason, status, submitted date, current review status, report count
+for that review. **No reporter identity field at all** — the spec
+permits exposing it only to a separately-permissioned inspector, and
+no queue use case needs it; the full record (with reporter id) is
+still reachable through `ReviewReportService::adminProjection()` for
+anyone who separately holds `View:ReviewReport`.
+
+### Quality-alert queue
+
+Reuses `InstructorQualityAlertAdminData` (Phase 17N) directly — no new
+DTO. Filters: type, severity, status, assigned admin, instructor,
+triggered date range. Row actions (Start Review, Assign, Resolve,
+Dismiss, Mark Duplicate) call `InstructorQualityAlertServiceInterface`
+exactly as an admin would from any other integration — the widget
+itself never writes `quality_alerts.status`, and every action's
+`->authorize()` closure calls the exact same `InstructorQualityAlertPolicy::resolve()`
+check the service enforces internally (an instructor still cannot
+resolve an alert about themself, even from this page). Domain
+exceptions (`AuthorizationException`, `QualityAlertValidationException`,
+`InvalidInstructorQualityAlertTransitionException`) are caught and
+surfaced as a Filament notification, mirroring `BookingsTable`'s
+existing `callService()` pattern.
+
+### Low-rated / highly-rated instructors
+
+New dashboard-only settings, deliberately distinct from the Phase 17N
+alert threshold (`low_rating_threshold`, an integer per-review cutoff
+that drives *detection* — reused only where its meaning is actually
+identical, never blindly): `quality_dashboard_low_rating_threshold`
+(2.5, float), `quality_dashboard_high_rating_threshold` (4.5, float),
+`quality_dashboard_min_review_count` (3) — an instructor's *aggregate
+average* must cross the float threshold **and** have at least this
+many eligible reviews to appear in either list, so a single 1-star
+review never misclassifies a new instructor. Each row: instructor,
+average, eligible count, rating distribution, a lightweight "recent
+rating trend" (average of the last 5 contributing reviews, from the
+Phase 17K contribution ledger, minus the overall average — `null`,
+never a fabricated `0`, when there's too little data to say anything:
+fewer than 3 eligible reviews or fewer than 2 recent contributions),
+open quality-alert count, no-show count, cancellation count. **No
+numeric internal quality score is computed anywhere.**
+
+### Trend data
+
+Seven bounded daily series (published reviews, low-rated published
+reviews, flagged reviews, review reports, quality alerts, instructor
+no-shows, instructor-attributed cancellations), each a `Y-m-d => count`
+array with every day present (zero-filled, never a sparse array) —
+computed via `GROUP BY DATE(column)` database aggregation, never by
+loading rows into PHP. `TrendDateRange::make()` always normalizes to
+UTC and silently **clamps** (never throws) a custom range wider than
+`$maxDays` (default 90) down to the most recent `$maxDays` days ending
+at the requested end — a dashboard should always render something
+useful rather than fail outright on an operator's overly-wide request.
+
+### Filament page & authorization
+
+`ReviewsQualityDashboard` (`Reports` nav group, sort 6) — a widget-only
+page cloned structurally from the existing `BookingReports` page
+(header widgets, no custom Blade content). Five new permissions
+(`ViewQualityDashboard`, `ViewReviewMetrics`, `ViewReviewModerationQueue`,
+`ViewReviewReports`, `ViewInstructorQualityAlerts`), seeded to
+`manager` only via the same `ReviewPermissionSeeder` every other
+review/quality permission uses — deliberately **separate** from the
+granular `ViewAny:LessonReview`/`ViewAny:ReviewReport`/
+`ViewAny:InstructorQualityAlert` permissions so a future finer-grained
+role could hold a subset (e.g. the moderation queue without
+instructor-quality-alert visibility — "review moderators may not
+automatically receive access to sensitive instructor-quality records").
+Every widget's `canView()` gates on its own specific permission, not
+just the page-level one. `QualityDashboardAccess::userCan()` centralizes
+the exact super-admin-bypass + `hasPermissionTo()` check
+`CacheManagerPage` already established as this codebase's convention
+for operational (non-CRUD-resource) admin pages. **No instructor or
+student can ever reach this page** — there is no public or
+instructor-facing quality dashboard in this phase.
+
+### Privacy & performance
+
+Every DTO is an explicit field allowlist — no `student.email`,
+`student.phone`, payment/wallet/compensation column, raw attendance
+provider metadata, raw report explanation, or internal audit payload
+is ever selected, referenced, or returned by any method in this
+phase. All queues are paginated (10/25/50, deterministic
+`ORDER BY ... DESC, id DESC`), counts use database aggregation
+(`COUNT`/`SUM`/`GROUP BY`) never full-collection loads, and every
+`whereHas`/eager-load is scoped to avoid N+1 queries. No caching was
+added — no existing per-record dashboard-caching convention exists in
+this codebase (same conclusion Phase 17L reached for the public
+profile page), and a dashboard read failure is isolated to the
+dashboard: nothing here can affect review submission, moderation, or
+quality-alert processing, since every read method is provably
+mutation-free (`test_no_direct_review_or_alert_status_mutation_occurs`).
+
+### Supported vs. deferred SRS metrics
+
+Implemented (backed by reliable existing domain data): low/highly
+rated instructors, review queue, flagged reviews, quality alerts,
+instructor no-show patterns, cancellation patterns. **Deferred — no
+authoritative data or calculation exists yet, so nothing is fabricated**:
+student complaints as a distinct concept beyond review reports,
+demo-conversion quality, and retention indicators. Each shows no
+section at all rather than a fabricated zero.
 
 ## Authorization
 
@@ -882,6 +1218,51 @@ Phase 17L touches the existing Instructor domain, not a new one:
 app/Http/Controllers/Instructor/InstructorController.php  (show() now also passes reviewSummary/reviews)
 app/Services/Instructor/InstructorService.php              (ratingsFor()/stats() wired to the real aggregate)
 resources/views/instructors/show.blade.php                 (Reviews & Ratings section added)
+
+app/Quality/  (Phase 17N — a new domain, parallel to Reviews/Lessons/Booking)
+├── Actions/        RecordQualityAlertSignalAction, TransitionInstructorQualityAlertStatusAction,
+│                   ReevaluateInstructorQualityAlertAction, ReconcileInstructorQualityAlertsAction,
+│                   DetectLowRatingQualityRiskAction, DetectInstructorNoShowQualityRiskAction,
+│                   DetectInstructorCancellationQualityRiskAction, DetectSeriousReviewReportQualityRiskAction
+├── Contracts/      InstructorQualityAlertRepositoryInterface, InstructorQualityAlertServiceInterface,
+│                   QualitySignalRepositoryInterface
+├── DTOs/           QualitySignalData, InstructorQualityAlertAdminData
+├── Enums/          InstructorQualityAlertType, InstructorQualityAlertSeverity,
+│                   InstructorQualityAlertStatus, InstructorQualityAlertResolutionAction,
+│                   QualityAlertSourceType
+├── Events/         InstructorQualityAlertCreated, InstructorQualityAlertEscalated,
+│                   InstructorQualityAlertReviewStarted, InstructorQualityAlertResolved,
+│                   InstructorQualityAlertDismissed
+├── Exceptions/     InvalidInstructorQualityAlertTransitionException, QualityAlertValidationException
+├── Repositories/   InstructorQualityAlertRepository, QualitySignalRepository
+├── Services/       InstructorQualityAlertService
+└── Support/        QualityAlertFingerprint, QualityAlertSeverityPolicy,
+                    QualityAlertThresholdSnapshot, InstructorCancellationAttribution
+
+app/Models/InstructorQualityAlert.php  (table: quality_alerts)
+app/Policies/InstructorQualityAlertPolicy.php
+app/Listeners/Quality/  (thin triggers — no detection logic)
+app/Console/Commands/ReconcileInstructorQualityAlerts.php  (reviews:reconcile-quality-alerts)
+app/Providers/QualityServiceProvider.php (bootstrap/providers.php)
+
+Phase 17O adds to the same App\Quality domain (read-only additions only):
+├── Contracts/      AdminQualityDashboardRepositoryInterface, AdminQualityDashboardServiceInterface
+├── DTOs/           QualityDashboardSummaryData, InstructorRatingHealthRow, ModerationQueueRowData,
+│                   ReportQueueRowData, ModerationQueueFilters, ReportQueueFilters, AlertQueueFilters,
+│                   TrendDateRange
+├── Repositories/   AdminQualityDashboardRepository
+├── Services/       AdminQualityDashboardService
+└── Support/        QualityDashboardAccess
+
+app/Filament/Pages/ReviewsQualityDashboard.php  (/admin/reports/reviews-quality)
+app/Filament/Widgets/Quality/
+├── QualityStatsWidget.php              (summary — StatsOverviewWidget)
+├── ModerationQueueWidget.php           (TableWidget, filtered)
+├── ReportQueueWidget.php               (TableWidget, filtered)
+├── AlertQueueWidget.php                (TableWidget, filtered, delegated row actions)
+├── LowRatedInstructorsWidget.php       (TableWidget)
+└── HighlyRatedInstructorsWidget.php    (TableWidget)
+resources/views/filament/pages/reviews-quality-dashboard.blade.php
 ```
 
 ## Deployment runbook
@@ -889,32 +1270,44 @@ resources/views/instructors/show.blade.php                 (Reviews & Ratings se
 1. `php artisan migrate --force` — creates `lesson_review_eligibilities`,
    `review_tags`, `lesson_reviews` (+ its Phase 17J moderation columns),
    `instructor_rating_aggregates`, `review_rating_contributions`,
-   `review_reports`, and seeds the `reviews.*` settings defaults
-   (including Phase 17L's `public_review_identity_mode` and Phase
-   17M's `review_reporting_enabled`).
+   `review_reports`, `quality_alerts`, and seeds the `reviews.*`
+   settings defaults (including Phase 17L's
+   `public_review_identity_mode`, Phase 17M's
+   `review_reporting_enabled`, Phase 17N's 9 quality-alert threshold
+   settings — `quality_alerts_enabled` defaults **false** — and Phase
+   17O's 3 dashboard-only rating-classification thresholds).
 2. `php artisan db:seed --class=ReviewPermissionSeeder --force` —
    mandatory: without it only `super_admin` can view/moderate
-   eligibility/review records, report a review, or resolve a report.
+   eligibility/review records, report a review, resolve a report,
+   view/resolve a quality alert, or open the quality dashboard at all.
 3. `php artisan db:seed --class=ReviewTagSeeder --force` — idempotent
    default tag catalog; without it no tags exist to select.
 4. Queue worker (`notifications` queue) — the outcome listeners, the
-   automatic-moderation listener, and the five rating-reconciliation
-   listeners are all queued. The five Phase 17M report events dispatch
-   after commit but currently have **no** queued listeners at all
-   (reserved for a future notification/quality-alert phase).
+   automatic-moderation listener, the five rating-reconciliation
+   listeners, and the eight Phase 17N quality-alert listeners are all
+   queued. The five Phase 17M report events and five Phase 17N
+   quality-alert events dispatch after commit but currently have
+   **no** queued notification listeners at all (reserved for a future
+   phase). Phase 17O adds no new events or listeners — it is
+   read-only.
 5. Scheduler cron — gates `reviews:expire-eligibility` (hourly).
-   `reviews:rebuild-aggregates` is **not** scheduled — run it manually
-   only after suspected aggregate drift or a direct data fix.
+   `reviews:rebuild-aggregates` and `reviews:reconcile-quality-alerts`
+   are **not** scheduled — run either manually only after suspected
+   drift or a direct data/settings correction.
 
 ## Deferred (do not build yet)
 
 Instructor responses/visibility toggles, review notifications
-(including report-related ones), review editing (the model is
-deliberately prepared for it — open `status` vocabulary, `version`
-column — but no code path edits), quality alerts, instructor quality
-scores, marketplace ranking, review-report analytics, an admin-facing
-reviews/reports UI, homework, learning-plan progress, and all frontend
-UI outside the instructor profile page itself.
+(including report- and quality-alert-related ones), review editing
+(the model is deliberately prepared for it — open `status` vocabulary,
+`version` column — but no code path edits), public/numeric instructor
+quality scores, warning enforcement, instructor suspension (the
+resolution-action *value* exists; no code transitions
+`InstructorStatus::Suspended`), marketplace ranking, an
+instructor-facing quality dashboard, homework, learning-plan progress,
+student-complaint/demo-conversion/retention metrics (no authoritative
+data source exists yet — deliberately not fabricated), and all
+frontend UI outside the instructor profile page itself.
 
 ## Tests
 
@@ -1011,9 +1404,67 @@ idempotent no-op that never overwrites the original reason; remaining
 pending reports can be bulk-marked duplicate after one is resolved;
 reviews and reports are never physically deleted; reporter identity
 and explanation never appear in a public DTO or on the profile page;
-no notification/quality-alert table exists; no financial/lesson record
-changes; and a Phase 17J–17L regression check (flag → approve →
-publish → aggregate → public page all still work).
+no notification table exists at the time this test was written; no
+financial/lesson record changes; and a Phase 17J–17L regression check
+(flag → approve → publish → aggregate → public page all still work).
+
+`tests/Feature/Reviews/InstructorQualityAlertTest.php` (Phase 17N) —
+a published review rated at/below threshold creates `SingleLowRating`;
+above-threshold and private-feedback ratings create nothing;
+submitted/hidden reviews never create a *new* alert at the transition
+moment; 3 low published reviews cross the default repeated-count
+threshold into exactly one `RepeatedLowRatings` alert with the correct
+signal count; replayed/duplicate detection calls and two "concurrent"
+copies of the same review both still produce exactly one alert; hiding
+a review with an existing alert preserves the alert row and flags
+`needs_reevaluation` without touching its status; `InstructorNoShow`
+creates a signal while `StudentNoShow`/`TechnicalIssue` never do;
+2 no-shows cross the repeated threshold into one alert; an outcome
+override both directions (no-show → corrected away flags
+reevaluation; non-no-show → corrected into a no-show creates the
+signal) behave correctly; Host-attributed cancellations count while
+Attendee/System cancellations are excluded, and 4 repeated
+Host-cancellations still produce exactly one alert; an upheld serious
+report (Abusive Language) creates `SeriousReviewReport`, a dismissed
+or merely-duplicate-marked report creates nothing, and two separately
+upheld reports against the *same* review still collapse to one alert;
+the feature-disabled setting suppresses every detector; a
+`threshold_snapshot` survives a later settings change unchanged; an
+unauthorized user and the instructor the alert is about are both
+denied resolution; a missing resolution reason is rejected; every
+resolution is audited under the `quality` log name; resolving an alert
+(including `ReferForSuspensionReview`) never changes
+`UserProfile::instructor_status`; the admin DTO's field list contains
+no student-contact/financial keys; `reviews:reconcile-quality-alerts`
+both creates a missing alert and is idempotent on a second run; and no
+notification/wallet/earning record is ever touched by alert creation
+or resolution.
+
+`tests/Feature/Reviews/AdminQualityDashboardTest.php` (Phase 17O) —
+manager access succeeds while student/instructor/unpermissioned-
+manager access is denied (both via HTTP and `ReviewsQualityDashboard::canAccess()`
+directly); submitted/flagged review counts; private feedback and a
+later-hidden review are both excluded from platform rating metrics
+(`null`, never `0`); pending/under-review report counts; open alert
+count; high/critical severity counts (scoped to active alerts only);
+low-rated and highly-rated instructor lists both use the live
+aggregate average; the minimum-review-count threshold excludes an
+under-sampled instructor; a zero-review instructor is excluded
+entirely; `InstructorNoShow` is the only outcome counted as a no-show
+(`StudentNoShow`/`TechnicalIssue` excluded); `Host`-attributed
+cancellations count while `Attendee`/`System` cancellations are
+excluded; an outcome override is reflected in the very next read; all
+three queue filter parameters (instructor, reason, instructor) narrow
+results correctly; two consecutive paginated calls return identical
+ordering; `TrendDateRange::make()` normalizes to UTC and clamps
+(never throws on) an oversized custom range; DTOs carry no student-
+contact or financial/compensation field names; a real Livewire
+`callTableAction('resolve', ...)` against `AlertQueueWidget` provably
+transitions the alert through `InstructorQualityAlertServiceInterface`
+(not a direct status write); every dashboard read method called back
+to back never changes a review's or alert's `version`; dashboard reads
+create no wallet/earning records; and a Phase 17H–17N regression check
+(flag → approve → publish → public page all still work).
 
 ### A Blade compiler pitfall discovered during Phase 17L
 

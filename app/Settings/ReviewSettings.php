@@ -51,6 +51,46 @@ class ReviewSettings extends Settings
     /** Master switch — false blocks new report submissions for every review (existing reports are unaffected). */
     public bool $review_reporting_enabled;
 
+    /** Master switch — false blocks every quality-alert detector (conservative default: off). */
+    public bool $quality_alerts_enabled;
+
+    /** Inclusive — an overall rating at or below this on a published public review may trigger a low-rating signal. */
+    public int $low_rating_threshold;
+
+    /** Whether a single low-rated published review may create its own (low-severity) alert, independent of the repeated-count threshold. */
+    public bool $single_low_rating_alert_enabled;
+
+    /** How many low published reviews within the rolling window trigger a repeated-low-rating alert. */
+    public int $repeated_low_rating_count;
+
+    public int $repeated_low_rating_window_days;
+
+    /** How many InstructorNoShow outcomes within the rolling window trigger a repeated-no-show alert. */
+    public int $repeated_no_show_count;
+
+    public int $repeated_no_show_window_days;
+
+    /** How many instructor-attributed (Host) booking cancellations within the rolling window trigger a repeated-cancellation alert. */
+    public int $repeated_cancellation_count;
+
+    public int $repeated_cancellation_window_days;
+
+    /**
+     * Dashboard-only classification thresholds — deliberately distinct
+     * from `low_rating_threshold` (an integer *per-review* rating
+     * cutoff that drives alert detection). These are floats compared
+     * against an instructor's current *aggregate average*, purely for
+     * the admin dashboard's "low/highly rated instructors" lists; they
+     * never feed detection and are never conflated with the alert
+     * threshold above.
+     */
+    public float $quality_dashboard_low_rating_threshold;
+
+    public float $quality_dashboard_high_rating_threshold;
+
+    /** Minimum eligible published review count before an instructor's aggregate average is trusted enough to appear in either dashboard list. */
+    public int $quality_dashboard_min_review_count;
+
     public static function group(): string
     {
         return 'reviews';

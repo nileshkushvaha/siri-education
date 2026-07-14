@@ -43,6 +43,10 @@ class MailSettings extends Settings
 
     public ?string $admin_from_email;
 
+    public ?string $review_from_name;
+
+    public ?string $review_from_email;
+
     // SMTP
     public string $driver;
 

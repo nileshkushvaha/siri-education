@@ -15,6 +15,7 @@ use App\Models\Lesson;
 use App\Models\LessonReview;
 use App\Models\LessonReviewEligibility;
 use App\Models\User;
+use App\Notifications\Reviews\ReviewHiddenNotification;
 use App\Reviews\Contracts\ReviewModerationServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
@@ -334,11 +335,14 @@ class ReviewModerationTest extends TestCase
         // Faked only around the moderation actions themselves — lesson
         // finalization upstream legitimately fires the pre-existing
         // booking-completion notification, unrelated to this phase.
+        // Phase 17S later attaches ReviewHiddenNotification to a hidden
+        // review's student — that is the one expected exception here;
+        // restore has no notification listener attached in any phase.
         Notification::fake();
         $hidden = $this->moderation->hide($review, $admin, 'Routine check.');
         $this->moderation->restore($hidden->fresh(), $admin, 'Cleared.');
 
-        Notification::assertNothingSent();
+        Notification::assertSentToTimes($review->student, ReviewHiddenNotification::class, 1);
     }
 
     public function test_no_financial_booking_lesson_or_earning_record_changes(): void

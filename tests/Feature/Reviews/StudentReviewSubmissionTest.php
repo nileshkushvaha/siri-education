@@ -16,6 +16,9 @@ use App\Models\LessonReview;
 use App\Models\LessonReviewEligibility;
 use App\Models\ReviewTag;
 use App\Models\User;
+use App\Notifications\Reviews\ReviewPublishedInstructorNotification;
+use App\Notifications\Reviews\ReviewPublishedStudentNotification;
+use App\Notifications\Reviews\ReviewSubmittedNotification;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Reviews\Enums\LessonReviewEligibilityStatus;
@@ -405,13 +408,19 @@ class StudentReviewSubmissionTest extends TestCase
     {
         // Faked only around the submission itself — lesson finalization
         // upstream legitimately fires the pre-existing booking-completion
-        // notification, which is unrelated to this phase.
+        // notification, which is unrelated to this phase. Phase 17S later
+        // attaches submission/publication notifications to this exact
+        // flow — those are the expected exceptions asserted below; the
+        // point of this test (at the time it was written) was that
+        // Phase 17I itself introduces no *other* notification pipeline.
         $eligibility = $this->openEligibility($this->paidLesson());
         Notification::fake();
 
-        $this->reviews->submit($eligibility, $eligibility->student, $this->data());
+        $result = $this->reviews->submit($eligibility, $eligibility->student, $this->data());
 
-        Notification::assertNothingSent();
+        Notification::assertSentTo($eligibility->student, ReviewSubmittedNotification::class);
+        Notification::assertSentTo($eligibility->student, ReviewPublishedStudentNotification::class);
+        Notification::assertSentTo($result->review->instructor, ReviewPublishedInstructorNotification::class);
     }
 
     public function test_no_financial_booking_outcome_or_earning_record_changes(): void

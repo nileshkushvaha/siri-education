@@ -81,15 +81,26 @@ enum StudentReviewStatus: string
         return in_array($next, $this->allowedTransitions(), strict: true);
     }
 
-    /** @return list<self> */
+    /**
+     * @return list<self>
+     *
+     * Phase 17R adds the student-edit re-moderation paths: an edited
+     * Published review immediately leaves public visibility (→
+     * Submitted when the edit is clean, → Flagged when it tripped the
+     * sanitizer); an edited Flagged review with clean content re-enters
+     * the automatic pipeline (→ Submitted); an edited Private feedback
+     * that trips the sanitizer is held (→ Flagged) — its review_mode
+     * stays private, so an admin approval returns it to Private, never
+     * public (the mode-derived approve target Phase 17J established).
+     */
     public function allowedTransitions(): array
     {
         return match ($this) {
             self::Submitted => [self::Published, self::Flagged, self::Rejected],
-            self::Flagged => [self::Published, self::Private, self::Rejected],
-            self::Published => [self::Hidden],
+            self::Flagged => [self::Published, self::Private, self::Rejected, self::Submitted],
+            self::Published => [self::Hidden, self::Submitted, self::Flagged],
             self::Hidden => [self::Published, self::Archived],
-            self::Private => [self::Rejected, self::Archived],
+            self::Private => [self::Rejected, self::Archived, self::Flagged],
             self::Rejected, self::Archived => [],
         };
     }

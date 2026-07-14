@@ -48,6 +48,26 @@ class ReviewSettings extends Settings
     /** 'anonymous' | 'first_name_initial' | 'first_name_only' — how a reviewing student is labeled on a public profile. */
     public string $public_review_identity_mode;
 
+    /** Master switch for limited student review editing — false blocks every edit regardless of window. */
+    public bool $review_editing_enabled;
+
+    /** Hours after submitted_at during which the student may edit — never measured from publication, moderation, or page load. */
+    public int $review_edit_window_hours;
+
+    /**
+     * Phase 17S — notification channel availability, mirroring
+     * BookingSettings' channel toggles. In-app (database) delivery is
+     * always on for real users, same as booking notifications — these
+     * three gate only the external channels. One shared set governs
+     * every review/quality-alert notification; no separate toggle set
+     * per notification type.
+     */
+    public bool $review_channel_email_enabled;
+
+    public bool $review_channel_whatsapp_enabled;
+
+    public bool $review_channel_sms_enabled;
+
     /** Master switch — false blocks new report submissions for every review (existing reports are unaffected). */
     public bool $review_reporting_enabled;
 

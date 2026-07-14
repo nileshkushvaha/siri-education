@@ -13,6 +13,9 @@ use App\Models\BookingType;
 use App\Models\Lesson;
 use App\Models\LessonReviewEligibility;
 use App\Models\User;
+use App\Notifications\Reviews\ReviewPublishedStudentNotification;
+use App\Notifications\Reviews\ReviewRequestedNotification;
+use App\Notifications\Reviews\ReviewSubmittedNotification;
 use App\Reviews\Contracts\ReviewEligibilityServiceInterface;
 use App\Reviews\Enums\LessonReviewEligibilityMode;
 use App\Reviews\Enums\LessonReviewEligibilityStatus;
@@ -396,14 +399,18 @@ class LessonReviewEligibilityTest extends TestCase
         // Exercised directly against the eligibility service (open,
         // revoke-on-override, expire) — isolating the Reviews domain
         // from the pre-existing lesson/booking-completion notification
-        // pipeline, which is unrelated to this phase.
+        // pipeline, which is unrelated to this phase. Phase 17S later
+        // attaches ReviewRequestedNotification to the eligibility-opened
+        // event specifically — that is the one expected exception here.
         $lesson = $this->paidLesson()->refresh();
         $this->eligibility->handleOutcomeFinalized($lesson, LessonOutcome::Completed);
         $this->eligibility->handleOutcomeOverridden($lesson->refresh(), LessonOutcome::Completed, LessonOutcome::Cancelled, 'Corrected.');
         $this->eligibilityFor($lesson)->forceFill(['expires_at' => now()->subDay(), 'status' => LessonReviewEligibilityStatus::Open])->save();
         $this->artisan('reviews:expire-eligibility');
 
-        Notification::assertNothingSent();
+        Notification::assertSentToTimes($this->eligibilityFor($lesson)->student, ReviewRequestedNotification::class, 1);
+        Notification::assertNotSentTo($this->eligibilityFor($lesson)->student, ReviewSubmittedNotification::class);
+        Notification::assertNotSentTo($this->eligibilityFor($lesson)->student, ReviewPublishedStudentNotification::class);
     }
 
     public function test_no_wallet_payment_earning_or_settlement_record_changes(): void

@@ -15,16 +15,19 @@ use App\Reviews\Contracts\InstructorRatingAggregateRepositoryInterface;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Reviews\Contracts\LessonReviewEligibilityRepositoryInterface;
 use App\Reviews\Contracts\LessonReviewRepositoryInterface;
+use App\Reviews\Contracts\LessonReviewRevisionRepositoryInterface;
 use App\Reviews\Contracts\PublicInstructorReviewServiceInterface;
 use App\Reviews\Contracts\ReviewEligibilityServiceInterface;
 use App\Reviews\Contracts\ReviewModerationServiceInterface;
 use App\Reviews\Contracts\ReviewRatingContributionRepositoryInterface;
 use App\Reviews\Contracts\ReviewReportRepositoryInterface;
 use App\Reviews\Contracts\ReviewReportServiceInterface;
+use App\Reviews\Contracts\StudentReviewEditingServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\Repositories\InstructorRatingAggregateRepository;
 use App\Reviews\Repositories\LessonReviewEligibilityRepository;
 use App\Reviews\Repositories\LessonReviewRepository;
+use App\Reviews\Repositories\LessonReviewRevisionRepository;
 use App\Reviews\Repositories\ReviewRatingContributionRepository;
 use App\Reviews\Repositories\ReviewReportRepository;
 use App\Reviews\Services\InstructorQualityInsightsService;
@@ -33,6 +36,7 @@ use App\Reviews\Services\PublicInstructorReviewService;
 use App\Reviews\Services\ReviewEligibilityService;
 use App\Reviews\Services\ReviewModerationService;
 use App\Reviews\Services\ReviewReportService;
+use App\Reviews\Services\StudentReviewEditingService;
 use App\Reviews\Services\StudentReviewService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -53,6 +57,8 @@ class ReviewServiceProvider extends ServiceProvider
         $this->app->singleton(ReviewReportRepositoryInterface::class, ReviewReportRepository::class);
         $this->app->singleton(ReviewReportServiceInterface::class, ReviewReportService::class);
         $this->app->singleton(InstructorQualityInsightsServiceInterface::class, InstructorQualityInsightsService::class);
+        $this->app->singleton(LessonReviewRevisionRepositoryInterface::class, LessonReviewRevisionRepository::class);
+        $this->app->singleton(StudentReviewEditingServiceInterface::class, StudentReviewEditingService::class);
     }
 
     public function boot(): void

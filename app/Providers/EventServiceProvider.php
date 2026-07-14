@@ -58,17 +58,32 @@ use App\Listeners\Quality\ReevaluateQualityAlertOnLessonOutcomeOverridden;
 use App\Listeners\Quality\ReevaluateQualityAlertOnStudentReviewArchived;
 use App\Listeners\Quality\ReevaluateQualityAlertOnStudentReviewHidden;
 use App\Listeners\Quality\ReevaluateQualityAlertOnStudentReviewRejected;
+use App\Listeners\Quality\SendInstructorQualityAlertCreatedNotification;
+use App\Listeners\Reviews\ModerateReviewOnStudentReviewEdited;
 use App\Listeners\Reviews\ModerateReviewOnStudentReviewSubmitted;
 use App\Listeners\Reviews\OpenReviewEligibilityOnLessonOutcomeFinalized;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewArchived;
+use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewEdited;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewHidden;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewPublished;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewRejected;
 use App\Listeners\Reviews\ReconcileRatingContributionOnStudentReviewRestored;
 use App\Listeners\Reviews\ReevaluateReviewEligibilityOnLessonOutcomeOverridden;
+use App\Listeners\Reviews\SendReviewHiddenNotification;
+use App\Listeners\Reviews\SendReviewModerationRequiredNotification;
+use App\Listeners\Reviews\SendReviewPublishedNotifications;
+use App\Listeners\Reviews\SendReviewRejectedNotification;
+use App\Listeners\Reviews\SendReviewReportedNotification;
+use App\Listeners\Reviews\SendReviewRequestedNotification;
+use App\Listeners\Reviews\SendReviewSubmittedNotification;
+use App\Quality\Events\InstructorQualityAlertCreated;
+use App\Reviews\Events\LessonReviewEligibilityOpened;
+use App\Reviews\Events\ReviewReported;
 use App\Reviews\Events\ReviewReportUpheld;
 use App\Reviews\Events\StudentReviewArchived;
+use App\Reviews\Events\StudentReviewEdited;
 use App\Reviews\Events\StudentReviewHidden;
+use App\Reviews\Events\StudentReviewModerationRequired;
 use App\Reviews\Events\StudentReviewPublished;
 use App\Reviews\Events\StudentReviewRejected;
 use App\Reviews\Events\StudentReviewRestored;
@@ -210,9 +225,33 @@ class EventServiceProvider extends ServiceProvider
             ReevaluateReviewEligibilityOnLessonOutcomeOverridden::class,
             ReevaluateQualityAlertOnLessonOutcomeOverridden::class,
         ],
+        // Phase 17S — the eligible student is notified a completed
+        // lesson is ready for review; no recurring reminder is scheduled.
+        LessonReviewEligibilityOpened::class => [
+            SendReviewRequestedNotification::class,
+        ],
         // Phase 17J — automatic moderation of a newly submitted review.
+        // Phase 17S adds the student's submission-received confirmation.
         StudentReviewSubmitted::class => [
             ModerateReviewOnStudentReviewSubmitted::class,
+            SendReviewSubmittedNotification::class,
+        ],
+        // Phase 17S — a review reached a final state that genuinely
+        // needs a human (Flagged, or Submitted with auto-publish
+        // declined). Dispatched only from the authoritative decision
+        // points themselves — see StudentReviewModerationRequired's
+        // docblock. One notification per review version, never a
+        // separate duplicate for "flagged" vs "needs moderation".
+        StudentReviewModerationRequired::class => [
+            SendReviewModerationRequiredNotification::class,
+        ],
+        // Phase 17R — an edited review re-enters the SAME moderation
+        // pipeline (the action already moved it to its re-moderation
+        // status), and the aggregate reconciler converges the rating
+        // contribution. No notification/response/scoring listener here.
+        StudentReviewEdited::class => [
+            ModerateReviewOnStudentReviewEdited::class,
+            ReconcileRatingContributionOnStudentReviewEdited::class,
         ],
         // Phase 17K — instructor rating aggregate reconciliation. All five
         // listeners delegate to the same idempotent reconcile() entry
@@ -220,10 +259,12 @@ class EventServiceProvider extends ServiceProvider
         StudentReviewPublished::class => [
             ReconcileRatingContributionOnStudentReviewPublished::class,
             DetectLowRatingQualityRiskOnStudentReviewPublished::class,
+            SendReviewPublishedNotifications::class,
         ],
         StudentReviewHidden::class => [
             ReconcileRatingContributionOnStudentReviewHidden::class,
             ReevaluateQualityAlertOnStudentReviewHidden::class,
+            SendReviewHiddenNotification::class,
         ],
         StudentReviewRestored::class => [
             ReconcileRatingContributionOnStudentReviewRestored::class,
@@ -231,6 +272,7 @@ class EventServiceProvider extends ServiceProvider
         StudentReviewRejected::class => [
             ReconcileRatingContributionOnStudentReviewRejected::class,
             ReevaluateQualityAlertOnStudentReviewRejected::class,
+            SendReviewRejectedNotification::class,
         ],
         StudentReviewArchived::class => [
             ReconcileRatingContributionOnStudentReviewArchived::class,
@@ -242,6 +284,20 @@ class EventServiceProvider extends ServiceProvider
         // to one alert.
         ReviewReportUpheld::class => [
             DetectSeriousReviewReportQualityRiskOnReviewReportUpheld::class,
+        ],
+        // Phase 17S — report-authorized administrators are notified of
+        // every new report. Dismissed/duplicate resolution events are
+        // deliberately not wired to any notification listener here.
+        ReviewReported::class => [
+            SendReviewReportedNotification::class,
+        ],
+        // Phase 17S — quality-alert-authorized administrators are
+        // notified of every new alert, regardless of type — one generic
+        // notification, never a per-type template. The instructor the
+        // alert concerns is never notified. Resolved/dismissed events
+        // are deliberately not wired to any notification listener here.
+        InstructorQualityAlertCreated::class => [
+            SendInstructorQualityAlertCreatedNotification::class,
         ],
     ];
 

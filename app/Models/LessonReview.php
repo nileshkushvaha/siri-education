@@ -112,6 +112,11 @@ class LessonReview extends Model
         return $this->hasMany(ReviewReport::class, 'review_id');
     }
 
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(LessonReviewRevision::class, 'lesson_review_id');
+    }
+
     public function isPrivate(): bool
     {
         return $this->review_mode === LessonReviewEligibilityMode::PrivateFeedback;

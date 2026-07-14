@@ -14,6 +14,7 @@ use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Reviews\Enums\LessonReviewEligibilityMode;
 use App\Reviews\Enums\LessonReviewEligibilityStatus;
 use App\Reviews\Enums\StudentReviewStatus;
+use App\Reviews\Events\StudentReviewModerationRequired;
 use App\Reviews\Events\StudentReviewSubmitted;
 use App\Reviews\Exceptions\ReviewEligibilityException;
 use App\Reviews\Exceptions\ReviewValidationException;
@@ -134,6 +135,14 @@ final class SubmitLessonReviewAction
             );
 
             StudentReviewSubmitted::dispatch($review);
+
+            // Flagged is a final moderation-required state the instant it's
+            // set — nothing later auto-clears it, so dispatching here
+            // (rather than deriving it from StudentReviewSubmitted in a
+            // listener) can never race the automatic-moderation listener.
+            if ($status === StudentReviewStatus::Flagged) {
+                StudentReviewModerationRequired::dispatch($review);
+            }
 
             return new SubmitReviewResult($review, applied: true);
         });

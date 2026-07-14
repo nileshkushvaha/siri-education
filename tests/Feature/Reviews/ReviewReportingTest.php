@@ -17,6 +17,7 @@ use App\Models\LessonReview;
 use App\Models\LessonReviewEligibility;
 use App\Models\ReviewReport;
 use App\Models\User;
+use App\Notifications\Reviews\ReviewHiddenNotification;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Reviews\Contracts\PublicInstructorReviewServiceInterface;
 use App\Reviews\Contracts\ReviewModerationServiceInterface;
@@ -487,10 +488,14 @@ class ReviewReportingTest extends TestCase
         $report = $this->reports->submit($review, $this->reporterUser(), new SubmitReviewReportData(reason: ReviewReportReason::AbusiveLanguage));
         $admin = $this->admin();
 
+        // Phase 17S later attaches ReviewHiddenNotification to the
+        // student when a report-driven hide takes effect — the one
+        // expected exception; the point of this test is that report
+        // resolution creates no *quality alert*.
         Notification::fake();
         $this->reports->uphold($report, $admin, 'Confirmed.', ReviewReportResolutionAction::HideReview);
 
-        Notification::assertNothingSent();
+        Notification::assertSentTo($review->student, ReviewHiddenNotification::class);
         $this->assertFalse(Schema::hasTable('review_quality_alerts'));
     }
 

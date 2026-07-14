@@ -17,6 +17,7 @@ use App\Models\LessonReview;
 use App\Models\LessonReviewEligibility;
 use App\Models\ReviewRatingContribution;
 use App\Models\User;
+use App\Notifications\Reviews\ReviewHiddenNotification;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Reviews\Contracts\ReviewModerationServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
@@ -466,10 +467,14 @@ class InstructorRatingAggregateTest extends TestCase
         // Faked only around the moderation action itself — lesson
         // finalization upstream legitimately fires the pre-existing
         // booking-completion notification, unrelated to this phase.
+        // Phase 17S later attaches ReviewHiddenNotification to the
+        // student for a hidden review — that is the one expected
+        // exception to "no notification" here; the point of this test
+        // is that hiding never touches marketplace ranking.
         Notification::fake();
         $this->moderation->hide($review, $admin, 'Routine check.');
 
-        Notification::assertNothingSent();
+        Notification::assertSentTo($review->student, ReviewHiddenNotification::class);
         $this->assertFalse(Schema::hasTable('instructor_marketplace_rankings'));
     }
 

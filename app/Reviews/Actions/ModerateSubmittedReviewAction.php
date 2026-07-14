@@ -7,6 +7,7 @@ namespace App\Reviews\Actions;
 use App\Models\LessonReview;
 use App\Reviews\Contracts\LessonReviewRepositoryInterface;
 use App\Reviews\Enums\StudentReviewStatus;
+use App\Reviews\Events\StudentReviewModerationRequired;
 use App\Reviews\Events\StudentReviewPublished;
 use App\Services\AuditTrailService;
 use App\Settings\ReviewSettings;
@@ -73,6 +74,10 @@ final class ModerateSubmittedReviewAction
                     $review,
                     ['lesson_id' => $review->lesson_id, 'moderation_model' => $this->settings->moderation_model],
                 );
+
+                // The final decision that this review needs a human — the
+                // one authoritative point for the "held Submitted" path.
+                StudentReviewModerationRequired::dispatch($review);
 
                 return $review;
             }

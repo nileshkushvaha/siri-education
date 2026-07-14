@@ -34,10 +34,23 @@ and improvement areas, aggregated feedback tags, and recent published
 reviews — reusing the Phase 17K aggregate and Phase 17L public-review
 projection exactly as-is, with no second aggregate, no AI-generated
 content, and no internal quality score or alert visibility exposed to
-the instructor. None of the nine phases implement instructor
-responses, notifications, public quality scores, or marketplace
+the instructor. Phase 17R replaces the student "coming soon" reviews
+placeholder with a real portal (open opportunities, submission through
+the same Phase 17I service, own-review list with statuses) and adds
+limited review editing: a configurable window from `submitted_at`,
+append-only sanitized revision history, report locks, re-moderation
+through the same Phase 17J pipeline, and an exactly-once rating-
+contribution swap through the same Phase 17K reconciler. Phase 17S
+finally wires the whole domain into the existing (Booking-pattern)
+notification pipeline — student/instructor transactional notifications
+plus permission-resolved administrator alerts for moderation, reports,
+and quality alerts — with a new idempotency-claim table since no
+existing mechanism guaranteed "replayed event → one notification".
+None of the phases implement instructor responses, review-response
+notifications, public quality scores, review deletion, or marketplace
 ranking. No Review/Rating/Feedback domain existed before Phase 17H
-(`StudentReviewsController` was a "coming soon" placeholder).
+(`StudentReviewsController` was a "coming soon" placeholder — now the
+Phase 17R portal).
 
 ## Data model
 
@@ -75,6 +88,8 @@ prior state is appended to `history` before a transition.
 | `review_max_tags` | 5 | Maximum tags a single submission may select |
 | `moderation_model` | `risk_based` | `pre_moderation` \| `post_moderation` \| `risk_based` |
 | `auto_publish_clean_reviews` | true | Master override — off means nothing auto-publishes regardless of model |
+| `review_editing_enabled` | true | Phase 17R — master switch for limited student review editing |
+| `review_edit_window_hours` | 24 | Phase 17R — edit window measured from `submitted_at` only (never publication/moderation/page-load) |
 
 **Policy snapshot, not live settings**: every eligibility record stores
 the exact settings values in force when it was opened, in `metadata`;
@@ -1245,6 +1260,339 @@ same conclusion Phases 17L and 17O reached); a dashboard read failure
 is isolated to this page and cannot affect review, lesson, booking, or
 earnings workflows.
 
+## Student Review Portal & Limited Editing (Phase 17R)
+
+Replaces the student "coming soon" reviews placeholder at the existing
+`/dashboard/reviews` route (existing `StudentReviewsController` +
+`dashboard.reviews` nav entry reused unchanged — no new route was
+needed) with `frontend.student.reviews-portal`, a full-page Livewire
+component showing: open review opportunities (instructor public name,
+lesson date, paid/demo type, public/private mode, expiry, submit
+action), the student's own submitted reviews with statuses and edit
+deadlines, past opportunities without actions
+(expired/revoked/manual-review; Used windows simply appear as their
+review), and plain-language status explanations. Everything is scoped
+to `auth()->user()`; no booking payment detail, compensation, internal
+lesson identifier, moderation metadata, reporter identity, or quality
+alert is ever rendered.
+
+### Submission integration
+
+The portal form calls the exact Phase 17I
+`StudentReviewServiceInterface::submit()` — no validation,
+sanitization, eligibility, or moderation logic was recreated in
+Livewire. Review mode still comes from the eligibility, the rating
+scale from settings, tags from active configured `ReviewTag`s
+applicable to that mode, and a successful submission atomically marks
+the eligibility Used exactly as before.
+
+### Edit window & editable statuses
+
+`review_editing_enabled` (true) and `review_edit_window_hours` (24) —
+the window starts at `submitted_at`, never publication/moderation/
+page-load time. `ReviewEditPolicy` is the single editability
+predicate (used by both the action's under-lock revalidation and the
+portal's display): the student must own the review, both
+`reviews_enabled` and `review_editing_enabled` must be on, the status
+must be Submitted/Flagged/Published/Private (Hidden, Rejected, and
+Archived are never editable), the window must be open, **any**
+`ReviewReport` row blocks editing (pending/under-review are active
+locks; a terminally resolved report stays blocked — no existing policy
+permits reopening, and the student sees only the neutral "completed or
+active moderation history" message), and the linked
+eligibility/lesson must still structurally reference the same student.
+Admins never edit through this path — they keep using
+`ReviewModerationService`.
+
+### Edit flow (`EditStudentReviewAction`)
+
+One transaction: lock the review → revalidate editability → validate
+against the review's OWN `settings_snapshot` (a later rating-scale
+change never widens a historical review's bounds) → sanitize via the
+same `ReviewContentSanitizer` → append the immutable pre-edit revision
+→ apply the edit with exactly one version increment (status changes go
+through the same `TransitionReviewStatusAction`) → **synchronously
+reconcile the rating contribution while the review is provably not
+Published** → audit (`student_review_edited`: prev/new status +
+version, changed field *names*, flag categories — never raw text) →
+dispatch `StudentReviewEdited` after commit.
+
+The synchronous reconcile ordering is load-bearing: the Phase 17K
+reconciler compares "should contribute" against "does contribute" and
+no-ops when they agree — if removal waited for the after-commit
+listener, an auto-republished edit could be seen as "already included"
+and keep the stale pre-edit rating in the aggregate forever. Removing
+under lock while un-published, then letting the Published event
+listener re-add with the NEW values, guarantees the old contribution
+is removed exactly once and the new one applies only after
+republication. (The contribution row snapshots the values it applied,
+so removal always subtracts what was actually added, regardless of
+what the review row now says.)
+
+### Re-moderation targets
+
+`StudentReviewStatus::allowedTransitions()` gained the edit paths
+(Flagged → Submitted, Published → Submitted/Flagged, Private →
+Flagged): a clean public edit returns to Submitted and re-enters the
+same automatic moderation (`ModerateReviewOnStudentReviewEdited`
+listener → `ModerateSubmittedReviewAction`, which may auto-publish
+under the current policy); a flagged public edit waits at Flagged for
+a human; clean private feedback stays Private; flagged private
+feedback goes to Flagged with its `review_mode` intact, so Phase 17J's
+mode-derived approve target can only ever return it to Private, never
+public. An edited Published review leaves public visibility
+immediately — old content is never shown while the edit is pending.
+
+### Revision history (`lesson_review_revisions`)
+
+Append-only, one row per successful edit, written exclusively by
+`EditStudentReviewAction`: previous overall + dimension ratings,
+sanitized content (raw prohibited text never reached the review row,
+so it structurally cannot reach a revision), tags, status,
+sanitization metadata, moderation snapshot, the review's pre-edit
+`version` (unique per review — a duplicate/replayed append is
+structurally impossible), editor id, edited-at. No update or delete
+path exists anywhere. The portal shows the owner only a safe summary
+("Edited N times"); full revision content is reachable only by
+audit/admin services and the owner through the model layer.
+
+### Files
+
+```
+app/Reviews/
+├── Actions/        EditStudentReviewAction (new)
+├── Contracts/      StudentReviewEditingServiceInterface, LessonReviewRevisionRepositoryInterface (new)
+├── DTOs/           EditStudentReviewData, ReviewEditability (new)
+├── Events/         StudentReviewEdited (new)
+├── Repositories/   LessonReviewRevisionRepository (new)
+├── Services/       StudentReviewEditingService (new)
+└── Support/        ReviewEditPolicy (new)
+
+app/Models/LessonReviewRevision.php (new); LessonReview gains revisions()
+app/Listeners/Reviews/ModerateReviewOnStudentReviewEdited.php,
+                      ReconcileRatingContributionOnStudentReviewEdited.php (new,
+                      registered in EventServiceProvider — event discovery is off)
+app/Livewire/Frontend/Student/ReviewsPortal.php (new)
+resources/views/livewire/frontend/student/reviews-portal.blade.php,
+                                          partials/review-form.blade.php (new)
+resources/views/student/reviews/index.blade.php (placeholder replaced)
+database/migrations/2026_08_29_100000_create_lesson_review_revisions_table.php
+database/settings/2026_08_29_100000_add_review_editing_settings.php
+```
+
+## Review & Quality Notifications (Phase 17S)
+
+Wires the Reviews/Quality/Feedback domains into the codebase's one
+fully-realized multi-channel notification pattern — `App\Booking`'s
+`Illuminate\Notifications\Notification` classes + per-domain channel
+resolver — rather than inventing a second notification system.
+
+### Audit finding: the spec's assumed infrastructure only partly exists
+
+The task described an existing "template repository and variable
+renderer," per-user "notification preferences" enforced at send time,
+and a general admin-recipient-by-permission helper. None of these
+exist. What does exist: Laravel `Notification` classes per domain
+group (`app/Notifications/{Booking,Admin,Wallet,...}/`), of which only
+`Booking` has concrete, working subclasses — `Admin`, `Wallet`,
+`Tutor`, `Payment`, `Support` are scaffolded base classes with **zero**
+prior concrete notifications (`AdminAlertNotification` is used for the
+first time in this phase). Channel selection is a plain PHP resolver
+per domain (`App\Booking\Services\NotificationChannelResolver`, driven
+by `BookingSettings` toggles), not a database-driven preference
+system. `UserProfile::notification_preferences` (email/system/
+marketing booleans) is stored but consulted by **no** existing send
+path anywhere in the codebase — so Phase 17S does not invent
+enforcement for it either; channel availability instead mirrors
+Booking's own precedent exactly (admin-configured toggles, not a
+personal per-notification opt-out). This mismatch between the spec's
+assumption and the actual codebase is called out here rather than
+silently pretending a template-management system exists.
+
+### Reused unmodified
+
+`App\Notifications\Admin\AdminAlertNotification` (first real usage),
+`App\Notifications\Concerns\ConfiguresTransactionalEmail`,
+`App\Notifications\Channels\{SmsChannel,WhatsAppChannel}`, the
+`Booking`-pattern trait/resolver architecture, `PublicReviewerIdentity`
+is deliberately **not** reused for notification content — payloads
+never mention student identity at all rather than needing to mask it.
+
+### New: `App\Notifications\Reviews\` / `App\Notifications\Quality\`
+
+`ReviewNotification` (new base, mirrors `BookingNotification`, sender
+key `review`) for student/instructor recipients; the three admin
+notifications extend the existing `AdminAlertNotification` instead.
+`RoutesReviewChannels` (mirrors `RoutesBookingChannels`) supplies
+`via()`/`toWhatsApp()`/`toSms()`/`toDatabase()` to all nine classes;
+`ReviewNotificationChannelResolver` (mirrors
+`NotificationChannelResolver` exactly) reads three new
+`ReviewSettings` toggles (`review_channel_email_enabled` = true,
+`review_channel_whatsapp_enabled` = false, `review_channel_sms_enabled`
+= false) — one shared policy for every recipient type, deliberately
+not split into a "Review" vs. "Admin Alert" preference category. Two
+new `MailSettings` fields (`review_from_name`/`review_from_email`)
+back the new `review` sender key.
+
+### Event → recipient matrix
+
+| Event | Notification | Recipient(s) |
+|---|---|---|
+| `LessonReviewEligibilityOpened` | `ReviewRequestedNotification` | eligible student |
+| `StudentReviewSubmitted` | `ReviewSubmittedNotification` | submitting student |
+| `StudentReviewModerationRequired` **(new)** | `ReviewModerationRequiredNotification` | admins w/ `ViewReviewModerationQueue` |
+| `StudentReviewPublished` | `ReviewPublishedStudentNotification` | review's student |
+| `StudentReviewPublished` (PublicReview mode only) | `ReviewPublishedInstructorNotification` | review's instructor |
+| `StudentReviewRejected` | `ReviewRejectedNotification` | review's student |
+| `StudentReviewHidden` | `ReviewHiddenNotification` | review's student |
+| `ReviewReported` | `ReviewReportedNotification` | admins w/ `ViewReviewReports` |
+| `InstructorQualityAlertCreated` | `InstructorQualityAlertCreatedNotification` | admins w/ `ViewInstructorQualityAlerts` |
+
+Deliberately **not** wired (per spec): `StudentReviewEdited`,
+`InstructorStudentFeedbackSubmitted`, `ReviewReportDismissed`,
+`ReviewReportMarkedDuplicate`, `InstructorQualityAlertResolved`,
+`InstructorQualityAlertDismissed`. An edit still produces a
+notification **indirectly** when its own re-moderation reaches
+Published/Flagged/moderation-required — those are the existing
+downstream events firing exactly as they would for any other
+transition into that state, not a listener on `StudentReviewEdited`
+itself.
+
+### `StudentReviewModerationRequired` — a new, narrowly-dispatched event
+
+No equivalent existed. A review needs a human at exactly two
+authoritative decision points, and the event is dispatched from each
+directly — never derived by a listener re-deciding the outcome from an
+earlier event (which would race the automatic-moderation listener that
+might still auto-publish the same review moments later):
+
+1. `SubmitLessonReviewAction` — the instant a new submission's content
+   trips the sanitizer and status becomes `Flagged`.
+2. `EditStudentReviewAction` — the instant an edit's status becomes
+   `Flagged`.
+3. `ModerateSubmittedReviewAction`'s "held for manual moderation"
+   branch — the only place that knows a `Submitted` review's automatic
+   evaluation declined to publish it (pre-moderation, or the
+   auto-publish override is off).
+
+A flagged review never produces two notifications ("flagged" +
+"needs moderation") — dispatching only from these three points, never
+from a generic status-change observer, is what guarantees that.
+Private flagged feedback still notifies moderators (they need to act)
+but the notification never contains its content.
+
+### Idempotency — `notification_dispatch_log`
+
+Laravel's `notifications` table has no dedup key, and no existing
+convention in this codebase guarantees "replayed event → one
+notification" at the Illuminate-Notification layer (Booking relies
+entirely on its events firing exactly once). Since every domain event
+in the Reviews/Quality/Feedback stack already fires exactly once per
+real transition, but a replayed queued listener or an admin reachable
+through two permission paths must still never double-notify, a new
+minimal table backs `NotificationIdempotencyGuard::once($key, $class,
+$send)`: a unique-index INSERT claims the key; a
+`UniqueConstraintViolationException` means "already claimed" and
+`$send()` is skipped — the same lock-then-unique-constraint idiom this
+codebase already uses everywhere else (eligibility opening, feedback
+submission), applied to notification dispatch instead of a business
+row. Keys: `review-request:{eligibility}:{version}:{recipient}`,
+`review-submitted:{review}:{version}:{recipient}`,
+`review-published:{review}:{version}:{recipient}`,
+`review-rejected:{review}:{version}:{recipient}`,
+`review-hidden:{review}:{version}:{recipient}`,
+`review-moderation:{review}:{version}:{recipient}`,
+`review-reported:{report}:{recipient}`,
+`quality-alert-created:{alert}:{recipient}`. A legitimate later
+version (a republish after an edit) is a different key and does
+notify again.
+
+### Admin recipient resolution — `AdminRecipientResolver`
+
+Resolves active users holding one specific permission — the *exact*
+permission each Phase 17O queue widget already gates its own
+`canView()` on (`ViewReviewModerationQueue`, `ViewReviewReports`,
+`ViewInstructorQualityAlerts`), so "who can act on this" and "who gets
+notified about this" can never drift apart. `super_admin`s are always
+unioned in (they bypass every permission check via `Gate::before()`,
+so excluding them would silently under-notify the one role that can
+always act) and deduplicated with anyone holding the permission
+directly — a manager who is also flagged super_admin, or who reaches
+the permission through two different roles, still receives exactly
+one notification. Inactive users are excluded. Never resolves "every
+administrator-like user."
+
+### Privacy
+
+Every notification's `toMail()`/`toDatabase()`/`plainText()` is an
+explicit allowlist, mirroring the DTO-allowlist discipline used
+everywhere else in this domain: no raw review text, no raw report
+explanation, no reporter identity, no student email/phone, no
+moderation notes, no internal quality score, no payment/compensation
+data. The instructor-facing published notification never names the
+student at all (simpler and stricter than masking). The
+quality-alert notification names the instructor in full — a
+staff-facing reference, the same identity staff already see on every
+other Phase 17O queue row — but never the student, never raw
+review/report text, never attendance-provider metadata or financial
+data, and the instructor is never a recipient of an alert about
+themself.
+
+### Side-effect boundary
+
+Every listener does exactly three things: resolve recipients, build a
+notification instance from already-committed state, call `->notify()`
+(or the idempotency guard around it). None changes review status,
+opens/revokes eligibility, publishes/hides a review, resolves a
+report, changes an alert, recalculates a rating, or touches a lesson/
+booking/financial record. Every source event implements
+`ShouldDispatchAfterCommit`, so the business transaction that produced
+the state a notification describes is already committed before any
+listener runs — a notification failure cannot roll it back.
+
+### Files
+
+```
+app/Notifications/Reviews/
+├── Concerns/RoutesReviewChannels.php
+├── ReviewNotification.php (base)
+├── ReviewRequestedNotification.php
+├── ReviewSubmittedNotification.php
+├── ReviewPublishedStudentNotification.php
+├── ReviewPublishedInstructorNotification.php
+├── ReviewRejectedNotification.php
+├── ReviewHiddenNotification.php
+├── ReviewModerationRequiredNotification.php (extends AdminAlertNotification)
+└── ReviewReportedNotification.php (extends AdminAlertNotification)
+app/Notifications/Quality/InstructorQualityAlertCreatedNotification.php (extends AdminAlertNotification)
+
+app/Reviews/Events/StudentReviewModerationRequired.php (new)
+app/Reviews/Support/ReviewNotificationChannelResolver.php (new)
+app/Services/Notifications/NotificationIdempotencyGuard.php,
+                            AdminRecipientResolver.php (new)
+app/Models/NotificationDispatchLog.php (new)
+
+app/Listeners/Reviews/Send{ReviewRequested,ReviewSubmitted,
+    ReviewPublishedNotifications,ReviewRejected,ReviewHidden,
+    ReviewModerationRequired,ReviewReported}Notification.php (new)
+app/Listeners/Quality/SendInstructorQualityAlertCreatedNotification.php (new)
+
+app/Reviews/Actions/{SubmitLessonReviewAction,EditStudentReviewAction,
+    ModerateSubmittedReviewAction}.php (modified — one new event
+    dispatch call each, at the exact authoritative point)
+app/Reviews/Enums/StudentReviewStatus.php (unchanged — Phase 17R
+    already added every transition this phase needed)
+
+app/Settings/ReviewSettings.php (+3 channel toggles)
+app/Settings/MailSettings.php (+review_from_name/review_from_email)
+database/migrations/2026_08_30_100000_create_notification_dispatch_log_table.php
+database/settings/2026_08_30_100000_add_review_mail_sender_settings.php,
+                   2026_08_30_100100_add_review_notification_channel_settings.php
+
+app/Providers/EventServiceProvider.php (modified — 8 new listener
+    registrations across 5 event keys, 3 of them brand new keys)
+```
+
 ## Authorization
 
 `LessonReviewEligibilityPolicy` — `view()` allows only the eligibility's
@@ -1275,6 +1623,12 @@ four phases. Phase 17K attaches exactly one new consumer to each of
 the five `StudentReview*` moderation events —
 `ReconcileRatingContributionOnStudentReview{Published,Hidden,Restored,Rejected,Archived}`
 — all thin, all delegating to `InstructorRatingAggregateService::reconcile()`.
+Phase 17R adds `StudentReviewEdited` (`ShouldDispatchAfterCommit`,
+exactly once per successful edit) with exactly two listeners — the
+same moderation pipeline (`ModerateReviewOnStudentReviewEdited`) and
+the same aggregate reconciler
+(`ReconcileRatingContributionOnStudentReviewEdited`) — and nothing
+else.
 
 ## Audit
 
@@ -1435,13 +1789,37 @@ routes/web.php  (dashboard.instructor.quality-insights, inside the
    queued job — it is a read-only page reusing existing settings,
    aggregates, and permissions. `npm run build` picks up no new
    frontend assets beyond the existing Blade/Livewire/Vite pipeline.
+7. Phase 17R: `php artisan migrate --force` also creates
+   `lesson_review_revisions` and seeds the two editing settings
+   (`review_editing_enabled` = true, `review_edit_window_hours` = 24).
+   The two new `StudentReviewEdited` listeners run on the same
+   `notifications` queue as every other review listener — no new
+   worker. No new permission: editing is relationship-based (the
+   review's own student), and staff continue using the existing
+   moderation permissions.
+8. Phase 17S: `php artisan migrate --force` also creates
+   `notification_dispatch_log` and seeds the three channel-toggle
+   settings (`review_channel_email_enabled` = true, whatsapp/sms =
+   false) and the two `mail.review_from_*` sender fields. No new
+   permission — admin recipients are resolved from the existing
+   `ViewReviewModerationQueue`/`ViewReviewReports`/
+   `ViewInstructorQualityAlerts` permissions `ReviewPermissionSeeder`
+   already seeds. The 8 new listeners run on the same `notifications`
+   queue as every other review/quality listener. No new frontend
+   asset — notification content is server-rendered PHP, same as every
+   other domain's notifications.
 
 ## Deferred (do not build yet)
 
-Instructor responses/visibility toggles, review notifications
-(including report- and quality-alert-related ones), review editing
-(the model is deliberately prepared for it — open `status` vocabulary,
-`version` column — but no code path edits), public/numeric instructor
+Instructor responses/visibility toggles (Phase 17S explicitly does not
+notify on `StudentReviewEdited`, does not create a response
+notification, and no response template/listener/notification class
+exists anywhere), report-dismissal/duplicate-marked and quality-alert-
+resolved/dismissed notifications, review deletion (Phase 17R
+implemented limited *editing*; physical deletion remains impossible
+for every role), helpfulness voting, review translation, mobile push,
+a new notification-center UI, a new template-management UI,
+AI personalization or sentiment analysis in any notification, public/numeric instructor
 quality scores, warning enforcement, instructor suspension (the
 resolution-action *value* exists; no code transitions
 `InstructorStatus::Suspended`), marketplace ranking, homework,
@@ -1638,6 +2016,68 @@ the DTO carries no completion-consistency or response-time field
 and the Phase 17O admin dashboard both remain unaffected; and a Phase
 17H–17O regression check (flag → approve → publish → aggregate all
 still work).
+
+`tests/Feature/Reviews/StudentReviewPortalTest.php` (Phase 17R) — the
+placeholder page is replaced; a student sees only their own open
+eligibility; portal submission goes through the Phase 17I service
+(public and private-demo modes); an expired or Used window shows no
+submit action; a student sees their own reviews and never another
+student's (including a foreign-review edit attempt 404ing through the
+ownership-scoped lookup).
+
+`tests/Feature/Reviews/StudentReviewEditingTest.php` (Phase 17R) — all
+four editable statuses (Submitted/Flagged/Published/Private) accept an
+edit while Hidden/Rejected/Archived reject it; the window expires from
+`submitted_at` and the `review_editing_enabled` switch blocks
+everything; the instructor and another student are both denied; an
+edited published review disappears publicly while re-moderation is
+pending; a clean public edit auto-republishes under the existing
+policy while a flagged edit waits at Flagged; clean private edits stay
+Private and a flagged private edit approved by an admin returns to
+Private, never public; the pre-edit content/rating/status land in an
+append-only revision that only ever contains sanitized text; raw
+unsafe edit text never reaches the audit log; rating validation uses
+the review's stored snapshot (a later `rating_max` change doesn't
+widen it); an under-review report and a terminally dismissed report
+both block editing; the old published rating leaves the aggregate
+exactly once, the new one contributes only after republication, and
+replayed reconcile calls converge; sequential edits produce one
+revision per version with a same-version duplicate append structurally
+impossible; a failed edit leaves the review and history byte-for-byte
+unchanged; nothing is deleted, notified, or written to Learning Plans
+or quality alerts; and a Phase 17H–17Q regression check.
+
+`tests/Feature/Reviews/ReviewQualityNotificationTest.php` (Phase 17S)
+— 35 scenarios: one review-request notification per eligibility
+opening (expired/revoked eligibility and a replayed event both send
+nothing/nothing-extra); submission confirmation; a published public
+review notifies both its student and instructor, private feedback
+never notifies an instructor; rejected/hidden notify only the
+review's own student; a pre-moderation-held Submitted review and a
+Flagged review (from submission or an edit) each notify moderators
+exactly once, an auto-published clean review notifies no moderator;
+a report notifies report-authorized admins, a quality alert notifies
+alert-authorized admins (never the instructor it concerns);
+unauthorized and inactive admins receive nothing, a manager reachable
+through overlapping permissions/roles receives exactly one
+notification; a replayed event and two calls with the same
+idempotency key both produce exactly one send; a legitimate new
+version (republish after an edit) does notify again; channel
+selection follows the settings toggle, retry/tries/backoff match the
+existing transactional-email configuration; the in-app payload's
+action URL resolves to the correct named route; raw review text,
+raw report explanation, student contact details, and reporter
+identity are all absent from every payload; private instructor
+feedback (Phase 17Q) sends no student notification and no
+review-response class exists anywhere; every source event still
+implements `ShouldDispatchAfterCommit` and review/report status is
+unchanged by the act of notifying; no financial/aggregate record
+changes; and a Phase 17H–17R regression check. Six pre-existing
+"no notification is sent" tests from Phases 17H/17I/17J/17K/17M/17R
+were updated in place to assert the specific, now-intentional
+notification each exercised flow legitimately triggers, while still
+confirming no *other* unrelated side effect occurs — matching each
+test's original isolation intent, not a relaxation of it.
 
 ### A Blade compiler pitfall discovered during Phase 17L
 

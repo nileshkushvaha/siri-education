@@ -24,4 +24,13 @@ interface LessonReviewRepositoryInterface
      * via LIMIT/OFFSET pagination (never the full set in memory).
      */
     public function publicPaginatedForInstructor(int $instructorId, int $perPage): LengthAwarePaginator;
+
+    /**
+     * How many of the instructor's eligible published public reviews
+     * selected each configured tag — cursored over only the `tags`
+     * column (never a full review fetch), never private feedback.
+     *
+     * @return array<string, array{label: string, count: int}> keyed by tag key
+     */
+    public function tagCountsForInstructor(int $instructorId): array;
 }

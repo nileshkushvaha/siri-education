@@ -10,6 +10,7 @@ use App\Models\ReviewReport;
 use App\Policies\LessonReviewEligibilityPolicy;
 use App\Policies\LessonReviewPolicy;
 use App\Policies\ReviewReportPolicy;
+use App\Reviews\Contracts\InstructorQualityInsightsServiceInterface;
 use App\Reviews\Contracts\InstructorRatingAggregateRepositoryInterface;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Reviews\Contracts\LessonReviewEligibilityRepositoryInterface;
@@ -26,6 +27,7 @@ use App\Reviews\Repositories\LessonReviewEligibilityRepository;
 use App\Reviews\Repositories\LessonReviewRepository;
 use App\Reviews\Repositories\ReviewRatingContributionRepository;
 use App\Reviews\Repositories\ReviewReportRepository;
+use App\Reviews\Services\InstructorQualityInsightsService;
 use App\Reviews\Services\InstructorRatingAggregateService;
 use App\Reviews\Services\PublicInstructorReviewService;
 use App\Reviews\Services\ReviewEligibilityService;
@@ -50,6 +52,7 @@ class ReviewServiceProvider extends ServiceProvider
         $this->app->singleton(PublicInstructorReviewServiceInterface::class, PublicInstructorReviewService::class);
         $this->app->singleton(ReviewReportRepositoryInterface::class, ReviewReportRepository::class);
         $this->app->singleton(ReviewReportServiceInterface::class, ReviewReportService::class);
+        $this->app->singleton(InstructorQualityInsightsServiceInterface::class, InstructorQualityInsightsService::class);
     }
 
     public function boot(): void

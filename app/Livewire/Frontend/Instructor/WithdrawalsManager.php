@@ -8,9 +8,11 @@ use App\Earnings\Contracts\InstructorWithdrawalBalanceServiceInterface;
 use App\Earnings\Contracts\InstructorWithdrawalServiceInterface;
 use App\Earnings\Enums\PayoutMethodStatus;
 use App\Earnings\Exceptions\WithdrawalException;
+use App\Earnings\Support\InstructorPayoutEligibility;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
 use App\Support\MoneyFormatter;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\RateLimiter;
@@ -47,6 +49,12 @@ final class WithdrawalsManager extends Component
     /** Minted server-side when the form opens; locked thereafter. */
     public string $idempotencyKey = '';
 
+    /** Whether the instructor may request a withdrawal right now — drives the "Request withdrawal" button visibility. */
+    public bool $eligible = false;
+
+    /** UI-safe reason when $eligible is false; null once eligible. */
+    public ?string $ineligibilityReason = null;
+
     private InstructorWithdrawalServiceInterface $withdrawals;
 
     private InstructorWithdrawalBalanceServiceInterface $balances;
@@ -54,14 +62,19 @@ final class WithdrawalsManager extends Component
     public function boot(
         InstructorWithdrawalServiceInterface $withdrawals,
         InstructorWithdrawalBalanceServiceInterface $balances,
+        InstructorPayoutEligibility $eligibility,
     ): void {
         $this->withdrawals = $withdrawals;
         $this->balances = $balances;
+        $this->eligible = $eligibility->isEligible(auth()->user());
+        $this->ineligibilityReason = $eligibility->reasonForIneligibility(auth()->user());
     }
 
     public function openForm(): void
     {
-        $this->authorize('create', InstructorWithdrawalRequest::class);
+        if (! $this->authorizeOrDeny('create', InstructorWithdrawalRequest::class)) {
+            return;
+        }
 
         $this->reset(['confirming', 'payoutMethodId', 'amount', 'note']);
         $this->resetErrorBag();
@@ -119,7 +132,9 @@ final class WithdrawalsManager extends Component
             ->forInstructor((int) auth()->id())
             ->findOrFail($withdrawalId);
 
-        $this->authorize('cancel', $withdrawal);
+        if (! $this->authorizeOrDeny('cancel', $withdrawal)) {
+            return;
+        }
 
         try {
             $this->withdrawals->cancelByInstructor($withdrawal, auth()->user());
@@ -156,6 +171,27 @@ final class WithdrawalsManager extends Component
     }
 
     // ── Internals ─────────────────────────────────────────────────────────
+
+    /**
+     * Runs a policy check without letting a denial surface as an
+     * uncaught AuthorizationException (a raw 403 error page) — the UI
+     * already hides actions an ineligible/non-owning instructor
+     * shouldn't reach, so a denial here means the browser state is
+     * stale or was tampered with; report it inline like any other
+     * form error instead of crashing.
+     */
+    private function authorizeOrDeny(string $ability, mixed $arg): bool
+    {
+        try {
+            $this->authorize($ability, $arg);
+
+            return true;
+        } catch (AuthorizationException $e) {
+            $this->addError('form', $e->getMessage() ?: 'You are not authorized to perform this action.');
+
+            return false;
+        }
+    }
 
     /** @return array{0: InstructorPayoutMethod, 1: int} */
     private function validateForm(): array

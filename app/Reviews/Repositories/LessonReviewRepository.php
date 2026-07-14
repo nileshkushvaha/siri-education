@@ -57,4 +57,36 @@ final class LessonReviewRepository implements LessonReviewRepositoryInterface
             ->paginate($perPage)
             ->withQueryString();
     }
+
+    public function tagCountsForInstructor(int $instructorId): array
+    {
+        $counts = [];
+
+        // Only the `tags` column is ever pulled — a review's rating,
+        // content, and every other field are irrelevant here. lazyById()
+        // keeps this constant-memory regardless of how many reviews an
+        // instructor has; there is no reliable cross-database way to
+        // aggregate inside a JSON array column, so counting happens in
+        // PHP over this narrow, cursored column only.
+        LessonReview::query()
+            ->where('instructor_id', $instructorId)
+            ->where('status', StudentReviewStatus::Published)
+            ->where('review_mode', LessonReviewEligibilityMode::PublicReview)
+            ->select(['id', 'tags'])
+            ->lazyById()
+            ->each(function (LessonReview $review) use (&$counts): void {
+                foreach ($review->tags ?? [] as $tag) {
+                    $key = $tag['key'] ?? null;
+
+                    if ($key === null) {
+                        continue;
+                    }
+
+                    $counts[$key] ??= ['label' => $tag['label'] ?? $key, 'count' => 0];
+                    $counts[$key]['count']++;
+                }
+            });
+
+        return $counts;
+    }
 }

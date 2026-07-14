@@ -69,6 +69,13 @@ final class InstructorRatingAggregateService implements InstructorRatingAggregat
                     'preparedness' => null,
                     'learning_value' => null,
                 ],
+                dimensionCounts: [
+                    'teaching_quality' => 0,
+                    'communication' => 0,
+                    'punctuality' => 0,
+                    'preparedness' => 0,
+                    'learning_value' => 0,
+                ],
                 paidReviewCount: 0,
                 demoReviewCount: 0,
             );
@@ -85,6 +92,13 @@ final class InstructorRatingAggregateService implements InstructorRatingAggregat
                 'punctuality' => $aggregate->punctualityAverage(),
                 'preparedness' => $aggregate->preparednessAverage(),
                 'learning_value' => $aggregate->learningValueAverage(),
+            ],
+            dimensionCounts: [
+                'teaching_quality' => $aggregate->teaching_quality_rating_count,
+                'communication' => $aggregate->communication_rating_count,
+                'punctuality' => $aggregate->punctuality_rating_count,
+                'preparedness' => $aggregate->preparedness_rating_count,
+                'learning_value' => $aggregate->learning_value_rating_count,
             ],
             paidReviewCount: $aggregate->paid_review_count,
             demoReviewCount: $aggregate->demo_review_count,

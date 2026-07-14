@@ -15,6 +15,7 @@ final readonly class InstructorRatingSummaryData
     /**
      * @param  array<string, int>  $ratingDistribution  e.g. ['5' => 12, '4' => 3]
      * @param  array<string, ?float>  $dimensionAverages  keyed by dimension name
+     * @param  array<string, int>  $dimensionCounts  keyed by dimension name — how many eligible reviews actually carried that dimension rating (a missing dimension rating is never counted as zero, so this is the sample size behind each average, not $reviewCount)
      */
     public function __construct(
         public int $instructorId,
@@ -22,6 +23,7 @@ final readonly class InstructorRatingSummaryData
         public ?float $averageRating,
         public array $ratingDistribution,
         public array $dimensionAverages,
+        public array $dimensionCounts,
         public int $paidReviewCount,
         public int $demoReviewCount,
     ) {}

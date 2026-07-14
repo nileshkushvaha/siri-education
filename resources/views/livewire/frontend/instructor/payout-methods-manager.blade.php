@@ -13,13 +13,22 @@
 
     <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Your payout methods</h2>
-        @unless ($showForm)
+        @if ($eligible && ! $showForm)
             <button type="button" wire:click="startCreate"
                 class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-400 transition">
                 Add bank account
             </button>
-        @endunless
+        @endif
     </div>
+
+    @unless ($eligible)
+        <x-account.card>
+            <div class="flex flex-col items-center justify-center py-12 text-center">
+                <h3 class="text-slate-300 font-semibold mb-2">Payout methods not available yet</h3>
+                <p class="text-slate-400 text-sm max-w-xs">{{ $ineligibilityReason }}</p>
+            </div>
+        </x-account.card>
+    @endunless
 
     @if ($showForm)
         <x-account.card>

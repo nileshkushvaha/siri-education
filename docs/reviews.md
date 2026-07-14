@@ -27,10 +27,17 @@ Phase 17O adds a read-only Filament admin dashboard surfacing all of
 the above for operational triage — moderation workload, reports,
 quality alerts, and instructor rating health — with every action
 delegating to the same services Phases 17J/17M/17N already built.
-None of the eight phases implement instructor responses, notifications,
-public quality scores, marketplace ranking, or instructor-facing
-quality insights. No Review/Rating/Feedback domain existed before
-Phase 17H (`StudentReviewsController` was a "coming soon" placeholder).
+Phase 17P adds the instructor-facing counterpart — a read-only
+"Reviews & Quality" page on the existing Account Portal dashboard
+showing an instructor their own rating summary, dimension highlights
+and improvement areas, aggregated feedback tags, and recent published
+reviews — reusing the Phase 17K aggregate and Phase 17L public-review
+projection exactly as-is, with no second aggregate, no AI-generated
+content, and no internal quality score or alert visibility exposed to
+the instructor. None of the nine phases implement instructor
+responses, notifications, public quality scores, or marketplace
+ranking. No Review/Rating/Feedback domain existed before Phase 17H
+(`StudentReviewsController` was a "coming soon" placeholder).
 
 ## Data model
 
@@ -1126,6 +1133,118 @@ student complaints as a distinct concept beyond review reports,
 demo-conversion quality, and retention indicators. Each shows no
 section at all rather than a fabricated zero.
 
+## Instructor Quality Insights (Phase 17P)
+
+A read-only page on the existing Account Portal instructor dashboard
+(`/dashboard/instructor/quality-insights`, "Reviews & Quality" nav
+item) letting an instructor see privacy-safe insights derived from
+their own eligible review data. **No new aggregate, review
+projection, or dashboard system was created** — the rating summary is
+the unmodified Phase 17K aggregate and the recent-reviews list is the
+unmodified Phase 17L public-review projection.
+
+### Read service (`InstructorQualityInsightsService`)
+
+Two methods: `insightsFor(User $instructor): InstructorQualityInsightsData`
+and `recentReviewsFor(User $instructor, int $perPage = 10): LengthAwarePaginator<PublicInstructorReviewData>`.
+Both accept only a `User` the caller already resolved — never a bare
+id — so there is no parameter through which one instructor could
+request another's data; the controller passes `auth()->user()`
+exclusively. `insightsFor()` composes:
+
+- `ratingSummary` — `InstructorRatingAggregateServiceInterface::summaryFor()`
+  (Phase 17K), reused unmodified. Extended with one purely additive
+  field, `dimensionCounts` (how many eligible reviews actually carried
+  each dimension rating — the sample size behind each average, since a
+  missing dimension rating is never counted as zero or folded into
+  `reviewCount`). Only two construction sites exist codebase-wide
+  (both inside `InstructorRatingAggregateService::summaryFor()`), so
+  the extension carried no risk of breaking an unrelated caller.
+- `topDimensions` / `improvementAreas` — deterministic dimension
+  buckets, never AI-generated. A dimension qualifies only with at
+  least `MIN_DIMENSION_SAMPLE = 3` contributing reviews; `topDimensions`
+  takes dimensions averaging `>= 4.0`, `improvementAreas` takes
+  dimensions averaging `< 3.0` — disjoint by construction, so no
+  dimension can appear in both lists — each capped at 3 entries,
+  sorted best/worst first. Below-threshold dimensions are silently
+  omitted rather than shown as a fabricated "problem" from too little
+  data. Improvement-area wording is neutral ("Students rated this area
+  lower across N reviews") — no punitive or disciplinary language, no
+  admin conclusion, no quality-alert reason.
+- `feedbackTags` — a single neutral tag-frequency aggregation over the
+  instructor's own eligible published public reviews (label + count
+  only). `ReviewTag` has no sentiment/category field in its data
+  model, so a positive-vs-improvement tag split is **not**
+  authoritative and was deliberately not invented; "areas for
+  improvement" is instead driven entirely from dimension averages
+  (above). Computed by `LessonReviewRepository::tagCountsForInstructor()`
+  via a narrow-column (`id`, `tags` only), cursored (`lazyById()`)
+  scan with in-PHP counting — MySQL has no simple portable way to
+  aggregate occurrences inside a JSON array column in this codebase's
+  established query style, so this is a deliberate, bounded,
+  constant-memory trade-off rather than a `JSON_TABLE` query.
+  Private-feedback tags are excluded entirely — no existing policy
+  grants an instructor visibility into private-feedback content, so
+  this is documented as deferred rather than a newly invented rule.
+
+`recentReviewsFor()` is a direct pass-through to
+`PublicInstructorReviewServiceInterface::paginatedReviewsFor()` — the
+exact same DTO, masking, pagination, and ordering as the public
+profile page.
+
+### Completion consistency & response time — deferred, not fabricated
+
+Audited before writing any code: no authoritative completion-rate or
+response-time calculation exists anywhere in this codebase, admin- or
+instructor-facing. Per spec, neither was invented from booking status
+or unrelated timestamps. **Both are entirely deferred SRS coverage** —
+no field, no placeholder, no zero value; the page simply has no
+section for either.
+
+### Dashboard integration & authorization
+
+`InstructorQualityInsightsController::index()` — a thin, role-gated
+controller (`abort_unless(auth()->user()?->hasRole('instructor'), 403)`)
+returning a page-shell Blade view that embeds one full-page Livewire
+component, `frontend.instructor.quality-insights-overview`, following
+the same page-shell + embedded-Livewire convention as every other
+instructor dashboard sub-page (`InstructorAvailabilityController` is
+the template). The component recomputes both DTOs fresh via `app(...)`
+on every `render()` rather than storing them as public properties —
+the same fresh-resolve convention Phase 17O's Filament widgets use, to
+avoid Livewire's DTO-serialization/hydration fragility with nested
+readonly objects. `AccountMenuService` gained one new `instructor`
+audience nav entry ("Reviews & Quality") — `PortalResolver::frontendMenu()`
+was not touched. A student, another instructor, or a guest hitting the
+route is denied (403 or redirect-to-login); an admin's Phase 17O
+dashboard is completely unaffected — the instructor route grants no
+moderation, report-resolution, or alert-resolution permission, and the
+instructor cannot edit, hide, reject, delete, or otherwise mutate a
+review or the aggregate from this page (`insightsFor()`/`recentReviewsFor()`
+are provably read-only — repeated calls never change a review's
+`version`).
+
+### Privacy & performance
+
+Every DTO (`InstructorQualityInsightsData`, `DimensionInsightData`,
+`FeedbackTagCountData`, plus the reused `InstructorRatingSummaryData`/
+`PublicInstructorReviewData`) is an explicit field allowlist — no
+student email/phone/profile-image/id, no private-feedback text, no
+moderation reason, no review-report detail or reporter identity, no
+internal quality-alert score or reason, and no financial/compensation
+value is ever selected or returned. Reviewer identity reuses Phase
+17L's exact masking (`PublicReviewerIdentity`) — an instructor sees no
+more of a student's identity here than a public visitor would. Recent
+reviews are paginated (never loaded fully into memory); tag counting
+uses a narrow-column cursor rather than loading full rows; dimension
+bucketing and the rating summary both read from the already-maintained
+`instructor_rating_aggregates` row, never a live re-scan of
+`lesson_reviews`. No new caching was added — no existing
+instructor-dashboard caching convention exists in this codebase (the
+same conclusion Phases 17L and 17O reached); a dashboard read failure
+is isolated to this page and cannot affect review, lesson, booking, or
+earnings workflows.
+
 ## Authorization
 
 `LessonReviewEligibilityPolicy` — `view()` allows only the eligibility's
@@ -1263,6 +1382,24 @@ app/Filament/Widgets/Quality/
 ├── LowRatedInstructorsWidget.php       (TableWidget)
 └── HighlyRatedInstructorsWidget.php    (TableWidget)
 resources/views/filament/pages/reviews-quality-dashboard.blade.php
+
+Phase 17P adds to the existing App\Reviews domain (no new domain):
+├── Contracts/      InstructorQualityInsightsServiceInterface (new)
+├── DTOs/           InstructorQualityInsightsData, DimensionInsightData,
+│                   FeedbackTagCountData (new); InstructorRatingSummaryData
+│                   gains one additive field, dimensionCounts (modified)
+└── Services/       InstructorQualityInsightsService (new)
+
+LessonReviewRepositoryInterface/LessonReviewRepository gain one method,
+tagCountsForInstructor() (modified, not a new repository).
+
+app/Http/Controllers/Instructor/InstructorQualityInsightsController.php
+app/Livewire/Frontend/Instructor/QualityInsightsOverview.php
+resources/views/instructor/quality-insights/index.blade.php
+resources/views/livewire/frontend/instructor/quality-insights-overview.blade.php
+app/Services/Account/AccountMenuService.php  (one new instructor nav entry)
+routes/web.php  (dashboard.instructor.quality-insights, inside the
+                 existing dashboard prefix/middleware group)
 ```
 
 ## Deployment runbook
@@ -1294,6 +1431,10 @@ resources/views/filament/pages/reviews-quality-dashboard.blade.php
    `reviews:rebuild-aggregates` and `reviews:reconcile-quality-alerts`
    are **not** scheduled — run either manually only after suspected
    drift or a direct data/settings correction.
+6. Phase 17P adds no migration, no permission, and no new listener or
+   queued job — it is a read-only page reusing existing settings,
+   aggregates, and permissions. `npm run build` picks up no new
+   frontend assets beyond the existing Blade/Livewire/Vite pipeline.
 
 ## Deferred (do not build yet)
 
@@ -1303,11 +1444,18 @@ Instructor responses/visibility toggles, review notifications
 `version` column — but no code path edits), public/numeric instructor
 quality scores, warning enforcement, instructor suspension (the
 resolution-action *value* exists; no code transitions
-`InstructorStatus::Suspended`), marketplace ranking, an
-instructor-facing quality dashboard, homework, learning-plan progress,
-student-complaint/demo-conversion/retention metrics (no authoritative
-data source exists yet — deliberately not fabricated), and all
-frontend UI outside the instructor profile page itself.
+`InstructorStatus::Suspended`), marketplace ranking, homework,
+learning-plan progress, student-complaint/demo-conversion/retention
+metrics (no authoritative data source exists yet — deliberately not
+fabricated), and all frontend UI outside the instructor profile page
+and the Phase 17P instructor quality-insights page. Also still
+deferred as of Phase 17P: instructor-to-student feedback, Learning
+Plan feedback linkage, instructor responses to reviews, response
+moderation, AI-generated improvement suggestions, completion
+consistency and response-time insights (no authoritative calculation
+exists anywhere in the codebase — not derived from booking status or
+unrelated timestamps), and private-feedback tag visibility to the
+instructor (no existing policy grants it).
 
 ## Tests
 
@@ -1465,6 +1613,31 @@ transitions the alert through `InstructorQualityAlertServiceInterface`
 to back never changes a review's or alert's `version`; dashboard reads
 create no wallet/earning records; and a Phase 17H–17N regression check
 (flag → approve → publish → public page all still work).
+
+`tests/Feature/Reviews/InstructorQualityInsightsTest.php` (Phase 17P)
+— an instructor sees their own insights; the service never leaks one
+instructor's data when called for another; a student and a guest are
+both denied the route; the displayed average and eligible count match
+`InstructorRatingAggregateServiceInterface::summaryFor()` exactly
+(never recalculated); private feedback, hidden, rejected, and archived
+reviews are all excluded from the rating summary; rating distribution
+and dimension averages/counts are correct; a missing dimension rating
+is never counted as zero; punctuality uses the review-dimension
+aggregate only; feedback tags aggregate correctly without any student
+identity field; a dimension below the minimum sample size never
+appears in either highlight or improvement list; the insights DTO
+carries no AI-summary/recommendation/coaching-advice field; recent
+reviews are paginated and ordered deterministically newest-first;
+reviewer identity stays masked; a private student email never reaches
+the page; private review text, moderation reasons, and quality-alert/
+risk-scoring language are all absent from the rendered page;
+repeated read calls never mutate a review's `version` and the service
+interface exposes no mutating method; no financial value is exposed;
+the DTO carries no completion-consistency or response-time field
+(confirming neither was fabricated); the existing public profile page
+and the Phase 17O admin dashboard both remain unaffected; and a Phase
+17H–17O regression check (flag → approve → publish → aggregate all
+still work).
 
 ### A Blade compiler pitfall discovered during Phase 17L
 

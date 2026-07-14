@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Account;
 
+use App\Earnings\Support\InstructorPayoutEligibility;
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\User;
 use App\Settings\FeatureSettings;
@@ -26,6 +27,7 @@ final class AccountMenuService
     public function __construct(
         private readonly HomeworkServiceInterface $homework,
         private readonly FeatureSettings $features,
+        private readonly InstructorPayoutEligibility $payoutEligibility,
     ) {}
 
     /**
@@ -139,11 +141,19 @@ final class AccountMenuService
                 'permission' => null,
             ],
             [
+                'label' => 'Reviews & Quality',
+                'route' => 'dashboard.instructor.quality-insights',
+                'icon' => 'star',
+                'audience' => 'instructor',
+                'permission' => null,
+            ],
+            [
                 'label' => 'Payout Methods',
                 'route' => 'dashboard.instructor.payout-methods',
                 'icon' => 'credit-card',
                 'audience' => 'instructor',
                 'permission' => null,
+                'enabled' => fn (User $user): bool => $this->payoutEligibility->isEligible($user),
             ],
             [
                 'label' => 'Withdrawals',
@@ -151,6 +161,7 @@ final class AccountMenuService
                 'icon' => 'credit-card',
                 'audience' => 'instructor',
                 'permission' => null,
+                'enabled' => fn (User $user): bool => $this->payoutEligibility->isEligible($user),
             ],
             [
                 'label' => 'Certificates',
@@ -208,7 +219,7 @@ final class AccountMenuService
             return null;
         }
 
-        if (isset($item['enabled']) && ! ($item['enabled'])()) {
+        if (isset($item['enabled']) && ! ($item['enabled'])($user)) {
             return null;
         }
 

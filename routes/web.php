@@ -26,6 +26,7 @@ use App\Http\Controllers\Instructor\InstructorController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
 use App\Http\Controllers\Instructor\InstructorPayoutController;
+use App\Http\Controllers\Instructor\InstructorQualityInsightsController;
 use App\Http\Controllers\NewsletterUnsubscribeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
@@ -222,6 +223,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
     Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
     Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
+    // Phase 17P — instructor-facing quality insights (read-only; the
+    // instructor never moderates, resolves reports, or touches an
+    // aggregate from here).
+    Route::get('/instructor/quality-insights', [InstructorQualityInsightsController::class, 'index'])->name('instructor.quality-insights');
     // Phase 15 — payout methods & withdrawals (authenticated instructors
     // only; page shells — no route here can move money).
     Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');

@@ -23,6 +23,7 @@
 | Financial Provider Activation Handoff (RazorpayX + Stripe resume prerequisites) | financial-provider-activation-handoff.md |
 | Lesson Lifecycle | lessons.md |
 | Reviews (Student Review Eligibility) | reviews.md |
+| Instructor-to-Student Lesson Feedback | instructor-student-feedback.md |
 | Cache Manager | cache-manager.md |
 | Scheduler Monitor | scheduler.md |
 | Queue Monitor | queue-monitor.md |

@@ -24,6 +24,7 @@ use App\Http\Controllers\Forms\SupportController;
 use App\Http\Controllers\Instructor\InstructorAvailabilityController;
 use App\Http\Controllers\Instructor\InstructorController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
+use App\Http\Controllers\Instructor\InstructorLessonsController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
 use App\Http\Controllers\Instructor\InstructorPayoutController;
 use App\Http\Controllers\Instructor\InstructorQualityInsightsController;
@@ -223,6 +224,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
     Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
     Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
+    // Phase 17Q — instructor's own lesson list, hosting the private
+    // student-feedback form for completed lessons. No admin/Filament
+    // surface; feedback here never edits a lesson, booking, or outcome.
+    Route::get('/instructor/lessons', [InstructorLessonsController::class, 'index'])->name('instructor.lessons');
     // Phase 17P — instructor-facing quality insights (read-only; the
     // instructor never moderates, resolves reports, or touches an
     // aggregate from here).

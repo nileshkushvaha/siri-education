@@ -4,6 +4,7 @@ use App\Providers\AppServiceProvider;
 use App\Providers\BookingServiceProvider;
 use App\Providers\CmsServiceProvider;
 use App\Providers\EarningServiceProvider;
+use App\Providers\FeedbackServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
 use App\Providers\FormsServiceProvider;
 use App\Providers\FrontendServiceProvider;
@@ -25,5 +26,6 @@ return [
     NavigationServiceProvider::class,
     ReviewServiceProvider::class,
     QualityServiceProvider::class,
+    FeedbackServiceProvider::class,
     AdminPanelProvider::class,
 ];

@@ -141,6 +141,13 @@ final class AccountMenuService
                 'permission' => null,
             ],
             [
+                'label' => 'My Lessons',
+                'route' => 'dashboard.instructor.lessons',
+                'icon' => 'clipboard',
+                'audience' => 'instructor',
+                'permission' => null,
+            ],
+            [
                 'label' => 'Reviews & Quality',
                 'route' => 'dashboard.instructor.quality-insights',
                 'icon' => 'star',

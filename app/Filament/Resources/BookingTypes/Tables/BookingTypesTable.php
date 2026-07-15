@@ -42,9 +42,6 @@ class BookingTypesTable
                     ->label('Buffer')
                     ->suffix(' min')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('max_attendees')
-                    ->label('Capacity')
-                    ->placeholder('Unlimited'),
                 IconColumn::make('is_paid')
                     ->boolean()
                     ->label('Paid'),
@@ -97,7 +94,6 @@ class BookingTypesTable
                             'Name' => 'name',
                             'Duration (min)' => 'duration_minutes',
                             'Buffer (min)' => 'buffer_minutes',
-                            'Capacity' => fn (BookingType $t): string => (string) ($t->max_attendees ?? 'Unlimited'),
                             'Paid' => fn (BookingType $t): string => $t->is_paid ? 'Yes' : 'No',
                             'Requires approval' => fn (BookingType $t): string => $t->requires_approval ? 'Yes' : 'No',
                             'Active' => fn (BookingType $t): string => $t->is_active ? 'Yes' : 'No',

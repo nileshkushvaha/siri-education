@@ -109,7 +109,6 @@ class StudentCheckoutFrontendTest extends TestCase
         $type = BookingType::factory()->paid()->create([
             'key' => 'paid_one_to_one',
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
 
         // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
@@ -137,7 +136,6 @@ class StudentCheckoutFrontendTest extends TestCase
             'key' => 'free_demo',
             'is_paid' => false,
             'duration_minutes' => 30,
-            'max_attendees' => 1,
         ]);
 
         return app(StudentBookingServiceInterface::class)->book(new StudentBookingData(
@@ -439,7 +437,6 @@ class StudentCheckoutFrontendTest extends TestCase
         $type = BookingType::factory()->paid()->create([
             'key' => 'paid_one_to_one',
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
         $usd = Currency::query()->firstOrCreate(['code' => 'USD'], ['name' => 'USD', 'symbol' => '$', 'numeric_code' => '840', 'minor_units' => 2, 'status' => 'active']);
         $this->seedStudentLessonPrice($type, $student->profile->country, $usd, 499.00);

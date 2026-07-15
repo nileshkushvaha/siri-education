@@ -30,11 +30,6 @@ final class PaidOneToOneType implements BookingTypeInterface
         return 60;
     }
 
-    public function maxAttendees(): ?int
-    {
-        return 1;
-    }
-
     public function requiresApproval(): bool
     {
         return false;

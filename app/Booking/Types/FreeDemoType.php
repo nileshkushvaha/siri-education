@@ -30,11 +30,6 @@ final class FreeDemoType implements BookingTypeInterface
         return 30;
     }
 
-    public function maxAttendees(): ?int
-    {
-        return 1;
-    }
-
     public function requiresApproval(): bool
     {
         return false;

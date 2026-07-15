@@ -16,7 +16,6 @@ final class TimeSlotResource extends JsonResource
         return [
             'starts_at' => $this->startsAt->toIso8601String(),
             'ends_at' => $this->endsAt->toIso8601String(),
-            'remaining_capacity' => $this->remainingCapacity,
         ];
     }
 }

@@ -78,7 +78,6 @@ final class BookingRepository implements BookingRepositoryInterface
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
-        ?string $sharedSlotTypeKey = null,
         int $bufferMinutes = 0,
     ): bool {
         $paddedStart = $startsAt->subMinutes(max(0, $bufferMinutes));
@@ -87,12 +86,6 @@ final class BookingRepository implements BookingRepositoryInterface
         return Booking::query()
             ->forInstructor($instructorId)
             ->overlapping($paddedStart, $paddedEnd, $ignoreBookingId)
-            ->when($sharedSlotTypeKey, fn (Builder $q, string $key) => $q->whereNot(
-                fn (Builder $shared) => $shared
-                    ->where('starts_at', $startsAt)
-                    ->where('ends_at', $endsAt)
-                    ->whereHas('type', fn (Builder $type) => $type->where('key', $key)),
-            ))
             ->lockForUpdate()
             ->exists();
     }
@@ -107,17 +100,6 @@ final class BookingRepository implements BookingRepositoryInterface
             ->whereHas('type', fn (Builder $type) => $type->where('key', $data->typeKey))
             ->lockForUpdate()
             ->exists();
-    }
-
-    public function studentCountForSlot(int $instructorId, string $typeKey, CarbonImmutable $startsAt): int
-    {
-        return Booking::query()
-            ->active()
-            ->forInstructor($instructorId)
-            ->where('starts_at', $startsAt)
-            ->whereHas('type', fn (Builder $type) => $type->where('key', $typeKey))
-            ->lockForUpdate()
-            ->count();
     }
 
     public function activeCountForDay(int $instructorId, CarbonImmutable $day, ?string $ignoreBookingId = null): int

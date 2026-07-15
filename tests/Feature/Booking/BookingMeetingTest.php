@@ -73,7 +73,7 @@ class BookingMeetingTest extends TestCase
 
         BookingType::query()->firstOrCreate(
             ['key' => 'free_demo'],
-            ['name' => 'Free Demo', 'duration_minutes' => 30, 'max_attendees' => 1, 'requires_approval' => false, 'is_paid' => false, 'is_active' => true],
+            ['name' => 'Free Demo', 'duration_minutes' => 30, 'requires_approval' => false, 'is_paid' => false, 'is_active' => true],
         );
 
         $this->enableMeetings();

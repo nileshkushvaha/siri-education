@@ -51,7 +51,7 @@ class BookingTypeForm
                 Section::make('Scheduling')
                     ->columnSpanFull()
                     ->schema([
-                        Grid::make(3)->schema([
+                        Grid::make(2)->schema([
                             TextInput::make('duration_minutes')
                                 ->numeric()
                                 ->required()
@@ -67,12 +67,6 @@ class BookingTypeForm
                                 ->suffix('min')
                                 ->placeholder('0')
                                 ->helperText('Gap enforced before and after each booking.'),
-                            TextInput::make('max_attendees')
-                                ->numeric()
-                                ->minValue(1)
-                                ->nullable()
-                                ->placeholder('Unlimited')
-                                ->helperText('Leave empty for unlimited (webinars).'),
                         ]),
                         Toggle::make('requires_approval')
                             ->helperText('When off, bookings auto-confirm.'),

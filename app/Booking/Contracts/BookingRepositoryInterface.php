@@ -44,18 +44,15 @@ interface BookingRepositoryInterface
     public function reschedule(Booking $booking, CarbonImmutable $startsAt, CarbonImmutable $endsAt): Booking;
 
     /**
-     * Overlap check against active bookings for the instructor. When
-     * $sharedSlotTypeKey is given, bookings of that type occupying the
-     * exact same slot are ignored (group types share a slot).
-     * $bufferMinutes pads the checked range on both sides (shared-slot
-     * equality still compares the unpadded slot).
+     * Overlap check against active bookings for the instructor.
+     * $bufferMinutes pads the checked range on both sides. Every slot
+     * is exclusive — any overlap blocks.
      */
     public function hasOverlap(
         int $instructorId,
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
-        ?string $sharedSlotTypeKey = null,
         int $bufferMinutes = 0,
     ): bool;
 
@@ -67,9 +64,6 @@ interface BookingRepositoryInterface
 
     /** Same student + instructor + type + start already actively booked. */
     public function duplicateExists(CreateBookingData $data): bool;
-
-    /** Students already booked into an exact slot — used for capacity caps. */
-    public function studentCountForSlot(int $instructorId, string $typeKey, CarbonImmutable $startsAt): int;
 
     /** @return Collection<int, Booking> active bookings intersecting [$from, $to) */
     public function activeBetween(int $instructorId, CarbonImmutable $from, CarbonImmutable $to): Collection;
@@ -129,8 +123,7 @@ interface BookingRepositoryInterface
 
     /**
      * Serialize booking mutations per instructor — the race-condition guard.
-     * Run duplicate/overlap/capacity re-checks and the insert inside
-     * the callback.
+     * Run duplicate/overlap re-checks and the insert inside the callback.
      *
      * @template TReturn
      *

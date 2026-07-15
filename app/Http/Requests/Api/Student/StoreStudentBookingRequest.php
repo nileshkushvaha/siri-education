@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\Student;
 
 use App\Booking\DTOs\RecurrenceData;
+use App\Booking\Enums\RecurrenceFrequency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,10 +26,13 @@ final class StoreStudentBookingRequest extends FormRequest
             'subject' => ['nullable', 'string', 'max:100', 'required_with:grade'],
             'grade' => ['nullable', 'integer', 'between:1,12', 'required_with:subject'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            // Recurrence (optional)
+            // Recurrence (optional) — required_if_accepted:recurring means a
+            // recurring request without an explicit frequency is rejected
+            // rather than silently defaulting to weekly (Phase 17U.3A).
             'recurring' => ['sometimes', 'boolean'],
             'occurrences' => ['required_if_accepted:recurring', 'integer', 'between:2,'.RecurrenceData::MAX_OCCURRENCES],
-            'interval_weeks' => ['sometimes', 'integer', 'between:1,4'],
+            'frequency' => ['required_if_accepted:recurring', Rule::enum(RecurrenceFrequency::class)],
+            'interval' => ['sometimes', 'integer', 'between:1,4'],
         ];
     }
 }

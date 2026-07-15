@@ -47,7 +47,6 @@ final class AvailabilityService implements AvailabilityServiceInterface
         $type = $this->types->requireActiveByKey($query->typeKey);
         $duration = $type->duration_minutes;
         $buffer = $type->buffer_minutes;
-        $sharesSlot = $type->max_attendees !== 1;
 
         $from = $query->from->utc();
         $to = $query->to->utc();
@@ -88,38 +87,14 @@ final class AvailabilityService implements AvailabilityServiceInterface
                     && $b->ends_at->greaterThan($start->subMinutes($buffer)),
             );
 
-            $sameSlotSameType = $overlapping->filter(
-                fn (Booking $b): bool => $b->booking_type_id === $type->id
-                    && $b->starts_at->equalTo($start)
-                    && $b->ends_at->equalTo($end),
-            );
-
-            if ($sharesSlot) {
-                // Foreign overlaps block; same-type same-slot bookings share.
-                if ($overlapping->count() > $sameSlotSameType->count()) {
-                    continue;
-                }
-
-                $remaining = $type->max_attendees === null
-                    ? null
-                    : $type->max_attendees - $sameSlotSameType->count();
-
-                if ($remaining !== null && $remaining < 1) {
-                    continue;
-                }
-            } else {
-                if ($overlapping->isNotEmpty()) {
-                    continue;
-                }
-
-                $remaining = 1;
+            if ($overlapping->isNotEmpty()) {
+                continue;
             }
 
             $slots->push(new TimeSlotData(
                 instructorId: $query->instructorId,
                 startsAt: $start->setTimezone($query->timezone),
                 endsAt: $end->setTimezone($query->timezone),
-                remainingCapacity: $remaining,
             ));
         }
 
@@ -131,7 +106,6 @@ final class AvailabilityService implements AvailabilityServiceInterface
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
-        ?string $sharedSlotTypeKey = null,
         int $bufferMinutes = 0,
     ): void {
         $startsAt = $startsAt->utc();
@@ -157,7 +131,7 @@ final class AvailabilityService implements AvailabilityServiceInterface
             throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
-        if ($this->bookings->hasOverlap($instructorId, $startsAt, $endsAt, $ignoreBookingId, $sharedSlotTypeKey, $bufferMinutes)) {
+        if ($this->bookings->hasOverlap($instructorId, $startsAt, $endsAt, $ignoreBookingId, $bufferMinutes)) {
             throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 

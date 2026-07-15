@@ -13,13 +13,17 @@ use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\DTOs\AssignmentCriteriaData;
 use App\Booking\DTOs\AvailabilityQueryData;
 use App\Booking\DTOs\CreateBookingData;
+use App\Booking\DTOs\RecurrenceData;
+use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
+use App\Models\BookingType;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Authenticated-student wizard booking flow (Phase 17U.3 — renamed
@@ -90,6 +94,53 @@ final class WizardBookingService implements WizardBookingServiceInterface
 
     public function book(WizardBookingData $data): Booking
     {
+        $this->assertAuthenticated();
+        $type = $this->types->requireActiveByKey($data->typeKey);
+        $teacherId = $this->resolveTeacher($data, $type);
+
+        return $this->bookings->request($this->occurrenceData($data, $type, $data->startsAt, $teacherId));
+    }
+
+    /**
+     * Free Demo never accepts recurrence (BookingException). The teacher
+     * for the first occurrence (locked, or auto-assigned) is reused for
+     * every later occurrence — a recurring series is with one instructor.
+     */
+    public function bookRecurring(WizardBookingData $data, RecurrenceData $recurrence): RecurringBookingResult
+    {
+        $this->assertAuthenticated();
+        $type = $this->types->requireActiveByKey($data->typeKey);
+
+        if (! $type->is_paid) {
+            throw new BookingException('Recurring sessions are only available for paid booking types.');
+        }
+
+        $teacherId = $this->resolveTeacher($data, $type);
+        $occurrences = max(2, min($recurrence->occurrences, RecurrenceData::MAX_OCCURRENCES));
+        $groupId = (string) Str::uuid();
+
+        $booked = new Collection;
+        $failures = [];
+
+        for ($i = 0; $i < $occurrences; $i++) {
+            $startsAt = $recurrence->nextStartsAt($data->startsAt, $i);
+
+            try {
+                $booked->push($this->bookings->request($this->occurrenceData($data, $type, $startsAt, $teacherId, ['recurring_group' => $groupId])));
+            } catch (BookingException $e) {
+                $failures[$startsAt->toIso8601String()] = $e->getMessage();
+            }
+        }
+
+        if ($booked->isEmpty()) {
+            throw new BookingException('None of the requested sessions could be booked: '.implode(' ', $failures));
+        }
+
+        return new RecurringBookingResult($groupId, $booked, $failures);
+    }
+
+    private function assertAuthenticated(): void
+    {
         // Defense-in-depth: the route itself already requires 'auth', but
         // this service is the single chokepoint every wizard submission
         // funnels through — it must refuse gracefully even if some future
@@ -98,9 +149,10 @@ final class WizardBookingService implements WizardBookingServiceInterface
         if (! auth()->check()) {
             throw new BookingException('Please log in or create an account to book a lesson.');
         }
+    }
 
-        $type = $this->types->requireActiveByKey($data->typeKey);
-
+    private function resolveTeacher(WizardBookingData $data, BookingType $type): int
+    {
         $criteria = new AssignmentCriteriaData(
             typeKey: $data->typeKey,
             subject: $data->subject,
@@ -115,21 +167,25 @@ final class WizardBookingService implements WizardBookingServiceInterface
                 throw new BookingException('This instructor is not available for the selected subject and grade.');
             }
 
-            $teacherId = $data->teacherId;
-        } else {
-            $teacherId = $this->assigner->assign($criteria)->id;
+            return $data->teacherId;
         }
 
-        return $this->bookings->request(new CreateBookingData(
+        return $this->assigner->assign($criteria)->id;
+    }
+
+    /** @param array<string, mixed> $extraMeta */
+    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, array $extraMeta = []): CreateBookingData
+    {
+        return new CreateBookingData(
             typeKey: $data->typeKey,
             studentId: auth()->id(),
             instructorId: $teacherId,
-            startsAt: $data->startsAt,
+            startsAt: $startsAt,
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
             notes: $data->notes,
-            meta: ['subject' => $data->subject, 'grade' => $data->grade],
-        ));
+            meta: ['subject' => $data->subject, 'grade' => $data->grade, ...$extraMeta],
+        );
     }
 
     /** @return Collection<int, TimeSlotData> */

@@ -8,9 +8,9 @@ use App\Booking\DTOs\CreateBookingData;
 use App\Booking\Exceptions\BookingException;
 
 /**
- * A single domain-validation rule (lead time, capacity, overlap, …).
- * Rules are resolved from the container, so they may inject
- * repositories or settings.
+ * A single domain-validation rule (lead time, overlap, …). Rules are
+ * resolved from the container, so they may inject repositories or
+ * settings.
  */
 interface BookingRuleInterface
 {

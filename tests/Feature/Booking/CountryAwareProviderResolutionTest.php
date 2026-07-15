@@ -91,7 +91,6 @@ class CountryAwareProviderResolutionTest extends TestCase
         $type = BookingType::factory()->paid()->create([
             'key' => $typeKey,
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
 
         // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
@@ -179,7 +178,6 @@ class CountryAwareProviderResolutionTest extends TestCase
         $type = BookingType::factory()->paid()->create([
             'key' => 'paid_one_to_one',
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
         $currency = Currency::query()->firstOrCreate(['code' => 'INR'], ['name' => 'INR', 'symbol' => '₹', 'numeric_code' => '356', 'minor_units' => 2, 'status' => 'active']);
         $this->seedStudentLessonPrice($type, $student->profile->country, $currency, 499.00);
@@ -213,7 +211,7 @@ class CountryAwareProviderResolutionTest extends TestCase
         $mock->shouldReceive('createOrder')->andReturn(['id' => 'order_NULL1', 'amount' => 49900, 'currency' => 'INR']);
         $this->app->instance(RazorpayGatewayClient::class, $mock);
 
-        $type = BookingType::factory()->paid()->create(['key' => 'paid_one_to_one', 'duration_minutes' => 60, 'max_attendees' => 1]);
+        $type = BookingType::factory()->paid()->create(['key' => 'paid_one_to_one', 'duration_minutes' => 60]);
         $currency = Currency::query()->firstOrCreate(['code' => 'INR'], ['name' => 'INR', 'symbol' => '₹', 'numeric_code' => '356', 'minor_units' => 2, 'status' => 'active']);
         $this->seedStudentLessonPrice($type, $student->profile->country, $currency, 499.00);
 
@@ -247,7 +245,6 @@ class CountryAwareProviderResolutionTest extends TestCase
         $type = BookingType::factory()->paid()->create([
             'key' => 'paid_one_to_one',
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
         $currency = Currency::query()->firstOrCreate(['code' => 'INR'], ['name' => 'INR', 'symbol' => '₹', 'numeric_code' => '356', 'minor_units' => 2, 'status' => 'active']);
         $this->seedStudentLessonPrice($type, $student->profile->country, $currency, 499.00);

@@ -35,17 +35,15 @@ final class TeacherAssignmentService implements TeacherAssignmentServiceInterfac
     public function assign(AssignmentCriteriaData $criteria): User
     {
         $type = $this->types->requireActiveByKey($criteria->typeKey);
-        $sharedSlotTypeKey = $type->max_attendees === 1 ? null : $type->key;
 
         $bookable = $this->candidates
             ->eligible($criteria)
-            ->filter(function (User $teacher) use ($criteria, $type, $sharedSlotTypeKey): bool {
+            ->filter(function (User $teacher) use ($criteria, $type): bool {
                 try {
                     $this->availability->ensureAvailable(
                         $teacher->id,
                         $criteria->startsAt,
                         $criteria->endsAt(),
-                        sharedSlotTypeKey: $sharedSlotTypeKey,
                         bufferMinutes: $type->buffer_minutes,
                     );
 

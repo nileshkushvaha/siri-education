@@ -70,11 +70,8 @@ use App\Booking\Services\PaymentProviderResolver;
 use App\Booking\Services\StudentBookingService;
 use App\Booking\Services\TeacherAssignmentService;
 use App\Booking\Services\WizardBookingService;
-use App\Booking\Types\CounsellingType;
 use App\Booking\Types\FreeDemoType;
 use App\Booking\Types\PaidOneToOneType;
-use App\Booking\Types\ParentMeetingType;
-use App\Booking\Types\WebinarType;
 use App\Booking\Validation\BookingValidationPipeline;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -219,9 +216,6 @@ class BookingServiceProvider extends ServiceProvider
         $this->app->afterResolving(BookingTypeRegistry::class, function (BookingTypeRegistry $registry, Application $app): void {
             $registry->register($app->make(FreeDemoType::class));
             $registry->register($app->make(PaidOneToOneType::class));
-            $registry->register($app->make(CounsellingType::class));
-            $registry->register($app->make(ParentMeetingType::class));
-            $registry->register($app->make(WebinarType::class));
         });
     }
 }

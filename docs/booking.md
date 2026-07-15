@@ -1,9 +1,8 @@
 # Booking Engine
 
-Enterprise booking foundation supporting multiple appointment types
-(Free Demo, Paid 1-to-1, Counselling, Parent Meeting, Webinar, and
-future custom types) behind one lifecycle, one registry, and one set
-of contracts.
+Enterprise booking foundation supporting the SRS Version 1 appointment
+types (Free Demo, Paid Lesson — single or recurring) behind one
+lifecycle, one registry, and one set of contracts.
 
 ## Status
 
@@ -379,16 +378,16 @@ Scores are clamped to [0, 1]; ties break on lowest user id.
 ## Concurrency & integrity
 
 - Every booking mutation that could race (create, reschedule) runs
-  inside `BookingRepository::withHostLock()` — a MySQL advisory lock
-  (`GET_LOCK`) serializing mutations per host — wrapping a
-  `DB::transaction` that re-checks duplicates, availability, and
-  capacity with `lockForUpdate()` before writing.
+  inside `BookingRepository::withInstructorLock()` — a MySQL advisory
+  lock (`GET_LOCK`) serializing mutations per instructor — wrapping a
+  `DB::transaction` that re-checks duplicates and availability with
+  `lockForUpdate()` before writing.
 - Validation runs twice by design: the pipeline fast-fails before the
   lock; the same checks re-run inside it (only the locked copy is
   authoritative).
-- Group types (`max_attendees ≠ 1`) share an exact slot; partial
-  overlaps and foreign-type overlaps always block. Capacity caps are
-  enforced via `attendeeCountForSlot`.
+- Every slot is exclusive (Phase 17U.3A) — one booking = one student +
+  one instructor + one slot. Any overlap, of any type, always blocks;
+  there is no shared-slot/group-capacity mechanism.
 - Booking window limits are admin-tunable via `BookingSettings`
   (`booking.min_lead_hours`, `booking.max_advance_days`), enforced by
   `BookingWindowRule`.
@@ -437,7 +436,6 @@ bigint. All datetimes are UTC.
 |---|---|---|
 | `booking_types` | Tunable settings per type | `key` links to the code driver; soft deletes; `is_active` |
 | `bookings` | Core booking record | Unique human `reference` (`BK-…`); payment snapshot (`price`, `currency`, `payment_reference`); meeting linkage (`meeting_provider`, `meeting_ref`, `meeting_url`); soft deletes; CHECK `starts_at < ends_at` |
-| `booking_guests` | Extra participants | **Reserved for future use** (webinar/parent-meeting participants) — schema + model + factory exist, no flow writes to it yet |
 | `teacher_availability` | Recurring weekly windows | `day_of_week` (Carbon numbering), optional effective date range; CHECK time range |
 | `teacher_unavailability` | One-off blackouts | CHECK time range; composite overlap index |
 | `booking_activities` | Domain lifecycle timeline | Complements — never replaces — the unified `activity_log` audit trail |
@@ -670,3 +668,62 @@ domain — not a data shape, not an API surface, not a UI path.
   Booking domain's own source — while explicitly protecting the
   legitimate, unrelated uses of "guest" (Laravel's `guest` middleware,
   the Activity Log's generic guest-actor system used by public forms).
+
+## Booking-type scope: Free Demo and Paid Lesson only (Phase 17U.3A)
+
+- **Version 1 booking modes**: exactly two — `free_demo` and
+  `paid_one_to_one` ("Paid Lesson"), each single-occurrence or
+  recurring (daily or weekly). `Counselling`, `Parent Meeting`, and
+  `Webinar` (type drivers, seed rows, admin options) are removed
+  entirely — no disabled seeds, reserved enum cases, or hidden admin
+  config. `BookingTypeRegistry` only ever contains the two approved
+  drivers; `BookingTypeSeeder` (idempotent, `firstOrCreate` per driver)
+  can therefore never create a third row through a fresh install.
+- **No group-capacity / shared-slot mechanism**: `booking_types.max_attendees`,
+  `BookingTypeInterface::maxAttendees()`, `sharedSlotTypeKey`
+  (threaded through `AvailabilityService`/`BookingRepository::hasOverlap()`),
+  `BookingService::sharedSlotKey()`/`assertCapacity()`, and
+  `BookingRepository::studentCountForSlot()` are all removed. Every
+  booking is now unconditionally exclusive — one instructor + one
+  exact time admits exactly one active booking, enforced by the same
+  overlap check `hasOverlap()` always ran, just without the shared-slot
+  carve-out. `TimeSlotData::$remainingCapacity` is gone; a returned
+  slot is simply bookable.
+- **Explicit wizard selection**: `BookingWizard::mount()` never
+  silently selects a type (the old `collect($this->types)->first()['key']`
+  default — DB/array ordering — is gone). The wizard's phase list
+  (`BookingWizard::phases()`) always starts with `mode` (Free Demo vs
+  Paid Lesson) unless a valid `?type=` query param was supplied (the
+  public instructor-profile CTAs pass one explicitly); a generic CTA
+  with no query params lands on the mode step with nothing
+  preselected. Paid types add a `billing_mode` phase (Single vs
+  Recurring) and, if recurring, a `frequency` phase (Daily/Weekly +
+  occurrence count) — Free Demo skips both and never enters payment.
+- **Recurring bookings**: `RecurrenceData` supports both `Daily` and
+  `Weekly` (`RecurrenceFrequency` enum), not weekly-only. The wizard's
+  `WizardBookingService::bookRecurring()` resolves the instructor once
+  (locked via deep-link, or auto-assigned for the first occurrence)
+  and reuses that same instructor for every later occurrence in the
+  series; occurrences that lose availability are skipped and reported
+  (`RecurringBookingResult::$failures`), never silently dropped.
+  `StudentBookingService::bookRecurring()` (the explicit-teacher
+  `/dashboard/bookings` API) shares the same `RecurrenceData` DTO.
+  Both reject recurrence on a non-paid type with a `BookingException`.
+- **Service-level validation, not just UI**: `BookingService::request()`
+  rejects any type key that isn't an active `booking_types` row —
+  structurally impossible for a removed type to reach it, since the
+  row never exists. `WizardBookingService`/`StudentBookingService`
+  reject recurrence on Free Demo directly, independent of the Livewire
+  validation that also prevents the UI from offering it.
+- **Admin restriction**: the Filament Booking Type form's `key` field
+  is a closed `Select` populated from `BookingTypeRegistry::options()`
+  (currently 2 entries) with a `unique` constraint — an admin cannot
+  type an arbitrary key or recreate a removed type. The capacity field
+  is gone from both the form and the table/CSV export.
+- **Permanent guard**: `tests/Architecture/BookingTypeScopeGuardTest.php`
+  fails the build if the Counselling/Parent-Meeting/Webinar drivers,
+  the capacity column/methods, or the shared-slot mechanism reappear,
+  and asserts the registry/seeded set is exactly `free_demo`,
+  `paid_one_to_one`. `tests/Feature/Booking/BookingTypeScopeTest.php`
+  covers the behavioral scope (explicit selection, CTAs, recurrence,
+  service-level rejection).

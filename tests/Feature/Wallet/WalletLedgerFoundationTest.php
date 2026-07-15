@@ -531,7 +531,7 @@ class WalletLedgerFoundationTest extends TestCase
 
         BookingType::query()->firstOrCreate(
             ['key' => 'free_demo'],
-            ['name' => 'Free Demo', 'duration_minutes' => 30, 'buffer_minutes' => 0, 'max_attendees' => 1, 'is_active' => true],
+            ['name' => 'Free Demo', 'duration_minutes' => 30, 'buffer_minutes' => 0, 'is_active' => true],
         );
 
         return $teacher;

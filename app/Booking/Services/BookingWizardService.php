@@ -7,8 +7,11 @@ namespace App\Booking\Services;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\Contracts\WizardBookingServiceInterface;
+use App\Booking\DTOs\RecurrenceData;
+use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
+use App\Booking\Enums\RecurrenceFrequency;
 use App\Enums\InstructorStatus;
 use App\Models\Booking;
 use App\Models\User;
@@ -58,7 +61,6 @@ final class BookingWizardService
             ->map(fn (TimeSlotData $slot): array => [
                 'starts_at' => $slot->startsAt->toIso8601String(),
                 'ends_at' => $slot->endsAt->toIso8601String(),
-                'remaining_capacity' => $slot->remainingCapacity,
             ])
             ->values();
     }
@@ -66,7 +68,22 @@ final class BookingWizardService
     /** @param array<string, mixed> $data */
     public function book(array $data): Booking
     {
-        return $this->bookings->book(new WizardBookingData(
+        return $this->bookings->book($this->wizardBookingData($data));
+    }
+
+    /** @param array<string, mixed> $data */
+    public function bookRecurring(array $data, string $frequency, int $occurrences): RecurringBookingResult
+    {
+        return $this->bookings->bookRecurring(
+            $this->wizardBookingData($data),
+            new RecurrenceData($occurrences, RecurrenceFrequency::from($frequency)),
+        );
+    }
+
+    /** @param array<string, mixed> $data */
+    private function wizardBookingData(array $data): WizardBookingData
+    {
+        return new WizardBookingData(
             typeKey: $data['type'],
             subject: $data['subject'],
             grade: (int) $data['grade'],
@@ -74,7 +91,7 @@ final class BookingWizardService
             timezone: $data['timezone'],
             notes: $data['notes'] ?? null,
             teacherId: $data['teacher_id'] ?? null,
-        ));
+        );
     }
 
     /** @return array{id:int,name:string}|null */
@@ -119,6 +136,21 @@ final class BookingWizardService
             'timezone' => $booking->timezone,
             'subject' => $booking->meta['subject'] ?? null,
             'grade' => $booking->meta['grade'] ?? null,
+            'my_bookings_url' => route('dashboard.my-bookings'),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function recurringResult(RecurringBookingResult $result): array
+    {
+        $bookings = $result->booked->map(fn (Booking $booking): array => $this->result($booking))->values();
+
+        return [
+            'recurring' => true,
+            'group_id' => $result->groupId,
+            'bookings' => $bookings->all(),
+            'failures' => $result->failures,
+            'requires_payment' => $bookings->contains(fn (array $b): bool => $b['requires_payment']),
             'my_bookings_url' => route('dashboard.my-bookings'),
         ];
     }

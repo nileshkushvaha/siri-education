@@ -44,7 +44,7 @@ class StudentEligibilityRuleTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30, 'max_attendees' => 1]);
+        BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30]);
     }
 
     private function slot(int $daysAhead = 3): CarbonImmutable

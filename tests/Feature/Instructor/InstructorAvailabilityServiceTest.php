@@ -95,7 +95,6 @@ class InstructorAvailabilityServiceTest extends TestCase
             'key' => 'free_demo',
             'duration_minutes' => 60,
             'buffer_minutes' => 0,
-            'max_attendees' => 1,
         ]);
 
         TeacherAvailability::factory()
@@ -132,7 +131,6 @@ class InstructorAvailabilityServiceTest extends TestCase
             'key' => 'free_demo',
             'duration_minutes' => 60,
             'buffer_minutes' => 0,
-            'max_attendees' => 1,
         ]);
         TeacherAvailability::factory()
             ->state([

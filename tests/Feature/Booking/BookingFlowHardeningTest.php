@@ -69,7 +69,6 @@ class BookingFlowHardeningTest extends TestCase
             'key' => 'free_demo',
             'duration_minutes' => 30,
             'buffer_minutes' => 0,
-            'max_attendees' => 1,
         ]);
     }
 

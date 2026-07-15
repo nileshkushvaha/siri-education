@@ -282,7 +282,7 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         }
 
         self::$sharedType ??= BookingType::query()->where('key', 'paid_one_to_one')->first()
-            ?? BookingType::factory()->paid()->create(['key' => 'paid_one_to_one', 'duration_minutes' => 60, 'max_attendees' => 1]);
+            ?? BookingType::factory()->paid()->create(['key' => 'paid_one_to_one', 'duration_minutes' => 60]);
 
         $currency = Currency::query()->where('code', 'USD')->firstOrFail();
         self::$sharedCountry ??= Country::factory()->create(['default_currency_id' => $currency->id]);

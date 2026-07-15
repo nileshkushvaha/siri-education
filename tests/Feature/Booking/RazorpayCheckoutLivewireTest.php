@@ -113,12 +113,14 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
         $component = Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
+            ->call('selectMode', 'paid_one_to_one')
             ->call('selectSubject', 'maths')
             ->call('selectGrade', 5)
+            ->call('selectBillingMode', 'single')
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
             ->call('submit')
-            ->assertSet('step', 6)
+            ->assertSet('step', 8)
             ->assertSee('Pay now');
 
         $bookingId = $component->get('bookingId');
@@ -151,12 +153,14 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
         Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
+            ->call('selectMode', 'paid_one_to_one')
             ->call('selectSubject', 'maths')
             ->call('selectGrade', 5)
+            ->call('selectBillingMode', 'single')
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
             ->call('submit')
-            ->assertSet('step', 5)
+            ->assertSet('step', 7)
             ->assertSee('price is not configured');
 
         $this->assertDatabaseMissing('bookings', ['instructor_id' => $this->teacher->id]);
@@ -176,8 +180,10 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
         $component = Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
+            ->call('selectMode', 'paid_one_to_one')
             ->call('selectSubject', 'maths')
             ->call('selectGrade', 5)
+            ->call('selectBillingMode', 'single')
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
             ->call('submit')

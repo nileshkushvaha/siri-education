@@ -90,7 +90,6 @@ trait CreatesStudentLessonPrices
         $type = BookingType::factory()->paid()->create([
             'key' => $key,
             'duration_minutes' => $durationMinutes,
-            'max_attendees' => 1,
         ]);
 
         $this->seedStudentLessonPrice($type, $country, $currency, $amount, $subjectSlug, $durationMinutes);

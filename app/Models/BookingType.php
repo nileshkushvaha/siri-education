@@ -17,7 +17,7 @@ use Spatie\Activitylog\Support\LogOptions;
 /**
  * Configurable settings for a booking type. `key` links the row to its
  * code driver (BookingTypeInterface) in BookingTypeRegistry — the row
- * holds tunable values (duration, capacity), the driver holds behavior.
+ * holds tunable values (duration), the driver holds behavior.
  *
  * Phase 10.2D-Cleanup: this model defines booking *behavior* only — it
  * does not own the student-facing price, and never did after Phase
@@ -34,7 +34,6 @@ class BookingType extends Model
         'name',
         'description',
         'duration_minutes',
-        'max_attendees',
         'buffer_minutes',
         'requires_approval',
         'is_paid',
@@ -49,7 +48,6 @@ class BookingType extends Model
     {
         return [
             'duration_minutes' => 'integer',
-            'max_attendees' => 'integer',
             'buffer_minutes' => 'integer',
             'requires_approval' => 'boolean',
             'is_paid' => 'boolean',
@@ -82,7 +80,7 @@ class BookingType extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'duration_minutes', 'max_attendees', 'requires_approval', 'is_paid', 'is_active'])
+            ->logOnly(['name', 'duration_minutes', 'requires_approval', 'is_paid', 'is_active'])
             ->useLogName('booking_types')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

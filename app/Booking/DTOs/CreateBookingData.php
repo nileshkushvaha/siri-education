@@ -15,7 +15,7 @@ use Carbon\CarbonImmutable;
  */
 final readonly class CreateBookingData
 {
-    /** @param array<string, mixed> $meta type-specific payload (e.g. webinar topic) */
+    /** @param array<string, mixed> $meta type-specific payload (subject, grade, recurring_group, …) */
     public function __construct(
         public string $typeKey,
         public int $studentId,

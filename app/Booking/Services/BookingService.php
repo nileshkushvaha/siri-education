@@ -26,7 +26,6 @@ use App\Booking\Events\BookingConfirmed;
 use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
 use App\Booking\Exceptions\DuplicateBookingException;
-use App\Booking\Exceptions\SlotUnavailableException;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Validation\BookingValidationPipeline;
 use App\Booking\Validation\Rules\BookingWindowRule;
@@ -35,7 +34,6 @@ use App\Booking\Validation\Rules\SelfBookingRule;
 use App\Booking\Validation\Rules\TeacherAvailabilityRule;
 use App\Booking\Validation\Rules\VerifiedActiveStudentRule;
 use App\Models\Booking;
-use App\Models\BookingType;
 use App\Models\User;
 use App\Settings\BookingSettings;
 use Illuminate\Support\Facades\Auth;
@@ -102,11 +100,8 @@ final class BookingService implements BookingServiceInterface
                     $data->instructorId,
                     $data->startsAt,
                     $data->endsAt(),
-                    sharedSlotTypeKey: $this->sharedSlotKey($type),
                     bufferMinutes: $type->buffer_minutes,
                 );
-
-                $this->assertCapacity($type, $data);
 
                 // Paid bookings are reservations: they hold the slot as
                 // Pending until payment settles (BookingPaymentService
@@ -198,7 +193,6 @@ final class BookingService implements BookingServiceInterface
                     $data->startsAt,
                     $endsAt,
                     ignoreBookingId: $booking->id,
-                    sharedSlotTypeKey: $this->sharedSlotKey($booking->type),
                     bufferMinutes: $booking->type->buffer_minutes,
                 );
 
@@ -278,29 +272,10 @@ final class BookingService implements BookingServiceInterface
         return $booking;
     }
 
-    /** Group types (max_attendees ≠ 1) share the exact slot. */
-    private function sharedSlotKey(BookingType $type): ?string
-    {
-        return $type->max_attendees === 1 ? null : $type->key;
-    }
-
     /** Only used for currency display fallback — never for authorization. */
     private function attendeeFor(CreateBookingData $data): ?User
     {
         return $data->studentId !== null ? User::find($data->studentId) : null;
-    }
-
-    private function assertCapacity(BookingType $type, CreateBookingData $data): void
-    {
-        if ($type->max_attendees === null || $type->max_attendees === 1) {
-            return; // uncapped, or covered by the overlap check
-        }
-
-        $taken = $this->bookings->studentCountForSlot($data->instructorId, $type->key, $data->startsAt);
-
-        if ($taken >= $type->max_attendees) {
-            throw SlotUnavailableException::for($data->instructorId, $data->startsAt);
-        }
     }
 
     /** @return array{BookingActor, ?int} */

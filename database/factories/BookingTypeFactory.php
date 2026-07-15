@@ -19,7 +19,6 @@ class BookingTypeFactory extends Factory
             'name' => ucfirst($name),
             'description' => fake()->optional()->sentence(),
             'duration_minutes' => fake()->randomElement([30, 45, 60, 90]),
-            'max_attendees' => 1,
             'requires_approval' => false,
             'is_paid' => false,
             'is_active' => true,

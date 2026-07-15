@@ -21,10 +21,7 @@ interface BookingTypeInterface
 
     public function defaultDurationMinutes(): int;
 
-    /** null = uncapped (e.g. webinars). */
-    public function maxAttendees(): ?int;
-
-    /** false = auto-confirm on request; true = host/admin must confirm. */
+    /** false = auto-confirm on request; true = instructor/admin must confirm. */
     public function requiresApproval(): bool;
 
     /**

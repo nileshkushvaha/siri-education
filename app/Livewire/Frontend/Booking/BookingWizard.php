@@ -6,6 +6,7 @@ namespace App\Livewire\Frontend\Booking;
 
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
+use App\Booking\DTOs\RecurrenceData;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
@@ -21,9 +22,28 @@ use Livewire\Component;
  * `/book` is auth-gated; renamed from the pre-authenticated-only
  * "guest wizard"). Student identity always comes from the session —
  * this component never collects or stores name/email/phone.
+ *
+ * Phase 17U.3A: the booking mode (Free Demo / Paid Lesson) is always
+ * an explicit choice — never a silent default from array/DB ordering.
+ * The step sequence is variable-length: `phases()` computes the
+ * ordered list of phases for the current selections (paid types add
+ * a Single/Recurring phase, recurring adds a Frequency phase), and
+ * `$step` is always that list's 1-indexed position.
  */
 final class BookingWizard extends Component
 {
+    private const array PHASE_LABELS = [
+        'mode' => 'Session type',
+        'subject' => 'Subject',
+        'grade' => 'Grade',
+        'billing_mode' => 'Single/Recurring',
+        'frequency' => 'Frequency',
+        'date' => 'Date',
+        'time' => 'Time',
+        'review' => 'Review',
+        'confirmed' => 'Confirmed',
+    ];
+
     public int $step = 1;
 
     /** @var list<array<string, mixed>> */
@@ -46,6 +66,12 @@ final class BookingWizard extends Component
     public ?string $subject = null;
 
     public ?int $grade = null;
+
+    public bool $recurring = false;
+
+    public ?string $frequency = null;
+
+    public int $occurrences = 4;
 
     public string $month = '';
 
@@ -106,7 +132,6 @@ final class BookingWizard extends Component
         $this->timezone = config('app.timezone', 'UTC');
         $this->month = now($this->timezone)->format('Y-m');
         $this->types = $this->wizard->bookingTypes()->all();
-        $this->type = collect($this->types)->first()['key'] ?? null;
         $this->subjects = $this->wizard->subjects()->all();
 
         $requestedType = request()->query('type');
@@ -114,10 +139,11 @@ final class BookingWizard extends Component
             $this->type = $requestedType;
         }
 
+        // Subject can only be pre-filled once a valid type was also
+        // supplied — subject alone never implies (or skips) a mode choice.
         $requestedSubject = request()->query('subject');
-        if (is_string($requestedSubject) && in_array($requestedSubject, $this->subjects, true)) {
+        if ($this->type !== null && is_string($requestedSubject) && in_array($requestedSubject, $this->subjects, true)) {
             $this->subject = $requestedSubject;
-            $this->step = 2;
         }
 
         $requestedInstructor = request()->query('instructor');
@@ -131,6 +157,12 @@ final class BookingWizard extends Component
                 $this->banner = 'This instructor is not available for public booking right now.';
             }
         }
+
+        // Jump ahead exactly as far as valid query params carry us —
+        // never further, never guessed from array/DB ordering.
+        if ($this->type !== null) {
+            $this->goToPhase($this->subject !== null ? 'grade' : 'subject');
+        }
     }
 
     public function setTimezone(string $timezone): void
@@ -140,12 +172,25 @@ final class BookingWizard extends Component
         }
     }
 
+    public function selectMode(string $type): void
+    {
+        if (! collect($this->types)->pluck('key')->contains($type)) {
+            return;
+        }
+
+        $this->type = $type;
+        $this->recurring = false;
+        $this->frequency = null;
+        $this->resetAvailability();
+        $this->goToPhase('subject');
+    }
+
     public function selectSubject(string $subject): void
     {
         $this->subject = $subject;
         $this->grade = null;
         $this->resetAvailability();
-        $this->goTo(2);
+        $this->goToPhase('grade');
     }
 
     public function selectGrade(int $grade): void
@@ -153,8 +198,46 @@ final class BookingWizard extends Component
         $this->grade = $grade;
         $this->resetAvailability();
         $this->validateSelection(['subject', 'grade']);
+
+        if ($this->isPaidType()) {
+            $this->goToPhase('billing_mode');
+
+            return;
+        }
+
         $this->loadDates();
-        $this->goTo(3);
+        $this->goToPhase('date');
+    }
+
+    public function selectBillingMode(string $mode): void
+    {
+        if (! in_array($mode, ['single', 'recurring'], true)) {
+            return;
+        }
+
+        $this->recurring = $mode === 'recurring';
+
+        if ($this->recurring) {
+            $this->goToPhase('frequency');
+
+            return;
+        }
+
+        $this->frequency = null;
+        $this->loadDates();
+        $this->goToPhase('date');
+    }
+
+    public function selectFrequency(string $frequency, int $occurrences): void
+    {
+        if (! in_array($frequency, ['daily', 'weekly'], true)) {
+            return;
+        }
+
+        $this->frequency = $frequency;
+        $this->occurrences = max(2, min($occurrences, RecurrenceData::MAX_OCCURRENCES));
+        $this->loadDates();
+        $this->goToPhase('date');
     }
 
     public function previousMonth(): void
@@ -175,35 +258,43 @@ final class BookingWizard extends Component
         $this->selectedSlotStartsAt = null;
         $this->validateSelection(['subject', 'grade', 'date']);
         $this->loadSlots();
-        $this->goTo(4);
+        $this->goToPhase('time');
     }
 
     public function selectSlot(string $startsAt): void
     {
         $this->selectedSlotStartsAt = $startsAt;
         $this->validateSelection(['selectedSlotStartsAt']);
-        $this->goTo(5);
+        $this->goToPhase('review');
     }
 
     public function submit(): void
     {
         $this->banner = '';
-        $this->validate($this->rulesForStep(5), [], $this->validationAttributes());
+        $this->validate($this->rulesForSubmit(), [], $this->validationAttributes());
+
+        $payload = [
+            'type' => $this->type,
+            'subject' => $this->subject,
+            'grade' => $this->grade,
+            'starts_at' => $this->selectedSlotStartsAt,
+            'timezone' => $this->timezone,
+            'notes' => filled($this->notes) ? $this->notes : null,
+            'teacher_id' => $this->lockedInstructorId,
+        ];
 
         try {
-            $booking = $this->wizard->book([
-                'type' => $this->type,
-                'subject' => $this->subject,
-                'grade' => $this->grade,
-                'starts_at' => $this->selectedSlotStartsAt,
-                'timezone' => $this->timezone,
-                'notes' => filled($this->notes) ? $this->notes : null,
-                'teacher_id' => $this->lockedInstructorId,
-            ]);
+            if ($this->recurring) {
+                $result = $this->wizard->bookRecurring($payload, (string) $this->frequency, $this->occurrences);
+                $this->bookingId = $result->booked->first()?->id;
+                $this->result = $this->wizard->recurringResult($result);
+            } else {
+                $booking = $this->wizard->book($payload);
+                $this->bookingId = $booking->id;
+                $this->result = $this->wizard->result($booking);
+            }
 
-            $this->bookingId = $booking->id;
-            $this->result = $this->wizard->result($booking);
-            $this->goTo(6);
+            $this->goToPhase('confirmed');
         } catch (BookingException $exception) {
             $this->banner = $exception->getMessage();
         }
@@ -352,15 +443,13 @@ final class BookingWizard extends Component
 
     public function back(): void
     {
-        if ($this->step > 1 && $this->step < 6) {
+        if ($this->step > 1 && $this->step < count($this->phases())) {
             $this->step--;
         }
     }
 
     public function restart(): void
     {
-        $defaultType = collect($this->types)->first()['key'] ?? null;
-
         $this->reset([
             'step',
             'dates',
@@ -368,6 +457,9 @@ final class BookingWizard extends Component
             'type',
             'subject',
             'grade',
+            'recurring',
+            'frequency',
+            'occurrences',
             'date',
             'selectedSlotStartsAt',
             'notes',
@@ -379,13 +471,16 @@ final class BookingWizard extends Component
         ]);
 
         $this->step = 1;
-        $this->type = $defaultType;
+        $this->occurrences = 4;
         $this->month = now($this->timezone)->format('Y-m');
     }
 
     public function render(): View
     {
+        $phases = $this->phases();
+
         return view('livewire.frontend.booking.booking-wizard', [
+            'currentPhase' => $phases[$this->step - 1] ?? 'mode',
             'selectedType' => collect($this->types)->firstWhere('key', $this->type),
             'selectedSlot' => collect($this->availableSlots)->firstWhere('starts_at', $this->selectedSlotStartsAt),
             'calendar' => $this->calendar(),
@@ -395,22 +490,29 @@ final class BookingWizard extends Component
         ]);
     }
 
+    private function isPaidType(): bool
+    {
+        return (bool) (collect($this->types)->firstWhere('key', $this->type)['is_paid'] ?? false);
+    }
+
     /** @param list<string> $fields */
     private function validateSelection(array $fields): void
     {
         $rules = [];
 
         foreach ($fields as $field) {
-            $rules[$field] = $this->rulesForStep(match ($field) {
-                'subject' => 1,
-                'grade' => 2,
-                'date' => 3,
-                'selectedSlotStartsAt' => 4,
-                default => 5,
-            })[$field];
+            $rules[$field] = $this->fieldRules()[$field];
         }
 
         $this->validate($rules, [], $this->validationAttributes());
+    }
+
+    private function resetAvailability(): void
+    {
+        $this->dates = [];
+        $this->availableSlots = [];
+        $this->date = null;
+        $this->selectedSlotStartsAt = null;
     }
 
     private function loadDates(): void
@@ -464,23 +566,33 @@ final class BookingWizard extends Component
     }
 
     /** @return array<string, mixed> */
-    private function rulesForStep(int $step): array
+    private function fieldRules(): array
     {
-        return match ($step) {
-            1 => ['subject' => ['required', 'string', Rule::in($this->subjects)]],
-            2 => ['grade' => ['required', 'integer', 'min:1', 'max:12']],
-            3 => ['date' => ['required', 'date_format:Y-m-d', Rule::in($this->dates)]],
-            4 => ['selectedSlotStartsAt' => ['required', 'string', Rule::in(collect($this->availableSlots)->pluck('starts_at')->all())]],
-            default => [
-                'type' => ['required', 'string', Rule::in(collect($this->types)->pluck('key')->all())],
-                'subject' => ['required', 'string', Rule::in($this->subjects)],
-                'grade' => ['required', 'integer', 'min:1', 'max:12'],
-                'date' => ['required', 'date_format:Y-m-d', Rule::in($this->dates)],
-                'selectedSlotStartsAt' => ['required', 'string', Rule::in(collect($this->availableSlots)->pluck('starts_at')->all())],
-                'timezone' => ['required', 'timezone'],
-                'notes' => ['nullable', 'string', 'max:1000'],
-            ],
-        };
+        return [
+            'type' => ['required', 'string', Rule::in(collect($this->types)->pluck('key')->all())],
+            'subject' => ['required', 'string', Rule::in($this->subjects)],
+            'grade' => ['required', 'integer', 'min:1', 'max:12'],
+            'date' => ['required', 'date_format:Y-m-d', Rule::in($this->dates)],
+            'selectedSlotStartsAt' => ['required', 'string', Rule::in(collect($this->availableSlots)->pluck('starts_at')->all())],
+            'timezone' => ['required', 'timezone'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'frequency' => ['required', Rule::in(['daily', 'weekly'])],
+            'occurrences' => ['required', 'integer', 'between:2,'.RecurrenceData::MAX_OCCURRENCES],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function rulesForSubmit(): array
+    {
+        $rules = collect($this->fieldRules())->only([
+            'type', 'subject', 'grade', 'date', 'selectedSlotStartsAt', 'timezone', 'notes',
+        ])->all();
+
+        if ($this->recurring) {
+            $rules += collect($this->fieldRules())->only(['frequency', 'occurrences'])->all();
+        }
+
+        return $rules;
     }
 
     /** @return array<string, string> */
@@ -492,17 +604,37 @@ final class BookingWizard extends Component
         ];
     }
 
-    private function goTo(int $step): void
+    /**
+     * The ordered phase list for the current selections. Paid types add
+     * a billing-mode choice; a recurring choice adds a frequency step.
+     * Free Demo and single-session Paid Lesson skip both.
+     *
+     * @return list<string>
+     */
+    private function phases(): array
     {
-        $this->step = $step;
+        $phases = ['mode', 'subject', 'grade'];
+
+        if ($this->isPaidType()) {
+            $phases[] = 'billing_mode';
+
+            if ($this->recurring) {
+                $phases[] = 'frequency';
+            }
+        }
+
+        $phases[] = 'date';
+        $phases[] = 'time';
+        $phases[] = 'review';
+        $phases[] = 'confirmed';
+
+        return $phases;
     }
 
-    private function resetAvailability(): void
+    private function goToPhase(string $phase): void
     {
-        $this->dates = [];
-        $this->availableSlots = [];
-        $this->date = null;
-        $this->selectedSlotStartsAt = null;
+        $index = array_search($phase, $this->phases(), true);
+        $this->step = $index === false ? 1 : $index + 1;
     }
 
     private function monthDate(): CarbonImmutable
@@ -539,13 +671,9 @@ final class BookingWizard extends Component
     /** @return list<array{number: int, label: string}> */
     private function steps(): array
     {
-        return [
-            ['number' => 1, 'label' => 'Subject'],
-            ['number' => 2, 'label' => 'Grade'],
-            ['number' => 3, 'label' => 'Date'],
-            ['number' => 4, 'label' => 'Time'],
-            ['number' => 5, 'label' => 'Review'],
-            ['number' => 6, 'label' => 'Confirmed'],
-        ];
+        return collect($this->phases())
+            ->values()
+            ->map(fn (string $phase, int $i): array => ['number' => $i + 1, 'label' => self::PHASE_LABELS[$phase]])
+            ->all();
     }
 }

@@ -21,10 +21,8 @@ interface AvailabilityServiceInterface
     public function slots(AvailabilityQueryData $query): Collection;
 
     /**
-     * When $sharedSlotTypeKey is given, existing bookings of that type
-     * occupying the exact same slot do not block (group types).
      * $bufferMinutes pads the slot on both sides against existing
-     * bookings.
+     * bookings. Every slot is exclusive — one booking occupies it.
      *
      * @throws SlotUnavailableException when the slot cannot be booked
      */
@@ -33,7 +31,6 @@ interface AvailabilityServiceInterface
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
-        ?string $sharedSlotTypeKey = null,
         int $bufferMinutes = 0,
     ): void;
 }

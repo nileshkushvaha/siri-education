@@ -47,7 +47,7 @@
         </header>
 
         <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div class="{{ ($step >= 2 && $step <= 5) ? 'lg:col-span-2' : 'lg:col-span-3' }}">
+            <div class="{{ ! in_array($currentPhase, ['mode', 'confirmed']) ? 'lg:col-span-2' : 'lg:col-span-3' }}">
                 <nav aria-label="Booking progress">
                     <ol class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" role="list">
                         @foreach($steps as $item)
@@ -77,13 +77,44 @@
                 </nav>
 
                 <section class="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 sm:p-8">
-                    <p class="sr-only" aria-live="polite">Step {{ $step }} of 6: {{ $steps[$step - 1]['label'] }}</p>
+                    <p class="sr-only" aria-live="polite">Step {{ $step }} of {{ count($steps) }}: {{ $steps[$step - 1]['label'] }}</p>
 
                     @if($banner)
                         <x-ui.alert type="error" class="mb-6">{{ $banner }}</x-ui.alert>
                     @endif
 
-                    @if($step === 1)
+                    @if($currentPhase === 'mode')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a session type</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Pick Free Demo to try a session, or Paid Lesson to book a full session with an instructor.</p>
+
+                            @if(empty($types))
+                                <x-ui.empty-state title="No session types available" description="Please check back soon." class="mt-6" />
+                            @else
+                                <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    @foreach($types as $typeOption)
+                                        <button
+                                            type="button"
+                                            wire:click="selectMode(@js($typeOption['key']))"
+                                            aria-pressed="{{ $type === $typeOption['key'] ? 'true' : 'false' }}"
+                                            class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                                {{ $type === $typeOption['key'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                        >
+                                            <span class="block text-lg font-bold text-white">{{ $typeOption['name'] }}</span>
+                                            @if($typeOption['description'])
+                                                <span class="mt-1 block text-sm text-slate-400">{{ $typeOption['description'] }}</span>
+                                            @endif
+                                            <span class="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide {{ $typeOption['is_paid'] ? 'bg-fuchsia-500/15 text-fuchsia-200' : 'bg-emerald-500/15 text-emerald-200' }}">
+                                                {{ $typeOption['is_paid'] ? 'Paid' : 'Free' }}
+                                            </span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'subject')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a subject</h2>
                             <p class="mt-2 text-sm leading-6 text-slate-400">Start with the area where the student needs support. You can refine the details later with the instructor.</p>
@@ -108,7 +139,7 @@
                         </div>
                     @endif
 
-                    @if($step === 2)
+                    @if($currentPhase === 'grade')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a grade</h2>
                             <p class="mt-2 text-sm leading-6 text-slate-400">This helps us match the session level to the student.</p>
@@ -130,7 +161,70 @@
                         </div>
                     @endif
 
-                    @if($step === 3)
+                    @if($currentPhase === 'billing_mode')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Single session or recurring?</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Recurring sessions repeat with the same instructor at the same time.</p>
+
+                            <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <button
+                                    type="button"
+                                    wire:click="selectBillingMode('single')"
+                                    aria-pressed="{{ ! $recurring ? 'true' : 'false' }}"
+                                    class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                        {{ ! $recurring ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                >
+                                    <span class="block text-lg font-bold text-white">Single session</span>
+                                    <span class="mt-1 block text-sm text-slate-400">Book one lesson at a time you choose.</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    wire:click="selectBillingMode('recurring')"
+                                    aria-pressed="{{ $recurring ? 'true' : 'false' }}"
+                                    class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                        {{ $recurring ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                >
+                                    <span class="block text-lg font-bold text-white">Recurring sessions</span>
+                                    <span class="mt-1 block text-sm text-slate-400">Repeat this lesson daily or weekly.</span>
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'frequency')
+                        <div
+                            x-data="{ frequency: @entangle('frequency').live, occurrences: @entangle('occurrences').live }"
+                        >
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">How often?</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Choose the pattern and how many sessions to book (up to {{ \App\Booking\DTOs\RecurrenceData::MAX_OCCURRENCES }}).</p>
+
+                            <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <button type="button" @click="frequency = 'daily'" aria-pressed="{{ $frequency === 'daily' ? 'true' : 'false' }}"
+                                    class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30"
+                                    :class="frequency === 'daily' ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10'">
+                                    <span class="block text-lg font-bold text-white">Daily</span>
+                                </button>
+                                <button type="button" @click="frequency = 'weekly'" aria-pressed="{{ $frequency === 'weekly' ? 'true' : 'false' }}"
+                                    class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30"
+                                    :class="frequency === 'weekly' ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10'">
+                                    <span class="block text-lg font-bold text-white">Weekly</span>
+                                </button>
+                            </div>
+
+                            <div class="mt-6">
+                                <label for="occurrences" class="mb-1.5 block text-sm font-medium text-slate-200">Number of sessions</label>
+                                <input id="occurrences" type="number" min="2" max="{{ \App\Booking\DTOs\RecurrenceData::MAX_OCCURRENCES }}" x-model.number="occurrences" class="block w-32 rounded-xl border border-white/10 bg-slate-900/70 px-3.5 py-2 text-sm text-slate-100 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20">
+                            </div>
+
+                            <div class="mt-6">
+                                <x-ui.button type="button" @click="$wire.selectFrequency(frequency, occurrences)" x-bind:disabled="!frequency">
+                                    Continue
+                                </x-ui.button>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'date')
                         <div>
                             <div class="flex items-start justify-between gap-4">
                                 <div>
@@ -190,7 +284,7 @@
                         </div>
                     @endif
 
-                    @if($step === 4)
+                    @if($currentPhase === 'time')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a time</h2>
                             <p class="mt-2 text-sm leading-6 text-slate-400">
@@ -216,9 +310,6 @@
                                                     {{ $selectedSlotStartsAt === $slotOption['starts_at'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
                                             >
                                                 <span class="block font-bold">{{ \Carbon\CarbonImmutable::parse($slotOption['starts_at'])->timezone($timezone)->format('g:i A') }}</span>
-                                                @if($slotOption['remaining_capacity'] !== null && $slotOption['remaining_capacity'] > 1)
-                                                    <span class="mt-1 block text-xs text-slate-400">{{ $slotOption['remaining_capacity'] }} seats left</span>
-                                                @endif
                                             </button>
                                         @endforeach
                                     </div>
@@ -227,7 +318,7 @@
                         </div>
                     @endif
 
-                    @if($step === 5)
+                    @if($currentPhase === 'review')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Review your booking</h2>
                             <p class="mt-2 text-sm leading-6 text-slate-400">Double-check everything below, add any notes, then confirm to book the session.</p>
@@ -241,7 +332,10 @@
                                 @if($lockedInstructorName)
                                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructor</dt><dd class="mt-1 font-semibold text-white">{{ $lockedInstructorName }}</dd></div>
                                 @endif
-                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</dt><dd class="mt-1 font-semibold text-white">{{ $date ? \Carbon\CarbonImmutable::parse($date)->format('M j, Y') : '' }}</dd></div>
+                                @if($recurring)
+                                    <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Recurrence</dt><dd class="mt-1 font-semibold capitalize text-white">{{ $frequency }}, {{ $occurrences }} sessions</dd></div>
+                                @endif
+                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $recurring ? 'First date' : 'Date' }}</dt><dd class="mt-1 font-semibold text-white">{{ $date ? \Carbon\CarbonImmutable::parse($date)->format('M j, Y') : '' }}</dd></div>
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Time</dt><dd class="mt-1 font-semibold text-white">{{ $selectedSlotStartsAt ? \Carbon\CarbonImmutable::parse($selectedSlotStartsAt)->timezone($timezone)->format('g:i A') : '' }}</dd></div>
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Student</dt><dd class="mt-1 font-semibold text-white">{{ auth()->user()?->name }}</dd></div>
                             </dl>
@@ -261,7 +355,46 @@
                         </div>
                     @endif
 
-                    @if($step === 6 && $result)
+                    @if($currentPhase === 'confirmed' && $result && ($result['recurring'] ?? false))
+                        <div class="text-center">
+                            <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-200">
+                                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                            </span>
+                            <h2 data-booking-step-title tabindex="-1" class="mt-4 text-2xl font-black text-white outline-none">{{ count($result['bookings']) }} of {{ count($result['bookings']) + count($result['failures']) }} sessions booked</h2>
+                            <p class="mt-2 text-sm text-slate-400">We have sent a confirmation to {{ auth()->user()?->email }}.</p>
+
+                            <dl class="mx-auto mt-6 max-w-md space-y-3 rounded-2xl bg-slate-900/70 p-5 text-left text-sm ring-1 ring-white/10">
+                                @foreach($result['bookings'] as $occurrence)
+                                    <div class="flex justify-between gap-4 border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                                        <dt class="text-slate-400">{{ \Carbon\CarbonImmutable::parse($occurrence['starts_at'])->timezone($occurrence['timezone'])->format('M j, Y g:i A') }}</dt>
+                                        <dd class="font-semibold text-white">{{ $occurrence['payment_status'] === 'paid' ? 'Paid' : ($occurrence['requires_payment'] ? 'Payment due' : $occurrence['status_label']) }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+
+                            @if(! empty($result['failures']))
+                                <div class="mx-auto mt-4 max-w-md rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-left text-xs text-amber-200">
+                                    <p class="font-bold uppercase tracking-wide">Some sessions could not be booked</p>
+                                    <ul class="mt-2 list-disc space-y-1 pl-4">
+                                        @foreach($result['failures'] as $when => $reason)
+                                            <li>{{ \Carbon\CarbonImmutable::parse($when)->format('M j, Y g:i A') }} — {{ $reason }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            @if($result['requires_payment'])
+                                <p class="mx-auto mt-4 max-w-md text-xs text-indigo-200">One or more sessions are reserved pending payment — pay for each from My Bookings.</p>
+                            @endif
+
+                            <div class="mt-6 flex flex-wrap justify-center gap-3">
+                                <x-ui.button href="{{ $result['my_bookings_url'] }}">View my bookings</x-ui.button>
+                                <x-ui.button type="button" variant="ghost" wire:click="restart">Book another session</x-ui.button>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'confirmed' && $result && ! ($result['recurring'] ?? false))
                         <div class="text-center">
                             <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-200">
                                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
@@ -325,7 +458,7 @@
                         </div>
                     @endif
 
-                    @if($step > 1 && $step < 6)
+                    @if(! in_array($currentPhase, ['mode', 'confirmed']))
                         <div class="mt-8 border-t border-white/10 pt-5">
                             <button type="button" wire:click="back" class="text-sm font-semibold text-slate-400 transition hover:text-white focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30">
                                 &larr; Back
@@ -335,7 +468,7 @@
                 </section>
             </div>
 
-            @if($step >= 2 && $step <= 5)
+            @if(! in_array($currentPhase, ['mode', 'confirmed']))
                 <aside class="lg:col-span-1">
                     <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 sm:p-6 lg:sticky lg:top-8">
                         <h2 class="text-xs font-bold uppercase tracking-wide text-slate-400">Your booking so far</h2>

@@ -65,7 +65,6 @@ class StudentLessonPriceResolverTest extends TestCase
             'key' => 'paid_one_to_one',
             'is_paid' => true,
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
 
         $category = AcademicCategory::create(['name' => 'Mathematics', 'slug' => 'mathematics']);
@@ -463,9 +462,9 @@ class StudentLessonPriceResolverTest extends TestCase
 
     public function test_paid_booking_with_no_subject_grade_context_is_rejected_not_silently_allowed(): void
     {
-        // Non-subject booking types (counselling/parent_meeting/webinar)
-        // have no meta subject/grade at all — there is no legacy
-        // booking_types.price to fall back to for them anymore either.
+        // A booking with no subject/grade context has no meta to key
+        // pricing off of — there is no legacy booking_types.price to
+        // fall back to for it either.
         StudentLessonPrice::factory()->create([
             'booking_type_id' => $this->paidType->id,
             'subject_id' => $this->subject->id,
@@ -488,7 +487,7 @@ class StudentLessonPriceResolverTest extends TestCase
 
     public function test_demo_free_booking_remains_free(): void
     {
-        $freeType = BookingType::factory()->create(['key' => 'free_demo', 'is_paid' => false, 'duration_minutes' => 30, 'max_attendees' => 1]);
+        $freeType = BookingType::factory()->create(['key' => 'free_demo', 'is_paid' => false, 'duration_minutes' => 30]);
 
         $price = app(BookingPriceCalculator::class)->calculate($freeType);
 

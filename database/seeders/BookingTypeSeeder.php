@@ -23,7 +23,6 @@ class BookingTypeSeeder extends Seeder
                 [
                     'name' => $driver->label(),
                     'duration_minutes' => $driver->defaultDurationMinutes(),
-                    'max_attendees' => $driver->maxAttendees(),
                     'requires_approval' => $driver->requiresApproval(),
                     'is_paid' => $driver->isPaid(),
                     'is_active' => true,

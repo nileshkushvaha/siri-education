@@ -10,6 +10,7 @@ use App\Booking\Contracts\StudentBookingServiceInterface;
 use App\Booking\DTOs\AvailabilityQueryData;
 use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\StudentBookingData;
+use App\Booking\Enums\RecurrenceFrequency;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Student\StoreStudentBookingRequest;
 use App\Http\Requests\Api\Student\StudentSlotsRequest;
@@ -96,7 +97,8 @@ final class StudentBookingController extends Controller
         if ($request->boolean('recurring')) {
             $result = $this->studentBookings->bookRecurring($data, new RecurrenceData(
                 occurrences: (int) $request->validated('occurrences'),
-                intervalWeeks: (int) $request->validated('interval_weeks', 1),
+                frequency: RecurrenceFrequency::from($request->validated('frequency')),
+                interval: (int) $request->validated('interval', 1),
             ));
 
             return StudentBookingResource::collection($result->booked)

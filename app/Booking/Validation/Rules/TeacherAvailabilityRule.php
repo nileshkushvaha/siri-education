@@ -30,7 +30,6 @@ final class TeacherAvailabilityRule implements BookingRuleInterface
             $data->instructorId,
             $data->startsAt,
             $data->endsAt(),
-            sharedSlotTypeKey: $type->maxAttendees() === 1 ? null : $type->key(),
             bufferMinutes: $row->buffer_minutes,
         );
     }

@@ -55,7 +55,6 @@ class BookingWizardLivewireTest extends TestCase
             'key' => 'free_demo',
             'name' => 'Free Demo',
             'duration_minutes' => 30,
-            'max_attendees' => 1,
             'sort_order' => 1,
         ]);
 
@@ -91,16 +90,18 @@ class BookingWizardLivewireTest extends TestCase
 
         Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
-            ->call('selectSubject', 'maths')
+            ->call('selectMode', 'free_demo')
             ->assertSet('step', 2)
-            ->call('selectGrade', 5)
+            ->call('selectSubject', 'maths')
             ->assertSet('step', 3)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
+            ->call('selectGrade', 5)
             ->assertSet('step', 4)
-            ->call('selectSlot', $start)
+            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->assertSet('step', 5)
-            ->call('submit')
+            ->call('selectSlot', $start)
             ->assertSet('step', 6)
+            ->call('submit')
+            ->assertSet('step', 7)
             ->assertSee('Booking confirmed');
 
         $this->assertDatabaseHas('bookings', [
@@ -122,12 +123,13 @@ class BookingWizardLivewireTest extends TestCase
             ->test('frontend.booking.booking-wizard')
             ->assertSet('lockedInstructorId', $this->teacher->id)
             ->assertSet('lockedInstructorName', $this->teacher->name)
+            ->assertSet('type', 'free_demo')
             ->assertSet('subject', 'maths')
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
             ->call('submit')
-            ->assertSet('step', 6);
+            ->assertSet('step', 7);
 
         $this->assertDatabaseHas('bookings', [
             'student_id' => $student->id,
@@ -146,12 +148,13 @@ class BookingWizardLivewireTest extends TestCase
         $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
 
         Livewire::test('frontend.booking.booking-wizard')
+            ->call('selectMode', 'free_demo')
             ->call('selectSubject', 'maths')
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
             ->call('submit')
-            ->assertSet('step', 5)
+            ->assertSet('step', 6)
             ->assertSet('banner', 'Please log in or create an account to book a lesson.');
 
         $this->assertDatabaseCount('bookings', 0);

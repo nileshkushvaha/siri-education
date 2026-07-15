@@ -49,7 +49,6 @@ class StudentBookingTest extends TestCase
         $this->paidType = BookingType::factory()->paid()->create([
             'key' => 'paid_one_to_one',
             'duration_minutes' => 60,
-            'max_attendees' => 1,
         ]);
 
         // academic_level_id: null — applies to every grade, so every
@@ -189,6 +188,7 @@ class StudentBookingTest extends TestCase
                 'grade' => 5,
                 'recurring' => true,
                 'occurrences' => 4,
+                'frequency' => 'weekly',
             ])
             ->assertCreated();
 
@@ -216,7 +216,7 @@ class StudentBookingTest extends TestCase
         $this->actingAs($this->student)
             ->getJson('/dashboard/bookings/slots?type=paid_one_to_one&teacher_id='.$this->teacher->id.'&date='.now()->addDays(3)->toDateString())
             ->assertOk()
-            ->assertJsonStructure(['data' => [['starts_at', 'ends_at', 'remaining_capacity']]]);
+            ->assertJsonStructure(['data' => [['starts_at', 'ends_at']]]);
     }
 
     public function test_guests_cannot_access_student_endpoints(): void

@@ -400,7 +400,6 @@ final class BookingHistory extends Component
             timezone: $timezone,
         ))->map(fn ($slot): array => [
             'starts_at' => $slot->startsAt->toIso8601String(),
-            'remaining_capacity' => $slot->remainingCapacity,
         ])->values()->all();
     }
 }

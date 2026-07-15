@@ -638,7 +638,6 @@ class InstructorAvailabilityHardeningTest extends TestCase
             'key' => 'free_demo',
             'duration_minutes' => 60,
             'buffer_minutes' => 0,
-            'max_attendees' => 1,
         ]);
 
         $bookingsBefore = Booking::count();
@@ -715,7 +714,6 @@ class InstructorAvailabilityHardeningTest extends TestCase
             'key' => 'free_demo',
             'duration_minutes' => 60,
             'buffer_minutes' => 0,
-            'max_attendees' => 1,
         ]);
 
         TeacherAvailability::factory()->create([

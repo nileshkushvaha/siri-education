@@ -99,15 +99,20 @@ final class StudentBookingService implements StudentBookingServiceInterface
 
     public function bookRecurring(StudentBookingData $data, RecurrenceData $recurrence): RecurringBookingResult
     {
-        $occurrences = max(1, min($recurrence->occurrences, RecurrenceData::MAX_OCCURRENCES));
-        $interval = max(1, $recurrence->intervalWeeks);
+        $type = $this->types->requireActiveByKey($data->typeKey);
+
+        if (! $type->is_paid) {
+            throw new BookingException('Recurring sessions are only available for paid booking types.');
+        }
+
+        $occurrences = max(2, min($recurrence->occurrences, RecurrenceData::MAX_OCCURRENCES));
         $groupId = (string) Str::uuid();
 
         $booked = new Collection;
         $failures = [];
 
         for ($i = 0; $i < $occurrences; $i++) {
-            $startsAt = $data->startsAt->addWeeks($i * $interval);
+            $startsAt = $recurrence->nextStartsAt($data->startsAt, $i);
 
             try {
                 $booked->push($this->bookOccurrence($data, $startsAt, ['recurring_group' => $groupId]));

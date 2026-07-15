@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\WithdrawalAllocationStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\InstructorEarningFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -28,7 +29,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class InstructorEarning extends Model
 {
     /** @use HasFactory<InstructorEarningFactory> */
-    use HasFactory, HasUuids, LogsActivity;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
 
     protected $fillable = [
         'lesson_id',
@@ -84,9 +85,10 @@ class InstructorEarning extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function instructor(): BelongsTo

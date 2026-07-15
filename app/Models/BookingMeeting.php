@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Booking\Enums\MeetingStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\BookingMeetingFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,11 +15,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * One meeting per booking (unique booking_id). Never stores raw
  * provider payloads — only a sanitized `metadata` snapshot.
+ *
+ * Meeting history is booking history (Phase 17U.2 §1) — never
+ * hard-deleted; cancellation transitions `status` instead. See
+ * PreventsHardDeletion.
  */
 class BookingMeeting extends Model
 {
     /** @use HasFactory<BookingMeetingFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'booking_id',

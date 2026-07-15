@@ -7,9 +7,11 @@ namespace App\Providers;
 use App\Models\LessonReview;
 use App\Models\LessonReviewEligibility;
 use App\Models\ReviewReport;
+use App\Models\ReviewTag;
 use App\Policies\LessonReviewEligibilityPolicy;
 use App\Policies\LessonReviewPolicy;
 use App\Policies\ReviewReportPolicy;
+use App\Policies\ReviewTagPolicy;
 use App\Reviews\Contracts\InstructorQualityInsightsServiceInterface;
 use App\Reviews\Contracts\InstructorRatingAggregateRepositoryInterface;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
@@ -66,5 +68,6 @@ class ReviewServiceProvider extends ServiceProvider
         Gate::policy(LessonReviewEligibility::class, LessonReviewEligibilityPolicy::class);
         Gate::policy(LessonReview::class, LessonReviewPolicy::class);
         Gate::policy(ReviewReport::class, ReviewReportPolicy::class);
+        Gate::policy(ReviewTag::class, ReviewTagPolicy::class);
     }
 }

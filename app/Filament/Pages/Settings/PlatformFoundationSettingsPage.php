@@ -107,7 +107,6 @@ class PlatformFoundationSettingsPage extends Page
             'referral_enabled' => $features->referral_enabled,
             'waitlist_enabled' => $features->waitlist_enabled,
             'homework_enabled' => $features->homework_enabled,
-            'reviews_enabled' => $features->reviews_enabled,
             'recording_enabled' => $features->recording_enabled,
         ]);
     }
@@ -207,7 +206,7 @@ class PlatformFoundationSettingsPage extends Page
                     ]),
 
                 Section::make('Feature Flags')
-                    ->description('Global module switches — the single on/off source of truth for each feature. Domain sections above only hold configuration, not the switch itself.')
+                    ->description('Global module switches — the single on/off source of truth for each feature. Domain sections above only hold configuration, not the switch itself. Reviews has its own canonical switch under Reviews & Quality Settings, not here.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(4)->schema([
@@ -216,7 +215,6 @@ class PlatformFoundationSettingsPage extends Page
                             Toggle::make('referral_enabled')->label('Referral'),
                             Toggle::make('waitlist_enabled')->label('Waitlist'),
                             Toggle::make('homework_enabled')->label('Homework'),
-                            Toggle::make('reviews_enabled')->label('Reviews'),
                             Toggle::make('recording_enabled')->label('Recording'),
                         ]),
                     ]),
@@ -342,7 +340,6 @@ class PlatformFoundationSettingsPage extends Page
         $settings->referral_enabled = (bool) ($data['referral_enabled'] ?? false);
         $settings->waitlist_enabled = (bool) ($data['waitlist_enabled'] ?? false);
         $settings->homework_enabled = (bool) ($data['homework_enabled'] ?? false);
-        $settings->reviews_enabled = (bool) ($data['reviews_enabled'] ?? false);
         $settings->recording_enabled = (bool) ($data['recording_enabled'] ?? false);
         $settings->save();
         $this->logSettingsUpdate('settings', $settings, $before);

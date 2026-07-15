@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Lessons\Enums\LessonParticipant;
 use App\Lessons\Enums\LessonReviewStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class LessonAttendanceConfirmation extends Model
 {
-    use HasUuids;
+    use HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'lesson_id',

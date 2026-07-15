@@ -57,9 +57,10 @@ class InstructorCompensationException extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function instructor(): BelongsTo

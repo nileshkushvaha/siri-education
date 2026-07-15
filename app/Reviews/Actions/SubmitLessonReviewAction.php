@@ -70,6 +70,16 @@ final class SubmitLessonReviewAction
                 ));
             }
 
+            // Master switch (Phase 17U.2 §3): even an eligibility window
+            // opened before reviews were disabled must stop accepting a
+            // genuinely new submission the instant the switch flips off.
+            // The idempotent "already used" branch above runs first, so
+            // this never blocks a harmless retry of a submission that
+            // already happened while reviews were enabled.
+            if (! $this->settings->reviews_enabled) {
+                throw new ReviewEligibilityException('Reviews are currently disabled.');
+            }
+
             $this->assertStillValid($eligibility, $student);
 
             $sanitized = ReviewContentSanitizer::sanitize($data->content);

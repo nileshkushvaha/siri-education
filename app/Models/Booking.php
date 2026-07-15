@@ -8,6 +8,7 @@ use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingLocationType;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -23,7 +24,7 @@ use Spatie\Activitylog\Support\LogOptions;
 
 class Booking extends Model
 {
-    use HasFactory, HasUuids, LogsActivity, SoftDeletes;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion, SoftDeletes;
 
     protected $fillable = [
         'reference',

@@ -8,6 +8,7 @@ use App\Earnings\Enums\LessonFinancialDispositionStatus;
 use App\Earnings\Enums\LessonInstructorDisposition;
 use App\Earnings\Enums\LessonStudentDisposition;
 use App\Lessons\Enums\LessonOutcome;
+use App\Support\Concerns\PreventsHardDeletion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class LessonFinancialDisposition extends Model
 {
-    use HasUuids;
+    use HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'lesson_id',
@@ -65,9 +66,10 @@ class LessonFinancialDisposition extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function earning(): BelongsTo

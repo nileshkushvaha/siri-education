@@ -9,6 +9,7 @@ use App\Quality\Enums\InstructorQualityAlertSeverity;
 use App\Quality\Enums\InstructorQualityAlertStatus;
 use App\Quality\Enums\InstructorQualityAlertType;
 use App\Quality\Enums\QualityAlertSourceType;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\InstructorQualityAlertFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,7 +31,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class InstructorQualityAlert extends Model
 {
     /** @use HasFactory<InstructorQualityAlertFactory> */
-    use HasFactory, HasUuids, LogsActivity;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
 
     protected $table = 'quality_alerts';
 

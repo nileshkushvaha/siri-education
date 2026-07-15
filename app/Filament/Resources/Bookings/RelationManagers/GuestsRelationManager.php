@@ -6,7 +6,6 @@ namespace App\Filament\Resources\Bookings\RelationManagers;
 
 use App\Booking\Enums\BookingGuestStatus;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -53,7 +52,6 @@ class GuestsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
             ]);
     }
 }

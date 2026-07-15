@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Reviews\Enums\ReviewReportReason;
 use App\Reviews\Enums\ReviewReportResolutionAction;
 use App\Reviews\Enums\ReviewReportStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\ReviewReportFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,7 +28,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class ReviewReport extends Model
 {
     /** @use HasFactory<ReviewReportFactory> */
-    use HasFactory, HasUuids, LogsActivity;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
 
     protected $fillable = [
         'review_id',

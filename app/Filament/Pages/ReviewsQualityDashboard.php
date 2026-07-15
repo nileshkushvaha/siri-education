@@ -17,13 +17,14 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 
 /**
- * Read-only administrator dashboard for review moderation workload,
- * review reports, instructor quality alerts, and instructor rating
- * health. Every action a section widget offers (moderate/resolve/
- * dismiss/assign) delegates to the existing
- * ReviewModerationService/ReviewReportService/
- * InstructorQualityAlertService — this page and its widgets never
- * write to a review/report/alert row directly.
+ * Administrator dashboard for review moderation workload, review
+ * reports, instructor quality alerts, and instructor rating health.
+ * As of Phase 17U.2 §§8-9, ModerationQueueWidget and ReportQueueWidget
+ * carry real mutation actions (approve/reject/hide/restore/archive;
+ * start-review/uphold/dismiss/mark-duplicate) — every one of them
+ * delegates exclusively to ReviewModerationService/ReviewReportService;
+ * this page and its widgets never write to a review/report/alert row
+ * directly themselves.
  */
 class ReviewsQualityDashboard extends Page
 {

@@ -43,6 +43,13 @@ class ReviewPermissionSeeder extends Seeder
         // instructor-quality-alert visibility).
         'ViewQualityDashboard', 'ViewReviewMetrics', 'ViewReviewModerationQueue',
         'ViewReviewReports', 'ViewInstructorQualityAlerts',
+        // Phase 17U.2 §§4,7,10 — Reviews & Quality Settings page and
+        // Review Tags administration. View and mutate are always two
+        // distinct permissions here, same as every model-CRUD pair
+        // above: seeing the settings/tags page never implies the
+        // ability to change it.
+        'settings.reviews_quality.view', 'settings.reviews_quality.update',
+        'ViewAny:ReviewTag', 'View:ReviewTag', 'Create:ReviewTag', 'Update:ReviewTag',
     ];
 
     private const array REPORTER_PERMISSIONS = [

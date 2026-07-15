@@ -36,16 +36,25 @@ class LessonReviewPolicy
             || $this->hasPermission($user, 'View:LessonReview');
     }
 
-    /** Approve, reject, restore, or archive — staff only, no student/instructor bypass. */
+    /**
+     * Approve, reject, restore, or archive — staff only, no student
+     * bypass. Students never hold `Moderate:LessonReview` at all, so
+     * they're denied structurally; the instructor-identity exclusion
+     * (Phase 17U.2 §10) is defense-in-depth for a future role change
+     * that might otherwise let an instructor moderate a review about
+     * their own teaching, mirroring ReviewReportPolicy::resolve().
+     */
     public function moderate(User $user, LessonReview $review): bool
     {
-        return $this->hasPermission($user, 'Moderate:LessonReview');
+        return $user->id !== $review->instructor_id
+            && $this->hasPermission($user, 'Moderate:LessonReview');
     }
 
-    /** Hide a live published review — separately permissioned, staff only. */
+    /** Hide a live published review — separately permissioned, staff only; same instructor exclusion as moderate(). */
     public function hide(User $user, LessonReview $review): bool
     {
-        return $this->hasPermission($user, 'Hide:LessonReview');
+        return $user->id !== $review->instructor_id
+            && $this->hasPermission($user, 'Hide:LessonReview');
     }
 
     /** Any authenticated, active user may report an eligible public review — not staff-only, unlike every other ability here. */

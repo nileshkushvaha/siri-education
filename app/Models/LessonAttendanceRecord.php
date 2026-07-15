@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Lessons\Enums\AttendanceSource;
 use App\Lessons\Enums\LessonParticipant;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\LessonAttendanceRecordFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class LessonAttendanceRecord extends Model
 {
     /** @use HasFactory<LessonAttendanceRecordFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'lesson_id',
@@ -70,9 +71,10 @@ class LessonAttendanceRecord extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function meeting(): BelongsTo

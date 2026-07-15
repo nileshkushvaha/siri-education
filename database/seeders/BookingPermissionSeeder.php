@@ -15,14 +15,21 @@ use Spatie\Permission\PermissionRegistrar;
  * required after deploy: policies fall back to "deny" for permissions
  * that do not exist, so without this only super_admin can reach the
  * booking admin.
+ *
+ * Phase 17U.1: `Archive:Booking` replaces `Delete:Booking` — a
+ * booking is never deleted, only administratively archived
+ * (soft-deleted) through BookingArchivalService. `ForceDelete:Booking`
+ * is deliberately never seeded or granted to anyone, including
+ * super_admin — BookingPolicy::forceDelete() denies unconditionally
+ * regardless of permission, so granting this permission would be
+ * meaningless even if present.
  */
 class BookingPermissionSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /** Everything except force-delete — that stays super_admin-only. */
     private const array MANAGER_PERMISSIONS = [
-        'ViewAny:Booking', 'View:Booking', 'Create:Booking', 'Update:Booking', 'Delete:Booking', 'Restore:Booking',
+        'ViewAny:Booking', 'View:Booking', 'Create:Booking', 'Update:Booking', 'Archive:Booking', 'Restore:Booking',
         'Confirm:Booking', 'Cancel:Booking', 'Reschedule:Booking', 'Complete:Booking', 'Manage:BookingMeeting',
         'ViewAny:BookingType', 'View:BookingType', 'Create:BookingType', 'Update:BookingType', 'Delete:BookingType', 'Restore:BookingType',
         'ViewAny:TeacherAvailability', 'View:TeacherAvailability', 'Create:TeacherAvailability', 'Update:TeacherAvailability', 'Delete:TeacherAvailability',
@@ -33,7 +40,6 @@ class BookingPermissionSeeder extends Seeder
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [
-        'ForceDelete:Booking',
         'ForceDelete:BookingType',
         'ForceDelete:StudentLessonPrice',
     ];

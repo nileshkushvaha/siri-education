@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Concerns\PreventsHardDeletion;
 use Illuminate\Database\Eloquent\Model;
 
 /** Append-only claim ledger — see NotificationIdempotencyGuard. No update path exists. */
 class NotificationDispatchLog extends Model
 {
+    use PreventsHardDeletion;
+
     public $timestamps = false;
 
     protected $table = 'notification_dispatch_log';

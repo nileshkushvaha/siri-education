@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Reviews\Exceptions\ReviewAggregateException;
+use App\Support\Concerns\PreventsHardDeletion;
 use Closure;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class InstructorRatingAggregate extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, PreventsHardDeletion;
 
     private const array GUARDED_COLUMNS = [
         'eligible_review_count', 'overall_rating_sum', 'rating_distribution',

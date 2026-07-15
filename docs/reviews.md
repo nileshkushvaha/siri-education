@@ -1808,6 +1808,116 @@ routes/web.php  (dashboard.instructor.quality-insights, inside the
    queue as every other review/quality listener. No new frontend
    asset — notification content is server-rendered PHP, same as every
    other domain's notifications.
+9. Phase 17U.2: `php artisan migrate --force` also drops the
+   `features.reviews_enabled` decoy setting and restricts the
+   `booking_guests`/`booking_meetings` → `bookings` foreign keys (see
+   `docs/booking.md`). `LessonPermissionSeeder`,
+   `ReviewPermissionSeeder`, and `FeedbackPermissionSeeder` now run
+   automatically as part of `php artisan db:seed --force` (no manual
+   `--class=X` step needed for these three going forward) —
+   `ReviewPermissionSeeder` additionally seeds
+   `settings.reviews_quality.view`/`.update` and the four `ReviewTag`
+   permissions. No new queue worker or scheduler entry. `npm run
+   build` picks up no new frontend assets (server-rendered Filament
+   pages only).
+
+## Review Administration, Runtime Configuration & Operational Workflow Remediation (Phase 17U.2)
+
+Closes Phase 17T Findings S-1, S-4, and S-5, and the Phase 17U.1
+`booking_guests`/`booking_meetings` residual (see `docs/booking.md`).
+
+- **One canonical switch.** `reviews.reviews_enabled`
+  (`ReviewSettings::$reviews_enabled`) is the sole reviews on/off
+  switch platform-wide. The Finding S-1 decoy —
+  `features.reviews_enabled`, a same-named `FeatureSettings` property
+  never read by anything — is retired
+  (`database/settings/2026_09_05_100100_remove_decoy_features_reviews_enabled_setting.php`)
+  and removed from the Platform Foundation "Feature Flags" form.
+  Disabling the canonical switch now blocks, immediately: new
+  eligibility windows (`OpenLessonReviewEligibilityAction`, unchanged),
+  a genuinely new submission even against an eligibility window opened
+  before the switch flipped (`SubmitLessonReviewAction`, new check —
+  an idempotent retry of an already-used window is unaffected), edits
+  (`ReviewEditPolicy`, unchanged), new reports
+  (`SubmitReviewReportAction`, new check alongside the existing
+  `review_reporting_enabled`), and the "ready to review" notification
+  (`SendReviewRequestedNotification`, unchanged). It never touches
+  historical review visibility (`PublicInstructorReviewService`),
+  moderation queue access, aggregates, or audit history.
+- **Reviews & Quality Settings page**
+  (`app/Filament/Pages/Settings/ReviewQualitySettingsPage.php`,
+  `/admin/settings/reviews-quality`) is the sole runtime-configuration
+  surface for `ReviewSettings` — General/Rating/Moderation &
+  Privacy/Quality Alerts/Dashboard/Notification Routing sections,
+  covering every Version 1 setting and nothing else (no instructor-
+  response, AI/sentiment, marketplace-ranking, Learning-Plan-linkage,
+  or notification-template field — none of those settings exist).
+  Business-rule validation (min<max, threshold-within-scale,
+  counts/windows ≥ 1, enum validity) runs before any write, so a
+  rejected save persists nothing, even when only one of many changed
+  fields is invalid. A non-empty reason is required specifically when
+  `reviews_enabled` or `moderation_model` changes value; every save is
+  audited via `AuditTrailService` (admin id, changed field diffs,
+  reason when given) through the existing `LogsSettingsUpdates`
+  pattern. Two distinct permissions —
+  `settings.reviews_quality.view`/`.update` — gate the page; `save()`
+  re-checks `.update` at execution time, not just via a hidden button.
+  Enabling WhatsApp/SMS still saves (the channels are safe no-op
+  stubs — `SmsChannel`/`WhatsAppChannel` log-and-skip) but surfaces a
+  warning notification that no gateway is configured. No "at least one
+  report reason enabled" rule exists: `ReviewReportReason` is a fixed
+  enum with no per-reason enable/disable setting in Version 1, so
+  there is nothing to validate there.
+- **Review tag administration**
+  (`app/Filament/Resources/ReviewTags/`, under **Reports → Review
+  Tags**) — create/edit/activate/deactivate/reorder via `is_active`
+  and `sort_order` only. `ReviewTag` has no `deleted_at` column at
+  all, so there is no delete/force-delete action anywhere in the
+  resource; a deactivated tag simply stops being offered to new
+  submissions (`SubmitLessonReviewAction::resolveTags()` already
+  scopes on `->active()`) while every already-submitted review's own
+  `tags` snapshot is untouched. No positive/improvement classification
+  is invented — `ReviewTag` has no sentiment field, matching the same
+  discipline established in Phase 17P/17Q.
+- **Moderation and report-resolution mutation actions** — the
+  previously read-only Phase 17O `ModerationQueueWidget` and
+  `ReportQueueWidget` now carry real row actions
+  (approve/reject/hide/restore/archive; start-review/uphold/dismiss/
+  mark-duplicate/mark-remaining-duplicate), every one delegating
+  exclusively to `ReviewModerationService`/`ReviewReportService` —
+  the widgets never write a `status` column themselves. Action
+  visibility per row is a UX convenience based on current status; the
+  service's own state-machine guard
+  (`TransitionReviewStatusAction`/`TransitionReviewReportStatusAction`)
+  is the authoritative check, so a stale click still fails safely.
+  `LessonReviewPolicy::moderate()`/`hide()` gained the same
+  instructor-self-exclusion `ReviewReportPolicy::resolve()` already
+  had — an instructor can never moderate/hide a review about their
+  own teaching, even if hypothetically granted the staff permission
+  directly, mirroring the existing report-resolution precedent. A
+  super-admin bypass (`Gate::before`) affects only permission checks,
+  never the underlying transition guard — an illegal transition still
+  throws `InvalidReviewTransitionException` regardless of who calls
+  it.
+- **Production seeding.** `LessonPermissionSeeder`,
+  `ReviewPermissionSeeder` (now also seeding the settings/tags
+  permissions above), and `FeedbackPermissionSeeder` are wired into
+  `database/seeders/DatabaseSeeder.php` — previously only reachable
+  via a manual `db:seed --class=X` or from tests. All three (like
+  every permission seeder in this codebase) use
+  `Permission::firstOrCreate` + `PermissionRegistrar::forgetCachedPermissions()`,
+  so running the full seeder twice is a safe no-op.
+- **`booking_guests`/`booking_meetings`** — the one deliberately-open
+  residual from Phase 17U.1's booking-history FK remediation is
+  closed; see `docs/booking.md`'s "Deletion policy" section.
+
+See `tests/Feature/Settings/ReviewQualitySettingsPageTest.php`,
+`tests/Feature/Filament/ReviewTagResourceTest.php`,
+`tests/Feature/Filament/ReviewModerationWidgetActionsTest.php`,
+`tests/Feature/Filament/ReviewReportWidgetActionsTest.php`,
+`tests/Feature/Reviews/ReviewSettingsCanonicalizationTest.php`,
+`tests/Feature/DatabaseSeederPermissionWiringTest.php`, and
+`tests/Feature/Booking/BookingGuestMeetingProtectionTest.php`.
 
 ## Deferred (do not build yet)
 

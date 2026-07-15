@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Booking\Enums\BookingGuestStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,10 +15,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * An additional participant on a booking (second parent, webinar
  * attendee). May be a registered user or an email-only invitee.
+ *
+ * Guest participation is booking history (Phase 17U.2 §1) — never
+ * hard-deleted; see PreventsHardDeletion.
  */
 class BookingGuest extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'booking_id',

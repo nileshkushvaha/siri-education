@@ -564,3 +564,61 @@ Three layers, in order:
 
 All times are stored UTC (`CarbonImmutable`); the attendee's
 timezone travels on the DTO/record for display only.
+
+## Deletion policy (Phase 17U.1)
+
+Bookings are never physically deleted through the application.
+`Booking` is `SoftDeletes` + `App\Support\Concerns\PreventsHardDeletion`
+— `forceDelete()` throws `HistoricalRecordCannotBeDeletedException`
+unconditionally, and `BookingPolicy::forceDelete()` returns `false`
+unconditionally regardless of permission. The Filament resource has no
+`DeleteAction`/`DeleteBulkAction`/`ForceDeleteAction`/`ForceDeleteBulkAction`
+anywhere — only **Archive**/**Restore**, which delegate exclusively to
+`BookingArchivalServiceInterface` (`ArchiveBookingAction`/
+`RestoreArchivedBookingAction`): lock → verify terminal (archive only)
+→ require a reason → soft-delete/restore → audit via
+`AuditTrailService` → return a result DTO (`applied: false` on a
+repeated call — idempotent, never a second write). Archiving/restoring
+changes only `deleted_at`; status, payment status, and every dependent
+record are left exactly as they were — restoring never replays a
+lifecycle event (no meeting recreated, no notification sent, no
+refund/earning/wallet/settlement change).
+
+Every foreign key reachable from `bookings`/`lessons`/`lesson_reviews`/
+`lesson_review_eligibilities` (and the `users → bookings`,
+`users → wallets/wallet_ledger_entries/instructor_rating_aggregates`,
+`bookings → booking_guests/booking_meetings` edges) was changed from
+`CASCADE` to `RESTRICT` at the database level — even a raw SQL
+`DELETE` against a booking with any dependent lesson, attendance,
+financial, review, feedback, quality, guest, or meeting record is
+rejected by MySQL itself, not just by application code. Zero foreign
+keys referencing `bookings` remain `CASCADE` (Phase 17U.2 §1 closed
+the `booking_guests`/`booking_meetings` residual deliberately left
+open by Phase 17U.1 — see
+`database/migrations/2026_09_05_100000_restrict_booking_guest_and_meeting_deletes.php`).
+The same `PreventsHardDeletion` trait (in delete-blocking mode, since these
+models have no `SoftDeletes`) is applied to every model in that
+historical chain — `Lesson` (force-delete-blocking, since it does have
+`SoftDeletes`), `LessonReview`, `LessonReviewRevision`,
+`InstructorStudentFeedback`, `LessonFinancialDisposition`,
+`InstructorEarning`, `ReviewReport`, `InstructorQualityAlert`,
+`LessonReviewEligibility`, `ReviewRatingContribution`,
+`InstructorRatingAggregate`, the three `LessonAttendance*` models,
+`LessonTechnicalIssueReport`, `WalletLedgerEntry`,
+`InstructorSettlementBatch`, `NotificationDispatchLog`, and — as of
+Phase 17U.2 §1 — `BookingGuest` and `BookingMeeting` (neither has
+`SoftDeletes`, so both hook `deleting` and reject unconditionally).
+`GuestsRelationManager`'s row `DeleteAction` was removed accordingly
+(it was the only live application deletion path for either model);
+guest status is corrected in place via `EditAction`, and meeting
+cancellation already worked by transitioning `status` rather than
+deleting the row (`BookingMeetingService::cancelMeeting()`).
+
+Permissions: `Archive:Booking` + `Restore:Booking` (manager).
+`Delete:Booking`/`ForceDelete:Booking` no longer exist — neither is
+seeded nor grantable to anyone, including super_admin.
+
+See `tests/Feature/Booking/BookingArchivalTest.php` for the full
+archive/restore/idempotency/authorization/historical-preservation
+suite, and `tests/Feature/Audit17T/BookingForceDeleteCascadeWipesFinancialHistoryTest.php`
+(Phase 17T Finding S-2, remediated here) for the regression proof.

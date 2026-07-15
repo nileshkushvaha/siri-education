@@ -509,7 +509,12 @@ class BookingFlowHardeningTest extends TestCase
             ->assertTableActionHidden('cancel', record: $booking);
     }
 
-    public function test_direct_delete_of_active_booking_is_blocked(): void
+    /**
+     * Phase 17U.1 — bookings are never deleted; the "delete" action
+     * itself no longer exists on this page (replaced by "archive",
+     * which soft-deletes through BookingArchivalService).
+     */
+    public function test_direct_archive_of_active_booking_is_blocked(): void
     {
         $booking = app(BookingServiceInterface::class)->request(
             $this->bookingData($this->teacher, $this->student, $this->slot()),
@@ -522,12 +527,12 @@ class BookingFlowHardeningTest extends TestCase
         // after confirmation — the record must also survive untouched.
         Livewire::actingAs($admin)
             ->test(EditBooking::class, ['record' => $booking->getRouteKey()])
-            ->assertActionHidden('delete');
+            ->assertActionHidden('archive');
 
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'deleted_at' => null]);
     }
 
-    public function test_direct_delete_of_terminal_booking_is_allowed(): void
+    public function test_direct_archive_of_terminal_booking_is_allowed(): void
     {
         $booking = app(BookingServiceInterface::class)->request(
             $this->bookingData($this->teacher, $this->student, $this->slot()),
@@ -538,7 +543,7 @@ class BookingFlowHardeningTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(EditBooking::class, ['record' => $booking->getRouteKey()])
-            ->callAction('delete');
+            ->callAction('archive', data: ['reason' => 'Test cleanup archival.']);
 
         $this->assertSoftDeleted('bookings', ['id' => $booking->id]);
     }
@@ -549,10 +554,10 @@ class BookingFlowHardeningTest extends TestCase
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
         $manager->assignRole('manager');
 
-        foreach (['ViewAny:Booking', 'View:Booking', 'Update:Booking', 'Delete:Booking'] as $name) {
+        foreach (['ViewAny:Booking', 'View:Booking', 'Update:Booking', 'Archive:Booking', 'Restore:Booking'] as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         }
-        $manager->givePermissionTo(['ViewAny:Booking', 'View:Booking', 'Update:Booking', 'Delete:Booking']);
+        $manager->givePermissionTo(['ViewAny:Booking', 'View:Booking', 'Update:Booking', 'Archive:Booking', 'Restore:Booking']);
 
         return $manager;
     }

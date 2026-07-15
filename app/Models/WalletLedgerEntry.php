@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Concerns\PreventsHardDeletion;
 use App\Wallet\Enums\WalletLedgerDirection;
 use App\Wallet\Enums\WalletLedgerEntryType;
 use App\Wallet\Enums\WalletLedgerStatus;
@@ -22,7 +23,7 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class WalletLedgerEntry extends Model
 {
-    use HasFactory, HasUuids, LogsActivity;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
 
     protected $fillable = [
         'wallet_id',

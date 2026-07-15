@@ -50,7 +50,12 @@ final class SubmitReviewReportAction
         return DB::transaction(function () use ($review, $reporter, $data): ReviewReport {
             $review = $this->reviews->lock($review);
 
-            if (! $this->settings->review_reporting_enabled) {
+            // Master switch (Phase 17U.2 §3), checked alongside the
+            // dedicated reporting toggle — disabling reviews platform-wide
+            // must also stop new reports, not just new eligibility/
+            // submissions. Existing reports and their resolution are
+            // untouched.
+            if (! $this->settings->reviews_enabled || ! $this->settings->review_reporting_enabled) {
                 throw ReviewNotReportableException::reportingDisabled();
             }
 

@@ -27,6 +27,15 @@ class DatabaseSeeder extends Seeder
             BookingTypeSeeder::class,
             BookingPermissionSeeder::class,
             BookingPaymentPermissionSeeder::class,
+            // Phase 17U.2 §11 — wired into the normal deploy path so
+            // managers can reach lesson/review/feedback admin surfaces
+            // without a manual `db:seed --class=X`. Order follows the
+            // domain dependency chain (Booking -> Lesson -> Review ->
+            // Feedback); all four are idempotent (Permission::firstOrCreate
+            // + forgetCachedPermissions), safe to run on every deploy.
+            LessonPermissionSeeder::class,
+            ReviewPermissionSeeder::class,
+            FeedbackPermissionSeeder::class,
             WalletPermissionSeeder::class,
             AcademicPermissionSeeder::class,
             AcademicCategorySeeder::class,

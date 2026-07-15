@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\ReviewRatingContributionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ReviewRatingContribution extends Model
 {
     /** @use HasFactory<ReviewRatingContributionFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'review_id',

@@ -8,6 +8,7 @@ use App\Enums\ActivityActorType;
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\LessonFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -27,7 +28,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class Lesson extends Model
 {
     /** @use HasFactory<LessonFactory> */
-    use HasFactory, HasUuids, LogsActivity, SoftDeletes;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion, SoftDeletes;
 
     protected $fillable = [
         'booking_id',
@@ -80,9 +81,10 @@ class Lesson extends Model
         ];
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function student(): BelongsTo

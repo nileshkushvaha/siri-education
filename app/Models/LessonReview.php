@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Reviews\Enums\LessonReviewEligibilityMode;
 use App\Reviews\Enums\StudentReviewStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\LessonReviewFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,7 +29,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class LessonReview extends Model
 {
     /** @use HasFactory<LessonReviewFactory> */
-    use HasFactory, HasUuids, LogsActivity;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
 
     protected $fillable = [
         'eligibility_id',
@@ -87,9 +88,10 @@ class LessonReview extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function student(): BelongsTo

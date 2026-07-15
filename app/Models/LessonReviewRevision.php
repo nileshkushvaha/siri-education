@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Reviews\Enums\StudentReviewStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class LessonReviewRevision extends Model
 {
-    use HasUuids;
+    use HasUuids, PreventsHardDeletion;
 
     protected $fillable = [
         'lesson_review_id',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Earnings\Enums\SettlementBatchStatus;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\InstructorSettlementBatchFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -24,7 +25,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class InstructorSettlementBatch extends Model
 {
     /** @use HasFactory<InstructorSettlementBatchFactory> */
-    use HasFactory, HasUuids, LogsActivity;
+    use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
 
     protected $fillable = [
         'batch_reference',

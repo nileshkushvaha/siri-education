@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Bookings\Tables;
 
+use App\Booking\Contracts\BookingArchivalServiceInterface;
 use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\DTOs\CancelBookingData;
@@ -25,10 +26,7 @@ use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -375,12 +373,32 @@ class BookingsTable
                             'Currency' => 'currency',
                         ], 'bookings.csv'))
                         ->deselectRecordsAfterCompletion(),
-                    DeleteBulkAction::make()
-                        ->action(fn (Collection $records) => self::deleteTerminalOnly($records, force: false))
+                    BulkAction::make('archive')
+                        ->label('Archive Selected Bookings')
+                        ->icon('heroicon-m-archive-box')
+                        ->color('danger')
+                        ->authorizeIndividualRecords('archive')
+                        ->form([
+                            Textarea::make('reason')
+                                ->label('Archival reason')
+                                ->helperText('Bookings are never deleted — this record, its lesson, and every dependent attendance, financial, review, and feedback record are permanently preserved and remain visible to authorized administrators.')
+                                ->required()
+                                ->maxLength(500),
+                        ])
+                        ->action(fn (Collection $records, array $data) => self::archiveTerminalOnly($records, $data['reason']))
                         ->deselectRecordsAfterCompletion(),
-                    RestoreBulkAction::make(),
-                    ForceDeleteBulkAction::make()
-                        ->action(fn (Collection $records) => self::deleteTerminalOnly($records, force: true))
+                    BulkAction::make('restore')
+                        ->label('Restore Selected Bookings')
+                        ->icon('heroicon-m-arrow-uturn-left')
+                        ->color('success')
+                        ->authorizeIndividualRecords('restore')
+                        ->form([
+                            Textarea::make('reason')
+                                ->label('Restoration reason')
+                                ->required()
+                                ->maxLength(500),
+                        ])
+                        ->action(fn (Collection $records, array $data) => self::restoreArchived($records, $data['reason']))
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ])
@@ -388,16 +406,20 @@ class BookingsTable
     }
 
     /**
-     * Deleting (or force-deleting) a still-active booking removes it from
-     * every availability conflict check without going through cancellation —
-     * see EditBooking::guardAgainstNonTerminalDelete() for the same rule on
-     * the row-level actions. Bulk variants skip non-terminal records instead
-     * of failing the whole batch.
+     * Archiving a still-active booking would remove it from every
+     * availability conflict check without going through cancellation —
+     * EditBooking's row-level "archive" action enforces the same
+     * terminal-only rule via its ->visible() check. Bulk variant skips
+     * non-terminal records instead of failing the whole batch. Every
+     * archive goes through BookingArchivalService — never a raw
+     * delete() call — so locking, idempotency, and the audit trail are
+     * never bypassed.
      */
-    private static function deleteTerminalOnly(Collection $records, bool $force): void
+    private static function archiveTerminalOnly(Collection $records, string $reason): void
     {
-        $deleted = 0;
+        $archived = 0;
         $skipped = 0;
+        $service = app(BookingArchivalServiceInterface::class);
 
         foreach ($records as $booking) {
             if (! $booking->status->isTerminal()) {
@@ -406,13 +428,28 @@ class BookingsTable
                 continue;
             }
 
-            $force ? $booking->forceDelete() : $booking->delete();
-            $deleted++;
+            $service->archive($booking, auth()->user(), $reason);
+            $archived++;
         }
 
         Notification::make()
-            ->title(sprintf('%d %sdeleted, %d skipped (not terminal)', $deleted, $force ? 'permanently ' : '', $skipped))
-            ->{$deleted > 0 ? 'success' : 'warning'}()
+            ->title(sprintf('%d archived, %d skipped (not terminal)', $archived, $skipped))
+            ->body('Archived bookings and every dependent record are preserved — nothing was deleted.')
+            ->{$archived > 0 ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    private static function restoreArchived(Collection $records, string $reason): void
+    {
+        $service = app(BookingArchivalServiceInterface::class);
+
+        foreach ($records as $booking) {
+            $service->restore($booking, auth()->user(), $reason);
+        }
+
+        Notification::make()
+            ->title(sprintf('%d booking(s) restored', $records->count()))
+            ->success()
             ->send();
     }
 

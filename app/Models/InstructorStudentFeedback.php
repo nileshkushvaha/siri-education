@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonOutcome;
+use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\InstructorStudentFeedbackFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class InstructorStudentFeedback extends Model
 {
     /** @use HasFactory<InstructorStudentFeedbackFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, PreventsHardDeletion;
 
     protected $table = 'instructor_student_feedback';
 
@@ -66,9 +67,10 @@ class InstructorStudentFeedback extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function student(): BelongsTo

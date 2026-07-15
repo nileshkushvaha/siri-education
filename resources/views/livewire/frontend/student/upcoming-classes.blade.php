@@ -7,7 +7,7 @@
                         <p class="text-sm font-medium text-white truncate">{{ $booking->type?->name ?? 'Session' }}</p>
                         <x-ui.badge :color="$booking->status->color()">{{ $booking->status->label() }}</x-ui.badge>
                     </div>
-                    <p class="text-xs text-slate-400">with {{ $booking->host?->name ?? 'Teacher' }} &middot; {{ $booking->location_type->label() }}</p>
+                    <p class="text-xs text-slate-400">with {{ $booking->instructor?->name ?? 'Teacher' }} &middot; {{ $booking->location_type->label() }}</p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
                     <p class="text-sm font-medium text-indigo-300">{{ $booking->starts_at->format('D, M j') }}</p>

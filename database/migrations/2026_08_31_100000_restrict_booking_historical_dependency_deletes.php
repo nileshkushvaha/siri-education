@@ -21,20 +21,24 @@ use Illuminate\Support\Facades\Schema;
  * rule of each existing constraint changes — no data is touched.
  *
  * Deliberately NOT touched (out of the "historical business record"
- * scope this remediation targets): `booking_guests.booking_id`,
- * `booking_meetings.booking_id` (booking configuration/connection
- * metadata, not itself a historical educational/financial/audit
- * record), `homework_assignments.booking_id` (already `SET NULL`,
- * a different domain, out of this phase's scope), and every FK that
- * was already `RESTRICT`/`NO ACTION`/`SET NULL` (already safe).
+ * scope this remediation targets): `homework_assignments.booking_id`
+ * (already `SET NULL`, a different domain, out of this phase's
+ * scope), and every FK that was already `RESTRICT`/`NO ACTION`/
+ * `SET NULL` (already safe). `booking_guests` no longer exists
+ * (Phase 17U.3 — authenticated-only booking, guest participants
+ * removed) and `booking_meetings.booking_id` now ships `RESTRICT`
+ * from its own baseline migration, so neither needs an entry here
+ * anymore.
  */
 return new class extends Migration
 {
     /** @var list<array{table: string, column: string, references: string}> */
     private array $constraints = [
-        // users -> bookings (Phase 17U.1 §11 — account-deletion safety)
-        ['table' => 'bookings', 'column' => 'attendee_id', 'references' => 'users'],
-        ['table' => 'bookings', 'column' => 'host_id', 'references' => 'users'],
+        // users -> bookings (Phase 17U.1 §11 — account-deletion safety) is
+        // handled directly in the baseline `create_bookings_table`
+        // migration as of Phase 17U.3's `student_id`/`instructor_id`
+        // rename — both already ship `restrictOnDelete()` from creation,
+        // so there is nothing left for this migration to change here.
 
         // bookings -> historical dependents
         ['table' => 'booking_activities', 'column' => 'booking_id', 'references' => 'bookings'],

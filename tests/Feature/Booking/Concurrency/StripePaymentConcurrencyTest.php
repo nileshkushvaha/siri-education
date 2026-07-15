@@ -131,7 +131,7 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
             $this->assertSame(BookingStatus::Cancelled, $booking->status);
             $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
 
-            $wallet = Wallet::query()->where('user_id', $booking->attendee_id)->where('currency_code', $payment->currency_code)->first();
+            $wallet = Wallet::query()->where('user_id', $booking->student_id)->where('currency_code', $payment->currency_code)->first();
             $this->assertNotNull($wallet);
             $this->assertSame($payment->amount_minor, $wallet->balance_minor);
         }
@@ -162,7 +162,7 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
             // cancellation won while payment_status was already Paid) or
             // Option B's late-terminal wallet credit ran (if cancellation
             // won first) — either way exactly one credit, never zero, never two.
-            $wallet = Wallet::query()->where('user_id', $booking->attendee_id)->where('currency_code', $payment->currency_code)->first();
+            $wallet = Wallet::query()->where('user_id', $booking->student_id)->where('currency_code', $payment->currency_code)->first();
             $this->assertNotNull($wallet);
             $this->assertSame($payment->amount_minor, $wallet->balance_minor);
         }
@@ -192,7 +192,7 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
 
-        $wallet = Wallet::query()->where('user_id', $booking->attendee_id)->where('currency_code', $payment->currency_code)->sole();
+        $wallet = Wallet::query()->where('user_id', $booking->student_id)->where('currency_code', $payment->currency_code)->sole();
         $this->assertSame($payment->amount_minor, $wallet->balance_minor);
     }
 

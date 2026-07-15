@@ -23,8 +23,8 @@ class BookingFactory extends Factory
 
         return [
             'booking_type_id' => BookingType::factory(),
-            'attendee_id' => User::factory(),
-            'host_id' => User::factory(),
+            'student_id' => User::factory(),
+            'instructor_id' => User::factory(),
             'status' => BookingStatus::Pending,
             'payment_status' => BookingPaymentStatus::NotRequired,
             'location_type' => BookingLocationType::Online,
@@ -56,7 +56,7 @@ class BookingFactory extends Factory
         ]);
     }
 
-    public function cancelled(BookingActor $by = BookingActor::Attendee): static
+    public function cancelled(BookingActor $by = BookingActor::Student): static
     {
         return $this->state([
             'status' => BookingStatus::Cancelled,

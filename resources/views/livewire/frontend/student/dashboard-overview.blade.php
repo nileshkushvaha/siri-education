@@ -106,7 +106,7 @@
             <div wire:key="next-class-{{ $booking->id }}" class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-white/[0.05]' : '' }}">
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-white truncate">{{ $booking->type?->name ?? 'Session' }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">with {{ $booking->host?->name ?? 'Teacher' }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">with {{ $booking->instructor?->name ?? 'Teacher' }}</p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
                     <p class="text-xs font-medium text-indigo-300">{{ $booking->starts_at->format('M j, g:i A') }}</p>

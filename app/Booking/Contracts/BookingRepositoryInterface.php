@@ -33,9 +33,6 @@ interface BookingRepositoryInterface
 
     public function findByReference(string $reference): ?Booking;
 
-    /** Spam guard for unauthenticated bookings. */
-    public function activeUpcomingCountForGuestEmail(string $email): int;
-
     /**
      * Persist a status change plus any extra attributes
      * (e.g. cancelled_by, cancellation_reason).
@@ -47,14 +44,14 @@ interface BookingRepositoryInterface
     public function reschedule(Booking $booking, CarbonImmutable $startsAt, CarbonImmutable $endsAt): Booking;
 
     /**
-     * Overlap check against active bookings for the host. When
+     * Overlap check against active bookings for the instructor. When
      * $sharedSlotTypeKey is given, bookings of that type occupying the
      * exact same slot are ignored (group types share a slot).
      * $bufferMinutes pads the checked range on both sides (shared-slot
      * equality still compares the unpadded slot).
      */
     public function hasOverlap(
-        int $hostId,
+        int $instructorId,
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
@@ -62,20 +59,20 @@ interface BookingRepositoryInterface
         int $bufferMinutes = 0,
     ): bool;
 
-    /** Active bookings for the host on the given day (UTC). */
-    public function activeCountForDay(int $hostId, CarbonImmutable $day, ?string $ignoreBookingId = null): int;
+    /** Active bookings for the instructor on the given day (UTC). */
+    public function activeCountForDay(int $instructorId, CarbonImmutable $day, ?string $ignoreBookingId = null): int;
 
-    /** Upcoming active bookings for a host — the workload measure. */
-    public function activeUpcomingCountForHost(int $hostId): int;
+    /** Upcoming active bookings for an instructor — the workload measure. */
+    public function activeUpcomingCountForInstructor(int $instructorId): int;
 
-    /** Same attendee + host + type + start already actively booked. */
+    /** Same student + instructor + type + start already actively booked. */
     public function duplicateExists(CreateBookingData $data): bool;
 
-    /** Attendees already booked into an exact slot — used for capacity caps. */
-    public function attendeeCountForSlot(int $hostId, string $typeKey, CarbonImmutable $startsAt): int;
+    /** Students already booked into an exact slot — used for capacity caps. */
+    public function studentCountForSlot(int $instructorId, string $typeKey, CarbonImmutable $startsAt): int;
 
     /** @return Collection<int, Booking> active bookings intersecting [$from, $to) */
-    public function activeBetween(int $hostId, CarbonImmutable $from, CarbonImmutable $to): Collection;
+    public function activeBetween(int $instructorId, CarbonImmutable $from, CarbonImmutable $to): Collection;
 
     /** @return Collection<int, Booking> */
     public function upcomingForUser(int $userId): Collection;
@@ -98,8 +95,8 @@ interface BookingRepositoryInterface
     /** @return Collection<int, object{subject: string, sessions: int}> subjects studied, most-booked first */
     public function subjectBreakdownForUser(int $userId): Collection;
 
-    /** @return Collection<int, User> hosts the attendee has booked (non-cancelled), most recent first */
-    public function previousHostsForAttendee(int $attendeeId): Collection;
+    /** @return Collection<int, User> instructors the student has booked (non-cancelled), most recent first */
+    public function previousInstructorsForStudent(int $studentId): Collection;
 
     public function updatePaymentStatus(Booking $booking, BookingPaymentStatus $status, ?string $reference = null): Booking;
 
@@ -131,7 +128,7 @@ interface BookingRepositoryInterface
     ): void;
 
     /**
-     * Serialize booking mutations per host — the race-condition guard.
+     * Serialize booking mutations per instructor — the race-condition guard.
      * Run duplicate/overlap/capacity re-checks and the insert inside
      * the callback.
      *
@@ -142,5 +139,5 @@ interface BookingRepositoryInterface
      *
      * @throws BookingException when the lock cannot be acquired
      */
-    public function withHostLock(int $hostId, Closure $callback): mixed;
+    public function withInstructorLock(int $instructorId, Closure $callback): mixed;
 }

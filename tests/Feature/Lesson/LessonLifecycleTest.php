@@ -51,8 +51,8 @@ class LessonLifecycleTest extends TestCase
 
         $this->assertNotNull($lesson);
         $this->assertSame(LessonStatus::Scheduled, $lesson->status);
-        $this->assertSame($booking->attendee_id, $lesson->student_id);
-        $this->assertSame($booking->host_id, $lesson->instructor_id);
+        $this->assertSame($booking->student_id, $lesson->student_id);
+        $this->assertSame($booking->instructor_id, $lesson->instructor_id);
         $this->assertTrue($booking->starts_at->equalTo($lesson->starts_at));
         $this->assertTrue($booking->ends_at->equalTo($lesson->ends_at));
         $this->assertSame(LessonAttendanceStatus::Pending, $lesson->student_attendance_status);
@@ -106,18 +106,11 @@ class LessonLifecycleTest extends TestCase
     {
         $pending = Booking::factory()->create();
 
-        $guest = Booking::factory()->confirmed()->create([
-            'attendee_id' => null,
-            'guest_name' => 'Guest',
-            'guest_email' => 'guest@example.com',
-        ]);
-
         $unpaid = Booking::factory()->confirmed()->create([
             'payment_status' => BookingPaymentStatus::Pending,
         ]);
 
         $this->assertNull($this->lessons->createFromBooking($pending));
-        $this->assertNull($this->lessons->createFromBooking($guest));
         $this->assertNull($this->lessons->createFromBooking($unpaid));
         $this->assertSame(0, Lesson::query()->count());
     }

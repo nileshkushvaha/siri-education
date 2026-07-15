@@ -662,7 +662,7 @@ class InstructorAvailabilityHardeningTest extends TestCase
         ], $teacher);
 
         app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
-            hostId: $teacher->id,
+            instructorId: $teacher->id,
             typeKey: 'free_demo',
             from: CarbonImmutable::parse('2026-08-10 00:00:00', 'UTC'),
             to: CarbonImmutable::parse('2026-08-17 00:00:00', 'UTC'),
@@ -727,7 +727,7 @@ class InstructorAvailabilityHardeningTest extends TestCase
         ]);
 
         $dstSlots = app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
-            hostId: $teacher->id,
+            instructorId: $teacher->id,
             typeKey: 'free_demo',
             from: $dstSunday,
             to: $dstSunday->addDay(),
@@ -735,7 +735,7 @@ class InstructorAvailabilityHardeningTest extends TestCase
         ));
 
         $standardSlots = app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
-            hostId: $teacher->id,
+            instructorId: $teacher->id,
             typeKey: 'free_demo',
             from: $standardSunday,
             to: $standardSunday->addDay(),

@@ -91,7 +91,7 @@ final class BookingHistory extends Component
 
         Gate::authorize('view', $booking);
 
-        $this->selectedBooking = $booking->loadMissing(['type', 'host']);
+        $this->selectedBooking = $booking->loadMissing(['type', 'instructor']);
         $this->reschedulePanelOpen = false;
         $this->cancelPanelOpen = false;
         $this->rescheduleDate = '';
@@ -154,10 +154,10 @@ final class BookingHistory extends Component
         try {
             $updated = $this->bookingService->reschedule($this->selectedBooking, new RescheduleBookingData(
                 startsAt: CarbonImmutable::parse($this->rescheduleSlotStartsAt),
-                actor: BookingActor::Attendee,
+                actor: BookingActor::Student,
             ));
 
-            $this->selectedBooking = $updated->loadMissing(['type', 'host']);
+            $this->selectedBooking = $updated->loadMissing(['type', 'instructor']);
             $this->reschedulePanelOpen = false;
             $this->rescheduleDate = '';
             $this->rescheduleSlotStartsAt = null;
@@ -179,11 +179,11 @@ final class BookingHistory extends Component
 
         try {
             $updated = $this->bookingService->cancel($this->selectedBooking, new CancelBookingData(
-                cancelledBy: BookingActor::Attendee,
+                cancelledBy: BookingActor::Student,
                 reason: filled($this->cancelReason) ? $this->cancelReason : null,
             ));
 
-            $this->selectedBooking = $updated->loadMissing(['type', 'host']);
+            $this->selectedBooking = $updated->loadMissing(['type', 'instructor']);
             $this->cancelPanelOpen = false;
         } catch (BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
@@ -284,7 +284,7 @@ final class BookingHistory extends Component
             $this->modalBanner = 'Payment failed. Please try again.';
         }
 
-        $this->selectedBooking = $booking->loadMissing(['type', 'host']);
+        $this->selectedBooking = $booking->loadMissing(['type', 'instructor']);
     }
 
     public function verifyPayment(string $orderId, string $paymentId, string $signature): void
@@ -306,7 +306,7 @@ final class BookingHistory extends Component
                 $this->payments->markPaid($booking, (string) $booking->payment_reference);
             }
 
-            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'host']);
+            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'instructor']);
         } catch (InvalidPaymentWebhookException|BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
         }
@@ -345,7 +345,7 @@ final class BookingHistory extends Component
                 }
             }
 
-            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'host']);
+            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'instructor']);
         } catch (BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
         }
@@ -393,7 +393,7 @@ final class BookingHistory extends Component
         $date = CarbonImmutable::parse($this->rescheduleDate, $timezone)->startOfDay();
 
         $this->rescheduleSlots = $this->availability->slots(new AvailabilityQueryData(
-            hostId: $this->selectedBooking->host_id,
+            instructorId: $this->selectedBooking->instructor_id,
             typeKey: $this->selectedBooking->type->key,
             from: $date,
             to: $date->addDay(),

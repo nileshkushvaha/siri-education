@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Guest;
+namespace Tests\Feature\Booking;
 
 use App\Booking\Enums\Weekday;
 use App\Livewire\Frontend\Booking\BookingWizard;
-use App\Models\Booking;
 use App\Models\BookingType;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
@@ -18,12 +17,11 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 10.2C-Fix: no guest booking — the wizard at /book and
- * /instructors/book now requires an authenticated student (route
- * middleware) and always attributes the resulting booking to that
- * account (BookingWizardService::book() already passed auth()->id()
- * as attendeeId; AuthenticatedAttendeeRule now rejects a null one
- * instead of silently creating a guest-shaped booking).
+ * Phase 17U.3: the `/book` wizard is authenticated-only end to end —
+ * no unauthenticated guest booking concept exists anywhere in this
+ * domain. The wizard always attributes the resulting booking to the
+ * logged-in student (WizardBookingService::book() uses auth()->id()
+ * directly; there is no name/email/phone form step to bypass).
  */
 class BookingWizardLivewireTest extends TestCase
 {
@@ -45,21 +43,12 @@ class BookingWizardLivewireTest extends TestCase
         TeacherSubject::factory()->state(['teacher_id' => $teacher->id])->subject('maths', 1, 12)->create();
         $this->teacher = $teacher;
 
-        $otherTeacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        UserProfile::updateOrCreate(['user_id' => $otherTeacher->id], [
-            'instructor_status' => 'approved',
-            'profile_visibility' => 'public',
-        ]);
-        TeacherSubject::factory()->state(['teacher_id' => $otherTeacher->id])->subject('maths', 1, 12)->create();
-
         foreach (Weekday::cases() as $day) {
-            foreach ([$teacher, $otherTeacher] as $availableTeacher) {
-                TeacherAvailability::factory()
-                    ->state(['teacher_id' => $availableTeacher->id])
-                    ->forDay($day)
-                    ->between('09:00:00', '17:00:00')
-                    ->create();
-            }
+            TeacherAvailability::factory()
+                ->state(['teacher_id' => $teacher->id])
+                ->forDay($day)
+                ->between('09:00:00', '17:00:00')
+                ->create();
         }
 
         BookingType::factory()->create([
@@ -86,24 +75,10 @@ class BookingWizardLivewireTest extends TestCase
         $this->get(route('booking.create'))->assertRedirect(route('auth.login'));
     }
 
-    public function test_unauthenticated_visitor_is_redirected_to_login_from_instructor_booking_alias(): void
-    {
-        $this->get(route('instructors.booking.create'))->assertRedirect(route('auth.login'));
-    }
-
     public function test_authenticated_student_sees_booking_page_renders_livewire_wizard(): void
     {
         $this->actingAs($this->student())
             ->get(route('booking.create'))
-            ->assertOk()
-            ->assertSeeLivewire(BookingWizard::class)
-            ->assertSee('Book a Session');
-    }
-
-    public function test_authenticated_student_sees_instructor_booking_alias_renders_livewire_wizard(): void
-    {
-        $this->actingAs($this->student())
-            ->get(route('instructors.booking.create'))
             ->assertOk()
             ->assertSeeLivewire(BookingWizard::class)
             ->assertSee('Book a Session');
@@ -124,16 +99,12 @@ class BookingWizardLivewireTest extends TestCase
             ->assertSet('step', 4)
             ->call('selectSlot', $start)
             ->assertSet('step', 5)
-            ->set('name', $student->name)
-            ->set('email', $student->email)
-            ->call('review')
-            ->assertSet('step', 6)
             ->call('submit')
-            ->assertSet('step', 7)
+            ->assertSet('step', 6)
             ->assertSee('Booking confirmed');
 
         $this->assertDatabaseHas('bookings', [
-            'attendee_id' => $student->id,
+            'student_id' => $student->id,
         ]);
     }
 
@@ -155,15 +126,12 @@ class BookingWizardLivewireTest extends TestCase
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
-            ->set('name', $student->name)
-            ->set('email', $student->email)
-            ->call('review')
             ->call('submit')
-            ->assertSet('step', 7);
+            ->assertSet('step', 6);
 
         $this->assertDatabaseHas('bookings', [
-            'attendee_id' => $student->id,
-            'host_id' => $this->teacher->id,
+            'student_id' => $student->id,
+            'instructor_id' => $this->teacher->id,
         ]);
     }
 
@@ -171,7 +139,10 @@ class BookingWizardLivewireTest extends TestCase
     {
         // Defense-in-depth: even bypassing the route's 'auth' middleware
         // (e.g. testing the Livewire component in isolation), the service
-        // layer itself refuses an unauthenticated submission.
+        // layer itself refuses an unauthenticated submission — caught by
+        // the component's own BookingException handling (same as every
+        // other domain rejection) and surfaced as a banner, never a raw
+        // exception to the visitor — and never creates a booking draft.
         $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
 
         Livewire::test('frontend.booking.booking-wizard')
@@ -179,13 +150,10 @@ class BookingWizardLivewireTest extends TestCase
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
-            ->set('name', 'Guest Parent')
-            ->set('email', 'parent@example.com')
-            ->call('review')
             ->call('submit')
-            ->assertSet('step', 6)
-            ->assertSee('Please log in or create an account');
+            ->assertSet('step', 5)
+            ->assertSet('banner', 'Please log in or create an account to book a lesson.');
 
-        $this->assertDatabaseMissing('bookings', ['guest_email' => 'parent@example.com']);
+        $this->assertDatabaseCount('bookings', 0);
     }
 }

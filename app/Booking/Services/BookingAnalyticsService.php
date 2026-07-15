@@ -93,7 +93,7 @@ final class BookingAnalyticsService implements BookingAnalyticsServiceInterface
         return $this->remember('utilization', $from, $to, function () use ($from, $to): Collection {
             $booked = $this->analytics->bookedMinutesPerTeacher($from, $to);
             $weekly = $this->analytics
-                ->weeklyAvailableMinutes($booked->pluck('host_id')->all())
+                ->weeklyAvailableMinutes($booked->pluck('instructor_id')->all())
                 ->keyBy('teacher_id');
 
             // Approximation: weekly schedule × weeks in period, ignoring
@@ -101,7 +101,7 @@ final class BookingAnalyticsService implements BookingAnalyticsServiceInterface
             $weeks = max($from->diffInDays($to) / 7, 1 / 7);
 
             return $booked->map(function (object $row) use ($weekly, $weeks): array {
-                $available = (float) ($weekly[$row->host_id]->minutes ?? 0) * $weeks;
+                $available = (float) ($weekly[$row->instructor_id]->minutes ?? 0) * $weeks;
 
                 return [
                     'teacher' => (string) $row->name,

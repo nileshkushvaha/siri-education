@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Booking\Services;
 
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
-use App\Booking\Contracts\GuestBookingServiceInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
-use App\Booking\DTOs\GuestBookingData;
+use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\DTOs\TimeSlotData;
+use App\Booking\DTOs\WizardBookingData;
 use App\Enums\InstructorStatus;
 use App\Models\Booking;
 use App\Models\User;
@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
 final class BookingWizardService
 {
     public function __construct(
-        private readonly GuestBookingServiceInterface $bookings,
+        private readonly WizardBookingServiceInterface $bookings,
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $teachers,
     ) {}
@@ -63,17 +63,15 @@ final class BookingWizardService
             ->values();
     }
 
+    /** @param array<string, mixed> $data */
     public function book(array $data): Booking
     {
-        return $this->bookings->book(new GuestBookingData(
+        return $this->bookings->book(new WizardBookingData(
             typeKey: $data['type'],
             subject: $data['subject'],
             grade: (int) $data['grade'],
             startsAt: CarbonImmutable::parse($data['starts_at'], $data['timezone']),
             timezone: $data['timezone'],
-            guestName: $data['name'],
-            guestEmail: $data['email'],
-            guestPhone: $data['phone'] ?? null,
             notes: $data['notes'] ?? null,
             teacherId: $data['teacher_id'] ?? null,
         ));
@@ -119,15 +117,9 @@ final class BookingWizardService
             'starts_at' => $booking->starts_at->timezone($booking->timezone)->toIso8601String(),
             'ends_at' => $booking->ends_at->timezone($booking->timezone)->toIso8601String(),
             'timezone' => $booking->timezone,
-            'guest_name' => $booking->guest_name,
             'subject' => $booking->meta['subject'] ?? null,
             'grade' => $booking->meta['grade'] ?? null,
-            'manage_token' => $booking->plainManageToken,
-            'manage_url' => $booking->plainManageToken ? route('booking.manage', [
-                'reference' => $booking->reference,
-                'token' => $booking->plainManageToken,
-            ]) : null,
-            'my_bookings_url' => auth()->check() ? route('dashboard.my-bookings') : null,
+            'my_bookings_url' => route('dashboard.my-bookings'),
         ];
     }
 }

@@ -187,8 +187,8 @@ final class SubmitLessonReviewAction
         if ($lesson === null || $booking === null
             || $lesson->student_id !== $eligibility->student_id
             || $lesson->instructor_id !== $eligibility->instructor_id
-            || $booking->attendee_id !== $eligibility->student_id
-            || $booking->host_id !== $eligibility->instructor_id) {
+            || $booking->student_id !== $eligibility->student_id
+            || $booking->instructor_id !== $eligibility->instructor_id) {
             throw new ReviewEligibilityException('The lesson or booking no longer matches this eligibility.');
         }
     }

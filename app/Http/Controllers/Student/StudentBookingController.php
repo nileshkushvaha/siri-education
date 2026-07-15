@@ -14,7 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Student\StoreStudentBookingRequest;
 use App\Http\Requests\Api\Student\StudentSlotsRequest;
 use App\Http\Requests\Api\Student\StudentTeachersRequest;
-use App\Http\Resources\Guest\TimeSlotResource;
+use App\Http\Resources\Booking\TimeSlotResource;
 use App\Http\Resources\Student\StudentBookingResource;
 use App\Http\Resources\Student\TeacherOptionResource;
 use Carbon\CarbonImmutable;
@@ -70,7 +70,7 @@ final class StudentBookingController extends Controller
         $date = CarbonImmutable::parse($request->validated('date'), $timezone)->startOfDay();
 
         return TimeSlotResource::collection($availability->slots(new AvailabilityQueryData(
-            hostId: (int) $request->validated('teacher_id'),
+            instructorId: (int) $request->validated('teacher_id'),
             typeKey: $request->validated('type'),
             from: $date,
             to: $date->addDay(),

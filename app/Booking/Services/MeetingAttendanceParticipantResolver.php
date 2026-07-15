@@ -75,13 +75,13 @@ final class MeetingAttendanceParticipantResolver
     {
         $matches = [];
 
-        if ($booking->attendee_id !== null
-            && hash_equals(ProviderAttendanceEvent::keyFor('user:'.$booking->attendee_id), $event->participantKey)) {
+        if ($booking->student_id !== null
+            && hash_equals(ProviderAttendanceEvent::keyFor('user:'.$booking->student_id), $event->participantKey)) {
             $matches[] = LessonParticipant::Student;
         }
 
-        if ($booking->host_id !== null
-            && hash_equals(ProviderAttendanceEvent::keyFor('user:'.$booking->host_id), $event->participantKey)) {
+        if ($booking->instructor_id !== null
+            && hash_equals(ProviderAttendanceEvent::keyFor('user:'.$booking->instructor_id), $event->participantKey)) {
             $matches[] = LessonParticipant::Instructor;
         }
 

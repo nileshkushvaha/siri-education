@@ -92,8 +92,8 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
     public function isEligible(Booking $booking): bool
     {
         return $booking->status === BookingStatus::Confirmed
-            && $booking->attendee_id !== null
-            && $booking->host_id !== null
+            && $booking->student_id !== null
+            && $booking->instructor_id !== null
             && $booking->starts_at !== null
             && $booking->ends_at !== null
             && in_array($booking->payment_status, [BookingPaymentStatus::NotRequired, BookingPaymentStatus::Paid], strict: true);

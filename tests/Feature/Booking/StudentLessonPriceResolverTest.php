@@ -87,8 +87,8 @@ class StudentLessonPriceResolverTest extends TestCase
     {
         return new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $student->id,
-            hostId: ($teacher ?? $this->teacher)->id,
+            studentId: $student->id,
+            instructorId: ($teacher ?? $this->teacher)->id,
             startsAt: now('UTC')->addDays(3)->setTime(10, 0)->toImmutable(),
             durationMinutes: 60,
             meta: ['subject' => 'maths', 'grade' => 7, ...$metaOverrides],
@@ -437,7 +437,7 @@ class StudentLessonPriceResolverTest extends TestCase
             $this->assertStringContainsString('price is not configured', $e->getMessage());
         }
 
-        $this->assertDatabaseMissing('bookings', ['host_id' => $this->teacher->id]);
+        $this->assertDatabaseMissing('bookings', ['instructor_id' => $this->teacher->id]);
     }
 
     // ── Phase 10.2D-Cleanup: legacy booking_types.price/currency fallback is gone ──

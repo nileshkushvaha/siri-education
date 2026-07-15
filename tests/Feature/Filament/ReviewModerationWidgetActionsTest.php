@@ -182,7 +182,7 @@ class ReviewModerationWidgetActionsTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create(array_filter([
             'booking_type_id' => BookingType::factory()->paid(),
-            'host_id' => $instructor?->id,
+            'instructor_id' => $instructor?->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,

@@ -49,8 +49,8 @@ class BookingHistoryTest extends TestCase
 
         Booking::factory()->completed()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
         ]);
 
         Livewire::actingAs($this->student)
@@ -65,13 +65,13 @@ class BookingHistoryTest extends TestCase
 
         Booking::factory()->completed()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
         ]);
         Booking::factory()->cancelled()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
         ]);
 
         Livewire::actingAs($this->student)
@@ -89,8 +89,8 @@ class BookingHistoryTest extends TestCase
 
         Booking::factory()->completed()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $other->id,
-            'host_id' => $teacher->id,
+            'student_id' => $other->id,
+            'instructor_id' => $teacher->id,
         ]);
 
         Livewire::actingAs($this->student)

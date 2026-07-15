@@ -21,7 +21,6 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 final class BookingRepository implements BookingRepositoryInterface
 {
@@ -29,17 +28,9 @@ final class BookingRepository implements BookingRepositoryInterface
 
     public function create(CreateBookingData $data, BookingStatus $status, array $attributes = []): Booking
     {
-        $plainToken = $data->isGuest() ? Str::random(64) : null;
-
-        $booking = Booking::create([
-            'attendee_id' => $data->attendeeId,
-            'guest_name' => $data->guestName,
-            'guest_email' => $data->guestEmail,
-            'guest_phone' => $data->guestPhone,
-            // Only the hash is stored — the plain token is exposed once
-            // via $booking->plainManageToken on this instance.
-            'manage_token' => $plainToken !== null ? hash('sha256', $plainToken) : null,
-            'host_id' => $data->hostId,
+        return Booking::create([
+            'student_id' => $data->studentId,
+            'instructor_id' => $data->instructorId,
             'status' => $status,
             'location_type' => $data->locationType,
             'starts_at' => $data->startsAt,
@@ -49,10 +40,6 @@ final class BookingRepository implements BookingRepositoryInterface
             'meta' => $data->meta ?: null,
             ...$attributes,
         ]);
-
-        $booking->plainManageToken = $plainToken;
-
-        return $booking;
     }
 
     public function findByReference(string $reference): ?Booking
@@ -87,7 +74,7 @@ final class BookingRepository implements BookingRepositoryInterface
     }
 
     public function hasOverlap(
-        int $hostId,
+        int $instructorId,
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
@@ -98,7 +85,7 @@ final class BookingRepository implements BookingRepositoryInterface
         $paddedEnd = $endsAt->addMinutes(max(0, $bufferMinutes));
 
         return Booking::query()
-            ->forHost($hostId)
+            ->forInstructor($instructorId)
             ->overlapping($paddedStart, $paddedEnd, $ignoreBookingId)
             ->when($sharedSlotTypeKey, fn (Builder $q, string $key) => $q->whereNot(
                 fn (Builder $shared) => $shared
@@ -114,63 +101,50 @@ final class BookingRepository implements BookingRepositoryInterface
     {
         return Booking::query()
             ->active()
-            ->when(
-                $data->isGuest(),
-                fn (Builder $q) => $q->where('guest_email', $data->guestEmail),
-                fn (Builder $q) => $q->forAttendee($data->attendeeId),
-            )
-            ->forHost($data->hostId)
+            ->forStudent($data->studentId)
+            ->forInstructor($data->instructorId)
             ->where('starts_at', $data->startsAt)
             ->whereHas('type', fn (Builder $type) => $type->where('key', $data->typeKey))
             ->lockForUpdate()
             ->exists();
     }
 
-    public function activeUpcomingCountForGuestEmail(string $email): int
+    public function studentCountForSlot(int $instructorId, string $typeKey, CarbonImmutable $startsAt): int
     {
         return Booking::query()
             ->active()
-            ->upcoming()
-            ->where('guest_email', $email)
-            ->count();
-    }
-
-    public function attendeeCountForSlot(int $hostId, string $typeKey, CarbonImmutable $startsAt): int
-    {
-        return Booking::query()
-            ->active()
-            ->forHost($hostId)
+            ->forInstructor($instructorId)
             ->where('starts_at', $startsAt)
             ->whereHas('type', fn (Builder $type) => $type->where('key', $typeKey))
             ->lockForUpdate()
             ->count();
     }
 
-    public function activeCountForDay(int $hostId, CarbonImmutable $day, ?string $ignoreBookingId = null): int
+    public function activeCountForDay(int $instructorId, CarbonImmutable $day, ?string $ignoreBookingId = null): int
     {
         return Booking::query()
             ->active()
-            ->forHost($hostId)
+            ->forInstructor($instructorId)
             ->whereBetween('starts_at', [$day->startOfDay(), $day->endOfDay()])
             ->when($ignoreBookingId, fn (Builder $q) => $q->whereKeyNot($ignoreBookingId))
             ->lockForUpdate()
             ->count();
     }
 
-    public function activeUpcomingCountForHost(int $hostId): int
+    public function activeUpcomingCountForInstructor(int $instructorId): int
     {
         return Booking::query()
             ->active()
             ->upcoming()
-            ->forHost($hostId)
+            ->forInstructor($instructorId)
             ->count();
     }
 
-    public function activeBetween(int $hostId, CarbonImmutable $from, CarbonImmutable $to): Collection
+    public function activeBetween(int $instructorId, CarbonImmutable $from, CarbonImmutable $to): Collection
     {
         return Booking::query()
             ->active()
-            ->forHost($hostId)
+            ->forInstructor($instructorId)
             ->where('starts_at', '<', $to)
             ->where('ends_at', '>', $from)
             ->get();
@@ -181,8 +155,8 @@ final class BookingRepository implements BookingRepositoryInterface
         return Booking::query()
             ->active()
             ->upcoming()
-            ->where(fn (Builder $q) => $q->where('attendee_id', $userId)->orWhere('host_id', $userId))
-            ->with(['type', 'host', 'meeting'])
+            ->where(fn (Builder $q) => $q->where('student_id', $userId)->orWhere('instructor_id', $userId))
+            ->with(['type', 'instructor', 'meeting'])
             ->orderBy('starts_at')
             ->get();
     }
@@ -191,8 +165,8 @@ final class BookingRepository implements BookingRepositoryInterface
     public function paginatedForUser(int $userId, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator
     {
         return Booking::withTrashed()
-            ->forAttendee($userId)
-            ->with(['type', 'host', 'meeting'])
+            ->forStudent($userId)
+            ->with(['type', 'instructor', 'meeting'])
             ->when($status, fn (Builder $q) => $q->withStatus($status))
             ->orderByDesc('starts_at')
             ->paginate($perPage);
@@ -201,9 +175,9 @@ final class BookingRepository implements BookingRepositoryInterface
     public function paginatedPaymentsForUser(int $userId, int $perPage = 15): LengthAwarePaginator
     {
         return Booking::query()
-            ->forAttendee($userId)
+            ->forStudent($userId)
             ->whereNot('payment_status', BookingPaymentStatus::NotRequired)
-            ->with(['type', 'host'])
+            ->with(['type', 'instructor'])
             ->orderByDesc('created_at')
             ->paginate($perPage);
     }
@@ -211,7 +185,7 @@ final class BookingRepository implements BookingRepositoryInterface
     public function attendanceStatsForUser(int $userId): object
     {
         return Booking::query()
-            ->forAttendee($userId)
+            ->forStudent($userId)
             ->selectRaw(
                 'SUM(status = ?) as completed, SUM(status = ?) as no_show, SUM(status = ?) as cancelled, COUNT(*) as total',
                 [BookingStatus::Completed->value, BookingStatus::NoShow->value, BookingStatus::Cancelled->value],
@@ -222,9 +196,9 @@ final class BookingRepository implements BookingRepositoryInterface
     public function attendanceHistoryForUser(int $userId, int $limit = 50): Collection
     {
         return Booking::query()
-            ->forAttendee($userId)
+            ->forStudent($userId)
             ->whereIn('status', [BookingStatus::Completed, BookingStatus::NoShow])
-            ->with(['type', 'host'])
+            ->with(['type', 'instructor'])
             ->orderByDesc('starts_at')
             ->limit($limit)
             ->get();
@@ -233,7 +207,7 @@ final class BookingRepository implements BookingRepositoryInterface
     public function progressStatsForUser(int $userId): object
     {
         return Booking::query()
-            ->forAttendee($userId)
+            ->forStudent($userId)
             ->where('status', BookingStatus::Completed)
             ->selectRaw(
                 'COUNT(*) as completed_sessions, COALESCE(SUM(TIMESTAMPDIFF(MINUTE, starts_at, ends_at)), 0) / 60.0 as total_hours',
@@ -244,7 +218,7 @@ final class BookingRepository implements BookingRepositoryInterface
     public function subjectBreakdownForUser(int $userId): Collection
     {
         return Booking::query()
-            ->forAttendee($userId)
+            ->forStudent($userId)
             ->where('status', BookingStatus::Completed)
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.subject')) IS NOT NULL")
             ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.subject')) as subject, COUNT(*) as sessions")
@@ -253,20 +227,20 @@ final class BookingRepository implements BookingRepositoryInterface
             ->get();
     }
 
-    public function previousHostsForAttendee(int $attendeeId): Collection
+    public function previousInstructorsForStudent(int $studentId): Collection
     {
-        $hostIds = Booking::query()
-            ->forAttendee($attendeeId)
+        $instructorIds = Booking::query()
+            ->forStudent($studentId)
             ->where('status', '!=', BookingStatus::Cancelled)
-            ->selectRaw('host_id, MAX(starts_at) as last_starts_at')
-            ->groupBy('host_id')
+            ->selectRaw('instructor_id, MAX(starts_at) as last_starts_at')
+            ->groupBy('instructor_id')
             ->orderByDesc('last_starts_at')
-            ->pluck('host_id');
+            ->pluck('instructor_id');
 
         return User::query()
-            ->whereIn('id', $hostIds)
+            ->whereIn('id', $instructorIds)
             ->get()
-            ->sortBy(fn (User $user): int|false => $hostIds->search($user->id))
+            ->sortBy(fn (User $user): int|false => $instructorIds->search($user->id))
             ->values();
     }
 
@@ -333,14 +307,14 @@ final class BookingRepository implements BookingRepositoryInterface
         ]);
     }
 
-    public function withHostLock(int $hostId, Closure $callback): mixed
+    public function withInstructorLock(int $instructorId, Closure $callback): mixed
     {
-        $name = sprintf('booking:host:%d', $hostId);
+        $name = sprintf('booking:host:%d', $instructorId);
 
         $granted = DB::selectOne('SELECT GET_LOCK(?, ?) AS granted', [$name, self::LOCK_TIMEOUT_SECONDS]);
 
         if ((int) ($granted->granted ?? 0) !== 1) {
-            throw new BookingException(sprintf('Could not acquire booking lock for host #%d.', $hostId));
+            throw new BookingException(sprintf('Could not acquire booking lock for host #%d.', $instructorId));
         }
 
         try {

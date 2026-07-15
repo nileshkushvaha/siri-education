@@ -125,8 +125,8 @@ final class SubmitInstructorStudentFeedbackAction
         }
 
         if ($lesson->student_id === null
-            || $lesson->student_id !== $booking->attendee_id
-            || $lesson->instructor_id !== $booking->host_id) {
+            || $lesson->student_id !== $booking->student_id
+            || $lesson->instructor_id !== $booking->instructor_id) {
             throw new InstructorStudentFeedbackException('This lesson\'s participants do not match its booking.');
         }
     }

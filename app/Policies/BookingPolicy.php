@@ -10,9 +10,9 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Booking authorization. Participants (attendee/host) manage their own
- * bookings; staff act through explicit permissions. `super_admin`
- * bypasses via Gate::before() — never replicated here.
+ * Booking authorization. Participants (student/instructor) manage
+ * their own bookings; staff act through explicit permissions.
+ * `super_admin` bypasses via Gate::before() — never replicated here.
  *
  * Policies decide WHAT a user may do; portal routing stays in
  * PortalResolver.
@@ -67,7 +67,7 @@ class BookingPolicy
 
     public function confirm(User $user, Booking $booking): bool
     {
-        return $this->isHost($user, $booking)
+        return $this->isInstructor($user, $booking)
             || $this->hasPermission($user, 'Confirm:Booking');
     }
 
@@ -85,30 +85,30 @@ class BookingPolicy
 
     public function complete(User $user, Booking $booking): bool
     {
-        return $this->isHost($user, $booking)
+        return $this->isInstructor($user, $booking)
             || $this->hasPermission($user, 'Complete:Booking');
     }
 
     public function pay(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->attendee_id
+        return $user->id === $booking->student_id
             || $this->hasPermission($user, 'Update:Booking');
     }
 
     public function manageMeeting(User $user, Booking $booking): bool
     {
-        return $this->isHost($user, $booking)
+        return $this->isInstructor($user, $booking)
             || $this->hasPermission($user, 'Manage:BookingMeeting');
     }
 
     private function isParticipant(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->attendee_id || $this->isHost($user, $booking);
+        return $user->id === $booking->student_id || $this->isInstructor($user, $booking);
     }
 
-    private function isHost(User $user, Booking $booking): bool
+    private function isInstructor(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->host_id;
+        return $user->id === $booking->instructor_id;
     }
 
     private function hasPermission(User $user, string $permission): bool

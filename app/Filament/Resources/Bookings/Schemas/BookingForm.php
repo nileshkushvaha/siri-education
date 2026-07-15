@@ -35,12 +35,11 @@ class BookingForm
                             $readonly(TextInput::make('status_label')->label('Status')
                                 ->formatStateUsing(fn ($record): ?string => $record?->status?->label())),
                         ]),
-                        Grid::make(3)->schema([
-                            $readonly(TextInput::make('host_name')->label('Teacher')
-                                ->formatStateUsing(fn ($record): ?string => $record?->host?->name)),
-                            $readonly(TextInput::make('attendee_name')->label('Attendee')
-                                ->formatStateUsing(fn ($record): ?string => $record?->attendeeName())),
-                            $readonly(TextInput::make('guest_email')->label('Guest email')),
+                        Grid::make(2)->schema([
+                            $readonly(TextInput::make('instructor_name')->label('Instructor')
+                                ->formatStateUsing(fn ($record): ?string => $record?->instructor?->name)),
+                            $readonly(TextInput::make('student_name')->label('Student')
+                                ->formatStateUsing(fn ($record): ?string => $record?->student?->name)),
                         ]),
                         Grid::make(3)->schema([
                             $readonly(DateTimePicker::make('starts_at')),

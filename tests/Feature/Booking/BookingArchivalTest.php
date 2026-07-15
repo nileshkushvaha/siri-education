@@ -337,13 +337,13 @@ class BookingArchivalTest extends TestCase
      * phase's scope to add), so `$user->delete()` is a physical
      * deletion attempt. Phase 17U.1 §11 requires that attempt be
      * restricted when historical records reference the account —
-     * `bookings.attendee_id`/`host_id` are now RESTRICT, so the
+     * `bookings.student_id`/`instructor_id` are now RESTRICT, so the
      * database itself rejects it and every dependent row survives.
      */
     public function test_user_physical_deletion_is_restricted_and_booking_history_survives(): void
     {
         $graph = $this->richBookingGraph();
-        $student = $graph['booking']->attendee;
+        $student = $graph['booking']->student;
 
         try {
             $student->delete();
@@ -362,7 +362,7 @@ class BookingArchivalTest extends TestCase
     public function test_student_history_can_resolve_an_archived_booking(): void
     {
         $booking = $this->terminalBooking();
-        $student = $booking->attendee;
+        $student = $booking->student;
         $this->archival->archive($booking, $this->admin(), 'reason');
 
         $page = app(BookingRepository::class)->paginatedForUser($student->id);
@@ -383,7 +383,7 @@ class BookingArchivalTest extends TestCase
         $booking = $this->terminalBooking();
         $this->archival->archive($booking, $this->admin(), 'reason');
 
-        $upcoming = app(BookingRepository::class)->upcomingForUser($booking->attendee_id);
+        $upcoming = app(BookingRepository::class)->upcomingForUser($booking->student_id);
 
         $this->assertFalse($upcoming->contains('id', $booking->id));
     }
@@ -503,7 +503,7 @@ class BookingArchivalTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         return Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
+            'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'status' => BookingStatus::Completed,
@@ -529,7 +529,7 @@ class BookingArchivalTest extends TestCase
         // outcome finalize step below is what transitions the booking
         // itself to Completed, exactly as production does.
         $booking = Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
+            'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,
@@ -545,7 +545,7 @@ class BookingArchivalTest extends TestCase
         $attendance = LessonAttendanceRecord::query()->where('lesson_id', $lesson->id)->first()
             ?? LessonAttendanceRecord::factory()->create(['lesson_id' => $lesson->id, 'booking_id' => $booking->id]);
 
-        $wallet = Wallet::factory()->create(['user_id' => $booking->attendee_id]);
+        $wallet = Wallet::factory()->create(['user_id' => $booking->student_id]);
         $refundEntry = WalletLedgerEntry::factory()->create(['wallet_id' => $wallet->id]);
 
         $disposition = LessonFinancialDisposition::query()->where('lesson_id', $lesson->id)->first();
@@ -567,7 +567,7 @@ class BookingArchivalTest extends TestCase
             'lesson_id' => $lesson->id,
             'booking_id' => $booking->id,
             'instructor_id' => $instructor->id,
-            'student_id' => $booking->attendee_id,
+            'student_id' => $booking->student_id,
         ]);
         $settlement = InstructorSettlementBatch::factory()->create(['instructor_id' => $instructor->id]);
         $earning->forceFill(['settlement_batch_id' => $settlement->id])->saveQuietly();
@@ -600,7 +600,7 @@ class BookingArchivalTest extends TestCase
             'lesson_id' => $lesson->id,
             'booking_id' => $booking->id,
             'instructor_id' => $instructor->id,
-            'student_id' => $booking->attendee_id,
+            'student_id' => $booking->student_id,
         ]);
         $alert = InstructorQualityAlert::factory()->create(['instructor_id' => $instructor->id]);
 

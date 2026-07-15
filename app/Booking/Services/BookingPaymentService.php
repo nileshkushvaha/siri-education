@@ -233,7 +233,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             $booking = $this->lockedPaidBooking($booking);
             $payment = $this->lockedUnresolvedCapturedPayment($booking);
 
-            $student = $booking->attendee;
+            $student = $booking->student;
             // tryCreditWalletForRefund() mutates $payment's own metadata
             // (wallet_ledger_entry_id) on success before we add the
             // resolution tag here, so it is never overwritten below.
@@ -441,9 +441,8 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
     /**
      * Country-aware provider selection (Phase 10.2B): resolves the
-     * payer's country from the student's profile when one exists (no
-     * country signal exists for guest bookings — see resolveCountryIso2())
-     * and lets PaymentProviderResolver apply its routing order
+     * payer's country from the student's profile when one exists and
+     * lets PaymentProviderResolver apply its routing order
      * (Country::payment_routing → default_provider → legacy
      * BookingSettings::payment_provider). Passing null (the $booking-less
      * call form) preserves the exact pre-10.2B behavior.
@@ -455,14 +454,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
     private function resolveCountryIso2(Booking $booking): ?string
     {
-        // No country field exists anywhere on a guest booking today —
-        // guest checkout always falls through to default_provider/
-        // BookingSettings::payment_provider, never a per-country route.
-        if ($booking->isGuest()) {
-            return null;
-        }
-
-        return $booking->attendee?->profile?->country?->iso2;
+        return $booking->student?->profile?->country?->iso2;
     }
 
     /**
@@ -472,14 +464,11 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
      * called) but the booking can no longer be confirmed for it. The
      * charge is preserved, never silently discarded or left ambiguous:
      *
-     *   - student booking → credited to the student's wallet, exactly
-     *     once (WalletLedgerService::credit()'s own idempotency key
-     *     guards a second delivery of the same event; the
-     *     already-terminal booking_payments row check below is the
-     *     first, cheaper guard).
-     *   - guest booking (no user account to hold a wallet) → the
-     *     capture is preserved and flagged for manual admin/support
-     *     resolution; never auto-created a wallet for a guest.
+     *   - every booking has an authenticated student → credited to
+     *     their wallet, exactly once (WalletLedgerService::credit()'s
+     *     own idempotency key guards a second delivery of the same
+     *     event; the already-terminal booking_payments row check below
+     *     is the first, cheaper guard).
      *   - wallet credit itself fails (e.g. the student's wallet was
      *     administratively closed) → falls back to the same
      *     manual-resolution flag rather than losing track of the money
@@ -525,34 +514,29 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 'metadata' => [...($payment->metadata ?? []), 'late_terminal_handled' => true],
             ])->save();
 
-            if (! $booking->isGuest()) {
-                $credited = $this->tryCreditStudentWallet($booking, $payment, $reference);
+            $credited = $this->tryCreditStudentWallet($booking, $payment, $reference);
 
-                if ($credited) {
-                    $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Refunded, $reference);
+            if ($credited) {
+                $booking = $this->bookings->updatePaymentStatus($booking, BookingPaymentStatus::Refunded, $reference);
 
-                    $this->logPayment($booking, BookingPaymentStatus::Refunded, [
-                        'late_terminal' => true,
-                        'wallet_credited' => true,
-                    ]);
+                $this->logPayment($booking, BookingPaymentStatus::Refunded, [
+                    'late_terminal' => true,
+                    'wallet_credited' => true,
+                ]);
 
-                    return $booking;
-                }
+                return $booking;
             }
 
             $payment->forceFill([
                 'metadata' => [
                     ...($payment->metadata ?? []),
                     'manual_resolution_required' => true,
-                    'manual_resolution_reason' => $booking->isGuest()
-                        ? 'Guest booking has no user account to hold a wallet credit.'
-                        : 'Automatic wallet credit failed — needs manual admin/support resolution.',
+                    'manual_resolution_reason' => 'Automatic wallet credit failed — needs manual admin/support resolution.',
                 ],
             ])->save();
 
             $this->logLateTerminalEvent($booking, 'payment_late_terminal_manual_resolution', [
                 'booking_status' => $booking->status->value,
-                'is_guest' => $booking->isGuest(),
             ]);
 
             return $booking;
@@ -573,7 +557,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
      */
     private function tryCreditStudentWallet(Booking $booking, BookingPayment $payment, string $reference): bool
     {
-        $student = $booking->attendee;
+        $student = $booking->student;
 
         if ($student === null) {
             return false;
@@ -673,21 +657,6 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
         if ($user = Auth::user()) {
             $this->audit->logUser($user, 'payments', 'payment_'.$to->value, $description, $booking, $properties);
-
-            return;
-        }
-
-        if ($booking->isGuest()) {
-            $this->audit->logGuest(
-                logName: 'payments',
-                event: 'payment_'.$to->value,
-                description: $description,
-                subject: $booking,
-                guestName: $booking->guest_name ?? '',
-                guestEmail: $booking->guest_email ?? '',
-                guestPhone: $booking->guest_phone ?? '',
-                properties: $properties,
-            );
 
             return;
         }

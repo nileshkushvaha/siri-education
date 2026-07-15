@@ -23,8 +23,8 @@
                     </div>
                     <p class="text-xs text-slate-400">
                         with
-                        @if($booking->host)
-                            <a href="{{ route('instructors.show', $booking->host) }}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-indigo-300 hover:text-indigo-200 hover:underline">{{ $booking->host->name }}</a>
+                        @if($booking->instructor)
+                            <a href="{{ route('instructors.show', $booking->instructor) }}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-indigo-300 hover:text-indigo-200 hover:underline">{{ $booking->instructor->name }}</a>
                         @else
                             Teacher
                         @endif
@@ -86,8 +86,8 @@
                 <div>
                     <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Instructor</dt>
                     <dd class="mt-1 font-semibold">
-                        @if($booking->host)
-                            <a href="{{ route('instructors.show', $booking->host) }}" target="_blank" rel="noopener" class="text-indigo-300 hover:text-indigo-200 hover:underline">{{ $booking->host->name }}</a>
+                        @if($booking->instructor)
+                            <a href="{{ route('instructors.show', $booking->instructor) }}" target="_blank" rel="noopener" class="text-indigo-300 hover:text-indigo-200 hover:underline">{{ $booking->instructor->name }}</a>
                         @else
                             <span class="text-white">Teacher</span>
                         @endif

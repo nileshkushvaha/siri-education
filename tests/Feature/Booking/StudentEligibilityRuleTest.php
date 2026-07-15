@@ -56,8 +56,8 @@ class StudentEligibilityRuleTest extends TestCase
     {
         return new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $attendee->id,
-            hostId: $this->teacher->id,
+            studentId: $attendee->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 30,
         );
@@ -69,7 +69,7 @@ class StudentEligibilityRuleTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request($this->bookingData($student));
 
-        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'attendee_id' => $student->id]);
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'student_id' => $student->id]);
     }
 
     public function test_inactive_student_cannot_book(): void
@@ -114,7 +114,7 @@ class StudentEligibilityRuleTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request($this->bookingData($student));
 
-        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'attendee_id' => $student->id]);
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'student_id' => $student->id]);
     }
 
     public function test_free_booking_creation_succeeds_without_a_billing_country(): void
@@ -127,6 +127,6 @@ class StudentEligibilityRuleTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request($this->bookingData($student));
 
-        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'attendee_id' => $student->id]);
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'student_id' => $student->id]);
     }
 }

@@ -428,7 +428,7 @@ class LessonEarningReconciliationTest extends TestCase
             'payment_status' => BookingPaymentStatus::Paid,
             'price' => $priceMajor,
             'currency' => 'INR',
-            'host_id' => $instructor?->id,
+            'instructor_id' => $instructor?->id,
         ]));
 
         $lesson = app(LessonLifecycleServiceInterface::class)->createFromBooking($booking);

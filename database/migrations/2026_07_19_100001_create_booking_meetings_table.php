@@ -40,7 +40,10 @@ return new class extends Migration
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
 
-            $table->foreign('booking_id')->references('id')->on('bookings')->cascadeOnDelete();
+            // Meeting history is booking history — never cascaded away (Phase
+            // 17U.3: folded directly into the baseline; previously fixed up
+            // by a later migration removed in this phase).
+            $table->foreign('booking_id')->references('id')->on('bookings')->restrictOnDelete();
             $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
             $table->foreign('updated_by')->references('id')->on('users')->nullOnDelete();
 

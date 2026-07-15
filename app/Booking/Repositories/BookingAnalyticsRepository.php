@@ -40,12 +40,13 @@ final class BookingAnalyticsRepository implements BookingAnalyticsRepositoryInte
 
     public function conversion(CarbonImmutable $from, CarbonImmutable $to): object
     {
-        // Booker identity: user id for members, email for guests.
+        // Booker identity: every booking has an authenticated student_id
+        // (Phase 17U.3 — no guest booking concept exists).
         return (object) (array) DB::selectOne(
             'SELECT COUNT(DISTINCT d.booker) AS demo_bookers,
                     COUNT(DISTINCT CASE WHEN p.id IS NOT NULL THEN d.booker END) AS converted
              FROM (
-                 SELECT COALESCE(CAST(b.attendee_id AS CHAR), b.guest_email) AS booker, b.created_at
+                 SELECT b.student_id AS booker, b.created_at
                  FROM bookings b
                  JOIN booking_types t ON t.id = b.booking_type_id
                  WHERE t.`key` = ?
@@ -53,7 +54,7 @@ final class BookingAnalyticsRepository implements BookingAnalyticsRepositoryInte
                    AND b.created_at BETWEEN ? AND ?
              ) d
              LEFT JOIN (
-                 SELECT b.id, COALESCE(CAST(b.attendee_id AS CHAR), b.guest_email) AS booker, b.created_at
+                 SELECT b.id, b.student_id AS booker, b.created_at
                  FROM bookings b
                  JOIN booking_types t ON t.id = b.booking_type_id
                  WHERE t.is_paid = 1 AND b.deleted_at IS NULL
@@ -103,15 +104,15 @@ final class BookingAnalyticsRepository implements BookingAnalyticsRepositoryInte
     public function bookedMinutesPerTeacher(CarbonImmutable $from, CarbonImmutable $to, int $limit = 10): Collection
     {
         return Booking::query()
-            ->join('users', 'users.id', '=', 'bookings.host_id')
+            ->join('users', 'users.id', '=', 'bookings.instructor_id')
             ->whereBetween('bookings.starts_at', [$from, $to])
             ->whereIn('bookings.status', [BookingStatus::Confirmed, BookingStatus::Completed])
             ->selectRaw(
-                'bookings.host_id,
+                'bookings.instructor_id,
                  users.name,
                  COALESCE(SUM(TIMESTAMPDIFF(MINUTE, bookings.starts_at, bookings.ends_at)), 0) as minutes',
             )
-            ->groupBy('bookings.host_id', 'users.name')
+            ->groupBy('bookings.instructor_id', 'users.name')
             ->orderByDesc('minutes')
             ->limit($limit)
             ->get();

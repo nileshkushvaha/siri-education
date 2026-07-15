@@ -8,11 +8,11 @@ use Carbon\CarbonImmutable;
 
 final class SlotUnavailableException extends BookingException
 {
-    public static function for(int $hostId, CarbonImmutable $startsAt): self
+    public static function for(int $instructorId, CarbonImmutable $startsAt): self
     {
         return new self(sprintf(
             'Host #%d is not available at %s.',
-            $hostId,
+            $instructorId,
             $startsAt->toIso8601String(),
         ));
     }

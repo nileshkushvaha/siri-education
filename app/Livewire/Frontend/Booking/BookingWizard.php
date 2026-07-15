@@ -10,14 +10,18 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
-use App\Rules\TurnstileToken;
-use App\Settings\BookingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
+/**
+ * The authenticated-student booking-creation wizard (Phase 17U.3 —
+ * `/book` is auth-gated; renamed from the pre-authenticated-only
+ * "guest wizard"). Student identity always comes from the session —
+ * this component never collects or stores name/email/phone.
+ */
 final class BookingWizard extends Component
 {
     public int $step = 1;
@@ -51,21 +55,7 @@ final class BookingWizard extends Component
 
     public string $timezone = 'UTC';
 
-    public string $name = '';
-
-    public string $email = '';
-
-    public string $phone = '';
-
     public string $notes = '';
-
-    public string $website = '';
-
-    public string $cfTurnstileResponse = '';
-
-    public bool $turnstileEnabled = false;
-
-    public ?string $turnstileSiteKey = null;
 
     public string $banner = '';
 
@@ -141,10 +131,6 @@ final class BookingWizard extends Component
                 $this->banner = 'This instructor is not available for public booking right now.';
             }
         }
-
-        $settings = app(BookingSettings::class);
-        $this->turnstileEnabled = (bool) $settings->captcha_enabled;
-        $this->turnstileSiteKey = $settings->turnstile_site_key;
     }
 
     public function setTimezone(string $timezone): void
@@ -199,12 +185,6 @@ final class BookingWizard extends Component
         $this->goTo(5);
     }
 
-    public function review(): void
-    {
-        $this->validate($this->rulesForStep(5), [], $this->validationAttributes());
-        $this->goTo(6);
-    }
-
     public function submit(): void
     {
         $this->banner = '';
@@ -217,16 +197,13 @@ final class BookingWizard extends Component
                 'grade' => $this->grade,
                 'starts_at' => $this->selectedSlotStartsAt,
                 'timezone' => $this->timezone,
-                'name' => $this->name,
-                'email' => $this->email,
-                'phone' => filled($this->phone) ? $this->phone : null,
                 'notes' => filled($this->notes) ? $this->notes : null,
                 'teacher_id' => $this->lockedInstructorId,
             ]);
 
             $this->bookingId = $booking->id;
             $this->result = $this->wizard->result($booking);
-            $this->goTo(7);
+            $this->goTo(6);
         } catch (BookingException $exception) {
             $this->banner = $exception->getMessage();
         }
@@ -267,8 +244,8 @@ final class BookingWizard extends Component
                     keyId: $payload['key_id'],
                     amountMinor: $payload['amount_minor'],
                     currency: $payload['currency'],
-                    name: $this->name,
-                    email: $this->email,
+                    name: auth()->user()->name,
+                    email: auth()->user()->email,
                 );
             } elseif (($payload['provider'] ?? null) === 'stripe') {
                 // client_secret/publishable_key travel only in the transient
@@ -336,8 +313,7 @@ final class BookingWizard extends Component
             $this->razorpay->verifyCheckout($booking, $orderId, $paymentId, $signature);
 
             // Reload before the state check: a concurrent webhook delivery
-            // may have already settled this booking (see the guest
-            // controller's identical guard for why a fresh read matters).
+            // may have already settled this booking.
             $booking->refresh();
 
             if ($booking->payment_status->isPayable()) {
@@ -376,7 +352,7 @@ final class BookingWizard extends Component
 
     public function back(): void
     {
-        if ($this->step > 1 && $this->step < 7) {
+        if ($this->step > 1 && $this->step < 6) {
             $this->step--;
         }
     }
@@ -394,12 +370,7 @@ final class BookingWizard extends Component
             'grade',
             'date',
             'selectedSlotStartsAt',
-            'name',
-            'email',
-            'phone',
             'notes',
-            'website',
-            'cfTurnstileResponse',
             'banner',
             'result',
             'bookingId',
@@ -435,7 +406,7 @@ final class BookingWizard extends Component
                 'grade' => 2,
                 'date' => 3,
                 'selectedSlotStartsAt' => 4,
-                default => 6,
+                default => 5,
             })[$field];
         }
 
@@ -507,12 +478,7 @@ final class BookingWizard extends Component
                 'date' => ['required', 'date_format:Y-m-d', Rule::in($this->dates)],
                 'selectedSlotStartsAt' => ['required', 'string', Rule::in(collect($this->availableSlots)->pluck('starts_at')->all())],
                 'timezone' => ['required', 'timezone'],
-                'name' => ['required', 'string', 'min:2', 'max:100'],
-                'email' => ['required', 'email:rfc', 'max:255'],
-                'phone' => ['nullable', 'string', 'regex:/^[+0-9 ().-]{7,30}$/'],
                 'notes' => ['nullable', 'string', 'max:1000'],
-                'website' => ['prohibited'],
-                'cfTurnstileResponse' => [new TurnstileToken],
             ],
         };
     }
@@ -523,8 +489,6 @@ final class BookingWizard extends Component
         return [
             'type' => 'session type',
             'selectedSlotStartsAt' => 'available slot',
-            'cfTurnstileResponse' => 'security check',
-            'name' => 'full name',
         ];
     }
 
@@ -580,9 +544,8 @@ final class BookingWizard extends Component
             ['number' => 2, 'label' => 'Grade'],
             ['number' => 3, 'label' => 'Date'],
             ['number' => 4, 'label' => 'Time'],
-            ['number' => 5, 'label' => 'Details'],
-            ['number' => 6, 'label' => 'Review'],
-            ['number' => 7, 'label' => 'Confirmed'],
+            ['number' => 5, 'label' => 'Review'],
+            ['number' => 6, 'label' => 'Confirmed'],
         ];
     }
 }

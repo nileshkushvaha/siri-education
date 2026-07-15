@@ -53,7 +53,7 @@ class ZoomApiClientTest extends TestCase
                 'password' => 'p4ss',
                 'timezone' => 'Asia/Kolkata',
                 'status' => 'waiting',
-                'host_id' => 'raw-host-id-should-never-leak',
+                'instructor_id' => 'raw-host-id-should-never-leak',
                 'settings' => ['alternative_hosts' => 'internal@example.com'],
             ], $meetingStatus),
         ]);
@@ -103,7 +103,7 @@ class ZoomApiClientTest extends TestCase
         );
         $this->assertSame('987654321', $meeting['id']);
         $this->assertSame('https://zoom.us/j/987654321', $meeting['join_url']);
-        // The raw response's host_id / settings never cross the boundary.
+        // The raw response's instructor_id / settings never cross the boundary.
         $this->assertStringNotContainsString('raw-host-id-should-never-leak', json_encode($meeting));
     }
 

@@ -48,7 +48,7 @@ class BookingAnalyticsTest extends TestCase
     private function booking(BookingType $type, array $attributes = []): Booking
     {
         return Booking::factory()->for($type, 'type')->create([
-            'host_id' => $this->teacher->id,
+            'instructor_id' => $this->teacher->id,
             'created_at' => now()->subDays(5),
             'starts_at' => now()->subDays(2)->setTime(10, 0),
             'ends_at' => now()->subDays(2)->setTime(10, 0)->addMinutes($type->duration_minutes),
@@ -62,10 +62,10 @@ class BookingAnalyticsTest extends TestCase
         $bob = User::factory()->create();
 
         // Two demo bookers; Alice later converts to a paid booking.
-        $this->booking($this->demo, ['attendee_id' => $alice->id, 'status' => BookingStatus::Completed, 'completed_at' => now()->subDay()]);
-        $this->booking($this->demo, ['attendee_id' => $bob->id, 'status' => BookingStatus::Cancelled, 'cancelled_at' => now()->subDay()]);
+        $this->booking($this->demo, ['student_id' => $alice->id, 'status' => BookingStatus::Completed, 'completed_at' => now()->subDay()]);
+        $this->booking($this->demo, ['student_id' => $bob->id, 'status' => BookingStatus::Cancelled, 'cancelled_at' => now()->subDay()]);
         $this->booking($this->paid, [
-            'attendee_id' => $alice->id,
+            'student_id' => $alice->id,
             'created_at' => now()->subDays(3),
             'starts_at' => now()->addDay()->setTime(11, 0),
             'ends_at' => now()->addDay()->setTime(12, 0),
@@ -86,31 +86,6 @@ class BookingAnalyticsTest extends TestCase
         $this->assertSame(1, $kpis->cancelled);
         $this->assertSame(round(1 / 3 * 100, 1), $kpis->cancellationRate);
         $this->assertSame(1, $kpis->completed);
-    }
-
-    public function test_guest_demo_bookers_convert_by_email(): void
-    {
-        $this->booking($this->demo, [
-            'attendee_id' => null,
-            'guest_name' => 'Guest',
-            'guest_email' => 'guest@example.com',
-            'manage_token' => str_repeat('a', 64),
-        ]);
-        $this->booking($this->paid, [
-            'attendee_id' => null,
-            'guest_name' => 'Guest',
-            'guest_email' => 'guest@example.com',
-            'manage_token' => str_repeat('b', 64),
-            'created_at' => now()->subDays(3),
-            'payment_status' => BookingPaymentStatus::Paid,
-            'price' => '50.00',
-        ]);
-
-        $kpis = $this->analytics->kpis($this->from, $this->to);
-
-        $this->assertSame(1, $kpis->demoBookers);
-        $this->assertSame(1, $kpis->convertedBookers);
-        $this->assertSame(100.0, $kpis->conversionRate);
     }
 
     public function test_popular_subjects_and_time_slots(): void
@@ -141,7 +116,7 @@ class BookingAnalyticsTest extends TestCase
         // 6 booked hours in the period
         foreach (range(1, 6) as $i) {
             $this->booking($this->paid, [
-                'attendee_id' => User::factory()->create()->id,
+                'student_id' => User::factory()->create()->id,
                 'status' => BookingStatus::Completed,
                 'starts_at' => now()->subDays($i)->setTime(9, 0),
                 'ends_at' => now()->subDays($i)->setTime(10, 0),

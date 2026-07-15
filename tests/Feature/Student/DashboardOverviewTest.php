@@ -71,8 +71,8 @@ class DashboardOverviewTest extends TestCase
 
         Booking::factory()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
             'status' => BookingStatus::Confirmed,
             'starts_at' => now()->addDay(),
             'ends_at' => now()->addDay()->addHour(),

@@ -38,9 +38,9 @@ final class RecordBookingLifecycleAudit implements ShouldQueue
             'Booking %s requested — %s with %s on %s by %s',
             $event->booking->reference,
             $event->booking->type->name,
-            $event->booking->host->name,
+            $event->booking->instructor->name,
             $this->when($event->booking),
-            $event->booking->attendeeName() ?? 'a guest',
+            $event->booking->student->name,
         ));
     }
 
@@ -50,7 +50,7 @@ final class RecordBookingLifecycleAudit implements ShouldQueue
             'Booking %s confirmed — %s with %s on %s',
             $event->booking->reference,
             $event->booking->type->name,
-            $event->booking->host->name,
+            $event->booking->instructor->name,
             $this->when($event->booking),
         ));
     }
@@ -86,20 +86,6 @@ final class RecordBookingLifecycleAudit implements ShouldQueue
 
     private function log(Booking $booking, string $event, string $description): void
     {
-        if ($booking->isGuest()) {
-            $this->audit->logGuest(
-                logName: 'bookings',
-                event: $event,
-                description: $description,
-                subject: $booking,
-                guestName: $booking->guest_name ?? '',
-                guestEmail: $booking->guest_email ?? '',
-                guestPhone: $booking->guest_phone ?? '',
-            );
-
-            return;
-        }
-
         // Queued context has no authenticated user; the precise actor is
         // already recorded in booking_activities. System actor is correct here.
         $this->audit->logSystem('bookings', $event, $description, $booking);

@@ -64,12 +64,10 @@ class BookingsTable
                 TextColumn::make('type.name')
                     ->label('Type')
                     ->sortable(),
-                TextColumn::make('attendee_display')
-                    ->label('Attendee')
-                    ->state(fn (Booking $record): string => $record->attendeeName() ?? '—')
-                    ->description(fn (Booking $record): ?string => $record->isGuest() ? 'Guest' : null),
-                TextColumn::make('host.name')
-                    ->label('Teacher')
+                TextColumn::make('student.name')
+                    ->label('Student'),
+                TextColumn::make('instructor.name')
+                    ->label('Instructor')
                     ->sortable(),
                 TextColumn::make('starts_at')
                     ->label('Starts')
@@ -129,9 +127,9 @@ class BookingsTable
                 SelectFilter::make('booking_type_id')
                     ->label('Type')
                     ->relationship('type', 'name'),
-                SelectFilter::make('host_id')
-                    ->label('Teacher')
-                    ->relationship('host', 'name')
+                SelectFilter::make('instructor_id')
+                    ->label('Instructor')
+                    ->relationship('instructor', 'name')
                     ->searchable()
                     ->preload(),
                 Filter::make('starts_between')
@@ -358,12 +356,12 @@ class BookingsTable
                     BulkAction::make('export')
                         ->label('Export CSV')
                         ->icon('heroicon-m-arrow-down-tray')
-                        ->action(fn (Collection $records) => CsvExport::download($records->load(['type', 'host']), [
+                        ->action(fn (Collection $records) => CsvExport::download($records->load(['type', 'instructor', 'student']), [
                             'Reference' => 'reference',
                             'Type' => 'type.name',
-                            'Attendee' => fn (Booking $b): string => $b->attendeeName() ?? '',
-                            'Attendee email' => fn (Booking $b): string => $b->attendee?->email ?? $b->guest_email ?? '',
-                            'Teacher' => 'host.name',
+                            'Student' => 'student.name',
+                            'Student email' => 'student.email',
+                            'Instructor' => 'instructor.name',
                             'Starts (UTC)' => fn (Booking $b): string => $b->starts_at->toDateTimeString(),
                             'Ends (UTC)' => fn (Booking $b): string => $b->ends_at->toDateTimeString(),
                             'Timezone' => 'timezone',

@@ -228,8 +228,8 @@ class MeetingLifecycleTest extends TestCase
         $this->assertSame(MeetingStatus::Created, $meeting->status);
         $this->assertSame('https://meet.google.com/now-ready', $meeting->join_url);
 
-        Notification::assertSentTo($booking->host, MeetingCreatedNotification::class);
-        Notification::assertSentTo($booking->attendee, MeetingCreatedNotification::class);
+        Notification::assertSentTo($booking->instructor, MeetingCreatedNotification::class);
+        Notification::assertSentTo($booking->student, MeetingCreatedNotification::class);
     }
 
     // ── In-app (database) notifications ────────────────────────────────
@@ -254,17 +254,17 @@ class MeetingLifecycleTest extends TestCase
         app(BookingMeetingServiceInterface::class)
             ->createMeeting($booking, GoogleCalendarMeetProvider::KEY);
 
-        $attendeeNotification = $booking->attendee->notifications()->firstOrFail();
-        $this->assertSame('Meeting Created', $attendeeNotification->data['title']);
-        $this->assertStringContainsString($booking->reference, $attendeeNotification->data['message']);
-        $this->assertSame(1, $booking->host->notifications()->count());
+        $studentNotification = $booking->student->notifications()->firstOrFail();
+        $this->assertSame('Meeting Created', $studentNotification->data['title']);
+        $this->assertStringContainsString($booking->reference, $studentNotification->data['message']);
+        $this->assertSame(1, $booking->instructor->notifications()->count());
 
         // And the student actually sees it on /dashboard/notifications.
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
-        $booking->attendee->assignRole('student');
-        $booking->attendee->update(['status' => User::STATUS_ACTIVE]);
+        $booking->student->assignRole('student');
+        $booking->student->update(['status' => User::STATUS_ACTIVE]);
 
-        $this->actingAs($booking->attendee)
+        $this->actingAs($booking->student)
             ->get(route('dashboard.notifications'))
             ->assertOk()
             ->assertSee('Meeting Created')

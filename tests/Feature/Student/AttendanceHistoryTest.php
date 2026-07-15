@@ -49,13 +49,13 @@ class AttendanceHistoryTest extends TestCase
 
         Booking::factory()->completed()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
         ]);
         Booking::factory()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
             'status' => BookingStatus::NoShow,
         ]);
 

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Null grade bounds mean the subject is taught at any grade.
  *
  * `subject` (free-text) is the field booking flows have always read
- * (AssignmentCriteriaData, GuestBookingData, StudentBookingData,
+ * (AssignmentCriteriaData, WizardBookingData, StudentBookingData,
  * TeacherCandidateRepository) and continues to be — untouched by the
  * Subject reconciliation. `subject_id` is an optional link to the
  * Subject master, nullable for backward compatibility with rows that

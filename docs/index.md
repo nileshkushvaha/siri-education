@@ -2,6 +2,7 @@
 
 | Module | File |
 |---|---|
+| Software Requirements Specification | srs.md |
 | Authentication | authentication.md |
 | Security | security.md |
 | Users | users.md |

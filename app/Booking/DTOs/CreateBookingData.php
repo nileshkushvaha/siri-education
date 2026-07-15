@@ -9,34 +9,27 @@ use Carbon\CarbonImmutable;
 
 /**
  * Immutable input for requesting a booking. Built by FormRequests (HTTP)
- * or callers such as console commands — never inside Services.
- * Null $attendeeId = guest booking; guest identity fields required then.
+ * or callers such as console commands — never inside Services. Every
+ * booking has an authenticated student (Phase 17U.3 — no unauthenticated
+ * guest booking concept exists anywhere in this domain).
  */
 final readonly class CreateBookingData
 {
     /** @param array<string, mixed> $meta type-specific payload (e.g. webinar topic) */
     public function __construct(
         public string $typeKey,
-        public ?int $attendeeId,
-        public int $hostId,
+        public int $studentId,
+        public int $instructorId,
         public CarbonImmutable $startsAt,
         public int $durationMinutes,
         public BookingLocationType $locationType = BookingLocationType::Online,
         public string $timezone = 'UTC',
         public ?string $notes = null,
         public array $meta = [],
-        public ?string $guestName = null,
-        public ?string $guestEmail = null,
-        public ?string $guestPhone = null,
     ) {}
 
     public function endsAt(): CarbonImmutable
     {
         return $this->startsAt->addMinutes($this->durationMinutes);
-    }
-
-    public function isGuest(): bool
-    {
-        return $this->attendeeId === null;
     }
 }

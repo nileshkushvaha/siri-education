@@ -218,7 +218,7 @@ class StudentCheckoutFrontendTest extends TestCase
 
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $booking = app(BookingServiceInterface::class)->cancel($booking->refresh(), new CancelBookingData(
-            BookingActor::Attendee,
+            BookingActor::Student,
             'Changed my mind',
         ));
 
@@ -331,7 +331,7 @@ class StudentCheckoutFrontendTest extends TestCase
         $booking = $this->paidBooking($student);
 
         $booking = app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(
-            BookingActor::Attendee,
+            BookingActor::Student,
             'Changed my mind',
         ));
 

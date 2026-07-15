@@ -15,7 +15,6 @@ use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
 use App\Models\Booking;
-use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Currency;
 use App\Models\TeacherAvailability;
@@ -29,7 +28,6 @@ use App\Settings\PaymentGatewaySettings;
 use App\Wallet\Enums\WalletLedgerEntryType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Mockery;
 use Tests\Support\CreatesStudentLessonPrices;
@@ -39,8 +37,8 @@ use Tests\TestCase;
  * Phase 10.2B — Option B: a payment that settles successfully after its
  * booking has already gone terminal (cancelled/expired reservation) is
  * never silently confirmed and never silently discarded. The charge is
- * preserved and redirected to the student's wallet; guest bookings (no
- * user account to hold a wallet) are flagged for manual resolution.
+ * preserved and redirected to the student's wallet; if the wallet
+ * credit itself fails, the payment is flagged for manual resolution.
  * Replaces Phase 10.2's outright rejection of this scenario.
  */
 class PaymentTerminalStateTest extends TestCase
@@ -112,39 +110,6 @@ class PaymentTerminalStateTest extends TestCase
         ));
 
         return $booking->refresh();
-    }
-
-    /**
-     * A legacy guest booking, as if created before Phase 10.2C-Fix's "no
-     * guest booking" rule shipped — built directly, since
-     * GuestBookingServiceInterface::book() can no longer produce one.
-     * Late-payment/webhook handling must still resolve these correctly
-     * (manual_resolution_required, not wallet credit — no user account
-     * exists to hold a wallet).
-     *
-     * @return array{0: Booking, 1: string} booking + plain manage token
-     */
-    private function reserveGuest(): array
-    {
-        $plainToken = Str::random(64);
-
-        $booking = Booking::factory()->create([
-            'booking_type_id' => BookingType::query()->where('key', 'paid_one_to_one')->firstOrFail()->id,
-            'attendee_id' => null,
-            'host_id' => $this->teacher->id,
-            'status' => BookingStatus::Pending,
-            'payment_status' => BookingPaymentStatus::Pending,
-            'price' => 499.00,
-            'currency' => 'INR',
-            'guest_name' => 'Guest Student',
-            'guest_email' => 'guest@example.com',
-            'guest_phone' => null,
-            'manage_token' => hash('sha256', $plainToken),
-            'starts_at' => now('UTC')->addDays(4)->setTime(11, 0),
-            'ends_at' => now('UTC')->addDays(4)->setTime(12, 0),
-        ]);
-
-        return [$booking, $plainToken];
     }
 
     private function webhookSignature(string $body): string
@@ -332,62 +297,5 @@ class PaymentTerminalStateTest extends TestCase
 
         $this->assertSame(0, WalletLedgerEntry::query()->count());
         $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
-    }
-
-    // ── Guest: manual resolution ─────────────────────────────────────────
-
-    public function test_guest_cancelled_booking_late_payment_does_not_confirm_and_does_not_create_wallet(): void
-    {
-        $this->configureRazorpay();
-        $this->fakeRazorpayOrder('order_GUEST_TERM1');
-
-        [$booking] = $this->reserveGuest();
-        app(BookingPaymentServiceInterface::class)->initiate($booking);
-        $reference = (string) $booking->refresh()->payment_reference;
-
-        $booking = app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(
-            BookingActor::System,
-            'Payment was not completed within the reservation window.',
-        ));
-
-        $response = $this->postWebhook($this->capturedWebhookPayload('order_GUEST_TERM1', 'pay_GUEST1', $reference));
-
-        $response->assertOk()->assertJson(['status' => 'processed']);
-
-        $booking->refresh();
-        $this->assertSame(BookingStatus::Cancelled, $booking->status);
-        // Guest has no user account — payment_status is deliberately left
-        // unchanged (Pending) rather than claiming a resolution that
-        // didn't happen; the resolution lives on the BookingPayment row.
-        $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
-        $this->assertSame(0, Wallet::query()->count());
-        $this->assertSame(0, WalletLedgerEntry::query()->count());
-
-        $payment = BookingPayment::query()->where('idempotency_key', $reference)->firstOrFail();
-        $this->assertTrue($payment->metadata['manual_resolution_required'] ?? false);
-    }
-
-    public function test_duplicate_guest_late_webhook_is_idempotent(): void
-    {
-        $this->configureRazorpay();
-        $this->fakeRazorpayOrder('order_GUEST_TERM2');
-
-        [$booking] = $this->reserveGuest();
-        app(BookingPaymentServiceInterface::class)->initiate($booking);
-        $reference = (string) $booking->refresh()->payment_reference;
-
-        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(
-            BookingActor::System,
-            'Payment was not completed within the reservation window.',
-        ));
-
-        $payload = $this->capturedWebhookPayload('order_GUEST_TERM2', 'pay_GUEST2', $reference);
-        $this->postWebhook($payload)->assertOk()->assertJson(['status' => 'processed']);
-        $this->postWebhook($payload)->assertOk()->assertJson(['status' => 'processed']);
-
-        $this->assertSame(0, Wallet::query()->count());
-
-        $payment = BookingPayment::query()->where('idempotency_key', $reference)->firstOrFail();
-        $this->assertTrue($payment->metadata['late_terminal_handled'] ?? false);
     }
 }

@@ -27,7 +27,7 @@ final class TeacherAvailabilityRule implements BookingRuleInterface
         $row = $this->types->requireActiveByKey($data->typeKey);
 
         $this->availability->ensureAvailable(
-            $data->hostId,
+            $data->instructorId,
             $data->startsAt,
             $data->endsAt(),
             sharedSlotTypeKey: $type->maxAttendees() === 1 ? null : $type->key(),

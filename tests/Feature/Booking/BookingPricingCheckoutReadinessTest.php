@@ -207,8 +207,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 60,
             meta: $this->subjectMeta(),
@@ -225,8 +225,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 60,
             meta: $this->subjectMeta(),
@@ -243,8 +243,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 60,
             meta: $this->subjectMeta(),
@@ -268,8 +268,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 30,
         ));
@@ -313,8 +313,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 30,
         ));
@@ -332,14 +332,14 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         $slot = $this->slot();
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $slot,
             durationMinutes: 45,
             meta: $this->subjectMeta(),
         ));
 
-        $booking = Booking::query()->where('host_id', $this->teacher->id)->firstOrFail();
+        $booking = Booking::query()->where('instructor_id', $this->teacher->id)->firstOrFail();
         $this->assertSame(45, (int) $slot->diffInMinutes($booking->ends_at));
 
         // Back-to-back start (ignoring the 15-minute buffer) must be rejected.
@@ -348,8 +348,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         $this->expectException(SlotUnavailableException::class);
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $otherStudent->id,
-            hostId: $this->teacher->id,
+            studentId: $otherStudent->id,
+            instructorId: $this->teacher->id,
             startsAt: $slot->addMinutes(45),
             durationMinutes: 45,
             meta: $this->subjectMeta(),
@@ -373,8 +373,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'paid_one_to_one',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 60,
             meta: $this->subjectMeta(),
@@ -398,8 +398,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $this->student->id,
-            hostId: $this->teacher->id,
+            studentId: $this->student->id,
+            instructorId: $this->teacher->id,
             startsAt: $this->slot(),
             durationMinutes: 30,
         ));

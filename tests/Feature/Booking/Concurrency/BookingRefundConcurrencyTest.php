@@ -35,7 +35,7 @@ class BookingRefundConcurrencyTest extends ConcurrencyTestCase
         $type = BookingType::factory()->create(['requires_approval' => false]);
 
         $booking = Booking::factory()->create([
-            'attendee_id' => $student->id,
+            'student_id' => $student->id,
             'booking_type_id' => $type->id,
             'status' => BookingStatus::Confirmed,
             'payment_status' => BookingPaymentStatus::Paid,

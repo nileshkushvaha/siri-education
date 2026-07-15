@@ -208,7 +208,7 @@ class StudentReviewPortalTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
-            'host_id' => $instructor->id,
+            'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -228,7 +228,7 @@ class StudentReviewPortalTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
+            'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

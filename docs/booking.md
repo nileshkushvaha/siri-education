@@ -606,13 +606,13 @@ historical chain — `Lesson` (force-delete-blocking, since it does have
 `InstructorRatingAggregate`, the three `LessonAttendance*` models,
 `LessonTechnicalIssueReport`, `WalletLedgerEntry`,
 `InstructorSettlementBatch`, `NotificationDispatchLog`, and — as of
-Phase 17U.2 §1 — `BookingGuest` and `BookingMeeting` (neither has
-`SoftDeletes`, so both hook `deleting` and reject unconditionally).
-`GuestsRelationManager`'s row `DeleteAction` was removed accordingly
-(it was the only live application deletion path for either model);
-guest status is corrected in place via `EditAction`, and meeting
-cancellation already worked by transitioning `status` rather than
-deleting the row (`BookingMeetingService::cancelMeeting()`).
+Phase 17U.2 §1 — `BookingMeeting` (no `SoftDeletes`, hooks `deleting`
+and rejects unconditionally; meeting cancellation already worked by
+transitioning `status` rather than deleting the row —
+`BookingMeetingService::cancelMeeting()`). `BookingGuest` itself was
+removed entirely in Phase 17U.3 (see below) rather than kept under
+this protection — there is no unauthenticated/guest participant
+concept left to protect.
 
 Permissions: `Archive:Booking` + `Restore:Booking` (manager).
 `Delete:Booking`/`ForceDelete:Booking` no longer exist — neither is
@@ -622,3 +622,51 @@ See `tests/Feature/Booking/BookingArchivalTest.php` for the full
 archive/restore/idempotency/authorization/historical-preservation
 suite, and `tests/Feature/Audit17T/BookingForceDeleteCascadeWipesFinancialHistoryTest.php`
 (Phase 17T Finding S-2, remediated here) for the regression proof.
+
+## Authenticated-only booking (Phase 17U.3)
+
+Every booking participant is an authenticated, verified platform user.
+There is no unauthenticated guest booking concept anywhere in this
+domain — not a data shape, not an API surface, not a UI path.
+
+- **Schema**: `bookings.student_id`/`instructor_id` are `NOT NULL`
+  from the baseline migration (`restrictOnDelete()`, not `cascade`, on
+  both — historical business records, same principle as Phase 17U.1).
+  `guest_name`/`guest_email`/`guest_phone`/`manage_token` never exist.
+  `booking_guests` never exists.
+- **Terminology**: `BookingActor::Attendee`/`::Host` are
+  `BookingActor::Student`/`::Instructor`; `Booking::attendee()`/`host()`
+  are `Booking::student()`/`instructor()`; every DTO/repository method
+  using `attendeeId`/`hostId` uses `studentId`/`instructorId`. Scoped
+  to the Booking domain's own participant concept only — `teacher`
+  (marketplace/matching context: `TeacherAssignmentService`,
+  `teacher_subjects`, `TeacherAvailability`) and meeting-provider `host`
+  fields (`booking_meetings.host_url`, Zoom `host_user_id`/`host_email`)
+  are untouched, both legitimate, unrelated uses of similar words.
+- **The `/book` wizard** (`BookingWizard` Livewire component,
+  `WizardBookingService`/`WizardBookingData`, renamed from the
+  pre-authenticated-only "guest" naming) is the one UI that creates a
+  booking with auto-teacher-assignment and drives payment; the route
+  requires `auth` (redirects to login, preserving the intended URL —
+  no slot/price state is preserved across that boundary, the student
+  just picks again once logged in). `WizardBookingService::book()`
+  also independently refuses when unauthenticated — defense-in-depth
+  below the route middleware, since `CreateBookingData::$studentId` is
+  a non-nullable `int` and must never be asked to accept a null one.
+  `/dashboard/bookings/*` (`StudentBookingController`,
+  `StudentBookingServiceInterface`) is the explicit-teacher-choice +
+  recurring-booking flow; both funnel through the same
+  `BookingService::request()` core.
+- **Removed entirely**: the `/api/v1/guest` API (catalog, availability,
+  booking CRUD, payment — all of it, including the read-only browse
+  endpoints), `GuestBookingPageController`/`GuestBookingService`/
+  `GuestBookingServiceInterface`/`GuestBookingData`, `BookingGuest` +
+  `booking_guests`, `AuthenticatedAttendeeRule` (superseded by the
+  type system itself), `/book/manage/{reference}` + its capability
+  token, and every guest-specific test.
+- **Permanent guard**: `tests/Architecture/BookingGuestRemovalGuardTest.php`
+  fails the build if guest-booking classes/tables/columns/routes
+  reappear, or if `attendee`/`host` identifiers creep back into the
+  Booking domain's own source — while explicitly protecting the
+  legitimate, unrelated uses of "guest" (Laravel's `guest` middleware,
+  the Activity Log's generic guest-actor system used by public forms).

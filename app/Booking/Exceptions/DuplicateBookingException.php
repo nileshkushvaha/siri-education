@@ -13,7 +13,7 @@ final class DuplicateBookingException extends BookingException
         return new self(sprintf(
             'An active "%s" booking already exists for this attendee with host #%d at %s.',
             $data->typeKey,
-            $data->hostId,
+            $data->instructorId,
             $data->startsAt->toIso8601String(),
         ));
     }

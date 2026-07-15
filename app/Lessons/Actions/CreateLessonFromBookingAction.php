@@ -34,8 +34,8 @@ final class CreateLessonFromBookingAction
 
         return DB::transaction(fn (): Lesson => $this->lessons->create([
             'booking_id' => $booking->id,
-            'student_id' => $booking->attendee_id,
-            'instructor_id' => $booking->host_id,
+            'student_id' => $booking->student_id,
+            'instructor_id' => $booking->instructor_id,
             'subject_id' => $subjectId,
             'subject_topic_id' => $topic?->id,
             // Bookings carry a grade int, not a level id — resolve the

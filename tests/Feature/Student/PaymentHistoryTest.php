@@ -48,8 +48,8 @@ class PaymentHistoryTest extends TestCase
 
         Booking::factory()->paid(49.99, 'USD')->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
         ]);
 
         Livewire::actingAs($this->student)
@@ -65,8 +65,8 @@ class PaymentHistoryTest extends TestCase
 
         Booking::factory()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
         ]);
 
         Livewire::actingAs($this->student)

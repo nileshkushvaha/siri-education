@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Booking;
 
 use App\Booking\Contracts\BookingServiceInterface;
-use App\Booking\Contracts\GuestBookingServiceInterface;
+use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\CreateBookingData;
-use App\Booking\DTOs\GuestBookingData;
+use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
@@ -88,16 +88,14 @@ class BookingFlowHardeningTest extends TestCase
         return CarbonImmutable::now('UTC')->addDays($daysAhead)->setTime($hour, 0);
     }
 
-    private function bookingData(User $teacher, ?User $attendee, CarbonImmutable $startsAt, int $duration = 30): CreateBookingData
+    private function bookingData(User $teacher, User $student, CarbonImmutable $startsAt, int $duration = 30): CreateBookingData
     {
         return new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $attendee?->id,
-            hostId: $teacher->id,
+            studentId: $student->id,
+            instructorId: $teacher->id,
             startsAt: $startsAt,
             durationMinutes: $duration,
-            guestName: $attendee ? null : 'Guest',
-            guestEmail: $attendee ? null : 'guest-'.uniqid().'@example.com',
         );
     }
 
@@ -109,7 +107,7 @@ class BookingFlowHardeningTest extends TestCase
             $this->bookingData($this->teacher, $this->student, $this->slot()),
         );
 
-        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'host_id' => $this->teacher->id]);
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'instructor_id' => $this->teacher->id]);
     }
 
     public function test_stale_slot_cannot_be_booked(): void
@@ -230,16 +228,16 @@ class BookingFlowHardeningTest extends TestCase
             TeacherAvailability::factory()->state(['teacher_id' => $rejected->id])->forDay($day)->between('09:00:00', '11:00:00')->create();
         }
 
+        $this->actingAs($this->student);
+
         $this->expectException(BookingException::class);
 
-        app(GuestBookingServiceInterface::class)->book(new GuestBookingData(
+        app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
             subject: 'science',
             grade: 5,
             startsAt: $this->slot(),
             timezone: 'UTC',
-            guestName: 'Guest',
-            guestEmail: 'guest@example.com',
             teacherId: $rejected->id,
         ));
     }
@@ -251,7 +249,7 @@ class BookingFlowHardeningTest extends TestCase
         $slot = $this->slot();
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
 
-        // Same attendee, same type, same slot — the duplicate guard, not the overlap guard.
+        // Same student, same type, same slot — the duplicate guard, not the overlap guard.
         $this->expectException(DuplicateBookingException::class);
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
     }
@@ -263,7 +261,7 @@ class BookingFlowHardeningTest extends TestCase
             TeacherAvailability::factory()->state(['teacher_id' => $rejected->id])->forDay($day)->between('09:00:00', '11:00:00')->create();
         }
 
-        // Call BookingService directly, skipping GuestBookingService's own
+        // Call BookingService directly, skipping WizardBookingService's own
         // eligibility pre-check entirely. It must still refuse: the
         // bookable-host guard lives inside AvailabilityService::ensureAvailable(),
         // which both the pre-lock TeacherAvailabilityRule and the in-lock
@@ -274,15 +272,10 @@ class BookingFlowHardeningTest extends TestCase
         // itself — not just the caller — enforces the rule.
         $this->expectException(SlotUnavailableException::class);
 
-        // Phase 10.2C-Fix: attendeeId must be a real, authenticated
-        // student now (AuthenticatedAttendeeRule rejects null outright,
-        // before this test's own target rule ever runs) — this test's
-        // actual purpose is the availability guard, not guest booking,
-        // so it uses $this->student rather than the old guest shape.
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $this->student->id,
-            hostId: $rejected->id,
+            studentId: $this->student->id,
+            instructorId: $rejected->id,
             startsAt: $this->slot(),
             durationMinutes: 30,
         ));
@@ -308,6 +301,8 @@ class BookingFlowHardeningTest extends TestCase
         BookingType::query()->where('key', 'free_demo')->update(['sort_order' => 1]);
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
 
+        $this->actingAs($this->student);
+
         Livewire::withQueryParams(['instructor' => $this->teacher->slug, 'type' => 'free_demo', 'subject' => 'maths'])
             ->test('frontend.booking.booking-wizard')
             ->assertSet('lockedInstructorId', $this->teacher->id)
@@ -325,6 +320,8 @@ class BookingFlowHardeningTest extends TestCase
         $otherTeacher = $this->makeTeacher('maths');
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
 
+        $this->actingAs($this->student);
+
         $this->expectException(CannotUpdateLockedPropertyException::class);
 
         Livewire::withQueryParams(['instructor' => $this->teacher->slug])
@@ -332,67 +329,23 @@ class BookingFlowHardeningTest extends TestCase
             ->set('lockedInstructorId', $otherTeacher->id);
     }
 
-    // ── Guest booking (Phase 10.2C-Fix: no guest booking — every guest
-    // API request now fails safely, never creates a booking) ────────────
+    // ── Guest visitor cannot book (Phase 17U.3: no unauthenticated
+    // booking capability exists anywhere — the entire /api/v1/guest
+    // surface was removed, not just gated) ────────────────────────────
 
-    public function test_guest_cannot_request_a_booking(): void
+    public function test_unauthenticated_visitor_is_redirected_to_login_from_the_wizard(): void
     {
-        $response = $this->postJson('/api/v1/guest/bookings', [
-            'type' => 'free_demo',
-            'subject' => 'maths',
-            'grade' => 5,
-            'starts_at' => $this->slot()->toIso8601String(),
-            'name' => 'Guest Parent',
-            'email' => 'guest-safe@example.com',
-        ]);
-
-        $response->assertStatus(422);
-        $this->assertDatabaseMissing('bookings', ['guest_email' => 'guest-safe@example.com']);
+        $this->get('/book')->assertRedirect('/login');
     }
 
-    public function test_guest_cannot_book_invalid_or_stale_slot(): void
-    {
-        $slot = $this->slot();
-        app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
-
-        $this->postJson('/api/v1/guest/bookings', [
-            'type' => 'free_demo',
-            'subject' => 'maths',
-            'grade' => 5,
-            'starts_at' => $slot->toIso8601String(),
-            'name' => 'Guest Parent',
-            'email' => 'guest-stale@example.com',
-        ])->assertStatus(422);
-    }
-
-    public function test_guest_required_fields_are_validated(): void
-    {
-        $this->postJson('/api/v1/guest/bookings', [
-            'type' => 'free_demo',
-        ])->assertStatus(422)
-            ->assertJsonValidationErrors(['subject', 'grade', 'starts_at', 'name', 'email']);
-    }
-
-    public function test_guest_booking_creates_no_out_of_scope_records(): void
+    public function test_no_guest_booking_api_route_exists(): void
     {
         $this->postJson('/api/v1/guest/bookings', [
             'type' => 'free_demo',
             'subject' => 'maths',
             'grade' => 5,
             'starts_at' => $this->slot()->toIso8601String(),
-            'name' => 'Guest Parent',
-            'email' => 'guest-scope@example.com',
-        ])->assertStatus(422);
-
-        // The rejected attempt creates nothing at all — not a booking,
-        // not a meeting, not a wallet, not a payment table.
-        $this->assertDatabaseMissing('bookings', ['guest_email' => 'guest-scope@example.com']);
-        $this->assertSame(0, Wallet::count());
-        $this->assertSame(0, WalletLedgerEntry::count());
-
-        foreach (['payments', 'meetings'] as $table) {
-            $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
-        }
+        ])->assertStatus(404);
     }
 
     // ── Student booking ──────────────────────────────────────────────────
@@ -424,7 +377,7 @@ class BookingFlowHardeningTest extends TestCase
             'grade' => 5,
         ])->assertStatus(422);
 
-        $this->assertDatabaseMissing('bookings', ['host_id' => $dualRole->id, 'attendee_id' => $dualRole->id]);
+        $this->assertDatabaseMissing('bookings', ['instructor_id' => $dualRole->id, 'student_id' => $dualRole->id]);
     }
 
     public function test_student_cannot_access_another_students_booking(): void

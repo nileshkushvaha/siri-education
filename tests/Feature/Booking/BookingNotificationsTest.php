@@ -108,7 +108,7 @@ class BookingNotificationsTest extends TestCase
         $booking = $this->book('paid_one_to_one');
 
         Notification::fake();
-        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(BookingActor::Attendee, 'Changed my mind'));
+        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(BookingActor::Student, 'Changed my mind'));
 
         Notification::assertNotSentTo($this->student, BookingConfirmedNotification::class);
         Notification::assertNotSentTo($this->teacher, BookingConfirmedNotification::class);
@@ -121,7 +121,7 @@ class BookingNotificationsTest extends TestCase
         $booking = $this->book('free_demo');
 
         Notification::fake();
-        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(BookingActor::Attendee, 'Conflict'));
+        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(BookingActor::Student, 'Conflict'));
 
         Notification::assertSentTo($this->student, BookingCancelledNotification::class);
         Notification::assertSentTo($this->teacher, BookingCancelledNotification::class);
@@ -149,7 +149,7 @@ class BookingNotificationsTest extends TestCase
         $booking = $this->book('paid_one_to_one');
 
         Notification::fake();
-        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(BookingActor::Attendee, 'Conflict'));
+        app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(BookingActor::Student, 'Conflict'));
 
         Notification::assertSentTo($this->student, BookingCancelledNotification::class);
         Notification::assertNotSentTo($this->student, BookingExpiredNotification::class);

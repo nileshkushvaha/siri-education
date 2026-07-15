@@ -187,8 +187,8 @@ class BookingMeetingTest extends TestCase
     public function test_booking_meeting_can_be_created_for_booking(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $meeting = app(BookingMeetingServiceInterface::class)->saveManualMeeting(
@@ -204,8 +204,8 @@ class BookingMeetingTest extends TestCase
     public function test_one_meeting_per_booking_enforced(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $service = app(BookingMeetingServiceInterface::class);
@@ -219,8 +219,8 @@ class BookingMeetingTest extends TestCase
     public function test_meeting_stores_provider_and_join_url_safely(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $meeting = app(BookingMeetingServiceInterface::class)->saveManualMeeting(
@@ -242,8 +242,8 @@ class BookingMeetingTest extends TestCase
     public function test_paid_confirmed_booking_with_paid_payment_can_create_meeting(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $meeting = app(BookingMeetingServiceInterface::class)->createMeeting($booking);
@@ -256,8 +256,8 @@ class BookingMeetingTest extends TestCase
     public function test_paid_confirmed_booking_with_unpaid_payment_cannot_create_meeting(): void
     {
         $booking = Booking::factory()->confirmed()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'payment_status' => BookingPaymentStatus::Pending,
         ]);
 
@@ -270,8 +270,8 @@ class BookingMeetingTest extends TestCase
     public function test_pending_booking_cannot_create_meeting(): void
     {
         $booking = Booking::factory()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'status' => BookingStatus::Pending,
         ]);
 
@@ -281,8 +281,8 @@ class BookingMeetingTest extends TestCase
     public function test_cancelled_booking_cannot_create_meeting(): void
     {
         $booking = Booking::factory()->cancelled()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $this->assertNull(app(BookingMeetingServiceInterface::class)->createMeeting($booking));
@@ -307,13 +307,13 @@ class BookingMeetingTest extends TestCase
     public function test_failed_or_refunded_payment_status_cannot_create_meeting(): void
     {
         $failed = Booking::factory()->confirmed()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'payment_status' => BookingPaymentStatus::Failed,
         ]);
         $refunded = Booking::factory()->confirmed()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'payment_status' => BookingPaymentStatus::Refunded,
         ]);
 
@@ -342,25 +342,13 @@ class BookingMeetingTest extends TestCase
         $this->assertNull($booking->fresh()->meeting);
     }
 
-    public function test_booking_without_attendee_cannot_create_meeting(): void
-    {
-        $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => null,
-            'guest_email' => 'guest@example.com',
-            'guest_name' => 'A Guest',
-        ]);
-
-        $this->assertNull(app(BookingMeetingServiceInterface::class)->createMeeting($booking));
-    }
-
     // ── C. Manual provider ───────────────────────────────────────────
 
     public function test_admin_can_create_manual_meeting_for_eligible_booking(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $meeting = app(BookingMeetingServiceInterface::class)->saveManualMeeting(
@@ -375,8 +363,8 @@ class BookingMeetingTest extends TestCase
     public function test_admin_can_update_manual_meeting_url(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
         $service = app(BookingMeetingServiceInterface::class);
         $service->saveManualMeeting($booking, new MeetingUpdateContext(joinUrl: 'https://meet.example.test/v1'));
@@ -390,8 +378,8 @@ class BookingMeetingTest extends TestCase
     public function test_admin_cannot_create_manual_meeting_for_ineligible_booking(): void
     {
         $booking = Booking::factory()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'status' => BookingStatus::Pending,
         ]);
 
@@ -407,8 +395,8 @@ class BookingMeetingTest extends TestCase
     public function test_manual_provider_validates_url(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $meeting = app(BookingMeetingServiceInterface::class)->saveManualMeeting(
@@ -424,8 +412,8 @@ class BookingMeetingTest extends TestCase
     public function test_student_sees_manual_join_link_only_after_confirmed_booking(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
         app(BookingMeetingServiceInterface::class)->saveManualMeeting($booking, new MeetingUpdateContext(joinUrl: 'https://meet.example.test/abc'));
 
@@ -434,8 +422,8 @@ class BookingMeetingTest extends TestCase
         $this->assertSame('https://meet.example.test/abc', $resource['meeting_url']);
 
         $pendingBooking = Booking::factory()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'status' => BookingStatus::Pending,
         ]);
         $pendingResource = (new StudentBookingResource($pendingBooking))
@@ -530,7 +518,7 @@ class BookingMeetingTest extends TestCase
 
     public function test_host_can_manage_own_booking_meeting(): void
     {
-        $booking = Booking::factory()->confirmed()->paid()->create(['host_id' => $this->teacher->id]);
+        $booking = Booking::factory()->confirmed()->paid()->create(['instructor_id' => $this->teacher->id]);
 
         $this->assertTrue(app(BookingPolicy::class)->manageMeeting($this->teacher, $booking));
     }
@@ -561,8 +549,8 @@ class BookingMeetingTest extends TestCase
         $settings->save();
 
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $service = app(BookingMeetingServiceInterface::class);
@@ -579,8 +567,8 @@ class BookingMeetingTest extends TestCase
     public function test_student_resource_never_includes_host_url_or_metadata(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
         app(BookingMeetingServiceInterface::class)->saveManualMeeting($booking, new MeetingUpdateContext(
             joinUrl: 'https://meet.example.test/abc',
@@ -602,8 +590,8 @@ class BookingMeetingTest extends TestCase
         $this->disableMeetings();
 
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         $this->assertNull(app(BookingMeetingServiceInterface::class)->createMeeting($booking));
@@ -630,8 +618,8 @@ class BookingMeetingTest extends TestCase
     public function test_no_wallet_side_effects_from_meeting_creation(): void
     {
         $booking = Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
 
         app(BookingMeetingServiceInterface::class)->createMeeting($booking);

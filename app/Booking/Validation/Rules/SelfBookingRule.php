@@ -11,14 +11,14 @@ use App\Booking\Exceptions\BookingException;
 
 /**
  * A dual-role user (student who is also an instructor) cannot book a
- * session with themselves. Guests always have a null attendeeId, so
+ * session with themselves. Guests always have a null studentId, so
  * this never affects the guest flow.
  */
 final class SelfBookingRule implements BookingRuleInterface
 {
     public function check(CreateBookingData $data, BookingTypeInterface $type): void
     {
-        if ($data->attendeeId !== null && $data->attendeeId === $data->hostId) {
+        if ($data->studentId !== null && $data->studentId === $data->instructorId) {
             throw new BookingException('You cannot book a session with yourself.');
         }
     }

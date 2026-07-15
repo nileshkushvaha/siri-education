@@ -446,8 +446,8 @@ class WalletLedgerFoundationTest extends TestCase
 
         app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
-            attendeeId: $this->student->id,
-            hostId: $teacher->id,
+            studentId: $this->student->id,
+            instructorId: $teacher->id,
             startsAt: CarbonImmutable::now('UTC')->addDays(3)->setTime(9, 0),
             durationMinutes: 30,
         ));

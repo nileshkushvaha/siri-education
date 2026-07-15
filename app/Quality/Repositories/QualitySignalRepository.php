@@ -33,8 +33,8 @@ final class QualitySignalRepository implements QualitySignalRepositoryInterface
     public function countInstructorAttributedCancellations(int $instructorId, CarbonImmutable $since): int
     {
         return Booking::query()
-            ->where('host_id', $instructorId)
-            ->where('cancelled_by', BookingActor::Host)
+            ->where('instructor_id', $instructorId)
+            ->where('cancelled_by', BookingActor::Instructor)
             ->where('cancelled_at', '>=', $since)
             ->count();
     }

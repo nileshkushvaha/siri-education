@@ -87,7 +87,7 @@ class LessonWalletRefundTest extends TestCase
         $entry = $this->refundEntryFor($lesson);
         $this->assertSame($payment->amount_minor, $entry->amount_minor);
         $this->assertSame(WalletLedgerEntryType::Refund, $entry->entry_type);
-        $this->assertSame($lesson->booking->attendee_id, $entry->user_id);
+        $this->assertSame($lesson->booking->student_id, $entry->user_id);
         $this->assertSame($payment->amount_minor, Wallet::query()->firstOrFail()->balance_minor);
     }
 
@@ -172,7 +172,7 @@ class LessonWalletRefundTest extends TestCase
     public function test_wallet_paid_lesson_creates_a_separate_credit_without_modifying_the_debit(): void
     {
         [$lesson, $payment] = $this->paidLessonWithCharge(provider: 'wallet');
-        $student = $lesson->booking->attendee;
+        $student = $lesson->booking->student;
 
         // Simulate the original wallet debit that paid for the lesson.
         $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR');
@@ -240,7 +240,7 @@ class LessonWalletRefundTest extends TestCase
     public function test_existing_cancellation_refund_is_not_duplicated(): void
     {
         [$lesson, $payment] = $this->paidLessonWithCharge();
-        $student = $lesson->booking->attendee;
+        $student = $lesson->booking->student;
 
         // The cancellation flow already credited this charge back.
         $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR');
@@ -311,7 +311,7 @@ class LessonWalletRefundTest extends TestCase
     public function test_failed_credit_does_not_mark_disposition_resolved(): void
     {
         [$lesson] = $this->paidLessonWithCharge();
-        $student = $lesson->booking->attendee;
+        $student = $lesson->booking->student;
         $this->outcomes->finalize($lesson, LessonOutcome::InstructorNoShow);
 
         // A closed wallet makes the credit throw inside the transaction
@@ -436,7 +436,7 @@ class LessonWalletRefundTest extends TestCase
 
         $payment = BookingPayment::factory()->captured()->create([
             'booking_id' => $booking->id,
-            'user_id' => $booking->attendee_id,
+            'user_id' => $booking->student_id,
             'provider' => $provider,
             'amount_minor' => $amountMinor,
             'currency_code' => 'INR',

@@ -44,7 +44,7 @@ final class DetectInstructorCancellationQualityRiskAction
             return;
         }
 
-        $instructorId = $booking->host_id;
+        $instructorId = $booking->instructor_id;
         $now = CarbonImmutable::now();
         $windowStart = $now->subDays($this->settings->repeated_cancellation_window_days);
         $count = $this->signals->countInstructorAttributedCancellations($instructorId, $windowStart);

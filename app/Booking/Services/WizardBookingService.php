@@ -5,35 +5,33 @@ declare(strict_types=1);
 namespace App\Booking\Services;
 
 use App\Booking\Contracts\AvailabilityServiceInterface;
-use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
-use App\Booking\Contracts\GuestBookingServiceInterface;
 use App\Booking\Contracts\TeacherAssignmentServiceInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
+use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\DTOs\AssignmentCriteriaData;
 use App\Booking\DTOs\AvailabilityQueryData;
-use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\CreateBookingData;
-use App\Booking\DTOs\GuestBookingData;
-use App\Booking\DTOs\RescheduleBookingData;
 use App\Booking\DTOs\TimeSlotData;
-use App\Booking\Enums\BookingActor;
+use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
-final class GuestBookingService implements GuestBookingServiceInterface
+/**
+ * Authenticated-student wizard booking flow (Phase 17U.3 — renamed
+ * from GuestBookingService; every caller is logged in). The auto-
+ * assignment capability (pick any eligible teacher, or lock a specific
+ * one) is what distinguishes this from StudentBookingServiceInterface,
+ * which always requires an explicit teacher choice.
+ */
+final class WizardBookingService implements WizardBookingServiceInterface
 {
-    /** Spam guard: max active upcoming bookings per guest email. */
-    private const int MAX_ACTIVE_PER_EMAIL = 3;
-
     public function __construct(
         private readonly BookingServiceInterface $bookings,
-        private readonly BookingRepositoryInterface $repository,
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $candidates,
         private readonly TeacherAssignmentServiceInterface $assigner,
@@ -90,13 +88,15 @@ final class GuestBookingService implements GuestBookingServiceInterface
             ->values();
     }
 
-    public function book(GuestBookingData $data): Booking
+    public function book(WizardBookingData $data): Booking
     {
-        if ($this->repository->activeUpcomingCountForGuestEmail($data->guestEmail) >= self::MAX_ACTIVE_PER_EMAIL) {
-            throw new BookingException(sprintf(
-                'This email already has %d active bookings. Please attend or cancel one first.',
-                self::MAX_ACTIVE_PER_EMAIL,
-            ));
+        // Defense-in-depth: the route itself already requires 'auth', but
+        // this service is the single chokepoint every wizard submission
+        // funnels through — it must refuse gracefully even if some future
+        // caller reaches it without going through that middleware, rather
+        // than crash on the non-nullable CreateBookingData::$studentId.
+        if (! auth()->check()) {
+            throw new BookingException('Please log in or create an account to book a lesson.');
         }
 
         $type = $this->types->requireActiveByKey($data->typeKey);
@@ -122,44 +122,14 @@ final class GuestBookingService implements GuestBookingServiceInterface
 
         return $this->bookings->request(new CreateBookingData(
             typeKey: $data->typeKey,
-            attendeeId: auth()->id(),
-            hostId: $teacherId,
+            studentId: auth()->id(),
+            instructorId: $teacherId,
             startsAt: $data->startsAt,
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
             notes: $data->notes,
             meta: ['subject' => $data->subject, 'grade' => $data->grade],
-            guestName: $data->guestName,
-            guestEmail: $data->guestEmail,
-            guestPhone: $data->guestPhone,
         ));
-    }
-
-    public function findForGuest(string $reference, string $token): Booking
-    {
-        $booking = $this->repository->findByReference($reference);
-
-        // The stored token is a SHA-256 hash; hash the presented one first.
-        if ($booking === null
-            || $booking->manage_token === null
-            || ! hash_equals($booking->manage_token, hash('sha256', $token))) {
-            throw (new ModelNotFoundException)->setModel(Booking::class);
-        }
-
-        return $booking;
-    }
-
-    public function cancel(Booking $booking, ?string $reason = null): Booking
-    {
-        return $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Attendee, $reason));
-    }
-
-    public function reschedule(Booking $booking, CarbonImmutable $startsAt, ?string $reason = null): Booking
-    {
-        return $this->bookings->reschedule(
-            $booking,
-            new RescheduleBookingData($startsAt, BookingActor::Attendee, reason: $reason),
-        );
     }
 
     /** @return Collection<int, TimeSlotData> */

@@ -26,8 +26,8 @@ final class StudentBookingResource extends JsonResource
                 'name' => $this->type->name,
             ],
             'teacher' => [
-                'id' => $this->host_id,
-                'name' => $this->host->name,
+                'id' => $this->instructor_id,
+                'name' => $this->instructor->name,
             ],
             'starts_at' => $this->starts_at->timezone($this->timezone)->toIso8601String(),
             'ends_at' => $this->ends_at->timezone($this->timezone)->toIso8601String(),

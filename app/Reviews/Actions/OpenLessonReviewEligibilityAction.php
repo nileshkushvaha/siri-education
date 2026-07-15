@@ -175,7 +175,7 @@ final class OpenLessonReviewEligibilityAction
         // Structural guard: the eligibility is for the ACTUAL booking
         // participants — a lesson snapshot that has drifted from its
         // booking is never eligible.
-        if ($lesson->student_id !== $booking->attendee_id || $lesson->instructor_id !== $booking->host_id) {
+        if ($lesson->student_id !== $booking->student_id || $lesson->instructor_id !== $booking->instructor_id) {
             return null;
         }
 

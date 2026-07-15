@@ -11,7 +11,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
-use App\Http\Controllers\Booking\GuestBookingPageController;
+use App\Http\Controllers\Booking\BookingWizardPageController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -69,18 +69,14 @@ Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
-// ── Booking wizard (Phase 10.2C-Fix: authenticated students only — no
-// guest booking. Unauthenticated visitors are redirected to login by
-// the 'auth' middleware, which preserves this URL as the post-login
-// intended redirect) ──────────────────────────────────────────────
-Route::get('/book', [GuestBookingPageController::class, 'create'])
+// ── Booking wizard (Phase 17U.3: authenticated students only — no
+// guest booking of any kind exists anywhere in this domain.
+// Unauthenticated visitors are redirected to login by the 'auth'
+// middleware, which preserves this URL as the post-login intended
+// redirect) ──────────────────────────────────────────────────────
+Route::get('/book', [BookingWizardPageController::class, 'create'])
     ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required'])
     ->name('booking.create');
-
-// Manage page stays public/token-authorized — it never creates a new
-// booking, only manages one that already exists (including any legacy
-// guest booking created before this phase).
-Route::get('/book/manage/{reference}', [GuestBookingPageController::class, 'manage'])->name('booking.manage');
 
 // ── FAQ / Help Center (public — published, public-audience only) ──────
 Route::get('/faqs', [PublicFaqController::class, 'index'])->name('faqs.index');
@@ -267,9 +263,6 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
 
 // ── Instructors (public — visibility enforced in the controller) ──────
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
-Route::get('/instructors/book', [GuestBookingPageController::class, 'create'])
-    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required'])
-    ->name('instructors.booking.create');
 Route::get('/instructors/{user:slug}', [InstructorController::class, 'show'])->name('instructors.show');
 
 // ── Public Profile (guests + authenticated — visibility enforced in the controller) ──

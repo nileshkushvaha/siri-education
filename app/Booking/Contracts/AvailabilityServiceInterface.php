@@ -29,7 +29,7 @@ interface AvailabilityServiceInterface
      * @throws SlotUnavailableException when the slot cannot be booked
      */
     public function ensureAvailable(
-        int $hostId,
+        int $instructorId,
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,

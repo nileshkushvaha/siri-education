@@ -86,7 +86,7 @@ final class AdminQualityDashboardRepository implements AdminQualityDashboardRepo
     public function instructorAttributedCancellationCount(TrendDateRange $range): int
     {
         return Booking::query()
-            ->where('cancelled_by', BookingActor::Host)
+            ->where('cancelled_by', BookingActor::Instructor)
             ->whereBetween('cancelled_at', [$range->start, $range->end])
             ->count();
     }
@@ -220,7 +220,7 @@ final class AdminQualityDashboardRepository implements AdminQualityDashboardRepo
     public function instructorAttributedCancellationsTrend(TrendDateRange $range): array
     {
         return $this->dailySeries(
-            Booking::query()->where('cancelled_by', BookingActor::Host),
+            Booking::query()->where('cancelled_by', BookingActor::Instructor),
             'cancelled_at',
             $range,
         );

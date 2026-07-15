@@ -28,7 +28,7 @@ final class LeastLoadedStrategy implements AssignmentStrategyInterface
     {
         return $candidates
             ->sortBy->id
-            ->sortBy(fn (User $teacher): int => $this->bookings->activeUpcomingCountForHost($teacher->id))
+            ->sortBy(fn (User $teacher): int => $this->bookings->activeUpcomingCountForInstructor($teacher->id))
             ->first();
     }
 }

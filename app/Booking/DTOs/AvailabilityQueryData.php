@@ -9,7 +9,7 @@ use Carbon\CarbonImmutable;
 final readonly class AvailabilityQueryData
 {
     public function __construct(
-        public int $hostId,
+        public int $instructorId,
         public string $typeKey,
         public CarbonImmutable $from,
         public CarbonImmutable $to,

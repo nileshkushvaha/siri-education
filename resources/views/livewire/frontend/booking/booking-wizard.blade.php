@@ -35,7 +35,7 @@
                         </div>
                         <div class="flex gap-3">
                             <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-100">2</span>
-                            <p>Share the student details and notes.</p>
+                            <p>Add any notes for the instructor.</p>
                         </div>
                         <div class="flex gap-3">
                             <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fuchsia-500/20 text-xs font-black text-fuchsia-100">3</span>
@@ -47,7 +47,7 @@
         </header>
 
         <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div class="{{ ($step >= 2 && $step <= 6) ? 'lg:col-span-2' : 'lg:col-span-3' }}">
+            <div class="{{ ($step >= 2 && $step <= 5) ? 'lg:col-span-2' : 'lg:col-span-3' }}">
                 <nav aria-label="Booking progress">
                     <ol class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" role="list">
                         @foreach($steps as $item)
@@ -77,7 +77,7 @@
                 </nav>
 
                 <section class="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 sm:p-8">
-                    <p class="sr-only" aria-live="polite">Step {{ $step }} of 7: {{ $steps[$step - 1]['label'] }}</p>
+                    <p class="sr-only" aria-live="polite">Step {{ $step }} of 6: {{ $steps[$step - 1]['label'] }}</p>
 
                     @if($banner)
                         <x-ui.alert type="error" class="mb-6">{{ $banner }}</x-ui.alert>
@@ -229,36 +229,8 @@
 
                     @if($step === 5)
                         <div>
-                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Your details</h2>
-                            <p class="mt-2 text-sm leading-6 text-slate-400">We will send the confirmation and joining details to this email.</p>
-
-                            <form wire:submit="review" class="mt-6 space-y-4" novalidate>
-                                <div class="grid gap-4 sm:grid-cols-2">
-                                    <x-ui.input name="name" label="Full name" wire:model.blur="name" autocomplete="name" required />
-                                    <x-ui.input name="email" type="email" label="Email" wire:model.blur="email" autocomplete="email" required />
-                                </div>
-                                <x-ui.input name="phone" type="tel" label="Phone" hint="Optional" wire:model.blur="phone" autocomplete="tel" />
-                                <div>
-                                    <label for="booking-notes" class="mb-1.5 block text-sm font-medium text-slate-200">Notes <span class="font-normal text-slate-500">(optional)</span></label>
-                                    <textarea id="booking-notes" wire:model.blur="notes" rows="4" placeholder="Anything the instructor should know before the session" class="block w-full rounded-xl border border-white/10 bg-slate-900/70 px-3.5 py-2 text-sm text-slate-100 shadow-sm transition placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20"></textarea>
-                                    @error('notes') <p class="mt-1.5 text-xs font-medium text-red-300">{{ $message }}</p> @enderror
-                                </div>
-                                <x-ui.honeypot wire:model="website" />
-
-                                <x-ui.turnstile :enabled="$turnstileEnabled" :site-key="$turnstileSiteKey" wire-model="cfTurnstileResponse" />
-
-                                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="review">
-                                    <span wire:loading.remove wire:target="review">Review booking</span>
-                                    <span wire:loading wire:target="review">Checking...</span>
-                                </x-ui.button>
-                            </form>
-                        </div>
-                    @endif
-
-                    @if($step === 6)
-                        <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Review your booking</h2>
-                            <p class="mt-2 text-sm leading-6 text-slate-400">Double-check everything below, then confirm to book the session.</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Double-check everything below, add any notes, then confirm to book the session.</p>
 
                             <dl class="mt-6 grid gap-3 rounded-2xl bg-slate-900/70 p-4 text-sm ring-1 ring-white/10 sm:grid-cols-2">
                                 @if($selectedType)
@@ -271,42 +243,38 @@
                                 @endif
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</dt><dd class="mt-1 font-semibold text-white">{{ $date ? \Carbon\CarbonImmutable::parse($date)->format('M j, Y') : '' }}</dd></div>
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Time</dt><dd class="mt-1 font-semibold text-white">{{ $selectedSlotStartsAt ? \Carbon\CarbonImmutable::parse($selectedSlotStartsAt)->timezone($timezone)->format('g:i A') : '' }}</dd></div>
-                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Student</dt><dd class="mt-1 font-semibold text-white">{{ $name }}</dd></div>
-                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt><dd class="mt-1 font-semibold text-white">{{ $email }}</dd></div>
+                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Student</dt><dd class="mt-1 font-semibold text-white">{{ auth()->user()?->name }}</dd></div>
                             </dl>
+
+                            <div class="mt-6">
+                                <label for="booking-notes" class="mb-1.5 block text-sm font-medium text-slate-200">Notes <span class="font-normal text-slate-500">(optional)</span></label>
+                                <textarea id="booking-notes" wire:model.blur="notes" rows="4" placeholder="Anything the instructor should know before the session" class="block w-full rounded-xl border border-white/10 bg-slate-900/70 px-3.5 py-2 text-sm text-slate-100 shadow-sm transition placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20"></textarea>
+                                @error('notes') <p class="mt-1.5 text-xs font-medium text-red-300">{{ $message }}</p> @enderror
+                            </div>
 
                             <div class="mt-6 flex flex-wrap gap-3">
                                 <x-ui.button type="button" wire:click="submit" wire:loading.attr="disabled" wire:target="submit">
                                     <span wire:loading.remove wire:target="submit">Confirm booking</span>
                                     <span wire:loading wire:target="submit">Booking...</span>
                                 </x-ui.button>
-                                <x-ui.button type="button" variant="ghost" wire:click="$set('step', 5)">Edit details</x-ui.button>
                             </div>
                         </div>
                     @endif
 
-                    @if($step === 7 && $result)
+                    @if($step === 6 && $result)
                         <div class="text-center">
                             <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-200">
                                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
                             </span>
                             <h2 data-booking-step-title tabindex="-1" class="mt-4 text-2xl font-black text-white outline-none">Booking {{ $result['status'] === 'confirmed' ? 'confirmed' : 'requested' }}</h2>
                             <p class="mt-2 text-sm text-slate-400">Reference: <span class="font-mono font-bold text-slate-100">{{ $result['reference'] }}</span></p>
-                            <p class="mt-1 text-sm text-slate-400">We have sent a confirmation to {{ $email }}.</p>
+                            <p class="mt-1 text-sm text-slate-400">We have sent a confirmation to {{ auth()->user()?->email }}.</p>
 
                             <dl class="mx-auto mt-6 max-w-md space-y-2 rounded-2xl bg-slate-900/70 p-5 text-left text-sm ring-1 ring-white/10">
                                 <div class="flex justify-between gap-4"><dt class="text-slate-400">Session</dt><dd class="font-semibold text-white">{{ $result['type']['name'] }}</dd></div>
                                 <div class="flex justify-between gap-4"><dt class="text-slate-400">When</dt><dd class="font-semibold text-white">{{ \Carbon\CarbonImmutable::parse($result['starts_at'])->timezone($result['timezone'])->format('M j, Y g:i A') }}</dd></div>
                                 <div class="flex justify-between gap-4"><dt class="text-slate-400">Timezone</dt><dd class="font-semibold text-white">{{ $result['timezone'] }}</dd></div>
                             </dl>
-
-                            @if($result['manage_token'])
-                                <div class="mx-auto mt-5 max-w-md rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4 text-left">
-                                    <p class="text-xs font-bold uppercase tracking-wide text-amber-200">Manage code</p>
-                                    <p class="mt-1 text-xs text-amber-200">Save this code now. It is shown only once.</p>
-                                    <code class="mt-3 block overflow-x-auto rounded-lg bg-slate-950 px-3 py-2 font-mono text-xs text-slate-100 ring-1 ring-amber-300/30">{{ $result['manage_token'] }}</code>
-                                </div>
-                            @endif
 
                             @if($result['requires_payment'] && $result['payment_status'] !== 'paid')
                                 <div class="mx-auto mt-5 max-w-md rounded-2xl border border-indigo-300/30 bg-indigo-400/10 p-4 text-left">
@@ -351,17 +319,13 @@
                             @endif
 
                             <div class="mt-6 flex flex-wrap justify-center gap-3">
-                                @if($result['manage_url'])
-                                    <x-ui.button href="{{ $result['manage_url'] }}">Manage booking</x-ui.button>
-                                @elseif($result['my_bookings_url'])
-                                    <x-ui.button href="{{ $result['my_bookings_url'] }}">View my bookings</x-ui.button>
-                                @endif
+                                <x-ui.button href="{{ $result['my_bookings_url'] }}">View my bookings</x-ui.button>
                                 <x-ui.button type="button" variant="ghost" wire:click="restart">Book another session</x-ui.button>
                             </div>
                         </div>
                     @endif
 
-                    @if($step > 1 && $step < 7)
+                    @if($step > 1 && $step < 6)
                         <div class="mt-8 border-t border-white/10 pt-5">
                             <button type="button" wire:click="back" class="text-sm font-semibold text-slate-400 transition hover:text-white focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30">
                                 &larr; Back
@@ -371,7 +335,7 @@
                 </section>
             </div>
 
-            @if($step >= 2 && $step <= 6)
+            @if($step >= 2 && $step <= 5)
                 <aside class="lg:col-span-1">
                     <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 sm:p-6 lg:sticky lg:top-8">
                         <h2 class="text-xs font-bold uppercase tracking-wide text-slate-400">Your booking so far</h2>

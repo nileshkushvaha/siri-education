@@ -113,7 +113,7 @@ class InstructorAvailabilityServiceTest extends TestCase
         $monday = CarbonImmutable::now('America/New_York')->addWeek()->startOfWeek();
 
         $slots = app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
-            hostId: $teacher->id,
+            instructorId: $teacher->id,
             typeKey: 'free_demo',
             from: $monday->startOfDay(),
             to: $monday->addDay()->startOfDay(),
@@ -161,7 +161,7 @@ class InstructorAvailabilityServiceTest extends TestCase
         $this->assertSame($monday->format('Y-m-d').' 03:30', $leave->starts_at->format('Y-m-d H:i'));
 
         $slots = app(AvailabilityServiceInterface::class)->slots(new AvailabilityQueryData(
-            hostId: $teacher->id,
+            instructorId: $teacher->id,
             typeKey: 'free_demo',
             from: $monday->startOfDay(),
             to: $monday->addDay()->startOfDay(),

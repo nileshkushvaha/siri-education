@@ -190,7 +190,7 @@ class PaymentWorkflowTest extends TestCase
 
         app(BookingServiceInterface::class)->cancel(
             $booking->refresh(),
-            new CancelBookingData(BookingActor::Attendee, 'change of plans'),
+            new CancelBookingData(BookingActor::Student, 'change of plans'),
         );
 
         $booking->refresh();

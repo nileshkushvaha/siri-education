@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\BookingPaymentWebhookController;
-use App\Http\Controllers\Api\Guest\GuestAvailabilityController;
-use App\Http\Controllers\Api\Guest\GuestBookingController;
-use App\Http\Controllers\Api\Guest\GuestCatalogController;
 use App\Http\Controllers\Api\MeetingAttendanceWebhookController;
 use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
@@ -36,34 +33,3 @@ Route::post('/webhooks/meetings/attendance/{provider}', MeetingAttendanceWebhook
 Route::post('/webhooks/payouts/razorpayx', RazorpayXPayoutWebhookController::class)
     ->middleware('throttle:razorpayx-payout-webhook')
     ->name('api.payouts.razorpayx.webhook');
-
-// Public guest booking API — no authentication; manage_token authorizes
-// per-booking actions, named rate limiters throttle by IP.
-Route::prefix('v1/guest')->name('api.guest.')->group(function (): void {
-    Route::middleware('throttle:guest-availability')->group(function (): void {
-        Route::get('/booking-types', [GuestCatalogController::class, 'types'])->name('booking-types.index');
-        Route::get('/subjects', [GuestCatalogController::class, 'subjects'])->name('subjects.index');
-        Route::get('/availability/dates', [GuestAvailabilityController::class, 'dates'])->name('availability.dates');
-        Route::get('/availability/slots', [GuestAvailabilityController::class, 'slots'])->name('availability.slots');
-        Route::get('/bookings/{reference}', [GuestBookingController::class, 'show'])->name('bookings.show');
-    });
-
-    Route::middleware('throttle:guest-booking-write')->group(function (): void {
-        // Phase 10.2C-Fix: store() itself now always rejects (see
-        // GuestBookingController::store() / AuthenticatedAttendeeRule) —
-        // kept mounted only so it returns a clean 422 instead of a 404,
-        // matching every other "no guest booking" surface.
-        Route::post('/bookings', [GuestBookingController::class, 'store'])->name('bookings.store');
-        Route::post('/bookings/{reference}/cancel', [GuestBookingController::class, 'cancel'])->name('bookings.cancel');
-        Route::post('/bookings/{reference}/reschedule', [GuestBookingController::class, 'reschedule'])->name('bookings.reschedule');
-    });
-
-    // Phase 10.2C-Fix: guest payment is disabled outright ("No
-    // unauthenticated user may initiate payment" / "No guest payment
-    // UI") — GuestBookingPaymentController is kept for reference but is
-    // deliberately unrouted, not reachable from any public route. A
-    // guest booking that already has a Pending payment_status (legacy
-    // data only — new ones can no longer be created) has no path to pay
-    // through this API; it is a manual/admin resolution case, same as a
-    // late-arriving webhook after cancellation (Phase 10.2B Option B).
-});

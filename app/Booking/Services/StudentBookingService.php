@@ -54,7 +54,7 @@ final class StudentBookingService implements StudentBookingServiceInterface
 
     public function previousTeachers(User $student): Collection
     {
-        return $this->repository->previousHostsForAttendee($student->id);
+        return $this->repository->previousInstructorsForStudent($student->id);
     }
 
     public function upcomingClasses(User $student): Collection
@@ -133,8 +133,8 @@ final class StudentBookingService implements StudentBookingServiceInterface
 
         return $this->bookings->request(new CreateBookingData(
             typeKey: $data->typeKey,
-            attendeeId: $data->studentId,
-            hostId: $data->teacherId,
+            studentId: $data->studentId,
+            instructorId: $data->teacherId,
             startsAt: $startsAt,
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,

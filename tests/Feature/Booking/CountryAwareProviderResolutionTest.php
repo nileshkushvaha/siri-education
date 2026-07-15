@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Booking;
 
 use App\Booking\Contracts\BookingPaymentServiceInterface;
-use App\Booking\Contracts\GuestBookingServiceInterface;
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\Contracts\StudentBookingServiceInterface;
-use App\Booking\DTOs\GuestBookingData;
 use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\Weekday;
 use App\Booking\Exceptions\BookingException;
@@ -265,42 +263,5 @@ class CountryAwareProviderResolutionTest extends TestCase
 
         $this->expectException(BookingException::class);
         app(BookingPaymentServiceInterface::class)->initiate($booking);
-    }
-
-    public function test_guest_booking_attempt_is_denied_before_any_country_routing_applies(): void
-    {
-        // Phase 10.2C-Fix: there is no guest booking anymore, so there is
-        // no guest payment to route — country-aware routing for a
-        // profile-less caller is now covered by
-        // test_null_country_falls_back_to_default_provider() using an
-        // authenticated student. This test only guards that the guest
-        // service path is denied outright, even with routing configured.
-        $this->configureRazorpay();
-        app(BookingSettings::class)->payment_provider = 'razorpay';
-        app(BookingSettings::class)->save();
-
-        Country::factory()->create(['iso2' => 'US', 'payment_routing' => ['provider' => 'stripe', 'enabled' => true]]);
-
-        BookingType::factory()->paid(499.00, 'INR')->create([
-            'key' => 'paid_one_to_one',
-            'duration_minutes' => 60,
-            'max_attendees' => 1,
-        ]);
-
-        $this->expectException(BookingException::class);
-        $this->expectExceptionMessage('Please log in or create an account to book a lesson.');
-
-        app(GuestBookingServiceInterface::class)->book(new GuestBookingData(
-            typeKey: 'paid_one_to_one',
-            subject: 'maths',
-            grade: 8,
-            startsAt: now('UTC')->addDays(4)->setTime(11, 0)->toImmutable(),
-            timezone: 'UTC',
-            guestName: 'Guest Student',
-            guestEmail: 'guest@example.com',
-            guestPhone: null,
-        ));
-
-        $this->assertDatabaseMissing('bookings', ['guest_email' => 'guest@example.com']);
     }
 }

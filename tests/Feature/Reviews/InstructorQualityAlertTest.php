@@ -294,7 +294,7 @@ class InstructorQualityAlertTest extends TestCase
 
         foreach (range(1, 3) as $i) { // default repeated_cancellation_count = 3
             $booking = $this->confirmedBooking($instructor);
-            $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Host, 'Instructor unavailable.'));
+            $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Instructor, 'Instructor unavailable.'));
         }
 
         $this->assertSame(
@@ -312,7 +312,7 @@ class InstructorQualityAlertTest extends TestCase
 
         foreach (range(1, 3) as $i) {
             $booking = $this->confirmedBooking($instructor);
-            $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Attendee, 'Changed my mind.'));
+            $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Student, 'Changed my mind.'));
         }
         $systemBooking = $this->confirmedBooking($instructor);
         $this->bookings->cancel($systemBooking, new CancelBookingData(BookingActor::System, 'Payment was not completed.', expired: true));
@@ -326,7 +326,7 @@ class InstructorQualityAlertTest extends TestCase
 
         foreach (range(1, 4) as $i) { // one more than the threshold — still only one alert
             $booking = $this->confirmedBooking($instructor);
-            $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Host, 'Instructor unavailable.'));
+            $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Instructor, 'Instructor unavailable.'));
         }
 
         $this->assertSame(
@@ -623,8 +623,8 @@ class InstructorQualityAlertTest extends TestCase
         // captured-payment record for BookingService::cancel()'s refund
         // step, which is irrelevant to attribution/counting here.
         return Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
-            'attendee_id' => $student?->id ?? User::factory(),
+            'instructor_id' => $instructor->id,
+            'student_id' => $student?->id ?? User::factory(),
             'starts_at' => now()->addDay(),
             'ends_at' => now()->addDay()->addHour(),
             'payment_status' => BookingPaymentStatus::NotRequired,
@@ -639,8 +639,8 @@ class InstructorQualityAlertTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
-            'host_id' => $instructor->id,
-            'attendee_id' => $student?->id ?? User::factory(),
+            'instructor_id' => $instructor->id,
+            'student_id' => $student?->id ?? User::factory(),
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -656,8 +656,8 @@ class InstructorQualityAlertTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
-            'attendee_id' => $student?->id ?? User::factory(),
+            'instructor_id' => $instructor->id,
+            'student_id' => $student?->id ?? User::factory(),
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Guest;
+namespace App\Http\Resources\Booking;
 
 use App\Booking\DTOs\TimeSlotData;
 use Illuminate\Http\Request;

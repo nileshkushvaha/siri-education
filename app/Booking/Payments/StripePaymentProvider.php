@@ -116,7 +116,7 @@ final class StripePaymentProvider implements PaymentProviderInterface
             try {
                 $payment = BookingPayment::query()->create([
                     'booking_id' => $booking->id,
-                    'user_id' => $booking->attendee_id,
+                    'user_id' => $booking->student_id,
                     'provider' => self::KEY,
                     'amount_minor' => $amountMinor,
                     'currency_code' => $currencyCode,

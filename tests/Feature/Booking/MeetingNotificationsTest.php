@@ -48,8 +48,8 @@ class MeetingNotificationsTest extends TestCase
     private function eligibleBooking(): Booking
     {
         return Booking::factory()->confirmed()->paid()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
     }
 
@@ -118,8 +118,8 @@ class MeetingNotificationsTest extends TestCase
         Notification::fake();
 
         $booking = Booking::factory()->cancelled()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
         ]);
         $this->service()->createMeeting($booking);
 
@@ -198,8 +198,8 @@ class MeetingNotificationsTest extends TestCase
         Notification::fake();
 
         $booking = Booking::factory()->confirmed()->create([
-            'host_id' => $this->teacher->id,
-            'attendee_id' => $this->student->id,
+            'instructor_id' => $this->teacher->id,
+            'student_id' => $this->student->id,
             'payment_status' => 'pending', // unpaid paid booking — ineligible
         ]);
         $this->service()->createMeeting($booking);

@@ -18,7 +18,7 @@ final class WorkloadScorer implements TeacherScorerInterface
 
     public function score(User $teacher, AssignmentCriteriaData $criteria): float
     {
-        return 1.0 / (1 + $this->bookings->activeUpcomingCountForHost($teacher->id));
+        return 1.0 / (1 + $this->bookings->activeUpcomingCountForInstructor($teacher->id));
     }
 
     public function weight(): float

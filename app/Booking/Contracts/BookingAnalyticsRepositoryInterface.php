@@ -34,7 +34,7 @@ interface BookingAnalyticsRepositoryInterface
     /** Session start hours (UTC), non-cancelled, by starts_at. @return Collection<int, object{hour: int, bookings: int}> */
     public function popularHours(CarbonImmutable $from, CarbonImmutable $to): Collection;
 
-    /** Booked minutes per teacher (confirmed/completed, by starts_at). @return Collection<int, object{host_id: int, name: string, minutes: int}> */
+    /** Booked minutes per teacher (confirmed/completed, by starts_at). @return Collection<int, object{instructor_id: int, name: string, minutes: int}> */
     public function bookedMinutesPerTeacher(CarbonImmutable $from, CarbonImmutable $to, int $limit = 10): Collection;
 
     /**

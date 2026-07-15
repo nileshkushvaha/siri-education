@@ -10,7 +10,7 @@ final readonly class TimeSlotData
 {
     /** @param ?int $remainingCapacity null = uncapped (e.g. webinars) */
     public function __construct(
-        public int $hostId,
+        public int $instructorId,
         public CarbonImmutable $startsAt,
         public CarbonImmutable $endsAt,
         public ?int $remainingCapacity = null,

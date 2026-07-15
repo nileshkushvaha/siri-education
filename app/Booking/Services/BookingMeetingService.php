@@ -35,8 +35,6 @@ use Throwable;
  *
  * Eligibility (all must hold):
  *   - booking.status === Confirmed
- *   - an authenticated attendee and a host exist (guest bookings are
- *     never eligible — guest booking/payment stays disabled)
  *   - starts_at/ends_at exist
  *   - booking.location_type === Online ("booking type supports an
  *     online lesson", reusing the existing per-booking field rather
@@ -207,10 +205,6 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
     public function isEligible(Booking $booking): bool
     {
         if ($booking->status !== BookingStatus::Confirmed) {
-            return false;
-        }
-
-        if ($booking->attendee_id === null || $booking->host_id === null) {
             return false;
         }
 

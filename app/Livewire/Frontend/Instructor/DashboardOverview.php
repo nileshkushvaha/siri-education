@@ -52,13 +52,13 @@ final class DashboardOverview extends Component
         $upcoming = Booking::query()
             ->active()
             ->upcoming()
-            ->forHost($user->id)
-            ->with(['type', 'attendee'])
+            ->forInstructor($user->id)
+            ->with(['type', 'student'])
             ->orderBy('starts_at')
             ->get();
 
         $progress = Booking::query()
-            ->forHost($user->id)
+            ->forInstructor($user->id)
             ->where('status', BookingStatus::Completed)
             ->selectRaw(
                 'COUNT(*) as completed_sessions, COALESCE(SUM(TIMESTAMPDIFF(MINUTE, starts_at, ends_at)), 0) / 60.0 as teaching_hours',

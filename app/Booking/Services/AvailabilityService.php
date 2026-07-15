@@ -40,7 +40,7 @@ final class AvailabilityService implements AvailabilityServiceInterface
 
     public function slots(AvailabilityQueryData $query): Collection
     {
-        if (! $this->teachers->isApprovedTeacher($query->hostId)) {
+        if (! $this->teachers->isApprovedTeacher($query->instructorId)) {
             return new Collection;
         }
 
@@ -52,12 +52,12 @@ final class AvailabilityService implements AvailabilityServiceInterface
         $from = $query->from->utc();
         $to = $query->to->utc();
 
-        $windows = $this->availability->windowsFor($query->hostId, $from, $to);
+        $windows = $this->availability->windowsFor($query->instructorId, $from, $to);
         $holidays = $this->availability->holidayDatesBetween($from, $to);
         $blackouts = $this->availability
-            ->blackoutsFor($query->hostId, $from, $to)
+            ->blackoutsFor($query->instructorId, $from, $to)
             ->map(fn (TeacherUnavailability $b): array => ['starts_at' => $b->starts_at, 'ends_at' => $b->ends_at]);
-        $bookings = $this->bookings->activeBetween($query->hostId, $from->subMinutes($buffer), $to->addMinutes($buffer));
+        $bookings = $this->bookings->activeBetween($query->instructorId, $from->subMinutes($buffer), $to->addMinutes($buffer));
 
         $maxDaily = $this->settings->max_daily_bookings_per_teacher;
         $bookedPerDay = $bookings->countBy(fn (Booking $b): string => $b->starts_at->toDateString());
@@ -116,7 +116,7 @@ final class AvailabilityService implements AvailabilityServiceInterface
             }
 
             $slots->push(new TimeSlotData(
-                hostId: $query->hostId,
+                instructorId: $query->instructorId,
                 startsAt: $start->setTimezone($query->timezone),
                 endsAt: $end->setTimezone($query->timezone),
                 remainingCapacity: $remaining,
@@ -127,7 +127,7 @@ final class AvailabilityService implements AvailabilityServiceInterface
     }
 
     public function ensureAvailable(
-        int $hostId,
+        int $instructorId,
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?string $ignoreBookingId = null,
@@ -141,31 +141,31 @@ final class AvailabilityService implements AvailabilityServiceInterface
         // teacher deactivated/rejected between the caller's eligibility check
         // and lock acquisition can never still be booked — this is the final
         // truth check, run both fast-fail and inside the race-safe lock.
-        if (! $this->teachers->isApprovedTeacher($hostId)) {
-            throw SlotUnavailableException::for($hostId, $startsAt);
+        if (! $this->teachers->isApprovedTeacher($instructorId)) {
+            throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
-        if (! $this->availability->windowCovers($hostId, $startsAt, $endsAt)) {
-            throw SlotUnavailableException::for($hostId, $startsAt);
+        if (! $this->availability->windowCovers($instructorId, $startsAt, $endsAt)) {
+            throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
         if ($this->availability->isHoliday($startsAt)) {
-            throw SlotUnavailableException::for($hostId, $startsAt);
+            throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
-        if ($this->availability->hasBlackout($hostId, $startsAt, $endsAt)) {
-            throw SlotUnavailableException::for($hostId, $startsAt);
+        if ($this->availability->hasBlackout($instructorId, $startsAt, $endsAt)) {
+            throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
-        if ($this->bookings->hasOverlap($hostId, $startsAt, $endsAt, $ignoreBookingId, $sharedSlotTypeKey, $bufferMinutes)) {
-            throw SlotUnavailableException::for($hostId, $startsAt);
+        if ($this->bookings->hasOverlap($instructorId, $startsAt, $endsAt, $ignoreBookingId, $sharedSlotTypeKey, $bufferMinutes)) {
+            throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
         $maxDaily = $this->settings->max_daily_bookings_per_teacher;
 
         if ($maxDaily !== null
-            && $this->bookings->activeCountForDay($hostId, $startsAt, $ignoreBookingId) >= $maxDaily) {
-            throw SlotUnavailableException::for($hostId, $startsAt);
+            && $this->bookings->activeCountForDay($instructorId, $startsAt, $ignoreBookingId) >= $maxDaily) {
+            throw SlotUnavailableException::for($instructorId, $startsAt);
         }
     }
 }

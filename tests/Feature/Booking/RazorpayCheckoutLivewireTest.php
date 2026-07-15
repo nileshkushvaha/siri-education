@@ -117,11 +117,8 @@ class RazorpayCheckoutLivewireTest extends TestCase
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
-            ->set('name', $student->name)
-            ->set('email', $student->email)
-            ->call('review')
             ->call('submit')
-            ->assertSet('step', 7)
+            ->assertSet('step', 6)
             ->assertSee('Pay now');
 
         $bookingId = $component->get('bookingId');
@@ -158,14 +155,11 @@ class RazorpayCheckoutLivewireTest extends TestCase
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
-            ->set('name', $student->name)
-            ->set('email', $student->email)
-            ->call('review')
             ->call('submit')
-            ->assertSet('step', 6)
+            ->assertSet('step', 5)
             ->assertSee('price is not configured');
 
-        $this->assertDatabaseMissing('bookings', ['host_id' => $this->teacher->id]);
+        $this->assertDatabaseMissing('bookings', ['instructor_id' => $this->teacher->id]);
     }
 
     public function test_razorpay_checkout_event_payload_has_only_public_fields(): void
@@ -186,9 +180,6 @@ class RazorpayCheckoutLivewireTest extends TestCase
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
-            ->set('name', $student->name)
-            ->set('email', $student->email)
-            ->call('review')
             ->call('submit')
             ->call('initiatePayment');
 

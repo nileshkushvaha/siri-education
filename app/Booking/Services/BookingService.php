@@ -29,7 +29,6 @@ use App\Booking\Exceptions\DuplicateBookingException;
 use App\Booking\Exceptions\SlotUnavailableException;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Validation\BookingValidationPipeline;
-use App\Booking\Validation\Rules\AuthenticatedAttendeeRule;
 use App\Booking\Validation\Rules\BookingWindowRule;
 use App\Booking\Validation\Rules\DuplicateBookingRule;
 use App\Booking\Validation\Rules\SelfBookingRule;
@@ -61,7 +60,6 @@ final class BookingService implements BookingServiceInterface
         // with an incomplete profile, but is asked to complete it before
         // paying, which is both the natural UX point and a much narrower
         // blast radius than blocking booking creation outright.
-        AuthenticatedAttendeeRule::class,
         VerifiedActiveStudentRule::class,
         BookingWindowRule::class,
         SelfBookingRule::class,
@@ -92,8 +90,8 @@ final class BookingService implements BookingServiceInterface
 
         $this->pipeline->run($data, $driver, self::GLOBAL_RULES);
 
-        $booking = $this->bookings->withHostLock(
-            $data->hostId,
+        $booking = $this->bookings->withInstructorLock(
+            $data->instructorId,
             fn (): Booking => DB::transaction(function () use ($data, $type): Booking {
                 // Race-safe re-checks: another request may have won the lock first.
                 if ($this->bookings->duplicateExists($data)) {
@@ -101,7 +99,7 @@ final class BookingService implements BookingServiceInterface
                 }
 
                 $this->availability->ensureAvailable(
-                    $data->hostId,
+                    $data->instructorId,
                     $data->startsAt,
                     $data->endsAt(),
                     sharedSlotTypeKey: $this->sharedSlotKey($type),
@@ -120,14 +118,14 @@ final class BookingService implements BookingServiceInterface
                 // 10.2C-Fix). subject/grade (Phase 10.2D) come from
                 // $data->meta the same way StudentBookingResource reads
                 // them back — see CreateBookingData's meta doc comment.
-                // $data->hostId (Phase 10.2F) lets an instructor-specific
+                // $data->instructorId (Phase 10.2F) lets an instructor-specific
                 // price override the base price when one is configured.
                 $price = $this->priceCalculator->calculate(
                     $type,
                     $this->attendeeFor($data),
                     $data->meta['subject'] ?? null,
                     $data->meta['grade'] ?? null,
-                    $data->hostId,
+                    $data->instructorId,
                 );
                 $autoConfirm = ! $type->requires_approval && $price->isFreeBooking;
                 $status = $autoConfirm ? BookingStatus::Confirmed : BookingStatus::Pending;
@@ -192,11 +190,11 @@ final class BookingService implements BookingServiceInterface
         $duration = $data->durationMinutes ?? (int) $previousStartsAt->diffInMinutes($previousEndsAt);
         $endsAt = $data->startsAt->addMinutes($duration);
 
-        $booking = $this->bookings->withHostLock(
-            $booking->host_id,
+        $booking = $this->bookings->withInstructorLock(
+            $booking->instructor_id,
             fn (): Booking => DB::transaction(function () use ($booking, $data, $endsAt, $previousStartsAt, $previousEndsAt): Booking {
                 $this->availability->ensureAvailable(
-                    $booking->host_id,
+                    $booking->instructor_id,
                     $data->startsAt,
                     $endsAt,
                     ignoreBookingId: $booking->id,
@@ -289,7 +287,7 @@ final class BookingService implements BookingServiceInterface
     /** Only used for currency display fallback — never for authorization. */
     private function attendeeFor(CreateBookingData $data): ?User
     {
-        return $data->attendeeId !== null ? User::find($data->attendeeId) : null;
+        return $data->studentId !== null ? User::find($data->studentId) : null;
     }
 
     private function assertCapacity(BookingType $type, CreateBookingData $data): void
@@ -298,10 +296,10 @@ final class BookingService implements BookingServiceInterface
             return; // uncapped, or covered by the overlap check
         }
 
-        $taken = $this->bookings->attendeeCountForSlot($data->hostId, $type->key, $data->startsAt);
+        $taken = $this->bookings->studentCountForSlot($data->instructorId, $type->key, $data->startsAt);
 
         if ($taken >= $type->max_attendees) {
-            throw SlotUnavailableException::for($data->hostId, $data->startsAt);
+            throw SlotUnavailableException::for($data->instructorId, $data->startsAt);
         }
     }
 
@@ -316,8 +314,8 @@ final class BookingService implements BookingServiceInterface
 
         return [
             match ($user->id) {
-                $booking->host_id => BookingActor::Host,
-                $booking->attendee_id => BookingActor::Attendee,
+                $booking->instructor_id => BookingActor::Instructor,
+                $booking->student_id => BookingActor::Student,
                 default => BookingActor::Admin,
             },
             $user->id,

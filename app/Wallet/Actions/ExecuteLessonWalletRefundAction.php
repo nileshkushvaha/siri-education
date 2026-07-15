@@ -71,7 +71,7 @@ final class ExecuteLessonWalletRefundAction
             }
 
             $booking = $disposition->booking;
-            $student = $booking?->attendee;
+            $student = $booking?->student;
 
             if ($booking === null || $student === null) {
                 return $this->defer($disposition, 'missing_student');

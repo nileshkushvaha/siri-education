@@ -10,7 +10,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Queue\SerializesModels;
 
-/** Sent to the host when a booking needs their approval. */
+/** Sent to the instructor when a booking needs their approval. */
 final class BookingRequestedNotification extends BookingNotification
 {
     use Queueable, RoutesBookingChannels, SerializesModels;
@@ -28,7 +28,7 @@ final class BookingRequestedNotification extends BookingNotification
             ->line(sprintf(
                 'You have a new %s request from %s for %s (%s).',
                 $this->booking->type->name,
-                $this->booking->attendeeName() ?? 'a guest',
+                $this->booking->student->name,
                 $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
                 $this->booking->timezone,
             ))
@@ -42,7 +42,7 @@ final class BookingRequestedNotification extends BookingNotification
             'New %s request %s from %s for %s (%s). Please confirm or decline.',
             $this->booking->type->name,
             $this->booking->reference,
-            $this->booking->attendeeName() ?? 'a guest',
+            $this->booking->student->name,
             $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y H:i'),
             $this->booking->timezone,
         );

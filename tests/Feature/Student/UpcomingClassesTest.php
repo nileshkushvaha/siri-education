@@ -56,8 +56,8 @@ class UpcomingClassesTest extends TestCase
 
         $mine = Booking::factory()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
             'status' => BookingStatus::Confirmed,
             'starts_at' => now()->addDays(2),
             'ends_at' => now()->addDays(2)->addHour(),
@@ -66,8 +66,8 @@ class UpcomingClassesTest extends TestCase
         $other = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         Booking::factory()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $other->id,
-            'host_id' => $teacher->id,
+            'student_id' => $other->id,
+            'instructor_id' => $teacher->id,
             'status' => BookingStatus::Confirmed,
             'starts_at' => now()->addDays(3),
             'ends_at' => now()->addDays(3)->addHour(),
@@ -87,8 +87,8 @@ class UpcomingClassesTest extends TestCase
 
         Booking::factory()->cancelled()->create([
             'booking_type_id' => $type->id,
-            'attendee_id' => $this->student->id,
-            'host_id' => $teacher->id,
+            'student_id' => $this->student->id,
+            'instructor_id' => $teacher->id,
             'starts_at' => now()->addDays(2),
             'ends_at' => now()->addDays(2)->addHour(),
         ]);

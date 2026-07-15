@@ -19,7 +19,7 @@ class BookingActivityFactory extends Factory
         return [
             'booking_id' => Booking::factory(),
             'action' => BookingActivityAction::Requested,
-            'actor_type' => BookingActor::Attendee,
+            'actor_type' => BookingActor::Student,
             'status_from' => null,
             'status_to' => BookingStatus::Pending,
             'created_at' => now(),

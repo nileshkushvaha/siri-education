@@ -29,12 +29,8 @@ class Booking extends Model
     protected $fillable = [
         'reference',
         'booking_type_id',
-        'attendee_id',
-        'guest_name',
-        'guest_email',
-        'guest_phone',
-        'manage_token',
-        'host_id',
+        'student_id',
+        'instructor_id',
         'status',
         'payment_status',
         'location_type',
@@ -57,18 +53,6 @@ class Booking extends Model
         'meta',
         'created_by',
     ];
-
-    /** The capability token is a credential — never serialize it. */
-    protected $hidden = [
-        'manage_token',
-    ];
-
-    /**
-     * The un-hashed guest token, populated ONLY on the model instance
-     * returned from BookingRepository::create(). Never persisted —
-     * the database stores its SHA-256 hash.
-     */
-    public ?string $plainManageToken = null;
 
     protected function casts(): array
     {
@@ -95,40 +79,24 @@ class Booking extends Model
         });
     }
 
-    public function isGuest(): bool
-    {
-        return $this->attendee_id === null;
-    }
-
-    /** Display name of the booked party, user or guest. */
-    public function attendeeName(): ?string
-    {
-        return $this->attendee?->name ?? $this->guest_name;
-    }
-
     public function type(): BelongsTo
     {
         return $this->belongsTo(BookingType::class, 'booking_type_id');
     }
 
-    public function attendee(): BelongsTo
+    public function student(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'attendee_id');
+        return $this->belongsTo(User::class, 'student_id');
     }
 
-    public function host(): BelongsTo
+    public function instructor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'host_id');
+        return $this->belongsTo(User::class, 'instructor_id');
     }
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function guests(): HasMany
-    {
-        return $this->hasMany(BookingGuest::class);
     }
 
     public function meeting(): HasOne
@@ -167,14 +135,14 @@ class Booking extends Model
         return $query->where('ends_at', '<', now());
     }
 
-    public function scopeForHost(Builder $query, int $hostId): Builder
+    public function scopeForInstructor(Builder $query, int $instructorId): Builder
     {
-        return $query->where('host_id', $hostId);
+        return $query->where('instructor_id', $instructorId);
     }
 
-    public function scopeForAttendee(Builder $query, int $attendeeId): Builder
+    public function scopeForStudent(Builder $query, int $studentId): Builder
     {
-        return $query->where('attendee_id', $attendeeId);
+        return $query->where('student_id', $studentId);
     }
 
     public function scopeWithStatus(Builder $query, BookingStatus $status): Builder
@@ -199,7 +167,7 @@ class Booking extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['status', 'payment_status', 'starts_at', 'ends_at', 'host_id', 'attendee_id'])
+            ->logOnly(['status', 'payment_status', 'starts_at', 'ends_at', 'instructor_id', 'student_id'])
             ->useLogName('bookings')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

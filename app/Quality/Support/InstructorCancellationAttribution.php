@@ -9,8 +9,8 @@ use App\Booking\Enums\BookingActor;
 
 /**
  * Whether a cancellation is attributable to the instructor for
- * quality-signal purposes. `BookingActor::Host` is the instructor
- * side of a booking (see `Booking::host_id`) — every other actor
+ * quality-signal purposes. `BookingActor::Instructor` is the instructor
+ * side of a booking (see `Booking::instructor_id`) — every other actor
  * (Attendee/System/Admin) is structurally excluded by construction,
  * which is exactly the exclusion list the spec asks for: student
  * cancellations (Attendee), system expiration and payment-failure
@@ -21,6 +21,6 @@ final class InstructorCancellationAttribution
 {
     public static function isInstructorAttributable(CancelBookingData $context): bool
     {
-        return $context->cancelledBy === BookingActor::Host;
+        return $context->cancelledBy === BookingActor::Instructor;
     }
 }

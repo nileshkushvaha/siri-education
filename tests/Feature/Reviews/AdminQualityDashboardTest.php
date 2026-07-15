@@ -295,7 +295,7 @@ class AdminQualityDashboardTest extends TestCase
     {
         $instructor = $this->instructorUser();
         $booking = $this->confirmedBooking($instructor);
-        $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Host, 'Unavailable.'));
+        $this->bookings->cancel($booking, new CancelBookingData(BookingActor::Instructor, 'Unavailable.'));
 
         $this->assertSame(1, $this->dashboard->summary()->instructorAttributedCancellationCount);
     }
@@ -304,7 +304,7 @@ class AdminQualityDashboardTest extends TestCase
     {
         $instructor = $this->instructorUser();
         $studentBooking = $this->confirmedBooking($instructor);
-        $this->bookings->cancel($studentBooking, new CancelBookingData(BookingActor::Attendee, 'Changed my mind.'));
+        $this->bookings->cancel($studentBooking, new CancelBookingData(BookingActor::Student, 'Changed my mind.'));
         $systemBooking = $this->confirmedBooking($instructor);
         $this->bookings->cancel($systemBooking, new CancelBookingData(BookingActor::System, 'Payment lapsed.', expired: true));
 
@@ -544,8 +544,8 @@ class AdminQualityDashboardTest extends TestCase
     private function confirmedBooking(User $instructor, ?User $student = null): Booking
     {
         return Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
-            'attendee_id' => $student?->id ?? User::factory(),
+            'instructor_id' => $instructor->id,
+            'student_id' => $student?->id ?? User::factory(),
             'starts_at' => now()->addDay(),
             'ends_at' => now()->addDay()->addHour(),
             'payment_status' => BookingPaymentStatus::NotRequired,
@@ -560,8 +560,8 @@ class AdminQualityDashboardTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
-            'host_id' => $instructor->id,
-            'attendee_id' => $student?->id ?? User::factory(),
+            'instructor_id' => $instructor->id,
+            'student_id' => $student?->id ?? User::factory(),
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -577,8 +577,8 @@ class AdminQualityDashboardTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create([
-            'host_id' => $instructor->id,
-            'attendee_id' => $student?->id ?? User::factory(),
+            'instructor_id' => $instructor->id,
+            'student_id' => $student?->id ?? User::factory(),
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

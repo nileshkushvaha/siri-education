@@ -50,7 +50,7 @@ final class FakePaymentProvider implements PaymentProviderInterface
         BookingPayment::query()->firstOrCreate(
             ['booking_id' => $booking->id, 'idempotency_key' => $reference],
             [
-                'user_id' => $booking->attendee_id,
+                'user_id' => $booking->student_id,
                 'provider' => self::KEY,
                 'amount_minor' => (int) round(((float) $booking->price) * (10 ** MoneyFormatter::minorUnitsFor((string) $booking->currency))),
                 'currency_code' => (string) $booking->currency,

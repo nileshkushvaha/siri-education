@@ -13,8 +13,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('reference', 20)->unique();
             $table->uuid('booking_type_id');
-            $table->unsignedBigInteger('attendee_id');
-            $table->unsignedBigInteger('host_id');
+            $table->unsignedBigInteger('student_id');
+            $table->unsignedBigInteger('instructor_id');
 
             $table->string('status', 50)->default('pending');
             $table->string('payment_status', 50)->default('not_required');
@@ -47,12 +47,16 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('booking_type_id')->references('id')->on('booking_types')->restrictOnDelete();
-            $table->foreign('attendee_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('host_id')->references('id')->on('users')->cascadeOnDelete();
+            // Historical business records: never cascade a booking away
+            // because a student/instructor account row was deleted (Phase
+            // 17U.1 principle, applied from the baseline since Phase 17U.3 —
+            // no legacy CASCADE data to migrate).
+            $table->foreign('student_id')->references('id')->on('users')->restrictOnDelete();
+            $table->foreign('instructor_id')->references('id')->on('users')->restrictOnDelete();
             $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
 
-            $table->index(['host_id', 'starts_at']);
-            $table->index(['attendee_id', 'starts_at']);
+            $table->index(['instructor_id', 'starts_at']);
+            $table->index(['student_id', 'starts_at']);
             $table->index(['status', 'starts_at']);
             $table->index('ends_at');
             $table->index('payment_status');

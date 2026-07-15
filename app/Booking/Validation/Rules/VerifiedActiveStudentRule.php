@@ -33,13 +33,7 @@ final class VerifiedActiveStudentRule implements BookingRuleInterface
 
     public function check(CreateBookingData $data, BookingTypeInterface $type): void
     {
-        if ($data->attendeeId === null) {
-            // AuthenticatedAttendeeRule already rejects this case with a
-            // clearer message — do not pile on a second error for it.
-            return;
-        }
-
-        $user = User::find($data->attendeeId);
+        $user = User::find($data->studentId);
 
         if ($user === null || $user->status !== User::STATUS_ACTIVE) {
             throw new BookingException('Your account is not active. Please contact support.');

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\BookingTypes\RelationManagers;
 
 use App\Booking\Enums\BookingStatus;
-use App\Models\Booking;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -32,11 +31,10 @@ class BookingsRelationManager extends RelationManager
                 TextColumn::make('reference')
                     ->searchable()
                     ->fontFamily('mono'),
-                TextColumn::make('host.name')
-                    ->label('Teacher'),
-                TextColumn::make('attendee_display')
-                    ->label('Attendee')
-                    ->state(fn (Booking $record): string => $record->attendeeName() ?? '—'),
+                TextColumn::make('instructor.name')
+                    ->label('Instructor'),
+                TextColumn::make('student.name')
+                    ->label('Student'),
                 TextColumn::make('starts_at')
                     ->dateTime()
                     ->sortable(),

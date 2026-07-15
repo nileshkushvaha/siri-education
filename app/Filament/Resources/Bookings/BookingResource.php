@@ -8,7 +8,6 @@ use App\Booking\Enums\BookingStatus;
 use App\Filament\Resources\Bookings\Pages\EditBooking;
 use App\Filament\Resources\Bookings\Pages\ListBookings;
 use App\Filament\Resources\Bookings\RelationManagers\ActivitiesRelationManager;
-use App\Filament\Resources\Bookings\RelationManagers\GuestsRelationManager;
 use App\Filament\Resources\Bookings\Schemas\BookingForm;
 use App\Filament\Resources\Bookings\Tables\BookingsTable;
 use App\Models\Booking;
@@ -50,7 +49,6 @@ class BookingResource extends Resource
     public static function getRelations(): array
     {
         return [
-            GuestsRelationManager::class,
             ActivitiesRelationManager::class,
         ];
     }
@@ -65,7 +63,7 @@ class BookingResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['type', 'host', 'attendee']);
+        return parent::getEloquentQuery()->with(['type', 'instructor', 'student']);
     }
 
     public static function getRecordRouteBindingEloquentQuery(): Builder

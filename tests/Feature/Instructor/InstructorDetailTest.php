@@ -241,7 +241,7 @@ class InstructorDetailTest extends TestCase
 
         $this->get(route('instructors.show', $instructor))->assertOk();
 
-        $this->get(route('instructors.booking.create', [
+        $this->get(route('booking.create', [
             'instructor' => $instructor->slug,
             'subject' => 'maths',
             'type' => 'free_demo',

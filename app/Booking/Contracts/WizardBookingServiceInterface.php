@@ -4,20 +4,24 @@ declare(strict_types=1);
 
 namespace App\Booking\Contracts;
 
-use App\Booking\DTOs\GuestBookingData;
 use App\Booking\DTOs\TimeSlotData;
+use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * Public (unauthenticated) booking flow. Guests never see or pick
- * teachers — availability is aggregated across eligible teachers and
- * the assignment engine chooses on booking. Post-creation management
- * is authorized solely by the booking's manage_token.
+ * The authenticated-student booking-creation flow behind the `/book`
+ * wizard (Phase 17U.3 — renamed from the pre-authenticated-only
+ * "guest booking" concept; every caller is a logged-in, verified
+ * student). Unlike the teacher-choice flow under `/dashboard/bookings`
+ * (StudentBookingServiceInterface), the wizard never requires the
+ * student to pick a teacher — availability is aggregated across
+ * eligible teachers and the assignment engine chooses one on booking,
+ * unless a specific instructor was locked via a profile deep-link.
  */
-interface GuestBookingServiceInterface
+interface WizardBookingServiceInterface
 {
     /** @return Collection<int, string> dates (Y-m-d, in $timezone) with at least one open slot */
     public function availableDates(
@@ -41,17 +45,5 @@ interface GuestBookingServiceInterface
     ): Collection;
 
     /** @throws BookingException */
-    public function book(GuestBookingData $data): Booking;
-
-    /**
-     * Resolve a guest booking by reference + manage token.
-     * Fails as "not found" — never reveals whether the reference exists.
-     */
-    public function findForGuest(string $reference, string $token): Booking;
-
-    /** @throws BookingException */
-    public function cancel(Booking $booking, ?string $reason = null): Booking;
-
-    /** @throws BookingException */
-    public function reschedule(Booking $booking, CarbonImmutable $startsAt, ?string $reason = null): Booking;
+    public function book(WizardBookingData $data): Booking;
 }

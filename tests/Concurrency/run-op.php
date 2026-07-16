@@ -26,8 +26,13 @@ use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\Lesson;
+use App\Models\LessonFinancialDisposition;
+use App\Models\LessonReviewEligibility;
 use App\Models\User;
+use App\Reviews\Contracts\StudentReviewServiceInterface;
+use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Settings\RazorpayXPayoutSettings;
+use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
@@ -325,6 +330,38 @@ try {
             $result = app(LessonOutcomeServiceInterface::class)->finalize($lesson, $outcome);
 
             return ['applied' => $result->applied, 'lesson_status' => $result->lesson->status->value];
+        })(),
+
+        // Phase 17V closure — two concurrent wallet-refund executors
+        // racing the same disposition. Proves ExecuteLessonWalletRefundAction's
+        // row lock + WalletLedgerService's idempotency-key-guarded credit
+        // converge to exactly one Refund ledger entry under genuine
+        // cross-connection concurrency, not just the sequential
+        // stale-copy simulation in LessonWalletRefundTest.
+        'execute-lesson-wallet-refund' => (function () use ($args) {
+            $disposition = LessonFinancialDisposition::query()->findOrFail($args['disposition_id']);
+
+            $result = app(ExecuteLessonWalletRefundAction::class)->execute($disposition);
+
+            return ['credited' => $result->credited];
+        })(),
+
+        // Phase 17V closure — two concurrent student review submissions
+        // racing the same eligibility. Proves the eligibility row lock +
+        // idempotent-if-already-Used guard in SubmitLessonReviewAction
+        // converge to exactly one LessonReview under genuine
+        // cross-connection concurrency, not just the sequential
+        // stale-copy simulation in StudentReviewSubmissionTest.
+        'submit-lesson-review' => (function () use ($args) {
+            $eligibility = LessonReviewEligibility::query()->findOrFail($args['eligibility_id']);
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $result = app(StudentReviewServiceInterface::class)->submit($eligibility, $student, new SubmitStudentReviewData(
+                overallRating: (int) $args['overall_rating'],
+                content: $args['content'] ?? null,
+            ));
+
+            return ['applied' => $result->applied, 'review_id' => $result->review->id];
         })(),
 
         'cancel-booking-as-user' => (function () use ($args) {

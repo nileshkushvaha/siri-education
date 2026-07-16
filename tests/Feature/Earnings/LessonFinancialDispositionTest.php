@@ -313,6 +313,38 @@ class LessonFinancialDispositionTest extends TestCase
         $this->assertSame('completed_paid', $disposition->history[0]['reason_code']);
     }
 
+    /**
+     * Phase 17V closure re-audit — a redelivered LessonOutcomeOverridden
+     * event (or a directly-repeated override call for the identical
+     * target outcome) used to append another near-duplicate history
+     * entry and bump version again on every replay. reevaluate() now
+     * short-circuits when the disposition's current outcome already
+     * equals the target — cosmetic version/history bloat only, no
+     * financial effect, per the closure audit's classification.
+     */
+    public function test_redelivered_identical_override_does_not_bump_version_or_duplicate_history(): void
+    {
+        $this->enableBridge();
+        $lesson = $this->makePaidLesson(withAgreement: true);
+        $admin = $this->admin();
+
+        $this->outcomes->finalize($lesson, LessonOutcome::Completed);
+        $this->outcomes->override($lesson->refresh(), $admin, LessonOutcome::StudentNoShow, 'Student never joined.');
+
+        $afterFirstOverride = $this->dispositionFor($lesson);
+        $this->assertSame(2, $afterFirstOverride->version);
+        $this->assertCount(1, $afterFirstOverride->history);
+
+        // Directly replay the identical reevaluation the listener would
+        // apply on a redelivered event for the same override.
+        $this->dispositions->reevaluate($lesson->refresh(), LessonOutcome::Completed, LessonOutcome::StudentNoShow, 'Student never joined.');
+        $this->dispositions->reevaluate($lesson->refresh(), LessonOutcome::Completed, LessonOutcome::StudentNoShow, 'Student never joined.');
+
+        $afterReplay = $this->dispositionFor($lesson->fresh());
+        $this->assertSame(2, $afterReplay->version, 'A replayed identical override must not bump version again.');
+        $this->assertCount(1, $afterReplay->history, 'A replayed identical override must not append another history entry.');
+    }
+
     public function test_completed_to_no_show_override_holds_an_existing_earning(): void
     {
         $this->enableBridge();

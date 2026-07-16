@@ -107,6 +107,20 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
         return DB::transaction(function () use ($lesson, $previousOutcome, $newOutcome, $overrideReason): LessonFinancialDisposition {
             $disposition = $this->lockForLesson($lesson);
 
+            // Phase 17V closure — a redelivered event carrying the exact
+            // override already applied (same target outcome) is a
+            // harmless replay: short-circuit before appending another
+            // near-duplicate history entry and bumping version again.
+            // Nothing distinguishes a genuinely new override that
+            // happens to reclassify to the same outcome from a replay of
+            // this one, so — as with every other idempotent-repeat guard
+            // in this codebase (InstructorQualityAlertService::resolve(),
+            // ReviewModerationService's status-equality checks) — the
+            // current outcome is the idempotency signal.
+            if ($disposition !== null && $disposition->outcome === $newOutcome) {
+                return $disposition;
+            }
+
             if ($disposition === null) {
                 // Classified for the first time via the override (e.g. the
                 // bridge was enabled after the original finalization).

@@ -11,8 +11,12 @@ use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
+use App\Booking\Events\BookingConfirmed;
+use App\Booking\Events\BookingRescheduled;
+use App\Listeners\Booking\SendBookingNotifications;
 use App\Models\Booking;
 use App\Models\BookingType;
+use App\Models\NotificationDispatchLog;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -20,6 +24,8 @@ use App\Models\UserProfile;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingExpiredNotification;
+use App\Notifications\Booking\BookingRescheduledNotification;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -168,5 +174,58 @@ class BookingNotificationsTest extends TestCase
             $this->assertInstanceOf(ShouldQueue::class, $notification);
             $this->assertSame('notifications', $notification->queue);
         }
+    }
+
+    // ── Idempotency (Phase 17V closure) ─────────────────────────────
+
+    public function test_redelivered_confirmed_event_does_not_duplicate_notifications(): void
+    {
+        Notification::fake();
+
+        $booking = $this->book('free_demo')->fresh(); // auto-confirms
+        $listener = app(SendBookingNotifications::class);
+        $event = new BookingConfirmed($booking);
+
+        // The real BookingConfirmed dispatch already fired once via
+        // book(); redeliver the exact same event twice more directly.
+        $listener->handleConfirmed($event);
+        $listener->handleConfirmed($event);
+
+        Notification::assertSentToTimes($this->student, BookingConfirmedNotification::class, 1);
+        Notification::assertSentToTimes($this->teacher, BookingConfirmedNotification::class, 1);
+        $this->assertSame(
+            2, // one per recipient
+            NotificationDispatchLog::query()->where('notification_class', BookingConfirmedNotification::class)->count(),
+        );
+    }
+
+    public function test_two_distinct_reschedules_both_notify_but_a_replay_of_one_does_not(): void
+    {
+        Notification::fake();
+
+        $booking = $this->book('paid_one_to_one')->fresh();
+        $listener = app(SendBookingNotifications::class);
+
+        $previousStartsAt = CarbonImmutable::parse($booking->starts_at);
+        $previousEndsAt = CarbonImmutable::parse($booking->ends_at);
+
+        $firstNewStart = now('UTC')->addDays(5)->setTime(11, 0)->toImmutable();
+        $booking->forceFill(['starts_at' => $firstNewStart, 'ends_at' => $firstNewStart->addMinutes(60)])->save();
+        $firstEvent = new BookingRescheduled($booking->fresh(), $previousStartsAt, $previousEndsAt);
+
+        // Replay the same reschedule event twice.
+        $listener->handleRescheduled($firstEvent);
+        $listener->handleRescheduled($firstEvent);
+
+        Notification::assertSentToTimes($this->student, BookingRescheduledNotification::class, 1);
+
+        // A genuinely later, distinct reschedule must still notify.
+        $secondNewStart = now('UTC')->addDays(6)->setTime(14, 0)->toImmutable();
+        $booking->forceFill(['starts_at' => $secondNewStart, 'ends_at' => $secondNewStart->addMinutes(60)])->save();
+        $secondEvent = new BookingRescheduled($booking->fresh(), $firstNewStart, $firstNewStart->addMinutes(60));
+
+        $listener->handleRescheduled($secondEvent);
+
+        Notification::assertSentToTimes($this->student, BookingRescheduledNotification::class, 2);
     }
 }

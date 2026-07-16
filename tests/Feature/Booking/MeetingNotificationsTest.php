@@ -7,9 +7,13 @@ namespace Tests\Feature\Booking;
 use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\DTOs\MeetingUpdateContext;
 use App\Booking\Enums\MeetingStatus;
+use App\Booking\Events\MeetingCreated;
+use App\Booking\Events\MeetingUpdated;
+use App\Listeners\Booking\SendMeetingNotifications;
 use App\Models\Activity;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
+use App\Models\NotificationDispatchLog;
 use App\Models\User;
 use App\Notifications\Booking\MeetingCreatedNotification;
 use App\Notifications\Booking\MeetingUpdatedNotification;
@@ -215,5 +219,58 @@ class MeetingNotificationsTest extends TestCase
         $notification = new MeetingCreatedNotification($booking, $meeting);
         $this->assertInstanceOf(ShouldQueue::class, $notification);
         $this->assertSame('notifications', $notification->queue);
+    }
+
+    // ── Idempotency (Phase 17V closure) ─────────────────────────────
+
+    public function test_redelivered_meeting_created_event_does_not_duplicate_notifications(): void
+    {
+        Notification::fake();
+
+        $booking = $this->eligibleBooking();
+        $this->service()->saveManualMeeting($booking, new MeetingUpdateContext(joinUrl: 'https://meet.example.test/redelivered'));
+        $meeting = $booking->fresh()->meeting;
+
+        $listener = app(SendMeetingNotifications::class);
+        $event = new MeetingCreated($booking->fresh(), $meeting);
+
+        // The real MeetingCreated dispatch already fired once above;
+        // redeliver the exact same event twice more directly.
+        $listener->handleCreated($event);
+        $listener->handleCreated($event);
+
+        Notification::assertSentToTimes($this->student, MeetingCreatedNotification::class, 1);
+        Notification::assertSentToTimes($this->teacher, MeetingCreatedNotification::class, 1);
+        $this->assertSame(
+            2, // one per recipient
+            NotificationDispatchLog::query()->where('notification_class', MeetingCreatedNotification::class)->count(),
+        );
+    }
+
+    public function test_two_distinct_link_updates_both_notify_but_a_replay_of_one_does_not(): void
+    {
+        $booking = $this->eligibleBooking();
+        $this->service()->saveManualMeeting($booking, new MeetingUpdateContext(joinUrl: 'https://meet.example.test/v0'));
+
+        Notification::fake();
+        $listener = app(SendMeetingNotifications::class);
+
+        $meeting = $booking->fresh()->meeting;
+        $meeting->forceFill(['join_url' => 'https://meet.example.test/v1'])->save();
+        $firstEvent = new MeetingUpdated($booking->fresh(), $meeting->fresh());
+
+        // Replay the same update event twice.
+        $listener->handleUpdated($firstEvent);
+        $listener->handleUpdated($firstEvent);
+
+        Notification::assertSentToTimes($this->student, MeetingUpdatedNotification::class, 1);
+
+        // A genuinely later, distinct link change must still notify.
+        $meeting->forceFill(['join_url' => 'https://meet.example.test/v2'])->save();
+        $secondEvent = new MeetingUpdated($booking->fresh(), $meeting->fresh());
+
+        $listener->handleUpdated($secondEvent);
+
+        Notification::assertSentToTimes($this->student, MeetingUpdatedNotification::class, 2);
     }
 }

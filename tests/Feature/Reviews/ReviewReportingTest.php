@@ -194,6 +194,25 @@ class ReviewReportingTest extends TestCase
         $this->assertStringNotContainsString('@example.com', (string) $report->explanation);
     }
 
+    /**
+     * Phase 17V closure re-audit — root-caused a full-suite-only flake
+     * here: the previous assertion did a blind `str_contains($raw,
+     * '555')` across the ENTIRE encoded properties blob, which also
+     * legitimately contains the report's randomly-generated UUIDv7
+     * `review_id` (logged by design, for traceability). UUIDv7 values
+     * contain any given 3-hex-digit substring ~0.14% of the time by
+     * pure chance (empirically measured over 200k generated UUIDs) —
+     * entirely unrelated to whether the phone number leaked, and not
+     * dependent on test execution order (confirmed: the specific
+     * failing run's `review_id` — `...e45fe15559da` — contains "555"
+     * natively at its own hex digits). `SubmitReviewReportAction`
+     * (app/Reviews/Actions/SubmitReviewReportAction.php) never passes
+     * `explanation` to `AuditTrailService::logUser()` at all — only
+     * `review_id`, `reason`, and `flags` are logged — so the correct,
+     * collision-proof assertion is structural (the key is absent)
+     * plus a content check using characters that cannot appear in a
+     * hex UUID (`(`, `)`, spaces), rather than a bare digit substring.
+     */
     public function test_raw_unsafe_explanation_is_not_logged(): void
     {
         $review = $this->submitPublicReview()->fresh();
@@ -210,8 +229,13 @@ class ReviewReportingTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $raw = json_encode($activity->properties);
-        $this->assertStringNotContainsString('555', (string) $raw);
+        $this->assertArrayNotHasKey('explanation', $activity->properties->toArray());
+
+        $raw = (string) json_encode($activity->properties);
+        // Non-hex punctuation from the raw explanation cannot ever
+        // collide with a UUID (hex digits and hyphens only), unlike a
+        // bare digit run.
+        $this->assertStringNotContainsString('(555) 999-8888', $raw);
         $this->assertSame(['phone_number'], $activity->properties->get('flags'));
     }
 

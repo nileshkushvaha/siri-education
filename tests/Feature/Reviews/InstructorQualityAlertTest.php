@@ -41,6 +41,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -475,6 +476,50 @@ class InstructorQualityAlertTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
         $this->alerts->dismiss($alert, $instructor, 'Not valid.');
+    }
+
+    /**
+     * Phase 17V closure re-audit — the test above only proves the
+     * Policy-layer self-exclusion (InstructorQualityAlertPolicy::
+     * resolve()) works for a `manager` role. Gate::before grants
+     * super_admin a global permission bypass that skips the policy
+     * entirely, and Spatie roles are not mutually exclusive, so an
+     * account holding both `instructor` and `super_admin` was able to
+     * resolve/dismiss/reassign a quality alert about their own conduct
+     * until InstructorQualityAlertService::authorizeResolve() gained an
+     * independent self-relationship check, mirroring the identical fix
+     * already applied to ReviewModerationService/ReviewReportService.
+     */
+    public function test_instructor_who_is_also_super_admin_cannot_resolve_their_own_alert(): void
+    {
+        $instructor = $this->instructorUser();
+        $this->submitPublicReview($instructor, overallRating: 1);
+        $alert = InstructorQualityAlert::query()->where('instructor_id', $instructor->id)->firstOrFail();
+        Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        $instructor->assignRole('super_admin');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->assertTrue($instructor->isSuperAdmin());
+
+        $this->expectException(AuthorizationException::class);
+        $this->alerts->dismiss($alert, $instructor, 'Dismissing my own alert.');
+    }
+
+    public function test_an_unrelated_super_admin_can_still_resolve_alerts_normally(): void
+    {
+        $instructor = $this->instructorUser();
+        $this->submitPublicReview($instructor, overallRating: 1);
+        $alert = InstructorQualityAlert::query()->where('instructor_id', $instructor->id)->firstOrFail();
+
+        $unrelatedSuperAdmin = User::factory()->create(['status' => 'active']);
+        Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        $unrelatedSuperAdmin->assignRole('super_admin');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $dismissed = $this->alerts->dismiss($alert, $unrelatedSuperAdmin, 'Routine check, unrelated admin.');
+
+        $this->assertNotSame($alert->instructor_id, $unrelatedSuperAdmin->id);
+        $this->assertSame('dismissed', $dismissed->status->value);
     }
 
     public function test_admin_resolution_requires_a_reason(): void

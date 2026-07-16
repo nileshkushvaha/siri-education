@@ -173,9 +173,24 @@ final class InstructorQualityAlertService implements InstructorQualityAlertServi
 
     // ── Internals ─────────────────────────────────────────────────────────
 
-    /** @throws AuthorizationException */
+    /**
+     * The self-resolution exclusion is independently enforced here, not
+     * only in InstructorQualityAlertPolicy — Gate::before grants
+     * super_admin a global permission bypass that skips the policy
+     * entirely, and Spatie roles are not mutually exclusive, so an
+     * account holding both `instructor` and `super_admin` must still
+     * never resolve a quality alert about their own conduct. Mirrors
+     * the identical guard in ReviewModerationService::authorize() and
+     * ReviewReportService::authorizeResolve().
+     *
+     * @throws AuthorizationException
+     */
     private function authorizeResolve(User $admin, InstructorQualityAlert $alert): void
     {
+        if ($admin->id === $alert->instructor_id) {
+            throw new AuthorizationException('You may not review or resolve a quality alert about your own conduct.');
+        }
+
         if (! $admin->can('resolve', $alert)) {
             throw new AuthorizationException('You may not review or resolve this quality alert.');
         }

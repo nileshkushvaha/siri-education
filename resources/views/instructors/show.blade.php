@@ -413,6 +413,16 @@
                                         @endforeach
                                     </div>
                                 @endif
+
+                                <div class="mt-3 border-t border-white/5 pt-3">
+                                    @auth
+                                        <livewire:reviews.report-review :review-id="$review->id" :key="'report-review-'.$review->id" />
+                                    @else
+                                        <a href="{{ route('auth.login') }}" class="text-xs font-medium text-slate-500 underline decoration-dotted transition hover:text-slate-300">
+                                            Sign in to report
+                                        </a>
+                                    @endauth
+                                </div>
                             </x-ui.card>
                         @endforeach
 

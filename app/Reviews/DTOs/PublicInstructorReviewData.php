@@ -16,6 +16,12 @@ use Carbon\CarbonImmutable;
  * eligibility/lesson/student relations) never reaches a public Blade
  * view directly, so there is no path by which a moderation reason,
  * student id, or booking/lesson reference can leak through.
+ *
+ * `id` (Phase 18A) is the review's own primary key only — needed so the
+ * user-facing "Report Review" action can target the exact review server-
+ * side; it carries no student/booking/moderation information itself and
+ * every write path re-validates reportability from the database, never
+ * trusting this value.
  */
 final readonly class PublicInstructorReviewData
 {
@@ -24,6 +30,7 @@ final readonly class PublicInstructorReviewData
      * @param  list<array{key: string, label: string}>  $tags
      */
     public function __construct(
+        public string $id,
         public string $reviewerLabel,
         public int $overallRating,
         public array $dimensionRatings,
@@ -39,6 +46,7 @@ final readonly class PublicInstructorReviewData
         $lessonType = $review->eligibility?->lesson_type;
 
         return new self(
+            id: $review->id,
             reviewerLabel: PublicReviewerIdentity::label($review->student, $identityMode),
             overallRating: $review->overall_rating,
             dimensionRatings: [

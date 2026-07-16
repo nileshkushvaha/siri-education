@@ -117,6 +117,59 @@ class ReviewQualityFeedbackDomainBoundaryTest extends TestCase
         }
     }
 
+    // ── Phase 18A — user-facing review-report Livewire UI boundaries ─────
+
+    public function test_review_report_livewire_ui_does_not_import_mutating_wallet_earning_or_quality_classes(): void
+    {
+        $allowed = [
+            'App\Reviews\Contracts\ReviewReportServiceInterface', // the one write path this UI may call
+            'App\Reviews\DTOs\SubmitReviewReportData',
+            'App\Reviews\Enums\ReviewReportReason',
+            'App\Reviews\Exceptions\DuplicateReviewReportException',
+            'App\Reviews\Exceptions\ReviewNotReportableException',
+        ];
+
+        $this->assertNoDisallowedCrossDomainImports(
+            base_path('app/Livewire/Reviews'),
+            ['App\Booking\\', 'App\Wallet\\', 'App\Earnings\\', 'App\Quality\\'],
+            $allowed,
+        );
+    }
+
+    public function test_review_report_livewire_ui_never_mutates_a_review_report_or_rating_aggregate_directly(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Livewire/Reviews')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            foreach ([
+                'new ReviewReport(', 'ReviewReport::create', 'ReviewReport::query()->update',
+                'InstructorRatingAggregate', 'TransitionReviewStatusAction', 'ReviewModerationService',
+                'activity(', 'Activity::create',
+            ] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} must never directly mutate ReviewReport/LessonReview state or bypass AuditTrailService (found \"{$needle}\").");
+            }
+        }
+    }
+
+    public function test_public_review_rendering_does_not_reference_review_report_records(): void
+    {
+        foreach ([
+            base_path('app/Reviews/DTOs/PublicInstructorReviewData.php'),
+            base_path('resources/views/instructors/show.blade.php'),
+        ] as $file) {
+            $contents = (string) file_get_contents($file);
+            $this->assertStringNotContainsString('ReviewReport', $contents, "{$file} must never serialize or reference a ReviewReport record on the public profile page.");
+        }
+    }
+
+    public function test_review_report_service_delegates_resolution_to_the_existing_moderation_service(): void
+    {
+        $contents = (string) file_get_contents(base_path('app/Reviews/Services/ReviewReportService.php'));
+
+        $this->assertStringContainsString('ReviewModerationServiceInterface', $contents, 'ReviewReportService must keep delegating status-changing resolutions to the existing moderation service.');
+        $this->assertStringNotContainsString('->status = ', $contents, 'ReviewReportService must never write LessonReview::$status directly.');
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
 
     /** @param list<string> $prefixes @param list<string> $allowed */

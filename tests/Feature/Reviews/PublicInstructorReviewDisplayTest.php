@@ -234,16 +234,19 @@ class PublicInstructorReviewDisplayTest extends TestCase
             'last_name' => 'Kushvaha',
             'email' => 'nilesh-private@example.com',
         ]);
-        $review = $this->submitPublicReview($instructor, student: $student);
+        $this->submitPublicReview($instructor, student: $student);
 
         $response = $this->get(route('instructors.show', $instructor))->assertOk();
         $response->assertDontSee('nilesh-private@example.com');
-        // A short numeric id is a poor page-source needle (it collides
-        // with unrelated markup, e.g. CSS/asset values) — the DTO-field
-        // test above already proves no id field exists on the DTO at
-        // all, which is the reliable guarantee. The review's own UUID
-        // is long/specific enough to check directly here.
-        $response->assertDontSee((string) $review->id);
+        // Phase 18A: the review's own primary key now legitimately
+        // reaches the page via the embedded `reviews.report-review`
+        // Livewire component (needed so the "Report Review" action
+        // targets the right review server-side) — it carries no
+        // student/booking/moderation data itself, and every write path
+        // re-validates against the database rather than trusting it.
+        // The DTO-field test above remains the reliable guarantee that
+        // no *sensitive* internal field (student id, moderation reason,
+        // booking id) is ever exposed.
     }
 
     public function test_archived_student_falls_back_to_verified_student(): void
@@ -377,12 +380,17 @@ class PublicInstructorReviewDisplayTest extends TestCase
     public function test_public_dto_contains_no_moderation_or_internal_fields(): void
     {
         $instructor = $this->makeInstructor();
-        $this->submitPublicReview($instructor);
+        $submitted = $this->submitPublicReview($instructor)->fresh();
 
         $page = $this->publicReviews->paginatedReviewsFor($instructor->fresh());
         $review = $page->items()[0];
 
         $this->assertInstanceOf(PublicInstructorReviewData::class, $review);
+        // Phase 18A: the review's own primary key is now intentionally
+        // present — needed to target the "Report Review" action — but
+        // nothing else that could identify the student, booking, or an
+        // internal moderation/quality decision.
+        $this->assertSame($submitted->id, $review->id);
         $fields = array_keys(get_object_vars($review));
 
         foreach (['studentId', 'student_id', 'moderationReason', 'moderation_reason', 'bookingId', 'booking_id', 'internalQualityScore'] as $forbidden) {

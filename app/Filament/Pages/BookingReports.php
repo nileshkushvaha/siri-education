@@ -26,7 +26,7 @@ class BookingReports extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static ?string $navigationLabel = 'Reports';
+    protected static ?string $navigationLabel = 'Booking Reports';
 
     protected static ?string $title = 'Booking Reports';
 
@@ -85,13 +85,19 @@ class BookingReports extends Page
 
         $rows = $rows
             ->concat($analytics->popularSubjects($from, $to)->map(fn (array $row): array => [
-                'section' => 'Popular subjects', 'metric' => $row['subject'], 'value' => $row['bookings'],
+                'section' => 'Popular subjects',
+                'metric' => $row['subject'],
+                'value' => $row['bookings'],
             ]))
             ->concat($analytics->popularTimeSlots($from, $to)->filter(fn (array $row): bool => $row['bookings'] > 0)->map(fn (array $row): array => [
-                'section' => 'Popular time slots (UTC)', 'metric' => sprintf('%02d:00', $row['hour']), 'value' => $row['bookings'],
+                'section' => 'Popular time slots (UTC)',
+                'metric' => sprintf('%02d:00', $row['hour']),
+                'value' => $row['bookings'],
             ]))
             ->concat($analytics->teacherUtilization($from, $to)->map(fn (array $row): array => [
-                'section' => 'Teacher utilization (%)', 'metric' => $row['teacher'], 'value' => $row['utilization'],
+                'section' => 'Teacher utilization (%)',
+                'metric' => $row['teacher'],
+                'value' => $row['utilization'],
             ]));
 
         return CsvExport::download($rows, [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Reporting\Registry;
 
+use App\Filament\Pages\BookingLessonMeetingOperations;
 use App\Filament\Pages\BookingReports;
 use App\Filament\Pages\ReviewsQualityDashboard;
 use App\Models\User;
@@ -18,16 +19,18 @@ use App\Reporting\Filters\ReportFilterKey;
 use App\Reporting\Support\UniqueDefinitionKeys;
 
 /**
- * The Version 1 report catalogue (Phase 18B §10). Two entries describe
- * report pages that already exist and work today (`BookingReports`,
- * `ReviewsQualityDashboard` — both predate this phase); the remaining
- * entries are explicit placeholders (`available: false`, no route) for
- * every other approved Version 1 category, so a later Phase 18 slice
- * has stable, agreed-upon metadata to implement against rather than
- * inventing its own report key/category/permission from scratch. No
- * placeholder exposes a route, and none is rendered with fabricated
- * data — the landing page (§18) renders them as "planned", not as a
- * broken link.
+ * The Version 1 report catalogue (Phase 18B §10). Three entries
+ * describe report pages that exist and work today: `BookingReports`
+ * and `ReviewsQualityDashboard` (both predate Phase 18B) and
+ * `BookingLessonMeetingOperations` (Phase 18C — real operational
+ * queries, replacing the Phase 18B `operational_queue` placeholder
+ * under the same key rename). The remaining entries are explicit
+ * placeholders (`available: false`, no route) for every other approved
+ * Version 1 category, so a later Phase 18 slice has stable,
+ * agreed-upon metadata to implement against rather than inventing its
+ * own report key/category/permission from scratch. No placeholder
+ * exposes a route, and none is rendered with fabricated data — the
+ * landing page (§18) renders them as "planned", not as a broken link.
  */
 final class ReportRegistry implements ReportRegistryInterface
 {
@@ -89,21 +92,25 @@ final class ReportRegistry implements ReportRegistryInterface
                 available: false,
             ),
             new ReportDefinition(
-                key: 'operational_queue',
-                label: 'Operational Queue',
-                description: 'Actionable day-to-day operational items across bookings and lessons.',
+                key: 'booking_lesson_meeting_operations',
+                label: 'Booking, Lesson & Meeting Operations',
+                description: 'Actionable day-to-day operational items: today\'s lessons, cancellations, no-shows, technical issues, and meeting creation failures.',
                 category: ReportCategory::Operations,
                 requiredViewPermission: 'ViewOperationalReports',
                 requiredExportPermission: null,
                 sensitive: false,
                 financial: false,
-                supportedFilters: [ReportFilterKey::BookingStatus, ReportFilterKey::LessonStatus, ReportFilterKey::LessonOutcome],
+                supportedFilters: [
+                    ReportFilterKey::Country, ReportFilterKey::Subject, ReportFilterKey::EducationLevel, ReportFilterKey::Instructor,
+                    ReportFilterKey::BookingType, ReportFilterKey::BookingStatus, ReportFilterKey::LessonStatus,
+                    ReportFilterKey::LessonOutcome, ReportFilterKey::MeetingStatus,
+                ],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Booking, Lessons',
+                dataSourceDomain: 'Booking, Lessons, Meetings',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: BookingLessonMeetingOperations::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'student_activity',

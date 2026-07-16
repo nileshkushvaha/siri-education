@@ -38,6 +38,7 @@ final class BookingRepository implements BookingRepositoryInterface
             'timezone' => $data->timezone,
             'notes' => $data->notes,
             'meta' => $data->meta ?: null,
+            'recurrence_frequency' => $data->recurrenceFrequency,
             ...$attributes,
         ]);
     }

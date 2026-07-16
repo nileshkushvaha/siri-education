@@ -10,27 +10,26 @@ use App\Reporting\Enums\MetricUnit;
 use App\Reporting\Enums\ReportDataFreshness;
 use App\Reporting\Enums\ZeroDenominatorPolicy;
 use App\Reporting\Exceptions\DuplicateMetricKeyException;
+use App\Reporting\Services\BookingLessonMeetingOperationsReportService;
 use App\Reporting\Support\UniqueDefinitionKeys;
 
 /**
- * The Version 1 metric catalogue (Phase 18B §11) — metadata only, so
- * two future dashboards can never define the same named KPI two
- * different ways. Per §11, this registers metadata for the metrics
- * needed by the next operations-reporting phase without necessarily
- * implementing their queries yet; `calculationOwner` says explicitly,
- * per metric, whether a query exists.
+ * The Version 1 metric catalogue (Phase 18B §11 / Phase 18C §15) —
+ * metadata only, so two dashboards can never define the same named
+ * KPI two different ways. Every metric here is now backed by a real
+ * query in {@see BookingLessonMeetingOperationsReportService}
+ * (`calculationOwner` names it) except `single_paid_bookings`/
+ * `daily_recurring_bookings`/`weekly_recurring_bookings`, which became
+ * calculable this phase via the new `bookings.recurrence_frequency`
+ * column (Phase 18C data-provenance decision, Outcome B) — no metric
+ * here is left `available`-adjacent while its calculation owner still
+ * says GAP.
  *
- * Two gaps were found during discovery and are called out rather than
- * silently worked around: no `RecurrenceFrequency`-backed grouping
- * survives on an individual `Booking` row after `WizardBookingService
- * ::bookRecurring()` creates each occurrence as an independent row (no
- * `recurrence_group_id`/series column exists anywhere), so the
- * single/daily/weekly split has no authoritative per-row data source
- * yet — a later phase must decide whether to add one. "Rescheduled
- * bookings" (also requested by the SRS) has no authoritative source at
- * all (no reschedule-count column, no dedicated audit event found) and
- * is therefore not registered at all, per the explicit "only if current
- * source data supports an authoritative definition" instruction.
+ * `bookings_rescheduled` is new this phase (Outcome A, §6.2):
+ * `booking_activities.action` is a structured, enum-typed column
+ * (never free-text audit parsing) that already records every
+ * `rescheduled` lifecycle event — no migration was needed for the
+ * count itself, only a supporting index.
  */
 final class MetricRegistry implements MetricRegistryInterface
 {
@@ -78,11 +77,11 @@ final class MetricRegistry implements MetricRegistryInterface
                 sensitive: false,
                 financial: false,
                 requiredPermission: 'ViewBookingLessonReports',
-                supportedDimensions: ['country', 'subject', 'booking_type'],
+                supportedDimensions: ['country', 'subject', 'instructor', 'booking_type'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->total (Phase 18C).',
             ),
             new MetricDefinition(
                 key: 'demo_bookings',
@@ -98,9 +97,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewBookingLessonReports',
                 supportedDimensions: ['country', 'subject'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned). BookingAnalyticsService already computes a related "demo requests/bookers" figure — reconcile rather than duplicate when implemented.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byType[free_demo] (Phase 18C). BookingAnalyticsService\'s "demo requests/bookers" remains a separate, distinct KPI (conversion-funnel framing) — not duplicated, not replaced.',
             ),
             new MetricDefinition(
                 key: 'paid_bookings',
@@ -116,14 +115,14 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewBookingLessonReports',
                 supportedDimensions: ['country', 'subject'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byType[paid_one_to_one] (Phase 18C).',
             ),
             new MetricDefinition(
                 key: 'single_paid_bookings',
                 label: 'Single paid bookings',
-                description: 'Paid bookings that are not part of a recurring series.',
+                description: 'Paid bookings that are not part of a recurring series (recurrence_frequency is null and no historical recurring_group marker).',
                 sourceDomain: 'Booking',
                 timestampField: 'created_at',
                 includedStatuses: ['paid_one_to_one'],
@@ -134,9 +133,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewBookingLessonReports',
                 supportedDimensions: ['country', 'subject'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'GAP — no `recurrence_group_id`/series column exists on `bookings`; each recurring occurrence is created as an independent row with nothing distinguishing it from a single booking after creation. Not implementable until a later phase adds a durable recurrence-membership column.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[single] (Phase 18C). Resolved via the new `bookings.recurrence_frequency` column (data-provenance Outcome B) — see RecurrenceClassifier. A booking created before this column existed that WAS part of a recurring series (detected via the pre-existing `meta->recurring_group` JSON key) is bucketed `unknown_historical`, never folded into this count.',
             ),
             new MetricDefinition(
                 key: 'daily_recurring_bookings',
@@ -152,9 +151,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewBookingLessonReports',
                 supportedDimensions: ['country', 'subject'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'GAP — same recurrence-membership gap as `single_paid_bookings`.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[daily] (Phase 18C). Only bookings created after the recurrence_frequency column existed can be classified daily/weekly — historical rows fall into `unknown_historical` (see single_paid_bookings).',
             ),
             new MetricDefinition(
                 key: 'weekly_recurring_bookings',
@@ -170,9 +169,27 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewBookingLessonReports',
                 supportedDimensions: ['country', 'subject'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'GAP — same recurrence-membership gap as `single_paid_bookings`.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[weekly] (Phase 18C). Same historical caveat as daily_recurring_bookings.',
+            ),
+            new MetricDefinition(
+                key: 'bookings_rescheduled',
+                label: 'Bookings rescheduled',
+                description: 'Count of reschedule lifecycle events recorded in the period (a single booking rescheduled twice counts twice).',
+                sourceDomain: 'Booking (booking_activities)',
+                timestampField: 'created_at (of the activity row, not the booking)',
+                includedStatuses: ['rescheduled'],
+                excludedStatuses: ['requested', 'confirmed', 'cancelled', 'completed', 'no_show', 'guest_invited', 'guest_responded', 'payment_status_changed', 'meeting_linked'],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewBookingLessonReports',
+                supportedDimensions: ['instructor', 'country', 'booking_type'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->rescheduled (Phase 18C). Data-provenance Outcome A (§6.2) — `booking_activities.action = \'rescheduled\'` is a structured, enum-typed, pre-existing column; no audit-message text parsing, no new schema concept, only a supporting index was added.',
             ),
             new MetricDefinition(
                 key: 'lessons_completed',
@@ -188,9 +205,27 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewBookingLessonReports',
                 supportedDimensions: ['country', 'subject', 'instructor'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned). Authoritative source: `LessonOutcome::Completed` — never `LessonStatus::Completed` alone, which precedes finalization.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[completed] (Phase 18C). Authoritative source: `LessonOutcome::Completed` — never `LessonStatus::Completed` alone, which precedes finalization.',
+            ),
+            new MetricDefinition(
+                key: 'lessons_scheduled',
+                label: 'Lessons scheduled',
+                description: 'Lessons whose scheduled start falls in the period, regardless of outcome yet (scheduled-activity view).',
+                sourceDomain: 'Lessons',
+                timestampField: 'starts_at',
+                includedStatuses: [],
+                excludedStatuses: [],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewBookingLessonReports',
+                supportedDimensions: ['country', 'subject', 'instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->scheduled (Phase 18C).',
             ),
             new MetricDefinition(
                 key: 'student_no_shows',
@@ -206,9 +241,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewOperationalReports',
                 supportedDimensions: ['country', 'instructor'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[student_no_show] (Phase 18C).',
             ),
             new MetricDefinition(
                 key: 'instructor_no_shows',
@@ -224,9 +259,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewOperationalReports',
                 supportedDimensions: ['country', 'instructor'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned). Also feeds `App\Quality`\'s existing InstructorNoShow/RepeatedInstructorNoShows detectors — reuse, never recompute independently.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[instructor_no_show] (Phase 18C). Also feeds `App\Quality`\'s existing InstructorNoShow/RepeatedInstructorNoShows detectors — reused, never recomputed independently.',
             ),
             new MetricDefinition(
                 key: 'technical_issue_lessons',
@@ -242,16 +277,52 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewOperationalReports',
                 supportedDimensions: ['country', 'instructor'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[technical_issue] (Phase 18C).',
+            ),
+            new MetricDefinition(
+                key: 'disputed_lessons',
+                label: 'Disputed lessons',
+                description: 'Lessons currently under active dispute (LessonStatus::Disputed) — a snapshot of right now, not period-scoped; disputes can reopen any no-show/technical-issue decision, so this is distinct from technical_issue_lessons.',
+                sourceDomain: 'Lessons',
+                timestampField: 'n/a (current-state snapshot, like a Quality alert queue)',
+                includedStatuses: ['disputed'],
+                excludedStatuses: ['scheduled', 'live', 'completed', 'student_no_show', 'instructor_no_show', 'both_no_show', 'cancelled'],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewOperationalReports',
+                supportedDimensions: ['country', 'instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: 'Not period-scoped — always "as of now".',
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->disputed (Phase 18C).',
+            ),
+            new MetricDefinition(
+                key: 'unfinalized_past_due_lessons',
+                label: 'Unfinalized, past-due lessons',
+                description: 'Lessons scheduled in the period whose end time has passed without a finalized outcome — an operational "stuck" indicator.',
+                sourceDomain: 'Lessons',
+                timestampField: 'starts_at (scoping) / ends_at (past-due test)',
+                includedStatuses: ['pending'],
+                excludedStatuses: ['completed', 'student_no_show', 'instructor_no_show', 'both_absent', 'technical_issue', 'cancelled'],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewOperationalReports',
+                supportedDimensions: ['country', 'instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone for period scoping; 'past-due' itself compares against the server clock.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->unfinalizedPastDue (Phase 18C).',
             ),
             new MetricDefinition(
                 key: 'cancelled_bookings',
                 label: 'Cancelled bookings',
                 description: 'Bookings cancelled in the period.',
                 sourceDomain: 'Booking',
-                timestampField: 'cancelled_at',
+                timestampField: 'created_at (booking-created-in-period business-event view — status breakdown, not cancelled_at)',
                 includedStatuses: ['cancelled'],
                 excludedStatuses: ['pending', 'confirmed', 'completed', 'no_show'],
                 unit: MetricUnit::Count,
@@ -260,16 +331,16 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewOperationalReports',
                 supportedDimensions: ['country', 'subject'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned). BookingAnalyticsService already computes a related "cancelled/cancellation rate" figure — reconcile rather than duplicate when implemented.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byStatus[cancelled] (Phase 18C). BookingAnalyticsService\'s own "cancelled/cancellation rate" figure remains a separate, distinct KPI (conversion-funnel framing) — not duplicated, not replaced.',
             ),
             new MetricDefinition(
                 key: 'meeting_creation_failures',
                 label: 'Meeting creation failures',
-                description: 'Bookings whose meeting could not be created (bookings.meeting_status = Failed).',
+                description: 'Meetings whose creation failed (booking_meetings.status = Failed).',
                 sourceDomain: 'Booking (Meetings)',
-                timestampField: 'updated_at',
+                timestampField: 'booking_meetings.created_at',
                 includedStatuses: ['failed'],
                 excludedStatuses: ['pending', 'created', 'cancelled'],
                 unit: MetricUnit::Count,
@@ -278,9 +349,99 @@ final class MetricRegistry implements MetricRegistryInterface
                 requiredPermission: 'ViewMeetingReports',
                 supportedDimensions: ['instructor'],
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
-                timezoneBehavior: 'Uses the report\'s reporting timezone.',
+                timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'Not yet implemented (Phase 18C, planned). Authoritative source: `MeetingStatus::Failed` on `bookings.meeting_status`.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->failed (Phase 18C). Authoritative source corrected from the Phase 18B note: `bookings.meeting_status` no longer exists (dropped by migration 2026_07_19_100000) — the live authoritative column is `booking_meetings.status`, same `MeetingStatus::Failed` case.',
+            ),
+            new MetricDefinition(
+                key: 'meetings_missing',
+                label: 'Confirmed bookings missing a meeting',
+                description: 'Confirmed bookings whose scheduled start falls in the period with no successfully-created meeting.',
+                sourceDomain: 'Booking (Meetings)',
+                timestampField: 'bookings.starts_at',
+                includedStatuses: ['confirmed'],
+                excludedStatuses: ['pending', 'cancelled', 'completed', 'no_show'],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewMeetingReports',
+                supportedDimensions: ['instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->missingMeeting (Phase 18C).',
+            ),
+            new MetricDefinition(
+                key: 'student_joined_meetings',
+                label: 'Student joined',
+                description: 'Lessons in the period with at least one recorded student join event. A missing timestamp is "no evidence yet", never counted as absence.',
+                sourceDomain: 'Lessons (lesson_attendance_records)',
+                timestampField: 'lessons.starts_at (scoping) / student_first_joined_at (evidence)',
+                includedStatuses: [],
+                excludedStatuses: [],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewMeetingReports',
+                supportedDimensions: ['instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->studentJoined (Phase 18C).',
+            ),
+            new MetricDefinition(
+                key: 'instructor_joined_meetings',
+                label: 'Instructor joined',
+                description: 'Lessons in the period with at least one recorded instructor join event.',
+                sourceDomain: 'Lessons (lesson_attendance_records)',
+                timestampField: 'lessons.starts_at (scoping) / instructor_first_joined_at (evidence)',
+                includedStatuses: [],
+                excludedStatuses: [],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewMeetingReports',
+                supportedDimensions: ['instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->instructorJoined (Phase 18C).',
+            ),
+            new MetricDefinition(
+                key: 'both_joined_meetings',
+                label: 'Both participants joined',
+                description: 'Lessons in the period with recorded join evidence for both student and instructor.',
+                sourceDomain: 'Lessons (lesson_attendance_records)',
+                timestampField: 'lessons.starts_at (scoping)',
+                includedStatuses: [],
+                excludedStatuses: [],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewMeetingReports',
+                supportedDimensions: ['instructor'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->bothJoined (Phase 18C).',
+            ),
+            new MetricDefinition(
+                key: 'meeting_technical_issue_reports',
+                label: 'Technical issue reports',
+                description: 'Technical issue reports submitted in the period — a report count, not a distinct-affected-lesson count (one lesson may have more than one report).',
+                sourceDomain: 'Lessons (lesson_technical_issue_reports)',
+                timestampField: 'submitted_at',
+                includedStatuses: [],
+                excludedStatuses: [],
+                unit: MetricUnit::Count,
+                sensitive: false,
+                financial: false,
+                requiredPermission: 'ViewMeetingReports',
+                supportedDimensions: ['instructor', 'student', 'subject'],
+                zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
+                timezoneBehavior: "Uses the report's reporting timezone.",
+                freshness: ReportDataFreshness::Live,
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->technicalIssueReports (Phase 18C).',
             ),
         ];
     }

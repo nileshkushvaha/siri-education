@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\DTOs;
 
 use App\Booking\Enums\BookingLocationType;
+use App\Booking\Enums\RecurrenceFrequency;
 use Carbon\CarbonImmutable;
 
 /**
@@ -15,7 +16,12 @@ use Carbon\CarbonImmutable;
  */
 final readonly class CreateBookingData
 {
-    /** @param array<string, mixed> $meta type-specific payload (subject, grade, recurring_group, …) */
+    /**
+     * @param  array<string, mixed>  $meta  type-specific payload (subject, grade, recurring_group, …)
+     * @param  RecurrenceFrequency|null  $recurrenceFrequency  Phase 18C data-provenance field — set only by
+     *                                                         the recurring-booking creation path (never inferred later), null for every single/non-recurring
+     *                                                         booking. This is the sole authoritative source for reporting's single/daily/weekly classification.
+     */
     public function __construct(
         public string $typeKey,
         public int $studentId,
@@ -26,6 +32,7 @@ final readonly class CreateBookingData
         public string $timezone = 'UTC',
         public ?string $notes = null,
         public array $meta = [],
+        public ?RecurrenceFrequency $recurrenceFrequency = null,
     ) {}
 
     public function endsAt(): CarbonImmutable

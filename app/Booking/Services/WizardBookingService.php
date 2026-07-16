@@ -17,6 +17,7 @@ use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
+use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingType;
@@ -126,7 +127,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
             $startsAt = $recurrence->nextStartsAt($data->startsAt, $i);
 
             try {
-                $booked->push($this->bookings->request($this->occurrenceData($data, $type, $startsAt, $teacherId, ['recurring_group' => $groupId])));
+                $booked->push($this->bookings->request($this->occurrenceData($data, $type, $startsAt, $teacherId, ['recurring_group' => $groupId], $recurrence->frequency)));
             } catch (BookingException $e) {
                 $failures[$startsAt->toIso8601String()] = $e->getMessage();
             }
@@ -174,7 +175,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
     }
 
     /** @param array<string, mixed> $extraMeta */
-    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, array $extraMeta = []): CreateBookingData
+    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null): CreateBookingData
     {
         return new CreateBookingData(
             typeKey: $data->typeKey,
@@ -185,6 +186,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
             timezone: $data->timezone,
             notes: $data->notes,
             meta: ['subject' => $data->subject, 'grade' => $data->grade, ...$extraMeta],
+            recurrenceFrequency: $recurrenceFrequency,
         );
     }
 

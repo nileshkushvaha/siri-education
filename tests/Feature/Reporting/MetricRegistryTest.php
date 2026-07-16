@@ -76,12 +76,43 @@ class MetricRegistryTest extends TestCase
         $this->assertSame(['paid_one_to_one'], $paid->includedStatuses);
     }
 
-    public function test_no_metric_registered_for_unproven_reschedule_tracking(): void
+    public function test_reschedule_metric_uses_the_structured_activity_source_resolved_in_phase_18c(): void
     {
-        // Discovery found no reschedule-count column or dedicated audit
-        // event anywhere — "Rescheduled bookings" is deliberately not
-        // registered rather than invented without an authoritative source.
+        // Phase 18B found no source and registered nothing; Phase 18C's
+        // provenance audit (Outcome A, §6.2) identified `booking_activities.action`
+        // — a structured, enum-typed column — as authoritative. The metric
+        // now exists under `bookings_rescheduled`; the never-registered
+        // speculative key stays absent.
         $this->assertNull(app(MetricRegistryInterface::class)->find('rescheduled_bookings'));
+
+        $metric = app(MetricRegistryInterface::class)->find('bookings_rescheduled');
+        $this->assertNotNull($metric);
+        $this->assertSame(['rescheduled'], $metric->includedStatuses);
+        $this->assertStringContainsString('booking_activities', $metric->sourceDomain);
+        $this->assertStringNotContainsString('GAP', $metric->calculationOwner);
+    }
+
+    public function test_no_metric_remains_registered_with_a_gap_calculation_owner(): void
+    {
+        // Phase 18C §15 — a metric may not sit in the catalogue claiming
+        // to be live while its own calculation owner admits it cannot be
+        // calculated. Every remaining GAP was either resolved (recurrence,
+        // reschedule) or removed.
+        foreach (app(MetricRegistryInterface::class)->all() as $metric) {
+            $this->assertStringNotContainsString('GAP', $metric->calculationOwner, "Metric '{$metric->key}' still declares a GAP calculation owner.");
+            $this->assertStringNotContainsString('Not yet implemented', $metric->calculationOwner, "Metric '{$metric->key}' still declares an unimplemented calculation owner.");
+        }
+    }
+
+    public function test_recurrence_metrics_resolved_via_the_new_provenance_column(): void
+    {
+        $registry = app(MetricRegistryInterface::class);
+
+        foreach (['single_paid_bookings', 'daily_recurring_bookings', 'weekly_recurring_bookings'] as $key) {
+            $metric = $registry->find($key);
+            $this->assertNotNull($metric);
+            $this->assertStringContainsString('byRecurrence', $metric->calculationOwner, "Metric '{$key}' must be owned by the Phase 18C recurrence classification.");
+        }
     }
 
     public function test_lessons_completed_metric_uses_the_finalized_outcome_not_the_lifecycle_status(): void

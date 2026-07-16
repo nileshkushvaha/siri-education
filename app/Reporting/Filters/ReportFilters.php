@@ -6,6 +6,7 @@ namespace App\Reporting\Filters;
 
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingStatus;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\SettlementBatchStatus;
@@ -47,6 +48,7 @@ final readonly class ReportFilters
         'bookingStatus' => ReportFilterKey::BookingStatus,
         'lessonStatus' => ReportFilterKey::LessonStatus,
         'lessonOutcome' => ReportFilterKey::LessonOutcome,
+        'meetingStatus' => ReportFilterKey::MeetingStatus,
         'paymentStatus' => ReportFilterKey::PaymentStatus,
         'walletTransactionType' => ReportFilterKey::WalletTransactionType,
         'walletTransactionStatus' => ReportFilterKey::WalletTransactionStatus,
@@ -71,6 +73,7 @@ final readonly class ReportFilters
         public ?BookingStatus $bookingStatus = null,
         public ?LessonStatus $lessonStatus = null,
         public ?LessonOutcome $lessonOutcome = null,
+        public ?MeetingStatus $meetingStatus = null,
         public ?BookingPaymentStatus $paymentStatus = null,
         public ?WalletLedgerEntryType $walletTransactionType = null,
         public ?WalletLedgerStatus $walletTransactionStatus = null,
@@ -160,6 +163,7 @@ final readonly class ReportFilters
             ReportFilterKey::BookingStatus => BookingStatus::class,
             ReportFilterKey::LessonStatus => LessonStatus::class,
             ReportFilterKey::LessonOutcome => LessonOutcome::class,
+            ReportFilterKey::MeetingStatus => MeetingStatus::class,
             ReportFilterKey::PaymentStatus => BookingPaymentStatus::class,
             ReportFilterKey::WalletTransactionType => WalletLedgerEntryType::class,
             ReportFilterKey::WalletTransactionStatus => WalletLedgerStatus::class,

@@ -8,6 +8,7 @@ use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingLocationType;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\RecurrenceFrequency;
 use App\Support\Concerns\PreventsHardDeletion;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,6 +52,7 @@ class Booking extends Model
         'completed_at',
         'notes',
         'meta',
+        'recurrence_frequency',
         'created_by',
     ];
 
@@ -69,6 +71,7 @@ class Booking extends Model
             'completed_at' => 'immutable_datetime',
             'price' => 'decimal:2',
             'meta' => 'array',
+            'recurrence_frequency' => RecurrenceFrequency::class,
         ];
     }
 

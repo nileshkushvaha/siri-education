@@ -29,6 +29,7 @@ enum ReportFilterKey: string
     case BookingStatus = 'booking_status';
     case LessonStatus = 'lesson_status';
     case LessonOutcome = 'lesson_outcome';
+    case MeetingStatus = 'meeting_status';
     case PaymentStatus = 'payment_status';
     case WalletTransactionType = 'wallet_transaction_type';
     case WalletTransactionStatus = 'wallet_transaction_status';

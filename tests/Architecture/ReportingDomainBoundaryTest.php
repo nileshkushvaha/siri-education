@@ -27,6 +27,8 @@ class ReportingDomainBoundaryTest extends TestCase
             'App\Booking\Enums\BookingPaymentStatus',
             'App\Booking\Enums\BookingStatus',
             'App\Booking\Enums\RecurrenceFrequency',
+            'App\Booking\Enums\MeetingStatus',
+            'App\Booking\Enums\BookingActivityAction',
             'App\Lessons\Enums\LessonOutcome',
             'App\Lessons\Enums\LessonStatus',
             'App\Wallet\Enums\WalletLedgerEntryType',
@@ -94,6 +96,59 @@ class ReportingDomainBoundaryTest extends TestCase
             foreach (['::query()', 'DB::table', 'DB::select'] as $needle) {
                 $this->assertStringNotContainsString($needle, $contents, "{$file} must build its catalogue from plain code-defined data, never a query.");
             }
+        }
+    }
+
+    // ── Phase 18C — operations report boundaries ──────────────────────────
+
+    public function test_reporting_domain_never_dispatches_events_or_notifications(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            foreach (['::dispatch(', 'event(', 'Notification::send', '->notify('] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} is read-only reporting — it must never dispatch an event or send a notification (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_operations_filament_page_delegates_all_domain_queries_to_the_reporting_service(): void
+    {
+        $contents = (string) file_get_contents(base_path('app/Filament/Pages/BookingLessonMeetingOperations.php'));
+
+        // Reference-table filter options (Country/Subject) are the page's
+        // only permitted direct reads — never a Booking/Lesson/Meeting query.
+        foreach (['Booking::query', 'Lesson::query', 'BookingMeeting::query', 'BookingActivity::query', 'LessonAttendanceRecord::query', 'DB::table', 'DB::select'] as $needle) {
+            $this->assertStringNotContainsString($needle, $contents, "BookingLessonMeetingOperations must delegate domain queries to the Reporting service (found \"{$needle}\").");
+        }
+
+        $this->assertStringContainsString('BookingLessonMeetingOperationsReportServiceInterface', $contents);
+    }
+
+    public function test_operations_dtos_expose_no_eloquent_models(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting/DTOs/Operations')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertStringNotContainsString('use App\Models\\', $contents, "{$file} must carry scalars/enums/value objects only — never a hydrated Eloquent model.");
+            $this->assertStringNotContainsString('extends Model', $contents);
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_recurrence_classification_never_infers_from_timestamps_or_audit_text(): void
+    {
+        $contents = (string) file_get_contents(base_path('app/Reporting/Support/RecurrenceClassifier.php'));
+
+        // The classifier may read only the two durable provenance signals.
+        $this->assertStringContainsString('recurrence_frequency', $contents);
+        $this->assertStringContainsString('recurring_group', $contents);
+
+        foreach (['starts_at', 'diffInDays', 'description', 'audit', 'notification'] as $needle) {
+            $this->assertStringNotContainsString($needle, $contents, "RecurrenceClassifier must never infer recurrence from \"{$needle}\" — only durable provenance fields.");
         }
     }
 

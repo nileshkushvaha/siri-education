@@ -15,6 +15,7 @@ use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\SubjectTopic;
@@ -115,7 +116,7 @@ final class StudentBookingService implements StudentBookingServiceInterface
             $startsAt = $recurrence->nextStartsAt($data->startsAt, $i);
 
             try {
-                $booked->push($this->bookOccurrence($data, $startsAt, ['recurring_group' => $groupId]));
+                $booked->push($this->bookOccurrence($data, $startsAt, ['recurring_group' => $groupId], $recurrence->frequency));
             } catch (BookingException $e) {
                 $failures[$startsAt->toIso8601String()] = $e->getMessage();
             }
@@ -129,7 +130,7 @@ final class StudentBookingService implements StudentBookingServiceInterface
     }
 
     /** @param array<string, mixed> $extraMeta */
-    private function bookOccurrence(StudentBookingData $data, CarbonImmutable $startsAt, array $extraMeta = []): Booking
+    private function bookOccurrence(StudentBookingData $data, CarbonImmutable $startsAt, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null): Booking
     {
         $type = $this->types->requireActiveByKey($data->typeKey);
 
@@ -153,6 +154,7 @@ final class StudentBookingService implements StudentBookingServiceInterface
                 'topic_id' => $topic?->id,
                 ...$extraMeta,
             ]),
+            recurrenceFrequency: $recurrenceFrequency,
         ));
     }
 

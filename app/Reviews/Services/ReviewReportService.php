@@ -201,9 +201,22 @@ final class ReviewReportService implements ReviewReportServiceInterface
         }
     }
 
-    /** @throws AuthorizationException */
+    /**
+     * The self-resolution exclusion is independently enforced here, not
+     * only in ReviewReportPolicy — Gate::before grants super_admin a
+     * global permission bypass that skips the policy entirely, and
+     * Spatie roles are not mutually exclusive, so an account holding
+     * both `instructor` and `super_admin` must still never resolve a
+     * report about their own review.
+     *
+     * @throws AuthorizationException
+     */
     private function authorizeResolve(User $admin, ReviewReport $report): void
     {
+        if ($admin->id === $report->review->instructor_id) {
+            throw new AuthorizationException('You may not resolve a report about your own review.');
+        }
+
         if (! $admin->can('resolve', $report)) {
             throw new AuthorizationException('You may not resolve this report.');
         }

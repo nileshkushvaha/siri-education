@@ -6,5 +6,5 @@ namespace App\Reviews\Exceptions;
 
 use RuntimeException;
 
-/** Instructor rating aggregate integrity violation — a guarded column changed outside InstructorRatingAggregateService, or a delta would drive a sum/count negative. */
+/** Rating aggregate/contribution integrity violation — a guarded column on InstructorRatingAggregate or ReviewRatingContribution changed outside its authoritative action, or a delta would drive a sum/count negative. */
 class ReviewAggregateException extends RuntimeException {}

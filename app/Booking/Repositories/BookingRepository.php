@@ -268,6 +268,18 @@ final class BookingRepository implements BookingRepositoryInterface
             ->get();
     }
 
+    public function lockIfStillExpiredReservation(string $id): ?Booking
+    {
+        return Booking::query()
+            ->whereKey($id)
+            ->withStatus(BookingStatus::Pending)
+            ->whereIn('payment_status', [BookingPaymentStatus::Pending, BookingPaymentStatus::Failed])
+            ->whereNotNull('reserved_until')
+            ->where('reserved_until', '<', now())
+            ->lockForUpdate()
+            ->first();
+    }
+
     public function logActivity(
         Booking $booking,
         BookingActivityAction $action,

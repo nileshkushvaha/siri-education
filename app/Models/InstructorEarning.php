@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\WithdrawalAllocationStatus;
+use App\Earnings\Exceptions\EarningException;
 use App\Support\Concerns\PreventsHardDeletion;
 use Database\Factories\InstructorEarningFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,11 +26,29 @@ use Spatie\Activitylog\Support\LogOptions;
  * never mutate `status` or amounts directly. Amounts come from the
  * instructor's compensation agreement and are fully independent of
  * student pricing (the commission-era columns were removed in 14.4).
+ *
+ * The earning's monetary identity (amount/currency) is set once at
+ * creation (CreateInstructorEarningFromLessonAction /
+ * InstructorPeriodicCompensationService) and never legitimately
+ * updated afterward by any code path — unlike status, which cycles
+ * through TransitionInstructorEarningAction, there is no authorized-
+ * mutation escape hatch here because none is ever needed.
  */
 class InstructorEarning extends Model
 {
     /** @use HasFactory<InstructorEarningFactory> */
     use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion;
+
+    private const array GUARDED_MONETARY_COLUMNS = ['earning_amount_minor', 'currency_id', 'currency_code'];
+
+    protected static function booted(): void
+    {
+        static::updating(function (InstructorEarning $earning): void {
+            if ($earning->isDirty(self::GUARDED_MONETARY_COLUMNS)) {
+                throw new EarningException('An earning\'s amount and currency are set once at creation and may never be modified afterward.');
+            }
+        });
+    }
 
     protected $fillable = [
         'lesson_id',

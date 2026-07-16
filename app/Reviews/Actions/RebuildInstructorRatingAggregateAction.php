@@ -145,7 +145,7 @@ final class RebuildInstructorRatingAggregateAction
             return;
         }
 
-        $contribution->fill([
+        ReviewRatingContribution::withAuthorizedMutation(fn () => $contribution->fill([
             'included' => $included,
             'overall_rating' => $included ? $review->overall_rating : $contribution->overall_rating,
             'teaching_quality_rating' => $included ? $review->teaching_quality_rating : $contribution->teaching_quality_rating,
@@ -158,6 +158,6 @@ final class RebuildInstructorRatingAggregateAction
             'applied_at' => $included ? ($contribution->applied_at ?? now()->toImmutable()->utc()) : $contribution->applied_at,
             'removed_at' => $included ? null : now()->toImmutable()->utc(),
             'version' => $contribution->version + 1,
-        ])->save();
+        ])->save());
     }
 }

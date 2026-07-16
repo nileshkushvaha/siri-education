@@ -6,6 +6,7 @@ namespace App\Earnings\Contracts;
 
 use App\Earnings\Exceptions\EarningException;
 use App\Lessons\Enums\LessonOutcome;
+use App\Models\InstructorEarning;
 use App\Models\Lesson;
 use App\Models\LessonFinancialDisposition;
 use App\Models\User;
@@ -34,6 +35,18 @@ interface LessonFinancialDispositionServiceInterface
      * are detected and routed to holds or manual review.
      */
     public function reevaluate(Lesson $lesson, LessonOutcome $previousOutcome, LessonOutcome $newOutcome, string $overrideReason): ?LessonFinancialDisposition;
+
+    /**
+     * Back-fills instructor_earning_id once the earning exists.
+     * classify() (on LessonOutcomeFinalized) and earning creation (on
+     * LessonCompleted) are two independently after-commit-deferred
+     * listeners on the same finalize() transaction with no ordering
+     * guarantee between them — classify() already links immediately
+     * when the earning already exists; this covers the reverse
+     * ordering. A no-op when no disposition exists yet or it is
+     * already linked.
+     */
+    public function linkEarning(Lesson $lesson, InstructorEarning $earning): void;
 
     /**
      * @throws EarningException

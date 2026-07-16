@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Settings\InstructorEarningSettings;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -50,40 +51,51 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
             return null;
         }
 
-        return DB::transaction(function () use ($lesson, $outcome): LessonFinancialDisposition {
-            $existing = $this->lockForLesson($lesson);
+        try {
+            return DB::transaction(function () use ($lesson, $outcome): LessonFinancialDisposition {
+                $existing = $this->lockForLesson($lesson);
 
-            // Exactly-once: a replayed finalization event for the same
-            // outcome changes nothing; a different outcome only ever
-            // arrives via the override event → reevaluate().
-            if ($existing !== null) {
-                return $existing;
-            }
+                // Exactly-once: a replayed finalization event for the same
+                // outcome changes nothing; a different outcome only ever
+                // arrives via the override event → reevaluate().
+                if ($existing !== null) {
+                    return $existing;
+                }
 
-            $disposition = new LessonFinancialDisposition([
-                'lesson_id' => $lesson->id,
-                'booking_id' => $lesson->booking_id,
-                'version' => 1,
-            ]);
-
-            $this->applyEvaluation($disposition, $lesson, $outcome);
-            $disposition->save();
-
-            $this->audit->logSystem(
-                self::LOG_NAME,
-                'lesson_financial_disposition_classified',
-                sprintf('Lesson %s classified: student %s / instructor %s (%s).', $lesson->id, $disposition->student_disposition->value, $disposition->instructor_disposition->value, $disposition->processing_status->value),
-                $disposition,
-                [
+                $disposition = new LessonFinancialDisposition([
                     'lesson_id' => $lesson->id,
                     'booking_id' => $lesson->booking_id,
-                    'outcome' => $outcome->value,
-                    'reason_code' => $disposition->reason_code,
-                ],
-            );
+                    'version' => 1,
+                ]);
 
-            return $disposition;
-        });
+                $this->applyEvaluation($disposition, $lesson, $outcome);
+                $disposition->save();
+
+                $this->audit->logSystem(
+                    self::LOG_NAME,
+                    'lesson_financial_disposition_classified',
+                    sprintf('Lesson %s classified: student %s / instructor %s (%s).', $lesson->id, $disposition->student_disposition->value, $disposition->instructor_disposition->value, $disposition->processing_status->value),
+                    $disposition,
+                    [
+                        'lesson_id' => $lesson->id,
+                        'booking_id' => $lesson->booking_id,
+                        'outcome' => $outcome->value,
+                        'reason_code' => $disposition->reason_code,
+                    ],
+                );
+
+                return $disposition;
+            });
+        } catch (UniqueConstraintViolationException) {
+            // lockForUpdate() on a not-yet-existing row locks nothing, so
+            // two concurrent first-time classifications can both pass the
+            // existence check above and both attempt the insert — the
+            // loser's transaction rolls back here. That is the idempotent
+            // replay, never a transient failure. Mirrors
+            // InstructorEarningService::createFromLesson()'s identical
+            // guard against the same class of race.
+            return $this->lockForLesson($lesson);
+        }
     }
 
     public function reevaluate(Lesson $lesson, LessonOutcome $previousOutcome, LessonOutcome $newOutcome, string $overrideReason): ?LessonFinancialDisposition
@@ -338,6 +350,23 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
             );
 
             return $disposition;
+        });
+    }
+
+    public function linkEarning(Lesson $lesson, InstructorEarning $earning): void
+    {
+        if (! $this->settings->financial_disposition_enabled) {
+            return;
+        }
+
+        DB::transaction(function () use ($lesson, $earning): void {
+            $disposition = $this->lockForLesson($lesson);
+
+            if ($disposition === null || $disposition->instructor_earning_id !== null) {
+                return;
+            }
+
+            $disposition->fill(['instructor_earning_id' => $earning->id])->save();
         });
     }
 

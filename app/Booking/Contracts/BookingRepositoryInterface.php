@@ -110,6 +110,14 @@ interface BookingRepositoryInterface
     /** @return Collection<int, Booking> pending bookings whose payment hold has lapsed */
     public function expiredReservations(): Collection;
 
+    /**
+     * Re-fetches and locks a single booking, returning it only if it is
+     * still an expired, cancellable reservation — null if it was settled
+     * (paid, cancelled, rescheduled) by a concurrent request since the
+     * candidate list in expiredReservations() was queried.
+     */
+    public function lockIfStillExpiredReservation(string $id): ?Booking;
+
     /** Append an entry to the booking's domain timeline (booking_activities). */
     public function logActivity(
         Booking $booking,

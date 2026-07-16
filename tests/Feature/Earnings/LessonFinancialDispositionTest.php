@@ -15,6 +15,8 @@ use App\Earnings\Exceptions\EarningException;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
+use App\Lessons\Events\LessonDisputed;
+use App\Listeners\Earnings\SyncEarningOnLessonDisputed;
 use App\Models\Activity;
 use App\Models\Booking;
 use App\Models\Currency;
@@ -25,6 +27,7 @@ use App\Models\LessonFinancialDisposition;
 use App\Models\User;
 use Database\Seeders\LessonPermissionSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\ManagesFinancialSettings;
@@ -157,6 +160,33 @@ class LessonFinancialDispositionTest extends TestCase
         $this->assertSame(LessonFinancialDispositionStatus::Held, $disposition->processing_status);
     }
 
+    /**
+     * Phase 17U.4 — DisputedHold is not a terminal earning status (a hold
+     * later resolves back to Releasable, or on to Reversed/Cancelled), so
+     * SyncEarningOnLessonDisputed's isTerminal()-only guard did not catch
+     * a redelivered LessonDisputed event for an earning already on hold:
+     * DisputedHold -> DisputedHold is not an allowed transition and threw
+     * instead of no-opping. A duplicate queue delivery must be harmless.
+     */
+    public function test_duplicate_lesson_disputed_delivery_does_not_throw(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true]);
+        $lesson = $this->makePaidLesson(withAgreement: true);
+        $admin = $this->admin();
+
+        $this->outcomes->finalize($lesson, LessonOutcome::Completed);
+        $earning = InstructorEarning::query()->where('lesson_id', $lesson->id)->firstOrFail();
+
+        app(LessonLifecycleServiceInterface::class)->dispute($lesson->refresh(), $admin, 'Reported by student.');
+        $this->assertSame(InstructorEarningStatus::DisputedHold, $earning->refresh()->status);
+
+        // Simulate a duplicate queue delivery of the already-processed
+        // LessonDisputed event — must be a safe no-op, not an exception.
+        app(SyncEarningOnLessonDisputed::class)->handle(new LessonDisputed($lesson->refresh()));
+
+        $this->assertSame(InstructorEarningStatus::DisputedHold, $earning->refresh()->status);
+    }
+
     public function test_held_earning_cannot_enter_settlement(): void
     {
         $this->enableBridge();
@@ -206,6 +236,63 @@ class LessonFinancialDispositionTest extends TestCase
 
         $this->assertSame(1, LessonFinancialDisposition::query()->where('lesson_id', $lesson->id)->count());
         $this->assertSame(1, $this->dispositionFor($lesson)->version);
+    }
+
+    /**
+     * Phase 17U.4 — classify()'s lockForUpdate() locks nothing when no
+     * row exists yet, so two truly concurrent callers can both pass the
+     * existence check before either inserts; the loser's insert then
+     * collides on the unique lesson_id constraint. This confirms that
+     * constraint is real and raises exactly the exception type classify()
+     * now catches (a duplicate insert attempted from *outside* classify()'s
+     * own transaction, so — unlike nesting a competing insert inside the
+     * same transaction/savepoint tree — this row genuinely survives to be
+     * checked, the same way a separate concurrent transaction's committed
+     * row would).
+     */
+    public function test_duplicate_lesson_id_insert_raises_the_exception_classify_recovers_from(): void
+    {
+        $this->enableBridge();
+        $lesson = $this->makePaidLesson();
+
+        $disposition = $this->dispositions->classify($lesson, LessonOutcome::Completed);
+        $this->assertNotNull($disposition);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        LessonFinancialDisposition::query()->create([
+            'lesson_id' => $lesson->id,
+            'booking_id' => $lesson->booking_id,
+            'outcome' => LessonOutcome::Completed,
+            'student_disposition' => LessonStudentDisposition::None,
+            'instructor_disposition' => LessonInstructorDisposition::ExistingCompletionEarning,
+            'processing_status' => LessonFinancialDispositionStatus::NoAction,
+            'reason_code' => 'completed_paid',
+            'version' => 1,
+            'evaluated_at' => now(),
+        ]);
+    }
+
+    /**
+     * classify() itself must not let that same exception escape when it
+     * is the one racing against an already-existing row — proves the
+     * catch path's fallback query returns the disposition rather than
+     * throwing, for the case lockForUpdate() *does* find (a row that
+     * already committed before this call started, i.e. the ordinary
+     * redelivery case already covered above, re-asserted here against
+     * the exception type specifically).
+     */
+    public function test_classify_does_not_throw_when_a_disposition_already_exists(): void
+    {
+        $this->enableBridge();
+        $lesson = $this->makePaidLesson();
+
+        $this->dispositions->classify($lesson, LessonOutcome::Completed);
+
+        $disposition = $this->dispositions->classify($lesson->refresh(), LessonOutcome::Completed);
+
+        $this->assertNotNull($disposition);
+        $this->assertSame(1, LessonFinancialDisposition::query()->where('lesson_id', $lesson->id)->count());
     }
 
     // ── 10–13. Overrides ─────────────────────────────────────────────

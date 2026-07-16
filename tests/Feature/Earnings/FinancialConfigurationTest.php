@@ -115,7 +115,7 @@ class FinancialConfigurationTest extends TestCase
 
             $code = file_get_contents($file->getPathname());
 
-            if (preg_match('/(earnings_enabled|withdrawals_enabled|periodic_compensation_enabled|payout_execution_enabled)\s*=\s*(?!=)/', $code)
+            if (preg_match('/(earnings_enabled|withdrawals_enabled|periodic_compensation_enabled|payout_execution_enabled|financial_disposition_enabled|lesson_refund_execution_enabled|earning_reconciliation_execution_enabled)\s*=\s*(?!=)/', $code)
                 || str_contains($code, 'FinancialFeatureToggle::unguarded')) {
                 $offenders[] = $file->getPathname();
             }
@@ -195,6 +195,132 @@ class FinancialConfigurationTest extends TestCase
         $settings = app(InstructorEarningSettings::class)->refresh();
         $this->assertFalse($settings->earnings_enabled);
         $this->assertFalse($settings->periodic_compensation_enabled);
+    }
+
+    // ── Phase 17 closure audit: financial_disposition_enabled,
+    // lesson_refund_execution_enabled, earning_reconciliation_execution_enabled
+    // now share the same guarded write path as the original four switches.
+
+    public function test_direct_settings_save_cannot_flip_the_financial_disposition_switch(): void
+    {
+        $settings = app(InstructorEarningSettings::class);
+        $settings->financial_disposition_enabled = true;
+
+        try {
+            $settings->save();
+            $this->fail('Direct switch save should be rejected.');
+        } catch (CompensationException $e) {
+            $this->assertStringContainsString('FinancialFeatureConfigurationService', $e->getMessage());
+        }
+
+        $settings->refresh();
+        $this->assertFalse($settings->financial_disposition_enabled);
+    }
+
+    public function test_direct_settings_save_cannot_flip_the_lesson_refund_execution_switch(): void
+    {
+        $settings = app(InstructorEarningSettings::class);
+        $settings->lesson_refund_execution_enabled = true;
+
+        $this->expectException(CompensationException::class);
+        $settings->save();
+    }
+
+    public function test_direct_settings_save_cannot_flip_the_earning_reconciliation_execution_switch(): void
+    {
+        $settings = app(InstructorEarningSettings::class);
+        $settings->earning_reconciliation_execution_enabled = true;
+
+        $this->expectException(CompensationException::class);
+        $settings->save();
+    }
+
+    public function test_the_three_execution_switches_default_to_false(): void
+    {
+        $settings = app(InstructorEarningSettings::class)->refresh();
+
+        $this->assertFalse($settings->financial_disposition_enabled);
+        $this->assertFalse($settings->lesson_refund_execution_enabled);
+        $this->assertFalse($settings->earning_reconciliation_execution_enabled);
+    }
+
+    public function test_financial_disposition_cannot_enable_while_earnings_disabled(): void
+    {
+        $readiness = $this->configuration->evaluateFinancialDispositionReadiness();
+        $this->assertContains('earnings_disabled', $readiness->blockingCodes);
+
+        $this->expectException(CompensationException::class);
+
+        $this->configuration->enableFinancialDisposition($this->superAdmin());
+    }
+
+    public function test_financial_disposition_enable_succeeds_when_earnings_enabled(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true]);
+
+        $readiness = $this->configuration->enableFinancialDisposition($this->superAdmin());
+
+        $this->assertTrue($readiness->isReady);
+        $this->assertTrue(app(InstructorEarningSettings::class)->refresh()->financial_disposition_enabled);
+    }
+
+    public function test_lesson_refund_execution_cannot_enable_while_financial_disposition_disabled(): void
+    {
+        $readiness = $this->configuration->evaluateLessonRefundExecutionReadiness();
+        $this->assertContains('financial_disposition_disabled', $readiness->blockingCodes);
+
+        $this->expectException(CompensationException::class);
+
+        $this->configuration->enableLessonRefundExecution($this->superAdmin());
+    }
+
+    public function test_lesson_refund_execution_enable_succeeds_when_financial_disposition_enabled(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'financial_disposition_enabled' => true]);
+
+        $readiness = $this->configuration->enableLessonRefundExecution($this->superAdmin());
+
+        $this->assertTrue($readiness->isReady);
+        $this->assertTrue(app(InstructorEarningSettings::class)->refresh()->lesson_refund_execution_enabled);
+    }
+
+    public function test_earning_reconciliation_execution_cannot_enable_while_financial_disposition_disabled(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true]);
+
+        $readiness = $this->configuration->evaluateEarningReconciliationExecutionReadiness();
+        $this->assertContains('financial_disposition_disabled', $readiness->blockingCodes);
+
+        $this->expectException(CompensationException::class);
+
+        $this->configuration->enableEarningReconciliationExecution($this->superAdmin());
+    }
+
+    public function test_earning_reconciliation_execution_enable_succeeds_when_ready(): void
+    {
+        $this->setFinancialSettings(['earnings_enabled' => true, 'financial_disposition_enabled' => true]);
+
+        $readiness = $this->configuration->enableEarningReconciliationExecution($this->superAdmin());
+
+        $this->assertTrue($readiness->isReady);
+        $this->assertTrue(app(InstructorEarningSettings::class)->refresh()->earning_reconciliation_execution_enabled);
+    }
+
+    public function test_disabling_financial_disposition_auto_disables_refund_and_reconciliation_execution(): void
+    {
+        $this->setFinancialSettings([
+            'earnings_enabled' => true,
+            'financial_disposition_enabled' => true,
+            'lesson_refund_execution_enabled' => true,
+            'earning_reconciliation_execution_enabled' => true,
+        ]);
+
+        $this->configuration->disableFinancialDisposition($this->superAdmin());
+
+        $settings = app(InstructorEarningSettings::class)->refresh();
+        $this->assertFalse($settings->financial_disposition_enabled);
+        $this->assertFalse($settings->lesson_refund_execution_enabled);
+        $this->assertFalse($settings->earning_reconciliation_execution_enabled);
     }
 
     public function test_filament_page_routes_switches_through_the_service(): void

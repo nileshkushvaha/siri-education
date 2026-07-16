@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Events;
 
 use App\Models\Booking;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -15,8 +16,11 @@ use Illuminate\Queue\SerializesModels;
  * checkout success, or Option B's late-terminal path (which never
  * reaches markPaid()'s settle branch). A duplicate webhook cannot
  * re-fire it: markPaid() requires payment_status === Pending.
+ * ShouldDispatchAfterCommit: kept consistent with the rest of the
+ * Booking event family — a queued listener must never observe a
+ * payment settlement that isn't durably committed yet (Phase 17U.4).
  */
-final class BookingPaymentSucceeded
+final class BookingPaymentSucceeded implements ShouldDispatchAfterCommit
 {
     use Dispatchable;
     use SerializesModels;

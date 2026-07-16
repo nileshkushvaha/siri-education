@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Earnings\Services;
 
 use App\Console\Commands\AccruePeriodicCompensation;
+use App\Console\Commands\ProcessLessonEarningReconciliation;
+use App\Console\Commands\ProcessLessonRefunds;
 use App\Console\Commands\ReconcileInstructorPayouts;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
@@ -23,6 +25,7 @@ use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutConfigurationValidator;
 use App\Earnings\Support\FinancialFeatureToggle;
 use App\Enums\InstructorStatus;
+use App\Listeners\Earnings\ClassifyLessonFinancialDisposition;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorCompensationException;
 use App\Models\InstructorEarning;
@@ -227,6 +230,55 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
         return $this->readiness('payout_execution', $this->settings->payout_execution_enabled, $failures);
     }
 
+    public function evaluateFinancialDispositionReadiness(): FeatureReadiness
+    {
+        $failures = [];
+
+        if (! $this->settings->earnings_enabled) {
+            $failures[] = ['check' => 'earnings_disabled', 'message' => 'Earnings must be enabled before the financial-disposition bridge.', 'subjects' => []];
+        }
+
+        if (! class_exists(ClassifyLessonFinancialDisposition::class)) {
+            $failures[] = ['check' => 'missing_listener', 'message' => 'The disposition classification listener is not registered.', 'subjects' => []];
+        }
+
+        return $this->readiness('financial_disposition', $this->settings->financial_disposition_enabled, $failures);
+    }
+
+    public function evaluateLessonRefundExecutionReadiness(): FeatureReadiness
+    {
+        $failures = [];
+
+        if (! $this->settings->financial_disposition_enabled) {
+            $failures[] = ['check' => 'financial_disposition_disabled', 'message' => 'The financial-disposition bridge must be enabled before refund execution — there is nothing to execute otherwise.', 'subjects' => []];
+        }
+
+        if (! class_exists(ProcessLessonRefunds::class)) {
+            $failures[] = ['check' => 'missing_schedule', 'message' => 'The lesson refund processing command is not registered.', 'subjects' => []];
+        }
+
+        return $this->readiness('lesson_refund_execution', $this->settings->lesson_refund_execution_enabled, $failures);
+    }
+
+    public function evaluateEarningReconciliationExecutionReadiness(): FeatureReadiness
+    {
+        $failures = [];
+
+        if (! $this->settings->earnings_enabled) {
+            $failures[] = ['check' => 'earnings_disabled', 'message' => 'Earnings must be enabled before earning reconciliation execution.', 'subjects' => []];
+        }
+
+        if (! $this->settings->financial_disposition_enabled) {
+            $failures[] = ['check' => 'financial_disposition_disabled', 'message' => 'The financial-disposition bridge must be enabled before earning reconciliation execution — there is nothing to reconcile otherwise.', 'subjects' => []];
+        }
+
+        if (! class_exists(ProcessLessonEarningReconciliation::class)) {
+            $failures[] = ['check' => 'missing_schedule', 'message' => 'The lesson earning reconciliation command is not registered.', 'subjects' => []];
+        }
+
+        return $this->readiness('earning_reconciliation_execution', $this->settings->earning_reconciliation_execution_enabled, $failures);
+    }
+
     /**
      * RazorpayX-specific preflight (Phase 16B) — only evaluated when the
      * configured payout provider actually resolves to `razorpayx`.
@@ -351,6 +403,71 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
     public function disablePayoutExecution(User $actor): void
     {
         $this->writeSwitch('payout_execution_enabled', false, $actor);
+    }
+
+    public function enableFinancialDisposition(User $actor): FeatureReadiness
+    {
+        $readiness = $this->evaluateFinancialDispositionReadiness();
+
+        if (! $readiness->isReady) {
+            throw new CompensationException('The financial-disposition bridge cannot be enabled: '.$readiness->summary());
+        }
+
+        $this->writeSwitch('financial_disposition_enabled', true, $actor);
+
+        return $readiness;
+    }
+
+    public function disableFinancialDisposition(User $actor): void
+    {
+        // Documented rule, mirroring disableEarnings(): refund and
+        // earning-reconciliation execution cannot outlive the
+        // classification bridge they depend on — both flip off in one
+        // guarded save.
+        FinancialFeatureToggle::unguarded(function (): void {
+            $this->settings->financial_disposition_enabled = false;
+            $this->settings->lesson_refund_execution_enabled = false;
+            $this->settings->earning_reconciliation_execution_enabled = false;
+            $this->settings->save();
+        });
+
+        $this->audit->logUser($actor, self::LOG_NAME, 'financial_feature_disabled', 'Financial-disposition bridge disabled (refund and earning-reconciliation execution auto-disabled with it).', null, ['feature' => 'financial_disposition_enabled']);
+    }
+
+    public function enableLessonRefundExecution(User $actor): FeatureReadiness
+    {
+        $readiness = $this->evaluateLessonRefundExecutionReadiness();
+
+        if (! $readiness->isReady) {
+            throw new CompensationException('Lesson refund execution cannot be enabled: '.$readiness->summary());
+        }
+
+        $this->writeSwitch('lesson_refund_execution_enabled', true, $actor);
+
+        return $readiness;
+    }
+
+    public function disableLessonRefundExecution(User $actor): void
+    {
+        $this->writeSwitch('lesson_refund_execution_enabled', false, $actor);
+    }
+
+    public function enableEarningReconciliationExecution(User $actor): FeatureReadiness
+    {
+        $readiness = $this->evaluateEarningReconciliationExecutionReadiness();
+
+        if (! $readiness->isReady) {
+            throw new CompensationException('Earning reconciliation execution cannot be enabled: '.$readiness->summary());
+        }
+
+        $this->writeSwitch('earning_reconciliation_execution_enabled', true, $actor);
+
+        return $readiness;
+    }
+
+    public function disableEarningReconciliationExecution(User $actor): void
+    {
+        $this->writeSwitch('earning_reconciliation_execution_enabled', false, $actor);
     }
 
     // ── Internals ─────────────────────────────────────────────────────────

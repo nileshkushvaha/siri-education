@@ -239,18 +239,32 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
         $cutoff = now()->subMinutes($this->settings->auto_complete_grace_minutes);
         $finalized = 0;
 
-        foreach ($this->lessons->openEndedBefore($cutoff) as $lesson) {
+        foreach ($this->lessons->openEndedBefore($cutoff) as $candidate) {
             try {
-                if ($this->noShowOutcome($lesson) !== null) {
-                    $this->finalizeNoShow($lesson);
-                } elseif ($this->meetsCompletionRequirements($lesson)) {
-                    $this->autoComplete($lesson);
-                } else {
-                    // Attendance confirmation is required and missing —
-                    // leave the lesson open for a manual decision.
-                    continue;
-                }
-                $finalized++;
+                $finalized += DB::transaction(function () use ($candidate): int {
+                    // The cursor row may be stale by the time we reach it
+                    // here (another worker, a manual admin action, an
+                    // override) — re-fetch under lock before deciding,
+                    // matching LessonFinalizationService::process()'s
+                    // reference pattern for the sibling automated sweep.
+                    $lesson = $this->lessons->lockForUpdate($candidate);
+
+                    if (! $lesson->status->isOpen()) {
+                        return 0;
+                    }
+
+                    if ($this->noShowOutcome($lesson) !== null) {
+                        $this->finalizeNoShow($lesson);
+                    } elseif ($this->meetsCompletionRequirements($lesson)) {
+                        $this->autoComplete($lesson);
+                    } else {
+                        // Attendance confirmation is required and missing —
+                        // leave the lesson open for a manual decision.
+                        return 0;
+                    }
+
+                    return 1;
+                });
             } catch (LessonException) {
                 // A concurrent transition beat the sweep — skip, next run re-checks.
             }

@@ -101,7 +101,7 @@ final class ReconcileReviewContributionAction
             $aggregate->save();
         });
 
-        $contribution->fill([
+        ReviewRatingContribution::withAuthorizedMutation(fn () => $contribution->fill([
             'included' => true,
             'overall_rating' => $review->overall_rating,
             'teaching_quality_rating' => $dimensions['teaching_quality_rating'],
@@ -114,7 +114,7 @@ final class ReconcileReviewContributionAction
             'applied_at' => now()->toImmutable()->utc(),
             'removed_at' => null,
             'version' => $contribution->version + 1,
-        ])->save();
+        ])->save());
 
         $this->audit->logSystem(
             self::LOG_NAME,
@@ -170,11 +170,11 @@ final class ReconcileReviewContributionAction
             $aggregate->save();
         });
 
-        $contribution->fill([
+        ReviewRatingContribution::withAuthorizedMutation(fn () => $contribution->fill([
             'included' => false,
             'removed_at' => now()->toImmutable()->utc(),
             'version' => $contribution->version + 1,
-        ])->save();
+        ])->save());
 
         $this->audit->logSystem(
             self::LOG_NAME,

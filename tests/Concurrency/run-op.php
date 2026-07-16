@@ -18,6 +18,8 @@ use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
+use App\Lessons\Contracts\LessonOutcomeServiceInterface;
+use App\Lessons\Enums\LessonOutcome;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\InstructorCompensationAgreement;
@@ -306,6 +308,23 @@ try {
             Artisan::call('booking:release-expired');
 
             return ['ran' => true];
+        })(),
+
+        // Phase 17U.4 — two concurrent finalizers racing the same
+        // lesson's outcome. Proves FinalizeLessonOutcomeAction's row
+        // lock + idempotent-replay guard serializes real concurrent
+        // access rather than merely a sequential simulation: exactly
+        // one caller must observe applied=true, the loser must observe
+        // applied=false with no exception, and — since a Completed
+        // outcome fans out into CreateEarningOnLessonCompleted — exactly
+        // one InstructorEarning row must exist afterward.
+        'finalize-lesson-outcome' => (function () use ($args) {
+            $lesson = Lesson::query()->findOrFail($args['lesson_id']);
+            $outcome = LessonOutcome::from($args['outcome']);
+
+            $result = app(LessonOutcomeServiceInterface::class)->finalize($lesson, $outcome);
+
+            return ['applied' => $result->applied, 'lesson_status' => $result->lesson->status->value];
         })(),
 
         'cancel-booking-as-user' => (function () use ($args) {

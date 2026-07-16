@@ -92,22 +92,27 @@ class InstructorEarningSettings extends Settings
     public string $payout_rollout_scope;
 
     /**
-     * Phase 14.5 write guard, extended in Phase 16A: the four financial
-     * feature switches may only change through
-     * FinancialFeatureConfigurationService (which runs the activation
-     * preflights). Every other save() that flips one of them —
-     * Filament, commands, seeders, controllers, direct calls — throws.
-     * Non-switch settings save normally.
+     * Phase 14.5 write guard, extended in Phase 16A and again in this
+     * closure audit (Phase 17 §5): the seven financial feature switches
+     * may only change through FinancialFeatureConfigurationService
+     * (which runs the activation preflights). Every other save() that
+     * flips one of them — Filament, commands, seeders, controllers,
+     * direct calls — throws. Non-switch settings save normally.
      */
+    private const array GUARDED_SWITCHES = [
+        'earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled', 'payout_execution_enabled',
+        'financial_disposition_enabled', 'lesson_refund_execution_enabled', 'earning_reconciliation_execution_enabled',
+    ];
+
     public function save(): static
     {
         if (! FinancialFeatureToggle::isUnguarded()) {
             $persisted = DB::table('settings')
                 ->where('group', static::group())
-                ->whereIn('name', ['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled', 'payout_execution_enabled'])
+                ->whereIn('name', self::GUARDED_SWITCHES)
                 ->pluck('payload', 'name');
 
-            foreach (['earnings_enabled', 'withdrawals_enabled', 'periodic_compensation_enabled', 'payout_execution_enabled'] as $switch) {
+            foreach (self::GUARDED_SWITCHES as $switch) {
                 if ($persisted->has($switch) && json_decode((string) $persisted[$switch]) !== $this->{$switch}) {
                     throw new CompensationException(sprintf(
                         'The %s switch can only be changed through FinancialFeatureConfigurationService, which enforces the activation preflight.',

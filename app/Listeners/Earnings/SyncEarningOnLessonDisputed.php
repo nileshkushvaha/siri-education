@@ -6,6 +6,7 @@ namespace App\Listeners\Earnings;
 
 use App\Earnings\Contracts\InstructorEarningRepositoryInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
+use App\Earnings\Enums\InstructorEarningStatus;
 use App\Lessons\Events\LessonDisputed;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -32,7 +33,15 @@ final class SyncEarningOnLessonDisputed implements ShouldQueue
     {
         $earning = $this->repository->findForLesson($event->lesson);
 
-        if ($earning === null || $earning->status->isTerminal()) {
+        // DisputedHold is not terminal (a hold is later resolved back to
+        // Releasable, or on to Reversed/Cancelled), so isTerminal() alone
+        // does not catch a redelivered event for an earning already on
+        // hold — without this explicit check, a duplicate queue delivery
+        // would attempt a DisputedHold -> DisputedHold transition, which
+        // is not in InstructorEarningStatus::allowedTransitions() and
+        // throws instead of no-opping. Mirrors the identical guard in
+        // LessonFinancialDispositionService::holdEarning().
+        if ($earning === null || $earning->status->isTerminal() || $earning->status === InstructorEarningStatus::DisputedHold) {
             return;
         }
 

@@ -178,9 +178,22 @@ final class ReviewModerationService implements ReviewModerationServiceInterface
 
     // ── Internals ─────────────────────────────────────────────────────────
 
-    /** @throws AuthorizationException */
+    /**
+     * The self-moderation exclusion is independently enforced here, not
+     * only in LessonReviewPolicy — Gate::before grants super_admin a
+     * global permission bypass that skips the policy entirely, and
+     * Spatie roles are not mutually exclusive, so an account holding
+     * both `instructor` and `super_admin` must still never moderate a
+     * review about their own teaching.
+     *
+     * @throws AuthorizationException
+     */
     private function authorize(User $admin, LessonReview $review, string $ability): void
     {
+        if ($admin->id === $review->instructor_id) {
+            throw new AuthorizationException('You may not moderate a review about your own teaching.');
+        }
+
         if (! $admin->can($ability, $review)) {
             throw new AuthorizationException('You may not moderate this review.');
         }

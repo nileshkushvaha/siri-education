@@ -6,6 +6,7 @@ namespace App\Booking\Events;
 
 use App\Models\Booking;
 use App\Models\BookingMeeting;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -13,9 +14,10 @@ use Illuminate\Queue\SerializesModels;
  * An already-created meeting's join link changed (admin re-saved a
  * manual link, or a provider retry replaced the meeting). Dispatched
  * only when the join URL actually differs — an admin re-saving without
- * a real change never fires it.
+ * a real change never fires it. ShouldDispatchAfterCommit: kept
+ * consistent with the rest of the Booking event family (Phase 17U.4).
  */
-final class MeetingUpdated
+final class MeetingUpdated implements ShouldDispatchAfterCommit
 {
     use Dispatchable;
     use SerializesModels;

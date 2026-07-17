@@ -2,6 +2,7 @@
 
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
+use App\Console\Commands\CreditEligibleReferralRewards;
 use App\Console\Commands\ExpireLessonReviewEligibility;
 use App\Console\Commands\FinalizeDueLessons;
 use App\Console\Commands\ProcessLessonEarningReconciliation;
@@ -190,3 +191,16 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-attendance-sync.log'));
+
+// Phase 19D delayed referral-reward crediting: credits Eligible rewards
+// whose readiness time (hold period) has passed, through the single
+// creditReward() path. Idempotent (ledger idempotency keys + row
+// locks), bounded batches, per-reward failure isolation — an
+// overlapping run is wasted work, never a duplicate credit;
+// onOneServer() avoids that waste on a multi-node deployment.
+app(Schedule::class)
+    ->command(CreditEligibleReferralRewards::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/referrals-credit-rewards.log'));

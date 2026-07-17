@@ -40,6 +40,8 @@
 
         <x-ui.auth-input label="Phone number" name="phone" type="tel" wire:model="phone" placeholder="+91 98765 43210" autocomplete="tel" />
 
+        <x-ui.auth-input label="Referral code (optional)" name="referral_code" wire:model="referral_code" placeholder="e.g. ABCD2345" autocomplete="off" />
+
         <div>
             <label for="password" class="auth-label">Password</label>
             <div class="relative">

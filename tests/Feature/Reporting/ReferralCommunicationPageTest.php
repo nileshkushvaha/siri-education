@@ -90,9 +90,14 @@ class ReferralCommunicationPageTest extends TestCase
 
     public function test_structural_absences_are_stated_never_fabricated(): void
     {
+        // Phase 19D: the referral domain now exists, so the page reports
+        // real attribution/reward figures — but conversion rate is still
+        // honestly absent (its §4A definition gate was never re-opened)
+        // and referred booking value is never labeled revenue.
         $this->actingAs($this->manager())->get(ReferralCommunicationReports::getUrl())
             ->assertOk()
-            ->assertSee('no referral')
+            ->assertSee('conversion rate remains')
+            ->assertSee('no agreed qualifying-event denominator')
             ->assertSee('delivery rate, provider performance')
             ->assertSee('Messaging analytics are unavailable');
     }

@@ -49,6 +49,7 @@ use App\Http\Controllers\Student\StudentNotificationsController;
 use App\Http\Controllers\Student\StudentOrdersController;
 use App\Http\Controllers\Student\StudentPaymentsController;
 use App\Http\Controllers\Student\StudentProgressController;
+use App\Http\Controllers\Student\StudentReferralController;
 use App\Http\Controllers\Student\StudentReviewsController;
 use App\Http\Controllers\Student\StudentUpcomingClassesController;
 use App\Http\Controllers\Student\StudentWalletController;
@@ -108,9 +109,12 @@ Route::get('/dashboard', DashboardController::class)->name('dashboard')
 // ── Frontend Auth (guests only) ─────────────────────────────────────
 Route::name('auth.')->middleware('guest')->group(function (): void {
 
-    // Registration — both routes guarded at the middleware layer
+    // Registration — both routes guarded at the middleware layer.
+    // POST shares the 'login' limiter the Livewire form already applies
+    // via ThrottlesLivewireRequests, so the threshold and settings
+    // toggle live in exactly one place (AppServiceProvider).
     Route::get('/register', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled')->name('register.store');
+    Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
 
     // Login — EnsureLoginEnabled blocks POST when login is disabled
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');
@@ -240,6 +244,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/my-bookings', [StudentBookingHistoryController::class, 'index'])->name('my-bookings');
     Route::get('/payments', [StudentPaymentsController::class, 'index'])->name('payments');
     Route::get('/wallet', [StudentWalletController::class, 'index'])->name('wallet');
+    Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 

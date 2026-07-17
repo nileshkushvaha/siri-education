@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Communication;
 
 /**
- * Phase 18G — referral activity. Version 1 has NO referral domain: no
- * codes, no attribution, no campaigns, no reward-status records (only
- * ReferralSettings configuration and the `referral_credit` wallet
- * ledger entry type). The wallet ledger is therefore the single
- * authoritative referral source: a referral reward exists only when a
- * `referral_credit` ledger credit confirms it. Conversion rate,
- * campaign performance, top referrers, abuse flags and
- * "referral-generated revenue" are all structurally unavailable and
- * deliberately absent (§4A gates failed — no denominator, no
- * attribution, no cost data). Amounts are integer minor units grouped
- * by currency, never summed across currencies.
+ * Phase 18G referral activity, extended by Phase 19D now that the
+ * Referral domain exists (attributions, campaigns, reward records).
+ * The wallet ledger remains the authority on executed credit VALUE;
+ * the referral_rewards table is the authority on reward lifecycle
+ * counts; referral_attributions on sign-up attribution. Referral
+ * conversion rate is still deliberately absent — the Phase 18G §4A
+ * definition gate (an agreed qualifying-event denominator) has not
+ * been re-opened — and referred booking value is never labeled
+ * revenue. Amounts are integer minor units grouped by currency, never
+ * summed across currencies.
  *
  * @param  array<string, int>  $creditedAmountByCurrency  currency => minor units (gross executed credits)
+ * @param  array<string, int>  $rewardsByStatus  status => count of reward rows created in the period
+ * @param  array<string, int>  $reversedRewardAmountByCurrency  currency => minor units of reversed rewards
  */
 final readonly class ReferralActivityData
 {
@@ -27,5 +28,9 @@ final readonly class ReferralActivityData
         public int $distinctRecipientsInPeriod,
         public int $reversalsInPeriod,
         public bool $referralModuleEnabled,
+        public int $attributionsInPeriod = 0,
+        public array $rewardsByStatus = [],
+        public array $reversedRewardAmountByCurrency = [],
+        public int $heldOrFailedRewardsOpen = 0,
     ) {}
 }

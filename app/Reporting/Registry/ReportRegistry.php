@@ -340,7 +340,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'referral_activity',
                 label: 'Referral Activity',
-                description: 'Wallet-ledger-confirmed referral credits (Phase 18G). Version 1 has no referral code/campaign/attribution domain — conversion and campaign metrics are unavailable.',
+                description: 'Wallet-ledger-confirmed referral credits plus Phase 19D reward-lifecycle and attribution figures. Conversion rate remains unavailable (no agreed qualifying-event denominator).',
                 category: ReportCategory::Referrals,
                 requiredViewPermission: 'ViewReferralReports',
                 requiredExportPermission: null,

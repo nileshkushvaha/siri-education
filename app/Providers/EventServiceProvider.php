@@ -77,6 +77,13 @@ use App\Listeners\Reviews\SendReviewReportedNotification;
 use App\Listeners\Reviews\SendReviewRequestedNotification;
 use App\Listeners\Reviews\SendReviewSubmittedNotification;
 use App\Quality\Events\InstructorQualityAlertCreated;
+use App\Referral\Events\ReferralRewardCredited;
+use App\Referral\Events\ReferralRewardHeld;
+use App\Referral\Events\ReferralRewardReversed;
+use App\Referral\Listeners\EvaluateReferralRewardOnLessonOutcomeFinalized;
+use App\Referral\Listeners\ReevaluateReferralRewardOnLessonOutcomeOverridden;
+use App\Referral\Listeners\ReverseReferralRewardOnLessonRefundCompleted;
+use App\Referral\Listeners\SendReferralRewardNotifications;
 use App\Reviews\Events\LessonReviewEligibilityOpened;
 use App\Reviews\Events\ReviewReported;
 use App\Reviews\Events\ReviewReportUpheld;
@@ -88,6 +95,7 @@ use App\Reviews\Events\StudentReviewPublished;
 use App\Reviews\Events\StudentReviewRejected;
 use App\Reviews\Events\StudentReviewRestored;
 use App\Reviews\Events\StudentReviewSubmitted;
+use App\Wallet\Events\LessonRefundCompleted;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Mail\Events\MessageSending;
@@ -219,11 +227,28 @@ class EventServiceProvider extends ServiceProvider
             ClassifyLessonFinancialDisposition::class,
             OpenReviewEligibilityOnLessonOutcomeFinalized::class,
             DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized::class,
+            // Phase 19D — the only automatic referral-reward trigger.
+            EvaluateReferralRewardOnLessonOutcomeFinalized::class,
         ],
         LessonOutcomeOverridden::class => [
             ReevaluateLessonFinancialDisposition::class,
             ReevaluateReviewEligibilityOnLessonOutcomeOverridden::class,
             ReevaluateQualityAlertOnLessonOutcomeOverridden::class,
+            ReevaluateReferralRewardOnLessonOutcomeOverridden::class,
+        ],
+        // Phase 19D — a refunded lesson invalidates its referral reward.
+        LessonRefundCompleted::class => [
+            ReverseReferralRewardOnLessonRefundCompleted::class,
+        ],
+        // Phase 19D — referrer-facing reward notifications (idempotent).
+        ReferralRewardCredited::class => [
+            [SendReferralRewardNotifications::class, 'handleCredited'],
+        ],
+        ReferralRewardHeld::class => [
+            [SendReferralRewardNotifications::class, 'handleHeld'],
+        ],
+        ReferralRewardReversed::class => [
+            [SendReferralRewardNotifications::class, 'handleReversed'],
         ],
         // Phase 17S — the eligible student is notified a completed
         // lesson is ready for review; no recurring reminder is scheduled.

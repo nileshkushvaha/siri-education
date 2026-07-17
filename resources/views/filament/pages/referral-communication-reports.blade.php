@@ -66,11 +66,22 @@
                     <span class="text-gray-700 dark:text-gray-300">Reversals: <span class="font-semibold {{ $referrals->reversalsInPeriod > 0 ? 'text-danger-600' : 'text-gray-950 dark:text-white' }}">{{ $referrals->reversalsInPeriod }}</span></span>
                     <span class="text-gray-700 dark:text-gray-300">Referral module: <span class="font-semibold text-gray-950 dark:text-white">{{ $referrals->referralModuleEnabled ? 'Enabled' : 'Disabled' }}</span></span>
                 </div>
+                {{-- Phase 19D — reward-lifecycle and attribution figures from the Referral domain --}}
+                <div class="mt-3 flex flex-wrap gap-6 text-sm">
+                    <span class="text-gray-700 dark:text-gray-300">Attributions in period: <span class="font-semibold text-gray-950 dark:text-white">{{ $referrals->attributionsInPeriod }}</span></span>
+                    @foreach($referrals->rewardsByStatus as $status => $count)
+                        <span class="text-gray-700 dark:text-gray-300">Rewards {{ str_replace('_', ' ', $status) }}: <span class="font-semibold text-gray-950 dark:text-white">{{ $count }}</span></span>
+                    @endforeach
+                    @foreach($referrals->reversedRewardAmountByCurrency as $currency => $minor)
+                        <span class="text-gray-700 dark:text-gray-300">Reversed ({{ $currency }}): <span class="font-semibold text-danger-600">{{ \App\Support\MoneyFormatter::format($minor, $currency) }}</span></span>
+                    @endforeach
+                    <span class="text-gray-700 dark:text-gray-300">Open held/failed queue: <span class="font-semibold {{ $referrals->heldOrFailedRewardsOpen > 0 ? 'text-warning-600' : 'text-gray-950 dark:text-white' }}">{{ $referrals->heldOrFailedRewardsOpen }}</span></span>
+                </div>
                 <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    A referral reward is counted only when the wallet ledger confirms the credit. Version 1 has no referral
-                    code, attribution, campaign or reward-status domain — conversion rate, top referrers, campaign
-                    performance and abuse flags are unavailable until that domain exists, and no referral revenue or ROI
-                    figure is ever computed.
+                    Credited value is counted only when the wallet ledger confirms it; lifecycle counts come from the
+                    referral reward records and sign-ups from attribution records. Referral conversion rate remains
+                    unavailable (no agreed qualifying-event denominator), referred booking value is never labeled
+                    revenue, and no ROI figure is ever computed.
                 </p>
             </div>
         @endif

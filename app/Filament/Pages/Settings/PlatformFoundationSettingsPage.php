@@ -8,11 +8,9 @@ use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
 use App\Settings\LocalizationSettings;
-use App\Settings\ReferralSettings;
 use App\Settings\WalletSettings;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -57,7 +55,7 @@ class PlatformFoundationSettingsPage extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Prepare booking, wallet, instructor, referral, localization, and feature flag defaults. Meeting providers live under Meeting Settings.';
+        return 'Prepare booking, wallet, instructor, localization, and feature flag defaults. Referral reward rules live in Referral Campaigns; meeting providers live under Meeting Settings.';
     }
 
     public function getBreadcrumbs(): array
@@ -74,7 +72,6 @@ class PlatformFoundationSettingsPage extends Page
         $booking = app(BookingSettings::class);
         $wallet = app(WalletSettings::class);
         $instructor = app(InstructorSettings::class);
-        $referral = app(ReferralSettings::class);
         $localization = app(LocalizationSettings::class);
         $features = app(FeatureSettings::class);
 
@@ -95,10 +92,6 @@ class PlatformFoundationSettingsPage extends Page
             'profile_publish_requires_approval' => $instructor->profile_publish_requires_approval,
             'featured_instructor_limit' => $instructor->featured_instructor_limit,
             'availability_required_for_public_profile' => $instructor->availability_required_for_public_profile,
-            'reward_type' => $referral->reward_type,
-            'referrer_reward_amount' => $referral->referrer_reward_amount,
-            'referee_reward_amount' => $referral->referee_reward_amount,
-            'reward_unlock_days' => $referral->reward_unlock_days,
             'default_country' => $localization->default_country,
             'country_detection_enabled' => $localization->country_detection_enabled,
             'allow_user_locale_switching' => $localization->allow_user_locale_switching,
@@ -174,24 +167,6 @@ class PlatformFoundationSettingsPage extends Page
                         ]),
                     ]),
 
-                Section::make('Referral')
-                    ->description('Stored referral defaults; no reward workflow is wired in this phase. Enable the Referral module in Feature Flags below.')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Select::make('reward_type')
-                                ->options([
-                                    'wallet_credit' => 'Wallet Credit',
-                                    'discount' => 'Discount',
-                                    'manual' => 'Manual',
-                                ])
-                                ->required()
-                                ->native(false),
-                            $this->numericInput('referrer_reward_amount', 'Referrer Reward', 0),
-                            $this->numericInput('referee_reward_amount', 'Referee Reward', 0),
-                            $this->integerInput('reward_unlock_days', 'Unlock Days', 0, 365),
-                        ]),
-                    ]),
-
                 Section::make('Localization')
                     ->description('Country and locale-switching defaults. Timezone, language, and currency live under General Settings.')
                     ->schema([
@@ -233,7 +208,6 @@ class PlatformFoundationSettingsPage extends Page
         $this->saveBooking($data);
         $this->saveWallet($data);
         $this->saveInstructor($data);
-        $this->saveReferral($data);
         $this->saveLocalization($data);
         $this->saveFeatures($data);
 
@@ -301,19 +275,6 @@ class PlatformFoundationSettingsPage extends Page
         $settings->profile_publish_requires_approval = (bool) ($data['profile_publish_requires_approval'] ?? false);
         $settings->featured_instructor_limit = (int) $data['featured_instructor_limit'];
         $settings->availability_required_for_public_profile = (bool) ($data['availability_required_for_public_profile'] ?? false);
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
-    }
-
-    /** @param array<string, mixed> $data */
-    private function saveReferral(array $data): void
-    {
-        $settings = app(ReferralSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->reward_type = $data['reward_type'];
-        $settings->referrer_reward_amount = (float) $data['referrer_reward_amount'];
-        $settings->referee_reward_amount = (float) $data['referee_reward_amount'];
-        $settings->reward_unlock_days = (int) $data['reward_unlock_days'];
         $settings->save();
         $this->logSettingsUpdate('settings', $settings, $before);
     }

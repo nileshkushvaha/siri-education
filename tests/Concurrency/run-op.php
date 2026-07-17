@@ -28,7 +28,12 @@ use App\Models\InstructorWithdrawalRequest;
 use App\Models\Lesson;
 use App\Models\LessonFinancialDisposition;
 use App\Models\LessonReviewEligibility;
+use App\Models\ReferralReward;
 use App\Models\User;
+use App\Referral\Contracts\ReferralAttributionServiceInterface;
+use App\Referral\Contracts\ReferralCodeServiceInterface;
+use App\Referral\Contracts\ReferralEligibilityServiceInterface;
+use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Settings\RazorpayXPayoutSettings;
@@ -374,6 +379,62 @@ try {
             ));
 
             return ['cancelled' => true];
+        })(),
+
+        // Phase 19B — two workers race getOrCreateForStudent for the SAME
+        // student; the user_id unique index must leave exactly one code
+        // and both callers must receive it.
+        'referral-generate-code' => (function () use ($args) {
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $code = app(ReferralCodeServiceInterface::class)->getOrCreateForStudent($student);
+
+            return ['code_id' => $code->id, 'code' => $code->code];
+        })(),
+
+        // Phase 19B — two workers race attribution for the SAME referred
+        // student with different codes; the referred_student_id unique
+        // index must leave exactly one attribution (loser returns null).
+        'referral-attribute' => (function () use ($args) {
+            $referred = User::query()->findOrFail($args['referred_student_id']);
+
+            $attribution = app(ReferralAttributionServiceInterface::class)
+                ->attributeFromRegistration($referred, $args['code'], $args['source'] ?? null);
+
+            return ['attribution_id' => $attribution?->id, 'referrer_id' => $attribution?->referrer_id];
+        })(),
+
+        // Phase 19D — two workers evaluate lesson(s); unique(lesson_id)
+        // and the locked class-cap check must keep rewards exactly-once.
+        'referral-evaluate-lesson' => (function () use ($args) {
+            $lesson = Lesson::query()->findOrFail($args['lesson_id']);
+
+            $reward = app(ReferralEligibilityServiceInterface::class)
+                ->evaluateCompletedLesson($lesson);
+
+            return ['reward_id' => $reward?->id, 'status' => $reward?->status?->value];
+        })(),
+
+        // Phase 19D — two workers credit the SAME reward; the row lock +
+        // ledger idempotency key must post exactly one credit.
+        'referral-credit-reward' => (function () use ($args) {
+            $reward = ReferralReward::query()->findOrFail($args['reward_id']);
+
+            $result = app(ReferralRewardServiceInterface::class)->creditReward($reward);
+
+            return ['status' => $result->status->value, 'ledger_entry_id' => $result->wallet_ledger_entry_id];
+        })(),
+
+        // Phase 19D — two workers invalidate the SAME credited reward;
+        // exactly one reversal ledger entry may ever exist.
+        'referral-reverse-lesson' => (function () use ($args) {
+            $lesson = Lesson::query()->findOrFail($args['lesson_id']);
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            $result = app(ReferralRewardServiceInterface::class)
+                ->reevaluateLesson($lesson, $actor, 'concurrency_test_invalidation');
+
+            return ['status' => $result?->status?->value, 'reversal_ledger_entry_id' => $result?->reversal_ledger_entry_id];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

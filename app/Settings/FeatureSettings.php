@@ -8,7 +8,7 @@ use Spatie\LaravelSettings\Settings;
 
 /**
  * The single on/off switch per feature module. Domain settings classes
- * (WalletSettings, ReferralSettings, MeetingSettings, ...) hold pure
+ * (WalletSettings, MeetingSettings, BookingSettings, ...) hold pure
  * configuration for that module and never redeclare their own `enabled`
  * field — this class is the one place that decides whether a module is
  * active at all, so there is exactly one switch per feature to check or

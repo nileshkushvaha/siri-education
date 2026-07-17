@@ -11,7 +11,6 @@ use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
 use App\Settings\LocalizationSettings;
 use App\Settings\MeetingSettings;
-use App\Settings\ReferralSettings;
 use App\Settings\WalletSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -35,7 +34,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $wallet = app(WalletSettings::class);
         $meeting = app(MeetingSettings::class);
         $instructor = app(InstructorSettings::class);
-        $referral = app(ReferralSettings::class);
         $localization = app(LocalizationSettings::class);
         $features = app(FeatureSettings::class);
 
@@ -45,7 +43,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(100.0, $wallet->minimum_recharge_amount);
         $this->assertSame('manual', $meeting->default_provider);
         $this->assertTrue($instructor->approval_required);
-        $this->assertSame('wallet_credit', $referral->reward_type);
         $this->assertSame('IN', $localization->default_country);
         $this->assertTrue($features->demo_lessons_enabled);
         $this->assertFalse($features->wallet_enabled);
@@ -55,10 +52,12 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
 
     public function test_feature_settings_is_the_single_switch_per_module(): void
     {
-        // Neither WalletSettings nor ReferralSettings redeclares its own
-        // "enabled" — FeatureSettings is the only on/off switch.
+        // WalletSettings never redeclares its own "enabled" —
+        // FeatureSettings is the only on/off switch. ReferralSettings was
+        // retired entirely in Phase 19C: referral_campaigns is the single
+        // source of reward rules, so no settings class may compete.
         $this->assertFalse(property_exists(app(WalletSettings::class), 'enabled'));
-        $this->assertFalse(property_exists(app(ReferralSettings::class), 'enabled'));
+        $this->assertFalse(class_exists('App\Settings\ReferralSettings'));
 
         $features = app(FeatureSettings::class);
         $features->wallet_enabled = true;
@@ -120,7 +119,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame('US', app()->make(LocalizationSettings::class)->refresh()->default_country);
     }
 
-    public function test_platform_foundation_page_saves_instructor_and_referral_settings(): void
+    public function test_platform_foundation_page_saves_instructor_settings(): void
     {
         $admin = User::factory()->create(['status' => 'active']);
         $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
@@ -130,20 +129,29 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         Livewire::test(PlatformFoundationSettingsPage::class)
             ->set('data.approval_required', false)
             ->set('data.featured_instructor_limit', 12)
-            ->set('data.reward_type', 'discount')
-            ->set('data.referrer_reward_amount', 50)
-            ->set('data.referee_reward_amount', 25)
             ->call('save')
             ->assertNotified('Platform foundation settings saved');
 
         $instructor = app()->make(InstructorSettings::class)->refresh();
         $this->assertFalse($instructor->approval_required);
         $this->assertSame(12, $instructor->featured_instructor_limit);
+    }
 
-        $referral = app()->make(ReferralSettings::class)->refresh();
-        $this->assertSame('discount', $referral->reward_type);
-        $this->assertSame(50.0, $referral->referrer_reward_amount);
-        $this->assertSame(25.0, $referral->referee_reward_amount);
+    public function test_platform_foundation_page_no_longer_exposes_legacy_referral_reward_fields(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+
+        $this->actingAs($admin);
+
+        // Phase 19C: campaign rules are the single reward source — the
+        // page keeps the referral feature switch but none of the retired
+        // float reward fields.
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->assertSee('Referral')
+            ->assertDontSee('Referrer Reward')
+            ->assertDontSee('Referee Reward')
+            ->assertDontSee('Unlock Days');
     }
 
     public function test_booking_window_fields_bind_to_the_fields_availability_rules_actually_read(): void

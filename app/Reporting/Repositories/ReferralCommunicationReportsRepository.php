@@ -49,6 +49,28 @@ final class ReferralCommunicationReportsRepository
             ->groupBy('currency_code')
             ->get();
 
+        // Phase 19D — lifecycle counts from the reward table (rows created
+        // in the period) and attribution volume; the open held/failed
+        // queue is a point-in-time figure, not period-bounded.
+        $rewardsByStatus = DB::table('referral_rewards')
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->where('created_at', '>=', $period->startUtc)
+            ->where('created_at', '<', $period->endUtcExclusive)
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+
+        $reversedByCurrency = DB::table('referral_rewards')
+            ->selectRaw('reward_currency_code, COALESCE(SUM(reward_amount_minor), 0) as amount')
+            ->where('status', 'reversed')
+            ->where('reversed_at', '>=', $period->startUtc)
+            ->where('reversed_at', '<', $period->endUtcExclusive)
+            ->groupBy('reward_currency_code')
+            ->pluck('amount', 'reward_currency_code')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+
         return new ReferralActivityData(
             creditsExecutedInPeriod: (int) $byCurrency->sum('aggregate'),
             creditedAmountByCurrency: $byCurrency->pluck('amount', 'currency_code')->map(fn ($v) => (int) $v)->all(),
@@ -60,6 +82,15 @@ final class ReferralCommunicationReportsRepository
                 ->where('created_at', '<', $period->endUtcExclusive)
                 ->count(),
             referralModuleEnabled: app(FeatureSettings::class)->referral_enabled,
+            attributionsInPeriod: (int) DB::table('referral_attributions')
+                ->where('attributed_at', '>=', $period->startUtc)
+                ->where('attributed_at', '<', $period->endUtcExclusive)
+                ->count(),
+            rewardsByStatus: $rewardsByStatus,
+            reversedRewardAmountByCurrency: $reversedByCurrency,
+            heldOrFailedRewardsOpen: (int) DB::table('referral_rewards')
+                ->whereIn('status', ['held', 'credit_failed'])
+                ->count(),
         );
     }
 

@@ -182,6 +182,31 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
+            // ── Referral rewards (Phase 19D) — failure/review states only ──
+            $log === 'referral_rewards' && $event === 'reward_credit_failed' => [
+                'title' => 'Referral Reward Credit Failed',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'color' => 'danger',
+                'priority' => 1,
+            ],
+
+            $log === 'referral_rewards' && $event === 'reward_held' => [
+                'title' => 'Referral Reward Held for Review',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-hand-raised',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
+            $log === 'referral_rewards' && $event === 'reward_reversal_required' => [
+                'title' => 'Referral Reward Needs Manual Reversal',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-arrow-uturn-left',
+                'color' => 'danger',
+                'priority' => 1,
+            ],
+
             // ── Public forms (Callback / Feedback / Support / General Inquiry) ──
             $log === 'forms' && $event === 'callback_requested' => [
                 'title' => 'New Callback Request',

@@ -28,6 +28,10 @@ class RegisterRequest extends FormRequest
                 app(PasswordRuleBuilder::class)->build(),
             ],
             'terms' => ['required', 'accepted'],
+            // Deliberately lenient: a malformed or unknown referral code
+            // must never block registration — attribution just silently
+            // does not happen (SRS 16.32). Only an absurd length fails.
+            'referral_code' => ['nullable', 'string', 'max:32'],
         ];
     }
 

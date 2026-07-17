@@ -84,6 +84,14 @@ final class AccountMenuService
                 'enabled' => fn (): bool => $this->features->wallet_enabled,
             ],
             [
+                'label' => 'Refer a Friend',
+                'route' => 'dashboard.refer-a-friend',
+                'icon' => 'heart',
+                'audience' => 'student',
+                'permission' => null,
+                'enabled' => fn (): bool => $this->features->referral_enabled,
+            ],
+            [
                 'label' => 'Homework',
                 'route' => 'dashboard.homework',
                 'icon' => 'pencil',

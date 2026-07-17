@@ -38,7 +38,27 @@ final class RegisterForm extends Component
 
     public bool $terms = false;
 
+    public ?string $referral_code = '';
+
+    /**
+     * The normalized code the ?ref= query parameter prefilled, if any —
+     * lets register() record whether the submitted code still came from
+     * the shareable link or was hand-edited (informational only; both
+     * run the identical backend validation).
+     */
+    public ?string $prefilledReferralCode = null;
+
     public ?string $banner = null;
+
+    public function mount(): void
+    {
+        $ref = request()->query('ref');
+
+        if (is_string($ref) && trim($ref) !== '') {
+            $this->referral_code = mb_substr(trim($ref), 0, 32);
+            $this->prefilledReferralCode = strtoupper($this->referral_code);
+        }
+    }
 
     /** @return array<string, mixed> */
     protected function rules(): array
@@ -71,6 +91,7 @@ final class RegisterForm extends Component
         // relaxing the shared rule itself.
         $this->last_name = blank($this->last_name) ? null : $this->last_name;
         $this->phone = blank($this->phone) ? null : $this->phone;
+        $this->referral_code = blank($this->referral_code) ? null : trim($this->referral_code);
 
         $this->validate();
         $this->throttleLimiter('login', ['email' => $this->email], 'email');
@@ -84,6 +105,11 @@ final class RegisterForm extends Component
                     'phone' => $this->phone,
                     'password' => $this->password,
                     'terms' => $this->terms,
+                    'referral_code' => $this->referral_code,
+                    'referral_code_source' => $this->referral_code !== null
+                        && $this->prefilledReferralCode === strtoupper($this->referral_code)
+                        ? 'link'
+                        : 'manual',
                 ],
                 ipAddress: request()->ip() ?? '',
                 userAgent: request()->userAgent() ?? '',

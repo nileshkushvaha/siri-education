@@ -9,6 +9,7 @@ use App\Enums\StudentStatus;
 use App\Events\Auth\UserRegistered;
 use App\Exceptions\Auth\RegistrationException;
 use App\Models\User;
+use App\Referral\Contracts\ReferralAttributionServiceInterface;
 use App\Settings\PasswordPolicySettings;
 use App\Settings\RegistrationSettings;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,7 @@ final class RegistrationService
         private readonly RegisterUserAction $registerAction,
         private readonly RegistrationSettings $regSettings,
         private readonly PasswordPolicySettings $policySettings,
+        private readonly ReferralAttributionServiceInterface $referralAttribution,
     ) {}
 
     /**
@@ -69,6 +71,15 @@ final class RegistrationService
             // null until a user actually applies to teach).
             if ($role->name === 'student') {
                 $user->profile?->update(['student_status' => StudentStatus::Registered]);
+
+                // Referral attribution — students only, registration-time
+                // only, strictly best-effort: the service swallows every
+                // invalid-code condition and never blocks registration.
+                $this->referralAttribution->attributeFromRegistration(
+                    $user,
+                    $data['referral_code'] ?? null,
+                    $data['referral_code_source'] ?? null,
+                );
             }
         }
 

@@ -6,6 +6,7 @@ namespace App\Reporting\DTOs;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * Shared export authorization/audit metadata contract (Phase 18B §19-20).
@@ -31,6 +32,8 @@ final readonly class ExportRequestContext
         public CarbonImmutable $generatedAt,
         public string $format,
         public int $maxRows,
+        /** One reference shared by the requested/completed/failed audit events AND embedded in the generated CSV (Phase 18I §9). */
+        public string $correlationReference,
     ) {}
 
     public static function forExport(
@@ -45,6 +48,7 @@ final readonly class ExportRequestContext
         array $safeFilterSummary,
         string $format = 'csv',
         int $maxRows = 50000,
+        ?string $correlationReference = null,
     ): self {
         return new self(
             reportKey: $reportKey,
@@ -59,6 +63,7 @@ final readonly class ExportRequestContext
             generatedAt: CarbonImmutable::now(),
             format: $format,
             maxRows: $maxRows,
+            correlationReference: $correlationReference ?? (string) Str::uuid(),
         );
     }
 
@@ -66,6 +71,7 @@ final readonly class ExportRequestContext
     public function toAuditMetadata(): array
     {
         return [
+            'correlation_reference' => $this->correlationReference,
             'report_key' => $this->reportKey,
             'requested_by' => $this->requestedByUserId,
             'sensitive' => $this->sensitive,

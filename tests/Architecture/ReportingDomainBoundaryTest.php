@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Architecture;
 
+use App\Reporting\Exports\ReportCsvExporter;
 use Tests\TestCase;
 
 /**
@@ -223,6 +224,86 @@ class ReportingDomainBoundaryTest extends TestCase
 
             foreach (['retentionRate', 'retention_rate', 'riskScore', 'risk_score', 'churnPrediction', 'lifetimeValue', 'lifetime_value'] as $needle) {
                 $this->assertStringNotContainsString($needle, $contents, "{$file} must not introduce a retention/risk/LTV concept (found \"{$needle}\") — §6.4/§6.7 left these unavailable.");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    // ── Phase 18I — export boundaries ─────────────────────────────────────
+
+    public function test_export_path_performs_no_source_domain_mutation_or_dynamic_sql(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting/Exports')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            foreach ([
+                'DB::table', 'DB::select', 'DB::statement', 'whereRaw', 'selectRaw',
+                '->save(', '->update(', '->delete(', '->create(',
+                'dispatch(', 'Notification::', 'Http::', 'Storage::', 'file_put_contents',
+                'request()->input', '$request->',
+            ] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} — the export path must be read-only composition over report services (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_every_export_definition_has_a_declared_export_permission(): void
+    {
+        foreach (ReportCsvExporter::definitions() as $definition) {
+            $this->assertContains(
+                $definition->exportPermission,
+                ['ExportReports', 'ExportFinancialReports', 'ExportSensitiveReports'],
+                "{$definition->key} must use one of the Phase 18B export permissions.",
+            );
+            $this->assertNotEmpty($definition->headers, "{$definition->key} must declare fixed headers — no dynamic columns.");
+            $this->assertGreaterThan(0, $definition->maxRows);
+            $this->assertLessThanOrEqual(ReportCsvExporter::MAX_ROWS, $definition->maxRows);
+        }
+    }
+
+    // ── Phase 18H — marketplace/executive boundaries ──────────────────────
+
+    public function test_marketplace_executive_pages_delegate_all_queries(): void
+    {
+        foreach ([
+            'app/Filament/Pages/MarketplaceSupplyDemand.php',
+            'app/Filament/Pages/ExecutiveKpiOverview.php',
+        ] as $path) {
+            $contents = (string) file_get_contents(base_path($path));
+
+            foreach (['DB::table', 'DB::select', 'Booking::', 'User::query', 'Wallet', 'teacher_availability', 'teacher_subjects'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$path} must delegate every query to the service (found \"{$needle}\").");
+            }
+
+            $this->assertStringContainsString('MarketplaceExecutiveReportServiceInterface', $contents);
+        }
+    }
+
+    public function test_executive_service_is_a_pure_composer_with_no_own_queries(): void
+    {
+        // The executive overview must never become a second calculation
+        // owner: no query builder, no raw SQL — only calls into the owning
+        // report services (the marketplace repository is the single
+        // repository dependency, used for the marketplace report only).
+        $contents = (string) file_get_contents(base_path('app/Reporting/Services/MarketplaceExecutiveReportService.php'));
+
+        foreach (['DB::table', 'DB::select', 'selectRaw', 'whereRaw', '::query()'] as $needle) {
+            $this->assertStringNotContainsString($needle, $contents, "MarketplaceExecutiveReportService must compose owners, never query (found \"{$needle}\").");
+        }
+    }
+
+    public function test_marketplace_dtos_expose_no_models_and_no_forbidden_kpis(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting/DTOs/Marketplace')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertStringNotContainsString('use App\Models\\', $contents, "{$file} must carry scalars/report DTOs only.");
+
+            foreach (['$revenue', '$margin', '$lifetimeValue', '$retention', '$churn', '$utilization', '$healthScore', '$ranking', '$score'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} must never carry a fabricated KPI (found \"{$needle}\").");
             }
         }
 

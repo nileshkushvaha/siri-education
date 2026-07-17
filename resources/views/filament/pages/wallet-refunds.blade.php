@@ -10,6 +10,10 @@
 
         @include('filament.pages.partials.financial-filter-bar', ['freshness' => $freshness])
 
+        <div class="flex justify-end">
+            @include('filament.pages.partials.report-export-button', ['exportKey' => 'wallet_refund_linkage_rows', 'label' => 'Refund linkage rows'])
+        </div>
+
         {{-- ── Current-state wallet metrics (as-of, never period-scoped) ── --}}
         <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="fi-section-header px-6 py-4 border-b border-gray-200 dark:border-white/10">

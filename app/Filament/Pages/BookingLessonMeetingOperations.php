@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingStatus;
+use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Country;
@@ -41,6 +42,8 @@ use Illuminate\Support\Collection;
  */
 class BookingLessonMeetingOperations extends Page
 {
+    use ExportsReportCsv;
+
     protected string $view = 'filament.pages.booking-lesson-meeting-operations';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;

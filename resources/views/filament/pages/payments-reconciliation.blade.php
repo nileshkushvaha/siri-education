@@ -9,6 +9,10 @@
 
         @include('filament.pages.partials.financial-filter-bar', ['freshness' => $freshness])
 
+        <div class="flex justify-end">
+            @include('filament.pages.partials.report-export-button', ['exportKey' => 'payment_reconciliation_rows', 'label' => 'Reconciliation rows'])
+        </div>
+
         {{-- ── Attempt outcomes ──────────────────────────────────────────── --}}
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             @foreach([

@@ -14,10 +14,13 @@ use App\Filament\Widgets\Booking\PopularTimeSlotsChart;
 use App\Filament\Widgets\Booking\TeacherUtilizationWidget;
 use App\Filament\Widgets\Booking\TopTeachersWidget;
 use App\Models\Booking;
+use App\Reporting\DTOs\ExportRequestContext;
+use App\Reporting\Support\ReportExportAuditor;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingReports extends Page
@@ -58,12 +61,51 @@ class BookingReports extends Page
             Action::make('export')
                 ->label('Export KPIs (CSV)')
                 ->icon('heroicon-o-arrow-down-tray')
+                ->visible(fn (): bool => self::canExportKpis())
                 ->action(fn (): StreamedResponse => $this->exportKpis()),
         ];
     }
 
+    /** Phase 18I hardening: the legacy KPI CSV now requires the shared export permission. */
+    public static function canExportKpis(): bool
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return true;
+        }
+
+        try {
+            return $user->hasPermissionTo('ExportReports');
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
+    }
+
     private function exportKpis(): StreamedResponse
     {
+        abort_unless(self::canExportKpis(), 403);
+
+        // Phase 18I: the legacy export is audited through the shared lifecycle,
+        // keeping its CSV columns and filename fully compatible.
+        $auditor = app(ReportExportAuditor::class);
+        $context = ExportRequestContext::forExport(
+            reportKey: 'booking_lesson_kpis',
+            requestedBy: auth()->user(),
+            requiredExportPermission: 'ExportReports',
+            sensitive: false,
+            financial: false,
+            reportingTimezone: 'UTC',
+            periodStart: now()->subDays(29)->startOfDay()->toImmutable()->utc(),
+            periodEndExclusive: now()->toImmutable()->utc(),
+            safeFilterSummary: ['preset' => 'legacy_last_30_days'],
+        );
+        $auditor->recordRequested(auth()->user(), $context);
+
         $analytics = app(BookingAnalyticsServiceInterface::class);
         $from = now()->subDays(29)->startOfDay()->toImmutable();
         $to = now()->toImmutable();
@@ -99,6 +141,8 @@ class BookingReports extends Page
                 'metric' => $row['teacher'],
                 'value' => $row['utilization'],
             ]));
+
+        $auditor->recordCompleted(auth()->user(), $context, $rows->count());
 
         return CsvExport::download($rows, [
             'Section' => 'section',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\InstructorStatus;
+use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Models\Country;
 use App\Models\Subject;
 use App\Reporting\Contracts\InstructorPerformanceReportServiceInterface;
@@ -34,6 +35,8 @@ use Illuminate\Support\Collection;
  */
 class InstructorPerformance extends Page
 {
+    use ExportsReportCsv;
+
     protected string $view = 'filament.pages.instructor-performance';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;

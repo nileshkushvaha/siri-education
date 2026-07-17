@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Filament\Pages\Concerns\HasFinancialReportFilters;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\ReportAccessContextInterface;
@@ -18,6 +19,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 /** Phase 18E — Payments & Reconciliation report (§13/§14). Requires `ViewPaymentReports`. */
 class PaymentsReconciliation extends Page
 {
+    use ExportsReportCsv;
     use HasFinancialReportFilters;
 
     protected string $view = 'filament.pages.payments-reconciliation';

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Filament\Pages\Concerns\HasFinancialReportFilters;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\ReportAccessContextInterface;
@@ -21,6 +22,7 @@ use Illuminate\Support\Collection;
 /** Phase 18E — Wallet & Refunds report (§12/§15). Requires `ViewWalletReports`. */
 class WalletRefunds extends Page
 {
+    use ExportsReportCsv;
     use HasFinancialReportFilters;
 
     protected string $view = 'filament.pages.wallet-refunds';

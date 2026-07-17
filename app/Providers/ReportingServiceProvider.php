@@ -8,6 +8,7 @@ use App\Reporting\Contracts\BookingLessonMeetingOperationsReportServiceInterface
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\InstructorPerformanceReportServiceInterface;
 use App\Reporting\Contracts\LearningAnalyticsReportServiceInterface;
+use App\Reporting\Contracts\MarketplaceExecutiveReportServiceInterface;
 use App\Reporting\Contracts\MetricRegistryInterface;
 use App\Reporting\Contracts\ReferralCommunicationReportServiceInterface;
 use App\Reporting\Contracts\ReportAccessContextInterface;
@@ -19,6 +20,7 @@ use App\Reporting\Services\BookingLessonMeetingOperationsReportService;
 use App\Reporting\Services\FinancialReportsService;
 use App\Reporting\Services\InstructorPerformanceReportService;
 use App\Reporting\Services\LearningAnalyticsReportService;
+use App\Reporting\Services\MarketplaceExecutiveReportService;
 use App\Reporting\Services\ReferralCommunicationReportService;
 use App\Reporting\Services\ReportAccessContext;
 use App\Reporting\Services\StudentEngagementReportService;
@@ -37,5 +39,6 @@ class ReportingServiceProvider extends ServiceProvider
         $this->app->singleton(FinancialReportsServiceInterface::class, FinancialReportsService::class);
         $this->app->singleton(LearningAnalyticsReportServiceInterface::class, LearningAnalyticsReportService::class);
         $this->app->singleton(ReferralCommunicationReportServiceInterface::class, ReferralCommunicationReportService::class);
+        $this->app->singleton(MarketplaceExecutiveReportServiceInterface::class, MarketplaceExecutiveReportService::class);
     }
 }

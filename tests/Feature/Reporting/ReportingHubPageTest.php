@@ -66,7 +66,9 @@ class ReportingHubPageTest extends TestCase
 
         $response = $this->actingAs($superAdmin)->get(ReportingHub::getUrl())->assertOk();
 
-        $response->assertSee('Executive Summary');
+        // Phase 18H implemented the executive overview — `meeting_reliability`
+        // is the remaining planned placeholder.
+        $response->assertSee('Executive KPI Overview');
         $response->assertSee('Planned');
         // No fabricated numeric KPI values are ever rendered on this page.
         $response->assertDontSee('₹');

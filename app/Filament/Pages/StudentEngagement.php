@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\StudentStatus;
+use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Models\AcademicLevel;
 use App\Models\Country;
 use App\Reporting\Contracts\ReportAccessContextInterface;
@@ -32,6 +33,8 @@ use Illuminate\Support\Collection;
  */
 class StudentEngagement extends Page
 {
+    use ExportsReportCsv;
+
     protected string $view = 'filament.pages.student-engagement';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;

@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\LearningGoalStatus;
 use App\Enums\LearningPlanStatus;
+use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\AcademicLevel;
 use App\Models\Subject;
@@ -38,6 +39,8 @@ use Illuminate\Support\Collection;
  */
 class LearningAnalytics extends Page
 {
+    use ExportsReportCsv;
+
     protected string $view = 'filament.pages.learning-analytics';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;

@@ -6,10 +6,12 @@ namespace App\Reporting\Registry;
 
 use App\Filament\Pages\BookingLessonMeetingOperations;
 use App\Filament\Pages\BookingReports;
+use App\Filament\Pages\ExecutiveKpiOverview;
 use App\Filament\Pages\FinanceOverview;
 use App\Filament\Pages\InstructorFinancials;
 use App\Filament\Pages\InstructorPerformance;
 use App\Filament\Pages\LearningAnalytics;
+use App\Filament\Pages\MarketplaceSupplyDemand;
 use App\Filament\Pages\PaymentsReconciliation;
 use App\Filament\Pages\ReferralCommunicationReports;
 use App\Filament\Pages\ReviewsQualityDashboard;
@@ -84,20 +86,20 @@ final class ReportRegistry implements ReportRegistryInterface
         return [
             new ReportDefinition(
                 key: 'executive_summary',
-                label: 'Executive Summary',
-                description: 'Cross-domain headline indicators for leadership review.',
+                label: 'Executive KPI Overview',
+                description: 'Cross-domain headline KPIs composed from the owning reports (Phase 18H) — every figure keeps its original owner, permission and definitions; no calculation happens here.',
                 category: ReportCategory::Executive,
                 requiredViewPermission: 'ViewExecutiveReports',
                 requiredExportPermission: null,
-                sensitive: false,
-                financial: false,
-                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Currency],
+                sensitive: true,
+                financial: true,
+                supportedFilters: [],
                 defaultPeriodPreset: ReportingPeriodPreset::ThisMonth,
-                dataSourceDomain: 'Cross-domain',
+                dataSourceDomain: 'Cross-domain composition (Phases 18C–18G report services)',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: ExecutiveKpiOverview::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'booking_lesson_meeting_operations',
@@ -105,7 +107,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 description: 'Actionable day-to-day operational items: today\'s lessons, cancellations, no-shows, technical issues, and meeting creation failures.',
                 category: ReportCategory::Operations,
                 requiredViewPermission: 'ViewOperationalReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportReports',
                 sensitive: false,
                 financial: false,
                 supportedFilters: [
@@ -117,7 +119,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Booking, Lessons, Meetings',
                 freshness: ReportDataFreshness::Live,
                 routeName: BookingLessonMeetingOperations::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
@@ -126,7 +128,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 description: 'Student acquisition, verification, engagement, learning participation and inactivity review.',
                 category: ReportCategory::Students,
                 requiredViewPermission: 'ViewStudentReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportReports',
                 sensitive: true,
                 financial: false,
                 supportedFilters: [ReportFilterKey::Country, ReportFilterKey::EducationLevel, ReportFilterKey::Student, ReportFilterKey::StudentStatus],
@@ -134,7 +136,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Users, Booking, Lessons, Learning Plans, Homework, Reviews',
                 freshness: ReportDataFreshness::Live,
                 routeName: StudentEngagement::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
@@ -143,7 +145,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 description: 'Instructor lifecycle, teaching activity, booked hours, ratings and demo-to-paid conversion.',
                 category: ReportCategory::Instructors,
                 requiredViewPermission: 'ViewInstructorReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportReports',
                 sensitive: true,
                 financial: false,
                 supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Instructor, ReportFilterKey::Subject, ReportFilterKey::InstructorStatus, ReportFilterKey::BookingType, ReportFilterKey::LessonOutcome],
@@ -151,16 +153,16 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Users, Booking, Lessons, Reviews (aggregates), Quality',
                 freshness: ReportDataFreshness::Live,
                 routeName: InstructorPerformance::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
                 key: 'booking_lesson_kpis',
                 label: 'Booking Reports',
-                description: 'Booking KPIs, popular subjects/time slots, and teacher utilization.',
+                description: 'Booking KPIs, popular subjects/time slots, and teacher utilization. Its legacy KPI CSV is registered through the shared export contract (Phase 18I) with unchanged columns and filename.',
                 category: ReportCategory::BookingsLessons,
                 requiredViewPermission: 'ViewBookingLessonReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportReports',
                 sensitive: false,
                 financial: false,
                 supportedFilters: [ReportFilterKey::BookingType, ReportFilterKey::RecurrenceType, ReportFilterKey::BookingStatus, ReportFilterKey::Country, ReportFilterKey::Subject],
@@ -168,7 +170,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Booking',
                 freshness: ReportDataFreshness::Live,
                 routeName: BookingReports::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
@@ -194,7 +196,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 description: 'Learning Dashboard: goals, plans, milestones, progress reviews and homework (Phase 18F).',
                 category: ReportCategory::Learning,
                 requiredViewPermission: 'ViewLearningReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportReports',
                 sensitive: true,
                 financial: false,
                 supportedFilters: [
@@ -206,7 +208,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Learning Plans, Learning Goals, Milestones, Progress Reviews, Homework',
                 freshness: ReportDataFreshness::Live,
                 routeName: LearningAnalytics::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
@@ -290,7 +292,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 description: 'Lesson refund decisions, executed wallet refund credits, manual-review queue and linkage. Version 1 refund policy is wallet-credit only.',
                 category: ReportCategory::Wallet,
                 requiredViewPermission: 'ViewWalletReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportFinancialReports',
                 sensitive: true,
                 financial: true,
                 supportedFilters: [ReportFilterKey::Currency, ReportFilterKey::LessonOutcome],
@@ -298,7 +300,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Earnings (lesson_financial_dispositions), Wallet (refund ledger credits)',
                 freshness: ReportDataFreshness::Live,
                 routeName: WalletRefunds::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
@@ -307,7 +309,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 description: 'Successful, failed, cancelled and refunded payment collection.',
                 category: ReportCategory::Payments,
                 requiredViewPermission: 'ViewPaymentReports',
-                requiredExportPermission: null,
+                requiredExportPermission: 'ExportFinancialReports',
                 sensitive: false,
                 financial: true,
                 supportedFilters: [ReportFilterKey::Currency, ReportFilterKey::PaymentStatus],
@@ -315,7 +317,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 dataSourceDomain: 'Booking (Payments)',
                 freshness: ReportDataFreshness::Live,
                 routeName: PaymentsReconciliation::class,
-                exportAvailable: false,
+                exportAvailable: true,
                 available: true,
             ),
             new ReportDefinition(
@@ -372,19 +374,19 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'marketplace_supply_demand',
                 label: 'Marketplace Supply & Demand',
-                description: 'Marketplace supply and demand indicators by country and subject.',
+                description: 'Current-state instructor supply versus period-event booking demand, compared on compatible dimensions only — no score, no ranking (Phase 18H).',
                 category: ReportCategory::Marketplace,
                 requiredViewPermission: 'ViewMarketplaceReports',
                 requiredExportPermission: null,
                 sensitive: false,
                 financial: false,
-                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Subject],
+                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Subject, ReportFilterKey::Instructor],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Booking, Users',
+                dataSourceDomain: 'Users (instructor lifecycle), teacher_subjects, teacher_availability, Booking, Learning Goals, student_preferred_subjects',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: MarketplaceSupplyDemand::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'reviews_quality_dashboard',

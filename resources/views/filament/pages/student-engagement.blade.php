@@ -15,6 +15,11 @@
             </p>
         </div>
 
+        <div class="flex justify-end">
+            @include('filament.pages.partials.report-export-button', ['exportKey' => 'student_engagement_rows', 'label' => 'Engagement rows'])
+        </div>
+
+
         {{-- ── Filters ─────────────────────────────────────────────────── --}}
         <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

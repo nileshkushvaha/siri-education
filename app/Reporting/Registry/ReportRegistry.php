@@ -6,9 +6,14 @@ namespace App\Reporting\Registry;
 
 use App\Filament\Pages\BookingLessonMeetingOperations;
 use App\Filament\Pages\BookingReports;
+use App\Filament\Pages\FinanceOverview;
+use App\Filament\Pages\InstructorFinancials;
 use App\Filament\Pages\InstructorPerformance;
+use App\Filament\Pages\LearningAnalytics;
+use App\Filament\Pages\PaymentsReconciliation;
 use App\Filament\Pages\ReviewsQualityDashboard;
 use App\Filament\Pages\StudentEngagement;
+use App\Filament\Pages\WalletRefunds;
 use App\Models\User;
 use App\Reporting\Contracts\ReportAccessContextInterface;
 use App\Reporting\Contracts\ReportRegistryInterface;
@@ -184,20 +189,65 @@ final class ReportRegistry implements ReportRegistryInterface
             ),
             new ReportDefinition(
                 key: 'learning_progress',
-                label: 'Learning Progress',
-                description: 'Homework and learning plan progress.',
+                label: 'Learning Analytics',
+                description: 'Learning Dashboard: goals, plans, milestones, progress reviews and homework (Phase 18F).',
                 category: ReportCategory::Learning,
                 requiredViewPermission: 'ViewLearningReports',
                 requiredExportPermission: null,
                 sensitive: true,
                 financial: false,
-                supportedFilters: [ReportFilterKey::Student, ReportFilterKey::Subject],
+                supportedFilters: [
+                    ReportFilterKey::Student, ReportFilterKey::Instructor, ReportFilterKey::Subject,
+                    ReportFilterKey::EducationLevel, ReportFilterKey::LearningPlanStatus,
+                    ReportFilterKey::LearningGoalStatus, ReportFilterKey::HomeworkStatus,
+                ],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Homework, Learning Plans',
+                dataSourceDomain: 'Learning Plans, Learning Goals, Milestones, Progress Reviews, Homework',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: LearningAnalytics::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
+            ),
+            new ReportDefinition(
+                key: 'learning_plan_report',
+                label: 'Learning Plan Report',
+                description: 'Learning Plan lifecycle, goals, milestones and progress reviews — a section of the Learning Analytics page.',
+                category: ReportCategory::Learning,
+                requiredViewPermission: 'ViewLearningReports',
+                requiredExportPermission: null,
+                sensitive: true,
+                financial: false,
+                supportedFilters: [
+                    ReportFilterKey::Student, ReportFilterKey::Instructor, ReportFilterKey::Subject,
+                    ReportFilterKey::EducationLevel, ReportFilterKey::LearningPlanStatus,
+                    ReportFilterKey::LearningGoalStatus,
+                ],
+                defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
+                dataSourceDomain: 'Learning Plans, Learning Goals, Milestones, Progress Reviews',
+                freshness: ReportDataFreshness::Live,
+                routeName: LearningAnalytics::class,
+                exportAvailable: false,
+                available: true,
+            ),
+            new ReportDefinition(
+                key: 'homework_report',
+                label: 'Homework Report',
+                description: 'Homework assignment, submission, overdue and grading activity — a section of the Learning Analytics page.',
+                category: ReportCategory::Learning,
+                requiredViewPermission: 'ViewLearningReports',
+                requiredExportPermission: null,
+                sensitive: true,
+                financial: false,
+                supportedFilters: [
+                    ReportFilterKey::Student, ReportFilterKey::Instructor,
+                    ReportFilterKey::HomeworkStatus,
+                ],
+                defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
+                dataSourceDomain: 'Homework',
+                freshness: ReportDataFreshness::Live,
+                routeName: LearningAnalytics::class,
+                exportAvailable: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'finance_overview',
@@ -212,9 +262,9 @@ final class ReportRegistry implements ReportRegistryInterface
                 defaultPeriodPreset: ReportingPeriodPreset::ThisMonth,
                 dataSourceDomain: 'Booking, Wallet, Earnings',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: FinanceOverview::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'wallet_activity',
@@ -229,9 +279,26 @@ final class ReportRegistry implements ReportRegistryInterface
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
                 dataSourceDomain: 'Wallet',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: WalletRefunds::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
+            ),
+            new ReportDefinition(
+                key: 'refund_report',
+                label: 'Refund Report',
+                description: 'Lesson refund decisions, executed wallet refund credits, manual-review queue and linkage. Version 1 refund policy is wallet-credit only.',
+                category: ReportCategory::Wallet,
+                requiredViewPermission: 'ViewWalletReports',
+                requiredExportPermission: null,
+                sensitive: true,
+                financial: true,
+                supportedFilters: [ReportFilterKey::Currency, ReportFilterKey::LessonOutcome],
+                defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
+                dataSourceDomain: 'Earnings (lesson_financial_dispositions), Wallet (refund ledger credits)',
+                freshness: ReportDataFreshness::Live,
+                routeName: WalletRefunds::class,
+                exportAvailable: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'payment_outcomes',
@@ -246,9 +313,9 @@ final class ReportRegistry implements ReportRegistryInterface
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
                 dataSourceDomain: 'Booking (Payments)',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: PaymentsReconciliation::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'earnings_settlements',
@@ -263,9 +330,9 @@ final class ReportRegistry implements ReportRegistryInterface
                 defaultPeriodPreset: ReportingPeriodPreset::ThisMonth,
                 dataSourceDomain: 'Earnings',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: InstructorFinancials::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'referral_activity',

@@ -229,6 +229,166 @@ class ReportingDomainBoundaryTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    // ── Phase 18F — learning analytics boundaries ─────────────────────────
+
+    public function test_learning_reporting_never_imports_academic_mutation_paths(): void
+    {
+        // Import-form needles: doc comments may legitimately NAME the source
+        // services as calculation owners; an actual `use` import may not exist.
+        foreach ($this->phpFilesUnder(base_path('app/Reporting')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            foreach ([
+                'use App\Services\Student\LearningPlanService',
+                'use App\Services\Student\StudentLearningGoalService',
+                'use App\Homework\Services',
+                'use App\Homework\Actions',
+                'use App\Homework\Contracts',
+                '->completeMilestone(', '->completePlan(', '->archivePlan(',
+                '->createReview(', '->markReviewDue(', '->submit(', '->adjustPlan(',
+            ] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} — learning reporting is strictly read-only (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_learning_page_delegates_all_academic_queries_to_the_reporting_service(): void
+    {
+        $contents = (string) file_get_contents(base_path('app/Filament/Pages/LearningAnalytics.php'));
+
+        foreach ([
+            'DB::table', 'DB::select', 'HomeworkAssignment::', 'StudentLearningPlan::',
+            'StudentLearningGoal::', 'LearningPlanMilestone::', 'LearningPlanReview::',
+        ] as $needle) {
+            $this->assertStringNotContainsString($needle, $contents, "LearningAnalytics page must delegate academic queries to the service (found \"{$needle}\").");
+        }
+
+        $this->assertStringContainsString('LearningAnalyticsReportServiceInterface', $contents);
+    }
+
+    public function test_learning_dtos_expose_no_models_and_no_private_academic_fields(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting/DTOs/Learning')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertStringNotContainsString('use App\Models\\', $contents, "{$file} must carry scalars only.");
+
+            foreach (['submissionText', 'feedbackText', 'progressNotes', 'reviewNarrative', 'assessmentText', 'privateNote'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} must never carry private academic content (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_learning_reporting_has_no_finance_dependency(): void
+    {
+        foreach ([
+            'app/Reporting/Repositories/LearningPlanAnalyticsRepository.php',
+            'app/Reporting/Repositories/HomeworkAnalyticsRepository.php',
+            'app/Reporting/Services/LearningAnalyticsReportService.php',
+            'app/Reporting/Contracts/LearningAnalyticsReportServiceInterface.php',
+        ] as $path) {
+            $contents = (string) file_get_contents(base_path($path));
+
+            foreach (['App\Wallet', 'App\Earnings', 'MoneyFormatter', 'DTOs\Finance', 'wallet_ledger', 'booking_payments', 'instructor_earnings'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$path} — learning reporting must carry no finance dependency (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_academic_source_domains_do_not_depend_on_reporting(): void
+    {
+        foreach ([
+            base_path('app/Services/Student'),
+            base_path('app/Homework'),
+        ] as $directory) {
+            foreach ($this->phpFilesUnder($directory) as $file) {
+                $contents = (string) file_get_contents($file);
+
+                $this->assertStringNotContainsString('use App\Reporting\\', $contents, "{$file} — source academic domains must never depend on Reporting.");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    // ── Phase 18E — financial reporting boundaries ────────────────────────
+
+    public function test_financial_reporting_never_touches_mutation_services_or_providers(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            foreach ([
+                'WalletLedgerService', 'ExecuteLessonWalletRefundAction', 'LessonWalletRefundService',
+                'BookingPaymentServiceInterface', 'RazorpayPaymentProvider', 'StripePaymentProvider',
+                'RazorpayX', 'InstructorPayoutExecution', 'InstructorWithdrawalService',
+                'TransitionInstructorEarningAction', 'SettlementBatchService',
+                '->refund(', '->payout(', '->credit(', '->debit(', '->markPaid(', '->verifyCheckout(',
+            ] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} — financial reporting is strictly read-only (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_financial_filament_pages_delegate_all_queries_to_the_reporting_service(): void
+    {
+        foreach ([
+            'app/Filament/Pages/FinanceOverview.php',
+            'app/Filament/Pages/WalletRefunds.php',
+            'app/Filament/Pages/PaymentsReconciliation.php',
+            'app/Filament/Pages/InstructorFinancials.php',
+        ] as $path) {
+            $contents = (string) file_get_contents(base_path($path));
+
+            foreach (['DB::table', 'DB::select', '::query()', 'Wallet::', 'BookingPayment::', 'InstructorEarning::'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$path} must delegate every query to FinancialReportsServiceInterface (found \"{$needle}\").");
+            }
+
+            $this->assertStringContainsString('FinancialReportsServiceInterface', $contents);
+        }
+    }
+
+    public function test_finance_dtos_expose_no_models_and_no_secret_fields(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting/DTOs/Finance')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertStringNotContainsString('use App\Models\\', $contents, "{$file} must carry scalars only.");
+
+            foreach (['apiKey', 'webhookSecret', 'cardNumber', 'bankAccount', 'encryptedPayload', 'providerSignature'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} must never carry secret material (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_no_float_money_arithmetic_in_financial_repositories(): void
+    {
+        foreach ([
+            'app/Reporting/Repositories/WalletFinancialReportRepository.php',
+            'app/Reporting/Repositories/PaymentFinancialReportRepository.php',
+            'app/Reporting/Repositories/InstructorFinancialReportRepository.php',
+        ] as $path) {
+            $contents = (string) file_get_contents(base_path($path));
+
+            // Amounts are summed in SQL and cast to int; only display-layer
+            // MoneyFormatter (string/integer arithmetic) touches conversion.
+            $this->assertStringNotContainsString('(float)', $contents, "{$path} must never cast money to float.");
+            $this->assertStringNotContainsString('floatval', $contents);
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
     // ── Export/audit contract routes only through AuditTrailService ──────
 
     public function test_report_export_auditor_uses_only_the_existing_audit_trail_service(): void

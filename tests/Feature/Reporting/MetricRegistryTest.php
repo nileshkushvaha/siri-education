@@ -147,15 +147,41 @@ class MetricRegistryTest extends TestCase
 
     public function test_financial_metric_requires_a_financial_permission(): void
     {
+        // Phase 18E introduced the financial metric set — every one of them
+        // must be gated by one of the Phase 18B financial permissions, and
+        // no non-financial permission may guard a financial metric.
+        $financialPermissions = ['ViewFinanceReports', 'ViewWalletReports', 'ViewPaymentReports', 'ViewInstructorCompensationReports'];
+        $financial = array_filter(app(MetricRegistryInterface::class)->all(), fn (MetricDefinition $d) => $d->financial);
+
+        $this->assertNotEmpty($financial);
+
+        foreach ($financial as $metric) {
+            $this->assertContains($metric->requiredPermission, $financialPermissions, "Financial metric '{$metric->key}' must require a financial permission.");
+        }
+    }
+
+    public function test_monetary_metrics_declare_currency_safe_semantics(): void
+    {
+        // Every MoneyMinor metric's description must acknowledge currency
+        // grouping — the §9 policy that unlike currencies are never summed.
         foreach (app(MetricRegistryInterface::class)->all() as $metric) {
-            if ($metric->financial) {
-                $this->assertNotEmpty($metric->requiredPermission);
+            if ($metric->unit === MetricUnit::MoneyMinor) {
+                $this->assertStringContainsStringIgnoringCase('currenc', $metric->description.$metric->calculationOwner, "MoneyMinor metric '{$metric->key}' must document currency behavior.");
             }
         }
+    }
 
-        // None of the initial Version 1 operations metrics are financial —
-        // documented expectation, not an accidental omission.
-        $financial = array_filter(app(MetricRegistryInterface::class)->all(), fn (MetricDefinition $d) => $d->financial);
-        $this->assertCount(0, $financial);
+    public function test_no_revenue_or_margin_metric_exists(): void
+    {
+        // §7 Outcome B — no recognized-revenue definition exists, so no
+        // metric may carry the label; §5 forbids platform margin/net revenue.
+        foreach (app(MetricRegistryInterface::class)->all() as $metric) {
+            $this->assertStringNotContainsStringIgnoringCase('revenue', $metric->label, "Metric '{$metric->key}' must not be labeled revenue.");
+            $this->assertStringNotContainsStringIgnoringCase('margin', $metric->label);
+        }
+
+        $this->assertNull(app(MetricRegistryInterface::class)->find('net_revenue'));
+        $this->assertNull(app(MetricRegistryInterface::class)->find('platform_margin'));
+        $this->assertNull(app(MetricRegistryInterface::class)->find('recognized_revenue'));
     }
 }

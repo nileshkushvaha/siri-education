@@ -11,7 +11,10 @@ use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\SettlementBatchStatus;
 use App\Enums\InstructorStatus;
+use App\Enums\LearningGoalStatus;
+use App\Enums\LearningPlanStatus;
 use App\Enums\StudentStatus;
+use App\Homework\Enums\HomeworkStatus;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use App\Quality\Enums\InstructorQualityAlertStatus;
@@ -62,6 +65,9 @@ final readonly class ReportFilters
         'reviewStatus' => ReportFilterKey::ReviewStatus,
         'reviewReportStatus' => ReportFilterKey::ReviewReportStatus,
         'qualityAlertStatus' => ReportFilterKey::QualityAlertStatus,
+        'learningPlanStatus' => ReportFilterKey::LearningPlanStatus,
+        'learningGoalStatus' => ReportFilterKey::LearningGoalStatus,
+        'homeworkStatus' => ReportFilterKey::HomeworkStatus,
     ];
 
     public function __construct(
@@ -91,6 +97,9 @@ final readonly class ReportFilters
         public ?StudentReviewStatus $reviewStatus = null,
         public ?ReviewReportStatus $reviewReportStatus = null,
         public ?InstructorQualityAlertStatus $qualityAlertStatus = null,
+        public ?LearningPlanStatus $learningPlanStatus = null,
+        public ?LearningGoalStatus $learningGoalStatus = null,
+        public ?HomeworkStatus $homeworkStatus = null,
     ) {}
 
     /**
@@ -183,6 +192,9 @@ final readonly class ReportFilters
             ReportFilterKey::ReviewStatus => StudentReviewStatus::class,
             ReportFilterKey::ReviewReportStatus => ReviewReportStatus::class,
             ReportFilterKey::QualityAlertStatus => InstructorQualityAlertStatus::class,
+            ReportFilterKey::LearningPlanStatus => LearningPlanStatus::class,
+            ReportFilterKey::LearningGoalStatus => LearningGoalStatus::class,
+            ReportFilterKey::HomeworkStatus => HomeworkStatus::class,
             ReportFilterKey::Country, ReportFilterKey::Subject, ReportFilterKey::EducationLevel,
             ReportFilterKey::Student, ReportFilterKey::Instructor => null,
             ReportFilterKey::Currency => null,

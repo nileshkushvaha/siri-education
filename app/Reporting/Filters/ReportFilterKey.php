@@ -41,4 +41,7 @@ enum ReportFilterKey: string
     case ReviewStatus = 'review_status';
     case ReviewReportStatus = 'review_report_status';
     case QualityAlertStatus = 'quality_alert_status';
+    case LearningPlanStatus = 'learning_plan_status';
+    case LearningGoalStatus = 'learning_goal_status';
+    case HomeworkStatus = 'homework_status';
 }

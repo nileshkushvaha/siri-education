@@ -229,6 +229,55 @@ class ReportingDomainBoundaryTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    // ── Phase 18G — referral/quality/communication boundaries ─────────────
+
+    public function test_communication_reporting_never_imports_mutation_paths(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            foreach ([
+                'use App\Reviews\Services', 'use App\Reviews\Actions',
+                'use App\Quality\Services', 'use App\Quality\Actions',
+                'use Illuminate\Support\Facades\Notification',
+                'Notification::send', '->notify(', '->markAsRead(', '->notifyNow(',
+                '->creditReferral(', '->resolveAlert(', '->moderate(',
+            ] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} — communication reporting is strictly read-only (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_communication_page_delegates_all_queries_to_the_reporting_service(): void
+    {
+        $contents = (string) file_get_contents(base_path('app/Filament/Pages/ReferralCommunicationReports.php'));
+
+        foreach (['DB::table', 'DB::select', '::query()', 'WalletLedgerEntry::', 'LessonReview::', 'ReviewReport::', 'QualityAlert::'] as $needle) {
+            $this->assertStringNotContainsString($needle, $contents, "ReferralCommunicationReports page must delegate every query (found \"{$needle}\").");
+        }
+
+        $this->assertStringContainsString('ReferralCommunicationReportServiceInterface', $contents);
+    }
+
+    public function test_communication_dtos_expose_no_models_payloads_or_reporter_identity(): void
+    {
+        foreach ($this->phpFilesUnder(base_path('app/Reporting/DTOs/Communication')) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertStringNotContainsString('use App\Models\\', $contents, "{$file} must carry scalars only.");
+
+            // Property-shaped needles: docblocks may legitimately STATE that
+            // payloads are excluded; an actual property may not exist.
+            foreach (['$payload', '$reporterId', '$reporterName', '$moderationNote', '$referralToken', '$referralCode', '$providerSecret', '$messageBody', '$conversation'] as $needle) {
+                $this->assertStringNotContainsString($needle, $contents, "{$file} must never carry payloads, tokens or reporter identity (found \"{$needle}\").");
+            }
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
     // ── Phase 18F — learning analytics boundaries ─────────────────────────
 
     public function test_learning_reporting_never_imports_academic_mutation_paths(): void

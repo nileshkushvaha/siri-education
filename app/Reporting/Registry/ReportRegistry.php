@@ -11,6 +11,7 @@ use App\Filament\Pages\InstructorFinancials;
 use App\Filament\Pages\InstructorPerformance;
 use App\Filament\Pages\LearningAnalytics;
 use App\Filament\Pages\PaymentsReconciliation;
+use App\Filament\Pages\ReferralCommunicationReports;
 use App\Filament\Pages\ReviewsQualityDashboard;
 use App\Filament\Pages\StudentEngagement;
 use App\Filament\Pages\WalletRefunds;
@@ -337,19 +338,36 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'referral_activity',
                 label: 'Referral Activity',
-                description: 'Referral program activity.',
+                description: 'Wallet-ledger-confirmed referral credits (Phase 18G). Version 1 has no referral code/campaign/attribution domain — conversion and campaign metrics are unavailable.',
                 category: ReportCategory::Referrals,
                 requiredViewPermission: 'ViewReferralReports',
                 requiredExportPermission: null,
                 sensitive: false,
-                financial: false,
-                supportedFilters: [],
+                financial: true,
+                supportedFilters: [ReportFilterKey::Currency],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Referrals (no authoritative status enum yet)',
+                dataSourceDomain: 'Wallet ledger (referral_credit entries)',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: ReferralCommunicationReports::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
+            ),
+            new ReportDefinition(
+                key: 'review_quality_analytics',
+                label: 'Review & Quality Analytics',
+                description: 'Review submission rates and quality overview — complementary to the Reviews & Quality Dashboard, which remains the moderation-queue owner (Phase 18G).',
+                category: ReportCategory::ReviewsQuality,
+                requiredViewPermission: 'ViewReviewQualityReports',
+                requiredExportPermission: null,
+                sensitive: true,
+                financial: false,
+                supportedFilters: [ReportFilterKey::Instructor],
+                defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
+                dataSourceDomain: 'Reviews (eligibilities, rating aggregates), Quality',
+                freshness: ReportDataFreshness::Live,
+                routeName: ReferralCommunicationReports::class,
+                exportAvailable: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'marketplace_supply_demand',
@@ -387,8 +405,8 @@ final class ReportRegistry implements ReportRegistryInterface
             ),
             new ReportDefinition(
                 key: 'notification_delivery',
-                label: 'Notification Delivery',
-                description: 'Notification delivery reporting.',
+                label: 'Notification Activity',
+                description: 'In-app notification and dispatch-deduplication activity (Phase 18G). No delivery attempt/provider outcome is recorded in Version 1 — delivery-rate and provider metrics are unavailable.',
                 category: ReportCategory::Notifications,
                 requiredViewPermission: 'ViewNotificationReports',
                 requiredExportPermission: null,
@@ -396,11 +414,11 @@ final class ReportRegistry implements ReportRegistryInterface
                 financial: false,
                 supportedFilters: [],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Notifications (no formal status enum yet)',
+                dataSourceDomain: 'In-app notifications, notification dispatch idempotency log',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: ReferralCommunicationReports::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
         ];
     }

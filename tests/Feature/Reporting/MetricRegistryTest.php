@@ -150,7 +150,10 @@ class MetricRegistryTest extends TestCase
         // Phase 18E introduced the financial metric set — every one of them
         // must be gated by one of the Phase 18B financial permissions, and
         // no non-financial permission may guard a financial metric.
-        $financialPermissions = ['ViewFinanceReports', 'ViewWalletReports', 'ViewPaymentReports', 'ViewInstructorCompensationReports'];
+        // Phase 18G adds ViewReferralReports: referral wallet credits are
+        // money and stay financial-flagged, gated by the referral permission
+        // the SRS assigns to referral reporting.
+        $financialPermissions = ['ViewFinanceReports', 'ViewWalletReports', 'ViewPaymentReports', 'ViewInstructorCompensationReports', 'ViewReferralReports'];
         $financial = array_filter(app(MetricRegistryInterface::class)->all(), fn (MetricDefinition $d) => $d->financial);
 
         $this->assertNotEmpty($financial);

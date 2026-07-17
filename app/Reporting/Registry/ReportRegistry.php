@@ -176,7 +176,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'meeting_reliability',
                 label: 'Meeting Reliability',
-                description: 'Meeting scheduling and provider reliability.',
+                description: 'Formally unavailable (Phase 18J closure decision): Version 1 records meeting creation lifecycle only — no attendance callbacks, uptime or provider delivery outcomes exist, and reliability is never inferred from creation status alone. Creation outcomes are covered by the Operations report.',
                 category: ReportCategory::Meetings,
                 requiredViewPermission: 'ViewMeetingReports',
                 requiredExportPermission: null,

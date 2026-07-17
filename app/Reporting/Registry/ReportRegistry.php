@@ -6,7 +6,9 @@ namespace App\Reporting\Registry;
 
 use App\Filament\Pages\BookingLessonMeetingOperations;
 use App\Filament\Pages\BookingReports;
+use App\Filament\Pages\InstructorPerformance;
 use App\Filament\Pages\ReviewsQualityDashboard;
+use App\Filament\Pages\StudentEngagement;
 use App\Models\User;
 use App\Reporting\Contracts\ReportAccessContextInterface;
 use App\Reporting\Contracts\ReportRegistryInterface;
@@ -113,38 +115,38 @@ final class ReportRegistry implements ReportRegistryInterface
                 available: true,
             ),
             new ReportDefinition(
-                key: 'student_activity',
-                label: 'Student Activity',
-                description: 'Student lifecycle and activity reporting.',
+                key: 'student_engagement',
+                label: 'Student Engagement',
+                description: 'Student acquisition, verification, engagement, learning participation and inactivity review.',
                 category: ReportCategory::Students,
                 requiredViewPermission: 'ViewStudentReports',
                 requiredExportPermission: null,
                 sensitive: true,
                 financial: false,
-                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Student],
+                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::EducationLevel, ReportFilterKey::Student, ReportFilterKey::StudentStatus],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Users',
+                dataSourceDomain: 'Users, Booking, Lessons, Learning Plans, Homework, Reviews',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: StudentEngagement::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
-                key: 'instructor_activity',
-                label: 'Instructor Activity',
-                description: 'Instructor lifecycle and activity reporting.',
+                key: 'instructor_performance',
+                label: 'Instructor Performance',
+                description: 'Instructor lifecycle, teaching activity, booked hours, ratings and demo-to-paid conversion.',
                 category: ReportCategory::Instructors,
                 requiredViewPermission: 'ViewInstructorReports',
                 requiredExportPermission: null,
                 sensitive: true,
                 financial: false,
-                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Instructor, ReportFilterKey::Subject],
+                supportedFilters: [ReportFilterKey::Country, ReportFilterKey::Instructor, ReportFilterKey::Subject, ReportFilterKey::InstructorStatus, ReportFilterKey::BookingType, ReportFilterKey::LessonOutcome],
                 defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
-                dataSourceDomain: 'Users',
+                dataSourceDomain: 'Users, Booking, Lessons, Reviews (aggregates), Quality',
                 freshness: ReportDataFreshness::Live,
-                routeName: null,
+                routeName: InstructorPerformance::class,
                 exportAvailable: false,
-                available: false,
+                available: true,
             ),
             new ReportDefinition(
                 key: 'booking_lesson_kpis',

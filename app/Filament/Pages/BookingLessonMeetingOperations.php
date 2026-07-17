@@ -117,7 +117,7 @@ class BookingLessonMeetingOperations extends Page
         return new ReportFilters(
             period: $this->period(),
             countryId: $this->intOrNull($this->countryId),
-            subjectId: $this->intOrNull($this->subjectId),
+            subjectId: filled($this->subjectId) ? $this->subjectId : null, // subjects use UUID ids
             instructorId: $this->intOrNull($this->instructorId),
             bookingType: filled($this->bookingType) ? ReportingBookingType::tryFrom($this->bookingType) : null,
             bookingStatus: filled($this->bookingStatus) ? BookingStatus::tryFrom($this->bookingStatus) : null,

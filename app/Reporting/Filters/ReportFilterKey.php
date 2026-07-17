@@ -24,6 +24,8 @@ enum ReportFilterKey: string
     case EducationLevel = 'education_level';
     case Student = 'student';
     case Instructor = 'instructor';
+    case StudentStatus = 'student_status';
+    case InstructorStatus = 'instructor_status';
     case BookingType = 'booking_type';
     case RecurrenceType = 'recurrence_type';
     case BookingStatus = 'booking_status';

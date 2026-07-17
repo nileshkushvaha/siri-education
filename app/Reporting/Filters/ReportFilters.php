@@ -10,6 +10,8 @@ use App\Booking\Enums\MeetingStatus;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Enums\SettlementBatchStatus;
+use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use App\Quality\Enums\InstructorQualityAlertStatus;
@@ -43,6 +45,8 @@ final readonly class ReportFilters
         'educationLevelId' => ReportFilterKey::EducationLevel,
         'studentId' => ReportFilterKey::Student,
         'instructorId' => ReportFilterKey::Instructor,
+        'studentStatus' => ReportFilterKey::StudentStatus,
+        'instructorStatus' => ReportFilterKey::InstructorStatus,
         'bookingType' => ReportFilterKey::BookingType,
         'recurrenceType' => ReportFilterKey::RecurrenceType,
         'bookingStatus' => ReportFilterKey::BookingStatus,
@@ -64,10 +68,14 @@ final readonly class ReportFilters
         public ReportingPeriod $period,
         public ?int $countryId = null,
         public ?string $currencyCode = null,
-        public ?int $subjectId = null,
-        public ?int $educationLevelId = null,
+        // Subjects/academic levels use UUID primary keys — these are id
+        // strings, never auto-increment ints (Phase 18D type correction).
+        public ?string $subjectId = null,
+        public ?string $educationLevelId = null,
         public ?int $studentId = null,
         public ?int $instructorId = null,
+        public ?StudentStatus $studentStatus = null,
+        public ?InstructorStatus $instructorStatus = null,
         public ?ReportingBookingType $bookingType = null,
         public ?ReportingRecurrenceType $recurrenceType = null,
         public ?BookingStatus $bookingStatus = null,
@@ -158,6 +166,8 @@ final readonly class ReportFilters
     private static function castValue(ReportFilterKey $key, string $property, mixed $value): mixed
     {
         $enumClass = match ($key) {
+            ReportFilterKey::StudentStatus => StudentStatus::class,
+            ReportFilterKey::InstructorStatus => InstructorStatus::class,
             ReportFilterKey::BookingType => ReportingBookingType::class,
             ReportFilterKey::RecurrenceType => ReportingRecurrenceType::class,
             ReportFilterKey::BookingStatus => BookingStatus::class,
@@ -179,7 +189,8 @@ final readonly class ReportFilters
         };
 
         if ($enumClass === null) {
-            return in_array($property, ['countryId', 'subjectId', 'educationLevelId', 'studentId', 'instructorId'], true)
+            // Subject/education-level ids are UUID strings; the rest are ints.
+            return in_array($property, ['countryId', 'studentId', 'instructorId'], true)
                 ? (int) $value
                 : (string) $value;
         }

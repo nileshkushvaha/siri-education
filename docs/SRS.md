@@ -6,7 +6,7 @@ Book 1
 
 ## **A.1 Purpose**
 
-This glossary defines the standard business terminology used throughout the STEM Learning documentation.
+This glossary defines the standard business terminology used throughout the SIRI Education documentation.
 
 Every stakeholder-including business analysts, designers, developers, QA engineers, support staff, and administrators-should use these definitions consistently.
 
@@ -69,7 +69,7 @@ Every stakeholder-including business analysts, designers, developers, QA enginee
 | --------------- | ---------------------------------------------------- |
 | Document Title  | Enterprise Software Requirements Specification (SRS) |
 | ---             | ---                                                  |
-| Product Name    | STEM Learning                                        |
+| Product Name    | SIRI Education                                        |
 | ---             | ---                                                  |
 | Product Type    | Global Online Learning Marketplace                   |
 | ---             | ---                                                  |
@@ -77,7 +77,7 @@ Every stakeholder-including business analysts, designers, developers, QA enginee
 | ---             | ---                                                  |
 | Document Status | Draft                                                |
 | ---             | ---                                                  |
-| Prepared For    | STEM Learning                                        |
+| Prepared For    | SIRI Education                                        |
 | ---             | ---                                                  |
 | Prepared By     | Product Team                                         |
 | ---             | ---                                                  |
@@ -92,7 +92,7 @@ Every stakeholder-including business analysts, designers, developers, QA enginee
 
 ## **1.2 Purpose of this Document**
 
-This Software Requirements Specification (SRS) defines the complete business, functional, and non-functional requirements for the STEM Learning platform.
+This Software Requirements Specification (SRS) defines the complete business, functional, and non-functional requirements for the SIRI Education platform.
 
 The purpose of this document is to establish a single source of truth for all stakeholders involved in planning, designing, developing, testing, deploying, operating, and maintaining the platform.
 
@@ -102,9 +102,9 @@ This document is intended to eliminate ambiguity during development, reduce impl
 
 ## **1.3 Product Overview**
 
-STEM Learning is an enterprise-grade online learning marketplace that connects students with qualified instructors through a secure, automated, and scalable booking platform.
+SIRI Education is an enterprise-grade online learning marketplace that connects students with qualified instructors through a secure, automated, and scalable booking platform.
 
-Unlike traditional tutoring websites that primarily focus on scheduling lessons, STEM Learning is designed as a complete learning journey platform. It supports instructor discovery, free demo sessions, recurring lesson scheduling, progress tracking, homework management, secure payments, localized pricing, multi-country operations, and future AI-assisted learning experiences.
+Unlike traditional tutoring websites that primarily focus on scheduling lessons, SIRI Education is designed as a complete learning journey platform. It supports instructor discovery, free demo sessions, recurring lesson scheduling, progress tracking, homework management, secure payments, localized pricing, multi-country operations, and future AI-assisted learning experiences.
 
 The platform is designed with automation as a core principle, minimizing manual administrative effort while providing students and instructors with a seamless and transparent experience.
 
@@ -112,7 +112,7 @@ Initially, the platform will support online one-to-one learning sessions deliver
 
 ## **1.4 Business Domain**
 
-STEM Learning operates within the following business domains:
+SIRI Education operates within the following business domains:
 
 - Online Education
 - One-to-One Learning
@@ -132,11 +132,11 @@ Future business domains include:
 
 ## **1.5 Project Vision**
 
-The vision of STEM Learning is to become a globally trusted online learning platform where students can easily discover qualified instructors, schedule personalized learning sessions, and achieve measurable educational outcomes regardless of geographical location.
+The vision of SIRI Education is to become a globally trusted online learning platform where students can easily discover qualified instructors, schedule personalized learning sessions, and achieve measurable educational outcomes regardless of geographical location.
 
 The platform aims to provide a premium learning experience while significantly reducing operational overhead through intelligent automation, configurable workflows, and enterprise-grade administrative tools.
 
-Rather than functioning as a simple booking system, STEM Learning is envisioned as a lifelong learning ecosystem that supports learners throughout their educational journey.
+Rather than functioning as a simple booking system, SIRI Education is envisioned as a lifelong learning ecosystem that supports learners throughout their educational journey.
 
 ## **1.6 Primary Goals**
 
@@ -274,13 +274,13 @@ The education industry is rapidly shifting from traditional classroom-based lear
 
 While numerous tutoring platforms exist, many suffer from fragmented user experiences, limited automation, inconsistent scheduling, inadequate localization, poor instructor onboarding, and insufficient operational tools for administrators.
 
-STEM Learning is designed to address these challenges by providing a modern, enterprise-grade online learning marketplace that combines instructor discovery, intelligent scheduling, secure payments, localized pricing, recurring learning plans, and scalable administrative tools into a single integrated platform.
+SIRI Education is designed to address these challenges by providing a modern, enterprise-grade online learning marketplace that combines instructor discovery, intelligent scheduling, secure payments, localized pricing, recurring learning plans, and scalable administrative tools into a single integrated platform.
 
-Rather than functioning solely as a tutor booking website, STEM Learning is designed as a **Learning Journey Platform**, where students progress through structured educational experiences while instructors manage their teaching activities efficiently and administrators oversee the platform through configurable workflows and automation.
+Rather than functioning solely as a tutor booking website, SIRI Education is designed as a **Learning Journey Platform**, where students progress through structured educational experiences while instructors manage their teaching activities efficiently and administrators oversee the platform through configurable workflows and automation.
 
 # **2.2 Purpose**
 
-The primary purpose of STEM Learning is to provide a secure, scalable, and highly automated platform that connects students with qualified instructors for personalized online education.
+The primary purpose of SIRI Education is to provide a secure, scalable, and highly automated platform that connects students with qualified instructors for personalized online education.
 
 The platform aims to:
 
@@ -304,9 +304,9 @@ Our mission is to simplify online education by providing an intelligent platform
 
 # **2.5 Product Positioning**
 
-STEM Learning is positioned as a premium online learning marketplace focused on high-quality one-to-one instruction.
+SIRI Education is positioned as a premium online learning marketplace focused on high-quality one-to-one instruction.
 
-Unlike generic tutoring websites that primarily facilitate lesson bookings, STEM Learning emphasizes the complete educational lifecycle, including instructor discovery, learning plans, recurring sessions, homework management, progress tracking, and future AI-assisted learning support.
+Unlike generic tutoring websites that primarily facilitate lesson bookings, SIRI Education emphasizes the complete educational lifecycle, including instructor discovery, learning plans, recurring sessions, homework management, progress tracking, and future AI-assisted learning support.
 
 The platform prioritizes automation, scalability, and localization to support international growth while maintaining a consistent and secure user experience.
 
@@ -341,11 +341,11 @@ Platform administrators also face challenges such as:
 - Limited reporting.
 - Difficulty scaling manual processes.
 
-STEM Learning addresses these challenges through configurable automation, enterprise-grade workflows, and centralized platform management.
+SIRI Education addresses these challenges through configurable automation, enterprise-grade workflows, and centralized platform management.
 
 # **2.7 Solution Overview**
 
-STEM Learning provides a centralized digital ecosystem where every stakeholder benefits from an optimized experience.
+SIRI Education provides a centralized digital ecosystem where every stakeholder benefits from an optimized experience.
 
 Students can:
 
@@ -382,7 +382,7 @@ Administrators can:
 
 # **2.8 Product Philosophy**
 
-The design and development of STEM Learning are guided by the following principles:
+The design and development of SIRI Education are guided by the following principles:
 
 ### **Automation First**
 
@@ -455,7 +455,7 @@ Administrators should be able to:
 
 # **2.10 Product Scope**
 
-The initial version of STEM Learning includes the following core capabilities:
+The initial version of SIRI Education includes the following core capabilities:
 
 ### **Public Website**
 
@@ -577,9 +577,9 @@ The first production release will be considered successful when it achieves the 
 
 # **3.1 Business Overview**
 
-STEM Learning is an enterprise-grade online learning marketplace that enables students to connect with qualified instructors for personalized one-to-one online learning sessions.
+SIRI Education is an enterprise-grade online learning marketplace that enables students to connect with qualified instructors for personalized one-to-one online learning sessions.
 
-Unlike conventional tutoring websites that focus only on lesson booking, STEM Learning is designed as a complete educational ecosystem where students can define learning goals, discover instructors, attend structured lessons, complete homework, monitor progress, and continue long-term learning journeys.
+Unlike conventional tutoring websites that focus only on lesson booking, SIRI Education is designed as a complete educational ecosystem where students can define learning goals, discover instructors, attend structured lessons, complete homework, monitor progress, and continue long-term learning journeys.
 
 The platform serves as a trusted intermediary between students and instructors by managing scheduling, payments, communication, instructor verification, and operational workflows.
 
@@ -587,9 +587,9 @@ The long-term objective is to become a globally recognized digital education pla
 
 # **3.2 Marketplace Model**
 
-STEM Learning operates as a **Managed Instructor Marketplace**.
+SIRI Education operates as a **Managed Instructor Marketplace**.
 
-Unlike open marketplaces where instructors independently define pricing, communicate directly with students, and control commercial relationships, STEM Learning maintains centralized control over the business relationship while giving instructors operational independence for teaching activities.
+Unlike open marketplaces where instructors independently define pricing, communicate directly with students, and control commercial relationships, SIRI Education maintains centralized control over the business relationship while giving instructors operational independence for teaching activities.
 
 The platform is responsible for:
 
@@ -781,7 +781,7 @@ The platform encourages continuous learning through:
 
 # **3.5 Learning Journey Philosophy**
 
-Unlike conventional tutoring platforms where every booking is treated as an isolated transaction, STEM Learning considers each lesson part of a continuous educational journey.
+Unlike conventional tutoring platforms where every booking is treated as an isolated transaction, SIRI Education considers each lesson part of a continuous educational journey.
 
 Every student interaction contributes to a structured learning lifecycle.
 
@@ -801,9 +801,9 @@ This approach improves student retention while encouraging stronger instructor-s
 
 # **3.6 Platform-Controlled Commercial Model**
 
-One of the defining characteristics of STEM Learning is that the platform owns the commercial relationship.
+One of the defining characteristics of SIRI Education is that the platform owns the commercial relationship.
 
-Students purchase educational services from STEM Learning rather than directly from instructors.
+Students purchase educational services from SIRI Education rather than directly from instructors.
 
 The platform determines:
 
@@ -916,7 +916,7 @@ Future growth initiatives include AI-assisted instructor recommendations, educat
 
 # **3.12 Competitive Differentiators**
 
-STEM Learning differentiates itself through:
+SIRI Education differentiates itself through:
 
 - Verified instructor onboarding.
 - Platform-controlled commercial model.
@@ -954,7 +954,7 @@ Future capabilities include:
 
 # **4.1 Introduction**
 
-STEM Learning is designed as an enterprise-grade online learning marketplace composed of multiple interconnected business domains.
+SIRI Education is designed as an enterprise-grade online learning marketplace composed of multiple interconnected business domains.
 
 Each domain represents a distinct business capability with clearly defined responsibilities, workflows, ownership, and configuration.
 
@@ -1442,13 +1442,13 @@ No domain should directly manipulate another domain's internal business logic. C
 
 # **4.9 Product Scope Summary**
 
-Version 1 of STEM Learning delivers a complete marketplace for online one-to-one learning with enterprise-level operational capabilities. The platform balances automation, localization, financial management, and educational workflows while establishing a scalable foundation for future AI-powered and enterprise learning features.
+Version 1 of SIRI Education delivers a complete marketplace for online one-to-one learning with enterprise-level operational capabilities. The platform balances automation, localization, financial management, and educational workflows while establishing a scalable foundation for future AI-powered and enterprise learning features.
 
 # **CHAPTER 5 - STAKEHOLDERS, USER PERSONAS & USER JOURNEYS**
 
 # **5.1 Introduction**
 
-STEM Learning is a multi-sided online learning marketplace where different stakeholders interact to deliver a complete educational experience.
+SIRI Education is a multi-sided online learning marketplace where different stakeholders interact to deliver a complete educational experience.
 
 Each stakeholder has unique responsibilities, permissions, expectations, and business objectives. Understanding these differences is essential for designing workflows, interfaces, permissions, notifications, and operational policies.
 
@@ -1627,7 +1627,7 @@ Students cannot:
 
 ## **Description**
 
-An instructor is a verified education professional providing online learning services through STEM Learning.
+An instructor is a verified education professional providing online learning services through SIRI Education.
 
 Only approved instructors may conduct lessons.
 
@@ -1953,7 +1953,7 @@ Every user experience should follow these principles:
 
 # **6.1 Introduction**
 
-This chapter defines the global business rules, operational policies, and governance principles that apply across the entire STEM Learning platform.
+This chapter defines the global business rules, operational policies, and governance principles that apply across the entire SIRI Education platform.
 
 These rules establish a consistent framework for how users interact with the platform, how business operations are performed, and how automated workflows behave.
 
@@ -1970,7 +1970,7 @@ The primary objectives of these policies are to:
 
 # **6.2 Platform Governance Principles**
 
-Every feature developed for STEM Learning shall follow these principles.
+Every feature developed for SIRI Education shall follow these principles.
 
 ## **Learning First**
 
@@ -2367,17 +2367,17 @@ Every override must:
 
 # **6.23 Platform Governance Summary**
 
-STEM Learning is governed by policies that prioritize automation, transparency, educational quality, and financial integrity. These rules form the operational contract between the platform, students, instructors, and administrators. Future modules, integrations, and AI capabilities must respect these governance principles to ensure consistent platform behavior as the product evolves.
+SIRI Education is governed by policies that prioritize automation, transparency, educational quality, and financial integrity. These rules form the operational contract between the platform, students, instructors, and administrators. Future modules, integrations, and AI capabilities must respect these governance principles to ensure consistent platform behavior as the product evolves.
 
 # **CHAPTER 7 - GLOBALIZATION, LOCALIZATION & REGIONAL BUSINESS STRATEGY**
 
 # **7.1 Introduction**
 
-STEM Learning is designed as a global online learning platform serving students and instructors across multiple countries.
+SIRI Education is designed as a global online learning platform serving students and instructors across multiple countries.
 
 To provide a consistent yet localized experience, the platform separates **global platform behavior** from **regional business configuration**.
 
-Rather than creating separate systems for each country, STEM Learning operates as a single platform where localization is driven through configurable regional settings.
+Rather than creating separate systems for each country, SIRI Education operates as a single platform where localization is driven through configurable regional settings.
 
 This approach allows the platform to expand internationally without changing the underlying product architecture.
 
@@ -2552,7 +2552,7 @@ Students may update their billing country only through a controlled process to p
 
 # **7.8 Regional Pricing Strategy**
 
-One of the core business principles of STEM Learning is that **pricing is regional rather than exchange-rate based**.
+One of the core business principles of SIRI Education is that **pricing is regional rather than exchange-rate based**.
 
 Prices are determined independently for each country.
 
@@ -2760,13 +2760,13 @@ The globalization strategy follows these principles:
 
 # **7.22 Chapter Summary**
 
-STEM Learning is designed as a globally scalable platform with region-aware behavior rather than isolated country deployments. Localization is driven through configuration, allowing pricing, currencies, payment routing, languages, support information, and selected business features to adapt to regional requirements while preserving a single, maintainable platform architecture.
+SIRI Education is designed as a globally scalable platform with region-aware behavior rather than isolated country deployments. Localization is driven through configuration, allowing pricing, currencies, payment routing, languages, support information, and selected business features to adapt to regional requirements while preserving a single, maintainable platform architecture.
 
 # **CHAPTER 8 - LEARNING FRAMEWORK, ACADEMIC STRUCTURE & EDUCATIONAL JOURNEY**
 
 # **8.1 Introduction**
 
-The primary objective of STEM Learning is not simply to facilitate lesson bookings, but to help students achieve measurable educational outcomes through structured and personalized learning.
+The primary objective of SIRI Education is not simply to facilitate lesson bookings, but to help students achieve measurable educational outcomes through structured and personalized learning.
 
 This chapter defines the academic framework that governs how educational content is organized, how students progress through learning, how instructors deliver education, and how the platform measures learning outcomes.
 
@@ -3220,7 +3220,7 @@ Educational quality should remain a primary success metric for the platform.
 
 # **8.18 Chapter Summary**
 
-The educational framework defined in this chapter establishes STEM Learning as a structured learning platform rather than a simple scheduling marketplace. By organizing learning around goals, plans, roadmaps, lessons, homework, and measurable progress, the platform creates a foundation for long-term student success while remaining flexible enough to support future AI-powered educational experiences.
+The educational framework defined in this chapter establishes SIRI Education as a structured learning platform rather than a simple scheduling marketplace. By organizing learning around goals, plans, roadmaps, lessons, homework, and measurable progress, the platform creates a foundation for long-term student success while remaining flexible enough to support future AI-powered educational experiences.
 
 # **CHAPTER 9 - SECURITY, PRIVACY, TRUST & COMPLIANCE**
 
@@ -3230,7 +3230,7 @@ Trust is fundamental to the success of an online learning marketplace.
 
 Students trust the platform with their personal information, educational progress, payment details, and learning history. Instructors trust the platform with their professional identity, earnings, documents, and reputation. Administrators are responsible for maintaining the integrity of the marketplace while ensuring secure, reliable, and transparent operations.
 
-The purpose of this chapter is to establish the security, privacy, and governance principles that apply throughout the STEM Learning platform.
+The purpose of this chapter is to establish the security, privacy, and governance principles that apply throughout the SIRI Education platform.
 
 These principles guide every business process, functional module, integration, and future enhancement.
 
@@ -3251,7 +3251,7 @@ The platform shall achieve the following security objectives:
 
 # **9.3 Trust Framework**
 
-STEM Learning establishes trust through multiple layers.
+SIRI Education establishes trust through multiple layers.
 
 ## **Identity Trust**
 
@@ -3647,7 +3647,7 @@ These indicators should be visible where they help users make informed decisions
 
 # **9.24 Chapter Summary**
 
-Security, privacy, trust, and compliance are foundational principles of STEM Learning. Every business process-from instructor onboarding to lesson delivery, payments, and reporting-must operate within these governance standards. By combining strong operational controls with transparent policies, the platform establishes a trusted environment that supports long-term educational relationships and scalable global growth.
+Security, privacy, trust, and compliance are foundational principles of SIRI Education. Every business process-from instructor onboarding to lesson delivery, payments, and reporting-must operate within these governance standards. By combining strong operational controls with transparent policies, the platform establishes a trusted environment that supports long-term educational relationships and scalable global growth.
 
 Book 2
 
@@ -3659,7 +3659,7 @@ Book 2
 
 ## **Purpose**
 
-Book 2 defines the detailed functional behavior of every business domain within the STEM Learning platform.
+Book 2 defines the detailed functional behavior of every business domain within the SIRI Education platform.
 
 Unlike Book 1, which defines the business vision, governance, and product strategy, this book specifies exactly how the platform shall behave from a functional perspective.
 
@@ -3865,7 +3865,7 @@ PART A
 
 # **1.1 Introduction**
 
-Authentication and Authorization form the foundation of the STEM Learning platform.
+Authentication and Authorization form the foundation of the SIRI Education platform.
 
 This module is responsible for securely identifying users, protecting access to platform resources, enforcing permissions, and maintaining account integrity.
 
@@ -4045,7 +4045,7 @@ The system shall record the accepted policy version and acceptance timestamp.
 
 # **2.1 Introduction**
 
-The Student Management module governs the complete lifecycle of a student within the STEM Learning platform.
+The Student Management module governs the complete lifecycle of a student within the SIRI Education platform.
 
 Unlike traditional user profile modules that primarily store personal information, this module establishes the student's educational identity, learning preferences, progress, engagement history, financial profile, and long-term relationship with the platform.
 
@@ -4821,7 +4821,7 @@ PART B
 
 # **4.1 Introduction**
 
-The Academic Framework & Curriculum Management module defines the educational structure of the STEM Learning platform.
+The Academic Framework & Curriculum Management module defines the educational structure of the SIRI Education platform.
 
 This module establishes how academic disciplines, subjects, education levels, topics, learning outcomes, and curricula are organized and managed.
 
@@ -5835,7 +5835,7 @@ The curriculum engine is designed to support future educational capabilities, in
 - Automated prerequisite evaluation.
 - Gamified milestone achievements.
 
-I agree with this direction, and before we write this chapter I want to make **one major architectural improvement** that will significantly strengthen STEM Learning.
+I agree with this direction, and before we write this chapter I want to make **one major architectural improvement** that will significantly strengthen SIRI Education.
 
 # **My Recommendation (Very Important)**
 
@@ -5923,7 +5923,7 @@ Completion
 
 That is what enterprise LMS platforms do.
 
-# **STEM Learning**
+# **SIRI Education**
 
 ## **Enterprise Software Requirements Specification (SRS) v2.0**
 
@@ -7656,7 +7656,7 @@ The marketplace profile system is designed to support:
 
 # **10.1 Introduction**
 
-The Availability & Scheduling Engine defines how instructor availability is created, maintained, calculated, displayed, reserved, blocked, and synchronized across the STEM Learning platform.
+The Availability & Scheduling Engine defines how instructor availability is created, maintained, calculated, displayed, reserved, blocked, and synchronized across the SIRI Education platform.
 
 This module ensures that students can only book valid and available lesson slots while preventing double-booking, timezone confusion, scheduling conflicts, excessive instructor workload, and operational errors.
 
@@ -8645,7 +8645,7 @@ The Availability & Scheduling Engine is designed to support:
 
 # **10.40 Chapter Summary**
 
-The Availability & Scheduling Engine is a core operational system within STEM Learning. It ensures that instructor availability is accurate, student booking options are valid, recurring schedules are reliable, and global timezone complexity is handled consistently.
+The Availability & Scheduling Engine is a core operational system within SIRI Education. It ensures that instructor availability is accurate, student booking options are valid, recurring schedules are reliable, and global timezone complexity is handled consistently.
 
 This module provides the scheduling foundation required for Demo Booking, Paid Booking, Recurring Lessons, Waitlists, Meeting Management, Notifications, and Analytics.
 
@@ -8655,7 +8655,7 @@ A strong availability engine reduces administrative workload, prevents conflicts
 
 # **11.1 Introduction**
 
-The Booking & Reservation Engine manages the complete lifecycle of lesson reservations within the STEM Learning platform.
+The Booking & Reservation Engine manages the complete lifecycle of lesson reservations within the SIRI Education platform.
 
 This module is responsible for converting student intent into confirmed learning sessions by coordinating instructor availability, pricing, wallet balance, payment processing, meeting creation, notifications, cancellation rules, rescheduling rules, recurring schedules, attendance status, no-show handling, completion, reviews, homework, and settlement triggers.
 
@@ -10134,7 +10134,7 @@ The Booking & Reservation Engine is designed to support:
 
 # **11.48 Chapter Summary**
 
-The Booking & Reservation Engine is the commercial and operational core of STEM Learning. It converts student intent into confirmed lessons while enforcing availability, pricing, payment, cancellation, rescheduling, and completion policies.
+The Booking & Reservation Engine is the commercial and operational core of SIRI Education. It converts student intent into confirmed lessons while enforcing availability, pricing, payment, cancellation, rescheduling, and completion policies.
 
 This module ensures that every lesson is valid, auditable, timezone-safe, financially traceable, and connected to the broader learning journey.
 
@@ -10150,11 +10150,11 @@ A strong Booking & Reservation Engine enables the platform to scale globally whi
 
 The Virtual Classroom & Meeting Management module governs how online lessons are delivered between students and instructors through platform-controlled meeting infrastructure.
 
-Since STEM Learning is an online-only learning platform, the meeting experience is a core part of the product. Every confirmed demo lesson and paid lesson must have a secure, reliable, and controlled virtual classroom experience.
+Since SIRI Education is an online-only learning platform, the meeting experience is a core part of the product. Every confirmed demo lesson and paid lesson must have a secure, reliable, and controlled virtual classroom experience.
 
 This module defines how meetings are created, accessed, secured, recorded, monitored, completed, and connected with booking, attendance, notifications, learning records, homework, analytics, and future AI services.
 
-The meeting system must protect the platform from off-platform leakage by ensuring that instructors and students do not directly create or exchange external meeting links outside STEM Learning.
+The meeting system must protect the platform from off-platform leakage by ensuring that instructors and students do not directly create or exchange external meeting links outside SIRI Education.
 
 # **12.2 Purpose**
 
@@ -10241,7 +10241,7 @@ This chapter covers:
 
 # **12.5 Meeting Strategy**
 
-STEM Learning shall use a platform-controlled meeting strategy.
+SIRI Education shall use a platform-controlled meeting strategy.
 
 The platform, not the instructor, shall create and own all lesson meetings.
 
@@ -10316,7 +10316,7 @@ The platform should remain provider-agnostic so that the meeting provider can be
 
 # **12.7 Zoom Compatibility**
 
-Zoom can support many requirements needed by STEM Learning, such as:
+Zoom can support many requirements needed by SIRI Education, such as:
 
 - API-based meeting creation
 - Scheduled meetings
@@ -10721,7 +10721,7 @@ Rules:
 
 # **12.25 Contact Leakage Prevention**
 
-The platform shall reduce the risk of students and instructors bypassing STEM Learning.
+The platform shall reduce the risk of students and instructors bypassing SIRI Education.
 
 Measures include:
 
@@ -11266,7 +11266,7 @@ PART D
 
 # **13.1 Introduction**
 
-The Wallet Management & Ledger System governs how student balances, wallet recharges, booking deductions, refunds, referral credits, manual adjustments, and financial transaction histories are managed within the STEM Learning platform.
+The Wallet Management & Ledger System governs how student balances, wallet recharges, booking deductions, refunds, referral credits, manual adjustments, and financial transaction histories are managed within the SIRI Education platform.
 
 The wallet is a core financial feature of the platform. It improves booking speed, supports recurring lessons, enables wallet-only refunds, simplifies referral rewards, and reduces repeated payment friction for students.
 
@@ -12365,7 +12365,7 @@ The Wallet Management & Ledger System is designed to support:
 
 # **13.39 Chapter Summary**
 
-The Wallet Management & Ledger System is a critical financial foundation for STEM Learning. It enables faster bookings, supports recurring learning, simplifies refunds, powers referral rewards, and provides students with a transparent financial account.
+The Wallet Management & Ledger System is a critical financial foundation for SIRI Education. It enables faster bookings, supports recurring learning, simplifies refunds, powers referral rewards, and provides students with a transparent financial account.
 
 By designing the wallet as an immutable ledger instead of a simple balance field, the platform ensures financial accuracy, auditability, and long-term scalability.
 
@@ -12375,9 +12375,9 @@ This module directly supports Booking, Payments, Referrals, Refunds, Reports, Re
 
 # **14.1 Introduction**
 
-The Payment Gateway, Checkout & Invoice Management module governs how students make payments, how payment transactions are processed, how wallet recharges are completed, how paid lesson bookings are confirmed, and how invoices or receipts are generated within the STEM Learning platform.
+The Payment Gateway, Checkout & Invoice Management module governs how students make payments, how payment transactions are processed, how wallet recharges are completed, how paid lesson bookings are confirmed, and how invoices or receipts are generated within the SIRI Education platform.
 
-For Version 1, STEM Learning shall use **Razorpay as the primary payment gateway** because the company is India-based and primary platform settlement is expected to operate in INR.
+For Version 1, SIRI Education shall use **Razorpay as the primary payment gateway** because the company is India-based and primary platform settlement is expected to operate in INR.
 
 The payment system must be secure, reliable, auditable, and tightly integrated with Wallet, Booking, Refund, Referral, Reporting, and Financial Ledger modules.
 
@@ -13473,7 +13473,7 @@ The Payment Gateway, Checkout & Invoice Management module is designed to support
 
 # **14.39 Chapter Summary**
 
-The Payment Gateway, Checkout & Invoice Management module provides the external payment collection layer for STEM Learning.
+The Payment Gateway, Checkout & Invoice Management module provides the external payment collection layer for SIRI Education.
 
 For Version 1, Razorpay is the primary payment gateway, and INR is the primary settlement and reporting currency. This simplified strategy reduces payment complexity while supporting the core business needs of wallet recharge, paid lesson booking, receipts, invoices, and financial traceability.
 
@@ -13487,7 +13487,7 @@ The Instructor Earnings, Incentives, Settlement & Withdrawals module governs how
 
 This module is intentionally separated from student pricing.
 
-In STEM Learning, students pay a platform-controlled lesson price. Instructors do not define or see student-facing prices. Instructor compensation is calculated internally according to platform-defined rules such as instructor category, experience, subject, lesson duration, performance, region, demo conversion, or administrator-approved pay configuration.
+In SIRI Education, students pay a platform-controlled lesson price. Instructors do not define or see student-facing prices. Instructor compensation is calculated internally according to platform-defined rules such as instructor category, experience, subject, lesson duration, performance, region, demo conversion, or administrator-approved pay configuration.
 
 The module must support transparent instructor earnings while protecting the platform's commercial strategy, margin structure, and internal pricing model.
 
@@ -14772,7 +14772,7 @@ This module is designed to support future expansion, including:
 
 # **15.46 Chapter Summary**
 
-The Instructor Earnings, Incentives, Settlement & Withdrawals module defines the internal financial relationship between STEM Learning and its instructors.
+The Instructor Earnings, Incentives, Settlement & Withdrawals module defines the internal financial relationship between SIRI Education and its instructors.
 
 The chapter establishes a critical business rule: instructor earnings are separate from student-facing price. This protects platform margin, allows regional student pricing, and enables flexible instructor compensation.
 
@@ -14784,7 +14784,7 @@ This module completes the core money flow from student payment to instructor pay
 
 # **16.1 Introduction**
 
-The Student Referral, Rewards & Promotional Credit System governs how students invite new users, how referral eligibility is determined, how rewards are calculated, how promotional credits are issued, and how all reward-related credits are tracked within the STEM Learning platform.
+The Student Referral, Rewards & Promotional Credit System governs how students invite new users, how referral eligibility is determined, how rewards are calculated, how promotional credits are issued, and how all reward-related credits are tracked within the SIRI Education platform.
 
 For Version 1, the referral program shall be student-focused. Students may refer other students, and eligible rewards shall be credited to the student wallet according to active campaign rules.
 
@@ -15799,13 +15799,13 @@ This module is designed to support future expansion, including:
 
 # **16.38 Chapter Summary**
 
-The Student Referral, Rewards & Promotional Credit System provides a controlled growth engine for STEM Learning.
+The Student Referral, Rewards & Promotional Credit System provides a controlled growth engine for SIRI Education.
 
 For Version 1, the referral program is student-only, wallet-based, and tied to real paid learning activity. This ensures that rewards support genuine business value rather than artificial signups.
 
 The module supports per-class rewards, configurable campaign rules, maximum reward limits, wallet ledger integration, promotional credits, fraud review, and campaign analytics.
 
-By keeping rewards configurable and traceable, STEM Learning can safely use referrals and promotions to grow while protecting financial integrity and reducing abuse risk.
+By keeping rewards configurable and traceable, SIRI Education can safely use referrals and promotions to grow while protecting financial integrity and reducing abuse risk.
 
 PART E
 
@@ -15815,11 +15815,11 @@ PART E
 
 # **17.1 Introduction**
 
-The Notifications, Communication & Messaging System governs how STEM Learning communicates with students, instructors, administrators, and future support users.
+The Notifications, Communication & Messaging System governs how SIRI Education communicates with students, instructors, administrators, and future support users.
 
 This module is responsible for sending timely, relevant, and secure communication across important platform events such as registration, email verification, booking confirmation, payment success, wallet recharge, lesson reminders, meeting links, homework assignment, review requests, referral rewards, withdrawal updates, and administrative alerts.
 
-The communication system is also responsible for controlled student-instructor messaging. Since STEM Learning is a managed learning marketplace, direct communication must support learning while reducing off-platform leakage risk.
+The communication system is also responsible for controlled student-instructor messaging. Since SIRI Education is a managed learning marketplace, direct communication must support learning while reducing off-platform leakage risk.
 
 This module integrates with Authentication, Student Management, Instructor Management, Booking, Availability, Meeting Management, Wallet, Payments, Homework, Reviews, Referrals, Admin Operations, and future AI services.
 
@@ -17034,13 +17034,13 @@ The Notifications, Communication & Messaging System is designed to support:
 
 # **17.48 Chapter Summary**
 
-The Notifications, Communication & Messaging System is the engagement backbone of STEM Learning.
+The Notifications, Communication & Messaging System is the engagement backbone of SIRI Education.
 
 It ensures that students, instructors, and administrators receive timely and actionable updates across account, booking, payment, wallet, meeting, homework, referral, review, and earning workflows.
 
 The module also defines controlled student-instructor messaging, ensuring that communication supports learning while reducing off-platform leakage risk.
 
-By combining multi-channel notifications, in-app notification center, template management, delivery logs, messaging eligibility, reporting, and admin oversight, STEM Learning can create a professional, secure, and scalable communication experience.
+By combining multi-channel notifications, in-app notification center, template management, delivery logs, messaging eligibility, reporting, and admin oversight, SIRI Education can create a professional, secure, and scalable communication experience.
 
 #
 
@@ -17050,7 +17050,7 @@ By combining multi-channel notifications, in-app notification center, template m
 
 The Reviews, Ratings, Feedback & Quality Assurance module governs how students and instructors provide feedback after lessons, how reviews are displayed publicly, how quality signals are used, and how the platform maintains trust across the learning marketplace.
 
-Reviews are not only social proof. In STEM Learning, they are part of the platform's quality assurance system. They influence instructor trust, marketplace ranking, student confidence, instructor improvement, admin monitoring, and long-term platform quality.
+Reviews are not only social proof. In SIRI Education, they are part of the platform's quality assurance system. They influence instructor trust, marketplace ranking, student confidence, instructor improvement, admin monitoring, and long-term platform quality.
 
 The module must ensure that reviews are authentic, fair, lesson-linked, moderated where necessary, and protected from abuse.
 
@@ -18145,13 +18145,13 @@ This module is designed to support future expansion, including:
 
 # **18.46 Chapter Summary**
 
-The Reviews, Ratings, Feedback & Quality Assurance module strengthens trust across STEM Learning.
+The Reviews, Ratings, Feedback & Quality Assurance module strengthens trust across SIRI Education.
 
 It ensures that only verified learning experiences generate reviews, protects student privacy, gives instructors useful feedback, and gives administrators tools to monitor marketplace quality.
 
 By combining public reviews, private feedback, moderation, rating aggregation, quality signals, and admin dashboards, the platform can build a trustworthy marketplace while continuously improving learning quality.
 
-This module also prepares STEM Learning for future AI-assisted quality analysis, instructor coaching, personalized recommendations, and trust-based marketplace ranking.
+This module also prepares SIRI Education for future AI-assisted quality analysis, instructor coaching, personalized recommendations, and trust-based marketplace ranking.
 
 PART F
 
@@ -18161,7 +18161,7 @@ PART F
 
 # **19.1 Introduction**
 
-The Reports, Analytics & Business Intelligence module defines how STEM Learning collects, organizes, analyzes, displays, and exports operational and business data.
+The Reports, Analytics & Business Intelligence module defines how SIRI Education collects, organizes, analyzes, displays, and exports operational and business data.
 
 The platform generates important data across every major domain, including students, instructors, bookings, learning plans, lessons, homework, meetings, wallet transactions, payments, referrals, reviews, notifications, and support operations.
 
@@ -18171,7 +18171,7 @@ Reports must be accurate, permission-controlled, exportable where permitted, and
 
 # **19.2 Purpose**
 
-The purpose of this module is to provide a centralized reporting and analytics framework for STEM Learning.
+The purpose of this module is to provide a centralized reporting and analytics framework for SIRI Education.
 
 The module must support:
 
@@ -19387,7 +19387,7 @@ This module is designed to support future expansion, including:
 
 # **19.45 Chapter Summary**
 
-The Reports, Analytics & Business Intelligence module provides the visibility needed to operate and grow STEM Learning.
+The Reports, Analytics & Business Intelligence module provides the visibility needed to operate and grow SIRI Education.
 
 It brings together data from students, instructors, bookings, meetings, wallet, payments, earnings, referrals, reviews, notifications, marketplace discovery, and learning activity.
 
@@ -19399,9 +19399,9 @@ This module ensures that administrators can monitor platform health, track reven
 
 # **20.1 Introduction**
 
-The Global Settings, Configuration & Feature Control module defines how STEM Learning administrators configure platform-wide business rules, operational behavior, feature availability, module policies, notification timings, booking rules, wallet rules, payment rules, referral rules, review rules, and future feature flags.
+The Global Settings, Configuration & Feature Control module defines how SIRI Education administrators configure platform-wide business rules, operational behavior, feature availability, module policies, notification timings, booking rules, wallet rules, payment rules, referral rules, review rules, and future feature flags.
 
-STEM Learning is designed as a configurable enterprise platform. Most operational rules should not be hard-coded. Administrators should be able to adjust platform behavior safely through controlled settings without requiring code changes for every business decision.
+SIRI Education is designed as a configurable enterprise platform. Most operational rules should not be hard-coded. Administrators should be able to adjust platform behavior safely through controlled settings without requiring code changes for every business decision.
 
 This module provides the configuration foundation for Booking, Availability, Wallet, Payments, Referrals, Reviews, Notifications, Instructor Settlement, Learning Plans, Marketplace, Meeting Management, and future modules.
 
@@ -20570,15 +20570,15 @@ This module is designed to support future expansion, including:
 
 # **20.46 Chapter Summary**
 
-The Global Settings, Configuration & Feature Control module is the control center of STEM Learning.
+The Global Settings, Configuration & Feature Control module is the control center of SIRI Education.
 
 It ensures that business policies, platform behavior, module rules, financial limits, communication settings, review policies, booking rules, referral rewards, meeting behavior, and feature availability can be safely managed without unnecessary code changes.
 
 By supporting global defaults, country overrides, module-level settings, feature flags, validation, dependency checks, permissions, audit logs, and sensitive setting protection, the platform remains flexible while preserving operational safety.
 
-This module allows STEM Learning to adapt quickly as the business grows, while keeping financial, security, and user-impacting configuration under strict governance.
+This module allows SIRI Education to adapt quickly as the business grows, while keeping financial, security, and user-impacting configuration under strict governance.
 
-# **STEM Learning**
+# **SIRI Education**
 
 ## **Enterprise Software Requirements Specification (SRS) v2.0**
 
@@ -20590,15 +20590,15 @@ This module allows STEM Learning to adapt quickly as the business grows, while k
 
 # **21.1 Introduction**
 
-The Country, Currency, Localization & Regional Operations module defines how STEM Learning manages country-specific platform behavior, currency display, timezone handling, regional availability, localized user experience, country-based rules, and future international expansion.
+The Country, Currency, Localization & Regional Operations module defines how SIRI Education manages country-specific platform behavior, currency display, timezone handling, regional availability, localized user experience, country-based rules, and future international expansion.
 
-Although STEM Learning may serve students globally in the future, Version 1 shall remain operationally India-first, with Razorpay as the primary payment gateway and INR as the primary settlement and reporting currency.
+Although SIRI Education may serve students globally in the future, Version 1 shall remain operationally India-first, with Razorpay as the primary payment gateway and INR as the primary settlement and reporting currency.
 
 This module ensures that the platform can support different countries, currencies, timezones, languages, pricing rules, notification formats, legal requirements, and operational policies without redesigning the system later.
 
 # **21.2 Purpose**
 
-The purpose of this module is to provide a structured regional operating model for STEM Learning.
+The purpose of this module is to provide a structured regional operating model for SIRI Education.
 
 The module must ensure:
 
@@ -20669,7 +20669,7 @@ This chapter covers:
 
 # **21.5 Regional Strategy**
 
-STEM Learning shall follow a phased regional strategy.
+SIRI Education shall follow a phased regional strategy.
 
 ## **Version 1**
 
@@ -20833,7 +20833,7 @@ This separation prepares the system for future internationalization.
 
 # **21.10 INR-First Version 1 Rule**
 
-For Version 1, STEM Learning shall operate with INR as the primary financial currency.
+For Version 1, SIRI Education shall operate with INR as the primary financial currency.
 
 Rules:
 
@@ -21708,7 +21708,7 @@ This module is designed to support future expansion, including:
 
 # **21.46 Chapter Summary**
 
-The Country, Currency, Localization & Regional Operations module prepares STEM Learning for global growth while preserving a practical India-first Version 1 operating model.
+The Country, Currency, Localization & Regional Operations module prepares SIRI Education for global growth while preserving a practical India-first Version 1 operating model.
 
 The chapter establishes INR as the primary financial currency, Razorpay as the primary payment gateway, and UTC as the standard storage format for confirmed lesson times.
 
@@ -21716,7 +21716,7 @@ It also defines the functional foundation for country management, currency readi
 
 By separating display currency, payment currency, wallet currency, settlement currency, and reporting currency conceptually, the platform can remain simple in Version 1 while being ready for future multi-country operations.
 
-# **STEM Learning**
+# **SIRI Education**
 
 ## **Enterprise Software Requirements Specification (SRS) v2.0**
 
@@ -21728,11 +21728,11 @@ By separating display currency, payment currency, wallet currency, settlement cu
 
 # **22.1 Introduction**
 
-The CMS, SEO, Public Pages & Content Management module governs how STEM Learning manages public website content, landing pages, legal pages, FAQs, blog articles, SEO metadata, sitemap generation, robots configuration, redirects, public subject pages, instructor profile SEO, and content publishing workflows.
+The CMS, SEO, Public Pages & Content Management module governs how SIRI Education manages public website content, landing pages, legal pages, FAQs, blog articles, SEO metadata, sitemap generation, robots configuration, redirects, public subject pages, instructor profile SEO, and content publishing workflows.
 
 The CMS is the public communication layer of the platform. It supports marketing, trust-building, organic search growth, legal compliance, student education, instructor onboarding, and regional content expansion.
 
-This module is especially important because STEM Learning is not only a logged-in application. It is also a public marketplace where students discover subjects, evaluate instructors, read help content, understand policies, and begin their learning journey.
+This module is especially important because SIRI Education is not only a logged-in application. It is also a public marketplace where students discover subjects, evaluate instructors, read help content, understand policies, and begin their learning journey.
 
 # **22.2 Purpose**
 
@@ -21951,7 +21951,7 @@ Examples:
 - One-to-One Coding Classes
 - Become an Instructor
 - Free Demo Class
-- Online STEM Learning for Kids
+- Online SIRI Education for Kids
 
 Landing pages should support:
 
@@ -23017,13 +23017,13 @@ This module is designed to support future expansion, including:
 
 # **22.47 Chapter Summary**
 
-The CMS, SEO, Public Pages & Content Management module defines the public content foundation of STEM Learning.
+The CMS, SEO, Public Pages & Content Management module defines the public content foundation of SIRI Education.
 
 It enables administrators to manage public pages, legal pages, FAQs, blogs, landing pages, media, SEO metadata, sitemap, robots configuration, redirects, subject pages, and instructor profile SEO without developer dependency.
 
 This module supports organic growth, student trust, instructor discovery, policy transparency, marketing campaigns, and future regional expansion.
 
-By combining flexible content blocks, controlled publishing, SEO metadata, legal content management, FAQ accordions, public subject pages, instructor profile SEO, and audit logging, STEM Learning can operate as both a learning platform and a scalable public marketplace.
+By combining flexible content blocks, controlled publishing, SEO metadata, legal content management, FAQ accordions, public subject pages, instructor profile SEO, and audit logging, SIRI Education can operate as both a learning platform and a scalable public marketplace.
 
 # **CHAPTER 23 - ADMIN USER MANAGEMENT, ROLES, PERMISSIONS & ACCESS CONTROL**
 
@@ -23031,7 +23031,7 @@ By combining flexible content blocks, controlled publishing, SEO metadata, legal
 
 The Admin User Management, Roles, Permissions & Access Control module defines how internal platform users are created, assigned roles, granted permissions, restricted from sensitive areas, and monitored for accountability.
 
-STEM Learning includes many sensitive administrative areas such as payments, wallet, instructor earnings, withdrawals, instructor verification, booking overrides, meeting monitoring, CMS publishing, reports, support disputes, and configuration settings.
+SIRI Education includes many sensitive administrative areas such as payments, wallet, instructor earnings, withdrawals, instructor verification, booking overrides, meeting monitoring, CMS publishing, reports, support disputes, and configuration settings.
 
 Because these actions affect money, trust, privacy, student experience, instructor reputation, and platform operations, admin access must be role-based, permission-controlled, auditable, and aligned with the principle of least privilege.
 
@@ -24195,7 +24195,7 @@ This module is designed to support future expansion, including:
 
 # **23.42 Chapter Summary**
 
-The Admin User Management, Roles, Permissions & Access Control module defines the internal access control foundation of STEM Learning.
+The Admin User Management, Roles, Permissions & Access Control module defines the internal access control foundation of SIRI Education.
 
 It ensures that administrators can manage the platform securely while limiting access according to role, permission, sensitivity, and operational responsibility.
 
@@ -24203,7 +24203,7 @@ By separating roles, permissions, sensitive actions, financial restrictions, adm
 
 This module is essential for enterprise readiness, financial safety, internal accountability, and long-term operational control.
 
-# **STEM Learning**
+# **SIRI Education**
 
 ## **Enterprise Software Requirements Specification (SRS) v2.0**
 
@@ -24215,7 +24215,7 @@ This module is essential for enterprise readiness, financial safety, internal ac
 
 # **24.1 Introduction**
 
-The Activity Logs, Audit Trail & Compliance Monitoring module defines how STEM Learning records, stores, reviews, filters, and monitors important user actions, admin actions, financial events, security events, configuration changes, booking lifecycle events, instructor verification actions, support actions, and compliance-sensitive activities.
+The Activity Logs, Audit Trail & Compliance Monitoring module defines how SIRI Education records, stores, reviews, filters, and monitors important user actions, admin actions, financial events, security events, configuration changes, booking lifecycle events, instructor verification actions, support actions, and compliance-sensitive activities.
 
 Activity logs and audit trails are essential for enterprise trust, financial safety, internal accountability, dispute resolution, fraud investigation, operational troubleshooting, and compliance readiness.
 
@@ -25470,11 +25470,11 @@ This module is designed to support future expansion, including:
 
 # **24.46 Chapter Summary**
 
-The Activity Logs, Audit Trail & Compliance Monitoring module is the evidence and accountability layer of STEM Learning.
+The Activity Logs, Audit Trail & Compliance Monitoring module is the evidence and accountability layer of SIRI Education.
 
 It ensures that important user actions, admin actions, financial events, bookings, meetings, settings changes, CMS updates, instructor verification actions, report exports, and security events are traceable and reviewable.
 
-By separating general activity logs from formal audit trails, enforcing immutable records for sensitive actions, requiring reasons for financial changes, masking sensitive values, and enabling suspicious activity monitoring, STEM Learning becomes enterprise-ready for internal governance, financial safety, dispute resolution, and future compliance needs.
+By separating general activity logs from formal audit trails, enforcing immutable records for sensitive actions, requiring reasons for financial changes, masking sensitive values, and enabling suspicious activity monitoring, SIRI Education becomes enterprise-ready for internal governance, financial safety, dispute resolution, and future compliance needs.
 
 ##
 
@@ -25484,9 +25484,9 @@ By separating general activity logs from formal audit trails, enforcing immutabl
 
 # **25.1 Introduction**
 
-The Support, Disputes & Operational Case Management module defines how STEM Learning receives, tracks, manages, escalates, resolves, and audits student, instructor, booking, payment, meeting, refund, wallet, review, and technical support issues.
+The Support, Disputes & Operational Case Management module defines how SIRI Education receives, tracks, manages, escalates, resolves, and audits student, instructor, booking, payment, meeting, refund, wallet, review, and technical support issues.
 
-As STEM Learning grows, support cannot rely only on email, WhatsApp, or informal admin notes. Every operational issue should be captured as a structured support case with status, category, priority, related records, internal notes, communication history, responsible owner, and resolution outcome.
+As SIRI Education grows, support cannot rely only on email, WhatsApp, or informal admin notes. Every operational issue should be captured as a structured support case with status, category, priority, related records, internal notes, communication history, responsible owner, and resolution outcome.
 
 This module enables the platform team to provide reliable support while preserving accountability, evidence, and operational history.
 
@@ -26729,11 +26729,11 @@ This module is designed to support future expansion, including:
 
 # **25.50 Chapter Summary**
 
-The Support, Disputes & Operational Case Management module provides a structured operational helpdesk layer for STEM Learning.
+The Support, Disputes & Operational Case Management module provides a structured operational helpdesk layer for SIRI Education.
 
 It ensures that student issues, instructor issues, booking disputes, no-show disputes, refund reviews, payment problems, wallet questions, meeting failures, review disputes, earning issues, and technical problems are managed through traceable support cases rather than informal communication.
 
-By linking cases to platform records, preserving internal notes, enabling escalation, enforcing permission control, and maintaining audit history, STEM Learning can deliver professional support while protecting financial integrity, marketplace trust, and operational accountability.
+By linking cases to platform records, preserving internal notes, enabling escalation, enforcing permission control, and maintaining audit history, SIRI Education can deliver professional support while protecting financial integrity, marketplace trust, and operational accountability.
 
 ##
 
@@ -26743,15 +26743,15 @@ By linking cases to platform records, preserving internal notes, enabling escala
 
 # **26.1 Introduction**
 
-The System Health, Queues, Jobs & Operational Monitoring module defines how STEM Learning monitors and manages the background processes, scheduled jobs, queues, provider callbacks, retries, failures, operational alerts, and health indicators required to keep the platform reliable.
+The System Health, Queues, Jobs & Operational Monitoring module defines how SIRI Education monitors and manages the background processes, scheduled jobs, queues, provider callbacks, retries, failures, operational alerts, and health indicators required to keep the platform reliable.
 
-STEM Learning depends heavily on asynchronous and scheduled operations such as booking reminders, meeting creation, Razorpay callbacks, wallet deductions, recurring lesson generation, notification delivery, invoice generation, instructor earning settlement, referral reward processing, report exports, sitemap generation, and system maintenance.
+SIRI Education depends heavily on asynchronous and scheduled operations such as booking reminders, meeting creation, Razorpay callbacks, wallet deductions, recurring lesson generation, notification delivery, invoice generation, instructor earning settlement, referral reward processing, report exports, sitemap generation, and system maintenance.
 
 This module ensures that critical background workflows are visible, traceable, retryable, and operationally manageable.
 
 # **26.2 Purpose**
 
-The purpose of this module is to provide an operational reliability layer for STEM Learning.
+The purpose of this module is to provide an operational reliability layer for SIRI Education.
 
 The module must ensure:
 
@@ -27947,7 +27947,7 @@ This module is designed to support future expansion, including:
 
 # **26.46 Chapter Summary**
 
-The System Health, Queues, Jobs & Operational Monitoring module defines the reliability backbone of STEM Learning.
+The System Health, Queues, Jobs & Operational Monitoring module defines the reliability backbone of SIRI Education.
 
 It ensures that background jobs, scheduled tasks, queues, provider callbacks, payment processing, wallet operations, booking lifecycle jobs, meeting creation, notification delivery, recurring lessons, report exports, and CMS jobs are visible, traceable, retryable, and auditable.
 
@@ -27963,11 +27963,11 @@ PART G
 
 # **27.1 Introduction**
 
-The Performance, Scalability & Reliability Requirements chapter defines the expected quality, speed, stability, resilience, and growth-readiness of the STEM Learning platform.
+The Performance, Scalability & Reliability Requirements chapter defines the expected quality, speed, stability, resilience, and growth-readiness of the SIRI Education platform.
 
 Unlike functional requirements, which describe what the platform does, non-functional requirements define how well the platform must operate.
 
-STEM Learning is an online learning marketplace where students, instructors, bookings, payments, wallets, meetings, notifications, reports, and admin operations must work reliably. Performance or reliability failure can directly affect revenue, lesson delivery, user trust, instructor satisfaction, and business reputation.
+SIRI Education is an online learning marketplace where students, instructors, bookings, payments, wallets, meetings, notifications, reports, and admin operations must work reliably. Performance or reliability failure can directly affect revenue, lesson delivery, user trust, instructor satisfaction, and business reputation.
 
 This chapter establishes the baseline expectations for:
 
@@ -29105,11 +29105,11 @@ This chapter is designed to support future expansion, including:
 
 # **27.45 Chapter Summary**
 
-The Performance, Scalability & Reliability Requirements chapter defines the operational quality expectations for STEM Learning.
+The Performance, Scalability & Reliability Requirements chapter defines the operational quality expectations for SIRI Education.
 
 It ensures that the platform remains fast, stable, scalable, and reliable across public pages, marketplace search, instructor profiles, booking, payments, wallet, meetings, notifications, admin panels, reports, queues, and scheduled jobs.
 
-By prioritizing critical user journeys, enforcing idempotency, protecting data consistency, supporting queue scalability, monitoring scheduled jobs, optimizing reports, and requiring graceful degradation, STEM Learning becomes ready for a reliable Version 1 launch and future growth into a larger global online learning marketplace.
+By prioritizing critical user journeys, enforcing idempotency, protecting data consistency, supporting queue scalability, monitoring scheduled jobs, optimizing reports, and requiring graceful degradation, SIRI Education becomes ready for a reliable Version 1 launch and future growth into a larger global online learning marketplace.
 
 #
 
@@ -29121,7 +29121,7 @@ By prioritizing critical user journeys, enforcing idempotency, protecting data c
 
 # **1\. Book 2 Purpose**
 
-Book 2 defines the functional and operational requirements for the STEM Learning platform.
+Book 2 defines the functional and operational requirements for the SIRI Education platform.
 
 It converts the business strategy from Book 1 into structured functional modules covering:
 
@@ -29926,7 +29926,7 @@ Output:
 
 Use this prompt to start implementation safely:
 
-You are working on a Laravel 13 + Filament v4 + MySQL enterprise online learning marketplace named STEM Learning.
+You are working on a Laravel 13 + Filament v4 + MySQL enterprise online learning marketplace named SIRI Education.
 
 We have completed the SRS Book 2. Start Phase 1 implementation only.
 
@@ -30075,7 +30075,7 @@ Do not start directly with booking or payments.
 
 # **11\. Final Book 2 Summary**
 
-Book 2 defines a complete functional and operational blueprint for STEM Learning.
+Book 2 defines a complete functional and operational blueprint for SIRI Education.
 
 It covers the full lifecycle from public discovery to instructor approval, student booking, online lesson delivery, wallet payment, instructor earnings, referrals, reviews, support, reporting, admin operations, system monitoring, and reliability.
 

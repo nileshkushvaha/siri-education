@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This blueprint defines the Phase 1 foundation architecture for the STEM Learning platform based on the current codebase inventory in `docs/architecture/phase-1-foundation-inventory.md`.
+This blueprint defines the Phase 1 foundation architecture for the SIRI Education platform based on the current codebase inventory in `docs/architecture/phase-1-foundation-inventory.md`.
 
 The application is an existing Laravel 13 modular monolith with Filament administration, Blade/Livewire public frontend, CMS, booking, settings, media, permissions, activity logging, and transactional email foundations already present. Future work must enhance these foundations instead of rebuilding them.
 
@@ -62,17 +62,17 @@ Do not place cross-domain side effects directly inside controllers, Filament res
 
 Current source-of-truth versions are in `docs/Architecture.md` and `composer.json`.
 
-| Concern | Current implementation |
-|---|---|
-| Framework | Laravel 13 |
-| Admin | Filament v5.6 admin panel at `/admin` |
-| Frontend | Blade, Livewire 4, Alpine.js, Tailwind CSS, Vite |
-| Permissions | Spatie Permission and Filament Shield |
-| Settings | Spatie Laravel Settings |
-| Media | Spatie Media Library |
-| Activity | Spatie Activitylog |
-| Navigation tree | Kalnoy NestedSet |
-| Mail provider | Resend in production, log/array locally |
+| Concern         | Current implementation                           |
+| --------------- | ------------------------------------------------ |
+| Framework       | Laravel 13                                       |
+| Admin           | Filament v5.6 admin panel at `/admin`            |
+| Frontend        | Blade, Livewire 4, Alpine.js, Tailwind CSS, Vite |
+| Permissions     | Spatie Permission and Filament Shield            |
+| Settings        | Spatie Laravel Settings                          |
+| Media           | Spatie Media Library                             |
+| Activity        | Spatie Activitylog                               |
+| Navigation tree | Kalnoy NestedSet                                 |
+| Mail provider   | Resend in production, log/array locally          |
 
 Compatibility note: this codebase currently uses Filament v5.6. New documentation and implementation should stay aligned with the installed version while keeping resource/page patterns conventional enough to avoid unnecessary coupling to a major-version-specific workaround.
 
@@ -237,21 +237,21 @@ Existing queue-related files:
 
 ## Module Boundaries
 
-| Module | Boundary rule |
-|---|---|
-| Auth/Security | Use auth services/actions/settings. Keep route closures and controllers thin. |
-| Portal | Use `PortalResolver` only for portal selection. |
-| CMS | Use `Page`, `Post`, `ContentBlock`, render services, and block components. |
-| Navigation | Use `app/Navigation` services, drivers, and repository. |
-| Booking | Use `app/Booking` contracts/services/repositories/actions/DTOs/events. |
-| Payments | Use booking payment services and provider registry. |
-| Forms | Use `PublicFormService` and `PublicFormSubmissionRepository`. |
-| Profile | Use profile services/actions and Spatie Media Library collections. |
-| Student portal | Use existing frontend layout/composer, Livewire components, booking/homework services. |
-| Instructor | Use `InstructorService`, `User`, `UserProfile`, and existing teacher-named availability tables. |
-| Settings | Use Spatie Settings classes and Filament settings pages. |
-| Notifications/Mail | Use Laravel notifications, mail services, events/listeners, and email logs. |
-| Audit | Use `AuditTrailService`, Activity model, observers, and notification mapper. |
+| Module             | Boundary rule                                                                                   |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| Auth/Security      | Use auth services/actions/settings. Keep route closures and controllers thin.                   |
+| Portal             | Use `PortalResolver` only for portal selection.                                                 |
+| CMS                | Use `Page`, `Post`, `ContentBlock`, render services, and block components.                      |
+| Navigation         | Use `app/Navigation` services, drivers, and repository.                                         |
+| Booking            | Use `app/Booking` contracts/services/repositories/actions/DTOs/events.                          |
+| Payments           | Use booking payment services and provider registry.                                             |
+| Forms              | Use `PublicFormService` and `PublicFormSubmissionRepository`.                                   |
+| Profile            | Use profile services/actions and Spatie Media Library collections.                              |
+| Student portal     | Use existing frontend layout/composer, Livewire components, booking/homework services.          |
+| Instructor         | Use `InstructorService`, `User`, `UserProfile`, and existing teacher-named availability tables. |
+| Settings           | Use Spatie Settings classes and Filament settings pages.                                        |
+| Notifications/Mail | Use Laravel notifications, mail services, events/listeners, and email logs.                     |
+| Audit              | Use `AuditTrailService`, Activity model, observers, and notification mapper.                    |
 
 ## Current Alignment Gaps
 
@@ -296,4 +296,3 @@ Do not recreate these existing tables:
 - `email_logs`
 - `countries`
 - `states`
-

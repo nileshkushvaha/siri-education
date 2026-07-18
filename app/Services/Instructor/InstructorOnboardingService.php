@@ -366,10 +366,15 @@ final class InstructorOnboardingService
         );
     }
 
-    /** Active -> Vacation. Profile, reviews, and earnings history are untouched — only instructor_status changes. */
+    /**
+     * Active -> Vacation. Profile, reviews, and earnings history are
+     * untouched — only instructor_status changes. Phase 23M: an
+     * instructor may set their own vacation status (self-service);
+     * VACATION_PERMISSION continues to cover admin-initiated vacation.
+     */
     public function setVacation(User $instructor, User $actor): UserProfile
     {
-        $this->authorizeLifecycleAction($actor, self::VACATION_PERMISSION);
+        $this->authorizeSelfOrLifecyclePermission($actor, $instructor, self::VACATION_PERMISSION);
 
         return $this->transitionStatus(
             $actor,
@@ -381,10 +386,13 @@ final class InstructorOnboardingService
         );
     }
 
-    /** Vacation -> Active. No re-approval — the existing verification/approval remains valid. */
+    /**
+     * Vacation -> Active. No re-approval — the existing verification/
+     * approval remains valid. Phase 23M: self-service, see setVacation().
+     */
     public function resumeFromVacation(User $instructor, User $actor): UserProfile
     {
-        $this->authorizeLifecycleAction($actor, self::VACATION_PERMISSION);
+        $this->authorizeSelfOrLifecyclePermission($actor, $instructor, self::VACATION_PERMISSION);
 
         return $this->transitionStatus(
             $actor,
@@ -675,6 +683,20 @@ final class InstructorOnboardingService
         if (! $this->hasPermission($actor, $permission)) {
             throw new AuthorizationException('You are not authorized to perform this instructor lifecycle action.');
         }
+    }
+
+    /**
+     * Phase 23M: an instructor acting on their own vacation status needs
+     * no permission grant — self-service. Anyone else (including staff)
+     * still needs the dedicated permission, exactly as before.
+     */
+    private function authorizeSelfOrLifecyclePermission(User $actor, User $instructor, string $permission): void
+    {
+        if ($actor->id === $instructor->id) {
+            return;
+        }
+
+        $this->authorizeLifecycleAction($actor, $permission);
     }
 
     private function authorizeReview(User $admin): void

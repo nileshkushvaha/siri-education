@@ -29,7 +29,9 @@ use App\Http\Controllers\Instructor\InstructorHomeworkController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorLessonsController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
+use App\Http\Controllers\Instructor\InstructorFinanceController;
 use App\Http\Controllers\Instructor\InstructorPayoutController;
+use App\Http\Controllers\Instructor\InstructorVacationController;
 use App\Http\Controllers\Instructor\InstructorQualityInsightsController;
 use App\Http\Controllers\NewsletterUnsubscribeController;
 use App\Http\Controllers\PageController;
@@ -244,6 +246,9 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
     Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
     Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
+    // Phase 23M — self-service vacation toggle; a lifecycle state
+    // transition (InstructorOnboardingService), never a new domain.
+    Route::get('/instructor/vacation', [InstructorVacationController::class, 'index'])->name('instructor.vacation');
     // Phase 17Q — instructor's own lesson list, hosting the private
     // student-feedback form for completed lessons. No admin/Filament
     // surface; feedback here never edits a lesson, booking, or outcome.
@@ -258,6 +263,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/instructor/quality-insights', [InstructorQualityInsightsController::class, 'index'])->name('instructor.quality-insights');
     // Phase 15 — payout methods & withdrawals (authenticated instructors
     // only; page shells — no route here can move money).
+    // Phase 23L — read-only earning/settlement visibility; no mutation
+    // route exists here, all writes stay staff-only via InstructorEarningService.
+    Route::get('/instructor/earnings', [InstructorFinanceController::class, 'earnings'])->name('instructor.earnings');
+    Route::get('/instructor/settlements', [InstructorFinanceController::class, 'settlements'])->name('instructor.settlements');
     Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');
     Route::get('/instructor/withdrawals', [InstructorPayoutController::class, 'withdrawals'])->name('instructor.withdrawals');
     Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');

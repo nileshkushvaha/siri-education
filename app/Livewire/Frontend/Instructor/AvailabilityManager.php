@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Frontend\Instructor;
 
 use App\Booking\Enums\Weekday;
+use App\Enums\InstructorStatus;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherUnavailability;
 use App\Services\Instructor\InstructorAvailabilityService;
@@ -28,6 +29,9 @@ final class AvailabilityManager extends Component
 
     public bool $hasProfileTimezone = true;
 
+    /** Phase 23M — read-only status banner; the Vacation Mode page is the single owner of the toggle. */
+    public bool $isOnVacation = false;
+
     public int $dayOfWeek = 1;
 
     public string $startTime = '09:00';
@@ -50,6 +54,7 @@ final class AvailabilityManager extends Component
 
         $profileTimezone = auth()->user()->profile?->timezone;
         $this->hasProfileTimezone = filled($profileTimezone);
+        $this->isOnVacation = auth()->user()->profile?->instructor_status === InstructorStatus::Vacation;
         // Missing profile timezone: leave blank so the instructor must
         // explicitly choose one — never silently publish on the app timezone.
         $this->timezone = $profileTimezone;

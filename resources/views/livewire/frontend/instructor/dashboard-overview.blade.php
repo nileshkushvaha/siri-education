@@ -100,6 +100,7 @@
                 @empty
                     <p class="text-sm leading-6 text-slate-400">Earnings from completed eligible lessons will appear here after processing.</p>
                 @endforelse
+                <a href="{{ route('dashboard.instructor.earnings') }}" class="mt-4 inline-flex items-center text-xs font-semibold text-indigo-300 hover:text-indigo-200">View Earnings &rarr;</a>
             </x-account.card>
         </div>
     </div>
@@ -131,6 +132,10 @@
                 <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-label="Instructor profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $onboarding['percentage'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $onboarding['percentage'] }}%"></div></div>
                 @if($onboarding['missing'])<p class="mt-3 text-sm text-slate-400">Next: {{ implode(', ', array_slice($onboarding['missing'], 0, 2)) }}</p>@endif
                 <div class="mt-4 flex gap-2"><a href="{{ route('dashboard.instructor.onboarding') }}" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Continue setup</a>@if($onboarding['next_action'] === 'submit_application')<form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">@csrf<button type="submit" class="min-h-10 w-full rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400">Submit for review</button></form>@endif</div>
+            </x-account.card>
+        @elseif($onboarding['status'] === \App\Enums\InstructorStatus::Vacation)
+            <x-account.card>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-300">Teaching status</p><h2 class="mt-1 text-lg font-semibold text-white">Vacation Mode Active</h2><p class="mt-2 text-sm leading-6 text-slate-400">New students cannot book lessons with you right now. Your schedule and existing lessons are unaffected.</p><a href="{{ route('dashboard.instructor.vacation') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Resume Teaching &rarr;</a>
             </x-account.card>
         @else
             <x-account.card>

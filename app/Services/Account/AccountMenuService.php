@@ -88,11 +88,14 @@ final class AccountMenuService
             ['label' => 'Teach', 'items' => [
                 $this->item('Learning Plans', 'dashboard.instructor.learning-plans', 'clipboard'),
                 $this->item('Availability', 'dashboard.instructor.availability', 'calendar', mobilePriority: 3),
+                $this->item('Vacation Mode', 'dashboard.instructor.vacation', 'calendar'),
                 $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard', mobilePriority: 2, mobileLabel: 'Lessons'),
                 $this->item('Homework', 'dashboard.instructor.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled),
                 $this->item('Reviews & Quality', 'dashboard.instructor.quality-insights', 'star'),
             ]],
             ['label' => 'Money', 'items' => [
+                $this->item('Earnings', 'dashboard.instructor.earnings', 'credit-card'),
+                $this->item('Settlements', 'dashboard.instructor.settlements', 'credit-card'),
                 $this->item('Payout Methods', 'dashboard.instructor.payout-methods', 'credit-card', enabled: $payouts),
                 $this->item('Withdrawals', 'dashboard.instructor.withdrawals', 'credit-card', enabled: $payouts),
             ]],

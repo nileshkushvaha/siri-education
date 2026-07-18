@@ -1,4 +1,14 @@
 <div class="space-y-6">
+    @if($isOnVacation)
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+            <p class="font-semibold">Vacation mode is enabled.</p>
+            <p class="mt-1 leading-6">
+                Your weekly availability is saved but new bookings are paused.
+                <a href="{{ route('dashboard.instructor.vacation') }}" class="underline hover:text-amber-100">Manage vacation mode</a>
+            </p>
+        </div>
+    @endif
+
     @unless($hasProfileTimezone)
         <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200">
             <p class="font-semibold">Your profile timezone is not set.</p>

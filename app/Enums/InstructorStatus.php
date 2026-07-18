@@ -82,4 +82,17 @@ enum InstructorStatus: string
     {
         return array_map(fn (self $status): string => $status->value, self::bookable());
     }
+
+    /**
+     * Phase 23M: publicly viewable — a strictly wider set than
+     * bookable(). A Vacation instructor's profile must stay visible
+     * ("temporarily unavailable", booking disabled) rather than 404/403
+     * like an unapproved or suspended instructor's does.
+     *
+     * @return list<self>
+     */
+    public static function publiclyVisible(): array
+    {
+        return [self::Approved, self::Active, self::Vacation];
+    }
 }

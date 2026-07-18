@@ -168,8 +168,12 @@ final class InstructorService
         $isOwner = $viewer && $viewer->id === $instructor->id;
         $canManage = $isOwner || ($viewer && $viewer->can('Update:User'));
         $isBookable = in_array($profile->instructor_status, InstructorStatus::bookable(), true);
+        // Phase 23M: a Vacation instructor's profile stays visible
+        // ("temporarily unavailable", booking disabled) — only
+        // unapproved/suspended/archived instructors are hidden entirely.
+        $isPubliclyVisible = in_array($profile->instructor_status, InstructorStatus::publiclyVisible(), true);
 
-        abort_if(! $canManage && (! $instructor->isActive() || ! $isBookable), 403);
+        abort_if(! $canManage && (! $instructor->isActive() || ! $isPubliclyVisible), 403);
         abort_if($profile->profile_visibility === 'private' && ! $canManage, 403);
         abort_if($profile->profile_visibility === 'members_only' && ! $viewer, 403);
 
@@ -217,6 +221,7 @@ final class InstructorService
             'skills',
             'certificates',
             'isVerified',
+            'isBookable',
             'responseTimeLabel',
             'offersDemo',
             'headlineText',

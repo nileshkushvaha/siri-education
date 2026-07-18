@@ -17,11 +17,13 @@ use Tests\TestCase;
 
 /**
  * Instructor application creation must not grant teaching access until
- * approval: only Approved/Active make an instructor bookable, publicly
- * listed, and visible on their public profile. Every other lifecycle
- * state (draft, submitted, under_review, documents_pending,
- * interview_required, vacation, suspended, archived, rejected) must be
- * excluded from all three surfaces.
+ * approval: only Approved/Active make an instructor bookable and
+ * publicly listed. Every other lifecycle state (draft, submitted,
+ * under_review, documents_pending, interview_required, vacation,
+ * suspended, archived, rejected) must be excluded from booking
+ * eligibility and public listing. Public profile *visibility* is
+ * slightly wider (Phase 23M): Vacation stays visible with booking
+ * disabled, while every other non-bookable status is still forbidden.
  */
 class InstructorLifecycleTest extends TestCase
 {
@@ -60,7 +62,18 @@ class InstructorLifecycleTest extends TestCase
     {
         $instructor = $this->makeInstructor($status);
 
-        $this->get(route('instructors.show', $instructor))->assertForbidden();
+        $response = $this->get(route('instructors.show', $instructor));
+
+        // Phase 23M — Vacation is the one non-bookable status whose
+        // profile stays visible (booking disabled, not hidden); every
+        // other non-bookable status is still forbidden entirely.
+        if ($status === InstructorStatus::Vacation) {
+            $response->assertOk()->assertSee('temporarily unavailable');
+
+            return;
+        }
+
+        $response->assertForbidden();
     }
 
     #[DataProvider('nonBookableStatusProvider')]

@@ -142,32 +142,40 @@
                 </div>
 
                 <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20">
-                    <p class="text-sm font-semibold text-white">Start with {{ Str::before($instructor->name, ' ') }}</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">
-                        @if($offersDemo)
-                            Choose a no-pressure demo or continue to the booking flow for a full paid session.
-                        @else
-                            Continue to the booking flow for a full paid session.
-                        @endif
-                    </p>
-                    <div class="mt-5 grid gap-3">
-                        @if($offersDemo)
-                            <a href="{{ $demoBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
-                                <span class="text-sm font-black">Book a Free Demo</span>
-                                <span class="mt-1 block text-xs text-indigo-100">Meet the instructor and discuss your learning goal.</span>
-                            </a>
-                            <a href="{{ $paidBookingUrl }}" class="rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-white transition hover:border-emerald-300/30 hover:bg-emerald-400/10">
-                                <span class="text-sm font-black">Book a Paid Class</span>
-                                <span class="mt-1 block text-xs text-slate-400">Move straight into a full learning session.</span>
-                            </a>
-                        @else
-                            <a href="{{ $paidBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
-                                <span class="text-sm font-black">Book a Lesson</span>
-                                <span class="mt-1 block text-xs text-indigo-100">Move straight into a full learning session.</span>
-                            </a>
-                        @endif
-                    </div>
-                    <p class="mt-4 text-xs leading-5 text-slate-500">Final times and session type are confirmed in the booking wizard.</p>
+                    @if($isBookable)
+                        <p class="text-sm font-semibold text-white">Start with {{ Str::before($instructor->name, ' ') }}</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-400">
+                            @if($offersDemo)
+                                Choose a no-pressure demo or continue to the booking flow for a full paid session.
+                            @else
+                                Continue to the booking flow for a full paid session.
+                            @endif
+                        </p>
+                        <div class="mt-5 grid gap-3">
+                            @if($offersDemo)
+                                <a href="{{ $demoBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
+                                    <span class="text-sm font-black">Book a Free Demo</span>
+                                    <span class="mt-1 block text-xs text-indigo-100">Meet the instructor and discuss your learning goal.</span>
+                                </a>
+                                <a href="{{ $paidBookingUrl }}" class="rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-white transition hover:border-emerald-300/30 hover:bg-emerald-400/10">
+                                    <span class="text-sm font-black">Book a Paid Class</span>
+                                    <span class="mt-1 block text-xs text-slate-400">Move straight into a full learning session.</span>
+                                </a>
+                            @else
+                                <a href="{{ $paidBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
+                                    <span class="text-sm font-black">Book a Lesson</span>
+                                    <span class="mt-1 block text-xs text-indigo-100">Move straight into a full learning session.</span>
+                                </a>
+                            @endif
+                        </div>
+                        <p class="mt-4 text-xs leading-5 text-slate-500">Final times and session type are confirmed in the booking wizard.</p>
+                    @else
+                        <p class="text-sm font-semibold text-white">Instructor temporarily unavailable</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-400">{{ Str::before($instructor->name, ' ') }} isn't accepting new lesson bookings right now. Check back later.</p>
+                        <div class="mt-5 rounded-2xl border border-dashed border-white/10 p-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Booking disabled
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

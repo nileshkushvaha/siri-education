@@ -5,12 +5,86 @@
 @section('content')
 @php
     $accountFullWidth = trim($__env->yieldContent('account-full-width')) === 'true';
+    $accountTheme = ($accountAudience ?? null) === \App\Enums\PortalAudience::Instructor ? 'instructor' : 'student';
     $mobilePrimaryItems = collect($accountMenu ?? [])->flatMap(fn (array $group) => $group['items'])
         ->filter(fn (array $item) => $item['mobile_priority'] !== null)
         ->sortBy('mobile_priority');
 @endphp
 
-<div class="min-h-screen bg-surface-dark text-slate-100"
+@push('head')
+<style>
+    [data-account-portal] {
+        --portal-a: 34 211 238;
+        --portal-b: 99 102 241;
+        --portal-c: 217 70 239;
+        --portal-d: 52 211 153;
+        background:
+            radial-gradient(circle at 12% 8%, rgb(var(--portal-a) / .075), transparent 25rem),
+            radial-gradient(circle at 88% 30%, rgb(var(--portal-c) / .06), transparent 28rem),
+            radial-gradient(circle at 55% 100%, rgb(var(--portal-b) / .05), transparent 32rem),
+            #020617;
+    }
+    [data-account-portal="instructor"] {
+        --portal-a: 168 85 247;
+        --portal-b: 99 102 241;
+        --portal-c: 245 158 11;
+        --portal-d: 52 211 153;
+    }
+    [data-account-card] {
+        background:
+            radial-gradient(circle at 0 0, rgb(var(--portal-a) / .085), transparent 14rem),
+            radial-gradient(circle at 100% 100%, rgb(var(--portal-c) / .055), transparent 15rem),
+            rgb(255 255 255 / .032);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .025), 0 18px 50px rgb(0 0 0 / .12);
+    }
+    [data-account-card]:hover {
+        border-color: rgb(var(--portal-a) / .20);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .04), 0 20px 55px rgb(var(--portal-b) / .07);
+    }
+    [data-account-sidebar][data-account-sidebar-mode="desktop"] nav {
+        background:
+            radial-gradient(circle at 0 0, rgb(var(--portal-a) / .10), transparent 13rem),
+            radial-gradient(circle at 100% 80%, rgb(var(--portal-c) / .06), transparent 14rem),
+            rgb(255 255 255 / .028);
+    }
+    #main-content > div:has(> h1) {
+        position: relative;
+        overflow: hidden;
+        padding: 1.25rem 1.375rem;
+        border: 1px solid rgb(var(--portal-a) / .13);
+        border-radius: 1.25rem;
+        background:
+            radial-gradient(circle at 92% 10%, rgb(var(--portal-c) / .12), transparent 12rem),
+            linear-gradient(120deg, rgb(var(--portal-a) / .075), rgb(var(--portal-b) / .055) 52%, rgb(255 255 255 / .025));
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .035);
+    }
+    #main-content > div:has(> h1)::after {
+        content: '';
+        position: absolute;
+        inset: auto -2.5rem -4rem auto;
+        width: 9rem;
+        height: 9rem;
+        border-radius: 9999px;
+        background: rgb(var(--portal-a) / .08);
+        filter: blur(12px);
+        pointer-events: none;
+    }
+    #main-content > div:has(> h1) > h1 {
+        background: linear-gradient(90deg, white, rgb(var(--portal-a)), rgb(var(--portal-c)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    [data-account-mobile-navigation] {
+        background:
+            linear-gradient(90deg, rgb(var(--portal-a) / .055), rgb(var(--portal-b) / .04), rgb(var(--portal-c) / .05)),
+            rgb(2 6 23 / .98);
+        backdrop-filter: blur(18px);
+    }
+</style>
+@endpush
+
+<div class="min-h-screen text-slate-100" data-account-portal="{{ $accountTheme }}"
      x-data="{
         drawerOpen: false,
         openDrawer() { this.drawerOpen = true; document.body.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.drawerClose?.focus()); },
@@ -30,7 +104,7 @@
         <div class="absolute inset-0 bg-black/70" @click="closeDrawer()" aria-hidden="true"></div>
         <div id="account-navigation-drawer" x-ref="drawer" role="dialog" aria-modal="true" aria-label="Account navigation"
              @keydown.tab="trap($event)"
-             class="absolute inset-y-0 left-0 w-[min(22rem,90vw)] overflow-hidden bg-slate-950 shadow-2xl motion-safe:transition-transform">
+             class="absolute inset-y-0 left-0 w-[min(22rem,90vw)] overflow-hidden bg-slate-950 shadow-2xl ring-1 ring-white/10 motion-safe:transition-transform">
             <div class="flex min-h-16 items-center justify-between border-b border-white/[0.08] px-4">
                 <p class="font-bold text-white">Account menu</p>
                 <button x-ref="drawerClose" type="button" @click="closeDrawer()" class="inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Close account navigation">✕</button>
@@ -53,9 +127,9 @@
 
     <x-account.portal-footer />
 
-    <nav class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-white/[0.10] bg-slate-950/98 px-1 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Mobile account navigation" data-account-mobile-navigation>
+    <nav class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-white/[0.10] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Mobile account navigation" data-account-mobile-navigation>
         @foreach($mobilePrimaryItems as $item)
-            <a href="{{ $item['url'] }}" @if(request()->routeIs($item['route'])) aria-current="page" @endif class="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold {{ request()->routeIs($item['route']) ? 'text-indigo-300' : 'text-slate-400' }} focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400">
+            <a href="{{ $item['url'] }}" @if(request()->routeIs($item['route'])) aria-current="page" @endif class="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold {{ request()->routeIs($item['route']) ? 'text-[rgb(var(--portal-a))]' : 'text-slate-400' }} focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400">
                 <span aria-hidden="true">•</span><span class="truncate">{{ $item['mobile_label'] ?? $item['label'] }}</span>
             </a>
         @endforeach

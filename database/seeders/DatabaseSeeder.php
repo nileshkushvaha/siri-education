@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
             SkillLevelSeeder::class,
             InstructorSeeder::class,
             InstructorDocumentRequirementSeeder::class,
+            FaqSeeder::class,
         ]);
     }
 }

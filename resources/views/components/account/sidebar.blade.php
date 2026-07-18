@@ -20,13 +20,13 @@
                         <a href="{{ $item['url'] }}"
                            data-account-menu-item="{{ $item['route'] }}"
                            @if($active) aria-current="page" @endif
-                           class="{{ $active ? 'account-menu-active border-indigo-400/30 bg-indigo-400/15 text-indigo-200' : 'border-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white' }} flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                           class="{{ $active ? 'account-menu-active border-[rgb(var(--portal-a)/.28)] bg-gradient-to-r from-[rgb(var(--portal-a)/.16)] to-[rgb(var(--portal-c)/.07)] text-white' : 'border-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white' }} flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
                             <span class="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 6h16M4 12h16M4 18h10"/></svg>
                             </span>
                             <span class="min-w-0 flex-1 break-words">{{ $item['label'] }}</span>
                             @if($item['badge'])
-                                <span class="inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-indigo-300/15 px-1.5 text-xs font-bold text-indigo-200" aria-label="{{ $item['badge'] }} unread or pending">
+                                <span class="inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--portal-c)/.14)] px-1.5 text-xs font-bold text-[rgb(var(--portal-c))]" aria-label="{{ $item['badge'] }} unread or pending">
                                     {{ $item['badge'] > 99 ? '99+' : $item['badge'] }}
                                 </span>
                             @endif

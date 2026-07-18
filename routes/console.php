@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\CreditEligibleReferralRewards;
@@ -64,7 +66,7 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/lessons-auto-complete.log'));
 
-// Phase 17B evidence-driven finalizer: seals due attendance records,
+// The evidence-driven finalizer: seals due attendance records,
 // determines outcomes from evidence, and finalizes through the outcome
 // pipeline. Idempotent, concurrent-safe (row locks + terminal-outcome
 // protection), and a no-op until lessons.automated_finalization_enabled
@@ -84,18 +86,18 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/instructor-earnings-release.log'));
 
-// Accrue closed daily/weekly/monthly compensation periods (Phase 14.2).
-// Hourly so day boundaries in every agreement timezone are caught
-// promptly; idempotent and gated by earnings_enabled inside the service.
+// Accrue closed daily/weekly/monthly compensation periods. Hourly so
+// day boundaries in every agreement timezone are caught promptly;
+// idempotent and gated by earnings_enabled inside the service.
 app(Schedule::class)
     ->command(AccruePeriodicCompensation::class)
     ->hourly()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/instructor-earnings-accrual.log'));
 
-// Recover compensation-blocked lessons (Phase 14.3). Idempotent;
-// resolution is pinned to each lesson's scheduled start time, and the
-// earnings kill switch still gates every attempt.
+// Recover compensation-blocked lessons. Idempotent; resolution is
+// pinned to each lesson's scheduled start time, and the earnings kill
+// switch still gates every attempt.
 app(Schedule::class)
     ->command(RetryBlockedLessons::class)
     ->hourly()
@@ -110,8 +112,8 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/booking-reservations.log'));
 
-// Reconcile due payout attempts against the provider (Phase 16A — fake
-// provider only). Gated by payout_reconciliation_enabled inside the
+// Reconcile due payout attempts against the provider (fake provider
+// only, currently). Gated by payout_reconciliation_enabled inside the
 // service; idempotent, so an overlapping run is merely wasted work,
 // never a duplicate financial effect — onOneServer() avoids that waste
 // on a multi-node deployment.
@@ -122,8 +124,8 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/instructor-payouts-reconcile.log'));
 
-// Reconcile due booking payment attempts against the provider (Phase
-// 16C — collection-side mirror of the payout sweep above). Gated by
+// Reconcile due booking payment attempts against the provider — the
+// collection-side mirror of the payout sweep above. Gated by
 // booking_payment_reconciliation_enabled inside the service; idempotent
 // via BookingPaymentService::applyProviderStatus(), so an overlapping
 // run is merely wasted work, never a duplicate financial effect —
@@ -149,9 +151,9 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-sync-pending.log'));
 
-// Phase 17F wallet refunds: credits approved lesson-outcome refund
-// dispositions through the wallet domain. Idempotent (ledger
-// idempotency keys), per-record failure isolation; a no-op until
+// Wallet refunds: credits approved lesson-outcome refund dispositions
+// through the wallet domain. Idempotent (ledger idempotency keys),
+// per-record failure isolation; a no-op until
 // instructor_earnings.lesson_refund_execution_enabled is on.
 app(Schedule::class)
     ->command(ProcessLessonRefunds::class)
@@ -160,7 +162,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/lessons-process-refunds.log'));
 
-// Phase 17G earning reconciliation: executes approved instructor
+// Earning reconciliation: executes approved instructor
 // earning create/hold/release/reverse decisions through the earning
 // domain. Idempotent, per-record failure isolation; a no-op until
 // instructor_earnings.earning_reconciliation_execution_enabled is on.
@@ -171,7 +173,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/lessons-earning-reconciliation.log'));
 
-// Phase 17H review-eligibility expiration: expires open windows whose
+// Review-eligibility expiration: expires open windows whose
 // review deadline has passed. Idempotent, batched, per-record failure
 // isolation; low frequency is fine — a multi-day review window.
 app(Schedule::class)
@@ -181,7 +183,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/reviews-expire-eligibility.log'));
 
-// Phase 17C attendance reconciliation: pulls participant sessions for
+// Attendance reconciliation: pulls participant sessions for
 // recently ended meetings from attendance-capable providers into the
 // lesson evidence layer. Idempotent, per-meeting failure isolation,
 // bounded retries; a no-op until meeting.attendance_sync_enabled is on.
@@ -192,7 +194,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-attendance-sync.log'));
 
-// Phase 19D delayed referral-reward crediting: credits Eligible rewards
+// Delayed referral-reward crediting: credits Eligible rewards
 // whose readiness time (hold period) has passed, through the single
 // creditReward() path. Idempotent (ledger idempotency keys + row
 // locks), bounded batches, per-reward failure isolation — an

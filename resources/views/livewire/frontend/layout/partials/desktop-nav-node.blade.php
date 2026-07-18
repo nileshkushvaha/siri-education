@@ -9,7 +9,7 @@
             type="button"
             x-on:click="open = ! open"
             x-bind:aria-expanded="open"
-            class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 dark:focus-visible:ring-indigo-400/20 {{ $node->isActive || $node->isAncestorActive ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-200' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+            class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 {{ $node->isActive || $node->isAncestorActive ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100' : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-sm' }}"
             aria-haspopup="true"
         >
             <span>{{ $node->label }}</span>
@@ -21,7 +21,7 @@
             x-show="open"
             x-transition
             x-cloak
-            class="absolute left-1/2 top-full z-50 mt-3 w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10 dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40"
+            class="absolute left-1/2 top-full z-50 mt-3 w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-indigo-950/15"
         >
             <div class="grid gap-2 sm:grid-cols-2">
                 @foreach($node->children as $child)
@@ -34,7 +34,7 @@
             href="{{ $node->link->url }}"
             target="{{ $node->link->target }}"
             @if($node->link->rel) rel="{{ $node->link->rel }}" @endif
-            class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 dark:focus-visible:ring-indigo-400/20 {{ $node->isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-200' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+            class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 {{ $node->isActive ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100' : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-sm' }}"
             @if($node->isActive) aria-current="page" @endif
             @if($node->link->isExternal()) aria-label="{{ $node->label }} (opens in new tab)" @endif
         >
@@ -42,6 +42,6 @@
             @if($node->badgeText)<x-ui.badge color="indigo">{{ $node->badgeText }}</x-ui.badge>@endif
         </a>
     @else
-        <span class="inline-flex px-3 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400">{{ $node->label }}</span>
+        <span class="inline-flex px-3 py-2 text-sm font-semibold text-slate-500">{{ $node->label }}</span>
     @endif
 </li>

@@ -1,4 +1,5 @@
-<footer class="border-t border-white/[0.08] py-6 text-sm text-slate-400" data-account-footer>
+<footer class="relative py-6 text-sm text-slate-400" data-account-footer>
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[rgb(var(--portal-c)/.8)] to-transparent shadow-[0_-1px_12px_rgb(var(--portal-b)/.4)]" aria-hidden="true"></div>
     <div class="mx-auto flex max-w-screen-2xl flex-wrap items-center justify-between gap-3 px-4 sm:px-6">
         <p>&copy; {{ now()->year }} {{ config('app.name') }}</p>
         <nav class="flex flex-wrap gap-x-5 gap-y-2" aria-label="Portal footer">

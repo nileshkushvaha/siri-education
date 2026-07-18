@@ -32,6 +32,17 @@ final class FaqService
         return $this->query([FaqAudience::Public->value], $search, $categoryId, $limit);
     }
 
+    public function publicFaqsForCategory(string $categoryName, ?int $limit = null): Collection
+    {
+        $category = FaqCategory::query()->where('name', $categoryName)->first();
+
+        if ($category === null) {
+            return collect();
+        }
+
+        return $this->query([FaqAudience::Public->value], null, $category->id, $limit);
+    }
+
     public function forUser(User $user, ?string $search = null, ?string $categoryId = null): Collection
     {
         return $this->query($this->audiencesForUser($user), $search, $categoryId);

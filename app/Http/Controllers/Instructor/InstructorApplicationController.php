@@ -8,6 +8,7 @@ use App\Contracts\InstructorEligibilityServiceInterface;
 use App\Enums\InstructorStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Faq\FaqService;
 use Illuminate\View\View;
 
 /**
@@ -22,6 +23,7 @@ final class InstructorApplicationController extends Controller
 {
     public function __construct(
         private readonly InstructorEligibilityServiceInterface $eligibility,
+        private readonly FaqService $faqService,
     ) {}
 
     public function show(): View
@@ -33,6 +35,7 @@ final class InstructorApplicationController extends Controller
             'eligibility' => $user && $user->profile?->instructor_status === null
                 ? $this->eligibility->evaluate($user)
                 : null,
+            'faqs' => $this->faqService->publicFaqsForCategory('Become an Instructor'),
         ]);
     }
 

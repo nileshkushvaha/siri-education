@@ -6,7 +6,7 @@
     'referralEnabled' => false,
 ])
 
-<header class="sticky top-0 z-40 border-b border-white/[0.08] bg-slate-950/95 backdrop-blur" data-account-header>
+<header class="sticky top-0 z-40 bg-slate-950/90 shadow-lg shadow-black/10 backdrop-blur-xl" data-account-header>
     <div class="mx-auto flex min-h-16 max-w-screen-2xl items-center gap-3 px-4 sm:px-6">
         <button type="button" x-ref="menuTrigger" @click="openDrawer()"
                 class="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-200 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 lg:hidden"
@@ -15,7 +15,7 @@
         </button>
 
         <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-sm font-black text-white" aria-hidden="true">{{ mb_substr(config('app.name'), 0, 1) }}</span>
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[rgb(var(--portal-a))] via-indigo-500 to-[rgb(var(--portal-c))] text-sm font-black text-white shadow-lg shadow-[rgb(var(--portal-a)/.18)]" aria-hidden="true">{{ mb_substr(config('app.name'), 0, 1) }}</span>
             <span class="hidden truncate text-sm font-bold text-white sm:block">{{ config('app.name') }} Portal</span>
         </a>
 
@@ -85,4 +85,5 @@
             </div>
         </div>
     </div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[rgb(var(--portal-a)/.85)] to-transparent shadow-[0_1px_12px_rgb(var(--portal-b)/.45)]" aria-hidden="true"></div>
 </header>

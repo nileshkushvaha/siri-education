@@ -80,11 +80,10 @@ Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
-// ── Booking wizard (Phase 17U.3: authenticated students only — no
-// guest booking of any kind exists anywhere in this domain.
-// Unauthenticated visitors are redirected to login by the 'auth'
-// middleware, which preserves this URL as the post-login intended
-// redirect) ──────────────────────────────────────────────────────
+// ── Booking wizard — authenticated students only; no guest booking of
+// any kind exists anywhere in this domain. An unauthenticated visitor
+// is redirected to login by the 'auth' middleware, which preserves
+// this URL as the post-login intended redirect. ─────────────────────
 Route::get('/book', [BookingWizardPageController::class, 'create'])
     ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required'])
     ->name('booking.create');
@@ -119,14 +118,15 @@ Route::get('/dashboard', DashboardController::class)->name('dashboard')
 // ── Frontend Auth (guests only) ─────────────────────────────────────
 Route::name('auth.')->middleware('guest')->group(function (): void {
 
-    // Registration — both routes guarded at the middleware layer.
-    // POST shares the 'login' limiter the Livewire form already applies
-    // via ThrottlesLivewireRequests, so the threshold and settings
-    // toggle live in exactly one place (AppServiceProvider).
-    // Phase 23Q — /register is canonical (role-neutral entry point: a
-    // student registers directly, an instructor applicant arrives via
-    // ?intent=instructor from /become-instructor). /student-registration
-    // is preserved below as a permanent redirect for old bookmarks/SEO.
+    // Registration is the single, role-neutral entry point for every
+    // account type: a student registers directly, and an instructor
+    // applicant arrives via ?intent=instructor from /become-instructor
+    // (see InstructorApplicationIntent). Both routes are guarded at the
+    // middleware layer; the POST shares the 'login' throttle limiter the
+    // Livewire form already applies via ThrottlesLivewireRequests, so
+    // the threshold and settings toggle live in exactly one place
+    // (AppServiceProvider). The previous student-only URL is preserved
+    // below as a permanent redirect for old bookmarks/SEO.
     Route::get('/register', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
 
@@ -164,11 +164,11 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     })->middleware('throttle:3,1')->name('verification.resend.guest');
 });
 
-// Phase 23Q — /register is now canonical; preserve old bookmarks/SEO
-// value pointing at the previous student-only URL. A closure (not the
-// bare Route::redirect() helper) so a bookmarked
-// /student-registration?intent=instructor still lands the applicant
-// back on the instructor flow — Route::redirect() drops query strings.
+// Permanent redirect for the previous student-only registration URL —
+// preserves bookmarks and SEO value. A closure rather than the bare
+// Route::redirect() helper, because that helper drops the query
+// string: a bookmarked /student-registration?intent=instructor must
+// still land the applicant back on the instructor flow.
 Route::get('/student-registration', fn (Request $request) => redirect()->route('auth.register', $request->query(), 301));
 
 // ── Auth — requires authenticated user ──────────────────────────────
@@ -255,33 +255,33 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
     Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
     Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
-    // Phase 23M — self-service vacation toggle; a lifecycle state
-    // transition (InstructorOnboardingService), never a new domain.
+    // Self-service vacation toggle — a lifecycle state transition
+    // (InstructorOnboardingService), never a separate domain.
     Route::get('/instructor/vacation', [InstructorVacationController::class, 'index'])->name('instructor.vacation');
-    // Phase 23N — read-only student roster, derived entirely from Lesson.
+    // Read-only student roster, derived entirely from Lesson — there is
+    // no separate student-relationship table.
     Route::get('/instructor/students', [InstructorStudentController::class, 'index'])->name('instructor.students');
     Route::get('/instructor/students/{student}', [InstructorStudentController::class, 'show'])->name('instructor.students.show');
-    // Phase 17Q — instructor's own lesson list, hosting the private
+    // The instructor's own lesson list, hosting the private
     // student-feedback form for completed lessons. No admin/Filament
     // surface; feedback here never edits a lesson, booking, or outcome.
     Route::get('/instructor/lessons', [InstructorLessonsController::class, 'index'])->name('instructor.lessons');
-    // Phase 23J — instructor-facing homework review queue (reuses the
-    // existing app/Homework/* domain; grading writes go through
+    // Instructor-facing homework review queue (reuses the existing
+    // app/Homework/* domain; grading writes go through
     // HomeworkService::review(), never straight to the model).
     Route::get('/instructor/homework', [InstructorHomeworkController::class, 'index'])->name('instructor.homework');
-    // Phase 17P — instructor-facing quality insights (read-only; the
-    // instructor never moderates, resolves reports, or touches an
-    // aggregate from here).
+    // Instructor-facing quality insights — read-only; the instructor
+    // never moderates, resolves reports, or touches an aggregate here.
     Route::get('/instructor/quality-insights', [InstructorQualityInsightsController::class, 'index'])->name('instructor.quality-insights');
-    // Phase 23O — read-only analytics foundation; aggregates only,
-    // never a raw collection materialized then counted in PHP.
+    // Read-only analytics foundation; aggregates only, never a raw
+    // collection materialized then counted in PHP.
     Route::get('/instructor/analytics', [InstructorAnalyticsController::class, 'index'])->name('instructor.analytics');
-    // Phase 15 — payout methods & withdrawals (authenticated instructors
-    // only; page shells — no route here can move money).
-    // Phase 23L — read-only earning/settlement visibility; no mutation
-    // route exists here, all writes stay staff-only via InstructorEarningService.
+    // Read-only earning/settlement visibility; no mutation route exists
+    // here — all writes stay staff-only via InstructorEarningService.
     Route::get('/instructor/earnings', [InstructorFinanceController::class, 'earnings'])->name('instructor.earnings');
     Route::get('/instructor/settlements', [InstructorFinanceController::class, 'settlements'])->name('instructor.settlements');
+    // Payout methods & withdrawals — page shells only; no route here
+    // can move money.
     Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');
     Route::get('/instructor/withdrawals', [InstructorPayoutController::class, 'withdrawals'])->name('instructor.withdrawals');
     Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');
@@ -297,10 +297,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
     // ── Student booking (JSON, session-auth — reuses the Booking Engine) ──
-    // Phase 10.2C-Hotfix: the `pay` route is intentionally not registered.
-    // It accepted a client-submitted `payment_reference` with no gateway
-    // verification, letting a student mark their own booking paid without
-    // ever paying (see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md).
+    // The `pay` route is deliberately not registered: it previously
+    // accepted a client-submitted `payment_reference` with no gateway
+    // verification, letting a student mark their own booking paid
+    // without ever paying (see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md).
     // Payment confirmation is only reachable through a verified provider
     // callback/webhook (BookingPaymentWebhookController,
     // RazorpayPaymentProvider::verifyCheckout()) or the fake provider's
@@ -318,8 +318,8 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
 Route::get('/instructors/{user:slug}', [InstructorController::class, 'show'])->name('instructors.show');
 
-// ── Become an Instructor (public — guests and authenticated users; see
-//    InstructorApplicationController and docs/audits Phase 23C) ────────
+// ── Become an Instructor (public — guests and authenticated users;
+//    read-only marketing/status entry point, see InstructorApplicationController) ──
 Route::get('/become-instructor', [InstructorApplicationController::class, 'show'])->name('instructor.apply');
 
 // ── Public Profile (guests + authenticated — visibility enforced in the controller) ──
@@ -367,9 +367,8 @@ Route::prefix('admin')->name('admin.')->middleware([
     Route::get('/pages/{page}/preview', PagePreviewController::class)->name('pages.preview');
     // Post Preview
     Route::get('/posts/{post}/preview', PostPreviewController::class)->name('posts.preview');
-    // Instructor KYC document download (Phase 23E) — authorization is
-    // re-checked inside the controller on every request; see
-    // InstructorDocumentPolicy and InstructorDocumentDownloadController.
+    // Instructor KYC document download — authorization is re-checked
+    // inside the controller on every request; see InstructorDocumentPolicy.
     Route::get('/instructor-documents/{media}/download', InstructorDocumentDownloadController::class)
         ->name('instructor-documents.download');
 });

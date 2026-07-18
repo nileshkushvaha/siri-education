@@ -5,7 +5,7 @@
 
     <form wire:submit="register" class="space-y-4" novalidate>
         <fieldset class="space-y-3">
-            <legend class="mb-2 text-sm font-semibold text-white">Your student account</legend>
+            <legend class="mb-2 text-sm font-semibold text-white">Your account details</legend>
             <div class="grid gap-3 sm:grid-cols-2">
                 <x-ui.auth-input label="First name" name="first_name" wire:model="first_name" placeholder="Aarav" autocomplete="given-name" required />
                 <x-ui.auth-input label="Last name (optional)" name="last_name" wire:model="last_name" placeholder="Sharma" autocomplete="family-name" />
@@ -41,7 +41,7 @@
                         <button type="button" wire:click="useResidenceCountry" class="mt-2 min-h-11 text-xs font-semibold text-indigo-300 underline">Use residence country</button>
                     @endif
                 @endif
-                <p class="mt-1.5 text-xs text-slate-400">We’ll ask you to verify this number before your first paid booking.</p>
+                <p class="mt-1.5 text-xs text-slate-400">We’ll verify this number before enabling account-sensitive actions.</p>
                 @error('phone')<p class="mt-1 text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
             </div>
             <x-ui.auth-input label="Referral code (optional)" name="referral_code" wire:model="referral_code" placeholder="e.g. ABCD2345" autocomplete="off" />
@@ -94,7 +94,7 @@
             and <a href="{{ url('/privacy-policy') }}" class="font-medium text-indigo-400 hover:text-indigo-300">Privacy Policy</a>.
         </x-ui.auth-checkbox>
 
-        <x-ui.auth-button loadingText="Creating your account…" loadingTarget="register">Create student account <span aria-hidden="true">→</span></x-ui.auth-button>
+        <x-ui.auth-button loadingText="Creating your account…" loadingTarget="register">Create account <span aria-hidden="true">→</span></x-ui.auth-button>
 
         <p class="text-center text-sm text-slate-400">Already registered? <a href="{{ route('auth.login') }}" class="font-semibold text-indigo-400 hover:text-indigo-300">Sign in</a></p>
     </form>

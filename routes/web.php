@@ -123,8 +123,12 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     // POST shares the 'login' limiter the Livewire form already applies
     // via ThrottlesLivewireRequests, so the threshold and settings
     // toggle live in exactly one place (AppServiceProvider).
-    Route::get('/student-registration', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
-    Route::post('/student-registration', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
+    // Phase 23Q — /register is canonical (role-neutral entry point: a
+    // student registers directly, an instructor applicant arrives via
+    // ?intent=instructor from /become-instructor). /student-registration
+    // is preserved below as a permanent redirect for old bookmarks/SEO.
+    Route::get('/register', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
+    Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
 
     // Login — EnsureLoginEnabled blocks POST when login is disabled
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');
@@ -160,8 +164,12 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     })->middleware('throttle:3,1')->name('verification.resend.guest');
 });
 
-// Preserve old bookmarks while keeping student-registration canonical.
-Route::redirect('/register', '/student-registration', 301);
+// Phase 23Q — /register is now canonical; preserve old bookmarks/SEO
+// value pointing at the previous student-only URL. A closure (not the
+// bare Route::redirect() helper) so a bookmarked
+// /student-registration?intent=instructor still lands the applicant
+// back on the instructor flow — Route::redirect() drops query strings.
+Route::get('/student-registration', fn (Request $request) => redirect()->route('auth.register', $request->query(), 301));
 
 // ── Auth — requires authenticated user ──────────────────────────────
 Route::name('auth.')->middleware('auth')->group(function (): void {
@@ -219,7 +227,6 @@ Route::name('auth.')->middleware('auth')->group(function (): void {
     // ── Force password change (no email.verify or password.change middlewares — avoids loop) ──
     Route::get('/password/change-required', [ForcePasswordChangeController::class, 'showForm'])->name('password.change-required');
     Route::post('/password/change-required', [ForcePasswordChangeController::class, 'store'])->name('password.change-required.store');
-
 });
 
 // ── Student Dashboard sub-pages (auth + active account + frontend portal) ──

@@ -1,7 +1,8 @@
 @extends('layouts.frontend')
 @section('bare', true)
 
-@section('title', 'Create Student Account — ' . config('app.name'))
+@section('title', 'Create Your Account — ' . config('app.name'))
+@section('meta_description', 'Create your ' . config('app.name') . ' account to connect with instructors, manage your learning, and access personalized education tools.')
 
 @section('content')
 <main class="min-h-screen bg-slate-950 text-white lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(32rem,1.1fr)]">
@@ -20,17 +21,17 @@
             </div>
 
             <div class="mt-12 max-w-xl xl:mt-16">
-                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-300">Student registration</p>
-                <h2 id="registration-benefits-title" class="mt-3 text-4xl font-bold leading-tight xl:text-5xl">A clear path from your first goal to real progress.</h2>
-                <p class="mt-4 max-w-lg text-base leading-relaxed text-slate-300 xl:text-lg">Create one secure account to discover tutors, book lessons, manage homework, and follow your learning plan.</p>
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-300">Create your account</p>
+                <h2 id="registration-benefits-title" class="mt-3 text-4xl font-bold leading-tight xl:text-5xl">One account to learn, teach, and grow.</h2>
+                <p class="mt-4 max-w-lg text-base leading-relaxed text-slate-300 xl:text-lg">Create one secure account to access personalized learning, connect with instructors, manage your lessons, and grow with {{ config('app.name') }}.</p>
             </div>
 
             {{-- Code-native product preview keeps the panel useful without a large decorative bitmap. --}}
-            <div class="relative mt-9 max-w-xl rounded-3xl border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/30 backdrop-blur-xl xl:mt-12 xl:p-5" aria-label="Student learning workspace preview">
+            <div class="relative mt-9 max-w-xl rounded-3xl border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/30 backdrop-blur-xl xl:mt-12 xl:p-5" aria-label="Learning workspace preview">
                 <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Your learning workspace</p>
-                        <p class="mt-1 text-sm font-semibold text-white">Everything important, in one place</p>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Your education workspace</p>
+                        <p class="mt-1 text-sm font-semibold text-white">Everything you need in one place</p>
                     </div>
                     <span class="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">On track</span>
                 </div>
@@ -59,13 +60,38 @@
             </div>
 
             <ul class="mt-7 grid max-w-xl gap-x-5 gap-y-3 text-sm text-slate-300 xl:grid-cols-2 xl:mt-8">
-                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Localized lesson pricing in your billing currency</span></li>
-                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Verified tutors matched to your learning level</span></li>
-                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Flexible scheduling with upcoming-class reminders</span></li>
-                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Private homework and instructor feedback</span></li>
-                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Learning goals, milestones, and progress tracking</span></li>
-                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Secure account, wallet, and booking history</span></li>
+                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Personalized learning experience based on your goals</span></li>
+                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Connect with verified instructors worldwide</span></li>
+                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Flexible scheduling across your timezone</span></li>
+                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Lessons, homework, and progress tracking in one place</span></li>
+                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Secure payments, wallet, and booking history</span></li>
+                <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>A single account for learning and teaching</span></li>
             </ul>
+
+            <div class="mt-9 grid max-w-xl gap-4 sm:grid-cols-2 xl:mt-10">
+                <div class="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+                    <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                        <span class="h-1.5 w-1.5 rounded-full bg-indigo-400" aria-hidden="true"></span>
+                        For students
+                    </p>
+                    <ul class="mt-3 space-y-2.5 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Discover and book verified instructors by subject</span></li>
+                        <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Follow a structured learning plan at your own pace</span></li>
+                        <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Keep homework, lessons, and progress in one dashboard</span></li>
+                    </ul>
+                </div>
+                <div class="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+                    <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-violet-300">
+                        <span class="h-1.5 w-1.5 rounded-full bg-violet-400" aria-hidden="true"></span>
+                        For instructors
+                    </p>
+                    <ul class="mt-3 space-y-2.5 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Get discovered by students searching your subjects</span></li>
+                        <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Manage your schedule, lessons, and earnings in one place</span></li>
+                        <li class="flex gap-2.5"><span class="text-emerald-300" aria-hidden="true">✓</span><span>Build your reputation with verified student reviews</span></li>
+                    </ul>
+                </div>
+            </div>
         </div>
         </div>
     </section>
@@ -81,9 +107,9 @@
 
             <div class="rounded-3xl border border-white/[0.09] bg-white/[0.035] p-5 shadow-2xl shadow-black/20 sm:p-6">
                 <div class="mb-5">
-                    <p class="text-sm font-semibold text-indigo-300">Free student account</p>
+                    <p class="text-sm font-semibold text-indigo-300">Free account</p>
                     <h1 id="registration-form-title" class="mt-1 text-3xl font-bold">Create your account</h1>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-400">Only essential details now. You can add learning preferences after signing in.</p>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-400">Only essential details now. Complete your profile after signing in.</p>
                 </div>
                 <livewire:frontend.auth.register-form />
             </div>

@@ -98,7 +98,7 @@
 
                 @if($regSettings->self_registration_enabled)
                     <div class="my-6 flex items-center gap-3" aria-hidden="true"><div class="h-px flex-1 bg-white/[0.07]"></div><span class="text-xs text-slate-400">NEW HERE?</span><div class="h-px flex-1 bg-white/[0.07]"></div></div>
-                    <a href="{{ route('auth.register') }}" class="flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.12] px-5 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.05] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">Create a free student account</a>
+                    <a href="{{ route('auth.register') }}" class="flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.12] px-5 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.05] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">Create a free account</a>
                 @endif
 
                 <p class="mt-6 text-center text-xs leading-relaxed text-slate-400">By signing in, you agree to our <a href="{{ url('/terms-of-service') }}" class="text-indigo-300 hover:text-indigo-200">Terms</a> and <a href="{{ url('/privacy-policy') }}" class="text-indigo-300 hover:text-indigo-200">Privacy Policy</a>.</p>

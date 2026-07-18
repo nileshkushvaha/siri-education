@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Booking\DTOs\AssignmentCriteriaData;
+use App\Booking\Enums\BookingStatus;
 use App\Booking\Repositories\TeacherCandidateRepository;
 use App\Enums\InstructorStatus;
+use App\Lessons\Enums\LessonStatus;
 use App\Livewire\Frontend\Instructor\VacationModeManager;
 use App\Models\Activity;
 use App\Models\Booking;
@@ -17,6 +19,7 @@ use App\Models\User;
 use App\Services\Account\AccountMenuService;
 use App\Services\Instructor\InstructorOnboardingService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -98,7 +101,7 @@ final class InstructorVacationModeTest extends TestCase
         // The service call is always self-scoped — there is no route
         // parameter or input field naming "which instructor" to attack;
         // this proves the guarantee directly at the service boundary.
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectException(AuthorizationException::class);
 
         $this->onboarding->setVacation($instructorB, $instructorA);
     }
@@ -109,7 +112,7 @@ final class InstructorVacationModeTest extends TestCase
         $actor->assignRole('instructor');
         $instructor = $this->instructorAt(InstructorStatus::Active);
 
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectException(AuthorizationException::class);
 
         $this->onboarding->setVacation($instructor, $actor);
     }
@@ -137,8 +140,8 @@ final class InstructorVacationModeTest extends TestCase
             ->call('confirmEnable')
             ->call('enableVacation');
 
-        $this->assertSame(\App\Lessons\Enums\LessonStatus::Scheduled, $lesson->fresh()->status);
-        $this->assertSame(\App\Booking\Enums\BookingStatus::Confirmed, $booking->fresh()->status);
+        $this->assertSame(LessonStatus::Scheduled, $lesson->fresh()->status);
+        $this->assertSame(BookingStatus::Confirmed, $booking->fresh()->status);
     }
 
     public function test_existing_availability_schedule_is_preserved_when_vacation_enabled(): void
@@ -250,11 +253,15 @@ final class InstructorVacationModeTest extends TestCase
 
     public function test_archived_instructor_has_no_access_to_vacation_page(): void
     {
+        // EnsureInstructorWorkspaceAccess now intercepts before the page
+        // (and VacationModeManager's own Archived guard) ever renders,
+        // sending the instructor to their application status page instead
+        // of a bare 403.
         $instructor = $this->instructorAt(InstructorStatus::Archived);
 
         $this->actingAs($instructor)
             ->get(route('dashboard.instructor.vacation'))
-            ->assertForbidden();
+            ->assertRedirect(route('dashboard.instructor.onboarding'));
     }
 
     public function test_student_cannot_access_instructor_vacation_page(): void

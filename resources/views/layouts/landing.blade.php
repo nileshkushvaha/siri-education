@@ -80,7 +80,7 @@
     @endif
 
     {{-- Landing pages have no global header or footer — full conversion focus --}}
-    <main id="main-content">
+    <main id="main-content" class="{{ $content_width_classes ?? 'w-full' }}" data-content-width="{{ $content_width ?? 'default' }}">
         {!! $content ?? '' !!}
     </main>
 

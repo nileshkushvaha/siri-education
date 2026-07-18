@@ -7,7 +7,9 @@ namespace Tests\Feature\Faq;
 use App\Models\Faq;
 use App\Models\FaqCategory;
 use App\Models\User;
+use App\Services\Faq\FaqService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -115,6 +117,20 @@ class FaqFrontendTest extends TestCase
 
     public function test_public_faq_page_shows_categories(): void
     {
+        $this->get(route('faqs.index'))
+            ->assertOk()
+            ->assertSee('General');
+    }
+
+    public function test_invalid_category_cache_is_rebuilt_instead_of_breaking_the_public_page(): void
+    {
+        Cache::put('faq.categories', new \stdClass, 300);
+
+        $categories = app(FaqService::class)->categories();
+
+        $this->assertCount(1, $categories);
+        $this->assertTrue($categories->first()->is($this->category));
+
         $this->get(route('faqs.index'))
             ->assertOk()
             ->assertSee('General');

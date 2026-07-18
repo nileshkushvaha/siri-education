@@ -6,6 +6,7 @@ namespace App\Content\Rendering;
 
 use App\Content\Contracts\HasContentBlocks;
 use App\Content\SEO\SeoManager;
+use App\Enums\PageContentWidth;
 use App\Models\Page;
 use App\Models\Post;
 use App\Services\BlockRenderer;
@@ -151,7 +152,9 @@ class ContentRenderer
             return '';
         }
 
-        return '<section class="py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="cms-content">'.$content.'</div></div></section>';
+        $contentWidth = $this->resolveContentWidth($owner);
+
+        return '<section class="py-12" data-cms-rich-content><div class="'.$contentWidth->contentContainerClasses().'" data-cms-content-container="'.$contentWidth->value.'"><div class="cms-content">'.$content.'</div></div></section>';
     }
 
     private function renderBlocks(Collection $blocks): string
@@ -194,7 +197,14 @@ class ContentRenderer
             'seo' => $seo,
             'structured_data' => $structuredData,
             'site' => $this->getSiteMetadata(),
+            'content_width' => $this->resolveContentWidth($contentModel)->value,
+            'content_width_classes' => $this->resolveContentWidth($contentModel)->pageShellClasses(),
         ])->render();
+    }
+
+    private function resolveContentWidth(object $owner): PageContentWidth
+    {
+        return PageContentWidth::resolve($owner instanceof Page ? $owner->layout : null);
     }
 
     private function resolveSeo(HasContentBlocks $owner): array

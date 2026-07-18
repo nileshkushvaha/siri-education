@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Services\Faq\FaqService;
+use App\Services\Instructor\InstructorService;
 use App\Services\PageRenderService;
 use App\Services\PageService;
 use App\Services\PostService;
@@ -20,8 +22,14 @@ class PageController extends Controller
             ->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
-    public function home(PageService $pages, PostService $posts, PageRenderService $renderer, GeneralSettings $settings): Response
-    {
+    public function home(
+        PageService $pages,
+        PostService $posts,
+        PageRenderService $renderer,
+        GeneralSettings $settings,
+        InstructorService $instructors,
+        FaqService $faqs,
+    ): Response {
         // ── WordPress-style reading setting ──────────────────────────────
         if (($settings->homepage_display ?? 'template') === 'static_page' && filled($settings->homepage_id)) {
             $staticPage = $pages->getPublishedPageById($settings->homepage_id);
@@ -50,6 +58,8 @@ class PageController extends Controller
             'footerText' => $settings->footer_text ?? null,
             'footerCopyright' => $settings->footer_copyright ?? null,
             'recentPosts' => $recentPosts,
+            'featuredSubjects' => $instructors->featuredSubjects(),
+            'featuredFaqs' => $faqs->homepage(),
         ]);
     }
 }

@@ -83,20 +83,24 @@
     ]));
 @endphp
 
-<div class="min-h-screen bg-slate-950 text-slate-100">
-    <section class="relative overflow-hidden border-b border-white/10 bg-slate-950">
+<div class="min-h-screen bg-white text-slate-900" data-instructor-profile>
+    <section class="relative overflow-hidden border-b border-white/10 bg-[#080b24] text-white">
         <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-indigo-400 via-emerald-300 to-fuchsia-400" aria-hidden="true"></div>
-        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <div class="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full bg-cyan-400/20 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute left-[45%] top-12 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -right-32 bottom-0 h-[28rem] w-[28rem] rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-20" style="background-image:radial-gradient(#a5b4fc .7px,transparent .7px);background-size:24px 24px" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-14">
             <x-ui.breadcrumb :items="[
                 ['label' => 'Home', 'url' => route('home')],
                 ['label' => 'Instructors', 'url' => route('instructors.index')],
                 ['label' => $instructor->name],
             ]" />
 
-            <div class="mt-9 grid gap-8 lg:grid-cols-3 lg:items-end">
+            <div class="mt-9 grid gap-8 lg:grid-cols-3 lg:items-end" data-profile-reveal>
                 <div class="min-w-0 lg:col-span-2">
                     <div class="flex flex-col gap-6 sm:flex-row sm:items-end">
-                        <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 text-4xl font-black text-white shadow-2xl shadow-indigo-950/40">
+                        <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-500 via-indigo-500 to-violet-600 text-4xl font-black text-white shadow-2xl shadow-indigo-950/40 ring-4 ring-white/10">
                             @if($profile->avatarUrl)
                                 <img src="{{ $profile->avatarUrl }}" alt="{{ $instructor->name }}" class="h-full w-full object-cover">
                             @else
@@ -141,7 +145,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20">
+                <div class="rounded-3xl border border-white/10 bg-white/[0.07] p-5 shadow-2xl shadow-black/25 backdrop-blur">
                     @if($isBookable)
                         <p class="text-sm font-semibold text-white">Start with {{ Str::before($instructor->name, ' ') }}</p>
                         <p class="mt-2 text-sm leading-6 text-slate-400">
@@ -181,8 +185,18 @@
         </div>
     </section>
 
-    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <main class="profile-content mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <div class="mb-9 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-profile-reveal>
+            <div>
+                <p class="text-xs font-black uppercase tracking-[0.15em] text-indigo-600">Public teaching profile</p>
+                <h2 class="mt-2 text-3xl font-black tracking-tight text-slate-950">Explore expertise, approach, and availability</h2>
+                <p class="mt-3 max-w-3xl leading-7 text-slate-600">Review the information this instructor has made public before deciding whether their experience and teaching approach fit your learning goal.</p>
+            </div>
+            @if($isVerified)
+                <span class="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-700">Identity and profile reviewed</span>
+            @endif
+        </div>
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3" data-profile-sections>
             <div class="space-y-6 lg:col-span-2">
                 @if($biographyText)
                     <x-ui.card class="border-white/10 bg-white/[0.04]">
@@ -390,7 +404,7 @@
             </aside>
         </div>
 
-        <section class="mt-12 border-t border-white/10 pt-8" id="reviews">
+        <section class="mt-14 border-t border-indigo-100 pt-10" id="reviews" data-profile-reveal>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-wide text-emerald-200">Student feedback</p>
@@ -496,7 +510,7 @@
         </section>
 
         @if($related->isNotEmpty())
-            <section class="mt-12 border-t border-white/10 pt-8">
+            <section class="mt-14 border-t border-indigo-100 pt-10" data-profile-reveal>
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wide text-indigo-200">Keep exploring</p>
@@ -516,5 +530,48 @@
             </section>
         @endif
     </main>
+
+    <section class="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-700 py-14 text-white sm:py-16">
+        <div class="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-amber-300/20 blur-3xl" aria-hidden="true"></div>
+        <div class="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8" data-profile-reveal>
+            <div class="max-w-3xl">
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Compare before you choose</p>
+                <h2 class="mt-2 text-3xl font-black tracking-tight">Find the instructor relationship that fits your goals</h2>
+                <p class="mt-3 leading-7 text-indigo-100">Explore other approved profiles by subject, academic level, language, timezone, and visible availability.</p>
+            </div>
+            <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 shrink-0 items-center rounded-xl bg-white px-6 text-sm font-black text-indigo-700 shadow-xl transition hover:-translate-y-0.5 hover:bg-cyan-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30">Explore all instructors →</a>
+        </div>
+    </section>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const page = document.querySelector('[data-instructor-profile]');
+    if (! page || window.matchMedia('(prefers-reduced-motion: reduce)').matches || ! ('IntersectionObserver' in window)) return;
+
+    const targets = [
+        ...page.querySelectorAll('[data-profile-reveal]'),
+        ...page.querySelectorAll('[data-profile-sections] > div > *'),
+        ...page.querySelectorAll('[data-profile-sections] > aside > *'),
+    ];
+
+    page.classList.add('profile-motion-ready');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (! entry.isIntersecting) return;
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+        });
+    }, { rootMargin: '0px 0px -7% 0px', threshold: 0.1 });
+
+    targets.forEach((element, index) => {
+        element.dataset.profileMotion = '';
+        element.style.setProperty('--profile-delay', `${Math.min((index % 3) * 80, 160)}ms`);
+        observer.observe(element);
+    });
+});
+</script>
+@endpush
 @endsection

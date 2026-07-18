@@ -111,7 +111,7 @@
     </div>
     @endif
 
-    <main id="main-content">
+    <main id="main-content" class="{{ $content_width_classes ?? 'w-full' }}" data-content-width="{{ $content_width ?? 'default' }}">
         {{-- ── Page hero: vibrant animated gradient banner — hidden when this page IS the homepage ── --}}
         @php
             $homepageSettings = app(\App\Settings\GeneralSettings::class);

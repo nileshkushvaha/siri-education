@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Account;
 
 use App\Earnings\Support\InstructorPayoutEligibility;
+use App\Enums\InstructorStatus;
 use App\Enums\PortalAudience;
 use App\Models\User;
 use App\Services\FrontendPortalAudienceResolver;
@@ -81,6 +82,20 @@ final class AccountMenuService
 
     private function instructorGroups(User $user, array $badges): array
     {
+        if (! $this->hasWorkspaceAccess($user)) {
+            return [
+                ['label' => 'Overview', 'items' => [
+                    $this->item('Dashboard', 'dashboard', 'home', mobilePriority: 1),
+                    $this->item('Application Status', 'dashboard.instructor.onboarding', 'clipboard', mobilePriority: 2),
+                ]],
+                ['label' => 'Account', 'items' => [
+                    $this->item('Notifications', 'dashboard.notifications', 'bell', $badges['notifications'] ?? 0),
+                    $this->item('My Profile', 'profile.show', 'user', permission: 'profile.view'),
+                    $this->item('FAQs', 'dashboard.faqs', 'help'),
+                ]],
+            ];
+        }
+
         $payouts = $this->payoutEligibility->isEligible($user);
 
         return [
@@ -109,6 +124,11 @@ final class AccountMenuService
                 $this->item('FAQs', 'dashboard.faqs', 'help'),
             ]],
         ];
+    }
+
+    private function hasWorkspaceAccess(User $user): bool
+    {
+        return in_array($user->profile?->instructor_status, InstructorStatus::publiclyVisible(), true);
     }
 
     private function item(string $label, string $route, string $icon, int $badge = 0, bool $enabled = true, ?string $permission = null, ?int $mobilePriority = null, ?string $mobileLabel = null): array

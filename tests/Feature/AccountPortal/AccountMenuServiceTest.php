@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AccountPortal;
 
+use App\Enums\InstructorStatus;
 use App\Models\User;
 use App\Services\Account\AccountMenuService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,6 +81,7 @@ class AccountMenuServiceTest extends TestCase
     {
         $instructor = $this->makeUser();
         $instructor->assignRole('instructor');
+        $instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $student = $this->makeUser();
         $student->assignRole('student');

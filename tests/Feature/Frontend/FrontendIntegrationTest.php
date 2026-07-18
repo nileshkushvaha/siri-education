@@ -24,6 +24,16 @@ class FrontendIntegrationTest extends TestCase
         $this->get(route('home'))->assertStatus(200);
     }
 
+    public function test_default_homepage_uses_the_public_cms_ready_composition(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('data-public-homepage', false)
+            ->assertSee('Explore instructors')
+            ->assertSee('Start learning in four clear steps')
+            ->assertDontSee('10,000+ Active Students');
+    }
+
     // ── CMS Pages ─────────────────────────────────────────────────────────
 
     public function test_published_public_page_is_accessible(): void

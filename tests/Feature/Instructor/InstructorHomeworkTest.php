@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Enums\InstructorStatus;
 use App\Homework\Enums\HomeworkStatus;
 use App\Livewire\Frontend\Instructor\HomeworkList;
 use App\Models\HomeworkAssignment;
@@ -33,6 +34,7 @@ final class InstructorHomeworkTest extends TestCase
 
         $this->instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->instructor->assignRole('instructor');
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
@@ -198,7 +200,7 @@ final class InstructorHomeworkTest extends TestCase
             'teacher_id' => $this->instructor->id,
             'student_id' => $this->student->id,
         ]);
-        $this->instructor->profile()->update(['instructor_status' => \App\Enums\InstructorStatus::Active]);
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $response = $this->actingAs($this->instructor->fresh())->get(route('dashboard'))->assertOk();
 
@@ -208,7 +210,7 @@ final class InstructorHomeworkTest extends TestCase
 
     public function test_dashboard_shows_a_zero_state_when_no_submissions_are_pending(): void
     {
-        $this->instructor->profile()->update(['instructor_status' => \App\Enums\InstructorStatus::Active]);
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $response = $this->actingAs($this->instructor->fresh())->get(route('dashboard'))->assertOk();
 

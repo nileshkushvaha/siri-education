@@ -1,651 +1,395 @@
 @extends('layouts.frontend')
 
-@section('title', config('app.name') . ' — Find Your Perfect 1-on-1 Tutor')
+@section('title', config('app.name').' — Personalised 1-on-1 Learning')
 
-@section('content')
+@push('meta')
+    <meta name="description" content="Find verified instructors, book flexible one-to-one lessons, and follow a personalised learning plan with {{ config('app.name') }}.">
+@endpush
 
 @php
-// $appName, $logo, $supportEmail, $supportPhone, $address,
-// $footerText, $footerCopyright, $recentPosts
-// are passed from PageController::home()
-$appName ??= config('app.name', 'App');
-$logo ??= null;
-$supportEmail ??= null;
-$supportPhone ??= null;
-$address ??= null;
-$footerText ??= null;
-$footerCopyright ??= null;
-$recentPosts ??= collect();
+    $appName ??= config('app.name', 'SIRI Education');
+    $recentPosts ??= collect();
+    $featuredSubjects ??= collect();
+    $featuredFaqs ??= collect();
 
-$countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingdom', '🇨🇦 Canada', '🇦🇺 Australia', '🌐 All Regions'];
-
-$subjects = ['All', 'Computer Science', 'Mathematics', 'English', 'Science', 'Languages', 'Competitive Exams'];
-
-$features = [
-['icon'=>'🎯', 'title'=>'K-12 All Subjects', 'desc'=>'Math, Science, English online tutoring for every grade'],
-['icon'=>'📚', 'title'=>'Personalised Plans', 'desc'=>'Custom learning paths built around your goals & pace'],
-['icon'=>'✍️', 'title'=>'English Excellence', 'desc'=>'Reading, writing, grammar and vocabulary coaching'],
-['icon'=>'🔬', 'title'=>'Science Mastery', 'desc'=>'Physics, Chemistry, Biology at all academic levels'],
-['icon'=>'🏆', 'title'=>'Exam Preparation', 'desc'=>'JEE, NEET, SAT, GRE, UPSC — expert coaching'],
-['icon'=>'💰', 'title'=>'Affordable Pricing', 'desc'=>'Transparent plans with a free 30-minute demo session'],
-];
-
-$stats = [
-['value'=>10000, 'suffix'=>'+', 'label'=>'Active Students', 'icon'=>'👨‍🎓', 'color'=>'from-indigo-500 to-violet-500'],
-['value'=>200, 'suffix'=>'+', 'label'=>'Expert Tutors', 'icon'=>'👩‍🏫', 'color'=>'from-blue-500 to-indigo-500'],
-['value'=>500, 'suffix'=>'+', 'label'=>'Courses', 'icon'=>'📖', 'color'=>'from-violet-500 to-purple-500'],
-['value'=>40000, 'suffix'=>'+', 'label'=>'Hours Taught', 'icon'=>'⏱️', 'color'=>'from-amber-500 to-orange-500'],
-];
-
-$whys = [
-['icon'=>'🚀', 'title'=>'Creating Future Leaders', 'desc'=>'We believe every student can achieve greatness. Our world-class tutors equip learners with skills for the challenges of the 21st century.', 'color'=>'from-indigo-500 to-violet-600'],
-['icon'=>'🎓', 'title'=>'Student-Centred Learning', 'desc'=>'Every session is tailored to the individual learner. We adapt to your style, speed, and goals — not the other way around.', 'color'=>'from-blue-500 to-indigo-600'],
-['icon'=>'✨', 'title'=>'Personalised Experience', 'desc'=>'Our innovative tutoring enables creativity and sharpens skills with learning tailored to each unique learner.', 'color'=>'from-violet-500 to-pink-600'],
-];
-
-$steps = [
-['num'=>'01', 'icon'=>'🌍', 'title'=>'Choose Your Curriculum', 'desc'=>'Select your country and curriculum to access courses designed specifically for your board, syllabus, or competitive exam entrance goals.', 'side'=>'right'],
-['num'=>'02', 'icon'=>'🔍', 'title'=>'Explore Courses Made For You', 'desc'=>'Browse expert-built courses aligned with your curriculum, academic schedule, and personal requirements.', 'side'=>'left'],
-['num'=>'03', 'icon'=>'📅', 'title'=>'Book a Free Demo Class', 'desc'=>'Experience a free 30-minute demo to connect with your tutor, understand the teaching style, and ensure it fits your learning needs.', 'side'=>'right'],
-['num'=>'04', 'icon'=>'📈', 'title'=>'Enroll & Start Learning', 'desc'=>'Join your chosen course and start learning with engaging lessons, smart assessments, and ongoing academic support.', 'side'=>'left'],
-];
-
-$courses = [
-['emoji'=>'💻','color'=>'from-blue-500 to-indigo-600','category'=>'Computer Science','title'=>'Data Structures & Algorithms','tutor'=>'Dr. Rahul Verma','students'=>'2.4K','rating'=>'4.9','reviews'=>'128','price'=>'₹1,499','duration'=>'40 hrs','level'=>'Intermediate','tag'=>'Bestseller'],
-['emoji'=>'📐','color'=>'from-violet-500 to-purple-600','category'=>'Mathematics','title'=>'Calculus & Linear Algebra Mastery','tutor'=>'Prof. Priya Sharma','students'=>'1.8K','rating'=>'4.8','reviews'=>'96','price'=>'₹1,299','duration'=>'35 hrs','level'=>'Advanced','tag'=>'Top Rated'],
-['emoji'=>'🧪','color'=>'from-emerald-500 to-teal-600','category'=>'Science','title'=>'Physics for JEE & NEET 2025','tutor'=>'Dr. Amit Patel','students'=>'3.1K','rating'=>'4.9','reviews'=>'205','price'=>'₹1,799','duration'=>'50 hrs','level'=>'Advanced','tag'=>'Hot 🔥'],
-];
-
-$tutors = [
-['name'=>'Dr. Priya Sharma', 'subject'=>'Mathematics & Statistics', 'exp'=>'8 yrs', 'rating'=>'4.9', 'students'=>'1.2K', 'emoji'=>'👩', 'color'=>'from-violet-500 to-purple-600'],
-['name'=>'Rahul Verma', 'subject'=>'Computer Science & AI/ML', 'exp'=>'6 yrs', 'rating'=>'4.8', 'students'=>'980', 'emoji'=>'👨‍💻','color'=>'from-blue-500 to-indigo-600'],
-['name'=>'Dr. Anjali Singh', 'subject'=>'Physics & Chemistry', 'exp'=>'10 yrs', 'rating'=>'5.0', 'students'=>'2.1K', 'emoji'=>'👩‍🔬','color'=>'from-emerald-500 to-teal-600'],
-['name'=>'Arjun Mehta', 'subject'=>'English & Communication', 'exp'=>'5 yrs', 'rating'=>'4.9', 'students'=>'756', 'emoji'=>'📝', 'color'=>'from-amber-500 to-orange-600'],
-];
-
-$testimonials = [
-['name'=>'Elena Rodriguez', 'role'=>'Grade 10 Student', 'emoji'=>'👩', 'rating'=>5, 'text'=>'My grades improved dramatically in just 3 months! The personalised approach made all the difference. My tutor explains concepts in a way that just clicks. Truly transformative experience.'],
-['name'=>'Michael O\'Connor','role'=>'Engineering Aspirant', 'emoji'=>'👨', 'rating'=>5, 'text'=>'Excellent tutors and a structured learning plan. The regular assessments helped me stay on track and I cracked my entrance exam on the very first attempt!'],
-['name'=>'Priya Gupta', 'role'=>'Working Professional', 'emoji'=>'👩‍💼', 'rating'=>5, 'text'=>'Flexible scheduling is a game-changer for professionals like me. I learned Python from scratch and earned a promotion within 6 months. The quality here is outstanding.'],
-];
-
-$instructorBenefits = [
-['icon'=>'🗓️', 'title'=>'Flexible Schedule', 'desc'=>'Set your own availability and teach when it works for you.'],
-['icon'=>'🌍', 'title'=>'Global Students', 'desc'=>'Reach learners from every country on the platform.'],
-['icon'=>'💳', 'title'=>'Secure Payments', 'desc'=>'Transparent, reliable payouts for your completed lessons.'],
-];
-
-$faqs = [
-['q'=>'How does online tutoring work?', 'a'=>'Our platform connects you with expert tutors via live interactive video sessions. After selecting your course, you schedule sessions at your convenience and learn with screen sharing, a digital whiteboard, and real-time problem solving.'],
-['q'=>'What subjects do you offer tutoring for?', 'a'=>'We cover Mathematics, Science (Physics, Chemistry, Biology), Computer Science, English, Languages, and competitive exam prep (JEE, NEET, SAT, GRE, UPSC). New courses are added every month.'],
-['q'=>'How do I schedule a tutoring session?', 'a'=>'Browse tutors, pick one that matches your needs, view their availability calendar, and book a session with a few clicks. Sessions can be booked up to 24 hours in advance.'],
-['q'=>'Can tutoring sessions be customised to my needs?', 'a'=>'Absolutely. Every tutor creates a personalised learning plan based on your goals, current level, and learning style. Sessions are adaptive and designed around your specific requirements.'],
-['q'=>'How are tutors selected and verified?', 'a'=>'All tutors undergo a rigorous vetting process — credential verification, background checks, demo sessions, and ongoing performance reviews. Only the top 5% of applicants are accepted.'],
-['q'=>'What technology do I need for online tutoring?', 'a'=>'You need a stable internet connection and a device with a camera and microphone. No special software is required — everything runs in your modern web browser.'],
-];
+    $subjectPalettes = [
+        ['gradient' => 'from-indigo-500 to-violet-500', 'surface' => 'bg-indigo-50 text-indigo-700'],
+        ['gradient' => 'from-cyan-500 to-blue-500', 'surface' => 'bg-cyan-50 text-cyan-700'],
+        ['gradient' => 'from-rose-500 to-orange-400', 'surface' => 'bg-rose-50 text-rose-700'],
+        ['gradient' => 'from-emerald-500 to-teal-500', 'surface' => 'bg-emerald-50 text-emerald-700'],
+        ['gradient' => 'from-amber-500 to-orange-500', 'surface' => 'bg-amber-50 text-amber-700'],
+        ['gradient' => 'from-fuchsia-500 to-violet-500', 'surface' => 'bg-fuchsia-50 text-fuchsia-700'],
+    ];
 @endphp
 
-@include('partials.home-banner')
+@section('content')
+<main class="overflow-hidden bg-white text-slate-900" data-public-homepage>
+    <section class="relative border-b border-indigo-100 bg-gradient-to-br from-[#f8fbff] via-white to-[#fff4ef]">
+        <div class="pointer-events-none absolute -left-32 top-10 h-96 w-96 rounded-full bg-cyan-200/35 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute right-[25%] top-0 h-80 w-80 rounded-full bg-amber-200/25 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -right-32 bottom-0 h-[30rem] w-[30rem] rounded-full bg-violet-200/40 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-30" style="background-image:radial-gradient(#818cf8 .7px,transparent .7px);background-size:24px 24px" aria-hidden="true"></div>
 
-{{-- ============================================================
-     MAIN WRAPPER — Alpine.js root
-     ============================================================ --}}
-<div
-    class="bg-surface-dark"
-    x-data="{
-        activeFaq: null,
-    }"
-    x-init="
-        /* ---- Counter animation triggered by Intersection Observer ---- */
-        const animateCounters = () => {
-            document.querySelectorAll('[data-counter]').forEach(el => {
-                if (el.dataset.done) return;
-                el.dataset.done = '1';
-                const target   = parseInt(el.dataset.counter);
-                const duration = 2200;
-                const start    = Date.now();
-                const tick = () => {
-                    const elapsed  = Date.now() - start;
-                    const progress = Math.min(elapsed / duration, 1);
-                    const eased    = 1 - Math.pow(1 - progress, 3);
-                    el.textContent = Math.floor(target * eased).toLocaleString();
-                    if (progress < 1) requestAnimationFrame(tick);
-                    else el.textContent = target.toLocaleString();
-                };
-                requestAnimationFrame(tick);
-            });
-        };
-        const statsEl = document.getElementById('stats-section');
-        if (statsEl) {
-            new IntersectionObserver(entries => {
-                entries.forEach(e => { if (e.isIntersecting) animateCounters(); });
-            }, { threshold: 0.3 }).observe(statsEl);
-        }
-    ">
-
-{{-- ============================================================
-     ALL-IN-ONE FEATURES SECTION
-     ============================================================ --}}
-<section class="py-24 bg-white">
-    <div class="max-w-7xl mx-auto px-4">
-        <div class="text-center mb-16">
-            <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">All-in-One Platform</span>
-            <h2 class="text-4xl font-bold text-slate-900">Online Tutoring for School Subjects<br class="hidden sm:block"> & Competitive Exams</h2>
-            <div class="section-accent"></div>
-            <p class="mt-4 text-slate-400 max-w-xl mx-auto">From K-12 academics to entrance exam coaching — one platform for every learning need.</p>
-        </div>
-
-        <div class="grid lg:grid-cols-2 gap-16 items-center">
-            {{-- Features Grid --}}
-            <div class="grid sm:grid-cols-2 gap-4">
-                @foreach($features as $f)
-                <div class="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 hover:bg-indigo-50/60 transition-colors border border-transparent hover:border-indigo-100 group">
-                    <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-xl flex-shrink-0 group-hover:scale-110 transition-transform">{{ $f['icon'] }}</div>
-                    <div>
-                        <h3 class="font-semibold text-slate-900 text-sm mb-0.5">{{ $f['title'] }}</h3>
-                        <p class="text-slate-400 text-xs leading-relaxed">{{ $f['desc'] }}</p>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-
-            {{-- Visual Dashboard Card --}}
-            <div class="relative">
-                <div class="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 rounded-3xl p-8 text-white shadow-2xl shadow-indigo-500/30">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold">Learning Dashboard</h3>
-                        <div class="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1 text-xs">
-                            <div class="badge-dot"></div>
-                            <span>Live</span>
-                        </div>
-                    </div>
-
-                    {{-- Progress Items --}}
-                    @foreach([['Mathematics','78%','w-[78%]'],['Physics','55%','w-[55%]'],['English','91%','w-[91%]']] as [$subj,$pct,$w])
-                    <div class="mb-4">
-                        <div class="flex justify-between text-sm mb-1.5">
-                            <span class="text-white/80">{{ $subj }}</span>
-                            <span class="font-bold">{{ $pct }}</span>
-                        </div>
-                        <div class="h-2 bg-white/20 rounded-full overflow-hidden">
-                            <div class="h-full {{ $w }} bg-white/70 rounded-full"></div>
-                        </div>
-                    </div>
-                    @endforeach
-
-                    <div class="mt-6 grid grid-cols-3 gap-3 pt-4 border-t border-white/20">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold">24</div>
-                            <div class="text-white/60 text-xs mt-0.5">Sessions</div>
-                        </div>
-                        <div class="text-center border-x border-white/20">
-                            <div class="text-2xl font-bold">48h</div>
-                            <div class="text-white/60 text-xs mt-0.5">Learned</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold">A+</div>
-                            <div class="text-white/60 text-xs mt-0.5">Grade</div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Floating badge --}}
-                <div class="absolute -bottom-5 -right-5 glass-light rounded-2xl px-5 py-4 shadow-xl">
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">📈</span>
-                        <div>
-                            <div class="text-xs text-slate-400">Improvement</div>
-                            <div class="font-bold text-slate-900 text-sm text-grad">+42% this month</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     ANIMATED STATS
-     ============================================================ --}}
-<section id="stats-section" class="py-20 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 relative overflow-hidden">
-    <div class="bg-orb w-[500px] h-[500px] top-[-200px] left-[10%]" style="background:radial-gradient(circle,#4F46E5,transparent)"></div>
-    <div class="bg-orb w-[400px] h-[400px] bottom-[-150px] right-[10%]" style="background:radial-gradient(circle,#7C3AED,transparent);animation-delay:4s;"></div>
-
-    <div class="max-w-7xl mx-auto px-4 relative z-10">
-        <div class="text-center mb-14">
-            <h2 class="text-3xl font-bold text-white">Why Thousands Choose <span class="text-grad">Us</span></h2>
-            <div class="section-accent"></div>
-        </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            @foreach($stats as $stat)
-            <div class="glass rounded-3xl p-8 text-center card-lift group">
-                <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br {{ $stat['color'] }} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform">{{ $stat['icon'] }}</div>
-                <div class="text-4xl font-bold text-white mb-1">
-                    <span data-counter="{{ $stat['value'] }}">0</span>{{ $stat['suffix'] }}
-                </div>
-                <div class="text-gray-400 text-sm">{{ $stat['label'] }}</div>
-            </div>
-            @endforeach
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     WHY CHOOSE US
-     ============================================================ --}}
-<section class="py-24 bg-slate-50">
-    <div class="max-w-7xl mx-auto px-4">
-        <div class="text-center mb-16">
-            <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Why Us</span>
-            <h2 class="text-4xl font-bold text-slate-900">Why Choose <span class="text-grad">Our Platform</span></h2>
-            <div class="section-accent"></div>
-        </div>
-        <div class="grid md:grid-cols-3 gap-8">
-            @foreach($whys as $i => $why)
-            <div class="card-lift bg-white rounded-3xl p-8 shadow-sm border border-slate-100 group">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br {{ $why['color'] }} flex items-center justify-center text-3xl mb-6 shadow-lg group-hover:scale-110 transition-transform">{{ $why['icon'] }}</div>
-                <h3 class="text-xl font-bold text-slate-900 mb-3">{{ $why['title'] }}</h3>
-                <p class="text-slate-400 leading-relaxed text-sm">{{ $why['desc'] }}</p>
-                <div class="mt-6 flex items-center gap-2 text-indigo-600 text-sm font-semibold group-hover:gap-3 transition-all">
-                    Learn More <span>→</span>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     HOW IT WORKS
-     ============================================================ --}}
-<section id="how-it-works" class="py-24 bg-white">
-    <div class="max-w-5xl mx-auto px-4">
-        <div class="text-center mb-16">
-            <span class="inline-block bg-violet-50 text-violet-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Process</span>
-            <h2 class="text-4xl font-bold text-slate-900">How It <span class="text-grad">Works</span></h2>
-            <div class="section-accent"></div>
-            <p class="mt-4 text-slate-400">Get started in 4 simple steps</p>
-        </div>
-
-        <div class="relative">
-            {{-- Center connecting line (desktop) --}}
-            <div class="hidden lg:block absolute left-1/2 top-6 bottom-6 w-px" style="background:linear-gradient(to bottom,#6366F1,rgba(99,102,241,0))"></div>
-
-            <div class="space-y-12">
-                @foreach($steps as $step)
-                <div class="grid lg:grid-cols-2 gap-8 items-center {{ $step['side'] === 'left' ? '' : '' }}">
-                    @if($step['side'] === 'right')
-                    {{-- Spacer left --}}
-                    <div class="hidden lg:flex justify-end pr-10">
-                        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-2xl shadow-xl shadow-indigo-500/30 z-10 relative">{{ $step['icon'] }}</div>
-                    </div>
-                    {{-- Content right --}}
-                    <div class="glass-light rounded-3xl p-6 shadow-sm border border-slate-100 card-lift">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="text-xs font-bold text-indigo-400 bg-indigo-50 px-2.5 py-1 rounded-full">Step {{ $step['num'] }}</span>
-                            <span class="text-xl lg:hidden">{{ $step['icon'] }}</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-slate-900 mb-2">{{ $step['title'] }}</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed">{{ $step['desc'] }}</p>
-                    </div>
-                    @else
-                    {{-- Content left --}}
-                    <div class="glass-light rounded-3xl p-6 shadow-sm border border-slate-100 card-lift">
-                        <div class="flex items-center gap-3 mb-3">
-                            <span class="text-xs font-bold text-violet-400 bg-violet-50 px-2.5 py-1 rounded-full">Step {{ $step['num'] }}</span>
-                            <span class="text-xl lg:hidden">{{ $step['icon'] }}</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-slate-900 mb-2">{{ $step['title'] }}</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed">{{ $step['desc'] }}</p>
-                    </div>
-                    {{-- Icon right --}}
-                    <div class="hidden lg:flex justify-start pl-10">
-                        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-pink-600 flex items-center justify-center text-2xl shadow-xl shadow-violet-500/30 z-10 relative">{{ $step['icon'] }}</div>
-                    </div>
-                    @endif
-                </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     COURSES
-     ============================================================ --}}
-<section id="courses" class="py-24 bg-slate-50">
-    <div class="max-w-7xl mx-auto px-4">
-        <div class="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-12 gap-4">
+        <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-16 lg:grid-cols-[1.04fr_.96fr] lg:px-8 lg:py-20">
             <div>
-                <span class="inline-block bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Popular Courses</span>
-                <h2 class="text-4xl font-bold text-slate-900">Explore Top <span class="text-grad">Courses</span></h2>
-                <div class="section-accent" style="margin:12px 0 0;"></div>
-            </div>
-            <a href="#" class="text-indigo-600 font-semibold text-sm hover:text-indigo-700 flex items-center gap-1 flex-shrink-0">View All Courses →</a>
-        </div>
-
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @foreach($courses as $course)
-            <div class="card-lift bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 flex flex-col">
-                {{-- Thumbnail --}}
-                <div class="relative h-44 bg-gradient-to-br {{ $course['color'] }} overflow-hidden flex items-center justify-center">
-                    <span class="text-8xl thumb-zoom select-none">{{ $course['emoji'] }}</span>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                    <div class="absolute top-3 left-3">
-                        <span class="bg-white/20 backdrop-blur text-white text-[11px] font-semibold px-3 py-1 rounded-full">{{ $course['category'] }}</span>
-                    </div>
-                    <div class="absolute top-3 right-3">
-                        <span class="bg-amber-400 text-amber-900 text-[11px] font-bold px-3 py-1 rounded-full">{{ $course['tag'] }}</span>
-                    </div>
-                    <div class="absolute bottom-3 right-3">
-                        <span class="bg-white/20 backdrop-blur text-white text-[11px] px-2.5 py-1 rounded-full">{{ $course['level'] }}</span>
-                    </div>
-                </div>
-
-                {{-- Body --}}
-                <div class="p-6 flex flex-col flex-1">
-                    <h3 class="font-bold text-slate-900 text-base mb-1 leading-snug">{{ $course['title'] }}</h3>
-                    <p class="text-slate-400 text-xs mb-3">by {{ $course['tutor'] }}</p>
-
-                    <div class="flex items-center gap-3 text-xs text-slate-400 mb-3">
-                        <span class="flex items-center gap-1">⏱ {{ $course['duration'] }}</span>
-                        <span>·</span>
-                        <span class="flex items-center gap-1">👥 {{ $course['students'] }} students</span>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 mb-4">
-                        <span class="text-amber-500 font-bold text-sm">{{ $course['rating'] }}</span>
-                        <div class="flex text-amber-400 text-xs">★★★★★</div>
-                        <span class="text-slate-400 text-xs">({{ $course['reviews'] }})</span>
-                    </div>
-
-                    <div class="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
-                        <span class="text-xl font-bold text-slate-900">{{ $course['price'] }}</span>
-                        <a href="{{ route('auth.register') }}" class="btn-indigo px-5 py-2.5 rounded-xl text-white text-sm font-bold">Enroll Now</a>
-                    </div>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     MEET OUR TUTORS
-     ============================================================ --}}
-<section id="tutors" class="py-24 bg-white">
-    <div class="max-w-7xl mx-auto px-4">
-        <div class="text-center mb-16">
-            <span class="inline-block bg-emerald-50 text-emerald-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Expert Faculty</span>
-            <h2 class="text-4xl font-bold text-slate-900">Meet Our <span class="text-grad">Top Tutors</span></h2>
-            <div class="section-accent"></div>
-            <p class="mt-4 text-slate-400 max-w-md mx-auto">Handpicked experts with proven track records and a passion for teaching.</p>
-        </div>
-
-        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            @foreach($tutors as $tutor)
-            <div class="tutor-card card-lift bg-white rounded-3xl p-6 text-center shadow-sm border border-slate-100 group">
-                {{-- Avatar --}}
-                <div class="relative inline-block mb-4">
-                    <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br {{ $tutor['color'] }} flex items-center justify-center text-4xl shadow-xl tutor-avatar border-4 border-white ring-4 ring-indigo-50">{{ $tutor['emoji'] }}</div>
-                    <div class="absolute bottom-0 right-0 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white"></div>
-                </div>
-
-                <h3 class="font-bold text-slate-900 text-sm mb-0.5">{{ $tutor['name'] }}</h3>
-                <p class="text-slate-400 text-xs mb-3">{{ $tutor['subject'] }}</p>
-
-                <div class="flex justify-center items-center gap-1 mb-3">
-                    <div class="text-amber-400 text-xs">★★★★★</div>
-                    <span class="text-xs font-bold text-slate-700">{{ $tutor['rating'] }}</span>
-                </div>
-
-                <div class="flex justify-center gap-4 text-xs text-slate-400 mb-4">
-                    <span>🎓 {{ $tutor['exp'] }} exp</span>
-                    <span>👥 {{ $tutor['students'] }}</span>
-                </div>
-
-                <a href="{{ route('auth.register') }}" class="block btn-indigo px-4 py-2.5 rounded-xl text-white text-xs font-bold w-full opacity-90 group-hover:opacity-100 transition-opacity">Book Session</a>
-            </div>
-            @endforeach
-        </div>
-
-        <div class="text-center mt-10">
-            <a href="#" class="inline-flex items-center gap-2 border border-indigo-200 text-indigo-600 font-semibold px-8 py-3 rounded-xl hover:bg-indigo-50 transition-colors text-sm">
-                View All 200+ Tutors →
-            </a>
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     TESTIMONIALS
-     ============================================================ --}}
-<section class="py-24 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 relative overflow-hidden">
-    <div class="bg-orb w-[400px] h-[400px] top-[-100px] right-[-50px]" style="background:radial-gradient(circle,#6366F1,transparent)"></div>
-
-    <div class="max-w-7xl mx-auto px-4 relative z-10">
-        <div class="text-center mb-16">
-            <span class="inline-block glass text-indigo-300 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Student Stories</span>
-            <h2 class="text-4xl font-bold text-white">What <span class="text-grad">Parents & Students</span> Say</h2>
-            <div class="section-accent"></div>
-        </div>
-
-        <div class="grid md:grid-cols-3 gap-6">
-            @foreach($testimonials as $t)
-            <div class="quote-card glass card-lift rounded-3xl p-7 relative">
-                {{-- Stars --}}
-                <div class="flex text-amber-400 text-sm mb-4 gap-0.5">
-                    @for($i=0;$i<$t['rating'];$i++)★@endfor
-                        </div>
-
-                        <p class="text-gray-300 text-sm leading-relaxed mb-6">"{{ $t['text'] }}"</p>
-
-                        <div class="flex items-center gap-3 pt-4 border-t border-white/10">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-xl border-2 border-white/20">{{ $t['emoji'] }}</div>
-                            <div>
-                                <div class="text-white font-semibold text-sm">{{ $t['name'] }}</div>
-                                <div class="text-gray-500 text-xs">{{ $t['role'] }}</div>
-                            </div>
-                        </div>
-                </div>
-                @endforeach
-            </div>
-
-            {{-- Trust indicators --}}
-            <div class="mt-12 flex flex-wrap justify-center gap-8 items-center">
-                @foreach([['⭐','4.9/5','Average Rating'],['👍','98%','Satisfaction Rate'],['🔄','86%','Students Return'],['🏆','#1','Tutoring Platform']] as [$icon,$val,$lbl])
-                <div class="text-center">
-                    <div class="text-2xl mb-1">{{ $icon }}</div>
-                    <div class="text-white font-bold text-lg">{{ $val }}</div>
-                    <div class="text-gray-500 text-xs">{{ $lbl }}</div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-</section>
-
-{{-- ============================================================
-     LATEST BLOG POSTS — dynamic from $recentPosts
-     ============================================================ --}}
-@if($recentPosts->isNotEmpty())
-<section class="py-24" style="background: linear-gradient(180deg, #06080f 0%, #0b0d1a 100%)">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-14">
-            <span class="inline-block bg-indigo-500/10 text-indigo-400 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4 border border-indigo-500/20">Blog</span>
-            <h2 class="text-4xl font-bold text-white">Latest <span class="gradient-text">Insights</span></h2>
-            <p class="mt-4 text-slate-400 max-w-xl mx-auto">Tips, strategies, and stories from our learning community.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @foreach($recentPosts as $index => $post)
-            <article class="group bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden card-glow transition-all duration-300 animate-fade-in-up"
-                style="animation-delay: {{ $index * 0.08 }}s">
-                {{-- Thumbnail --}}
-                @php $thumb = $post->getFirstMediaUrl('thumbnail') ?: $post->getFirstMediaUrl(); @endphp
-                @if($thumb)
-                <a href="{{ route('blog.show', $post->slug) }}" class="block aspect-video overflow-hidden">
-                    <img src="{{ $thumb }}" alt="{{ $post->title }}"
-                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                </a>
-                @else
-                <div class="aspect-video bg-gradient-to-br from-indigo-900/30 to-violet-900/20 flex items-center justify-center">
-                    <svg class="w-12 h-12 text-indigo-500/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                    </svg>
-                </div>
-                @endif
-
-                <div class="p-6">
-                    {{-- Category --}}
-                    @if($post->categories->isNotEmpty())
-                    <span class="inline-block text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-3">
-                        {{ $post->categories->first()->name }}
+                <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.15em] text-indigo-700 shadow-sm">
+                    <span class="flex -space-x-1" aria-hidden="true">
+                        <span class="h-2.5 w-2.5 rounded-full bg-cyan-400"></span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-fuchsia-500"></span>
                     </span>
-                    @endif
+                    Personalised learning, built around you
+                </span>
 
-                    <h3 class="text-lg font-bold text-white mb-2 leading-snug group-hover:text-indigo-300 transition-colors">
-                        <a href="{{ route('blog.show', $post->slug) }}">{{ $post->title }}</a>
-                    </h3>
+                <h1 class="mt-6 max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-[4rem] lg:leading-[1.04]">
+                    Find the right instructor.
+                    <span class="bg-gradient-to-r from-indigo-600 via-violet-600 to-rose-500 bg-clip-text text-transparent">Make real progress.</span>
+                </h1>
+                <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+                    Discover verified instructors, book flexible one-to-one lessons, manage homework, and follow a learning plan shaped around your goals.
+                </p>
 
-                    @if($post->excerpt)
-                    <p class="text-slate-400 text-sm leading-relaxed mb-4 line-clamp-2">{{ $post->excerpt }}</p>
-                    @endif
+                <div class="mt-8 flex flex-wrap gap-3">
+                    <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 px-6 text-sm font-black text-white shadow-xl shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-violet-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">
+                        Explore instructors
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                    </a>
+                    <a href="#how-it-works" class="inline-flex min-h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-cyan-100">
+                        See how it works
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7"/></svg>
+                    </a>
+                </div>
 
-                    <div class="flex items-center justify-between mt-4 pt-4 border-t border-white/[0.05]">
-                        <div class="flex items-center gap-2">
-                            @if($post->author)
-                            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                {{ strtoupper(substr($post->author->name ?? 'A', 0, 1)) }}
-                            </div>
-                            <span class="text-xs text-slate-400">{{ $post->author->name }}</span>
-                            @endif
+                <div class="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold text-slate-600">
+                    @foreach(['Verified public profiles', 'Timezone-aware booking', 'Secure wallet and payments'] as $trustPoint)
+                        <span class="inline-flex items-center gap-2">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-hidden="true">✓</span>
+                            {{ $trustPoint }}
+                        </span>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="relative mx-auto w-full max-w-xl" aria-label="Student learning workspace preview">
+                <div class="absolute -inset-7 rounded-[2.5rem] bg-gradient-to-br from-cyan-300/30 via-indigo-300/30 to-rose-300/35 blur-2xl" aria-hidden="true"></div>
+                <div class="relative overflow-hidden rounded-[2rem] border border-white bg-white/90 p-5 shadow-2xl shadow-indigo-200/50 backdrop-blur sm:p-6">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-5">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-indigo-600">Your learning workspace</p>
+                            <h2 class="mt-1 text-xl font-black text-slate-950">Everything in one clear path</h2>
                         </div>
-                        @if($post->published_at)
-                        <span class="text-xs text-slate-400">{{ $post->published_at->format('M j, Y') }}</span>
-                        @endif
+                        <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">On track</span>
+                    </div>
+
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <div class="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-200">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wide text-indigo-100">Next lesson</span>
+                                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15" aria-hidden="true">▶</span>
+                            </div>
+                            <p class="mt-7 text-lg font-black">Learn at your pace</p>
+                            <p class="mt-1 text-sm text-indigo-100">Flexible scheduling in your timezone</p>
+                        </div>
+                        <div class="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-white" aria-hidden="true">✓</span>
+                            <p class="mt-5 text-xs font-bold uppercase tracking-wide text-amber-700">Weekly progress</p>
+                            <p class="mt-1 text-lg font-black text-slate-900">Goals made visible</p>
+                            <div class="mt-4 h-2 overflow-hidden rounded-full bg-amber-100"><div class="h-full w-4/5 rounded-full bg-gradient-to-r from-amber-400 to-rose-400"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 font-black text-white" aria-hidden="true">1:1</span>
+                            <div>
+                                <p class="font-black text-slate-900">Find your instructor match</p>
+                                <p class="mt-0.5 text-sm text-slate-600">Compare subjects, expertise, profiles, and availability.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    @if($featuredSubjects->isNotEmpty())
+        <section class="bg-white py-16 sm:py-20" aria-labelledby="home-subjects-heading">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="mx-auto max-w-3xl text-center">
+                    <p class="text-sm font-black uppercase tracking-[0.15em] text-indigo-600">Explore what you can learn</p>
+                    <h2 id="home-subjects-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Subjects with bookable instructors</h2>
+                    <p class="mt-4 leading-7 text-slate-600">This list comes directly from active subject coverage and public instructor availability.</p>
+                </div>
+
+                <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach($featuredSubjects as $index => $subject)
+                        @php $palette = $subjectPalettes[$index % count($subjectPalettes)]; @endphp
+                        <a href="{{ route('instructors.index', ['subject' => $subject['value']]) }}" class="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/60 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">
+                            <div class="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br {{ $palette['gradient'] }} opacity-15 blur-xl" aria-hidden="true"></div>
+                            <span class="relative flex h-12 w-12 items-center justify-center rounded-2xl {{ $palette['surface'] }} text-lg font-black">{{ mb_strtoupper(mb_substr($subject['label'], 0, 1)) }}</span>
+                            <h3 class="relative mt-5 font-black text-slate-900 transition group-hover:text-indigo-700">{{ $subject['label'] }}</h3>
+                            <span class="relative mt-3 inline-flex items-center gap-1 text-sm font-bold text-slate-500 group-hover:text-indigo-600">View instructors <span aria-hidden="true">→</span></span>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
+    <section class="relative overflow-hidden border-y border-white/10 bg-[#080b24] py-16 text-white sm:py-20">
+        <div class="pointer-events-none absolute -left-40 top-0 h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute right-0 top-0 h-[30rem] w-[30rem] rounded-full bg-fuchsia-500/15 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-20" style="background-image:radial-gradient(#818cf8 .7px,transparent .7px);background-size:24px 24px" aria-hidden="true"></div>
+        <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div class="relative">
+                <div class="rounded-[2rem] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 p-7 text-white shadow-2xl shadow-indigo-950/50 ring-1 ring-white/15 sm:p-9">
+                    <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Learning that stays connected</p>
+                    <h2 class="mt-3 text-3xl font-black">From first goal to visible progress</h2>
+                    <div class="mt-8 space-y-4">
+                        @foreach([
+                            ['01', 'Set learning goals', 'Capture what you want to achieve and the subjects that matter.'],
+                            ['02', 'Book flexible lessons', 'Choose from instructor availability displayed in your timezone.'],
+                            ['03', 'Keep learning organised', 'Lessons, homework, plans, notifications, and progress stay together.'],
+                        ] as [$number, $title, $description])
+                            <div class="flex gap-4 rounded-2xl bg-white/10 p-4 ring-1 ring-white/10 backdrop-blur">
+                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-indigo-700">{{ $number }}</span>
+                                <div><h3 class="font-black">{{ $title }}</h3><p class="mt-1 text-sm leading-6 text-indigo-100">{{ $description }}</p></div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="absolute -bottom-6 -right-4 hidden rounded-2xl border border-amber-100 bg-amber-50 p-4 shadow-xl sm:block">
+                    <p class="text-xs font-black uppercase text-amber-700">Student-first design</p>
+                    <p class="mt-1 font-black text-slate-900">Clear, private, structured</p>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-sm font-black uppercase tracking-[0.15em] text-cyan-300">One connected education workspace</p>
+                <h2 class="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">Less administrative friction. More meaningful learning.</h2>
+                <p class="mt-5 leading-8 text-slate-300">Discovery, booking, lessons, homework, communication, and payment records work together while private information remains protected.</p>
+                <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                    @foreach([
+                        ['Flexible scheduling', 'Availability and confirmed lesson times respect your timezone.', 'bg-cyan-400'],
+                        ['Verified instructor trust', 'Public profiles reflect approval and visibility rules.', 'bg-emerald-400'],
+                        ['Learning continuity', 'Goals, homework, feedback, and plans stay connected.', 'bg-violet-400'],
+                        ['Traceable payments', 'Wallet and payment records remain clear and auditable.', 'bg-amber-400'],
+                    ] as [$title, $description, $accentClass])
+                        <article class="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-lg shadow-black/10 backdrop-blur transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09]">
+                            <span class="block h-2 w-10 rounded-full {{ $accentClass }}" aria-hidden="true"></span>
+                            <h3 class="mt-4 font-black text-white">{{ $title }}</h3>
+                            <p class="mt-2 text-sm leading-6 text-slate-300">{{ $description }}</p>
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="bg-white py-16 sm:py-20" aria-labelledby="home-process-heading">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-3xl text-center">
+                <p class="text-sm font-black uppercase tracking-[0.15em] text-rose-600">How it works</p>
+                <h2 id="home-process-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Start learning in four clear steps</h2>
+                <p class="mt-4 leading-7 text-slate-600">A straightforward journey from discovery to your ongoing learning plan.</p>
+            </div>
+            <ol class="relative mt-12 grid gap-5 md:grid-cols-4">
+                <div class="absolute left-[12%] right-[12%] top-8 hidden h-px bg-gradient-to-r from-cyan-200 via-indigo-300 to-rose-200 md:block" aria-hidden="true"></div>
+                @foreach([
+                    ['Discover', 'Explore subjects and approved public instructor profiles.', 'from-cyan-500 to-blue-500'],
+                    ['Compare', 'Review expertise, profile information, and availability.', 'from-indigo-500 to-violet-500'],
+                    ['Book', 'Select an eligible slot and complete the required checkout.', 'from-violet-500 to-fuchsia-500'],
+                    ['Progress', 'Follow lessons, homework, goals, feedback, and learning plans.', 'from-rose-500 to-orange-400'],
+                ] as $index => [$title, $description, $gradient])
+                    <li class="relative rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+                        <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br {{ $gradient }} text-lg font-black text-white shadow-lg">{{ $index + 1 }}</span>
+                        <h3 class="mt-5 text-lg font-black text-slate-900">{{ $title }}</h3>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $description }}</p>
+                    </li>
+                @endforeach
+            </ol>
+        </div>
+    </section>
+
+    <section class="border-y border-amber-100 bg-gradient-to-br from-[#fffaf0] via-white to-[#f2fbff] py-16 sm:py-20" aria-labelledby="learning-lifecycle-heading">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div class="max-w-3xl">
+                    <p class="text-sm font-black uppercase tracking-[0.15em] text-orange-600">Beyond the video call</p>
+                    <h2 id="learning-lifecycle-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">A complete learning lifecycle—not isolated lessons</h2>
+                    <p class="mt-4 max-w-2xl leading-7 text-slate-600">Each confirmed lesson can connect to preparation, attendance, homework, instructor feedback, progress review, and the student’s longer-term learning plan.</p>
+                </div>
+                <span class="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-700">Structured for continuity</span>
+            </div>
+
+            <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach([
+                    ['Live lesson readiness', 'Meeting access, reminders, and attendance support keep confirmed lessons organised.', 'from-cyan-500 to-blue-500', 'bg-cyan-50 border-cyan-100'],
+                    ['Homework workflow', 'Assignments, submissions, due dates, and instructor feedback stay connected to learning.', 'from-violet-500 to-fuchsia-500', 'bg-violet-50 border-violet-100'],
+                    ['Personal learning plans', 'Goals, milestones, instructor guidance, and progress reviews create a longer-term path.', 'from-indigo-500 to-violet-500', 'bg-indigo-50 border-indigo-100'],
+                    ['Quality feedback', 'Eligible lesson feedback supports student improvement and instructor quality assurance.', 'from-rose-500 to-orange-400', 'bg-rose-50 border-rose-100'],
+                    ['Timely notifications', 'Booking, lesson, homework, payment, and account events can trigger relevant reminders.', 'from-amber-500 to-orange-500', 'bg-amber-50 border-amber-100'],
+                    ['Financial clarity', 'Wallet entries, payments, refunds, and statements remain traceable rather than hidden.', 'from-emerald-500 to-teal-500', 'bg-emerald-50 border-emerald-100'],
+                ] as $index => [$title, $description, $gradient, $surface])
+                    <article class="rounded-3xl border {{ $surface }} p-6 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/60">
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br {{ $gradient }} text-sm font-black text-white shadow-lg">{{ str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) }}</span>
+                        <h3 class="mt-5 text-lg font-black text-slate-900">{{ $title }}</h3>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $description }}</p>
+                    </article>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    <div class="border-y border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-rose-50">
+        <livewire:frontend.cms.featured-teachers
+            eyebrow="Verified expertise"
+            title="Meet featured instructors"
+            description="Discover approved public profiles selected for marketplace visibility."
+            :limit="4"
+            :columns="4"
+            link-label="Explore all instructors"
+            :link-url="route('instructors.index')"
+        />
+    </div>
+
+    <section class="bg-white py-16 sm:py-20">
+        <div class="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 to-violet-700 p-8 text-white shadow-xl shadow-indigo-200 sm:p-10">
+                <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan-300/20 blur-2xl" aria-hidden="true"></div>
+                <p class="relative text-xs font-black uppercase tracking-[0.16em] text-indigo-100">For students</p>
+                <h2 class="relative mt-3 text-3xl font-black">Build your learning path</h2>
+                <p class="relative mt-4 max-w-lg leading-7 text-indigo-100">Create an account, set your goals, discover instructors, and keep every lesson connected.</p>
+                <a href="{{ route('auth.register') }}" class="relative mt-7 inline-flex min-h-12 items-center rounded-xl bg-white px-5 text-sm font-black text-indigo-700 transition hover:-translate-y-0.5">Create student account →</a>
             </article>
-            @endforeach
+            <article class="relative overflow-hidden rounded-[2rem] border border-rose-100 bg-gradient-to-br from-amber-50 via-rose-50 to-violet-50 p-8 shadow-xl shadow-rose-100 sm:p-10">
+                <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-rose-300/25 blur-2xl" aria-hidden="true"></div>
+                <p class="relative text-xs font-black uppercase tracking-[0.16em] text-rose-600">For instructors</p>
+                <h2 class="relative mt-3 text-3xl font-black text-slate-950">Turn expertise into progress</h2>
+                <p class="relative mt-4 max-w-lg leading-7 text-slate-600">Apply, complete verification, publish your approved expertise, and manage your teaching workspace.</p>
+                <a href="{{ route('instructor.apply') }}" class="relative mt-7 inline-flex min-h-12 items-center rounded-xl bg-gradient-to-r from-orange-500 via-rose-500 to-violet-600 px-5 text-sm font-black text-white shadow-lg shadow-rose-200 transition hover:-translate-y-0.5">Become an instructor →</a>
+            </article>
         </div>
+    </section>
 
-        <div class="text-center mt-10">
-            <a href="{{ route('blog.index') }}"
-                class="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 hover:text-white hover:border-indigo-500/40 text-sm font-semibold transition-all duration-200">
-                View all posts
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-            </a>
+    <section class="relative overflow-hidden bg-[#0b102b] py-16 text-white sm:py-20" aria-labelledby="home-trust-heading">
+        <div class="pointer-events-none absolute left-0 top-0 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute right-0 bottom-0 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-3xl text-center">
+                <p class="text-sm font-black uppercase tracking-[0.15em] text-emerald-300">Trust is a platform feature</p>
+                <h2 id="home-trust-heading" class="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">Designed for educational, identity, and financial trust</h2>
+                <p class="mt-4 leading-7 text-slate-300">The SRS treats trust as an operational requirement: verification, access control, privacy, traceability, and accountable platform actions work together.</p>
+            </div>
+
+            <div class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+                @foreach([
+                    ['Instructor verification', 'Teaching access is separated from registration and depends on the configured review lifecycle.', 'text-cyan-300', 'border-cyan-400/20 bg-cyan-400/[0.07]'],
+                    ['Privacy by design', 'Student records and private verification documents remain limited to authorised access.', 'text-fuchsia-300', 'border-fuchsia-400/20 bg-fuchsia-400/[0.07]'],
+                    ['Traceable finances', 'Wallet transactions, payments, refunds, earnings, and settlements retain auditable records.', 'text-amber-300', 'border-amber-400/20 bg-amber-400/[0.07]'],
+                    ['Quality accountability', 'Reviews, feedback, status changes, and administrative actions follow controlled rules.', 'text-emerald-300', 'border-emerald-400/20 bg-emerald-400/[0.07]'],
+                ] as $index => [$title, $description, $accent, $surface])
+                    <article class="rounded-3xl border {{ $surface }} p-6 backdrop-blur">
+                        <span class="text-xs font-black uppercase tracking-[0.15em] {{ $accent }}">Trust layer {{ $index + 1 }}</span>
+                        <h3 class="mt-4 text-lg font-black text-white">{{ $title }}</h3>
+                        <p class="mt-3 text-sm leading-6 text-slate-300">{{ $description }}</p>
+                    </article>
+                @endforeach
+            </div>
         </div>
-    </div>
-</section>
-@endif
+    </section>
 
-{{-- ============================================================
-     FAQ
-     ============================================================ --}}
-<section class="py-24 bg-white">
-    <div class="max-w-3xl mx-auto px-4">
-        <div class="text-center mb-16">
-            <span class="inline-block bg-amber-50 text-amber-600 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">FAQ</span>
-            <h2 class="text-4xl font-bold text-slate-900">Frequently Asked <span class="text-grad">Questions</span></h2>
-            <div class="section-accent"></div>
-            <p class="mt-4 text-slate-400">Find answers to the most common questions about our service.</p>
-        </div>
+    @if($featuredFaqs->isNotEmpty())
+        <section class="border-y border-violet-100 bg-gradient-to-br from-violet-50 via-white to-cyan-50 py-16 sm:py-20" aria-labelledby="home-faq-heading">
+            <div class="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[.75fr_1.25fr] lg:px-8">
+                <div class="lg:sticky lg:top-32 lg:self-start">
+                    <p class="text-sm font-black uppercase tracking-[0.15em] text-indigo-600">Frequently asked questions</p>
+                    <h2 id="home-faq-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950">Understand the platform before you begin</h2>
+                    <p class="mt-4 leading-7 text-slate-600">Get clear answers about registration, instructor approval, lesson bookings, payments, and the safeguards that support every learning relationship.</p>
 
-        <div class="space-y-3">
-            @foreach($faqs as $i => $faq)
-            <div
-                class="border border-slate-200 rounded-2xl overflow-hidden hover:border-indigo-200 transition-colors"
-                x-data="{ open: false }">
-                <button
-                    @click="open = !open"
-                    class="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-slate-50 transition-colors"
-                    :aria-expanded="open">
-                    <span class="font-semibold text-slate-900 text-sm pr-4">{{ $faq['q'] }}</span>
-                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 transition-all duration-300" :class="open ? 'bg-indigo-100 rotate-45' : ''">
-                        <svg class="w-4 h-4 text-slate-400 transition-colors" :class="open ? 'text-indigo-600' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
+                    <div class="mt-7 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                        @foreach([
+                            ['For students', 'Know what to compare before choosing an instructor or confirming a lesson.', 'bg-indigo-50 text-indigo-700', 'S'],
+                            ['For instructors', 'Understand application, verification, profile visibility, and teaching readiness.', 'bg-fuchsia-50 text-fuchsia-700', 'I'],
+                            ['For every account', 'Learn how privacy, payments, cancellations, and support processes work.', 'bg-cyan-50 text-cyan-700', '?'],
+                        ] as [$title, $description, $surface, $symbol])
+                            <article class="flex gap-3 rounded-2xl border border-white/80 bg-white/75 p-4 shadow-sm backdrop-blur">
+                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {{ $surface }} text-sm font-black" aria-hidden="true">{{ $symbol }}</span>
+                                <div>
+                                    <h3 class="font-black text-slate-900">{{ $title }}</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600">{{ $description }}</p>
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
-                </button>
-                <div x-show="open" x-collapse class="px-6 pb-5">
-                    <p class="text-slate-400 text-sm leading-relaxed">{{ $faq['a'] }}</p>
+
+                    <a href="{{ route('faqs.index') }}" class="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-black text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">
+                        Browse all help topics <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+                <div class="space-y-3">
+                    @foreach($featuredFaqs as $faq)
+                        <details class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm open:border-indigo-200 open:shadow-md">
+                            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-black text-slate-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">
+                                {{ $faq->question }}
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition group-open:rotate-45" aria-hidden="true">+</span>
+                            </summary>
+                            <div class="mt-4 pr-10 text-sm leading-7 text-slate-600">{!! Illuminate\Support\Str::markdown($faq->answer, ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}</div>
+                        </details>
+                    @endforeach
                 </div>
             </div>
-            @endforeach
-        </div>
-    </div>
-</section>
+        </section>
+    @endif
 
-{{-- ============================================================
-     BECOME AN INSTRUCTOR
-     ============================================================ --}}
-<section class="py-24 bg-slate-950 relative overflow-hidden">
-    <div class="bg-orb w-[400px] h-[400px] top-[-150px] left-[-100px] opacity-15" style="background:radial-gradient(circle,#6366f1,transparent)"></div>
-    <div class="max-w-5xl mx-auto px-4 relative z-10">
-        <div class="text-center mb-12">
-            <span class="inline-block bg-indigo-500/10 text-indigo-300 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Teach With Us</span>
-            <h2 class="text-4xl font-bold text-white">Become an <span class="text-grad">Instructor</span></h2>
-            <p class="mt-4 text-slate-300 max-w-xl mx-auto">Share your knowledge with students worldwide. Teach your subjects, set your own availability, and build meaningful learning relationships.</p>
-        </div>
-
-        <div class="grid gap-6 sm:grid-cols-3 mb-12">
-            @foreach($instructorBenefits as $benefit)
-            <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                <span class="text-3xl">{{ $benefit['icon'] }}</span>
-                <h3 class="mt-3 font-semibold text-white">{{ $benefit['title'] }}</h3>
-                <p class="mt-1 text-sm text-slate-400">{{ $benefit['desc'] }}</p>
+    @if($recentPosts->isNotEmpty())
+        <section class="bg-[#f8fbff] py-16 sm:py-20" aria-labelledby="home-articles-heading">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-sm font-black uppercase tracking-[0.15em] text-cyan-700">Learning resources</p>
+                        <h2 id="home-articles-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Latest articles</h2>
+                    </div>
+                    <a href="{{ route('blog.index') }}" class="text-sm font-black text-indigo-600 hover:text-indigo-500">View all articles →</a>
+                </div>
+                <div class="mt-10 grid gap-6 md:grid-cols-3">
+                    @foreach($recentPosts as $index => $post)
+                        @php $postImage = $post->getFirstMediaUrl('featured-image'); @endphp
+                        <article class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-100/60">
+                            <a href="{{ route('blog.show', $post->slug) }}" class="block focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-indigo-100">
+                                <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ ['from-indigo-500 to-violet-600','from-cyan-500 to-blue-600','from-rose-500 to-orange-400'][$index % 3] }}">
+                                    @if($postImage)
+                                        <img src="{{ $postImage }}" alt="" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy">
+                                    @else
+                                        <div class="flex h-full items-center justify-center text-4xl font-black text-white/80" aria-hidden="true">{{ mb_substr($post->title, 0, 1) }}</div>
+                                    @endif
+                                </div>
+                                <div class="p-6">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-indigo-600">{{ $post->published_at?->format('M j, Y') ?? 'Article' }}</p>
+                                    <h3 class="mt-3 text-lg font-black leading-7 text-slate-900 transition group-hover:text-indigo-700">{{ $post->title }}</h3>
+                                    @if($post->excerpt)<p class="mt-3 text-sm leading-6 text-slate-600">{{ Str::limit(strip_tags($post->excerpt), 125) }}</p>@endif
+                                </div>
+                            </a>
+                        </article>
+                    @endforeach
+                </div>
             </div>
-            @endforeach
+        </section>
+    @endif
+
+    <section class="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-700 py-16 text-center text-white sm:py-20">
+        <div class="pointer-events-none absolute -left-20 top-0 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-amber-300/20 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-20" style="background-image:radial-gradient(white .7px,transparent .7px);background-size:22px 22px" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <p class="text-sm font-black uppercase tracking-[0.17em] text-indigo-100">Your next step can be simple</p>
+            <h2 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Start with the right instructor and a clearer learning plan</h2>
+            <p class="mx-auto mt-5 max-w-2xl leading-7 text-indigo-100">Explore approved public profiles now. Create your account when you are ready to save preferences, manage bookings, use your wallet, and follow your progress.</p>
+            <div class="mt-8 flex flex-wrap justify-center gap-3">
+                <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 items-center rounded-xl bg-white px-6 text-sm font-black text-indigo-700 shadow-xl transition hover:-translate-y-0.5">Explore instructors →</a>
+                <a href="{{ route('auth.register') }}" class="inline-flex min-h-12 items-center rounded-xl border border-white/25 bg-white/10 px-6 text-sm font-black text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">Create free account</a>
+            </div>
         </div>
-
-        <div class="text-center">
-            @if(Route::has('instructor.apply'))
-                <a href="{{ route('instructor.apply') }}" class="btn-amber inline-block px-10 py-4 rounded-2xl text-white font-bold text-base shadow-2xl">
-                    Become an Instructor →
-                </a>
-            @endif
-            <p class="text-slate-500 text-xs mt-4">Available for university students, graduates and professionals. Potential earnings depend on approved lessons, availability, pricing and platform policies.</p>
-        </div>
-    </div>
-</section>
-
-{{-- ============================================================
-     CTA BANNER
-     ============================================================ --}}
-<section class="py-24 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 relative overflow-hidden">
-    <div class="bg-orb w-[500px] h-[500px] top-[-200px] right-[-100px] opacity-20" style="background:radial-gradient(circle,#fff,transparent)"></div>
-    <div class="bg-orb w-[300px] h-[300px] bottom-[-100px] left-[-50px] opacity-15" style="background:radial-gradient(circle,#F59E0B,transparent);animation-delay:3s"></div>
-
-    {{-- Dot grid --}}
-    <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(circle,rgba(255,255,255,.4) 1px,transparent 1px);background-size:30px 30px;"></div>
-
-    <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
-        <div class="inline-flex items-center gap-2 bg-white/15 rounded-full px-4 py-2 mb-6">
-            <span class="text-amber-300">🎯</span>
-            <span class="text-white/80 text-sm">Limited Seats Available</span>
-        </div>
-        <h2 class="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
-            Ready to Transform<br>Your Learning?
-        </h2>
-        <p class="text-white/70 text-lg mb-10 max-w-lg mx-auto">
-            Join thousands of students already learning with our expert tutors. Start your personalised journey today.
-        </p>
-        <div class="flex flex-wrap justify-center gap-4">
-            <a href="{{ route('auth.register') }}" class="btn-amber px-10 py-4 rounded-2xl text-white font-bold text-base shadow-2xl">
-                Get Started Free →
-            </a>
-            <a href="#" class="bg-white/15 border border-white/30 px-10 py-4 rounded-2xl text-white font-semibold text-base hover:bg-white/25 transition-colors backdrop-blur">
-                Book Free Demo
-            </a>
-        </div>
-        <p class="text-white/40 text-xs mt-6">No credit card required · Free 30-min demo · Cancel anytime</p>
-    </div>
-</section>
-
-
-</div>{{-- /x-data --}}
-
+    </section>
+</main>
 @endsection

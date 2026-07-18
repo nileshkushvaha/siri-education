@@ -16,15 +16,33 @@ final class FaqService
 {
     private const CACHE_TTL = 300;
 
+    private const CATEGORIES_CACHE_KEY = 'faq.categories';
+
     public function categories(): Collection
     {
-        return Cache::remember('faq.categories', self::CACHE_TTL, fn () => FaqCategory::query()
+        $cached = Cache::get(self::CATEGORIES_CACHE_KEY);
+
+        if ($cached instanceof Collection && $cached->every(
+            static fn (mixed $category): bool => $category instanceof FaqCategory
+        )) {
+            return $cached;
+        }
+
+        // Cached Eloquent models may become unserialisable after a deployment,
+        // class-map change, or interrupted cache write. Never let that stale
+        // value turn the public help centre into a 500 response.
+        Cache::forget(self::CATEGORIES_CACHE_KEY);
+
+        $categories = FaqCategory::query()
             ->active()
             ->orderBy('display_order')
             ->orderBy('name')
             ->withCount(['publishedFaqs'])
-            ->get()
-        );
+            ->get();
+
+        Cache::put(self::CATEGORIES_CACHE_KEY, $categories, self::CACHE_TTL);
+
+        return $categories;
     }
 
     public function publicFaqs(?string $search = null, ?string $categoryId = null, ?int $limit = null): Collection
@@ -57,6 +75,15 @@ final class FaqService
             ->get();
     }
 
+    /** Featured public FAQs first, with the normal public ordering as a safe fallback. */
+    public function homepage(int $limit = 6): Collection
+    {
+        $limit = max(1, min(12, $limit));
+        $featured = $this->featured([FaqAudience::Public->value], $limit);
+
+        return $featured->isNotEmpty() ? $featured : $this->publicFaqs(limit: $limit);
+    }
+
     /** @return string[] */
     public function audiencesForUser(User $user): array
     {
@@ -77,7 +104,7 @@ final class FaqService
 
     public function clearCache(): void
     {
-        Cache::forget('faq.categories');
+        Cache::forget(self::CATEGORIES_CACHE_KEY);
     }
 
     // ── Private ───────────────────────────────────────────────────────────

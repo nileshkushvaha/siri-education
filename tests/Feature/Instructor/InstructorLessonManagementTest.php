@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Instructor;
 
+use App\Enums\InstructorStatus;
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
@@ -13,6 +14,7 @@ use App\Models\BookingMeeting;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Settings\MeetingSettings;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -35,6 +37,7 @@ final class InstructorLessonManagementTest extends TestCase
 
         $this->instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->instructor->assignRole('instructor');
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
@@ -66,7 +69,7 @@ final class InstructorLessonManagementTest extends TestCase
         // The instructor-scoped lookup (forInstructor()) makes another
         // instructor's lesson simply not exist in this instructor's
         // world — ownership is enforced by scope, not just UI hiding.
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         Livewire::actingAs($this->instructor)
             ->test(LessonFeedbackManager::class)
@@ -312,7 +315,7 @@ final class InstructorLessonManagementTest extends TestCase
             'starts_at' => $lesson->starts_at,
             'ends_at' => $lesson->ends_at,
         ]);
-        $this->instructor->profile()->update(['instructor_status' => \App\Enums\InstructorStatus::Active]);
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $response = $this->actingAs($this->instructor->fresh())->get(route('dashboard'))->assertOk();
 

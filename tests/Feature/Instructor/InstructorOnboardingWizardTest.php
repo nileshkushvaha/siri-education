@@ -10,6 +10,7 @@ use App\Enums\InstructorStatus;
 use App\Livewire\Frontend\Instructor\OnboardingWizard;
 use App\Models\AcademicCategory;
 use App\Models\AcademicLevel;
+use App\Models\InstructorDocumentRequirement;
 use App\Models\Language;
 use App\Models\Subject;
 use App\Models\User;
@@ -202,6 +203,27 @@ class InstructorOnboardingWizardTest extends TestCase
             $this->assertNotNull($media);
             $this->assertSame('local', $media->disk);
         }
+    }
+
+    public function test_upload_validation_error_uses_the_requirement_label_not_the_property_name(): void
+    {
+        // An admin can relabel a requirement (e.g. government_id -> "Pan
+        // Card") without renaming its underlying collection_name/property
+        // — the error message must follow the label, not fall back to a
+        // humanized "government id".
+        InstructorDocumentRequirement::query()->where('collection_name', 'government_id')->update(['label' => 'Pan Card']);
+
+        $user = User::factory()->create(['status' => 'active']);
+
+        $component = Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('governmentId', UploadedFile::fake()->create('resume.exe', 10))
+            ->call('uploadDocument', 'government_id')
+            ->assertHasErrors(['governmentId' => 'mimes']);
+
+        $message = $component->errors()->first('governmentId');
+        $this->assertStringContainsString('Pan Card', $message);
+        $this->assertStringNotContainsString('government id', $message);
     }
 
     public function test_complete_application_can_submit_and_cannot_submit_twice(): void

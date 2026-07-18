@@ -3,11 +3,17 @@
 namespace App\Observers;
 
 use App\Models\Page;
+use App\Services\Cms\StructuredPageContentService;
 use App\Services\CmsCacheService;
 use App\Services\PageRenderService;
 
 class PageObserver
 {
+    public function updating(Page $page): void
+    {
+        app(StructuredPageContentService::class)->preserveStructureDuringUpdate($page);
+    }
+
     /**
      * Handle the Page "created" event.
      */

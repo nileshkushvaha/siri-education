@@ -64,6 +64,50 @@ class RichContentRenderingTest extends TestCase
         $this->assertStringContainsString('Hello world', $html);
     }
 
+    public function test_default_page_width_uses_centered_content_container(): void
+    {
+        $page = $this->publishedPage([
+            'layout' => 'default',
+            'content' => '<p>Centered content</p>',
+        ]);
+
+        $html = app(ContentRenderer::class)->render($page);
+
+        $this->assertStringContainsString('data-content-width="default"', $html);
+        $this->assertStringContainsString('data-content-width="default"', $html);
+        $this->assertStringContainsString('data-cms-content-container="default"', $html);
+        $this->assertStringContainsString('max-w-7xl mx-auto px-4 sm:px-6 lg:px-8', $html);
+    }
+
+    public function test_full_width_page_uses_edge_to_edge_content_container(): void
+    {
+        $page = $this->publishedPage([
+            'layout' => 'full-width',
+            'content' => '<p>Full width content</p>',
+        ]);
+
+        $html = app(ContentRenderer::class)->render($page);
+
+        $this->assertStringContainsString('data-content-width="full-width"', $html);
+        $this->assertStringContainsString('[&amp;_.cms-section]:px-4', $html);
+        $this->assertStringContainsString('data-cms-content-container="full-width"', $html);
+        $this->assertStringContainsString('<div class="w-full" data-cms-content-container="full-width">', $html);
+        $this->assertStringNotContainsString('<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" data-cms-content-container="full-width">', $html);
+    }
+
+    public function test_unavailable_sidebar_width_falls_back_to_default_container(): void
+    {
+        $page = $this->publishedPage([
+            'layout' => 'sidebar-left',
+            'content' => '<p>Fallback content</p>',
+        ]);
+
+        $html = app(ContentRenderer::class)->render($page);
+
+        $this->assertStringContainsString('data-content-width="default"', $html);
+        $this->assertStringContainsString('data-cms-content-container="default"', $html);
+    }
+
     public function test_page_with_no_content_renders_no_cms_section(): void
     {
         $page = $this->publishedPage(['content' => null]);

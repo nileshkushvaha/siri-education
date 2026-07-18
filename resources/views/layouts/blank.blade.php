@@ -39,7 +39,7 @@
 </head>
 <body class="text-slate-800 antialiased" style="font-family:'Inter',ui-sans-serif,system-ui,sans-serif; background:#ffffff;">
 
-    <main id="main-content">
+    <main id="main-content" class="{{ $content_width_classes ?? 'w-full' }}" data-content-width="{{ $content_width ?? 'default' }}">
         {!! $content ?? '' !!}
     </main>
 

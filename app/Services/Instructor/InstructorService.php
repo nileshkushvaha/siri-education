@@ -114,6 +114,14 @@ final class InstructorService
             ->get();
     }
 
+    /** Subjects that currently have at least one public, bookable instructor. */
+    public function featuredSubjects(int $limit = 8): Collection
+    {
+        return $this->availableSubjects()
+            ->take(max(1, min(12, $limit)))
+            ->values();
+    }
+
     public function related(User $instructor, int $limit = 3): Collection
     {
         return $this->baseQuery()

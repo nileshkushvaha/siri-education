@@ -6,6 +6,7 @@ namespace Tests\Feature\Instructor;
 
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Enums\SettlementBatchStatus;
+use App\Enums\InstructorStatus;
 use App\Livewire\Frontend\Instructor\EarningsOverview;
 use App\Livewire\Frontend\Instructor\SettlementsOverview;
 use App\Models\InstructorEarning;
@@ -37,9 +38,11 @@ final class InstructorFinanceVisibilityTest extends TestCase
 
         $this->instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->instructor->assignRole('instructor');
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $this->otherInstructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->otherInstructor->assignRole('instructor');
+        $this->otherInstructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');

@@ -1,5 +1,5 @@
 {{-- Contact Form Block --}}
-<section class="relative py-20 overflow-hidden">
+<section class="relative py-20 overflow-hidden" data-contact-form-block>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-10 items-start">
 

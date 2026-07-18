@@ -311,6 +311,14 @@ final class OnboardingWizard extends Component
             $property => $collection === 'introduction_video'
                 ? ['required', 'file', 'mimes:mp4,webm,quicktime', 'max:51200']
                 : ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
+        ], attributes: [
+            // The requirement's admin-configured label (e.g. "Pan Card"),
+            // not the raw property name — collection_name can be relabeled
+            // in the admin without renaming the underlying property/field.
+            $property => app(InstructorDocumentRequirementService::class)
+                ->activeRequirements()
+                ->firstWhere('collection_name', $collection)
+                ?->label ?? $property,
         ]);
 
         $file = $this->{$property};

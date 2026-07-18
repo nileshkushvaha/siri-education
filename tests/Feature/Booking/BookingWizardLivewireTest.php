@@ -137,6 +137,22 @@ class BookingWizardLivewireTest extends TestCase
         ]);
     }
 
+    public function test_paid_booking_uses_payment_as_the_final_milestone_until_payment_succeeds(): void
+    {
+        $paidType = BookingType::factory()->paid()->create([
+            'key' => 'paid_one_to_one',
+            'name' => 'Paid 1-to-1 Session',
+        ]);
+
+        Livewire::actingAs($this->student())
+            ->test('frontend.booking.booking-wizard')
+            ->call('selectMode', $paidType->key)
+            ->assertSee('Payment')
+            ->assertDontSee('Confirmed')
+            ->set('result', ['requires_payment' => false])
+            ->assertSee('Confirmed');
+    }
+
     public function test_guest_cannot_complete_booking_wizard_even_if_component_is_reached_directly(): void
     {
         // Defense-in-depth: even bypassing the route's 'auth' middleware

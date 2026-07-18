@@ -36,7 +36,7 @@ final class BookingWizard extends Component
         'mode' => 'Session type',
         'subject' => 'Subject',
         'grade' => 'Grade',
-        'billing_mode' => 'Single/Recurring',
+        'billing_mode' => 'Schedule',
         'frequency' => 'Frequency',
         'date' => 'Date',
         'time' => 'Time',
@@ -673,7 +673,23 @@ final class BookingWizard extends Component
     {
         return collect($this->phases())
             ->values()
-            ->map(fn (string $phase, int $i): array => ['number' => $i + 1, 'label' => self::PHASE_LABELS[$phase]])
+            ->map(fn (string $phase, int $i): array => [
+                'number' => $i + 1,
+                'label' => $phase === 'confirmed' ? $this->finalPhaseLabel() : self::PHASE_LABELS[$phase],
+            ])
             ->all();
+    }
+
+    private function finalPhaseLabel(): string
+    {
+        if (! $this->isPaidType()) {
+            return self::PHASE_LABELS['confirmed'];
+        }
+
+        if ($this->result !== null && ! ($this->result['requires_payment'] ?? false)) {
+            return self::PHASE_LABELS['confirmed'];
+        }
+
+        return 'Payment';
     }
 }

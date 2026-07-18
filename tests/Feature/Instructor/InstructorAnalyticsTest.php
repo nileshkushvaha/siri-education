@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Enums\InstructorAnalyticsPeriod;
+use App\Enums\InstructorStatus;
 use App\Lessons\Enums\LessonStatus;
 use App\Livewire\Frontend\Instructor\AnalyticsOverview;
 use App\Models\Booking;
@@ -35,6 +36,7 @@ final class InstructorAnalyticsTest extends TestCase
 
         $this->instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->instructor->assignRole('instructor');
+        $this->instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');

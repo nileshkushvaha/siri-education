@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\Pages\Schemas;
 
 use App\Actions\GeneratePageSlugAction;
+use App\Enums\PageContentWidth;
 use App\Enums\PageStatus;
 use App\Enums\PageVisibility;
 use App\Models\Page;
+use App\Services\Cms\StructuredPageContentService;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
@@ -83,12 +85,7 @@ class PageForm
                                         Select::make('layout')
                                             ->label('Content Width')
                                             ->helperText('Controls how wide the content area stretches inside the template.')
-                                            ->options([
-                                                'default' => '🖥️  Default (max-w-7xl)',
-                                                'full-width' => '⬛  Full Width (edge to edge)',
-                                                'sidebar-left' => '◧  Sidebar Left (coming soon)',
-                                                'sidebar-right' => '◨  Sidebar Right (coming soon)',
-                                            ])
+                                            ->options(PageContentWidth::options())
                                             ->native(false)
                                             ->default('default'),
                                     ]),
@@ -102,6 +99,10 @@ class PageForm
                                     ->schema([
                                         RichEditor::make('content')
                                             ->label('')
+                                            ->disabled(fn (?Page $record): bool => app(StructuredPageContentService::class)->usesStructuredContent($record))
+                                            ->helperText(fn (?Page $record): string => app(StructuredPageContentService::class)->usesStructuredContent($record)
+                                                ? 'This page uses a protected structured design. Update page settings, SEO, publishing, and content width normally; the visual section markup is protected from Rich Editor sanitization.'
+                                                : 'Use the editor for standard page content. Advanced structured pages are managed through their dedicated design content.')
                                             ->toolbarButtons([
                                                 'bold',
                                                 'italic',

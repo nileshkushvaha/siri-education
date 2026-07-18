@@ -64,6 +64,7 @@ use App\Http\Controllers\Student\StudentWalletController;
 use App\Http\Controllers\Student\StudentWishlistController;
 use App\Http\Controllers\TagController;
 use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\EnsureInstructorWorkspaceAccess;
 use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
 use App\Services\PortalResolver;
@@ -253,37 +254,46 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/notifications/{id}/read', [StudentNotificationsController::class, 'markRead'])->name('notifications.read');
     Route::get('/faqs', [DashboardFaqController::class, 'index'])->name('faqs');
     Route::get('/instructor/onboarding', [InstructorOnboardingController::class, 'show'])->name('instructor.onboarding');
-    Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
-    Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
-    // Self-service vacation toggle — a lifecycle state transition
-    // (InstructorOnboardingService), never a separate domain.
-    Route::get('/instructor/vacation', [InstructorVacationController::class, 'index'])->name('instructor.vacation');
-    // Read-only student roster, derived entirely from Lesson — there is
-    // no separate student-relationship table.
-    Route::get('/instructor/students', [InstructorStudentController::class, 'index'])->name('instructor.students');
-    Route::get('/instructor/students/{student}', [InstructorStudentController::class, 'show'])->name('instructor.students.show');
-    // The instructor's own lesson list, hosting the private
-    // student-feedback form for completed lessons. No admin/Filament
-    // surface; feedback here never edits a lesson, booking, or outcome.
-    Route::get('/instructor/lessons', [InstructorLessonsController::class, 'index'])->name('instructor.lessons');
-    // Instructor-facing homework review queue (reuses the existing
-    // app/Homework/* domain; grading writes go through
-    // HomeworkService::review(), never straight to the model).
-    Route::get('/instructor/homework', [InstructorHomeworkController::class, 'index'])->name('instructor.homework');
-    // Instructor-facing quality insights — read-only; the instructor
-    // never moderates, resolves reports, or touches an aggregate here.
-    Route::get('/instructor/quality-insights', [InstructorQualityInsightsController::class, 'index'])->name('instructor.quality-insights');
-    // Read-only analytics foundation; aggregates only, never a raw
-    // collection materialized then counted in PHP.
-    Route::get('/instructor/analytics', [InstructorAnalyticsController::class, 'index'])->name('instructor.analytics');
-    // Read-only earning/settlement visibility; no mutation route exists
-    // here — all writes stay staff-only via InstructorEarningService.
-    Route::get('/instructor/earnings', [InstructorFinanceController::class, 'earnings'])->name('instructor.earnings');
-    Route::get('/instructor/settlements', [InstructorFinanceController::class, 'settlements'])->name('instructor.settlements');
-    // Payout methods & withdrawals — page shells only; no route here
-    // can move money.
-    Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');
-    Route::get('/instructor/withdrawals', [InstructorPayoutController::class, 'withdrawals'])->name('instructor.withdrawals');
+
+    // ── Instructor teaching workspace — gated behind
+    //    InstructorStatus::publiclyVisible() (Approved/Active/Vacation).
+    //    An instructor who hasn't cleared review, or who is
+    //    suspended/archived, is redirected to their application status
+    //    page instead (see EnsureInstructorWorkspaceAccess). ──
+    Route::middleware([EnsureInstructorWorkspaceAccess::class])->group(function (): void {
+        Route::get('/instructor/learning-plans', [InstructorLearningPlanController::class, 'index'])->name('instructor.learning-plans');
+        Route::get('/instructor/availability', [InstructorAvailabilityController::class, 'index'])->name('instructor.availability');
+        // Self-service vacation toggle — a lifecycle state transition
+        // (InstructorOnboardingService), never a separate domain.
+        Route::get('/instructor/vacation', [InstructorVacationController::class, 'index'])->name('instructor.vacation');
+        // Read-only student roster, derived entirely from Lesson — there is
+        // no separate student-relationship table.
+        Route::get('/instructor/students', [InstructorStudentController::class, 'index'])->name('instructor.students');
+        Route::get('/instructor/students/{student}', [InstructorStudentController::class, 'show'])->name('instructor.students.show');
+        // The instructor's own lesson list, hosting the private
+        // student-feedback form for completed lessons. No admin/Filament
+        // surface; feedback here never edits a lesson, booking, or outcome.
+        Route::get('/instructor/lessons', [InstructorLessonsController::class, 'index'])->name('instructor.lessons');
+        // Instructor-facing homework review queue (reuses the existing
+        // app/Homework/* domain; grading writes go through
+        // HomeworkService::review(), never straight to the model).
+        Route::get('/instructor/homework', [InstructorHomeworkController::class, 'index'])->name('instructor.homework');
+        // Instructor-facing quality insights — read-only; the instructor
+        // never moderates, resolves reports, or touches an aggregate here.
+        Route::get('/instructor/quality-insights', [InstructorQualityInsightsController::class, 'index'])->name('instructor.quality-insights');
+        // Read-only analytics foundation; aggregates only, never a raw
+        // collection materialized then counted in PHP.
+        Route::get('/instructor/analytics', [InstructorAnalyticsController::class, 'index'])->name('instructor.analytics');
+        // Read-only earning/settlement visibility; no mutation route exists
+        // here — all writes stay staff-only via InstructorEarningService.
+        Route::get('/instructor/earnings', [InstructorFinanceController::class, 'earnings'])->name('instructor.earnings');
+        Route::get('/instructor/settlements', [InstructorFinanceController::class, 'settlements'])->name('instructor.settlements');
+        // Payout methods & withdrawals — page shells only; no route here
+        // can move money.
+        Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');
+        Route::get('/instructor/withdrawals', [InstructorPayoutController::class, 'withdrawals'])->name('instructor.withdrawals');
+    });
+
     Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');
     Route::post('/instructor/submit', [InstructorOnboardingController::class, 'submit'])->name('instructor.submit');
 

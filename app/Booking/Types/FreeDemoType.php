@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Types;
 
 use App\Booking\Contracts\BookingTypeInterface;
+use App\Booking\Validation\Rules\DemoLessonsEnabledRule;
 use App\Booking\Validation\Rules\OneFreeDemoPerInstructorRule;
 
 final class FreeDemoType implements BookingTypeInterface
@@ -39,6 +40,9 @@ final class FreeDemoType implements BookingTypeInterface
     public function rules(): array
     {
         return [
+            // Order matters: the global toggle must reject before the
+            // per-instructor eligibility check ever runs (Phase 24B).
+            DemoLessonsEnabledRule::class,
             OneFreeDemoPerInstructorRule::class,
         ];
     }

@@ -12,9 +12,11 @@ use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
+use App\Booking\Types\FreeDemoType;
 use App\Enums\InstructorStatus;
 use App\Models\Booking;
 use App\Models\User;
+use App\Settings\FeatureSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -24,12 +26,22 @@ final class BookingWizardService
         private readonly WizardBookingServiceInterface $bookings,
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $teachers,
+        private readonly FeatureSettings $features,
     ) {}
 
-    /** @return Collection<int, array<string, mixed>> */
+    /**
+     * Free Demo is omitted entirely while the platform-wide feature
+     * toggle is off (Phase 24B/GAP-026) — mount()'s query-param
+     * preselection and selectMode() both already refuse any key absent
+     * from this list, so hiding it here is sufficient to keep a stale
+     * `?type=free_demo` link from reaching step 2.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
     public function bookingTypes(): Collection
     {
         return $this->types->allActive()
+            ->reject(fn ($type): bool => $type->key === FreeDemoType::KEY && ! $this->features->demo_lessons_enabled)
             ->map(fn ($type): array => [
                 'key' => $type->key,
                 'name' => $type->name,

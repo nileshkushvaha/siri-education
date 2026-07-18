@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Services\Profile\UserExperienceService;
+use App\Settings\FeatureSettings;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ final class InstructorService
         private readonly InstructorRatingAggregateServiceInterface $ratings,
         private readonly InstructorTrustBadgeResolver $trustBadges,
         private readonly InstructorProfileTextResolver $profileText,
+        private readonly FeatureSettings $features,
     ) {}
 
     public function listing(Request $request): LengthAwarePaginator
@@ -210,8 +212,11 @@ final class InstructorService
         $summaryText = $this->profileText->summary($instructor, 160);
         $responseTimeLabel = $profile->response_time_minutes?->publicLabel();
         // Demo CTA never shows on a non-bookable preview (owner/admin viewing
-        // their own draft/suspended/etc. profile) even if offers_demo is set.
-        $offersDemo = $isBookable && (bool) $profile->offers_demo;
+        // their own draft/suspended/etc. profile) even if offers_demo is set,
+        // and never shows at all while the platform-wide feature toggle is
+        // off (Phase 24B/GAP-026) — separate from is_active on the booking
+        // type, which controls whether Free Demo is operational at all.
+        $offersDemo = $isBookable && (bool) $profile->offers_demo && $this->features->demo_lessons_enabled;
 
         return compact(
             'instructor',

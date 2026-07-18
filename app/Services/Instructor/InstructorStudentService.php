@@ -35,6 +35,26 @@ final class InstructorStudentService
         return Lesson::query()->forInstructor($instructorId)->distinct('student_id')->count('student_id');
     }
 
+    /**
+     * Students in the roster with no currently scheduled/live future
+     * lesson (Phase 23P) — a point-in-time fact, never period-scoped
+     * and never an "at risk"/retention judgment. Two bounded aggregate
+     * queries, independent of roster size.
+     */
+    public function withoutUpcomingLessonCount(int $instructorId): int
+    {
+        $total = $this->totalCount($instructorId);
+
+        $withUpcoming = Lesson::query()
+            ->forInstructor($instructorId)
+            ->open()
+            ->where('starts_at', '>=', now())
+            ->distinct('student_id')
+            ->count('student_id');
+
+        return max(0, $total - $withUpcoming);
+    }
+
     /** Distinct students with a lesson starting inside [$periodStartUtc, $periodEndUtcExclusive) — a null start means "all time". */
     public function activeCount(int $instructorId, ?CarbonImmutable $periodStartUtc, CarbonImmutable $periodEndUtcExclusive): int
     {

@@ -10,11 +10,12 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Read-only instructor analytics foundation (Phase 23O). Every figure
- * comes from InstructorAnalyticsService, scoped to auth()->user() only
- * — never a request-supplied instructor id. The period filter only
- * changes which bounded aggregate queries run; it never triggers a
- * write.
+ * Read-only instructor analytics foundation (Phase 23O) plus Advanced
+ * Performance Insights (Phase 23P) — same page, same component, one
+ * shared period filter. Every figure comes from InstructorAnalyticsService,
+ * scoped to auth()->user() only — never a request-supplied instructor
+ * id. The period filter only changes which bounded aggregate queries
+ * run; it never triggers a write.
  */
 final class AnalyticsOverview extends Component
 {
@@ -39,8 +40,11 @@ final class AnalyticsOverview extends Component
         // which aggregate queries run, never anything write-adjacent.
         $period = InstructorAnalyticsPeriod::tryFrom($this->period) ?? InstructorAnalyticsPeriod::Last30Days;
 
+        $instructor = auth()->user();
+
         return view('livewire.frontend.instructor.analytics-overview', [
-            'data' => $analytics->overview(auth()->user(), $period),
+            'data' => $analytics->overview($instructor, $period),
+            'insights' => $analytics->performanceInsights($instructor, $period),
             'periods' => InstructorAnalyticsPeriod::cases(),
         ]);
     }

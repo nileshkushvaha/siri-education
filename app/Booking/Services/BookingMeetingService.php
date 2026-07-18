@@ -14,11 +14,13 @@ use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingLocationType;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingJoinAvailability;
 use App\Booking\Enums\MeetingStatus;
 use App\Booking\Events\MeetingCreated;
 use App\Booking\Events\MeetingUpdated;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Meetings\ManualMeetingProvider;
+use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use App\Services\AuditTrailService;
@@ -226,6 +228,45 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
     public function findForBooking(Booking $booking): ?BookingMeeting
     {
         return BookingMeeting::query()->where('booking_id', $booking->id)->first();
+    }
+
+    public function joinAvailabilityFor(Booking $booking, bool $roleVisible, ?LessonStatus $lessonStatus = null): MeetingJoinAvailability
+    {
+        if (! $roleVisible || $booking->status !== BookingStatus::Confirmed) {
+            return MeetingJoinAvailability::Unavailable;
+        }
+
+        if ($lessonStatus !== null && ! $lessonStatus->isOpen()) {
+            return MeetingJoinAvailability::Unavailable;
+        }
+
+        // Relation read only — callers iterating a list must eager-load
+        // `meeting` themselves; this never issues a query of its own.
+        $meeting = $booking->meeting;
+
+        if ($meeting === null || $meeting->status !== MeetingStatus::Created || blank($meeting->join_url)) {
+            return MeetingJoinAvailability::NotReady;
+        }
+
+        $windowStartsAt = ($meeting->starts_at ?? $booking->starts_at)->subMinutes($this->settings->meeting_link_visible_before_minutes);
+        $windowEndsAt = ($meeting->ends_at ?? $booking->ends_at)->addMinutes($this->settings->meeting_link_visible_after_minutes);
+
+        if (now()->lt($windowStartsAt)) {
+            return MeetingJoinAvailability::TooEarly;
+        }
+
+        if (now()->gt($windowEndsAt)) {
+            return MeetingJoinAvailability::Unavailable;
+        }
+
+        return MeetingJoinAvailability::Available;
+    }
+
+    public function joinUrlFor(Booking $booking, bool $roleVisible, ?LessonStatus $lessonStatus = null): ?string
+    {
+        return $this->joinAvailabilityFor($booking, $roleVisible, $lessonStatus) === MeetingJoinAvailability::Available
+            ? $booking->meeting?->join_url
+            : null;
     }
 
     /**

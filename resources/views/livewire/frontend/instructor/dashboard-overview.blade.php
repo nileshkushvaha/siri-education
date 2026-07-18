@@ -51,9 +51,18 @@
                             <p class="truncate text-sm font-semibold text-white">{{ $booking['subject'] }}</p>
                             <p class="mt-1 truncate text-xs text-slate-400">{{ $booking['student'] }} · {{ $booking['type'] }}</p>
                         </div>
-                        <div class="col-start-2 text-left sm:col-auto sm:text-right">
-                            <p class="text-sm font-semibold text-slate-200">{{ $booking['starts_at']->format('g:i A') }}</p>
-                            <p class="mt-0.5 text-xs text-slate-500">{{ $booking['ends_at']->format('g:i A') }}</p>
+                        <div class="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:justify-end">
+                            <div class="text-left sm:text-right">
+                                <p class="text-sm font-semibold text-slate-200">{{ $booking['starts_at']->format('g:i A') }}</p>
+                                <p class="mt-0.5 text-xs text-slate-500">{{ $booking['ends_at']->format('g:i A') }}</p>
+                            </div>
+                            @if($booking['join_url'])
+                                <a href="{{ $booking['join_url'] }}" target="_blank" rel="noopener noreferrer"
+                                   class="min-h-11 inline-flex items-center rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-500"
+                                   aria-label="Join the class for {{ $booking['subject'] }}">
+                                    Join Class
+                                </a>
+                            @endif
                         </div>
                     </article>
                 @empty

@@ -144,6 +144,12 @@ class Lesson extends Model
         return $query->whereIn('status', [LessonStatus::Scheduled, LessonStatus::Live]);
     }
 
+    /** The complement of scopeOpen(): every lesson that has left the open lifecycle states. */
+    public function scopeClosed(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', [LessonStatus::Scheduled, LessonStatus::Live]);
+    }
+
     public function scopeForInstructor(Builder $query, int $instructorId): Builder
     {
         return $query->where('instructor_id', $instructorId);

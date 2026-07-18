@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingJoinAvailability;
 use App\DTOs\InstructorDashboard\InstructorDashboardData;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Support\InstructorPayoutEligibility;
@@ -16,6 +18,7 @@ use App\Models\HomeworkAssignment;
 use App\Models\InstructorEarning;
 use App\Models\StudentLearningPlan;
 use App\Models\User;
+use App\Settings\MeetingSettings;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 
@@ -24,6 +27,8 @@ final class InstructorDashboardService
     public function __construct(
         private readonly InstructorOnboardingService $onboarding,
         private readonly InstructorPayoutEligibility $payoutEligibility,
+        private readonly BookingMeetingServiceInterface $meetings,
+        private readonly MeetingSettings $meetingSettings,
     ) {}
 
     public function summary(User $instructor, int $unreadNotifications = 0): InstructorDashboardData
@@ -45,7 +50,7 @@ final class InstructorDashboardService
         $todayCount = (clone $upcomingQuery)->whereBetween('starts_at', [$todayStart, $todayEnd])->count();
 
         $nextLessons = (clone $upcomingQuery)
-            ->with(['type:id,name', 'student:id,first_name,last_name,name'])
+            ->with(['type:id,name', 'student:id,first_name,last_name,name', 'meeting', 'lesson:id,booking_id,status'])
             ->orderBy('starts_at')
             ->limit(4)
             ->get();
@@ -69,16 +74,27 @@ final class InstructorDashboardService
             completedLessons: (int) ($completed?->lesson_count ?? 0),
             teachingHours: round(((int) ($completed?->teaching_minutes ?? 0)) / 60, 1),
             subjectCount: $instructor->teacherSubjects()->count(),
-            nextLessons: $nextLessons->map(fn (Booking $booking): array => [
-                'id' => $booking->id,
-                'reference' => $booking->reference,
-                'subject' => $booking->meta['subject'] ?? $booking->type?->name ?? 'Lesson',
-                'type' => $booking->type?->name ?? 'Class',
-                'student' => $booking->student?->name ?? 'Student',
-                'starts_at' => $booking->starts_at->timezone($timezone),
-                'ends_at' => $booking->ends_at->timezone($timezone),
-                'status' => $booking->status->label(),
-            ])->all(),
+            nextLessons: $nextLessons->map(function (Booking $booking) use ($timezone): array {
+                // Bounded to the 4 lessons fetched above; `meeting`/`lesson`
+                // are eager-loaded, so this never queries per row.
+                $joinAvailability = $this->meetings->joinAvailabilityFor(
+                    $booking,
+                    $this->meetingSettings->instructor_join_url_visible,
+                    $booking->lesson?->status,
+                );
+
+                return [
+                    'id' => $booking->id,
+                    'reference' => $booking->reference,
+                    'subject' => $booking->meta['subject'] ?? $booking->type?->name ?? 'Lesson',
+                    'type' => $booking->type?->name ?? 'Class',
+                    'student' => $booking->student?->name ?? 'Student',
+                    'starts_at' => $booking->starts_at->timezone($timezone),
+                    'ends_at' => $booking->ends_at->timezone($timezone),
+                    'status' => $booking->status->label(),
+                    'join_url' => $joinAvailability === MeetingJoinAvailability::Available ? $booking->meeting?->join_url : null,
+                ];
+            })->all(),
             learningPlans: [
                 'active' => (clone $plans)->whereIn('status', [LearningPlanStatus::Active, LearningPlanStatus::Paused, LearningPlanStatus::ReviewDue])->count(),
                 'reviews_due' => (clone $plans)->where('status', LearningPlanStatus::ReviewDue)->count(),

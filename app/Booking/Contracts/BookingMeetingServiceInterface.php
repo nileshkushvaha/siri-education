@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\MeetingUpdateContext;
+use App\Booking\Enums\MeetingJoinAvailability;
+use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 
@@ -41,4 +43,17 @@ interface BookingMeetingServiceInterface
     public function isEligible(Booking $booking): bool;
 
     public function findForBooking(Booking $booking): ?BookingMeeting;
+
+    /**
+     * Whether $booking's meeting may be joined right now by a participant
+     * whose role-level join-link visibility is $roleVisible (e.g.
+     * MeetingSettings::instructor_join_url_visible). Reads $booking's
+     * already-loaded `meeting` relation — callers iterating a list must
+     * eager-load it to avoid N+1. $lessonStatus, when given, closes
+     * access once the lesson is no longer open (e.g. Completed).
+     */
+    public function joinAvailabilityFor(Booking $booking, bool $roleVisible, ?LessonStatus $lessonStatus = null): MeetingJoinAvailability;
+
+    /** The join URL when joinAvailabilityFor() would return Available, otherwise null. */
+    public function joinUrlFor(Booking $booking, bool $roleVisible, ?LessonStatus $lessonStatus = null): ?string;
 }

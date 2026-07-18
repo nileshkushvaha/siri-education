@@ -1,156 +1,117 @@
 <div class="space-y-6">
     @if (session('lessons-status'))
-        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-200" role="status">
             {{ session('lessons-status') }}
         </div>
     @endif
 
+    @if (session('lessons-error'))
+        <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-200" role="alert">
+            {{ session('lessons-error') }}
+        </div>
+    @endif
+
     @error('form')
-        <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+        <div class="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-200" role="alert">
             {{ $message }}
         </div>
     @enderror
 
-    <x-account.card>
-        @forelse ($lessons as $lesson)
-            @php($feedback = $existingFeedback[$lesson->id] ?? null)
-            <div wire:key="lesson-{{ $lesson->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <p class="text-sm font-medium text-white truncate">{{ $lesson->student?->first_name ?? 'Student' }}</p>
-                            <x-ui.badge :color="$lesson->status->color()">{{ $lesson->status->label() }}</x-ui.badge>
-                            @if ($lesson->outcome !== null && $lesson->hasFinalizedOutcome())
-                                <x-ui.badge :color="$lesson->outcome->color()">{{ $lesson->outcome->label() }}</x-ui.badge>
-                            @endif
+    <div>
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-300">Upcoming Lessons</h2>
+        <x-account.card>
+            @forelse ($upcoming as $lesson)
+                @php($join = $joinInfo[$lesson->id] ?? ['availability' => \App\Booking\Enums\MeetingJoinAvailability::Unavailable, 'url' => null])
+                <div wire:key="upcoming-lesson-{{ $lesson->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <p class="text-sm font-medium text-white truncate">{{ $lesson->subject?->name ?? 'General' }}</p>
+                                <x-ui.badge :color="$lesson->status->color()">{{ $lesson->status->label() }}</x-ui.badge>
+                            </div>
+                            <p class="text-xs text-slate-400">Student: {{ $lesson->student?->name ?? 'Student' }}</p>
+                            <p class="text-xs text-slate-400 mt-1">
+                                {{ $lesson->starts_at->isToday() ? 'Today' : $lesson->starts_at->format('M j, Y') }}
+                                &middot; {{ $lesson->starts_at->format('g:i A') }} - {{ $lesson->ends_at->format('g:i A') }}
+                            </p>
                         </div>
-                        <p class="text-xs text-slate-400">
-                            {{ $lesson->subject?->name ?? 'General' }} &middot; {{ $lesson->starts_at->format('M j, Y g:i A') }}
-                        </p>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        @if ($lesson->outcome === $completedOutcome && $lesson->hasFinalizedOutcome())
-                            @if ($feedback)
-                                <span class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-400/30 bg-emerald-500/10">
-                                    Private feedback submitted
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if($join['availability'] === \App\Booking\Enums\MeetingJoinAvailability::Available)
+                                <a href="{{ $join['url'] }}" target="_blank" rel="noopener noreferrer"
+                                   class="min-h-11 inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition"
+                                   aria-label="Join the class for {{ $lesson->subject?->name ?? 'this lesson' }}">
+                                    Join Class
+                                </a>
+                            @elseif(in_array($join['availability'], [\App\Booking\Enums\MeetingJoinAvailability::NotReady, \App\Booking\Enums\MeetingJoinAvailability::TooEarly], true))
+                                <span class="min-h-11 inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 border border-white/[0.08]">
+                                    {{ $join['availability']->label() }}
                                 </span>
-                                <button type="button" wire:click="toggleExpand('{{ $lesson->id }}')"
-                                    class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-white/[0.10] hover:bg-white/[0.05] transition">
-                                    {{ $expandedLessonId === $lesson->id ? 'Hide' : 'View' }}
-                                </button>
-                            @else
-                                <button type="button" wire:click="toggleExpand('{{ $lesson->id }}')"
-                                    class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-500 hover:bg-indigo-400 transition">
-                                    {{ $expandedLessonId === $lesson->id ? 'Cancel' : 'Give feedback' }}
-                                </button>
                             @endif
-                        @endif
+                            <button type="button" wire:click="toggleExpand('{{ $lesson->id }}')"
+                                    class="min-h-11 px-4 py-2 rounded-lg text-xs font-semibold text-slate-300 border border-white/[0.10] hover:bg-white/[0.05] transition"
+                                    aria-expanded="{{ $expandedLessonId === $lesson->id ? 'true' : 'false' }}">
+                                {{ $expandedLessonId === $lesson->id ? 'Hide' : 'View Details' }}
+                            </button>
+                        </div>
                     </div>
+
+                    @if ($expandedLessonId === $lesson->id)
+                        @include('livewire.frontend.instructor.lesson-detail-panel', ['lesson' => $lesson])
+                    @endif
                 </div>
+            @empty
+                <x-ui.empty-state title="No upcoming lessons." description="Your scheduled lessons will appear here." />
+            @endforelse
+        </x-account.card>
+    </div>
 
-                @if ($expandedLessonId === $lesson->id)
-                    <div class="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
-                        @if ($feedback)
-                            <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Private feedback &middot; visible only to you</p>
-                            <dl class="space-y-3 text-sm">
-                                @if ($feedback->attendanceStatusSnapshot)
-                                    <div>
-                                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Finalized attendance</dt>
-                                        <dd class="text-slate-300">{{ $feedback->attendanceStatusSnapshot->label() }}</dd>
-                                    </div>
+    <div>
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300">Recent Lessons</h2>
+        <x-account.card>
+            @forelse ($lessons as $lesson)
+                <div wire:key="lesson-{{ $lesson->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <p class="text-sm font-medium text-white truncate">{{ $lesson->subject?->name ?? 'General' }}</p>
+                                <p class="text-sm text-slate-300 truncate">{{ $lesson->student?->name ?? 'Student' }}</p>
+                                <x-ui.badge :color="$lesson->status->color()">{{ $lesson->status->label() }}</x-ui.badge>
+                                @if ($lesson->outcome !== null && $lesson->hasFinalizedOutcome())
+                                    <x-ui.badge :color="$lesson->outcome->color()">{{ $lesson->outcome->label() }}</x-ui.badge>
                                 @endif
-                                @foreach ([
-                                    'attendanceObservation' => 'Attendance observation',
-                                    'preparednessObservation' => 'Preparedness',
-                                    'homeworkCompletionObservation' => 'Homework completion',
-                                    'engagementObservation' => 'Engagement',
-                                    'learningAttitudeObservation' => 'Learning attitude',
-                                    'areasNeedingSupport' => 'Areas needing support',
-                                    'privateNotes' => 'Private notes',
-                                ] as $property => $label)
-                                    @if ($feedback->{$property})
-                                        <div>
-                                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $label }}</dt>
-                                            <dd class="text-slate-300">{{ $feedback->{$property} }}</dd>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </dl>
-                            <p class="mt-4 text-xs text-slate-500">Submitted {{ $feedback->submittedAt->format('M j, Y g:i A') }}. Feedback cannot be edited or deleted.</p>
-                        @else
-                            <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Private feedback &middot; visible only to you</p>
-                            <form wire:submit="submitFeedback('{{ $lesson->id }}')" class="space-y-4">
-                                @if ($lesson->student_attendance_status)
-                                    <p class="text-xs text-slate-500">Finalized attendance: <span class="text-slate-300">{{ $lesson->student_attendance_status->label() }}</span> (not editable here)</p>
+                            </div>
+                            <p class="text-xs text-slate-400">
+                                {{ $lesson->starts_at->format('M j, Y g:i A') }}
+                                @if ($lesson->outcome === $completedOutcome && $lesson->hasFinalizedOutcome() && ($existingFeedback[$lesson->id] ?? null))
+                                    &middot; Feedback submitted
                                 @endif
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Attendance observation</label>
-                                    <textarea wire:model="attendance_observation" rows="2" maxlength="1000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('attendance_observation') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Preparedness</label>
-                                    <textarea wire:model="preparedness_observation" rows="2" maxlength="1000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('preparedness_observation') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Homework completion</label>
-                                    <textarea wire:model="homework_completion_observation" rows="2" maxlength="1000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('homework_completion_observation') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Engagement</label>
-                                    <textarea wire:model="engagement_observation" rows="2" maxlength="1000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('engagement_observation') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Learning attitude</label>
-                                    <textarea wire:model="learning_attitude_observation" rows="2" maxlength="1000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('learning_attitude_observation') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Areas needing support</label>
-                                    <textarea wire:model="areas_needing_support" rows="2" maxlength="1000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('areas_needing_support') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Private notes for learning continuity</label>
-                                    <textarea wire:model="private_notes" rows="3" maxlength="2000"
-                                        class="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-3 py-2 text-sm text-white focus:border-indigo-400 focus:outline-none"></textarea>
-                                    @error('private_notes') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
-                                </div>
-                                <div class="flex items-center gap-3 pt-2">
-                                    <button type="submit" wire:loading.attr="disabled" wire:target="submitFeedback('{{ $lesson->id }}')"
-                                        class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-400 transition disabled:opacity-50">
-                                        Save private feedback
-                                    </button>
-                                    <button type="button" wire:click="toggleExpand('{{ $lesson->id }}')"
-                                        class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 border border-white/[0.10] hover:bg-white/[0.05] transition">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        @endif
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" wire:click="toggleExpand('{{ $lesson->id }}')"
+                                    class="min-h-11 px-4 py-2 rounded-lg text-xs font-semibold text-slate-300 border border-white/[0.10] hover:bg-white/[0.05] transition"
+                                    aria-expanded="{{ $expandedLessonId === $lesson->id ? 'true' : 'false' }}">
+                                {{ $expandedLessonId === $lesson->id ? 'Hide' : 'View Details' }}
+                            </button>
+                        </div>
                     </div>
-                @endif
-            </div>
-        @empty
-            <div class="flex flex-col items-center justify-center py-12 text-center">
-                <h3 class="text-slate-300 font-semibold mb-2">No lessons yet</h3>
-                <p class="text-slate-400 text-sm max-w-xs">Your lessons will appear here once they are scheduled.</p>
-            </div>
-        @endforelse
 
-        @if ($lessons->hasPages())
-            <div class="pt-4">
-                {{ $lessons->links() }}
-            </div>
-        @endif
-    </x-account.card>
+                    @if ($expandedLessonId === $lesson->id)
+                        @include('livewire.frontend.instructor.lesson-detail-panel', ['lesson' => $lesson])
+                    @endif
+                </div>
+            @empty
+                <div class="flex flex-col items-center justify-center py-12 text-center">
+                    <h3 class="text-slate-300 font-semibold mb-2">No lessons yet</h3>
+                    <p class="text-slate-400 text-sm max-w-xs">Your lessons will appear here once they are scheduled.</p>
+                </div>
+            @endforelse
+
+            @if ($lessons->hasPages())
+                <div class="pt-4">
+                    {{ $lessons->links() }}
+                </div>
+            @endif
+        </x-account.card>
+    </div>
 </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Components;
 
+use App\Enums\InstructorEvidenceCollection;
 use App\Models\UserProfile;
 
 /**
@@ -21,27 +22,18 @@ use App\Models\UserProfile;
  */
 final class InstructorDocumentViewer
 {
-    public const COLLECTIONS = [
-        'government_id' => 'Government ID',
-        'address_proof' => 'Address Proof',
-        'education_certificate' => 'Education Certificate',
-        'teaching_certificate' => 'Teaching Certificate',
-        'resume' => 'Resume',
-        'introduction_video' => 'Introduction Video',
-    ];
-
     /**
      * @return list<array{collection: string, label: string, uploaded: bool, download_url: ?string}>
      */
     public static function rows(UserProfile $profile): array
     {
-        return collect(self::COLLECTIONS)
-            ->map(function (string $label, string $collection) use ($profile): array {
-                $media = $profile->getFirstMedia($collection);
+        return collect(InstructorEvidenceCollection::cases())
+            ->map(function (InstructorEvidenceCollection $collection) use ($profile): array {
+                $media = $profile->getFirstMedia($collection->value);
 
                 return [
-                    'collection' => $collection,
-                    'label' => $label,
+                    'collection' => $collection->value,
+                    'label' => $collection->label(),
                     'uploaded' => $media !== null,
                     'download_url' => $media !== null
                         ? route('admin.instructor-documents.download', $media)

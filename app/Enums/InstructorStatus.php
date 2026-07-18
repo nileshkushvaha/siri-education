@@ -95,4 +95,16 @@ enum InstructorStatus: string
     {
         return [self::Approved, self::Active, self::Vacation];
     }
+
+    /**
+     * Statuses waiting on an admin action — Draft is excluded, since an
+     * applicant who hasn't submitted yet has nothing for an admin to
+     * review.
+     *
+     * @return list<self>
+     */
+    public static function needsReview(): array
+    {
+        return [self::Submitted, self::UnderReview, self::DocumentsPending, self::InterviewRequired];
+    }
 }

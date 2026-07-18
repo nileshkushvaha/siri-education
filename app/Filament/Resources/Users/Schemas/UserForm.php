@@ -2,13 +2,9 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use App\Enums\InstructorResponseTime;
 use App\Enums\LearningGoalStatus;
-use App\Filament\Components\InstructorDocumentViewer;
 use App\Models\Country;
 use App\Models\State;
-use App\Models\User;
-use App\Models\UserProfile;
 use App\Services\Security\PasswordRuleBuilder;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -23,9 +19,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
 
 class UserForm
 {
@@ -275,124 +268,6 @@ class UserForm
                                             ->multiple()
                                             ->preload()
                                             ->searchable()
-                                            ->columnSpanFull(),
-                                    ]),
-                            ]),
-
-                        Tab::make('Instructor')
-                            ->icon('heroicon-o-academic-cap')
-                            ->visible(fn ($record) => $record && $record->hasRole('instructor'))
-                            ->schema([
-                                Section::make('Instructor Profile Review')
-                                    ->description('Read-only summary of the instructor\'s public-facing profile.')
-                                    ->icon('heroicon-o-eye')
-                                    ->relationship('profile')
-                                    ->schema([
-                                        Placeholder::make('profile_visibility_display')
-                                            ->label('Profile Visibility')
-                                            ->content(fn ($record) => $record?->profile_visibility ?? '—'),
-
-                                        Placeholder::make('bio_preview')
-                                            ->label('Bio')
-                                            ->content(fn ($record) => $record?->bio ? Str::limit($record->bio, 200) : '—')
-                                            ->columnSpanFull(),
-
-                                        Placeholder::make('teaching_experience_summary_preview')
-                                            ->label('Teaching Experience')
-                                            ->content(fn ($record) => $record?->instructor_teaching_experience_summary ? Str::limit($record->instructor_teaching_experience_summary, 200) : '—')
-                                            ->columnSpanFull(),
-
-                                        Placeholder::make('teaching_philosophy_preview')
-                                            ->label('Teaching Philosophy')
-                                            ->content(fn ($record) => $record?->instructor_teaching_philosophy ? Str::limit($record->instructor_teaching_philosophy, 200) : '—')
-                                            ->columnSpanFull(),
-                                    ]),
-
-                                Section::make('Instructor Controls')
-                                    ->description('Admin controls for the instructor\'s public profile status and visibility.')
-                                    ->icon('heroicon-o-cog-6-tooth')
-                                    ->relationship('profile')
-                                    ->schema([
-                                        Placeholder::make('instructor_status_display')
-                                            ->label('Profile Status')
-                                            ->content(fn ($record) => $record?->instructor_status?->label() ?? 'Not set'),
-
-                                        Grid::make(2)->schema([
-                                            Toggle::make('is_featured')
-                                                ->label('Featured Instructor')
-                                                ->helperText('Show this instructor in featured sections.'),
-
-                                            Toggle::make('is_instructor_verified')
-                                                ->label('Verified Instructor')
-                                                ->helperText('Display a verification badge on the public profile.'),
-                                        ]),
-
-                                        TextInput::make('featured_order')
-                                            ->label('Featured Order')
-                                            ->numeric()
-                                            ->minValue(0)
-                                            ->helperText('Lower numbers appear first in the featured listing.'),
-
-                                        Grid::make(2)->schema([
-                                            Select::make('response_time_minutes')
-                                                ->label('Response Time')
-                                                ->options(InstructorResponseTime::options())
-                                                ->native(false)
-                                                ->helperText('Shown on the public profile as "Usually responds within X" — leave empty to hide.'),
-
-                                            Toggle::make('offers_demo')
-                                                ->label('Offers Free Demo')
-                                                ->helperText('Show the "Book a Demo" call to action on the public profile.'),
-                                        ]),
-                                    ]),
-
-                                // Phase 23E: gated entirely on InstructorDocumentPolicy — a
-                                // generic Update:User/View:User admin never sees this section
-                                // render at all, regardless of what's inside it. The fields
-                                // themselves are also no longer raw upload/preview widgets
-                                // (Filament's native file preview would otherwise surface a
-                                // storage URL outside the authorization+audit path) — see
-                                // InstructorDocumentViewer and InstructorDocumentDownloadController.
-                                Section::make('Verification Documents')
-                                    ->description('Private documents used for instructor verification.')
-                                    ->icon('heroicon-o-document-check')
-                                    ->relationship('profile')
-                                    ->visible(function (?User $record): bool {
-                                        // Unlike the fields nested inside this section (which are
-                                        // correctly scoped to the profile relation by
-                                        // ->relationship('profile')), the Section's own visible()
-                                        // closure receives the outer Livewire record (User), not
-                                        // UserProfile — navigate to ->profile explicitly.
-                                        $admin = auth()->user();
-                                        $profile = $record?->profile;
-
-                                        return $profile !== null
-                                            && $admin instanceof User
-                                            && Gate::forUser($admin)->allows('instructor.viewDocuments', $profile);
-                                    })
-                                    ->schema([
-                                        Placeholder::make('kyc_documents')
-                                            ->hiddenLabel()
-                                            ->content(fn (?UserProfile $record) => $record !== null
-                                                ? new HtmlString(view('filament.components.instructor-document-viewer', [
-                                                    'rows' => InstructorDocumentViewer::rows($record),
-                                                ])->render())
-                                                : null
-                                            )
-                                            ->columnSpanFull(),
-                                    ]),
-
-                                Section::make('Instructor Cover')
-                                    ->description('Banner image shown at the top of the instructor\'s public profile page.')
-                                    ->icon('heroicon-o-photo')
-                                    // No ->relationship() here — instructor_cover lives on the User model directly
-                                    ->schema([
-                                        SpatieMediaLibraryFileUpload::make('instructor_cover')
-                                            ->label('Cover Image')
-                                            ->collection('instructor_cover')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->maxSize(4096)
                                             ->columnSpanFull(),
                                     ]),
                             ]),

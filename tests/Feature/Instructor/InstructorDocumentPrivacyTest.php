@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Enums\InstructorStatus;
-use App\Filament\Resources\Users\Pages\EditUser;
+use App\Filament\Resources\InstructorOnboarding\Pages\EditInstructorOnboarding;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\Instructor\InstructorOnboardingService;
@@ -51,8 +51,8 @@ final class InstructorDocumentPrivacyTest extends TestCase
 
         $this->actingAs($reviewer);
 
-        Livewire::test(EditUser::class, ['record' => $instructor->getRouteKey()])
-            ->assertSee('Verification Documents');
+        Livewire::test(EditInstructorOnboarding::class, ['record' => $instructor->getRouteKey()])
+            ->assertSee('Verification Evidence');
     }
 
     public function test_normal_admin_without_review_permission_cannot_see_kyc_section(): void
@@ -64,8 +64,8 @@ final class InstructorDocumentPrivacyTest extends TestCase
 
         $this->actingAs($admin);
 
-        Livewire::test(EditUser::class, ['record' => $instructor->getRouteKey()])
-            ->assertDontSee('Verification Documents')
+        Livewire::test(EditInstructorOnboarding::class, ['record' => $instructor->getRouteKey()])
+            ->assertDontSee('Verification Evidence')
             ->assertDontSee('Government ID');
     }
 
@@ -192,7 +192,7 @@ final class InstructorDocumentPrivacyTest extends TestCase
         $instructor = $this->instructorWithDocument();
 
         $this->actingAs($reviewer);
-        Livewire::test(EditUser::class, ['record' => $instructor->getRouteKey()]);
+        Livewire::test(EditInstructorOnboarding::class, ['record' => $instructor->getRouteKey()]);
 
         $this->assertSame(
             1,

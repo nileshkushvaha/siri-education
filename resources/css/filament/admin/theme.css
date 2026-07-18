@@ -42,6 +42,36 @@
     margin-top: 0.25rem;
 }
 
+/* Instructor application review: decisions belong below the complete
+   heading context, not beside a compressed title/subheading column. */
+.fi-resource-instructor-onboarding .fi-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.fi-resource-instructor-onboarding .fi-header > :first-child,
+.fi-resource-instructor-onboarding .fi-header-actions-ctn,
+.fi-resource-instructor-onboarding .fi-header-actions-ctn .fi-ac {
+    width: 100%;
+}
+
+.fi-resource-instructor-onboarding .fi-header-subheading {
+    max-width: none;
+    white-space: nowrap;
+}
+
+.fi-resource-instructor-onboarding .fi-header-actions-ctn .fi-ac {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+@media (max-width: 64rem) {
+    .fi-resource-instructor-onboarding .fi-header-subheading {
+        white-space: normal;
+    }
+}
+
 /* ── Navigation Menu Builder drag-and-drop ──────────────────────────── */
 
 /* Ghost element while dragging */

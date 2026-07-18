@@ -37,3 +37,5 @@ SEO priority: Page/Post fields → Global SEO Settings → Defaults.
 Security settings pages route all saves through `SecuritySettingsService`, which logs field-level diffs.
 
 `super_admin` has unrestricted access via `Gate::before()` in `AppServiceProvider`. Never replicate this in individual policies.
+
+Instructor onboarding review lives on `InstructorOnboardingResource`, never on the general `UserResource`. Shared code (`HasInstructorLifecycleActions`, `InstructorOnboardingForm`) is reused between them, not duplicated.

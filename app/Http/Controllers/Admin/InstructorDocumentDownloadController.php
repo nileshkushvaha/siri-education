@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Filament\Components\InstructorDocumentViewer;
+use App\Enums\InstructorEvidenceCollection;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -36,7 +36,7 @@ final class InstructorDocumentDownloadController extends Controller
         // Only the recognized KYC collections may be served through this
         // route — an avatar/cover media id (or any other model's media)
         // must never resolve here, even if View:User is held.
-        abort_unless(array_key_exists($media->collection_name, InstructorDocumentViewer::COLLECTIONS), 403);
+        abort_unless(InstructorEvidenceCollection::tryFrom($media->collection_name) !== null, 403);
 
         $profile = $media->model;
         abort_unless($profile instanceof UserProfile, 403);

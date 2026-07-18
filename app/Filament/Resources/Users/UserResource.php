@@ -7,8 +7,6 @@ use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Filament\Resources\Users\RelationManagers\ActivityLogRelationManager;
-use App\Filament\Resources\Users\RelationManagers\EducationsRelationManager;
-use App\Filament\Resources\Users\RelationManagers\ExperiencesRelationManager;
 use App\Filament\Resources\Users\RelationManagers\LoginHistoryRelationManager;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
@@ -49,8 +47,9 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ExperiencesRelationManager::class,
-            EducationsRelationManager::class,
+            // General account activity stays visible here too (not
+            // instructor-specific); Experience/Education moved fully to
+            // InstructorOnboardingResource since they're onboarding-only.
             ActivityLogRelationManager::class,
             LoginHistoryRelationManager::class,
         ];

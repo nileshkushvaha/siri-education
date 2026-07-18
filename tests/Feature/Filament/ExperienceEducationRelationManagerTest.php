@@ -6,7 +6,7 @@ namespace Tests\Feature\Filament;
 
 use App\Enums\EducationLevel;
 use App\Enums\EmploymentType;
-use App\Filament\Resources\Users\Pages\EditUser;
+use App\Filament\Resources\InstructorOnboarding\Pages\EditInstructorOnboarding;
 use App\Filament\Resources\Users\RelationManagers\EducationsRelationManager;
 use App\Filament\Resources\Users\RelationManagers\ExperiencesRelationManager;
 use App\Models\User;
@@ -49,7 +49,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
     {
         Livewire::test(ExperiencesRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])->assertSuccessful();
     }
 
@@ -57,7 +57,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
     {
         Livewire::test(ExperiencesRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])
             ->callTableAction('create', data: [
                 'organization_name' => 'Tech Giants',
@@ -84,7 +84,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
 
         Livewire::test(ExperiencesRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])
             ->callTableAction('edit', record: $experience, data: [
                 'designation' => 'New Title',
@@ -100,7 +100,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
 
         Livewire::test(ExperiencesRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])
             ->callTableAction('delete', record: $experience)
             ->assertHasNoTableActionErrors();
@@ -116,7 +116,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
 
         Livewire::test(ExperiencesRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])->assertSee('Visible Corp');
     }
 
@@ -126,7 +126,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
     {
         Livewire::test(EducationsRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])->assertSuccessful();
     }
 
@@ -134,7 +134,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
     {
         Livewire::test(EducationsRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])
             ->callTableAction('create', data: [
                 'institution_name' => 'State University',
@@ -158,7 +158,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
 
         Livewire::test(EducationsRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])
             ->callTableAction('delete', record: $education)
             ->assertHasNoTableActionErrors();
@@ -174,7 +174,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
 
         Livewire::test(EducationsRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])->assertSee('Visible University');
     }
 
@@ -184,7 +184,7 @@ class ExperienceEducationRelationManagerTest extends TestCase
     {
         Livewire::test(ExperiencesRelationManager::class, [
             'ownerRecord' => $this->subject,
-            'pageClass' => EditUser::class,
+            'pageClass' => EditInstructorOnboarding::class,
         ])
             ->callTableAction('create', data: [
                 'organization_name' => 'LogTest Co',

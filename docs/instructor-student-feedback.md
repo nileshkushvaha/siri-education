@@ -55,6 +55,18 @@ the lock:
 Demo and paid completed lessons both qualify — no existing SRS-backed
 policy excludes either.
 
+`EnsureInstructorWorkspaceAccess` (added later, see `docs/users.md` §
+Instructor workspace access) now gates the *route* hosting this
+feature (`dashboard.instructor.lessons`) behind
+`InstructorStatus::publiclyVisible()` — an instructor outside that set
+is redirected before `LessonFeedbackManager` ever mounts, so in
+practice they cannot reach the submission UI at all. This is a routing
+concern, not an eligibility rule: `assertEligible()` above deliberately
+still does not duplicate an `instructor_status` check itself, for the
+same reason stated in point 2 — the two layers answer different
+questions (can this admin-facing URL be reached vs. does this specific
+lesson/instructor/student triple qualify) and must not be conflated.
+
 ## Idempotency & concurrency
 
 Two layered defenses, mirroring `OpenLessonReviewEligibilityAction`

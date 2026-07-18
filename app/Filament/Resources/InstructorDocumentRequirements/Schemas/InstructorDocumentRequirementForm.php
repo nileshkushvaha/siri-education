@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorDocumentRequirements\Schemas;
 
+use App\Enums\InstructorEvidenceCollection;
+use App\Models\InstructorDocumentRequirement;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -11,6 +14,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class InstructorDocumentRequirementForm
@@ -30,13 +34,24 @@ class InstructorDocumentRequirementForm
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
-                            TextInput::make('collection_name')
+                            Select::make('collection_name')
                                 ->label('Media Collection')
+                                ->options(InstructorEvidenceCollection::options())
+                                ->native(false)
+                                ->searchable()
+                                ->preload()
+                                ->live()
                                 ->required()
-                                ->maxLength(60)
-                                ->regex('/^[a-z0-9_]+$/')
-                                ->helperText('Must match a Spatie Media Library collection registered on UserProfile — e.g. government_id.')
+                                ->placeholder('Select the evidence instructors must upload')
+                                ->helperText('Choose the matching collection from Verification Evidence. Collections already configured must be edited or reactivated instead of added again.')
                                 ->unique('instructor_document_requirements', 'collection_name', ignoreRecord: true)
+                                ->disableOptionWhen(fn (string $value): bool => $isCreate
+                                    && InstructorDocumentRequirement::query()->where('collection_name', $value)->exists())
+                                ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                    if ($collection = InstructorEvidenceCollection::tryFrom($state ?? '')) {
+                                        $set('label', $collection->label());
+                                    }
+                                })
                                 ->disabled(! $isCreate)
                                 ->dehydrated(),
                             TextInput::make('label')

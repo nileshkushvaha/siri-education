@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorDocumentRequirements\Tables;
 
+use App\Enums\InstructorEvidenceCollection;
 use App\Models\InstructorDocumentRequirement;
 use App\Models\User;
 use App\Services\Instructor\InstructorDocumentRequirementService;
@@ -22,7 +23,9 @@ class InstructorDocumentRequirementsTable
         return $table
             ->columns([
                 TextColumn::make('collection_name')
-                    ->label('Collection')
+                    ->label('Evidence Type')
+                    ->formatStateUsing(fn (string $state): string => InstructorEvidenceCollection::tryFrom($state)?->label() ?? str($state)->replace('_', ' ')->headline()->toString())
+                    ->description(fn (string $state): string => $state)
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('label')

@@ -7,6 +7,7 @@ namespace App\Homework\Repositories;
 use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\HomeworkAssignment;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -83,5 +84,25 @@ final class HomeworkRepository implements HomeworkRepositoryInterface
             ->forTeacher($teacherId)
             ->where('status', HomeworkStatus::Submitted)
             ->count();
+    }
+
+    public function statsForTeacher(int $teacherId, ?CarbonImmutable $periodStartUtc, ?CarbonImmutable $periodEndUtcExclusive): object
+    {
+        return HomeworkAssignment::query()
+            ->forTeacher($teacherId)
+            ->when(
+                $periodStartUtc !== null && $periodEndUtcExclusive !== null,
+                fn ($query) => $query->where('created_at', '>=', $periodStartUtc)->where('created_at', '<', $periodEndUtcExclusive),
+            )
+            ->selectRaw(
+                'COUNT(*) as assigned,
+                 SUM(status IN (?, ?)) as submitted,
+                 SUM(status = ?) as graded',
+                [
+                    HomeworkStatus::Submitted->value, HomeworkStatus::Graded->value,
+                    HomeworkStatus::Graded->value,
+                ],
+            )
+            ->first();
     }
 }

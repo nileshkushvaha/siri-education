@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Homework\Contracts;
 
 use App\Models\HomeworkAssignment;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -27,4 +28,12 @@ interface HomeworkRepositoryInterface
     public function recentlyGradedForTeacher(int $teacherId, int $limit = 10): Collection;
 
     public function pendingReviewCountForTeacher(int $teacherId): int;
+
+    /**
+     * Assigned/submitted/graded counts among homework this teacher
+     * created inside [$periodStartUtc, $periodEndUtcExclusive) —
+     * null bounds mean "all time" (no date filter). A single
+     * aggregate query, never a materialized collection.
+     */
+    public function statsForTeacher(int $teacherId, ?CarbonImmutable $periodStartUtc, ?CarbonImmutable $periodEndUtcExclusive): object;
 }

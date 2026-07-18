@@ -91,7 +91,11 @@ final class AccountMenuService
                 $this->item('Vacation Mode', 'dashboard.instructor.vacation', 'calendar'),
                 $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard', mobilePriority: 2, mobileLabel: 'Lessons'),
                 $this->item('Homework', 'dashboard.instructor.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled),
+                $this->item('Students', 'dashboard.instructor.students', 'user'),
+            ]],
+            ['label' => 'Performance', 'items' => [
                 $this->item('Reviews & Quality', 'dashboard.instructor.quality-insights', 'star'),
+                $this->item('Analytics', 'dashboard.instructor.analytics', 'chart-bar'),
             ]],
             ['label' => 'Money', 'items' => [
                 $this->item('Earnings', 'dashboard.instructor.earnings', 'credit-card'),

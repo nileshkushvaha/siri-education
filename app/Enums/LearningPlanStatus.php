@@ -31,4 +31,17 @@ enum LearningPlanStatus: string
     {
         return ! in_array($this, [self::Completed, self::Archived], true);
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Draft => 'gray',
+            self::AwaitingAssessment => 'info',
+            self::Active => 'success',
+            self::Paused => 'warning',
+            self::ReviewDue => 'warning',
+            self::Completed => 'success',
+            self::Archived => 'gray',
+        };
+    }
 }

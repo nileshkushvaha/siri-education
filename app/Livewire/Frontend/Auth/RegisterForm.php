@@ -11,6 +11,7 @@ use App\Models\Country;
 use App\Services\Auth\RegistrationCaptchaService;
 use App\Services\Auth\RegistrationService;
 use App\Services\PortalResolver;
+use App\Support\InstructorApplicationIntent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -67,6 +68,8 @@ final class RegisterForm extends Component
 
     public function mount(RegistrationCaptchaService $captcha): void
     {
+        InstructorApplicationIntent::captureFromRequest();
+
         $this->countries = Country::query()->active()
             ->whereHas('defaultCurrency', fn ($query) => $query->active())
             ->with('defaultCurrency:id,code')
@@ -191,6 +194,13 @@ final class RegisterForm extends Component
         if ($result->autoVerified) {
             Auth::login($result->user);
             session()->regenerate();
+
+            if (InstructorApplicationIntent::consume()) {
+                session()->flash('success', 'Welcome to '.config('app.name').'! Continue your instructor application below.');
+                $this->redirect(route('dashboard.instructor.onboarding'), navigate: false);
+
+                return;
+            }
 
             session()->flash('success', 'Welcome to '.config('app.name').'! Your account is ready.');
             $this->redirect($portal->loginRedirect($result->user), navigate: false);

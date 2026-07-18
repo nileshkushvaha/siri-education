@@ -20,6 +20,7 @@ use App\Services\Profile\UserExperienceService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -32,6 +33,8 @@ final class InstructorService
     public function __construct(
         private readonly UserExperienceService $experienceService,
         private readonly InstructorRatingAggregateServiceInterface $ratings,
+        private readonly InstructorTrustBadgeResolver $trustBadges,
+        private readonly InstructorProfileTextResolver $profileText,
     ) {}
 
     public function listing(Request $request): LengthAwarePaginator
@@ -120,6 +123,28 @@ final class InstructorService
             ->get();
     }
 
+    /**
+     * Public instructor profile URLs for the sitemap (Phase 23F) — reuses
+     * baseQuery(), so it's exactly the same eligibility as the public
+     * listing/detail pages: active account, public visibility, bookable
+     * instructor_status (Approved/Active only — Draft/Submitted/
+     * UnderReview/DocumentsPending/InterviewRequired/Rejected/Suspended/
+     * Archived/Vacation are all excluded automatically).
+     *
+     * @return Collection<int, array{slug: string, updated_at: Carbon}>
+     */
+    public function sitemapEntries(): Collection
+    {
+        return $this->baseQuery()
+            ->reorder()
+            ->select(['users.slug', 'users.updated_at'])
+            ->get()
+            ->map(fn (User $instructor): array => [
+                'slug' => $instructor->slug,
+                'updated_at' => $instructor->updated_at,
+            ]);
+    }
+
     public function stats(User $instructor): array
     {
         return [
@@ -167,6 +192,15 @@ final class InstructorService
 
         $certificates = $educations->filter(fn ($education) => filled($education->certificate_number));
 
+        $isVerified = $this->trustBadges->isVerified($instructor);
+        $headlineText = $this->profileText->headline($instructor);
+        $biographyText = $this->profileText->biography($instructor);
+        $summaryText = $this->profileText->summary($instructor, 160);
+        $responseTimeLabel = $profile->response_time_minutes?->publicLabel();
+        // Demo CTA never shows on a non-bookable preview (owner/admin viewing
+        // their own draft/suspended/etc. profile) even if offers_demo is set.
+        $offersDemo = $isBookable && (bool) $profile->offers_demo;
+
         return compact(
             'instructor',
             'profile',
@@ -182,6 +216,12 @@ final class InstructorService
             'related',
             'skills',
             'certificates',
+            'isVerified',
+            'responseTimeLabel',
+            'offersDemo',
+            'headlineText',
+            'biographyText',
+            'summaryText',
         );
     }
 
@@ -203,9 +243,11 @@ final class InstructorService
             'url' => route('instructors.show', $instructor),
             'avatar_url' => $profile?->avatarUrl,
             'cover_url' => $instructor->getFirstMediaUrl('instructor_cover'),
-            'headline' => $profile?->headline,
-            'summary' => $profile?->short_bio ?: Str::limit((string) $profile?->bio, 130),
-            'verified' => (bool) $profile?->is_instructor_verified,
+            'headline' => $this->profileText->headline($instructor),
+            'summary' => $this->profileText->summary($instructor),
+            'verified' => $this->trustBadges->isVerified($instructor),
+            'response_time_label' => $profile?->response_time_minutes?->publicLabel(),
+            'offers_demo' => (bool) $profile?->offers_demo,
             'current_position' => $currentPosition
                 ? trim($currentPosition->designation.($currentPosition->organization_name ? ' · '.$currentPosition->organization_name : ''))
                 : null,
@@ -345,7 +387,7 @@ final class InstructorService
                 'name' => $instructor->name,
                 'url' => route('instructors.show', $instructor),
                 'avatar_url' => $instructor->profile?->avatarUrl,
-                'headline' => $instructor->profile?->headline,
+                'headline' => $this->profileText->headline($instructor),
             ]);
     }
 

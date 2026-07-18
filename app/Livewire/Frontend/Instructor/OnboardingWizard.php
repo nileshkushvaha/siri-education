@@ -9,10 +9,13 @@ use App\Enums\EmploymentType;
 use App\Enums\InstructorStatus;
 use App\Models\AcademicLevel;
 use App\Models\Country;
+use App\Models\InstructorDocumentRequirement;
 use App\Models\Language;
 use App\Models\SkillLevel;
 use App\Models\Subject;
+use App\Services\Instructor\InstructorDocumentRequirementService;
 use App\Services\Instructor\InstructorOnboardingService;
+use App\Support\InstructorApplicationStart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -122,9 +125,18 @@ final class OnboardingWizard extends Component
 
     public function start(): void
     {
+        $user = auth()->user();
+        $eligibility = InstructorApplicationStart::attempt($user, 'onboarding_wizard');
+
+        if (! $eligibility->eligible) {
+            session()->flash('error', $eligibility->reason);
+
+            return;
+        }
+
         $onboarding = app(InstructorOnboardingService::class);
 
-        $onboarding->start(auth()->user());
+        $onboarding->start($user);
         $this->refreshState();
         $this->step = 2;
         session()->flash('success', 'Instructor onboarding started.');
@@ -376,11 +388,13 @@ final class OnboardingWizard extends Component
     {
         $profile = auth()->user()->profile;
 
-        return collect(InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS)
-            ->map(fn (string $collection): array => [
-                'collection' => $collection,
-                'label' => str($collection)->replace('_', ' ')->title()->toString(),
-                'uploaded' => (bool) $profile?->hasMedia($collection),
+        return app(InstructorDocumentRequirementService::class)
+            ->activeRequirements()
+            ->where('required', true)
+            ->map(fn (InstructorDocumentRequirement $requirement): array => [
+                'collection' => $requirement->collection_name,
+                'label' => $requirement->label,
+                'uploaded' => (bool) $profile?->hasMedia($requirement->collection_name),
             ])
             ->values()
             ->all();

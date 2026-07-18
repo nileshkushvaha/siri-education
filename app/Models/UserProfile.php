@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\InstructorResponseTime;
 use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -22,7 +23,6 @@ class UserProfile extends Model implements HasMedia
     protected $fillable = [
         'user_id',
         'headline',
-        'designation',
         'short_bio',
         'bio',
         'instructor_teaching_experience_summary',
@@ -58,6 +58,8 @@ class UserProfile extends Model implements HasMedia
         'is_featured',
         'featured_order',
         'is_instructor_verified',
+        'response_time_minutes',
+        'offers_demo',
         'instructor_status',
         'instructor_academic_level_ids',
         'instructor_skill_level_ids',
@@ -86,6 +88,8 @@ class UserProfile extends Model implements HasMedia
             'profile_completion' => 'integer',
             'is_featured' => 'boolean',
             'is_instructor_verified' => 'boolean',
+            'response_time_minutes' => InstructorResponseTime::class,
+            'offers_demo' => 'boolean',
             'instructor_status' => InstructorStatus::class,
             'instructor_academic_level_ids' => 'array',
             'instructor_skill_level_ids' => 'array',
@@ -146,11 +150,17 @@ class UserProfile extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        // Explicit public disk (Phase 23E) — was previously implicit via
+        // the package's disk_name default, same effective disk, but no
+        // longer dependent on that default staying 'public' once KYC
+        // hardening tightens it elsewhere. See UserProfile/User docblocks.
         $this->addMediaCollection('avatar')
+            ->useDisk('public')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
         $this->addMediaCollection('cover')
+            ->useDisk('public')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 

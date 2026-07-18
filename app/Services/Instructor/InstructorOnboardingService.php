@@ -25,18 +25,25 @@ final class InstructorOnboardingService
 {
     public const REVIEW_PERMISSION = 'instructor.applications.review';
 
-    public const REQUIRED_DOCUMENT_COLLECTIONS = [
-        'government_id',
-        'address_proof',
-        'education_certificate',
-        'teaching_certificate',
-        'resume',
-    ];
+    // Phase 23D — dedicated lifecycle-operation permissions. Deliberately
+    // NOT given the Update:User compatibility fallback REVIEW_PERMISSION
+    // has: that fallback exists for a pre-existing rollout, these are new.
+    public const ACTIVATE_PERMISSION = 'instructor.lifecycle.activate';
 
-    public const OPTIONAL_DOCUMENT_COLLECTIONS = [
-        'introduction_video',
-    ];
+    public const VACATION_PERMISSION = 'instructor.lifecycle.manage-vacation';
 
+    public const SUSPEND_PERMISSION = 'instructor.lifecycle.suspend';
+
+    public const ARCHIVE_PERMISSION = 'instructor.lifecycle.archive';
+
+    public const INTERVIEW_PERMISSION = 'instructor.lifecycle.request-interview';
+
+    /**
+     * Non-KYC profile media — never admin-configurable, unlike the KYC
+     * document set (see InstructorDocumentRequirementService, which
+     * replaced the old REQUIRED_DOCUMENT_COLLECTIONS/
+     * OPTIONAL_DOCUMENT_COLLECTIONS constants in Phase 23G).
+     */
     public const PROFILE_MEDIA_COLLECTIONS = [
         'avatar',
         'introduction_video',
@@ -44,6 +51,7 @@ final class InstructorOnboardingService
 
     public function __construct(
         private readonly AuditTrailService $auditTrail,
+        private readonly InstructorDocumentRequirementService $documentRequirements,
     ) {}
 
     public function start(User $user): UserProfile
@@ -337,6 +345,140 @@ final class InstructorOnboardingService
         });
     }
 
+    /**
+     * Approved -> Active. The onboarding/review pipeline (education,
+     * experience, documents, admin approval) is already fully enforced by
+     * submit()/approve() before a profile can reach Approved — this method
+     * only performs the final publish step, it does not re-validate
+     * onboarding completeness.
+     */
+    public function activate(User $instructor, User $actor): UserProfile
+    {
+        $this->authorizeLifecycleAction($actor, self::ACTIVATE_PERMISSION);
+
+        return $this->transitionStatus(
+            $actor,
+            $instructor,
+            [InstructorStatus::Approved],
+            InstructorStatus::Active,
+            'instructor_activated',
+            'Instructor activated',
+        );
+    }
+
+    /** Active -> Vacation. Profile, reviews, and earnings history are untouched — only instructor_status changes. */
+    public function setVacation(User $instructor, User $actor): UserProfile
+    {
+        $this->authorizeLifecycleAction($actor, self::VACATION_PERMISSION);
+
+        return $this->transitionStatus(
+            $actor,
+            $instructor,
+            [InstructorStatus::Active],
+            InstructorStatus::Vacation,
+            'instructor_vacation_started',
+            'Instructor vacation started',
+        );
+    }
+
+    /** Vacation -> Active. No re-approval — the existing verification/approval remains valid. */
+    public function resumeFromVacation(User $instructor, User $actor): UserProfile
+    {
+        $this->authorizeLifecycleAction($actor, self::VACATION_PERMISSION);
+
+        return $this->transitionStatus(
+            $actor,
+            $instructor,
+            [InstructorStatus::Vacation],
+            InstructorStatus::Active,
+            'instructor_vacation_ended',
+            'Instructor vacation ended',
+        );
+    }
+
+    /** Active/Vacation/Approved -> Suspended. Reason mandatory. */
+    public function suspend(User $instructor, User $actor, string $reason): UserProfile
+    {
+        $this->authorizeLifecycleAction($actor, self::SUSPEND_PERMISSION);
+        $reason = trim($reason);
+
+        if ($reason === '') {
+            throw ValidationException::withMessages(['reason' => 'A suspension reason is required.']);
+        }
+
+        return $this->transitionStatus(
+            $actor,
+            $instructor,
+            [InstructorStatus::Active, InstructorStatus::Vacation, InstructorStatus::Approved],
+            InstructorStatus::Suspended,
+            'instructor_suspended',
+            'Instructor suspended',
+            $reason,
+        );
+    }
+
+    /** Suspended/Vacation -> Archived. Terminal — an archived instructor never re-enters the lifecycle through this service. */
+    public function archive(User $instructor, User $actor, ?string $reason = null): UserProfile
+    {
+        $this->authorizeLifecycleAction($actor, self::ARCHIVE_PERMISSION);
+
+        return $this->transitionStatus(
+            $actor,
+            $instructor,
+            [InstructorStatus::Suspended, InstructorStatus::Vacation],
+            InstructorStatus::Archived,
+            'instructor_archived',
+            'Instructor archived',
+            $reason,
+        );
+    }
+
+    /** UnderReview -> InterviewRequired. Reason mandatory. */
+    public function markInterviewRequired(User $instructor, User $actor, string $reason): UserProfile
+    {
+        $this->authorizeLifecycleAction($actor, self::INTERVIEW_PERMISSION);
+        $reason = trim($reason);
+
+        if ($reason === '') {
+            throw ValidationException::withMessages(['reason' => 'An interview reason is required.']);
+        }
+
+        return $this->transitionStatus(
+            $actor,
+            $instructor,
+            [InstructorStatus::UnderReview],
+            InstructorStatus::InterviewRequired,
+            'instructor_interview_required',
+            'Instructor interview required',
+            $reason,
+        );
+    }
+
+    public function canActivate(User $actor): bool
+    {
+        return $this->hasPermission($actor, self::ACTIVATE_PERMISSION);
+    }
+
+    public function canManageVacation(User $actor): bool
+    {
+        return $this->hasPermission($actor, self::VACATION_PERMISSION);
+    }
+
+    public function canSuspend(User $actor): bool
+    {
+        return $this->hasPermission($actor, self::SUSPEND_PERMISSION);
+    }
+
+    public function canArchive(User $actor): bool
+    {
+        return $this->hasPermission($actor, self::ARCHIVE_PERMISSION);
+    }
+
+    public function canRequestInterview(User $actor): bool
+    {
+        return $this->hasPermission($actor, self::INTERVIEW_PERMISSION);
+    }
+
     public function progress(User $user): array
     {
         $missing = $this->missingRequiredItems($user);
@@ -394,7 +536,7 @@ final class InstructorOnboardingService
             $missing[] = 'experience';
         }
 
-        foreach (self::REQUIRED_DOCUMENT_COLLECTIONS as $collection) {
+        foreach ($this->documentRequirements->requiredCollections() as $collection) {
             if (! $profile->hasMedia($collection)) {
                 $missing[] = str_replace('_', ' ', $collection);
             }
@@ -477,6 +619,64 @@ final class InstructorOnboardingService
         return $profile->fresh();
     }
 
+    /**
+     * Concurrency-safe guarded transition for Phase 23D lifecycle actions
+     * (activate/vacation/suspend/archive/interview). Unlike
+     * transitionByAdmin() (which is FROM-status-agnostic and used by the
+     * pre-existing review pipeline), this re-reads the row under
+     * lockForUpdate() inside the transaction and rejects the transition if
+     * the current status isn't one of $allowedFrom — so two concurrent
+     * admin actions on the same instructor can't both succeed: the second
+     * blocks on the row lock, then sees the already-updated status and is
+     * correctly rejected instead of double-writing.
+     *
+     * @param  list<InstructorStatus>  $allowedFrom
+     */
+    private function transitionStatus(
+        User $admin,
+        User $instructor,
+        array $allowedFrom,
+        InstructorStatus $to,
+        string $event,
+        string $description,
+        ?string $reason = null,
+    ): UserProfile {
+        return DB::transaction(function () use ($admin, $instructor, $allowedFrom, $to, $event, $description, $reason): UserProfile {
+            $profile = UserProfile::query()
+                ->where('user_id', $instructor->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($profile === null || ! in_array($profile->instructor_status, $allowedFrom, true)) {
+                throw ValidationException::withMessages(['status' => 'Invalid instructor status transition.']);
+            }
+
+            $previousStatus = $profile->instructor_status;
+
+            $profile->update([
+                'instructor_status' => $to,
+                'instructor_reviewed_at' => now(),
+                'instructor_reviewed_by' => $admin->id,
+                ...($reason !== null ? ['instructor_review_reason' => $reason] : []),
+            ]);
+
+            $this->auditTrail->logUser($admin, 'instructor', $event, $description, $instructor, [
+                'previous_status' => $previousStatus->value,
+                'new_status' => $to->value,
+                ...($reason !== null ? ['reason' => $reason] : []),
+            ]);
+
+            return $profile->fresh();
+        });
+    }
+
+    private function authorizeLifecycleAction(User $actor, string $permission): void
+    {
+        if (! $this->hasPermission($actor, $permission)) {
+            throw new AuthorizationException('You are not authorized to perform this instructor lifecycle action.');
+        }
+    }
+
     private function authorizeReview(User $admin): void
     {
         if (! $this->canReviewApplications($admin)) {
@@ -522,7 +722,7 @@ final class InstructorOnboardingService
 
     private function ensureKnownMediaCollection(string $collection): void
     {
-        if (in_array($collection, [...self::REQUIRED_DOCUMENT_COLLECTIONS, ...self::OPTIONAL_DOCUMENT_COLLECTIONS, ...self::PROFILE_MEDIA_COLLECTIONS], true)) {
+        if (in_array($collection, [...$this->documentRequirements->activeCollectionNames(), ...self::PROFILE_MEDIA_COLLECTIONS], true)) {
             return;
         }
 

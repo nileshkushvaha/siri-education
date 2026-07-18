@@ -305,20 +305,14 @@
                             @if($portalAudience === \App\Enums\PortalAudience::Instructor)
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5 border-t border-white/[0.05] pt-5">
                                 {{-- Headline --}}
-                                <div>
+                                <div class="sm:col-span-2">
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Headline</label>
                                     <input type="text" name="headline" value="{{ old('headline', $user->profile->headline) }}"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
                                         placeholder="e.g. Senior Mathematics Instructor">
                                 </div>
 
-                                {{-- Designation --}}
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Designation</label>
-                                    <input type="text" name="designation" value="{{ old('designation', $user->profile->designation) }}"
-                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="e.g. Mathematics Instructor">
-                                </div>
+                                {{-- Phase 23G: `designation` field removed — see InstructorProfileTextResolver. --}}
 
                                 {{-- Short Bio --}}
                                 <div class="sm:col-span-2">

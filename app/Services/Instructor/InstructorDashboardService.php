@@ -8,6 +8,7 @@ use App\Booking\Enums\BookingStatus;
 use App\DTOs\InstructorDashboard\InstructorDashboardData;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Support\InstructorPayoutEligibility;
+use App\Enums\InstructorStatus;
 use App\Enums\LearningPlanStatus;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\Booking;
@@ -30,12 +31,23 @@ final class InstructorDashboardService
         $timezone = $instructor->profile?->timezone ?: config('app.timezone');
         $now = CarbonImmutable::now($timezone);
 
-        $upcoming = Booking::query()
-            ->active()
-            ->upcoming()
-            ->forInstructor($instructor->id)
+        // Phase 23I — three bounded queries (two COUNTs + one LIMIT 4) instead
+        // of materializing every upcoming booking just to count/filter/take()
+        // it in PHP. Day boundaries are computed in the instructor's own
+        // timezone, then converted to the app timezone Booking::starts_at is
+        // actually stored/compared in (see Booking::scopeUpcoming()).
+        $upcomingQuery = Booking::query()->active()->upcoming()->forInstructor($instructor->id);
+
+        $upcomingCount = (clone $upcomingQuery)->count();
+
+        $todayStart = $now->startOfDay()->setTimezone(config('app.timezone'));
+        $todayEnd = $now->endOfDay()->setTimezone(config('app.timezone'));
+        $todayCount = (clone $upcomingQuery)->whereBetween('starts_at', [$todayStart, $todayEnd])->count();
+
+        $nextLessons = (clone $upcomingQuery)
             ->with(['type:id,name', 'student:id,first_name,last_name,name'])
             ->orderBy('starts_at')
+            ->limit(4)
             ->get();
 
         $completed = Booking::query()
@@ -49,13 +61,15 @@ final class InstructorDashboardService
             ->forTeacher($instructor->id)
             ->where('status', HomeworkStatus::Submitted);
 
+        $status = $instructor->profile?->instructor_status;
+
         return new InstructorDashboardData(
-            upcomingLessons: $upcoming->count(),
-            todayLessons: $upcoming->filter(fn (Booking $booking): bool => $booking->starts_at->timezone($timezone)->isSameDay($now))->count(),
+            upcomingLessons: $upcomingCount,
+            todayLessons: $todayCount,
             completedLessons: (int) ($completed?->lesson_count ?? 0),
             teachingHours: round(((int) ($completed?->teaching_minutes ?? 0)) / 60, 1),
             subjectCount: $instructor->teacherSubjects()->count(),
-            nextLessons: $upcoming->take(4)->map(fn (Booking $booking): array => [
+            nextLessons: $nextLessons->map(fn (Booking $booking): array => [
                 'id' => $booking->id,
                 'reference' => $booking->reference,
                 'subject' => $booking->meta['subject'] ?? $booking->type?->name ?? 'Lesson',
@@ -83,8 +97,33 @@ final class InstructorDashboardService
             earnings: $this->earnings($instructor),
             payoutsAvailable: $this->payoutEligibility->isEligible($instructor),
             unreadNotifications: $unreadNotifications,
-            onboarding: $this->onboarding->progress($instructor),
+            onboarding: [
+                ...$this->onboarding->progress($instructor),
+                'show_prompt' => $this->onboardingPromptVisible($status),
+                'variant' => $status === InstructorStatus::Rejected ? 'rejected' : 'in_progress',
+            ],
         );
+    }
+
+    /**
+     * Phase 23I — the dashboard onboarding card must never resurface for an
+     * instructor who has already cleared review, regardless of a stale
+     * completeness percentage (e.g. an admin Force Approve bypasses the
+     * normal completeness gate, which could otherwise leave `percentage`
+     * under 100 forever for an already-Active instructor). Rejected is
+     * shown with different copy (see the 'variant' key above) — there is no
+     * reapply transition in InstructorOnboardingService, so no reapply
+     * action is offered here, only a status message.
+     */
+    private function onboardingPromptVisible(?InstructorStatus $status): bool
+    {
+        return ! in_array($status, [
+            InstructorStatus::Approved,
+            InstructorStatus::Active,
+            InstructorStatus::Vacation,
+            InstructorStatus::Suspended,
+            InstructorStatus::Archived,
+        ], true);
     }
 
     /** @return array<int, array{currency: string, available: string, on_hold: string}> */

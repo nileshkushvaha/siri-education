@@ -39,12 +39,14 @@ final class DashboardOverview extends Component
 
     public bool $payoutsAvailable = false;
 
-    /** @var array{status: mixed, missing: array<int, string>, percentage: int, next_action: string} */
+    /** @var array{status: mixed, missing: array<int, string>, percentage: int, next_action: string, show_prompt: bool, variant: string} */
     public array $onboarding = [
         'status' => null,
         'missing' => [],
         'percentage' => 0,
         'next_action' => 'complete_required_items',
+        'show_prompt' => true,
+        'variant' => 'in_progress',
     ];
 
     public function mount(InstructorDashboardService $dashboard): void

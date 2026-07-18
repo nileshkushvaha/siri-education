@@ -13,7 +13,10 @@ use App\Models\AcademicLevel;
 use App\Models\Language;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\UserEducation;
+use App\Services\Instructor\InstructorDocumentRequirementService;
 use App\Services\Instructor\InstructorOnboardingService;
+use Database\Seeders\InstructorDocumentRequirementSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +39,7 @@ class InstructorOnboardingWizardTest extends TestCase
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'Update:User', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => InstructorOnboardingService::REVIEW_PERMISSION, 'guard_name' => 'web']);
+        $this->seed(InstructorDocumentRequirementSeeder::class);
     }
 
     public function test_guest_cannot_access_onboarding_wizard(): void
@@ -59,6 +63,12 @@ class InstructorOnboardingWizardTest extends TestCase
     {
         $user = User::factory()->create(['status' => 'active']);
         $user->assignRole('student');
+        // Phase 23C: start() is gated by InstructorEligibilityService for a
+        // first-time attempt, which requires some education signal on file —
+        // see InstructorApplicationEntryTest/InstructorEligibilityServiceTest
+        // for eligibility-specific coverage; this test is about the
+        // start-once/resume behavior, not eligibility itself.
+        UserEducation::factory()->create(['user_id' => $user->id, 'education_level' => EducationLevel::Bachelor]);
 
         Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -187,7 +197,7 @@ class InstructorOnboardingWizardTest extends TestCase
             ->call('uploadDocument', 'resume')
             ->assertHasNoErrors();
 
-        foreach (InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS as $collection) {
+        foreach (app(InstructorDocumentRequirementService::class)->requiredCollections() as $collection) {
             $media = $user->fresh()->profile->getFirstMedia($collection);
             $this->assertNotNull($media);
             $this->assertSame('local', $media->disk);

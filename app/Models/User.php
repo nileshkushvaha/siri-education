@@ -354,7 +354,9 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
 
     public function registerMediaCollections(): void
     {
+        // Explicit public disk (Phase 23E) — see UserProfile::registerMediaCollections().
         $this->addMediaCollection('instructor_cover')
+            ->useDisk('public')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
     }

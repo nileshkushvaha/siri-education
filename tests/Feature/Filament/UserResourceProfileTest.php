@@ -89,7 +89,6 @@ class UserResourceProfileTest extends TestCase
                 'email' => $target->email,
                 'status' => 'active',
                 'profile.headline' => 'Updated Headline',
-                'profile.designation' => 'Lead Engineer',
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -97,7 +96,6 @@ class UserResourceProfileTest extends TestCase
         $target->refresh();
         $this->assertSame($originalProfileId, $target->profile->id, 'A new profile row was created instead of updating the existing one.');
         $this->assertSame('Updated Headline', $target->profile->headline);
-        $this->assertSame('Lead Engineer', $target->profile->designation);
     }
 
     public function test_admin_can_upload_avatar_and_cover_through_the_media_tab(): void

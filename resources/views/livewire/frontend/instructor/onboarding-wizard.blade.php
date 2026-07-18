@@ -89,6 +89,12 @@
             </div>
         @endif
 
+        @if (session('error'))
+            <div class="mb-4 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                {{ session('error') }}
+            </div>
+        @endif
+
         @error('application')
             <div class="mb-4 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{{ $message }}</div>
         @enderror

@@ -69,6 +69,12 @@ $testimonials = [
 ['name'=>'Priya Gupta', 'role'=>'Working Professional', 'emoji'=>'👩‍💼', 'rating'=>5, 'text'=>'Flexible scheduling is a game-changer for professionals like me. I learned Python from scratch and earned a promotion within 6 months. The quality here is outstanding.'],
 ];
 
+$instructorBenefits = [
+['icon'=>'🗓️', 'title'=>'Flexible Schedule', 'desc'=>'Set your own availability and teach when it works for you.'],
+['icon'=>'🌍', 'title'=>'Global Students', 'desc'=>'Reach learners from every country on the platform.'],
+['icon'=>'💳', 'title'=>'Secure Payments', 'desc'=>'Transparent, reliable payouts for your completed lessons.'],
+];
+
 $faqs = [
 ['q'=>'How does online tutoring work?', 'a'=>'Our platform connects you with expert tutors via live interactive video sessions. After selecting your course, you schedule sessions at your convenience and learn with screen sharing, a digital whiteboard, and real-time problem solving.'],
 ['q'=>'What subjects do you offer tutoring for?', 'a'=>'We cover Mathematics, Science (Physics, Chemistry, Biology), Computer Science, English, Languages, and competitive exam prep (JEE, NEET, SAT, GRE, UPSC). New courses are added every month.'],
@@ -569,6 +575,39 @@ $faqs = [
                 </div>
             </div>
             @endforeach
+        </div>
+    </div>
+</section>
+
+{{-- ============================================================
+     BECOME AN INSTRUCTOR
+     ============================================================ --}}
+<section class="py-24 bg-slate-950 relative overflow-hidden">
+    <div class="bg-orb w-[400px] h-[400px] top-[-150px] left-[-100px] opacity-15" style="background:radial-gradient(circle,#6366f1,transparent)"></div>
+    <div class="max-w-5xl mx-auto px-4 relative z-10">
+        <div class="text-center mb-12">
+            <span class="inline-block bg-indigo-500/10 text-indigo-300 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">Teach With Us</span>
+            <h2 class="text-4xl font-bold text-white">Become an <span class="text-grad">Instructor</span></h2>
+            <p class="mt-4 text-slate-300 max-w-xl mx-auto">Share your knowledge with students worldwide. Teach your subjects, set your own availability, and build meaningful learning relationships.</p>
+        </div>
+
+        <div class="grid gap-6 sm:grid-cols-3 mb-12">
+            @foreach($instructorBenefits as $benefit)
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                <span class="text-3xl">{{ $benefit['icon'] }}</span>
+                <h3 class="mt-3 font-semibold text-white">{{ $benefit['title'] }}</h3>
+                <p class="mt-1 text-sm text-slate-400">{{ $benefit['desc'] }}</p>
+            </div>
+            @endforeach
+        </div>
+
+        <div class="text-center">
+            @if(Route::has('instructor.apply'))
+                <a href="{{ route('instructor.apply') }}" class="btn-amber inline-block px-10 py-4 rounded-2xl text-white font-bold text-base shadow-2xl">
+                    Become an Instructor →
+                </a>
+            @endif
+            <p class="text-slate-500 text-xs mt-4">Available for university students, graduates and professionals. Potential earnings depend on approved lessons, availability, pricing and platform policies.</p>
         </div>
     </div>
 </section>

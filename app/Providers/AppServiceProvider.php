@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Contracts\InstructorEligibilityServiceInterface;
 use App\Contracts\PhoneOtpSender;
 use App\Contracts\PhoneVerificationServiceInterface;
 use App\Contracts\StudentFinancialVerificationGate;
@@ -41,6 +42,7 @@ use App\Policies\CacheManagerPolicy;
 use App\Policies\EmailLogPolicy;
 use App\Policies\FaqCategoryPolicy;
 use App\Policies\FaqPolicy;
+use App\Policies\InstructorDocumentPolicy;
 use App\Policies\InstructorPolicy;
 use App\Policies\LearningPlanAssessmentPolicy;
 use App\Policies\LearningPlanMilestonePolicy;
@@ -57,6 +59,7 @@ use App\Policies\StudentLearningGoalPolicy;
 use App\Policies\StudentLearningPlanPolicy;
 use App\Policies\UserEducationPolicy;
 use App\Policies\UserExperiencePolicy;
+use App\Services\Instructor\InstructorEligibilityService;
 use App\Services\Phone\PhoneVerificationService;
 use App\Services\Phone\UnavailablePhoneOtpSender;
 use App\Services\Student\DefaultStudentFinancialVerificationGate;
@@ -81,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PhoneOtpSender::class, UnavailablePhoneOtpSender::class);
         $this->app->bind(PhoneVerificationServiceInterface::class, PhoneVerificationService::class);
         $this->app->bind(StudentFinancialVerificationGate::class, DefaultStudentFinancialVerificationGate::class);
+        $this->app->bind(InstructorEligibilityServiceInterface::class, InstructorEligibilityService::class);
     }
 
     public function boot(): void
@@ -155,6 +159,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('instructor.viewAny', [InstructorPolicy::class, 'viewAny']);
         Gate::define('instructor.view', [InstructorPolicy::class, 'view']);
+        Gate::define('instructor.viewDocuments', [InstructorDocumentPolicy::class, 'viewDocuments']);
 
         Gate::define('profile.view', [ProfilePolicy::class, 'view']);
         Gate::define('profile.update', [ProfilePolicy::class, 'update']);

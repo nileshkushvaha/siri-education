@@ -13,13 +13,17 @@ class InstructorPermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        $permission = Permission::firstOrCreate([
-            'name' => InstructorOnboardingService::REVIEW_PERMISSION,
-            'guard_name' => 'web',
-        ]);
+        $permissions = collect([
+            InstructorOnboardingService::REVIEW_PERMISSION,
+            InstructorOnboardingService::ACTIVATE_PERMISSION,
+            InstructorOnboardingService::VACATION_PERMISSION,
+            InstructorOnboardingService::SUSPEND_PERMISSION,
+            InstructorOnboardingService::ARCHIVE_PERMISSION,
+            InstructorOnboardingService::INTERVIEW_PERMISSION,
+        ])->map(fn (string $name) => Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']));
 
         Role::whereIn('name', ['manager', 'super_admin'])
             ->get()
-            ->each(fn (Role $role) => $role->givePermissionTo($permission));
+            ->each(fn (Role $role) => $role->givePermissionTo($permissions));
     }
 }

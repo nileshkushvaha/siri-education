@@ -46,6 +46,9 @@
                 </button>
 
                 <div class="hidden items-center gap-2 lg:flex">
+                    @if(Route::has('instructor.apply'))
+                        <x-ui.button href="{{ route('instructor.apply') }}" variant="ghost" size="sm">Become an Instructor</x-ui.button>
+                    @endif
                     @auth
                         @if($dashboardUrl)
                             <x-ui.button href="{{ $dashboardUrl }}" variant="secondary" size="sm">Dashboard</x-ui.button>
@@ -96,6 +99,9 @@
                 @endif
 
                 <div class="mt-4 grid gap-2 border-t border-slate-200 pt-4 dark:border-white/10">
+                    @if(Route::has('instructor.apply'))
+                        <x-ui.button href="{{ route('instructor.apply') }}" variant="secondary">Teach With Us</x-ui.button>
+                    @endif
                     @auth
                         @if($dashboardUrl)
                             <x-ui.button href="{{ $dashboardUrl }}" variant="secondary">Dashboard</x-ui.button>

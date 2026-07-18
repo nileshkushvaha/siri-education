@@ -38,6 +38,7 @@ use App\Referral\Contracts\ReferralEligibilityServiceInterface;
 use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
+use App\Services\Instructor\InstructorOnboardingService;
 use App\Settings\RazorpayXPayoutSettings;
 use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
 use Carbon\CarbonImmutable;
@@ -501,6 +502,15 @@ try {
                 ->disable($code, $admin, 'Concurrency disable.');
 
             return ['status' => $result->status->value];
+        })(),
+
+        'instructor-activate' => (function () use ($args) {
+            $admin = User::query()->findOrFail($args['admin_id']);
+            $instructor = User::query()->findOrFail($args['instructor_id']);
+
+            $profile = app(InstructorOnboardingService::class)->activate($instructor, $admin);
+
+            return ['instructor_status' => $profile->instructor_status->value];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

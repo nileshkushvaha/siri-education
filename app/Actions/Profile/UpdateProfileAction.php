@@ -62,7 +62,8 @@ final class UpdateProfileAction
             $profile->update([
                 // General tab fields
                 'headline' => array_key_exists('headline', $data) ? ($data['headline'] ?? null) : $profile->headline,
-                'designation' => array_key_exists('designation', $data) ? ($data['designation'] ?? null) : $profile->designation,
+                // Phase 23G: `designation` no longer accepted here — see
+                // InstructorProfileTextResolver for why it was deprecated.
                 'short_bio' => array_key_exists('short_bio', $data) ? ($data['short_bio'] ?? null) : $profile->short_bio,
                 'bio' => array_key_exists('bio', $data) ? ($data['bio'] ?? null) : $profile->bio,
                 'phone' => array_key_exists('phone', $data) ? ($data['phone'] ?? null) : $profile->phone,

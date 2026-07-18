@@ -94,17 +94,28 @@
     <div class="grid gap-6 lg:grid-cols-2">
         <x-account.card>
             <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Student progress</p><h2 class="mt-1 text-lg font-semibold text-white">Learning plans</h2></div><a href="{{ route('dashboard.instructor.learning-plans') }}" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200">Manage</a></div>
-            <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="rounded-2xl bg-white/[0.035] p-3"><p class="text-2xl font-bold text-white">{{ $assignedActiveLearningPlanCount }}</p><p class="mt-1 text-xs text-slate-400">Active</p></div>
-                <div class="rounded-2xl bg-white/[0.035] p-3"><p class="text-2xl font-bold text-white">{{ $reviewDueLearningPlanCount }}</p><p class="mt-1 text-xs text-slate-400">Review due</p></div>
-                <div class="rounded-2xl bg-white/[0.035] p-3"><p class="text-2xl font-bold text-white">{{ $pendingAssessmentLearningPlanCount }}</p><p class="mt-1 text-xs text-slate-400">Assessments</p></div>
+            {{-- Phase 23I: review-due/assessment counts live only in the
+                 "Teaching queue" card above — this card no longer repeats them. --}}
+            <div class="rounded-2xl bg-white/[0.035] p-4">
+                <p class="text-2xl font-bold text-white">{{ $assignedActiveLearningPlanCount }}</p>
+                <p class="mt-1 text-xs text-slate-400">Active learning {{ Str::plural('plan', $assignedActiveLearningPlanCount) }}</p>
             </div>
         </x-account.card>
 
-        @if(($onboarding['percentage'] ?? 0) < 100 || ($onboarding['next_action'] ?? null) === 'submit_application')
+        {{-- Phase 23I: visibility is decided by InstructorDashboardService::onboardingPromptVisible()
+             — Approved/Active/Vacation/Suspended/Archived never see this card again,
+             even if a completeness percentage is stale (e.g. an admin Force Approve). --}}
+        @if($onboarding['show_prompt'] && $onboarding['variant'] === 'rejected')
+            <x-account.card>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-rose-300">Application status</p>
+                <h2 class="mt-1 text-lg font-semibold text-white">Application not approved</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-400">Your instructor application was not approved. Contact support if you have questions about this decision.</p>
+                <a href="{{ route('forms.support') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Contact support</a>
+            </x-account.card>
+        @elseif($onboarding['show_prompt'])
             <x-account.card>
                 <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">Profile readiness</p><h2 class="mt-1 text-lg font-semibold text-white">{{ $onboarding['status']?->label() ?? 'Complete instructor setup' }}</h2></div><span class="text-sm font-bold text-indigo-300">{{ $onboarding['percentage'] }}%</span></div>
-                <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $onboarding['percentage'] }}%"></div></div>
+                <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-label="Instructor profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $onboarding['percentage'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $onboarding['percentage'] }}%"></div></div>
                 @if($onboarding['missing'])<p class="mt-3 text-sm text-slate-400">Next: {{ implode(', ', array_slice($onboarding['missing'], 0, 2)) }}</p>@endif
                 <div class="mt-4 flex gap-2"><a href="{{ route('dashboard.instructor.onboarding') }}" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Continue setup</a>@if($onboarding['next_action'] === 'submit_application')<form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">@csrf<button type="submit" class="min-h-10 w-full rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400">Submit for review</button></form>@endif</div>
             </x-account.card>

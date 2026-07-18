@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
 use App\Services\Instructor\InstructorOnboardingService;
+use App\Support\InstructorApplicationStart;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -23,7 +24,16 @@ final class InstructorOnboardingController extends Controller
 
     public function start(): RedirectResponse
     {
-        $this->onboarding->start(auth()->user());
+        $user = auth()->user();
+        $eligibility = InstructorApplicationStart::attempt($user, 'dashboard');
+
+        if (! $eligibility->eligible) {
+            return redirect()
+                ->route('dashboard.instructor.onboarding')
+                ->with('error', $eligibility->reason);
+        }
+
+        $this->onboarding->start($user);
 
         return redirect()
             ->route('dashboard.instructor.onboarding')

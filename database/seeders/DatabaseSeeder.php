@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             LocalizationPermissionSeeder::class,
             PlatformSettingsPermissionSeeder::class,
             InstructorPermissionSeeder::class,
+            InstructorDocumentRequirementPermissionSeeder::class,
             StudentPermissionSeeder::class,
             BookingTypeSeeder::class,
             BookingPermissionSeeder::class,
@@ -49,6 +50,7 @@ class DatabaseSeeder extends Seeder
             AcademicLevelSeeder::class,
             SkillLevelSeeder::class,
             InstructorSeeder::class,
+            InstructorDocumentRequirementSeeder::class,
         ]);
     }
 }

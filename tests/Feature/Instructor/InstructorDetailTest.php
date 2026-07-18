@@ -33,6 +33,9 @@ class InstructorDetailTest extends TestCase
         $user->profile->update(array_merge([
             'profile_visibility' => 'public',
             'instructor_status' => InstructorStatus::Approved,
+            // Phase 23F: offers_demo defaults to false; this suite's fixture
+            // represents a typical fully-bookable instructor with both CTAs.
+            'offers_demo' => true,
         ], $profileOverrides));
         $user->assignRole('instructor');
 

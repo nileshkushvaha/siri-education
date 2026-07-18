@@ -2,9 +2,13 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Enums\InstructorResponseTime;
 use App\Enums\LearningGoalStatus;
+use App\Filament\Components\InstructorDocumentViewer;
 use App\Models\Country;
 use App\Models\State;
+use App\Models\User;
+use App\Models\UserProfile;
 use App\Services\Security\PasswordRuleBuilder;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -19,6 +23,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class UserForm
@@ -95,19 +101,20 @@ class UserForm
                             ->icon('heroicon-o-identification')
                             ->schema([
                                 Section::make('Public Profile')
-                                    ->description('Headline, designation, and bio shown on this user\'s profile.')
+                                    ->description('Headline and bio shown on this user\'s profile.')
                                     ->icon('heroicon-o-identification')
                                     ->relationship('profile')
                                     ->schema([
-                                        Grid::make(2)->schema([
-                                            TextInput::make('headline')
-                                                ->maxLength(255)
-                                                ->placeholder('e.g. Senior Instructor'),
-
-                                            TextInput::make('designation')
-                                                ->maxLength(255)
-                                                ->placeholder('e.g. Head of Mathematics'),
-                                        ]),
+                                        // Phase 23G: `designation` removed from this form —
+                                        // audited and confirmed unused by any public view;
+                                        // `headline` is the sole marketplace title field. The
+                                        // column is kept (unedited legacy values still work as
+                                        // a fallback via InstructorProfileTextResolver) but no
+                                        // longer writable anywhere in the app.
+                                        TextInput::make('headline')
+                                            ->maxLength(255)
+                                            ->placeholder('e.g. Senior Instructor')
+                                            ->columnSpanFull(),
 
                                         TextInput::make('short_bio')
                                             ->label('Short Bio')
@@ -325,50 +332,54 @@ class UserForm
                                             ->numeric()
                                             ->minValue(0)
                                             ->helperText('Lower numbers appear first in the featured listing.'),
+
+                                        Grid::make(2)->schema([
+                                            Select::make('response_time_minutes')
+                                                ->label('Response Time')
+                                                ->options(InstructorResponseTime::options())
+                                                ->native(false)
+                                                ->helperText('Shown on the public profile as "Usually responds within X" — leave empty to hide.'),
+
+                                            Toggle::make('offers_demo')
+                                                ->label('Offers Free Demo')
+                                                ->helperText('Show the "Book a Demo" call to action on the public profile.'),
+                                        ]),
                                     ]),
 
+                                // Phase 23E: gated entirely on InstructorDocumentPolicy — a
+                                // generic Update:User/View:User admin never sees this section
+                                // render at all, regardless of what's inside it. The fields
+                                // themselves are also no longer raw upload/preview widgets
+                                // (Filament's native file preview would otherwise surface a
+                                // storage URL outside the authorization+audit path) — see
+                                // InstructorDocumentViewer and InstructorDocumentDownloadController.
                                 Section::make('Verification Documents')
                                     ->description('Private documents used for instructor verification.')
                                     ->icon('heroicon-o-document-check')
                                     ->relationship('profile')
+                                    ->visible(function (?User $record): bool {
+                                        // Unlike the fields nested inside this section (which are
+                                        // correctly scoped to the profile relation by
+                                        // ->relationship('profile')), the Section's own visible()
+                                        // closure receives the outer Livewire record (User), not
+                                        // UserProfile — navigate to ->profile explicitly.
+                                        $admin = auth()->user();
+                                        $profile = $record?->profile;
+
+                                        return $profile !== null
+                                            && $admin instanceof User
+                                            && Gate::forUser($admin)->allows('instructor.viewDocuments', $profile);
+                                    })
                                     ->schema([
-                                        Grid::make(2)->schema([
-                                            SpatieMediaLibraryFileUpload::make('government_id')
-                                                ->label('Government ID')
-                                                ->collection('government_id')
-                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                                ->maxSize(4096),
-
-                                            SpatieMediaLibraryFileUpload::make('address_proof')
-                                                ->label('Address Proof')
-                                                ->collection('address_proof')
-                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                                ->maxSize(4096),
-
-                                            SpatieMediaLibraryFileUpload::make('education_certificate')
-                                                ->label('Education Certificate')
-                                                ->collection('education_certificate')
-                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                                ->maxSize(4096),
-
-                                            SpatieMediaLibraryFileUpload::make('teaching_certificate')
-                                                ->label('Teaching Certificate')
-                                                ->collection('teaching_certificate')
-                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                                ->maxSize(4096),
-
-                                            SpatieMediaLibraryFileUpload::make('resume')
-                                                ->label('Resume')
-                                                ->collection('resume')
-                                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                                ->maxSize(4096),
-
-                                            SpatieMediaLibraryFileUpload::make('introduction_video')
-                                                ->label('Introduction Video')
-                                                ->collection('introduction_video')
-                                                ->acceptedFileTypes(['video/mp4', 'video/webm', 'video/quicktime'])
-                                                ->maxSize(51200),
-                                        ]),
+                                        Placeholder::make('kyc_documents')
+                                            ->hiddenLabel()
+                                            ->content(fn (?UserProfile $record) => $record !== null
+                                                ? new HtmlString(view('filament.components.instructor-document-viewer', [
+                                                    'rows' => InstructorDocumentViewer::rows($record),
+                                                ])->render())
+                                                : null
+                                            )
+                                            ->columnSpanFull(),
                                     ]),
 
                                 Section::make('Instructor Cover')

@@ -23,4 +23,12 @@
             <priority>0.3</priority>
         </url>
     @endforeach
+    @foreach(($instructors ?? []) as $instructorEntry)
+        <url>
+            <loc>{{ route('instructors.show', $instructorEntry['slug']) }}</loc>
+            <lastmod>{{ $instructorEntry['updated_at']->toAtomString() }}</lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>0.8</priority>
+        </url>
+    @endforeach
 </urlset>

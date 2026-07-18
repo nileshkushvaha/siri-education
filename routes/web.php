@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\InstructorDocumentDownloadController;
 use App\Http\Controllers\Admin\PagePreviewController;
 use App\Http\Controllers\Admin\PostPreviewController;
 use App\Http\Controllers\Auth\AccountUnlockController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Forms\CallbackController;
 use App\Http\Controllers\Forms\FeedbackController;
 use App\Http\Controllers\Forms\GeneralInquiryController;
 use App\Http\Controllers\Forms\SupportController;
+use App\Http\Controllers\Instructor\InstructorApplicationController;
 use App\Http\Controllers\Instructor\InstructorAvailabilityController;
 use App\Http\Controllers\Instructor\InstructorController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
@@ -60,6 +62,7 @@ use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
 use App\Services\PortalResolver;
+use App\Support\InstructorApplicationIntent;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -174,12 +177,22 @@ Route::name('auth.')->middleware('auth')->group(function (): void {
     Route::get('/verify-email/{id}/{hash}', function (EmailVerificationRequest $request) {
         $user = $request->user();
         if ($user->hasVerifiedEmail()) {
+            if (InstructorApplicationIntent::consume()) {
+                return redirect()->route('dashboard.instructor.onboarding')
+                    ->with('success', 'Your email is already verified.');
+            }
+
             return redirect(app(PortalResolver::class)->loginRedirect($user))
                 ->with('success', 'Your email is already verified.');
         }
 
         $request->fulfill();
         $user->update(['status' => User::STATUS_ACTIVE]);
+
+        if (InstructorApplicationIntent::consume()) {
+            return redirect()->route('dashboard.instructor.onboarding')
+                ->with('success', 'Email verified! Continue your instructor application below.');
+        }
 
         return redirect()->route('auth.verified');
     })->middleware('signed')->name('verification.verify');
@@ -276,6 +289,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
 Route::get('/instructors/{user:slug}', [InstructorController::class, 'show'])->name('instructors.show');
 
+// ── Become an Instructor (public — guests and authenticated users; see
+//    InstructorApplicationController and docs/audits Phase 23C) ────────
+Route::get('/become-instructor', [InstructorApplicationController::class, 'show'])->name('instructor.apply');
+
 // ── Public Profile (guests + authenticated — visibility enforced in the controller) ──
 Route::get('/profile/{user}', [PublicProfileController::class, 'show'])->name('profile.public');
 
@@ -321,6 +338,11 @@ Route::prefix('admin')->name('admin.')->middleware([
     Route::get('/pages/{page}/preview', PagePreviewController::class)->name('pages.preview');
     // Post Preview
     Route::get('/posts/{post}/preview', PostPreviewController::class)->name('posts.preview');
+    // Instructor KYC document download (Phase 23E) — authorization is
+    // re-checked inside the controller on every request; see
+    // InstructorDocumentPolicy and InstructorDocumentDownloadController.
+    Route::get('/instructor-documents/{media}/download', InstructorDocumentDownloadController::class)
+        ->name('instructor-documents.download');
 });
 
 // ── Public Pages (CMS) Catch-all (must stay last) ───────────────────

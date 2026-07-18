@@ -15,6 +15,7 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Gate;
 
 class EditUser extends EditRecord
 {
@@ -23,15 +24,45 @@ class EditUser extends EditRecord
     /** Snapshot of role names before the form is saved. */
     public array $oldRoles = [];
 
+    /**
+     * Phase 23E — audits a genuine KYC-section view exactly once per page
+     * load (not per Livewire re-render, which visible() closures fire on
+     * repeatedly — hooking the audit there would spam the log).
+     */
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        $admin = $this->actingAdmin();
+        $profile = $this->record->profile;
+
+        if ($admin !== null && $profile !== null && Gate::forUser($admin)->allows('instructor.viewDocuments', $profile)) {
+            app(AuditTrailService::class)->logUser(
+                $admin,
+                'instructor',
+                'instructor_document_viewed',
+                'Instructor documents viewed',
+                $this->record,
+                ['instructor_id' => $this->record->id],
+            );
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             ViewAction::make(),
             $this->markInstructorUnderReviewAction(),
+            $this->markInstructorInterviewRequiredAction(),
             $this->requestInstructorDocumentsAction(),
             $this->approveInstructorAction(),
             $this->rejectInstructorAction(),
             $this->forceApproveInstructorAction(),
+            $this->activateInstructorAction(),
+            $this->startInstructorVacationAction(),
+            $this->resumeInstructorFromVacationAction(),
+            $this->suspendInstructorAction(),
+            $this->archiveInstructorAction(),
             DeleteAction::make()
                 ->hidden(fn (): bool => $this->record->id === auth()->id()
                     || $this->record->isSuperAdmin()
@@ -137,6 +168,14 @@ class EditUser extends EditRecord
             && app(InstructorOnboardingService::class)->canReviewApplications($admin);
     }
 
+    /** Phase 23D lifecycle actions all funnel through here — a Filament panel session is always a User, but stay defensive to match canReviewInstructor()'s existing pattern. */
+    private function actingAdmin(): ?User
+    {
+        $admin = auth()->user();
+
+        return $admin instanceof User ? $admin : null;
+    }
+
     /**
      * Admin override — bypasses the normal instructor lifecycle (draft →
      * submitted → under_review → ... → approved) to force an instructor
@@ -187,6 +226,179 @@ class EditUser extends EditRecord
 
                 Notification::make()
                     ->title('Instructor force-approved')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function markInstructorInterviewRequiredAction(): Action
+    {
+        return Action::make('markInstructorInterviewRequired')
+            ->label('Mark Interview Required')
+            ->icon('heroicon-m-video-camera')
+            ->color('info')
+            ->visible(fn (): bool => ($admin = $this->actingAdmin()) !== null
+                && app(InstructorOnboardingService::class)->canRequestInterview($admin)
+                && $this->record->profile?->instructor_status === InstructorStatus::UnderReview
+            )
+            ->form([
+                Textarea::make('reason')
+                    ->label('Interview reason')
+                    ->required()
+                    ->maxLength(500)
+                    ->placeholder('e.g. Technical interview required before approval.'),
+            ])
+            ->action(function (array $data): void {
+                if (($admin = $this->actingAdmin()) === null) {
+                    return;
+                }
+
+                app(InstructorOnboardingService::class)->markInterviewRequired($this->record, $admin, $data['reason']);
+
+                Notification::make()
+                    ->title('Instructor marked interview required')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function activateInstructorAction(): Action
+    {
+        return Action::make('activateInstructor')
+            ->label('Activate')
+            ->icon('heroicon-m-bolt')
+            ->color('success')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => ($admin = $this->actingAdmin()) !== null
+                && app(InstructorOnboardingService::class)->canActivate($admin)
+                && $this->record->profile?->instructor_status === InstructorStatus::Approved
+            )
+            ->action(function (): void {
+                if (($admin = $this->actingAdmin()) === null) {
+                    return;
+                }
+
+                app(InstructorOnboardingService::class)->activate($this->record, $admin);
+
+                Notification::make()
+                    ->title('Instructor activated')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function startInstructorVacationAction(): Action
+    {
+        return Action::make('startInstructorVacation')
+            ->label('Start Vacation')
+            ->icon('heroicon-m-sun')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => ($admin = $this->actingAdmin()) !== null
+                && app(InstructorOnboardingService::class)->canManageVacation($admin)
+                && $this->record->profile?->instructor_status === InstructorStatus::Active
+            )
+            ->action(function (): void {
+                if (($admin = $this->actingAdmin()) === null) {
+                    return;
+                }
+
+                app(InstructorOnboardingService::class)->setVacation($this->record, $admin);
+
+                Notification::make()
+                    ->title('Instructor vacation started')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function resumeInstructorFromVacationAction(): Action
+    {
+        return Action::make('resumeInstructorFromVacation')
+            ->label('Resume')
+            ->icon('heroicon-m-play')
+            ->color('success')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => ($admin = $this->actingAdmin()) !== null
+                && app(InstructorOnboardingService::class)->canManageVacation($admin)
+                && $this->record->profile?->instructor_status === InstructorStatus::Vacation
+            )
+            ->action(function (): void {
+                if (($admin = $this->actingAdmin()) === null) {
+                    return;
+                }
+
+                app(InstructorOnboardingService::class)->resumeFromVacation($this->record, $admin);
+
+                Notification::make()
+                    ->title('Instructor resumed from vacation')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function suspendInstructorAction(): Action
+    {
+        return Action::make('suspendInstructor')
+            ->label('Suspend')
+            ->icon('heroicon-m-no-symbol')
+            ->color('danger')
+            ->visible(fn (): bool => ($admin = $this->actingAdmin()) !== null
+                && app(InstructorOnboardingService::class)->canSuspend($admin)
+                && in_array($this->record->profile?->instructor_status, [
+                    InstructorStatus::Active,
+                    InstructorStatus::Vacation,
+                    InstructorStatus::Approved,
+                ], true)
+            )
+            ->form([
+                Textarea::make('reason')
+                    ->label('Suspension reason')
+                    ->required()
+                    ->maxLength(1000),
+            ])
+            ->action(function (array $data): void {
+                if (($admin = $this->actingAdmin()) === null) {
+                    return;
+                }
+
+                app(InstructorOnboardingService::class)->suspend($this->record, $admin, $data['reason']);
+
+                Notification::make()
+                    ->title('Instructor suspended')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function archiveInstructorAction(): Action
+    {
+        return Action::make('archiveInstructor')
+            ->label('Archive')
+            ->icon('heroicon-m-archive-box')
+            ->color('gray')
+            ->requiresConfirmation()
+            ->visible(fn (): bool => ($admin = $this->actingAdmin()) !== null
+                && app(InstructorOnboardingService::class)->canArchive($admin)
+                && in_array($this->record->profile?->instructor_status, [
+                    InstructorStatus::Suspended,
+                    InstructorStatus::Vacation,
+                ], true)
+            )
+            ->form([
+                Textarea::make('reason')
+                    ->label('Archive reason')
+                    ->maxLength(1000),
+            ])
+            ->action(function (array $data): void {
+                if (($admin = $this->actingAdmin()) === null) {
+                    return;
+                }
+
+                app(InstructorOnboardingService::class)->archive($this->record, $admin, $data['reason'] ?? null);
+
+                Notification::make()
+                    ->title('Instructor archived')
                     ->success()
                     ->send();
             });

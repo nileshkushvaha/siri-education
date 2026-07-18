@@ -1,11 +1,16 @@
 @extends('layouts.frontend')
 
-@section('title', $instructor->name . ' — Instructor — ' . config('app.name'))
+@php
+    $primarySubjectForSeo = $subjects->first();
+    $seoTitleSuffix = $primarySubjectForSeo ? $primarySubjectForSeo['name'] . ' Tutor' : 'Instructor';
+@endphp
+
+@section('title', $instructor->name . ' - ' . $seoTitleSuffix . ' — ' . config('app.name'))
 
 @push('meta')
-    <meta name="description" content="{{ $profile->short_bio ?: Str::limit($profile->bio ?? $instructor->name . ' is an instructor on ' . config('app.name'), 160) }}">
+    <meta name="description" content="{{ $summaryText ?: ($instructor->name . ' is an instructor on ' . config('app.name')) }}">
     <meta property="og:title" content="{{ $instructor->name }} — Instructor">
-    <meta property="og:description" content="{{ Str::limit($profile->bio ?? $instructor->name . ' is an instructor on ' . config('app.name'), 200) }}">
+    <meta property="og:description" content="{{ $biographyText ? Str::limit($biographyText, 200) : ($instructor->name . ' is an instructor on ' . config('app.name')) }}">
     <meta property="og:type" content="profile">
     <meta property="og:url" content="{{ route('instructors.show', $instructor) }}">
     @if($profile->profile_visibility !== 'public' || ! in_array($profile->instructor_status?->value, \App\Enums\InstructorStatus::bookableValues(), true))
@@ -25,14 +30,39 @@
         'name' => $instructor->name,
         'url' => route('instructors.show', $instructor),
     ];
-    if ($profile->bio) {
-        $jsonLd['description'] = Str::limit(strip_tags($profile->bio), 500);
+    if ($biographyText) {
+        $jsonLd['description'] = Str::limit(strip_tags($biographyText), 500);
     }
     if ($profile->avatarUrl) {
         $jsonLd['image'] = $profile->avatarUrl;
     }
     if ($currentPosition) {
         $jsonLd['jobTitle'] = $currentPosition->designation;
+    }
+
+    // Phase 23F — AggregateRating/Review only when reviews actually exist;
+    // never a fabricated "0 reviews, 5 stars" block. $reviewSummary and
+    // $reviews come from PublicInstructorReviewService — already filtered
+    // to published, eligible, public reviews only (see InstructorController).
+    if ($reviewSummary->reviewCount > 0 && $reviewSummary->averageRating !== null) {
+        $jsonLd['aggregateRating'] = [
+            '@type' => 'AggregateRating',
+            'ratingValue' => number_format($reviewSummary->averageRating, 1),
+            'reviewCount' => $reviewSummary->reviewCount,
+        ];
+
+        $jsonLd['review'] = $reviews->getCollection()->map(fn ($review): array => [
+            '@type' => 'Review',
+            'author' => ['@type' => 'Person', 'name' => $review->reviewerLabel],
+            'datePublished' => $review->submittedAt->toDateString(),
+            'reviewRating' => [
+                '@type' => 'Rating',
+                'ratingValue' => $review->overallRating,
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ],
+            ...($review->content ? ['reviewBody' => Str::limit(strip_tags($review->content), 500)] : []),
+        ])->values()->all();
     }
 @endphp
 <script type="application/ld+json">{{ json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</script>
@@ -76,10 +106,10 @@
 
                         <div class="min-w-0 flex-1">
                             <div class="mb-4 flex flex-wrap items-center gap-2">
-                                @if($profile->is_instructor_verified)
+                                @if($isVerified)
                                     <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-200 ring-1 ring-emerald-300/20">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
-                                        Verified Instructor
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden="true"></span>
+                                        {{ \App\Services\Instructor\InstructorTrustBadgeResolver::LABEL }}
                                     </span>
                                 @endif
                                 @if($primarySubject)
@@ -93,8 +123,8 @@
                                 <p class="mt-3 text-base leading-7 text-slate-300 sm:text-lg">
                                     {{ $currentPosition->designation }}@if($currentPosition->organization_name) · {{ $currentPosition->organization_name }}@endif
                                 </p>
-                            @elseif($profile->headline)
-                                <p class="mt-3 text-base leading-7 text-slate-300 sm:text-lg">{{ $profile->headline }}</p>
+                            @elseif($headlineText)
+                                <p class="mt-3 text-base leading-7 text-slate-300 sm:text-lg">{{ $headlineText }}</p>
                             @endif
 
                             <div class="mt-5 flex flex-wrap gap-3 text-sm text-slate-300">
@@ -103,6 +133,9 @@
                                 @if($languages->isNotEmpty())
                                     <span class="rounded-full bg-white/[0.05] px-3 py-1.5 ring-1 ring-white/10">{{ $languages->take(2)->join(', ') }}</span>
                                 @endif
+                                @if($responseTimeLabel)
+                                    <span class="rounded-full bg-white/[0.05] px-3 py-1.5 ring-1 ring-white/10">{{ $responseTimeLabel }}</span>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -110,16 +143,29 @@
 
                 <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20">
                     <p class="text-sm font-semibold text-white">Start with {{ Str::before($instructor->name, ' ') }}</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">Choose a no-pressure demo or continue to the booking flow for a full paid session.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">
+                        @if($offersDemo)
+                            Choose a no-pressure demo or continue to the booking flow for a full paid session.
+                        @else
+                            Continue to the booking flow for a full paid session.
+                        @endif
+                    </p>
                     <div class="mt-5 grid gap-3">
-                        <a href="{{ $demoBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
-                            <span class="text-sm font-black">Book a Demo Session</span>
-                            <span class="mt-1 block text-xs text-indigo-100">Meet the instructor and discuss your learning goal.</span>
-                        </a>
-                        <a href="{{ $paidBookingUrl }}" class="rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-white transition hover:border-emerald-300/30 hover:bg-emerald-400/10">
-                            <span class="text-sm font-black">Book a Paid Class</span>
-                            <span class="mt-1 block text-xs text-slate-400">Move straight into a full learning session.</span>
-                        </a>
+                        @if($offersDemo)
+                            <a href="{{ $demoBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
+                                <span class="text-sm font-black">Book a Free Demo</span>
+                                <span class="mt-1 block text-xs text-indigo-100">Meet the instructor and discuss your learning goal.</span>
+                            </a>
+                            <a href="{{ $paidBookingUrl }}" class="rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-white transition hover:border-emerald-300/30 hover:bg-emerald-400/10">
+                                <span class="text-sm font-black">Book a Paid Class</span>
+                                <span class="mt-1 block text-xs text-slate-400">Move straight into a full learning session.</span>
+                            </a>
+                        @else
+                            <a href="{{ $paidBookingUrl }}" class="group rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-4 text-white shadow-lg shadow-indigo-950/30 transition hover:-translate-y-0.5 hover:shadow-indigo-950/50">
+                                <span class="text-sm font-black">Book a Lesson</span>
+                                <span class="mt-1 block text-xs text-indigo-100">Move straight into a full learning session.</span>
+                            </a>
+                        @endif
                     </div>
                     <p class="mt-4 text-xs leading-5 text-slate-500">Final times and session type are confirmed in the booking wizard.</p>
                 </div>
@@ -130,11 +176,11 @@
     <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
-                @if($profile->bio)
+                @if($biographyText)
                     <x-ui.card class="border-white/10 bg-white/[0.04]">
                         <p class="text-xs font-bold uppercase tracking-wide text-indigo-200">About this instructor</p>
                         <h2 class="mt-2 text-xl font-bold text-white">How {{ Str::before($instructor->name, ' ') }} can help</h2>
-                        <p class="mt-4 whitespace-pre-line text-sm leading-7 text-slate-300">{{ $profile->bio }}</p>
+                        <p class="mt-4 whitespace-pre-line text-sm leading-7 text-slate-300">{{ $biographyText }}</p>
                     </x-ui.card>
                 @endif
 
@@ -246,7 +292,8 @@
                             <dt class="text-slate-400">Rating</dt>
                             <dd class="font-bold text-white">
                                 @if($reviewSummary->averageRating !== null)
-                                    {{ number_format($reviewSummary->averageRating, 1) }} <span class="font-normal text-slate-400">({{ $reviewSummary->reviewCount }})</span>
+                                    <span aria-hidden="true">{{ number_format($reviewSummary->averageRating, 1) }} <span class="font-normal text-slate-400">({{ $reviewSummary->reviewCount }})</span></span>
+                                    <span class="sr-only">Rated {{ number_format($reviewSummary->averageRating, 1) }} out of 5 from {{ $reviewSummary->reviewCount }} {{ Str::plural('review', $reviewSummary->reviewCount) }}</span>
                                 @else
                                     No ratings yet
                                 @endif
@@ -346,10 +393,11 @@
             @if($reviewSummary->reviewCount > 0)
                 <div class="mt-6 grid gap-6 lg:grid-cols-3">
                     <x-ui.card class="border-white/10 bg-white/[0.04] lg:col-span-1">
-                        <div class="flex items-baseline gap-2">
+                        <div class="flex items-baseline gap-2" aria-hidden="true">
                             <span class="text-4xl font-black text-white">{{ number_format($reviewSummary->averageRating, 1) }}</span>
                             <span class="text-sm text-slate-400">/ 5</span>
                         </div>
+                        <span class="sr-only">Rated {{ number_format($reviewSummary->averageRating, 1) }} out of 5</span>
                         <p class="mt-1 text-sm text-slate-400">Based on {{ $reviewSummary->reviewCount }} {{ Str::plural('review', $reviewSummary->reviewCount) }}</p>
 
                         <div class="mt-5 space-y-1.5">
@@ -398,7 +446,10 @@
                                                 {{ $review->isDemo() ? 'Verified Demo Lesson' : 'Verified Lesson' }}
                                             </span>
                                         @endif
-                                        <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-200 ring-1 ring-amber-300/20">{{ $review->overallRating }} ★</span>
+                                        <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-200 ring-1 ring-amber-300/20">
+                                            <span aria-hidden="true">{{ $review->overallRating }} ★</span>
+                                            <span class="sr-only">Rated {{ $review->overallRating }} out of 5</span>
+                                        </span>
                                     </div>
                                 </div>
 

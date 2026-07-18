@@ -13,8 +13,10 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserEducation;
 use App\Models\UserExperience;
+use App\Services\Instructor\InstructorDocumentRequirementService;
 use App\Services\Instructor\InstructorOnboardingService;
 use App\Services\Instructor\InstructorService;
+use Database\Seeders\InstructorDocumentRequirementSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +40,7 @@ class InstructorOnboardingServiceTest extends TestCase
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'Update:User', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => InstructorOnboardingService::REVIEW_PERMISSION, 'guard_name' => 'web']);
+        $this->seed(InstructorDocumentRequirementSeeder::class);
 
         $this->onboarding = app(InstructorOnboardingService::class);
     }
@@ -197,7 +200,7 @@ class InstructorOnboardingServiceTest extends TestCase
         $user = $this->completeApplicant();
         $profile = $user->profile->fresh();
 
-        foreach (InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS as $collection) {
+        foreach (app(InstructorDocumentRequirementService::class)->requiredCollections() as $collection) {
             $media = $profile->getFirstMedia($collection);
 
             $this->assertNotNull($media);
@@ -285,7 +288,7 @@ class InstructorOnboardingServiceTest extends TestCase
         UserEducation::factory()->for($user)->create(['status' => 'active']);
         UserExperience::factory()->for($user)->create(['status' => 'active']);
 
-        foreach (InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS as $collection) {
+        foreach (app(InstructorDocumentRequirementService::class)->requiredCollections() as $collection) {
             $user->profile->addMedia(UploadedFile::fake()->image($collection.'.jpg'))
                 ->toMediaCollection($collection);
         }

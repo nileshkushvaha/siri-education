@@ -133,14 +133,15 @@ final class BookingRepository implements BookingRepositoryInterface
             ->get();
     }
 
-    public function upcomingForUser(int $userId): Collection
+    public function upcomingForUser(int $userId, ?int $limit = null): Collection
     {
         return Booking::query()
             ->active()
             ->upcoming()
-            ->where(fn (Builder $q) => $q->where('student_id', $userId)->orWhere('instructor_id', $userId))
+            ->forStudent($userId)
             ->with(['type', 'instructor', 'meeting'])
             ->orderBy('starts_at')
+            ->when($limit !== null, fn (Builder $query) => $query->limit($limit))
             ->get();
     }
 

@@ -49,7 +49,7 @@ class StudentDashboardTest extends TestCase
         $this->actingAs($admin)->get(route('dashboard'))->assertRedirect();
     }
 
-    public function test_dashboard_contains_student_stat_cards(): void
+    public function test_dashboard_uses_student_first_information_hierarchy_without_legacy_stat_cards(): void
     {
         $student = User::factory()->create(['status' => 'active']);
         $student->assignRole('student');
@@ -57,7 +57,10 @@ class StudentDashboardTest extends TestCase
         $this->actingAs($student)
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Completed')
-            ->assertSee('Certificates');
+            ->assertSee('Plan your next learning session')
+            ->assertSee('Homework requiring attention')
+            ->assertSee('Learning journey')
+            ->assertDontSee('Hours Learned')
+            ->assertDontSee('Quick Actions');
     }
 }

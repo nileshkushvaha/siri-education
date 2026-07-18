@@ -87,8 +87,8 @@ final class AccountMenuService
             ['label' => 'Overview', 'items' => [$this->item('Dashboard', 'dashboard', 'home', mobilePriority: 1)]],
             ['label' => 'Teach', 'items' => [
                 $this->item('Learning Plans', 'dashboard.instructor.learning-plans', 'clipboard'),
-                $this->item('Availability', 'dashboard.instructor.availability', 'calendar'),
-                $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard'),
+                $this->item('Availability', 'dashboard.instructor.availability', 'calendar', mobilePriority: 3),
+                $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard', mobilePriority: 2, mobileLabel: 'Lessons'),
                 $this->item('Reviews & Quality', 'dashboard.instructor.quality-insights', 'star'),
             ]],
             ['label' => 'Money', 'items' => [

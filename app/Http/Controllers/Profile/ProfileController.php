@@ -15,9 +15,12 @@ use App\Models\Country;
 use App\Models\Language;
 use App\Models\State;
 use App\Models\Subject;
+use App\Services\FrontendPortalAudienceResolver;
+use App\Services\Phone\PhoneNumberService;
 use App\Services\Profile\ProfileCompletionService;
 use App\Services\Profile\ProfileService;
 use App\Services\Profile\SessionService;
+use App\Services\Student\StudentBillingCountryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,12 +32,15 @@ class ProfileController extends Controller
         private readonly ProfileService $profileService,
         private readonly SessionService $sessionService,
         private readonly ProfileCompletionService $completionService,
+        private readonly FrontendPortalAudienceResolver $audiences,
+        private readonly PhoneNumberService $phones,
+        private readonly StudentBillingCountryService $billingCountries,
     ) {}
 
     public function show(Request $request): View
     {
         $user = auth()->user()->load(['profile.country', 'profile.state', 'profile.media', 'profile.studentAcademicLevel', 'profile.studentPreferredLanguage', 'preferredSubjects']);
-        $countries = Country::active()->orderBy('name')->get(['id', 'name', 'iso2', 'flag']);
+        $countries = Country::active()->whereHas('defaultCurrency', fn ($query) => $query->active())->with('defaultCurrency:id,code')->orderBy('name')->get(['id', 'name', 'iso2', 'flag', 'phone_code', 'default_currency_id']);
         $states = State::active()->orderBy('name')->get(['id', 'country_id', 'name']);
         $subjects = Subject::availableForAssignment()->orderBy('name')->get(['id', 'name']);
         $academicLevels = AcademicLevel::availableForAssignment()->orderBy('display_order')->orderBy('name')->get(['id', 'name']);
@@ -44,10 +50,15 @@ class ProfileController extends Controller
         $activeSessions = $this->sessionService->getSessionsForUser($user);
         $currentSessionId = $request->session()->getId();
         $completionBreakdown = $this->completionService->breakdown($user);
+        $portalAudience = $this->audiences->resolve($user);
+        $phonePlaceholders = $countries->mapWithKeys(fn (Country $country): array => [
+            $country->iso2 => $this->phones->exampleNationalNumber($country->iso2),
+        ]);
+        $billingCountryChangeBlocked = $this->billingCountries->isChangeLocked($user);
 
         return view('profile.show', compact(
             'user', 'countries', 'states', 'subjects', 'academicLevels', 'languages', 'timezones', 'loginHistory', 'activeSessions',
-            'currentSessionId', 'completionBreakdown'
+            'currentSessionId', 'completionBreakdown', 'portalAudience', 'phonePlaceholders', 'billingCountryChangeBlocked'
         ));
     }
 

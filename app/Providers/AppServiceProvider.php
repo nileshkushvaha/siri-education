@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\PhoneOtpSender;
+use App\Contracts\PhoneVerificationServiceInterface;
+use App\Contracts\StudentFinancialVerificationGate;
 use App\Models\Activity;
 use App\Models\EmailLog;
 use App\Models\Faq;
@@ -54,6 +57,9 @@ use App\Policies\StudentLearningGoalPolicy;
 use App\Policies\StudentLearningPlanPolicy;
 use App\Policies\UserEducationPolicy;
 use App\Policies\UserExperiencePolicy;
+use App\Services\Phone\PhoneVerificationService;
+use App\Services\Phone\UnavailablePhoneOtpSender;
+use App\Services\Student\DefaultStudentFinancialVerificationGate;
 use App\Settings\LoginSecuritySettings;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
@@ -72,7 +78,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(PhoneOtpSender::class, UnavailablePhoneOtpSender::class);
+        $this->app->bind(PhoneVerificationServiceInterface::class, PhoneVerificationService::class);
+        $this->app->bind(StudentFinancialVerificationGate::class, DefaultStudentFinancialVerificationGate::class);
     }
 
     public function boot(): void

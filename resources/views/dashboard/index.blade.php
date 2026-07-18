@@ -13,8 +13,8 @@
     />
 
     @if($portalAudience === \App\Enums\PortalAudience::Student)
-        <livewire:frontend.student.dashboard-overview />
+        <livewire:frontend.student.dashboard-overview :unread-count="$accountNotificationCount ?? 0" />
     @elseif($portalAudience === \App\Enums\PortalAudience::Instructor)
-        <livewire:frontend.instructor.dashboard-overview />
+        <livewire:frontend.instructor.dashboard-overview :unread-count="$accountNotificationCount ?? 0" />
     @endif
 @endsection

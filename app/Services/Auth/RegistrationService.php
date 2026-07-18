@@ -22,6 +22,7 @@ final class RegistrationService
         private readonly RegistrationSettings $regSettings,
         private readonly PasswordPolicySettings $policySettings,
         private readonly ReferralAttributionServiceInterface $referralAttribution,
+        private readonly RegistrationCaptchaService $captcha,
     ) {}
 
     /**
@@ -85,6 +86,7 @@ final class RegistrationService
 
         // 7. Dispatch event — listener handles all notifications + activity logging
         UserRegistered::dispatch($user, $ipAddress, $userAgent);
+        $this->captcha->clear();
 
         return new RegistrationResult(
             user: $user,

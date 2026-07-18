@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Livewire\Frontend\Auth\RegisterForm;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\User;
 use App\Settings\RegistrationSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,6 +17,8 @@ use Tests\TestCase;
 class RegisterFormTest extends TestCase
 {
     use RefreshDatabase;
+
+    private Country $country;
 
     protected function setUp(): void
     {
@@ -28,6 +32,15 @@ class RegisterFormTest extends TestCase
 
         app(RegistrationSettings::class)->self_registration_enabled = true;
         app(RegistrationSettings::class)->save();
+
+        $currency = Currency::factory()->create(['code' => 'INR', 'status' => 'active']);
+        $this->country = Country::factory()->create([
+            'name' => 'United States',
+            'iso2' => 'US',
+            'phone_code' => '+1',
+            'default_currency_id' => $currency->id,
+            'default_timezone' => 'Asia/Kolkata',
+        ]);
     }
 
     public function test_renders_on_the_register_page(): void
@@ -61,13 +74,18 @@ class RegisterFormTest extends TestCase
 
     public function test_valid_submission_creates_a_user_via_registration_service(): void
     {
-        Livewire::test(RegisterForm::class)
+        $component = Livewire::test(RegisterForm::class);
+        [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
+
+        $component
             ->set('first_name', 'Jane')
             ->set('last_name', 'Doe')
             ->set('email', 'jane-doe@gmail.com')
+            ->set('country_id', $this->country->id)
             ->set('password', 'StrongPass123!')
             ->set('password_confirmation', 'StrongPass123!')
             ->set('terms', true)
+            ->set('captcha_answer', (string) ($left + $right))
             ->call('register');
 
         $this->assertDatabaseHas('users', ['email' => 'jane-doe@gmail.com']);
@@ -77,6 +95,8 @@ class RegisterFormTest extends TestCase
         $this->assertNotNull($user->terms_accepted_at);
         $this->assertNotNull($user->privacy_accepted_at);
         $this->assertSame($user->terms_accepted_at->toDateTimeString(), $user->privacy_accepted_at->toDateTimeString());
+        $this->assertSame($this->country->id, $user->profile->country_id);
+        $this->assertSame('Asia/Kolkata', $user->profile->timezone);
     }
 
     public function test_duplicate_email_is_rejected(): void

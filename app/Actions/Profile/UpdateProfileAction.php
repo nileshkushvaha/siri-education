@@ -4,13 +4,42 @@ declare(strict_types=1);
 
 namespace App\Actions\Profile;
 
+use App\Contracts\PhoneVerificationServiceInterface;
 use App\Models\User;
+use App\Services\Phone\PhoneNumberService;
+use App\Services\Student\StudentBillingCountryService;
 use Illuminate\Support\Facades\DB;
 
 final class UpdateProfileAction
 {
+    public function __construct(
+        private readonly StudentBillingCountryService $billingCountries,
+        private readonly PhoneNumberService $phones,
+        private readonly PhoneVerificationServiceInterface $phoneVerification,
+    ) {}
+
     public function execute(User $user, array $data): User
     {
+        if (array_key_exists('country_id', $data)) {
+            $this->billingCountries->assertChangeAllowed($user, $data['country_id']);
+        }
+
+        if (array_key_exists('phone', $data)) {
+            $phone = $this->phones->normalize($data['phone'], $data['phone_country_iso2'] ?? null);
+            $existing = $user->profile?->phone_e164;
+            $changed = $phone?->e164 !== $existing;
+            $data['phone'] = $phone?->e164;
+            $data['phone_country_iso2'] = $phone?->countryIso2;
+            $data['phone_dial_code'] = $phone?->dialCode;
+            $data['phone_national_number'] = $phone?->nationalNumber;
+            $data['phone_e164'] = $phone?->e164;
+            if ($changed) {
+                $data['phone_verified_at'] = null;
+                $data['phone_verification_status'] = $phone ? 'unverified' : null;
+                $this->phoneVerification->invalidate($user);
+            }
+        }
+
         return DB::transaction(function () use ($user, $data): User {
 
             // ── Update core user fields ───────────────────────────────
@@ -37,6 +66,12 @@ final class UpdateProfileAction
                 'short_bio' => array_key_exists('short_bio', $data) ? ($data['short_bio'] ?? null) : $profile->short_bio,
                 'bio' => array_key_exists('bio', $data) ? ($data['bio'] ?? null) : $profile->bio,
                 'phone' => array_key_exists('phone', $data) ? ($data['phone'] ?? null) : $profile->phone,
+                'phone_country_iso2' => array_key_exists('phone_country_iso2', $data) ? $data['phone_country_iso2'] : $profile->phone_country_iso2,
+                'phone_dial_code' => array_key_exists('phone_dial_code', $data) ? $data['phone_dial_code'] : $profile->phone_dial_code,
+                'phone_national_number' => array_key_exists('phone_national_number', $data) ? $data['phone_national_number'] : $profile->phone_national_number,
+                'phone_e164' => array_key_exists('phone_e164', $data) ? $data['phone_e164'] : $profile->phone_e164,
+                'phone_verified_at' => array_key_exists('phone_verified_at', $data) ? $data['phone_verified_at'] : $profile->phone_verified_at,
+                'phone_verification_status' => array_key_exists('phone_verification_status', $data) ? $data['phone_verification_status'] : $profile->phone_verification_status,
                 'gender' => array_key_exists('gender', $data) ? ($data['gender'] ?? null) : $profile->gender,
                 'date_of_birth' => array_key_exists('date_of_birth', $data) ? ($data['date_of_birth'] ?? null) : $profile->date_of_birth,
                 'address' => array_key_exists('address', $data) ? ($data['address'] ?? null) : $profile->address,

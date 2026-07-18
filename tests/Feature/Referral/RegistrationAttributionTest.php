@@ -6,6 +6,8 @@ namespace Tests\Feature\Referral;
 
 use App\Enums\StudentStatus;
 use App\Livewire\Frontend\Auth\RegisterForm;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\ReferralAttribution;
 use App\Models\ReferralCode;
 use App\Models\User;
@@ -27,6 +29,8 @@ class RegistrationAttributionTest extends TestCase
 {
     use RefreshDatabase;
 
+    private Country $country;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -44,6 +48,9 @@ class RegistrationAttributionTest extends TestCase
         $features = app(FeatureSettings::class);
         $features->referral_enabled = true;
         $features->save();
+
+        $currency = Currency::factory()->create(['code' => 'INR', 'status' => 'active']);
+        $this->country = Country::factory()->create(['name' => 'United States', 'iso2' => 'US', 'phone_code' => '+1', 'default_currency_id' => $currency->id]);
     }
 
     private function referrerWithCode(): ReferralCode
@@ -58,6 +65,8 @@ class RegistrationAttributionTest extends TestCase
     /** @param  array<string, mixed>  $overrides */
     private function classicRegister(array $overrides = []): TestResponse
     {
+        session()->put('registration.captcha', '7');
+
         $response = $this->post(route('auth.register.store'), array_merge([
             'first_name' => 'Jane',
             'last_name' => 'Doe',
@@ -65,6 +74,8 @@ class RegistrationAttributionTest extends TestCase
             'password' => 'StrongPass123!',
             'password_confirmation' => 'StrongPass123!',
             'terms' => '1',
+            'country_id' => $this->country->id,
+            'captcha_answer' => '7',
         ], $overrides));
 
         // Successful registration logs the new user in; log out so the
@@ -102,14 +113,18 @@ class RegistrationAttributionTest extends TestCase
     {
         $code = $this->referrerWithCode();
 
-        Livewire::withQueryParams(['ref' => $code->code])
-            ->test(RegisterForm::class)
+        $component = Livewire::withQueryParams(['ref' => $code->code])->test(RegisterForm::class);
+        [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
+
+        $component
             ->assertSet('referral_code', $code->code)
             ->set('first_name', 'Linked')
             ->set('email', 'linked@gmail.com')
+            ->set('country_id', $this->country->id)
             ->set('password', 'StrongPass123!')
             ->set('password_confirmation', 'StrongPass123!')
             ->set('terms', true)
+            ->set('captcha_answer', (string) ($left + $right))
             ->call('register');
 
         $attribution = ReferralAttribution::query()->sole();
@@ -121,12 +136,17 @@ class RegistrationAttributionTest extends TestCase
     {
         $code = $this->referrerWithCode();
 
-        Livewire::test(RegisterForm::class)
+        $component = Livewire::test(RegisterForm::class);
+        [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
+
+        $component
             ->set('first_name', 'Manual')
             ->set('email', 'manual@gmail.com')
+            ->set('country_id', $this->country->id)
             ->set('password', 'StrongPass123!')
             ->set('password_confirmation', 'StrongPass123!')
             ->set('terms', true)
+            ->set('captcha_answer', (string) ($left + $right))
             ->set('referral_code', $code->code)
             ->call('register');
 
@@ -314,12 +334,17 @@ class RegistrationAttributionTest extends TestCase
         $limited = false;
 
         for ($i = 0; $i < 11; $i++) {
-            $component = Livewire::test(RegisterForm::class)
+            $component = Livewire::test(RegisterForm::class);
+            [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
+
+            $component
                 ->set('first_name', 'Rate')
                 ->set('email', 'livewire-throttle@gmail.com')
+                ->set('country_id', $this->country->id)
                 ->set('password', 'StrongPass123!')
                 ->set('password_confirmation', 'StrongPass123!')
                 ->set('terms', true)
+                ->set('captcha_answer', (string) ($left + $right))
                 ->call('register');
 
             $error = $component->errors()->first('email');

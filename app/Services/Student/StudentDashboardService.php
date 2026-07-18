@@ -5,12 +5,24 @@ declare(strict_types=1);
 namespace App\Services\Student;
 
 use App\Booking\Contracts\StudentBookingServiceInterface;
+use App\Booking\Enums\MeetingStatus;
+use App\DTOs\StudentDashboard\StudentDashboardData;
+use App\Enums\LearningPlanMilestoneStatus;
 use App\Homework\Contracts\HomeworkServiceInterface;
+use App\Models\LearningPlanMilestone;
+use App\Models\LearningPlanReview;
+use App\Models\ReferralCode;
+use App\Models\ReferralReward;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletLedgerEntry;
+use App\Referral\Enums\ReferralRewardStatus;
+use App\Services\Profile\ProfileService;
 use App\Settings\FeatureSettings;
+use App\Settings\MeetingSettings;
 use App\Wallet\Support\WalletMoneyFormatter;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 final class StudentDashboardService
 {
@@ -18,153 +30,203 @@ final class StudentDashboardService
         private readonly StudentBookingServiceInterface $bookings,
         private readonly HomeworkServiceInterface $homework,
         private readonly StudentFavoriteInstructorService $favorites,
+        private readonly ProfileService $profiles,
         private readonly FeatureSettings $features,
+        private readonly MeetingSettings $meetings,
     ) {}
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function summary(User $student): array
+    public function summary(User $student, int $unreadCount = 0): StudentDashboardData
     {
-        $student->loadMissing([
-            'profile.country.defaultCurrency',
-            'profile.studentAcademicLevel',
-            'profile.studentPreferredLanguage',
-            'preferredSubjects',
-        ]);
+        $errors = [];
 
-        $upcoming = $this->bookings->upcomingClasses($student);
-        $progress = $this->bookings->progressStats($student);
-        $homeworkStats = $this->homework->statsForStudent($student->id);
-        $activeGoals = $student->studentLearningGoals()
-            ->with(['subject', 'academicLevel'])
-            ->activeForDashboard()
-            ->latest()
-            ->take(4)
-            ->get();
-        $activePlans = $student->studentLearningPlans()
-            ->with(['subject', 'primaryInstructor', 'milestones'])
-            ->activeForDashboard()
-            ->latest()
-            ->take(2)
-            ->get();
-        $favoriteInstructors = $this->favorites->bookableFavorites($student, 4);
-        $profileCompletion = $this->profileCompletion($student);
-        $wallet = $this->walletSummary($student);
-
-        return [
-            'profile_completion' => $profileCompletion,
-            'profile_missing_items' => $this->profileMissingItems($student),
-            'preferred_subjects' => $student->preferredSubjects,
-            'active_goals' => $activeGoals,
-            'active_learning_plans' => $activePlans,
-            'active_learning_plan_count' => $student->studentLearningPlans()->activeForDashboard()->count(),
-            'current_learning_plan' => $activePlans->first(),
-            'favorite_instructors' => $favoriteInstructors,
-            'favorite_instructor_count' => $student->favoriteInstructorRows()->count(),
-            'bookable_favorite_instructor_count' => $favoriteInstructors->count(),
-            'upcoming_count' => $upcoming->count(),
-            'next_classes' => $upcoming->take(3),
-            'completed_sessions' => (int) $progress->completed_sessions,
-            'total_hours' => round((float) $progress->total_hours, 1),
-            'pending_homework_count' => (int) ($homeworkStats->pending ?? 0),
-            'overdue_homework_count' => (int) ($homeworkStats->overdue ?? 0),
-            'default_currency' => $student->profile?->country?->defaultCurrency,
-            'wallet' => $wallet,
-            'safe_placeholders' => array_filter([
-                // Real balance data replaces this placeholder once the
-                // wallet module is enabled and the student has a wallet —
-                // otherwise it stays a safe "nothing to show yet" tile.
-                'wallet' => $wallet === null ? 'Wallet setup will be available in a later phase.' : null,
-                'payments' => 'Payment history will appear after bookings are paid.',
-                'meetings' => 'Meeting links will appear after lessons are scheduled.',
-            ]),
-            'recommended_next_action' => $this->recommendedNextAction($profileCompletion, $activeGoals, $favoriteInstructors, $upcoming),
-        ];
+        return new StudentDashboardData(
+            nextLesson: $this->widget('next lesson', fn () => $this->nextLesson($student), $errors),
+            homework: $this->features->homework_enabled
+                ? $this->widget('homework', fn () => $this->homework($student), $errors)
+                : null,
+            learningJourney: $this->widget('learning journey', fn () => $this->learningJourney($student), $errors),
+            wallet: $this->features->wallet_enabled
+                ? $this->widget('wallet', fn () => $this->wallet($student), $errors)
+                : null,
+            referral: $this->features->referral_enabled
+                ? $this->widget('referral', fn () => $this->referral($student), $errors)
+                : null,
+            favorites: $this->widget('favorite instructors', fn () => $this->favoriteInstructors($student), $errors),
+            notifications: $this->widget('notifications', fn () => $this->notifications($student, $unreadCount), $errors),
+            profile: $this->widget('profile', fn () => $this->profile($student), $errors),
+            errors: $errors,
+        );
     }
 
-    /**
-     * Read-only — never creates a wallet. Returns null (safe placeholder
-     * stays) when the module is off or the student has none yet.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function walletSummary(User $student): ?array
+    /** @param array<int, string> $errors */
+    private function widget(string $name, callable $read, array &$errors): mixed
     {
-        if (! $this->features->wallet_enabled) {
+        try {
+            return $read();
+        } catch (Throwable $exception) {
+            report($exception);
+            $errors[] = $name;
+
+            return null;
+        }
+    }
+
+    /** @return array<string, mixed>|null */
+    private function nextLesson(User $student): ?array
+    {
+        $booking = $this->bookings->upcomingClasses($student, 1)->first();
+        if ($booking === null) {
             return null;
         }
 
-        $wallet = Wallet::query()->forUser($student->id)->with('currency')->first();
+        $timezone = $student->profile?->timezone ?: config('app.timezone');
+        $meeting = $booking->meeting;
+        $windowStartsAt = $meeting?->starts_at ?? $booking->starts_at;
+        $windowEndsAt = $meeting?->ends_at ?? $booking->ends_at;
+        $windowOpen = now()->betweenIncluded(
+            $windowStartsAt->subMinutes($this->meetings->meeting_link_visible_before_minutes),
+            $windowEndsAt->addMinutes($this->meetings->meeting_link_visible_after_minutes),
+        );
+        $joinUrl = $meeting?->status === MeetingStatus::Created
+            && $this->meetings->student_join_url_visible
+            && $windowOpen
+            ? $meeting->join_url
+            : null;
 
+        return [
+            'reference' => $booking->reference,
+            'subject' => $booking->meta['subject'] ?? $booking->type?->name ?? 'Lesson',
+            'instructor' => $booking->instructor?->name ?? 'Instructor to be assigned',
+            'type' => $booking->type?->name ?? 'Class',
+            'starts_at' => $booking->starts_at->timezone($timezone),
+            'meeting_status' => $meeting?->status?->label() ?? 'Not scheduled',
+            'join_url' => $joinUrl,
+            'join_window_open' => $windowOpen,
+            'can_cancel' => Gate::forUser($student)->allows('cancel', $booking),
+            'can_reschedule' => Gate::forUser($student)->allows('reschedule', $booking),
+        ];
+    }
+
+    /** @return array{pending: int, overdue: int, items: array<int, array<string, mixed>>} */
+    private function homework(User $student): array
+    {
+        $stats = $this->homework->statsForStudent($student->id);
+        $timezone = $student->profile?->timezone ?: config('app.timezone');
+
+        return [
+            'pending' => (int) ($stats->pending ?? 0),
+            'overdue' => (int) ($stats->overdue ?? 0),
+            'items' => $this->homework->attentionForStudent($student->id, 3)->map(fn ($item) => [
+                'id' => $item->id,
+                'title' => $item->title,
+                'subject' => $item->subject ?: ($item->booking?->type?->name ?? 'Homework'),
+                'due_at' => $item->due_at->timezone($timezone),
+                'overdue' => $item->isOverdue(),
+                'status' => $item->status->label(),
+            ])->all(),
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function learningJourney(User $student): ?array
+    {
+        $plan = $student->studentLearningPlans()->activeForDashboard()
+            ->with(['subject:id,name', 'primaryInstructor:id,name', 'learningGoal:id,title'])
+            ->latest()->first();
+        if ($plan === null) {
+            return null;
+        }
+
+        $total = LearningPlanMilestone::query()->where('learning_plan_id', $plan->id)->count();
+        $completed = LearningPlanMilestone::query()->where('learning_plan_id', $plan->id)
+            ->where('status', LearningPlanMilestoneStatus::Completed)->count();
+        $next = LearningPlanMilestone::query()->where('learning_plan_id', $plan->id)
+            ->whereIn('status', [LearningPlanMilestoneStatus::Pending, LearningPlanMilestoneStatus::InProgress])
+            ->orderBy('sort_order')->value('title');
+        $review = LearningPlanReview::query()->where('learning_plan_id', $plan->id)
+            ->whereNotNull('reviewed_at')->latest('reviewed_at')->first(['reviewed_at', 'summary']);
+
+        return [
+            'title' => $plan->title,
+            'subject' => $plan->subject?->name,
+            'instructor' => $plan->primaryInstructor?->name,
+            'goal' => $plan->learningGoal?->title,
+            'progress' => $plan->progress_percent,
+            'completed_milestones' => $completed,
+            'total_milestones' => $total,
+            'next_milestone' => $next,
+            'last_review_at' => $review?->reviewed_at,
+            'last_review' => $review?->summary,
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function wallet(User $student): ?array
+    {
+        $wallet = Wallet::query()->forUser($student->id)->with('currency')->first();
         if ($wallet === null) {
             return null;
         }
+        $latest = WalletLedgerEntry::query()->forWallet($wallet->id)->posted()->latest('posted_at')->first();
 
         return [
-            'status' => $wallet->status,
-            'currency' => $wallet->currency_code,
-            'balance' => WalletMoneyFormatter::format($wallet->balance_minor, $wallet->currency, $wallet->currency_code),
-            'available_balance' => WalletMoneyFormatter::format($wallet->available_balance_minor, $wallet->currency, $wallet->currency_code),
-            'held_balance' => WalletMoneyFormatter::format($wallet->held_balance_minor, $wallet->currency, $wallet->currency_code),
+            'available' => WalletMoneyFormatter::format($wallet->available_balance_minor, $wallet->currency, $wallet->currency_code),
+            'latest' => $latest?->description,
+            'latest_at' => $latest?->posted_at,
         ];
     }
 
-    private function profileCompletion(User $student): int
+    /** @return array<string, mixed>|null */
+    private function referral(User $student): ?array
     {
-        $profile = $student->profile;
-        $checks = [
-            filled($student->first_name) || filled($student->name),
-            filled($student->last_name) || filled($student->name),
-            filled($profile?->phone),
-            filled($profile?->country_id),
-            filled($profile?->timezone),
-            filled($profile?->student_academic_level_id),
-            filled($profile?->student_preferred_language_id) || filled($profile?->language),
-            $student->preferredSubjects->isNotEmpty(),
-            filled($profile?->avatarUrl),
-        ];
+        $code = ReferralCode::query()->where('user_id', $student->id)->first();
+        $query = ReferralReward::query()->forReferrer($student->id);
 
-        return (int) round((collect($checks)->filter()->count() / count($checks)) * 100);
+        return [
+            'code' => $code?->isActive() ? $code->code : null,
+            'reward_count' => (clone $query)->count(),
+            'credited_count' => (clone $query)->where('status', ReferralRewardStatus::Credited)->count(),
+        ];
     }
 
-    /**
-     * @return array<int, string>
-     */
-    private function profileMissingItems(User $student): array
+    /** @return array<int, array<string, mixed>> */
+    private function favoriteInstructors(User $student): array
     {
-        $profile = $student->profile;
-        $items = [];
+        return $this->favorites->bookableFavorites($student, 3)->map(fn (User $instructor) => [
+            'name' => $instructor->name,
+            'slug' => $instructor->slug,
+            'avatar' => $instructor->profile?->avatarUrl,
+        ])->all();
+    }
 
-        if (! filled($profile?->student_academic_level_id)) {
-            $items[] = 'current academic level';
+    /** @return array{unread: int, items: array<int, array<string, mixed>>} */
+    private function notifications(User $student, int $unreadCount): array
+    {
+        return [
+            'unread' => $unreadCount,
+            'items' => $student->notifications()->latest()->limit(3)->get()->map(fn ($notification) => [
+                'title' => $notification->data['title'] ?? class_basename($notification->type),
+                'created_at' => $notification->created_at,
+                'read' => $notification->read_at !== null,
+            ])->all(),
+        ];
+    }
+
+    /** @return array{completion: int, missing: array<int, string>} */
+    private function profile(User $student): array
+    {
+        $student->loadMissing(['profile', 'preferredSubjects']);
+        $missing = [];
+        if (! $student->profile?->student_academic_level_id) {
+            $missing[] = 'academic level';
         }
-
         if ($student->preferredSubjects->isEmpty()) {
-            $items[] = 'preferred subjects';
+            $missing[] = 'preferred subjects';
+        }
+        if (! $student->profile?->student_preferred_language_id && ! $student->profile?->language) {
+            $missing[] = 'preferred language';
         }
 
-        if (! filled($profile?->student_preferred_language_id) && ! filled($profile?->language)) {
-            $items[] = 'preferred language';
-        }
-
-        return $items;
-    }
-
-    private function recommendedNextAction(int $profileCompletion, Collection $activeGoals, Collection $favoriteInstructors, Collection $upcoming): string
-    {
-        if ($profileCompletion < 80) {
-            return 'complete_profile';
-        }
-
-        if ($activeGoals->isEmpty()) {
-            return 'create_learning_goal';
-        }
-
-        if ($favoriteInstructors->isEmpty() && $upcoming->isEmpty()) {
-            return 'browse_instructors';
-        }
-
-        return 'continue_learning';
+        return ['completion' => $this->profiles->completion($student), 'missing' => $missing];
     }
 }

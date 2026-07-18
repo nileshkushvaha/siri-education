@@ -6,6 +6,8 @@ namespace Tests\Feature\Security;
 
 use App\Enums\StudentStatus;
 use App\Events\Auth\UserApproved;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\Auth\AccountApprovedNotification;
@@ -27,11 +29,21 @@ class RegistrationIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private Country $country;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->artisan('migrate', ['--path' => 'database/settings']);
         $this->enableRegistration();
+        $currency = Currency::factory()->create(['code' => 'INR', 'status' => 'active']);
+        $this->country = Country::factory()->create([
+            'name' => 'United States',
+            'iso2' => 'US',
+            'phone_code' => '+1',
+            'default_currency_id' => $currency->id,
+            'default_timezone' => 'Asia/Kolkata',
+        ]);
     }
 
     // ── Self Registration Enabled / Disabled ──────────────────────────────────
@@ -658,6 +670,8 @@ class RegistrationIntegrationTest extends TestCase
 
     private function validPayload(array $overrides = []): array
     {
+        session()->put('registration.captcha', '7');
+
         return array_merge([
             'first_name' => 'Test',
             'last_name' => 'User',
@@ -665,6 +679,8 @@ class RegistrationIntegrationTest extends TestCase
             'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
             'terms' => '1',
+            'country_id' => $this->country->id,
+            'captcha_answer' => '7',
         ], $overrides);
     }
 }

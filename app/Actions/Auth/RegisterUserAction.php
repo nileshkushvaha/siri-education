@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Models\Country;
 use App\Models\User;
+use App\Services\Phone\PhoneNumberService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,6 +22,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class RegisterUserAction
 {
+    public function __construct(private readonly PhoneNumberService $phones) {}
+
     public function execute(
         array $data,
         string $status = User::STATUS_PENDING,
@@ -47,9 +51,26 @@ final class RegisterUserAction
                 'privacy_accepted_user_agent' => $acceptedAt ? ($data['accepted_user_agent'] ?? null) : null,
             ]);
 
-            if (filled($data['phone'] ?? null)) {
-                $user->profile()->update(['phone' => $data['phone']]);
+            $country = Country::query()->findOrFail($data['country_id']);
+            $profileData = [
+                'country_id' => $country->id,
+                'timezone' => $country->default_timezone ?: 'UTC',
+            ];
+
+            $phone = $this->phones->normalize($data['phone'] ?? null, $data['phone_country_iso2'] ?? null);
+            if ($phone !== null) {
+                $profileData += [
+                    'phone' => $phone->e164,
+                    'phone_country_iso2' => $phone->countryIso2,
+                    'phone_dial_code' => $phone->dialCode,
+                    'phone_national_number' => $phone->nationalNumber,
+                    'phone_e164' => $phone->e164,
+                    'phone_verified_at' => null,
+                    'phone_verification_status' => 'unverified',
+                ];
             }
+
+            $user->profile()->update($profileData);
 
             return $user;
         });

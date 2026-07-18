@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Profile;
 
+use App\Enums\PortalAudience;
+use App\Services\FrontendPortalAudienceResolver;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,16 +18,21 @@ class UpdateProfileRequest extends FormRequest
 
     public function rules(): array
     {
+        $audience = app(FrontendPortalAudienceResolver::class)->resolve($this->user());
+        $studentOnly = Rule::prohibitedIf($audience !== PortalAudience::Student);
+        $instructorOnly = Rule::prohibitedIf($audience !== PortalAudience::Instructor);
+
         return [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
             // Email is frozen — never accepted from the profile form. See
             // UpdateProfileAction, which never writes to users.email.
-            'headline' => ['nullable', 'string', 'max:255'],
-            'designation' => ['nullable', 'string', 'max:255'],
-            'short_bio' => ['nullable', 'string', 'max:160'],
-            'bio' => ['nullable', 'string', 'max:2000'],
+            'headline' => [$instructorOnly, 'nullable', 'string', 'max:255'],
+            'designation' => [$instructorOnly, 'nullable', 'string', 'max:255'],
+            'short_bio' => [$instructorOnly, 'nullable', 'string', 'max:160'],
+            'bio' => [$instructorOnly, 'nullable', 'string', 'max:2000'],
             'phone' => ['nullable', 'string', 'max:20'],
+            'phone_country_iso2' => ['nullable', 'required_with:phone', 'string', 'size:2', Rule::exists('countries', 'iso2')->where('status', 'active')],
             'gender' => ['nullable', Rule::in(['male', 'female', 'other', 'prefer_not_to_say'])],
             'date_of_birth' => ['nullable', 'date', 'before:today', 'after:1900-01-01'],
             'address' => ['nullable', 'string', 'max:500'],
@@ -39,17 +46,17 @@ class UpdateProfileRequest extends FormRequest
             'postal_code' => ['nullable', 'string', 'max:20'],
             'timezone' => ['nullable', 'string', 'timezone:all'],
             'language' => ['nullable', 'string', 'max:10'],
-            'student_academic_level_id' => ['nullable', 'uuid', 'exists:academic_levels,id'],
-            'student_preferred_language_id' => ['nullable', 'integer', 'exists:languages,id'],
-            'preferred_subject_ids' => ['nullable', 'array'],
-            'preferred_subject_ids.*' => ['uuid', 'exists:subjects,id'],
-            'website' => ['nullable', 'url', 'max:255'],
-            'facebook' => ['nullable', 'url', 'max:255'],
-            'twitter' => ['nullable', 'url', 'max:255'],
-            'linkedin' => ['nullable', 'url', 'max:255'],
-            'github' => ['nullable', 'url', 'max:255'],
-            'instagram' => ['nullable', 'url', 'max:255'],
-            'youtube' => ['nullable', 'url', 'max:255'],
+            'student_academic_level_id' => [$studentOnly, 'nullable', 'uuid', 'exists:academic_levels,id'],
+            'student_preferred_language_id' => [$studentOnly, 'nullable', 'integer', 'exists:languages,id'],
+            'preferred_subject_ids' => [$studentOnly, 'nullable', 'array'],
+            'preferred_subject_ids.*' => [$studentOnly, 'uuid', 'exists:subjects,id'],
+            'website' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            'facebook' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            'twitter' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            'linkedin' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            'github' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            'instagram' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            'youtube' => [$instructorOnly, 'nullable', 'url', 'max:255'],
             'email_notifications' => ['nullable', 'boolean'],
             'system_notifications' => ['nullable', 'boolean'],
             'marketing_emails' => ['nullable', 'boolean'],

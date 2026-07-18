@@ -17,6 +17,7 @@ use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
+use App\Contracts\StudentFinancialVerificationGate;
 use App\Models\Booking;
 use App\Models\SubjectTopic;
 use App\Models\User;
@@ -38,6 +39,7 @@ final class StudentBookingService implements StudentBookingServiceInterface
         private readonly BookingRepositoryInterface $repository,
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $teachers,
+        private readonly StudentFinancialVerificationGate $financialVerification,
     ) {}
 
     public function availableTeachers(string $typeKey, string $subject, int $grade): Collection
@@ -58,9 +60,9 @@ final class StudentBookingService implements StudentBookingServiceInterface
         return $this->repository->previousInstructorsForStudent($student->id);
     }
 
-    public function upcomingClasses(User $student): Collection
+    public function upcomingClasses(User $student, ?int $limit = null): Collection
     {
-        return $this->repository->upcomingForUser($student->id);
+        return $this->repository->upcomingForUser($student->id, $limit);
     }
 
     public function bookingHistory(User $student, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator
@@ -133,6 +135,9 @@ final class StudentBookingService implements StudentBookingServiceInterface
     private function bookOccurrence(StudentBookingData $data, CarbonImmutable $startsAt, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null): Booking
     {
         $type = $this->types->requireActiveByKey($data->typeKey);
+
+        $student = User::query()->findOrFail($data->studentId);
+        $this->financialVerification->assertEligible($student, $type);
 
         $this->assertTeacherBookable($data);
         $topic = $this->resolveTopic($data);

@@ -19,6 +19,8 @@
     coverUploading: false,
     coverUploadError: '',
     selectedCountryId: '{{ old('country_id', $user->profile->country_id) }}',
+    selectedPhoneCountry: '{{ old('phone_country_iso2', $user->profile->phone_country_iso2 ?: $user->profile->country?->iso2 ?: 'US') }}',
+    phonePlaceholders: @js($phonePlaceholders),
     states: @js($states->map(fn ($state) => ['id' => $state->id, 'country_id' => $state->country_id, 'name' => $state->name])),
 
     async uploadAvatar(event) {
@@ -78,6 +80,10 @@
     get statesForSelectedCountry() {
         if (!this.selectedCountryId) return [];
         return this.states.filter(s => String(s.country_id) === String(this.selectedCountryId));
+    },
+
+    get phonePlaceholder() {
+        return this.phonePlaceholders[this.selectedPhoneCountry] || 'Enter mobile number';
     }
 }">
 
@@ -148,6 +154,21 @@
         <x-account.profile-completion :percentage="$accountProfileSummary->profileCompletion" :breakdown="$completionBreakdown" />
     </div>
 
+    <section class="mb-6 overflow-hidden rounded-2xl border border-indigo-400/15 bg-gradient-to-r from-indigo-500/[0.10] via-violet-500/[0.05] to-transparent p-5 sm:p-6" aria-labelledby="profile-workspace-title">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-300">{{ $portalAudience === \App\Enums\PortalAudience::Instructor ? 'Instructor profile' : 'Student profile' }}</p>
+                <h1 id="profile-workspace-title" class="mt-1 text-xl font-bold text-white">{{ $portalAudience === \App\Enums\PortalAudience::Instructor ? 'Build trust with a complete teaching profile' : 'Personalize your learning experience' }}</h1>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{{ $portalAudience === \App\Enums\PortalAudience::Instructor ? 'Keep your professional story accurate here, then manage teaching credentials and preferences in instructor setup.' : 'Your academic level, preferred subjects, language, and timezone help us tailor lessons and recommendations.' }}</p>
+            </div>
+            @if($portalAudience === \App\Enums\PortalAudience::Instructor)
+                <a href="{{ route('dashboard.instructor.onboarding') }}" class="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300">Teaching profile setup</a>
+            @else
+                <a href="{{ route('dashboard.learning-goals') }}" class="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] px-4 text-sm font-semibold text-white hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-300">Manage learning goals</a>
+            @endif
+        </div>
+    </section>
+
     {{-- ── MAIN CONTENT ──────────────────────────────────────────────── --}}
     <div>
 
@@ -157,7 +178,7 @@
              a horizontal bar rather than a second vertical sidebar. --}}
         <div class="flex items-center gap-1 overflow-x-auto rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-1.5 mb-6">
             @foreach([
-                ['general',      'General',       'heroicon-user',    'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',             'indigo'],
+                ['general',      'Profile',       'heroicon-user',    'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',             'indigo'],
                 ['security',     'Security',      'heroicon-shield',  'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', 'emerald'],
                 ['notifications','Notifications', 'heroicon-bell',    'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9', 'sky'],
             ] as [$tab, $label, $_, $icon, $color])
@@ -189,7 +210,7 @@
                         @csrf
 
                         {{-- Personal Info --}}
-                        <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mb-5">
+                        <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-5 sm:p-7 mb-5">
                             <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">
                                 <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center flex-shrink-0">
                                     <svg class="w-4.5 h-4.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,26 +227,44 @@
                                 {{-- First Name --}}
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">First Name <span class="text-red-400">*</span></label>
-                                    <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}"
+                                    <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" autocomplete="given-name"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border @error('first_name') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="First name" required>
+                                        placeholder="Enter your first name" required>
                                     @error('first_name')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
                                 </div>
 
                                 {{-- Last Name --}}
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Last Name</label>
-                                    <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}"
+                                    <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" autocomplete="family-name"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="Last name">
+                                        placeholder="Enter your last name">
                                 </div>
 
-                                {{-- Phone --}}
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Phone Number</label>
-                                    <input type="text" name="phone" value="{{ old('phone', $user->profile->phone) }}"
-                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="+91 98765 43210">
+                                {{-- Mobile phone numbering plan is independent of residence/billing country. --}}
+                                <div class="sm:col-span-2 lg:col-span-3">
+                                    <h3 class="text-sm font-semibold text-white mb-3">Contact and regional settings</h3>
+                                    <div class="grid gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                                        <div>
+                                            <label for="phone_country_iso2" class="block text-xs font-semibold text-slate-400 mb-2">Phone country</label>
+                                            <select id="phone_country_iso2" name="phone_country_iso2" x-model="selectedPhoneCountry" autocomplete="tel-country-code" class="w-full min-h-11 px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500/30">
+                                                @foreach($countries as $country)
+                                                    <option value="{{ $country->iso2 }}" {{ old('phone_country_iso2', $user->profile->phone_country_iso2 ?: $user->profile->country?->iso2 ?: 'US') === $country->iso2 ? 'selected' : '' }}>{{ $country->name }} {{ $country->phone_code }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="phone" class="block text-xs font-semibold text-slate-400 mb-2">Mobile number</label>
+                                            <input id="phone" type="tel" name="phone" value="{{ old('phone', $user->profile->phone_national_number) }}" autocomplete="tel-national" maxlength="20"
+                                                class="w-full min-h-11 px-4 py-3 rounded-xl bg-white/[0.05] border @error('phone') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500/30" :placeholder="phonePlaceholder">
+                                            @error('phone')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
+                                        </div>
+                                    </div>
+                                    @if($user->profile->phone_e164)
+                                        <p class="mt-3 text-xs {{ $user->profile->phone_verified_at ? 'text-emerald-300' : 'text-amber-300' }}" role="status">
+                                            {{ app(\App\Services\Phone\PhoneNumberService::class)->masked($user->profile->phone_e164) }} — {{ $user->profile->phone_verified_at ? 'Verified' : 'Not verified' }}
+                                        </p>
+                                    @endif
                                 </div>
 
                                 {{-- Email (frozen — cannot be changed) --}}
@@ -258,18 +297,19 @@
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Date of Birth</label>
                                     <input type="date" name="date_of_birth"
                                         value="{{ old('date_of_birth', $user->profile->date_of_birth?->format('Y-m-d')) }}"
-                                        max="{{ now()->subYears(5)->format('Y-m-d') }}"
+                                        max="{{ now()->subDay()->format('Y-m-d') }}" autocomplete="bday"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all [color-scheme:dark]">
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
+                            @if($portalAudience === \App\Enums\PortalAudience::Instructor)
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5 border-t border-white/[0.05] pt-5">
                                 {{-- Headline --}}
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Headline</label>
                                     <input type="text" name="headline" value="{{ old('headline', $user->profile->headline) }}"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="e.g. Senior Instructor">
+                                        placeholder="e.g. Senior Mathematics Instructor">
                                 </div>
 
                                 {{-- Designation --}}
@@ -277,7 +317,7 @@
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Designation</label>
                                     <input type="text" name="designation" value="{{ old('designation', $user->profile->designation) }}"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="e.g. Head of Mathematics">
+                                        placeholder="e.g. Mathematics Instructor">
                                 </div>
 
                                 {{-- Short Bio --}}
@@ -285,7 +325,7 @@
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Short Bio</label>
                                     <input type="text" name="short_bio" value="{{ old('short_bio', $user->profile->short_bio) }}" maxlength="160"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="A one-line summary (max 160 characters)">
+                                        placeholder="Summarize the subjects and levels you teach">
                                 </div>
 
                                 {{-- Bio --}}
@@ -293,14 +333,16 @@
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Bio</label>
                                     <textarea name="bio" rows="4" maxlength="2000"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="Tell others about yourself">{{ old('bio', $user->profile->bio) }}</textarea>
+                                        placeholder="Describe your teaching experience, approach, and what students can expect">{{ old('bio', $user->profile->bio) }}</textarea>
                                 </div>
+                                <div class="sm:col-span-2 rounded-xl border border-indigo-400/15 bg-indigo-500/[0.05] p-4 text-sm leading-6 text-slate-300">Teaching philosophy, subjects, education levels, languages, experience, education, certifications, introduction video, and verification documents are managed in <a href="{{ route('dashboard.instructor.onboarding') }}" class="font-semibold text-indigo-300 hover:text-indigo-200">Teaching profile setup</a>.</div>
                             </div>
+                            @endif
                         </div>
 
-                        @if($user->hasRole('student') || ! $user->hasRole('instructor'))
+                        @if($portalAudience === \App\Enums\PortalAudience::Student)
                             {{-- Student Preferences --}}
-                            <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mb-5">
+                            <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-5 sm:p-7 mb-5">
                                 <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
                                         <svg class="w-4.5 h-4.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,7 +350,7 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <h2 class="text-base font-semibold text-white">Student Preferences</h2>
+                                        <h2 class="text-base font-semibold text-white">Learning Profile</h2>
                                         <p class="text-xs text-slate-400">Used for learning goals, dashboard guidance, and future instructor recommendations</p>
                                     </div>
                                 </div>
@@ -329,7 +371,7 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-400 mb-2">Preferred Teaching Language</label>
+                                        <label class="block text-xs font-semibold text-slate-400 mb-2">Preferred Lesson Language</label>
                                         <select name="student_preferred_language_id"
                                             class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border @error('student_preferred_language_id') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
                                             <option value="" class="bg-[#0d1117]">— Select preferred language —</option>
@@ -367,8 +409,8 @@
                             </div>
                         @endif
 
-                        {{-- Address --}}
-                        <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mb-5">
+                        {{-- Regional settings and address --}}
+                        <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-5 sm:p-7 mb-5">
                             <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">
                                 <div class="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center flex-shrink-0">
                                     <svg class="w-4.5 h-4.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,33 +418,38 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <h2 class="text-base font-semibold text-white">Address</h2>
-                                    <p class="text-xs text-slate-400">Your location and mailing address — integrates with the Countries/States masters</p>
+                                    <h2 class="text-base font-semibold text-white">Region &amp; Timezone</h2>
+                                    <p class="text-xs text-slate-400">Controls lesson times{{ $portalAudience === \App\Enums\PortalAudience::Student ? ', pricing, and billing currency' : ' and regional availability' }}</p>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                                 <div class="sm:col-span-2 lg:col-span-3">
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Street Address</label>
-                                    <input type="text" name="address" value="{{ old('address', $user->profile->address) }}"
+                                    <input type="text" name="address" value="{{ old('address', $user->profile->address) }}" autocomplete="street-address"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                        placeholder="123 Main Street, Apt 4B">
+                                        placeholder="Enter street address and apartment or unit">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Country</label>
-                                    <select name="country_id" x-model="selectedCountryId"
-                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
+                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Country of residence</label>
+                                    @if($billingCountryChangeBlocked)<input type="hidden" name="country_id" value="{{ $user->profile->country_id }}">@endif
+                                    <select name="country_id" x-model="selectedCountryId" autocomplete="country" @disabled($billingCountryChangeBlocked)
+                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border @error('country_id') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none disabled:cursor-not-allowed disabled:opacity-60">
                                         <option value="" class="bg-[#0d1117]">— Select Country —</option>
                                         @foreach($countries as $country)
                                             <option value="{{ $country->id }}" class="bg-[#0d1117]">
-                                                {{ $country->flag }} {{ $country->name }}
+                                                {{ $country->flag }} {{ $country->name }} — {{ $country->defaultCurrency->code }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    @if($portalAudience === \App\Enums\PortalAudience::Student)
+                                        <p class="mt-2 text-xs {{ $billingCountryChangeBlocked ? 'text-amber-300' : 'text-slate-400' }}">{{ $billingCountryChangeBlocked ? 'Locked because active classes or wallet history exist. Contact support to request a change.' : 'Your billing currency is derived from this country.' }}</p>
+                                    @endif
+                                    @error('country_id')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">State / Province</label>
-                                    <select name="state_id"
+                                    <select name="state_id" autocomplete="address-level1"
                                         class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
                                         <option value="" class="bg-[#0d1117]">— Select State —</option>
                                         <template x-for="state in statesForSelectedCountry" :key="state.id">
@@ -413,18 +460,34 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">City</label>
-                                    <input type="text" name="city" value="{{ old('city', $user->profile->city) }}"
-                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all" placeholder="Mumbai">
+                                    <input type="text" name="city" value="{{ old('city', $user->profile->city) }}" autocomplete="address-level2"
+                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all" placeholder="Enter your city">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-2">Postal Code</label>
-                                    <input type="text" name="postal_code" value="{{ old('postal_code', $user->profile->postal_code) }}"
-                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all" placeholder="400001">
+                                    <input type="text" name="postal_code" value="{{ old('postal_code', $user->profile->postal_code) }}" autocomplete="postal-code"
+                                        class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all" placeholder="Enter postal or ZIP code">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Timezone <span class="text-red-400">*</span></label>
+                                    <select name="timezone" required class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border @error('timezone') border-red-500/50 @else border-white/[0.05] @enderror text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 appearance-none">
+                                        <option value="">— Select your timezone —</option>
+                                        @foreach($timezones as $timezone)<option value="{{ $timezone }}" @selected(old('timezone', $user->profile->timezone) === $timezone)>{{ str_replace('_', ' ', $timezone) }}</option>@endforeach
+                                    </select>
+                                    <p class="mt-2 text-xs text-slate-400">All lesson schedules are displayed in this timezone.</p>
+                                    @error('timezone')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-2">Interface Language</label>
+                                    <select name="language" class="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.05] text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 appearance-none">
+                                        @foreach($languages as $language)<option value="{{ $language->code }}" @selected(old('language', $user->profile->language ?: 'en') === $language->code)>{{ $language->name }}</option>@endforeach
+                                    </select>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- Social Links --}}
+                        @if($portalAudience === \App\Enums\PortalAudience::Instructor)
+                        {{-- Public professional links --}}
                         <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mb-5">
                             <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">
                                 <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center flex-shrink-0">
@@ -433,8 +496,8 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <h2 class="text-base font-semibold text-white">Social Links</h2>
-                                    <p class="text-xs text-slate-400">Shown on your profile if visibility allows</p>
+                                    <h2 class="text-base font-semibold text-white">Professional Links</h2>
+                                    <p class="text-xs text-slate-400">Optional links shown on your public instructor profile when visibility allows</p>
                                 </div>
                             </div>
 
@@ -457,15 +520,33 @@
                                 @endforeach
                             </div>
                         </div>
+                        @endif
 
                         <div class="flex items-center gap-3">
                             <button type="submit"
                                 class="px-7 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-[.98]">
-                                Save Changes
+                                Save profile
                             </button>
                             <span class="text-xs text-slate-400">Changes are saved immediately</span>
                         </div>
                     </form>
+
+                    @if($portalAudience === \App\Enums\PortalAudience::Student && $user->profile->phone_e164 && ! $user->profile->phone_verified_at)
+                        <div class="rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.06] p-5 mb-5" aria-labelledby="phone-verification-title">
+                            <h2 id="phone-verification-title" class="text-base font-semibold text-white">Verify mobile number</h2>
+                            <p class="mt-2 text-sm text-slate-300">Verify {{ app(\App\Services\Phone\PhoneNumberService::class)->masked($user->profile->phone_e164) }} before your first paid booking.</p>
+                            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <form method="POST" action="{{ route('profile.phone.verification.send') }}">@csrf
+                                    <button class="min-h-11 rounded-xl border border-indigo-400/30 px-4 text-sm font-semibold text-indigo-200">Send code</button>
+                                </form>
+                                <form method="POST" action="{{ route('profile.phone.verification.verify') }}" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end">@csrf
+                                    <div class="flex-1"><label for="otp" class="block text-xs font-semibold text-slate-300 mb-2">Six-digit code</label><input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="w-full min-h-11 rounded-xl bg-white/[0.05] border border-white/10 px-4 text-white" required></div>
+                                    <button class="min-h-11 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white">Verify number</button>
+                                </form>
+                            </div>
+                            @error('otp')<p class="mt-2 text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
+                        </div>
+                    @endif
 
                     {{-- Profile Visibility --}}
                     <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mt-5">

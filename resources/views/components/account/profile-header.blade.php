@@ -12,9 +12,9 @@
             {{ $coverActions ?? '' }}
         </div>
 
-        <div class="p-6 sm:p-8 pt-0">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 -mt-10 sm:-mt-12">
-                <div class="relative group flex-shrink-0">
+        <div class="relative z-10 p-6 pt-0 sm:p-8 sm:pt-0">
+            <div class="-mt-10 flex flex-col items-start gap-5 sm:-mt-12 sm:flex-row sm:items-start sm:gap-6">
+                <div class="relative z-20 group flex-shrink-0">
                     <div class="w-20 h-20 rounded-2xl overflow-hidden border-4 border-surface-dark bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-xl shadow-indigo-500/20">
                         {{ $avatar ?? '' }}
                         @if(!isset($avatar))
@@ -31,7 +31,9 @@
                     @endif
                 </div>
 
-                <div class="flex-1 min-w-0">
+                {{-- On wider layouts only the avatar overlaps the cover. Keeping
+                     identity text below the cover preserves contrast for every image. --}}
+                <div class="min-w-0 flex-1 sm:mt-14">
                     <div class="flex flex-wrap items-center gap-3 mb-1">
                         <h1 class="text-2xl font-bold text-white">{{ $summary->name }}</h1>
                         @if($summary->emailVerified)
@@ -57,7 +59,7 @@
                     {{ $slot ?? '' }}
                 </div>
 
-                <div class="hidden lg:flex flex-col items-end gap-2 flex-shrink-0">
+                <div class="hidden flex-shrink-0 flex-col items-end gap-2 lg:mt-14 lg:flex">
                     {{ $actions ?? '' }}
                     <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <span class="w-2 h-2 rounded-full {{ $summary->online ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600' }}"></span>

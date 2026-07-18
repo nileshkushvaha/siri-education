@@ -9,6 +9,7 @@ use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\HomeworkAssignment;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class HomeworkService implements HomeworkServiceInterface
@@ -26,6 +27,11 @@ final class HomeworkService implements HomeworkServiceInterface
     public function statsForStudent(int $studentId): object
     {
         return $this->repository->statsForStudent($studentId);
+    }
+
+    public function attentionForStudent(int $studentId, int $limit = 3): Collection
+    {
+        return $this->repository->attentionForStudent($studentId, $limit);
     }
 
     public function submit(HomeworkAssignment $assignment, string $submissionText): HomeworkAssignment

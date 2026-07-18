@@ -18,7 +18,13 @@
         trap(event) { const nodes = Array.from(this.$refs.drawer.querySelectorAll('a[href],button:not([disabled])')); if (!nodes.length) return; const first = nodes[0], last = nodes[nodes.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }
      }"
      @keydown.escape.window="closeDrawer()">
-    <x-account.portal-header :notification-count="$accountNotificationCount ?? 0" :profile-summary="$accountProfileSummary ?? null" />
+    <x-account.portal-header
+        :notification-count="$accountNotificationCount ?? 0"
+        :profile-summary="$accountProfileSummary ?? null"
+        :wallet-enabled="$accountWalletEnabled ?? false"
+        :wallet-summary="$accountWalletSummary ?? null"
+        :referral-enabled="$accountReferralEnabled ?? false"
+    />
 
     <div x-cloak x-show="drawerOpen" class="fixed inset-0 z-50 lg:hidden" role="presentation">
         <div class="absolute inset-0 bg-black/70" @click="closeDrawer()" aria-hidden="true"></div>

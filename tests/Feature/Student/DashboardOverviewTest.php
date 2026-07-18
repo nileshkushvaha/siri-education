@@ -64,7 +64,7 @@ class DashboardOverviewTest extends TestCase
             ->assertDontSeeLivewire(InstructorDashboardOverview::class);
     }
 
-    public function test_stats_reflect_upcoming_classes_and_pending_homework(): void
+    public function test_dashboard_reflects_the_next_lesson_and_overdue_homework(): void
     {
         $type = BookingType::factory()->create(['name' => 'English Tutoring']);
         $teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
@@ -86,7 +86,7 @@ class DashboardOverviewTest extends TestCase
         Livewire::actingAs($this->student)
             ->test(DashboardOverview::class)
             ->assertSee('English Tutoring')
-            ->assertSet('upcomingCount', 1)
-            ->assertSet('overdueHomeworkCount', 1);
+            ->assertSee('Your next lesson')
+            ->assertSee('1 overdue');
     }
 }

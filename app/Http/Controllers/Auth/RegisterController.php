@@ -36,7 +36,7 @@ final class RegisterController extends Controller
             );
         } catch (RegistrationException $e) {
             return back()
-                ->withInput($request->only('first_name', 'last_name', 'email', 'phone', 'referral_code'))
+                ->withInput($request->only('first_name', 'last_name', 'email', 'phone', 'phone_country_iso2', 'country_id', 'referral_code'))
                 ->with('error', $e->getMessage());
         }
 

@@ -26,6 +26,8 @@ class ProfileFrontendRenderingTest extends TestCase
     public function test_profile_page_renders_the_general_tab_fields(): void
     {
         $user = $this->activeUser();
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $user->assignRole('instructor');
         $user->profile->update(['headline' => 'Senior Instructor', 'bio' => 'Hello world']);
 
         $content = $this->actingAs($user)->get(route('profile.show'))->getContent();
@@ -39,12 +41,46 @@ class ProfileFrontendRenderingTest extends TestCase
     public function test_profile_page_renders_social_link_fields(): void
     {
         $user = $this->activeUser();
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $user->assignRole('instructor');
 
         $content = $this->actingAs($user)->get(route('profile.show'))->getContent();
 
         foreach (['website', 'facebook', 'twitter', 'linkedin', 'github', 'instagram', 'youtube'] as $field) {
             $this->assertStringContainsString("name=\"{$field}\"", $content);
         }
+    }
+
+    public function test_student_and_instructor_profile_fields_are_audience_isolated(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $student = $this->activeUser();
+        $student->assignRole('student');
+        $instructor = $this->activeUser();
+        $instructor->assignRole('instructor');
+
+        $studentContent = $this->actingAs($student)->get(route('profile.show'))->getContent();
+        $instructorContent = $this->actingAs($instructor)->get(route('profile.show'))->getContent();
+
+        $this->assertStringContainsString('Learning Profile', $studentContent);
+        $this->assertStringNotContainsString('name="headline"', $studentContent);
+        $this->assertStringContainsString('Teaching profile setup', $instructorContent);
+        $this->assertStringNotContainsString('name="student_academic_level_id"', $instructorContent);
+    }
+
+    public function test_profile_update_rejects_fields_from_the_other_audience(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $student = $this->activeUser();
+        $student->assignRole('student');
+
+        $this->actingAs($student)->post(route('profile.update'), [
+            'first_name' => $student->first_name,
+            'headline' => 'This must not become a public instructor headline',
+        ])->assertSessionHasErrors('headline');
+
+        $this->assertNull($student->profile->fresh()->headline);
     }
 
     public function test_profile_page_renders_visibility_controls(): void

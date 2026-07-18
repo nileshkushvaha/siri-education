@@ -7,6 +7,8 @@ namespace App\Livewire\Frontend\Auth;
 use App\Exceptions\Auth\RegistrationException;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Livewire\Frontend\Auth\Concerns\ThrottlesLivewireRequests;
+use App\Models\Country;
+use App\Services\Auth\RegistrationCaptchaService;
 use App\Services\Auth\RegistrationService;
 use App\Services\PortalResolver;
 use Illuminate\Contracts\View\View;
@@ -32,11 +34,24 @@ final class RegisterForm extends Component
 
     public ?string $phone = '';
 
+    public string $phone_country_iso2 = 'US';
+
+    public bool $phone_country_was_manually_changed = false;
+
+    public ?int $country_id = null;
+
     public string $password = '';
 
     public string $password_confirmation = '';
 
     public bool $terms = false;
+
+    public string $captcha_answer = '';
+
+    public string $captchaQuestion = '';
+
+    /** @var array<int, array{id: int, iso2: string, label: string, currency: string, dial_code: string}> */
+    public array $countries = [];
 
     public ?string $referral_code = '';
 
@@ -50,14 +65,57 @@ final class RegisterForm extends Component
 
     public ?string $banner = null;
 
-    public function mount(): void
+    public function mount(RegistrationCaptchaService $captcha): void
     {
+        $this->countries = Country::query()->active()
+            ->whereHas('defaultCurrency', fn ($query) => $query->active())
+            ->with('defaultCurrency:id,code')
+            ->orderBy('sort_order')->orderBy('name')
+            ->get(['id', 'iso2', 'name', 'phone_code', 'default_currency_id'])
+            ->map(fn (Country $country) => [
+                'id' => $country->id,
+                'iso2' => $country->iso2,
+                'label' => $country->name,
+                'currency' => $country->defaultCurrency->code,
+                'dial_code' => $country->phone_code,
+            ])->all();
+        $us = collect($this->countries)->firstWhere('iso2', 'US');
+        $this->country_id = isset($us['id']) ? (int) $us['id'] : null;
+        $this->captchaQuestion = $captcha->issue();
+
         $ref = request()->query('ref');
 
         if (is_string($ref) && trim($ref) !== '') {
             $this->referral_code = mb_substr(trim($ref), 0, 32);
             $this->prefilledReferralCode = strtoupper($this->referral_code);
         }
+    }
+
+    public function updatedCountryId(): void
+    {
+        if (! $this->phone_country_was_manually_changed) {
+            $country = collect($this->countries)->firstWhere('id', $this->country_id);
+            $this->phone_country_iso2 = $country['iso2'] ?? 'US';
+        }
+    }
+
+    public function updatedPhoneCountryIso2(): void
+    {
+        $this->phone_country_was_manually_changed = true;
+    }
+
+    public function useResidenceCountry(): void
+    {
+        $country = collect($this->countries)->firstWhere('id', $this->country_id);
+        $this->phone_country_iso2 = $country['iso2'] ?? 'US';
+        $this->phone_country_was_manually_changed = false;
+    }
+
+    public function refreshCaptcha(RegistrationCaptchaService $captcha): void
+    {
+        $this->captcha_answer = '';
+        $this->resetValidation('captcha_answer');
+        $this->captchaQuestion = $captcha->issue();
     }
 
     /** @return array<string, mixed> */
@@ -103,8 +161,11 @@ final class RegisterForm extends Component
                     'last_name' => $this->last_name,
                     'email' => $this->email,
                     'phone' => $this->phone,
+                    'phone_country_iso2' => $this->phone_country_iso2,
+                    'country_id' => $this->country_id,
                     'password' => $this->password,
                     'terms' => $this->terms,
+                    'captcha_answer' => $this->captcha_answer,
                     'referral_code' => $this->referral_code,
                     'referral_code_source' => $this->referral_code !== null
                         && $this->prefilledReferralCode === strtoupper($this->referral_code)

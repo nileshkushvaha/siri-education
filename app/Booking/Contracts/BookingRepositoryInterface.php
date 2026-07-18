@@ -69,7 +69,7 @@ interface BookingRepositoryInterface
     public function activeBetween(int $instructorId, CarbonImmutable $from, CarbonImmutable $to): Collection;
 
     /** @return Collection<int, Booking> */
-    public function upcomingForUser(int $userId): Collection;
+    public function upcomingForUser(int $userId, ?int $limit = null): Collection;
 
     /** @return LengthAwarePaginator<int, Booking> full history (any status), newest first */
     public function paginatedForUser(int $userId, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator;

@@ -355,7 +355,7 @@ $faqs = [
 
                     <div class="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
                         <span class="text-xl font-bold text-slate-900">{{ $course['price'] }}</span>
-                        <a href="/register" class="btn-indigo px-5 py-2.5 rounded-xl text-white text-sm font-bold">Enroll Now</a>
+                        <a href="{{ route('auth.register') }}" class="btn-indigo px-5 py-2.5 rounded-xl text-white text-sm font-bold">Enroll Now</a>
                     </div>
                 </div>
             </div>
@@ -398,7 +398,7 @@ $faqs = [
                     <span>👥 {{ $tutor['students'] }}</span>
                 </div>
 
-                <a href="/register" class="block btn-indigo px-4 py-2.5 rounded-xl text-white text-xs font-bold w-full opacity-90 group-hover:opacity-100 transition-opacity">Book Session</a>
+                <a href="{{ route('auth.register') }}" class="block btn-indigo px-4 py-2.5 rounded-xl text-white text-xs font-bold w-full opacity-90 group-hover:opacity-100 transition-opacity">Book Session</a>
             </div>
             @endforeach
         </div>
@@ -595,7 +595,7 @@ $faqs = [
             Join thousands of students already learning with our expert tutors. Start your personalised journey today.
         </p>
         <div class="flex flex-wrap justify-center gap-4">
-            <a href="/register" class="btn-amber px-10 py-4 rounded-2xl text-white font-bold text-base shadow-2xl">
+            <a href="{{ route('auth.register') }}" class="btn-amber px-10 py-4 rounded-2xl text-white font-bold text-base shadow-2xl">
                 Get Started Free →
             </a>
             <a href="#" class="bg-white/15 border border-white/30 px-10 py-4 rounded-2xl text-white font-semibold text-base hover:bg-white/25 transition-colors backdrop-blur">

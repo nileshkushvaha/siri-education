@@ -31,6 +31,7 @@ use App\Http\Controllers\Instructor\InstructorQualityInsightsController;
 use App\Http\Controllers\NewsletterUnsubscribeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\Profile\PhoneVerificationController;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\Profile\PublicProfileController;
 use App\Http\Controllers\Profile\SecurityController;
@@ -114,8 +115,8 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     // POST shares the 'login' limiter the Livewire form already applies
     // via ThrottlesLivewireRequests, so the threshold and settings
     // toggle live in exactly one place (AppServiceProvider).
-    Route::get('/register', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
+    Route::get('/student-registration', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
+    Route::post('/student-registration', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
 
     // Login — EnsureLoginEnabled blocks POST when login is disabled
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');
@@ -150,6 +151,9 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
         return back()->with('success', 'Verification email sent! Please check your inbox.');
     })->middleware('throttle:3,1')->name('verification.resend.guest');
 });
+
+// Preserve old bookmarks while keeping student-registration canonical.
+Route::redirect('/register', '/student-registration', 301);
 
 // ── Auth — requires authenticated user ──────────────────────────────
 Route::name('auth.')->middleware('auth')->group(function (): void {
@@ -294,6 +298,8 @@ Route::prefix('profile')->name('profile.')->middleware([
     Route::post('/cover', [ProfileController::class, 'uploadCover'])->name('cover.upload');
     Route::delete('/cover', [ProfileController::class, 'deleteCover'])->name('cover.delete');
     Route::post('/visibility', [ProfileController::class, 'updateVisibility'])->name('visibility.update');
+    Route::post('/phone/verification/send', [PhoneVerificationController::class, 'send'])->name('phone.verification.send');
+    Route::post('/phone/verification/verify', [PhoneVerificationController::class, 'verify'])->name('phone.verification.verify');
 
     // Session Management
     Route::delete('/sessions/all', [SessionController::class, 'revokeAll'])->name('sessions.revoke-all');

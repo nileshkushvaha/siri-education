@@ -45,7 +45,7 @@ $countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingd
 
                     {{-- CTAs --}}
                     <div class="flex flex-wrap gap-4 mb-10">
-                        <a href="/register" class="btn-amber px-8 py-4 rounded-2xl text-white font-bold text-base shadow-xl">
+                        <a href="{{ route('auth.register') }}" class="btn-amber px-8 py-4 rounded-2xl text-white font-bold text-base shadow-xl">
                             Find Tutor Now 🚀
                         </a>
                         <a href="#how-it-works" class="glass-md px-8 py-4 rounded-2xl text-white font-semibold text-base hover:bg-white/15 transition-colors flex items-center gap-2">
@@ -212,7 +212,7 @@ $countries = ['🇮🇳 India', '🇺🇸 United States', '🇬🇧 United Kingd
                 @if(Route::has('auth.register'))
                 <a href="{{ route('auth.register') }}" class="btn-amber px-5 py-2 rounded-xl text-white font-bold text-sm">Find Tutors →</a>
                 @else
-                <a href="/register" class="btn-amber px-5 py-2 rounded-xl text-white font-bold text-sm">Find Tutors →</a>
+                <a href="{{ route('auth.register') }}" class="btn-amber px-5 py-2 rounded-xl text-white font-bold text-sm">Find Tutors →</a>
                 @endif
             </div>
         </div>

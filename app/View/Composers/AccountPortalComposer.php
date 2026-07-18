@@ -6,6 +6,7 @@ namespace App\View\Composers;
 
 use App\DTOs\AccountProfileSummaryData;
 use App\Services\Account\AccountMenuService;
+use App\Services\Account\AccountWalletSummaryService;
 use App\Services\Account\PortalBadgeService;
 use App\Services\FrontendPortalAudienceResolver;
 use App\Services\Profile\ProfileService;
@@ -23,6 +24,7 @@ final class AccountPortalComposer
         private readonly ProfileService $profileService,
         private readonly PortalBadgeService $badges,
         private readonly FrontendPortalAudienceResolver $audiences,
+        private readonly AccountWalletSummaryService $wallets,
     ) {}
 
     public function compose(View $view): void
@@ -35,15 +37,19 @@ final class AccountPortalComposer
 
         $user->loadMissing('profile.media');
         $badges = $this->badges->for($user);
+        $audience = $this->audiences->resolve($user);
 
         $view->with([
-            'accountAudience' => $this->audiences->resolve($user),
+            'accountAudience' => $audience,
             'accountMenu' => $this->menuService->items($user, $badges),
             'accountProfileSummary' => AccountProfileSummaryData::fromUser(
                 $user,
                 $this->profileService->completion($user),
             ),
             'accountNotificationCount' => $badges['notifications'],
+            'accountWalletEnabled' => $this->wallets->enabledFor($audience),
+            'accountWalletSummary' => $this->wallets->for($user, $audience),
+            'accountReferralEnabled' => $this->wallets->referralEnabledFor($audience),
         ]);
     }
 }

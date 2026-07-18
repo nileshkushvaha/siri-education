@@ -19,6 +19,7 @@ use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
+use App\Contracts\StudentFinancialVerificationGate;
 use App\Models\Booking;
 use App\Models\BookingType;
 use App\Models\User;
@@ -41,6 +42,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly TeacherCandidateRepositoryInterface $candidates,
         private readonly TeacherAssignmentServiceInterface $assigner,
         private readonly AvailabilityServiceInterface $availability,
+        private readonly StudentFinancialVerificationGate $financialVerification,
     ) {}
 
     public function availableDates(
@@ -97,6 +99,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
     {
         $this->assertAuthenticated();
         $type = $this->types->requireActiveByKey($data->typeKey);
+        $this->financialVerification->assertEligible(auth()->user(), $type);
         $teacherId = $this->resolveTeacher($data, $type);
 
         return $this->bookings->request($this->occurrenceData($data, $type, $data->startsAt, $teacherId));
@@ -111,6 +114,8 @@ final class WizardBookingService implements WizardBookingServiceInterface
     {
         $this->assertAuthenticated();
         $type = $this->types->requireActiveByKey($data->typeKey);
+
+        $this->financialVerification->assertEligible(auth()->user(), $type);
 
         if (! $type->is_paid) {
             throw new BookingException('Recurring sessions are only available for paid booking types.');

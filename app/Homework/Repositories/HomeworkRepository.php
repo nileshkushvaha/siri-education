@@ -8,6 +8,7 @@ use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\HomeworkAssignment;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 final class HomeworkRepository implements HomeworkRepositoryInterface
 {
@@ -41,5 +42,17 @@ final class HomeworkRepository implements HomeworkRepositoryInterface
                 ],
             )
             ->first();
+    }
+
+    public function attentionForStudent(int $studentId, int $limit = 3): Collection
+    {
+        return HomeworkAssignment::query()
+            ->forStudent($studentId)
+            ->where('status', HomeworkStatus::Pending)
+            ->with('booking.type')
+            ->orderByRaw('due_at < ? desc', [now()])
+            ->orderBy('due_at')
+            ->limit($limit)
+            ->get();
     }
 }

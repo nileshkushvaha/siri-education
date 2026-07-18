@@ -28,6 +28,12 @@ class UserProfile extends Model implements HasMedia
         'instructor_teaching_experience_summary',
         'instructor_teaching_philosophy',
         'phone',
+        'phone_country_iso2',
+        'phone_dial_code',
+        'phone_national_number',
+        'phone_e164',
+        'phone_verified_at',
+        'phone_verification_status',
         'gender',
         'date_of_birth',
         'address',
@@ -72,6 +78,7 @@ class UserProfile extends Model implements HasMedia
     {
         return [
             'date_of_birth' => 'date',
+            'phone_verified_at' => 'datetime',
             'notification_preferences' => 'array',
             'show_email' => 'boolean',
             'show_phone' => 'boolean',
@@ -179,6 +186,7 @@ class UserProfile extends Model implements HasMedia
         return LogOptions::defaults()
             ->useLogName('profile')
             ->logFillable()
+            ->logExcept(['phone', 'phone_dial_code', 'phone_national_number', 'phone_e164'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges();
     }

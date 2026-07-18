@@ -9,6 +9,7 @@ use App\Support\Concerns\PreventsHardDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -52,6 +53,11 @@ class ReferralAttribution extends Model
     public function referralCode(): BelongsTo
     {
         return $this->belongsTo(ReferralCode::class);
+    }
+
+    public function rewards(): HasMany
+    {
+        return $this->hasMany(ReferralReward::class, 'attribution_id');
     }
 
     public function getActivitylogOptions(): LogOptions

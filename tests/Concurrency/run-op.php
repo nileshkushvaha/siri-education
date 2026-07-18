@@ -28,6 +28,8 @@ use App\Models\InstructorWithdrawalRequest;
 use App\Models\Lesson;
 use App\Models\LessonFinancialDisposition;
 use App\Models\LessonReviewEligibility;
+use App\Models\ReferralAttribution;
+use App\Models\ReferralCode;
 use App\Models\ReferralReward;
 use App\Models\User;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
@@ -435,6 +437,70 @@ try {
                 ->reevaluateLesson($lesson, $actor, 'concurrency_test_invalidation');
 
             return ['status' => $result?->status?->value, 'reversal_ledger_entry_id' => $result?->reversal_ledger_entry_id];
+        })(),
+
+        // Phase 19E — racing admin decisions on the same reward. Losers
+        // throw ReferralException (ok:false), which IS the correct
+        // outcome; the assertions live in the test class.
+        'referral-approve-reward' => (function () use ($args) {
+            $reward = ReferralReward::query()->findOrFail($args['reward_id']);
+            $admin = User::query()->findOrFail($args['admin_id']);
+
+            $result = app(ReferralRewardServiceInterface::class)
+                ->approveHeldReward($reward, $admin, 'Concurrency approval.');
+
+            return ['status' => $result->status->value, 'ledger_entry_id' => $result->wallet_ledger_entry_id];
+        })(),
+
+        'referral-reject-reward' => (function () use ($args) {
+            $reward = ReferralReward::query()->findOrFail($args['reward_id']);
+            $admin = User::query()->findOrFail($args['admin_id']);
+
+            $result = app(ReferralRewardServiceInterface::class)
+                ->rejectHeldReward($reward, $admin, 'Concurrency rejection.');
+
+            return ['status' => $result->status->value];
+        })(),
+
+        'referral-retry-reward' => (function () use ($args) {
+            $reward = ReferralReward::query()->findOrFail($args['reward_id']);
+            $admin = User::query()->findOrFail($args['admin_id']);
+
+            $result = app(ReferralRewardServiceInterface::class)
+                ->retryFailedCredit($reward, $admin, 'Concurrency retry.');
+
+            return ['status' => $result->status->value, 'ledger_entry_id' => $result->wallet_ledger_entry_id];
+        })(),
+
+        'referral-complete-reversal' => (function () use ($args) {
+            $reward = ReferralReward::query()->findOrFail($args['reward_id']);
+            $admin = User::query()->findOrFail($args['admin_id']);
+
+            $result = app(ReferralRewardServiceInterface::class)
+                ->completeRequiredReversal($reward, $admin, 'Concurrency reversal.');
+
+            return ['status' => $result->status->value, 'reversal_ledger_entry_id' => $result->reversal_ledger_entry_id];
+        })(),
+
+        'referral-correct-attribution' => (function () use ($args) {
+            $attribution = ReferralAttribution::query()->findOrFail($args['attribution_id']);
+            $newReferrer = User::query()->findOrFail($args['new_referrer_id']);
+            $admin = User::query()->findOrFail($args['admin_id']);
+
+            $result = app(ReferralAttributionServiceInterface::class)
+                ->correctAttribution($attribution, $newReferrer, $admin, 'Concurrency correction.');
+
+            return ['referrer_id' => $result->referrer_id];
+        })(),
+
+        'referral-disable-code' => (function () use ($args) {
+            $code = ReferralCode::query()->findOrFail($args['code_id']);
+            $admin = User::query()->findOrFail($args['admin_id']);
+
+            $result = app(ReferralCodeServiceInterface::class)
+                ->disable($code, $admin, 'Concurrency disable.');
+
+            return ['status' => $result->status->value];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

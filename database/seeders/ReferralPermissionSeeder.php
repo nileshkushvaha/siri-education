@@ -37,10 +37,26 @@ class ReferralPermissionSeeder extends Seeder
         // ReferralCampaignService both authorize against these).
         'ViewReferralCampaigns',
         'ManageReferralCampaigns',
+        // Phase 19E — day-to-day reward operations. View + the decisions
+        // that move money FORWARD along its normal path (approve a held
+        // reward, reject one, retry a failed credit).
+        'ViewReferralRewards',
+        'ViewReferralCodes',
+        'ApproveReferralRewards',
+        'RejectReferralRewards',
+        'RetryReferralRewardCredits',
     ];
 
+    /**
+     * Deliberately granted to NO role: reversing credited money,
+     * re-owning an attribution, and disabling a student's code are
+     * high-risk overrides a super_admin must consciously grant (and
+     * always has via Gate::before()).
+     */
     private const array UNGRANTED_PERMISSIONS = [
         'DisableReferralCodes',
+        'CorrectReferralAttribution',
+        'ReverseReferralRewards',
     ];
 
     public function run(): void

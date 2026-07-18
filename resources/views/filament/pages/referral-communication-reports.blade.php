@@ -76,6 +76,7 @@
                         <span class="text-gray-700 dark:text-gray-300">Reversed ({{ $currency }}): <span class="font-semibold text-danger-600">{{ \App\Support\MoneyFormatter::format($minor, $currency) }}</span></span>
                     @endforeach
                     <span class="text-gray-700 dark:text-gray-300">Open held/failed queue: <span class="font-semibold {{ $referrals->heldOrFailedRewardsOpen > 0 ? 'text-warning-600' : 'text-gray-950 dark:text-white' }}">{{ $referrals->heldOrFailedRewardsOpen }}</span></span>
+                    <span class="text-gray-700 dark:text-gray-300">Open reversal-required queue: <span class="font-semibold {{ $referrals->reversalRequiredOpen > 0 ? 'text-danger-600' : 'text-gray-950 dark:text-white' }}">{{ $referrals->reversalRequiredOpen }}</span></span>
                 </div>
                 <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
                     Credited value is counted only when the wallet ledger confirms it; lifecycle counts come from the

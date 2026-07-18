@@ -6,13 +6,17 @@ namespace App\Referral\Services;
 
 use App\Enums\StudentStatus;
 use App\Models\ReferralAttribution;
+use App\Models\ReferralCode;
+use App\Models\ReferralReward;
 use App\Models\User;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
 use App\Referral\Contracts\ReferralCodeServiceInterface;
 use App\Referral\Enums\ReferralAttributionSource;
 use App\Referral\Events\ReferralAttributed;
+use App\Referral\Exceptions\ReferralException;
 use App\Services\AuditTrailService;
 use App\Settings\FeatureSettings;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -91,7 +95,16 @@ final class ReferralAttributionService implements ReferralAttributionServiceInte
             : ReferralAttributionSource::Manual;
 
         try {
-            return DB::transaction(function () use ($referredStudent, $code, $referrer, $attributionSource): ReferralAttribution {
+            return DB::transaction(function () use ($referredStudent, $code, $referrer, $attributionSource): ?ReferralAttribution {
+                // Re-check the code under lock: an admin disable that
+                // commits between the lookup and this insert must win —
+                // a disabled code never gains a new attribution.
+                $lockedCode = ReferralCode::query()->whereKey($code->id)->lockForUpdate()->first();
+
+                if ($lockedCode === null || ! $lockedCode->isActive()) {
+                    return null;
+                }
+
                 $attribution = ReferralAttribution::query()->create([
                     'referrer_id' => $referrer->id,
                     'referred_student_id' => $referredStudent->id,
@@ -122,6 +135,83 @@ final class ReferralAttributionService implements ReferralAttributionServiceInte
             // the winning attribution stands; report nothing new.
             return null;
         }
+    }
+
+    public function correctAttribution(ReferralAttribution $attribution, User $newReferrer, User $admin, string $reason): ReferralAttribution
+    {
+        if (! $admin->can('CorrectReferralAttribution')) {
+            throw new AuthorizationException;
+        }
+
+        if (trim($reason) === '') {
+            throw new ReferralException('An attribution correction requires a reason.');
+        }
+
+        if ($admin->id === $newReferrer->id) {
+            throw new ReferralException('An administrator can never assign themselves as the referrer.');
+        }
+
+        if ($admin->id === $attribution->referred_student_id) {
+            throw new ReferralException('An administrator can never choose their own referrer.');
+        }
+
+        return DB::transaction(function () use ($attribution, $newReferrer, $admin, $reason): ReferralAttribution {
+            // The same lock every reward evaluation takes — correction
+            // and reward creation serialize on the attribution row.
+            $attribution = ReferralAttribution::query()->whereKey($attribution->id)->lockForUpdate()->firstOrFail();
+
+            // The safe rule: once any reward row exists, ownership is
+            // financial history and is never re-assigned (the SRS
+            // requires audited correction, not post-reward migration).
+            if (ReferralReward::query()->where('attribution_id', $attribution->id)->exists()) {
+                throw new ReferralException(
+                    'This attribution has already generated rewards — it can no longer be corrected. Reward ownership is permanent financial history.',
+                );
+            }
+
+            $referred = $attribution->referredStudent;
+
+            if ($referred === null || ! $referred->hasRole('student')) {
+                throw new ReferralException('The referred user is no longer a student — attribution cannot be corrected.');
+            }
+
+            if (! $this->isEligibleReferrer($newReferrer, $referred)) {
+                throw new ReferralException('The new referrer must be an eligible active student and never the referred student themselves.');
+            }
+
+            if ($newReferrer->id === $attribution->referrer_id) {
+                return $attribution;
+            }
+
+            // The corrected attribution points at the new referrer's own
+            // code so code → referrer consistency holds.
+            $newCode = $this->codes->getOrCreateForStudent($newReferrer);
+
+            $previousReferrerId = $attribution->referrer_id;
+            $previousCodeId = $attribution->referral_code_id;
+
+            $attribution->forceFill([
+                'referrer_id' => $newReferrer->id,
+                'referral_code_id' => $newCode->id,
+            ])->save();
+
+            $this->auditTrail->logOverride(
+                $admin,
+                'referral_attributions',
+                'attribution_corrected',
+                sprintf('Attribution #%d referrer corrected from #%d to #%d.', $attribution->id, $previousReferrerId, $newReferrer->id),
+                $reason,
+                $attribution,
+                [
+                    'previous_referrer_id' => $previousReferrerId,
+                    'new_referrer_id' => $newReferrer->id,
+                    'previous_referral_code_id' => $previousCodeId,
+                    'new_referral_code_id' => $newCode->id,
+                ],
+            );
+
+            return $attribution;
+        });
     }
 
     private function isEligibleReferrer(User $referrer, User $referredStudent): bool

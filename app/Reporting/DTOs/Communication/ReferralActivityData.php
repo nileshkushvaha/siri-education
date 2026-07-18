@@ -32,5 +32,6 @@ final readonly class ReferralActivityData
         public array $rewardsByStatus = [],
         public array $reversedRewardAmountByCurrency = [],
         public int $heldOrFailedRewardsOpen = 0,
+        public int $reversalRequiredOpen = 0,
     ) {}
 }

@@ -91,6 +91,10 @@ final class ReferralCommunicationReportsRepository
             heldOrFailedRewardsOpen: (int) DB::table('referral_rewards')
                 ->whereIn('status', ['held', 'credit_failed'])
                 ->count(),
+            reversalRequiredOpen: (int) DB::table('referral_rewards')
+                ->where('status', 'credited')
+                ->where('hold_reason', 'reversal_required')
+                ->count(),
         );
     }
 

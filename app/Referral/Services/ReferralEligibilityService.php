@@ -114,10 +114,19 @@ final class ReferralEligibilityService implements ReferralEligibilityServiceInte
         $calculation = $this->rewards->calculate($campaign, $payment->amount_minor, $payment->currency_code);
 
         try {
-            $reward = DB::transaction(function () use ($lesson, $attribution, $campaign, $payment, $calculation, $referrer, $referred): ?ReferralReward {
+            $reward = DB::transaction(function () use ($lesson, $attribution, $campaign, $payment, $calculation, $referred): ?ReferralReward {
                 // Canonical lock: the attribution row serializes every
-                // reward decision for this referred student.
-                ReferralAttribution::query()->whereKey($attribution->id)->lockForUpdate()->firstOrFail();
+                // reward decision for this referred student — including
+                // Phase 19E attribution corrections. The referrer is
+                // re-derived from the LOCKED row so a correction that
+                // committed after the pre-checks can never leave a reward
+                // pointing at the stale referrer.
+                $attribution = ReferralAttribution::query()->whereKey($attribution->id)->lockForUpdate()->firstOrFail();
+                $referrer = $attribution->referrer;
+
+                if ($referrer === null) {
+                    return null;
+                }
 
                 if (ReferralReward::query()->where('lesson_id', $lesson->id)->exists()) {
                     return null;

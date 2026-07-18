@@ -109,11 +109,23 @@ class ReferralDomainBoundaryTest extends TestCase
             }
         }
 
+        sort($callers);
+
+        // Phase 19E added exactly one more approved surface: the admin
+        // correction action. It may only ever call correctAttribution —
+        // never attributeFromRegistration, which stays exclusive to
+        // RegistrationService.
         $this->assertSame(
-            [base_path('app/Services/Auth/RegistrationService.php')],
+            [
+                base_path('app/Filament/Resources/ReferralAttributions/Tables/ReferralAttributionsTable.php'),
+                base_path('app/Services/Auth/RegistrationService.php'),
+            ],
             $callers,
-            'RegistrationService must be the only production caller of the attribution service.',
+            'Only RegistrationService (attribution) and the admin correction table may call the attribution service.',
         );
+
+        $adminTable = (string) file_get_contents(base_path('app/Filament/Resources/ReferralAttributions/Tables/ReferralAttributionsTable.php'));
+        $this->assertStringNotContainsString('attributeFromRegistration', $adminTable);
     }
 
     public function test_registration_frontends_do_not_create_attributions_directly(): void

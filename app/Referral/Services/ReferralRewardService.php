@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Referral\Services;
 
+use App\Booking\Enums\BookingPaymentRecordStatus;
+use App\Enums\StudentStatus;
+use App\Lessons\Enums\LessonOutcome;
+use App\Models\BookingPayment;
 use App\Models\Lesson;
 use App\Models\ReferralAttribution;
 use App\Models\ReferralCampaign;
@@ -25,6 +29,7 @@ use App\Wallet\Enums\WalletLedgerEntryType;
 use App\Wallet\Exceptions\WalletException;
 use App\Wallet\Services\WalletLedgerService;
 use App\Wallet\Services\WalletService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -139,21 +144,27 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
                 );
             } catch (WalletException $e) {
                 // Closed/unusable wallet — retryable failure state; the
-                // sweep will try again once the wallet is usable.
+                // sweep will try again once the wallet is usable. A retry
+                // that fails AGAIN must not re-audit or re-notify (the
+                // admin bell already carries the first failure).
+                $wasAlreadyFailed = $reward->status === ReferralRewardStatus::CreditFailed;
+
                 $reward->forceFill([
                     'status' => ReferralRewardStatus::CreditFailed,
                     'hold_reason' => 'wallet_unusable',
                 ])->save();
 
-                $this->auditTrail->logSystem(
-                    self::LOG_NAME,
-                    'reward_credit_failed',
-                    sprintf('Referral reward #%d credit failed: %s', $reward->id, $e->getMessage()),
-                    $reward,
-                    ['wallet_id' => $wallet->id],
-                );
+                if (! $wasAlreadyFailed) {
+                    $this->auditTrail->logSystem(
+                        self::LOG_NAME,
+                        'reward_credit_failed',
+                        sprintf('Referral reward #%d credit failed: %s', $reward->id, $e->getMessage()),
+                        $reward,
+                        ['wallet_id' => $wallet->id],
+                    );
 
-                ReferralRewardCreditFailed::dispatch($reward->id, $reward->referrer_id, $reward->referred_student_id);
+                    ReferralRewardCreditFailed::dispatch($reward->id, $reward->referrer_id, $reward->referred_student_id);
+                }
 
                 return $reward;
             }
@@ -261,6 +272,169 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
         }
 
         return $credited;
+    }
+
+    public function approveHeldReward(ReferralReward $reward, User $admin, string $reason): ReferralReward
+    {
+        $this->assertAdminDecision($reward, $admin, 'ApproveReferralRewards', $reason);
+
+        $reward = DB::transaction(function () use ($reward, $admin, $reason): ReferralReward {
+            $reward = $this->locked($reward);
+
+            if ($reward->status !== ReferralRewardStatus::Held) {
+                throw new ReferralException(sprintf('Reward #%d is %s — only a held reward can be approved.', $reward->id, $reward->status->value));
+            }
+
+            $this->assertStillCreditable($reward);
+
+            // A currency-mismatch hold may only be released once the
+            // referrer's wallet currency actually matches — never by
+            // overriding currency. Otherwise the admin must reject.
+            $wallet = $this->wallets->getOrCreateWallet($reward->referrer, null, $reward->referrer);
+
+            if ($wallet->currency_code !== $reward->reward_currency_code) {
+                throw new ReferralException(sprintf(
+                    'Reward #%d currency %s still does not match the referrer wallet currency %s — reject the reward instead; money is never converted.',
+                    $reward->id,
+                    $reward->reward_currency_code,
+                    $wallet->currency_code,
+                ));
+            }
+
+            $reward->forceFill([
+                'status' => ReferralRewardStatus::Eligible,
+                'hold_reason' => null,
+                'decision_reason' => $reason,
+                'decided_by' => $admin->id,
+                'credit_ready_at' => now(),
+            ])->save();
+
+            $this->auditTrail->logOverride(
+                $admin,
+                self::LOG_NAME,
+                'reward_approved',
+                sprintf('Held referral reward #%d approved for credit.', $reward->id),
+                $reason,
+                $reward,
+                ['campaign_id' => $reward->campaign_id, 'reward_amount_minor' => $reward->reward_amount_minor],
+            );
+
+            return $reward;
+        });
+
+        // The ONE credit path — never a direct credit from the approval.
+        return $this->creditReward($reward);
+    }
+
+    public function rejectHeldReward(ReferralReward $reward, User $admin, string $reason): ReferralReward
+    {
+        $this->assertAdminDecision($reward, $admin, 'RejectReferralRewards', $reason);
+
+        return DB::transaction(function () use ($reward, $admin, $reason): ReferralReward {
+            $reward = $this->locked($reward);
+
+            // Idempotent under duplicate decisions: an already-rejected
+            // reward returns unchanged; any other terminal state refuses.
+            if ($reward->status === ReferralRewardStatus::Rejected) {
+                return $reward;
+            }
+
+            if (! in_array($reward->status, [ReferralRewardStatus::Held, ReferralRewardStatus::CreditFailed], true)) {
+                throw new ReferralException(sprintf('Reward #%d is %s — only a held or credit-failed reward can be rejected.', $reward->id, $reward->status->value));
+            }
+
+            $reward->forceFill([
+                'status' => ReferralRewardStatus::Rejected,
+                'hold_reason' => null,
+                'decision_reason' => $reason,
+                'decided_by' => $admin->id,
+                'rejected_at' => now(),
+            ])->save();
+
+            $this->auditTrail->logOverride(
+                $admin,
+                self::LOG_NAME,
+                'reward_rejected_by_admin',
+                sprintf('Referral reward #%d rejected by administrator.', $reward->id),
+                $reason,
+                $reward,
+                ['campaign_id' => $reward->campaign_id],
+            );
+
+            ReferralRewardRejected::dispatch($reward->id, $reward->referrer_id, $reward->referred_student_id);
+
+            return $reward;
+        });
+    }
+
+    public function retryFailedCredit(ReferralReward $reward, User $admin, string $reason): ReferralReward
+    {
+        $this->assertAdminDecision($reward, $admin, 'RetryReferralRewardCredits', $reason);
+
+        if ($reward->status !== ReferralRewardStatus::CreditFailed) {
+            throw new ReferralException(sprintf('Reward #%d is %s — only a credit-failed reward can be retried.', $reward->id, $reward->status->value));
+        }
+
+        $this->auditTrail->logOverride(
+            $admin,
+            self::LOG_NAME,
+            'reward_retry_requested',
+            sprintf('Manual credit retry requested for referral reward #%d.', $reward->id),
+            $reason,
+            $reward,
+            ['previous_status' => $reward->status->value],
+        );
+
+        // The ONE credit path: idempotent, re-locks, re-checks readiness
+        // and currency; a still-failing wallet keeps the CreditFailed
+        // state without re-notifying (see the wasAlreadyFailed guard).
+        return $this->creditReward($reward);
+    }
+
+    public function completeRequiredReversal(ReferralReward $reward, User $admin, string $reason): ReferralReward
+    {
+        $this->assertAdminDecision($reward, $admin, 'ReverseReferralRewards', $reason);
+
+        if (! $admin->can('manage', Wallet::class)) {
+            throw new ReferralException('Completing a reversal requires wallet-manage authority — the ledger reversal itself is permission-checked.');
+        }
+
+        return DB::transaction(function () use ($reward, $admin, $reason): ReferralReward {
+            $reward = $this->locked($reward);
+
+            // Exactly-once under duplicate clicks: an already-reversed
+            // reward is the terminal result.
+            if ($reward->status === ReferralRewardStatus::Reversed) {
+                return $reward;
+            }
+
+            if ($reward->status !== ReferralRewardStatus::Credited || $reward->hold_reason !== 'reversal_required') {
+                throw new ReferralException(sprintf('Reward #%d is not awaiting reversal.', $reward->id));
+            }
+
+            if ($reward->reversal_ledger_entry_id !== null) {
+                throw new ReferralException(sprintf('Reward #%d already carries a reversal ledger entry — data reconciliation required.', $reward->id));
+            }
+
+            $result = $this->reverseCredited($reward, $admin, 'admin_reversal: '.$reason);
+
+            if ($result->status !== ReferralRewardStatus::Reversed) {
+                // reverseCredited kept the visible exception state (e.g.
+                // balance already spent) — audit THIS manual attempt so
+                // the failed action is never invisible.
+                $this->auditTrail->logOverride(
+                    $admin,
+                    self::LOG_NAME,
+                    'reward_reversal_attempt_failed',
+                    sprintf('Manual reversal of referral reward #%d could not complete — wallet reversal refused.', $reward->id),
+                    $reason,
+                    $result,
+                    ['hold_reason' => $result->hold_reason],
+                );
+            }
+
+            return $result;
+        });
     }
 
     public function summaryForReferrer(User $referrer): array
@@ -389,5 +563,66 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
     private function locked(ReferralReward $reward): ReferralReward
     {
         return ReferralReward::query()->whereKey($reward->id)->lockForUpdate()->firstOrFail();
+    }
+
+    /**
+     * Shared gate for every manual reward decision: the named
+     * permission, a non-empty reason, and never a self-decision — a
+     * multi-role admin who is also the reward's referrer may not
+     * approve, reject, retry, or reverse their own money.
+     */
+    private function assertAdminDecision(ReferralReward $reward, User $admin, string $permission, string $reason): void
+    {
+        if (! $admin->can($permission)) {
+            throw new AuthorizationException;
+        }
+
+        if (trim($reason) === '') {
+            throw new ReferralException('A reward decision requires a reason.');
+        }
+
+        if ($admin->id === $reward->referrer_id || $admin->id === $reward->referred_student_id) {
+            throw new ReferralException('You cannot decide a referral reward you are a party to.');
+        }
+    }
+
+    /**
+     * Approval-time revalidation (SRS 16.30): the snapshot must still
+     * describe a rewardable situation — student-only parties, an
+     * eligible referrer, a still-Completed lesson with its captured
+     * payment, and an intact positive snapshot.
+     */
+    private function assertStillCreditable(ReferralReward $reward): void
+    {
+        $referrer = $reward->referrer;
+        $referred = $reward->referredStudent;
+
+        if ($referrer === null || $referred === null
+            || ! $referrer->hasRole('student') || ! $referred->hasRole('student')) {
+            throw new ReferralException(sprintf('Reward #%d parties are no longer both students — reject it instead.', $reward->id));
+        }
+
+        if ($referrer->status !== User::STATUS_ACTIVE
+            || in_array($referrer->profile?->student_status, [StudentStatus::Suspended, StudentStatus::Archived], true)) {
+            throw new ReferralException(sprintf('Reward #%d referrer is no longer an eligible active student — reject it instead.', $reward->id));
+        }
+
+        if ($reward->reward_amount_minor <= 0 || $reward->campaign === null) {
+            throw new ReferralException(sprintf('Reward #%d calculation snapshot is not creditable.', $reward->id));
+        }
+
+        if ($reward->lesson?->outcome !== LessonOutcome::Completed) {
+            throw new ReferralException(sprintf('Reward #%d lesson is no longer Completed — reject it instead.', $reward->id));
+        }
+
+        $paymentStillCaptured = BookingPayment::query()
+            ->where('booking_id', $reward->booking_id)
+            ->where('status', BookingPaymentRecordStatus::Captured)
+            ->where('amount_minor', '>', 0)
+            ->exists();
+
+        if (! $paymentStillCaptured) {
+            throw new ReferralException(sprintf('Reward #%d lesson payment is no longer captured — reject it instead.', $reward->id));
+        }
     }
 }

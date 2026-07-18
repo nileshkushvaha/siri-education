@@ -55,6 +55,20 @@ interface ReferralRewardServiceInterface
     public function processReadyRewards(int $limit = 100): int;
 
     /**
+     * Phase 19E admin decisions. Each requires its named permission, a
+     * non-empty reason, forbids self-decision, locks the reward, and
+     * re-checks state — duplicate decisions return the terminal result,
+     * never a second ledger entry.
+     */
+    public function approveHeldReward(ReferralReward $reward, User $admin, string $reason): ReferralReward;
+
+    public function rejectHeldReward(ReferralReward $reward, User $admin, string $reason): ReferralReward;
+
+    public function retryFailedCredit(ReferralReward $reward, User $admin, string $reason): ReferralReward;
+
+    public function completeRequiredReversal(ReferralReward $reward, User $admin, string $reason): ReferralReward;
+
+    /**
      * Currency-separated, source-backed totals for the referrer's
      * Refer a Friend page. Never mixes currencies.
      *

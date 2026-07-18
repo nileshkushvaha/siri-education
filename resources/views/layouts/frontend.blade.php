@@ -81,7 +81,9 @@
         <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={{ $pixelId }}&ev=PageView&noscript=1"/></noscript>
     @endif
 
-    @hasSection('bare')
+    @hasSection('portal-shell')
+        @yield('content')
+    @elseif($__env->hasSection('bare'))
         @yield('content')
     @else
         <livewire:frontend.layout.announcement-bar />

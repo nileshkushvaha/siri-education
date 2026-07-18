@@ -56,6 +56,7 @@ use App\Http\Controllers\Student\StudentWalletController;
 use App\Http\Controllers\Student\StudentWishlistController;
 use App\Http\Controllers\TagController;
 use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
 use App\Services\PortalResolver;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -104,7 +105,7 @@ Route::get('/newsletter/unsubscribe/{token}', NewsletterUnsubscribeController::c
 
 // ── Dashboard (Frontend Portal — see PortalResolver) ─────────────────
 Route::get('/dashboard', DashboardController::class)->name('dashboard')
-    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'session.track', 'frontend.portal']);
+    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'session.track', 'frontend.portal', EnsureSupportedFrontendPortalAudience::class]);
 
 // ── Frontend Auth (guests only) ─────────────────────────────────────
 Route::name('auth.')->middleware('guest')->group(function (): void {
@@ -207,6 +208,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     'password.change.required',
     'session.track',
     'frontend.portal',
+    EnsureSupportedFrontendPortalAudience::class,
 ])->group(function (): void {
     Route::get('/progress', [StudentProgressController::class,     'index'])->name('progress');
     Route::get('/certificates', [StudentCertificatesController::class, 'index'])->name('certificates');
@@ -281,6 +283,7 @@ Route::prefix('profile')->name('profile.')->middleware([
     'password.change.required',
     'session.track',
     'frontend.portal',
+    EnsureSupportedFrontendPortalAudience::class,
 ])->group(function (): void {
 
     Route::get('/', [ProfileController::class, 'show'])->name('show');

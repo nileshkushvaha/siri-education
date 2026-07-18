@@ -5,265 +5,127 @@ declare(strict_types=1);
 namespace App\Services\Account;
 
 use App\Earnings\Support\InstructorPayoutEligibility;
-use App\Homework\Contracts\HomeworkServiceInterface;
+use App\Enums\PortalAudience;
 use App\Models\User;
+use App\Services\FrontendPortalAudienceResolver;
 use App\Settings\FeatureSettings;
 
-/**
- * Builds the permission-driven Account Portal sidebar menu.
- *
- * PortalResolver::frontendMenu() is off-limits to modify and is not
- * permission-aware, so this service supersedes it for sidebar rendering.
- * PortalResolver still owns portal (WHERE) resolution; this service only
- * decides which already-portal-scoped menu items a user may see (WHAT).
- *
- * Each item: label, route (named route for the URL + active-state match),
- * icon, audience (student|instructor|shared), permission (null = always
- * visible once on the portal), badge (nullable), children (nested items,
- * same shape — one level supported).
- */
+/** The single owner of grouped authenticated-portal navigation. */
 final class AccountMenuService
 {
     public function __construct(
-        private readonly HomeworkServiceInterface $homework,
         private readonly FeatureSettings $features,
         private readonly InstructorPayoutEligibility $payoutEligibility,
+        private readonly FrontendPortalAudienceResolver $audiences,
     ) {}
 
-    /**
-     * @return array<int, array{label: string, url: string, route: string, icon: string, permission: ?string, badge: mixed, children: array}>
-     */
-    public function items(User $user): array
+    /** @param array{notifications?: int, homework?: int} $badges */
+    public function items(User $user, array $badges = []): array
     {
-        return array_values(array_filter(array_map(
-            fn (array $item): ?array => $this->resolve($item, $user),
-            $this->definitions(),
-        )));
+        $audience = $this->audiences->resolve($user);
+
+        if ($audience === PortalAudience::AdminOrUnsupported) {
+            return [];
+        }
+
+        $groups = $audience === PortalAudience::Student
+            ? $this->studentGroups($badges)
+            : $this->instructorGroups($user, $badges);
+
+        return array_values(array_filter(array_map(function (array $group) use ($user): ?array {
+            $items = array_values(array_filter(array_map(
+                fn (array $item): ?array => $this->resolveItem($item, $user),
+                $group['items'],
+            )));
+
+            return $items === [] ? null : ['label' => $group['label'], 'items' => $items];
+        }, $groups)));
     }
 
-    /**
-     * @return array<int, array{label: string, route: string, icon: string, permission: ?string, badge?: mixed, children?: array}>
-     */
-    private function definitions(): array
+    private function studentGroups(array $badges): array
     {
         return [
-            [
-                'label' => 'Dashboard',
-                'route' => 'dashboard',
-                'icon' => 'home',
-                'audience' => 'shared',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Upcoming Classes',
-                'route' => 'dashboard.upcoming-classes',
-                'icon' => 'calendar',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'My Bookings',
-                'route' => 'dashboard.my-bookings',
-                'icon' => 'clipboard',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Payments',
-                'route' => 'dashboard.payments',
-                'icon' => 'credit-card',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Wallet',
-                'route' => 'dashboard.wallet',
-                'icon' => 'credit-card',
-                'audience' => 'student',
-                'permission' => null,
-                'enabled' => fn (): bool => $this->features->wallet_enabled,
-            ],
-            [
-                'label' => 'Refer a Friend',
-                'route' => 'dashboard.refer-a-friend',
-                'icon' => 'heart',
-                'audience' => 'student',
-                'permission' => null,
-                'enabled' => fn (): bool => $this->features->referral_enabled,
-            ],
-            [
-                'label' => 'Homework',
-                'route' => 'dashboard.homework',
-                'icon' => 'pencil',
-                'audience' => 'student',
-                'permission' => null,
-                'badge' => fn (User $user): mixed => ($this->homework->statsForStudent($user->id)->pending ?? 0) ?: null,
-            ],
-            [
-                'label' => 'Attendance',
-                'route' => 'dashboard.attendance',
-                'icon' => 'check-circle',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Progress',
-                'route' => 'dashboard.progress',
-                'icon' => 'chart-bar',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'My Profile',
-                'route' => 'profile.show',
-                'icon' => 'user',
-                'audience' => 'shared',
-                'permission' => 'profile.view',
-            ],
-            [
-                'label' => 'Learning Goals',
-                'route' => 'dashboard.learning-goals',
-                'icon' => 'chart-bar',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Learning Plans',
-                'route' => 'dashboard.learning-plans',
-                'icon' => 'clipboard',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Learning Plans',
-                'route' => 'dashboard.instructor.learning-plans',
-                'icon' => 'clipboard',
-                'audience' => 'instructor',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Availability',
-                'route' => 'dashboard.instructor.availability',
-                'icon' => 'calendar',
-                'audience' => 'instructor',
-                'permission' => null,
-            ],
-            [
-                'label' => 'My Lessons',
-                'route' => 'dashboard.instructor.lessons',
-                'icon' => 'clipboard',
-                'audience' => 'instructor',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Reviews & Quality',
-                'route' => 'dashboard.instructor.quality-insights',
-                'icon' => 'star',
-                'audience' => 'instructor',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Payout Methods',
-                'route' => 'dashboard.instructor.payout-methods',
-                'icon' => 'credit-card',
-                'audience' => 'instructor',
-                'permission' => null,
-                'enabled' => fn (User $user): bool => $this->payoutEligibility->isEligible($user),
-            ],
-            [
-                'label' => 'Withdrawals',
-                'route' => 'dashboard.instructor.withdrawals',
-                'icon' => 'credit-card',
-                'audience' => 'instructor',
-                'permission' => null,
-                'enabled' => fn (User $user): bool => $this->payoutEligibility->isEligible($user),
-            ],
-            [
-                'label' => 'Certificates',
-                'route' => 'dashboard.certificates',
-                'icon' => 'badge',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Orders',
-                'route' => 'dashboard.orders',
-                'icon' => 'bag',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Favorite Instructors',
-                'route' => 'dashboard.wishlist',
-                'icon' => 'heart',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Reviews',
-                'route' => 'dashboard.reviews',
-                'icon' => 'star',
-                'audience' => 'student',
-                'permission' => null,
-            ],
-            [
-                'label' => 'Notifications',
-                'route' => 'dashboard.notifications',
-                'icon' => 'bell',
-                'audience' => 'shared',
-                'permission' => null,
-                'badge' => fn (User $user): mixed => $user->unreadNotifications()->count() ?: null,
-            ],
-            [
-                'label' => 'FAQs',
-                'route' => 'dashboard.faqs',
-                'icon' => 'help',
-                'audience' => 'shared',
-                'permission' => null,
-            ],
+            ['label' => 'Overview', 'items' => [
+                $this->item('Dashboard', 'dashboard', 'home', mobilePriority: 1),
+            ]],
+            ['label' => 'Learn', 'items' => [
+                $this->item('Upcoming Classes', 'dashboard.upcoming-classes', 'calendar', mobilePriority: 2, mobileLabel: 'Classes'),
+                $this->item('My Bookings', 'dashboard.my-bookings', 'clipboard'),
+                $this->item('Homework', 'dashboard.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled, mobilePriority: 3),
+                $this->item('Learning Plans', 'dashboard.learning-plans', 'clipboard'),
+                $this->item('Learning Goals', 'dashboard.learning-goals', 'chart-bar'),
+                $this->item('Progress', 'dashboard.progress', 'chart-bar'),
+                $this->item('Attendance', 'dashboard.attendance', 'check-circle'),
+                $this->item('Certificates', 'dashboard.certificates', 'badge'),
+            ]],
+            ['label' => 'Discover', 'items' => [
+                $this->item('Find a Tutor', 'instructors.index', 'search'),
+                $this->item('Favorite Instructors', 'dashboard.wishlist', 'heart'),
+            ]],
+            ['label' => 'Money', 'items' => [
+                $this->item('Wallet', 'dashboard.wallet', 'credit-card', enabled: $this->features->wallet_enabled),
+                $this->item('Payments', 'dashboard.payments', 'credit-card'),
+                $this->item('Orders', 'dashboard.orders', 'bag'),
+            ]],
+            ['label' => 'Engage', 'items' => [
+                $this->item('Refer a Friend', 'dashboard.refer-a-friend', 'heart', enabled: $this->features->referral_enabled),
+                $this->item('Reviews', 'dashboard.reviews', 'star'),
+                $this->item('Notifications', 'dashboard.notifications', 'bell', $badges['notifications'] ?? 0),
+            ]],
+            ['label' => 'Account', 'items' => [
+                $this->item('My Profile', 'profile.show', 'user', permission: 'profile.view'),
+                $this->item('FAQs', 'dashboard.faqs', 'help'),
+            ]],
         ];
     }
 
-    private function resolve(array $item, User $user): ?array
+    private function instructorGroups(User $user, array $badges): array
     {
-        if (! $this->isAudienceVisible($user, $item['audience'] ?? 'shared')) {
+        $payouts = $this->payoutEligibility->isEligible($user);
+
+        return [
+            ['label' => 'Overview', 'items' => [$this->item('Dashboard', 'dashboard', 'home', mobilePriority: 1)]],
+            ['label' => 'Teach', 'items' => [
+                $this->item('Learning Plans', 'dashboard.instructor.learning-plans', 'clipboard'),
+                $this->item('Availability', 'dashboard.instructor.availability', 'calendar'),
+                $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard'),
+                $this->item('Reviews & Quality', 'dashboard.instructor.quality-insights', 'star'),
+            ]],
+            ['label' => 'Money', 'items' => [
+                $this->item('Payout Methods', 'dashboard.instructor.payout-methods', 'credit-card', enabled: $payouts),
+                $this->item('Withdrawals', 'dashboard.instructor.withdrawals', 'credit-card', enabled: $payouts),
+            ]],
+            ['label' => 'Account', 'items' => [
+                $this->item('Notifications', 'dashboard.notifications', 'bell', $badges['notifications'] ?? 0),
+                $this->item('My Profile', 'profile.show', 'user', permission: 'profile.view'),
+                $this->item('FAQs', 'dashboard.faqs', 'help'),
+            ]],
+        ];
+    }
+
+    private function item(string $label, string $route, string $icon, int $badge = 0, bool $enabled = true, ?string $permission = null, ?int $mobilePriority = null, ?string $mobileLabel = null): array
+    {
+        return compact('label', 'route', 'icon', 'badge', 'enabled', 'permission', 'mobilePriority', 'mobileLabel');
+    }
+
+    private function resolveItem(array $item, User $user): ?array
+    {
+        if (! $item['enabled'] || ! \Route::has($item['route']) || ! $this->permitted($user, $item['permission'])) {
             return null;
         }
-
-        if (! $this->isVisible($user, $item['permission'] ?? null)) {
-            return null;
-        }
-
-        if (isset($item['enabled']) && ! ($item['enabled'])($user)) {
-            return null;
-        }
-
-        $children = array_values(array_filter(array_map(
-            fn (array $child): ?array => $this->resolve($child, $user),
-            $item['children'] ?? [],
-        )));
 
         return [
             'label' => $item['label'],
-            'url' => route($item['route'], $item['params'] ?? []),
+            'url' => route($item['route']),
             'route' => $item['route'],
-            'icon' => $item['icon'] ?? 'default',
-            'audience' => $item['audience'] ?? 'shared',
-            'badge' => is_callable($item['badge'] ?? null) ? ($item['badge'])($user) : ($item['badge'] ?? null),
-            'children' => $children,
+            'icon' => $item['icon'],
+            'badge' => $item['badge'] ?: null,
+            'mobile_priority' => $item['mobilePriority'],
+            'mobile_label' => $item['mobileLabel'],
         ];
     }
 
-    private function isAudienceVisible(User $user, string $audience): bool
-    {
-        return match ($audience) {
-            'student' => $user->hasRole('student') || ! $user->hasRole('instructor'),
-            'instructor' => $user->hasRole('instructor') && ! $user->hasRole('student'),
-            default => true,
-        };
-    }
-
-    private function isVisible(User $user, ?string $permission): bool
+    private function permitted(User $user, ?string $permission): bool
     {
         if ($permission === null) {
             return true;

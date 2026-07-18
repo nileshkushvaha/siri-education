@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class StudentBookingTest extends TestCase
@@ -37,12 +38,15 @@ class StudentBookingTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $currency = Currency::factory()->create(['code' => 'USD']);
         $country = Country::factory()->create(['default_currency_id' => $currency->id]);
         $category = AcademicCategory::create(['name' => 'Mathematics', 'slug' => 'mathematics']);
         $subject = Subject::create(['academic_category_id' => $category->id, 'name' => 'Maths', 'slug' => 'maths']);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student->assignRole('student');
         UserProfile::updateOrCreate(['user_id' => $this->student->id], ['country_id' => $country->id]);
 
         $this->teacher = $this->makeTeacher('maths');

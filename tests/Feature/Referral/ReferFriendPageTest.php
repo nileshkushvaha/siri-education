@@ -99,7 +99,7 @@ class ReferFriendPageTest extends TestCase
 
         $this->actingAs($student)->get(route('dashboard.refer-a-friend'))->assertNotFound();
 
-        $labels = array_column(app(AccountMenuService::class)->items($student), 'label');
+        $labels = collect(app(AccountMenuService::class)->items($student))->flatMap(fn (array $group) => $group['items'])->pluck('label')->all();
         $this->assertNotContains('Refer a Friend', $labels);
     }
 
@@ -107,13 +107,13 @@ class ReferFriendPageTest extends TestCase
     {
         $student = $this->student();
 
-        $labels = array_column(app(AccountMenuService::class)->items($student), 'label');
+        $labels = collect(app(AccountMenuService::class)->items($student))->flatMap(fn (array $group) => $group['items'])->pluck('label')->all();
         $this->assertContains('Refer a Friend', $labels);
 
         $instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $instructor->assignRole('instructor');
 
-        $labels = array_column(app(AccountMenuService::class)->items($instructor), 'label');
+        $labels = collect(app(AccountMenuService::class)->items($instructor))->flatMap(fn (array $group) => $group['items'])->pluck('label')->all();
         $this->assertNotContains('Refer a Friend', $labels);
     }
 

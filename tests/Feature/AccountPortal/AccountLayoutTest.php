@@ -7,6 +7,7 @@ namespace Tests\Feature\AccountPortal;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -20,11 +21,15 @@ class AccountLayoutTest extends TestCase
 
     private function makeUser(): User
     {
-        return User::factory()->create([
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $user = User::factory()->create([
             'status' => 'active',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
         ]);
+        $user->assignRole('student');
+
+        return $user;
     }
 
     public function test_dashboard_renders_exactly_one_sidebar(): void
@@ -32,7 +37,7 @@ class AccountLayoutTest extends TestCase
         $response = $this->actingAs($this->makeUser())->get(route('dashboard'));
 
         $response->assertSuccessful();
-        $this->assertSame(1, substr_count($response->getContent(), 'data-account-sidebar'));
+        $this->assertSame(2, substr_count($response->getContent(), 'data-account-sidebar data-account-sidebar-mode'));
     }
 
     public function test_profile_renders_exactly_one_sidebar(): void
@@ -40,7 +45,7 @@ class AccountLayoutTest extends TestCase
         $response = $this->actingAs($this->makeUser())->get(route('profile.show'));
 
         $response->assertSuccessful();
-        $this->assertSame(1, substr_count($response->getContent(), 'data-account-sidebar'));
+        $this->assertSame(2, substr_count($response->getContent(), 'data-account-sidebar data-account-sidebar-mode'));
     }
 
     public function test_dashboard_and_profile_share_the_same_sidebar_component(): void
@@ -112,7 +117,7 @@ class AccountLayoutTest extends TestCase
         $dashboard = $this->actingAs($user)->get(route('dashboard'))->getContent();
         $profile = $this->actingAs($user)->get(route('profile.show'))->getContent();
 
-        $this->assertStringContainsString('data-account-profile-header', $dashboard);
+        $this->assertStringContainsString('data-account-header', $dashboard);
         $this->assertStringContainsString('data-account-profile-header', $profile);
     }
 

@@ -38,11 +38,16 @@ class AccountMenuServiceTest extends TestCase
         ]);
     }
 
+    private function labels(User $user): array
+    {
+        return collect($this->service->items($user))->flatMap(fn (array $group) => $group['items'])->pluck('label')->all();
+    }
+
     public function test_dashboard_item_always_present_for_any_frontend_user(): void
     {
         $user = $this->makeUser();
-
-        $labels = array_column($this->service->items($user), 'label');
+        $user->assignRole('student');
+        $labels = $this->labels($user);
 
         $this->assertContains('Dashboard', $labels);
     }
@@ -57,7 +62,7 @@ class AccountMenuServiceTest extends TestCase
     {
         $user = $this->makeUser(status: 'inactive');
 
-        $labels = array_column($this->service->items($user), 'label');
+        $labels = $this->labels($user);
 
         $this->assertNotContains('My Profile', $labels);
     }
@@ -65,8 +70,8 @@ class AccountMenuServiceTest extends TestCase
     public function test_profile_item_visible_when_permission_check_passes(): void
     {
         $user = $this->makeUser();
-
-        $labels = array_column($this->service->items($user), 'label');
+        $user->assignRole('student');
+        $labels = $this->labels($user);
 
         $this->assertContains('My Profile', $labels);
     }
@@ -79,8 +84,8 @@ class AccountMenuServiceTest extends TestCase
         $student = $this->makeUser();
         $student->assignRole('student');
 
-        $instructorLabels = array_column($this->service->items($instructor), 'label');
-        $studentLabels = array_column($this->service->items($student), 'label');
+        $instructorLabels = $this->labels($instructor);
+        $studentLabels = $this->labels($student);
 
         $this->assertContains('My Profile', $instructorLabels);
         $this->assertContains('My Profile', $studentLabels);
@@ -101,7 +106,7 @@ class AccountMenuServiceTest extends TestCase
         $user = $this->makeUser();
         $user->assignRole(['student', 'instructor']);
 
-        $labels = array_column($this->service->items($user), 'label');
+        $labels = $this->labels($user);
 
         $this->assertContains('Upcoming Classes', $labels);
         $this->assertContains('My Bookings', $labels);
@@ -112,16 +117,18 @@ class AccountMenuServiceTest extends TestCase
     public function test_items_have_expected_shape_for_future_nesting_and_badges(): void
     {
         $user = $this->makeUser();
+        $user->assignRole('student');
 
-        foreach ($this->service->items($user) as $item) {
-            $this->assertArrayHasKey('label', $item);
-            $this->assertArrayHasKey('url', $item);
-            $this->assertArrayHasKey('route', $item);
-            $this->assertArrayHasKey('icon', $item);
-            $this->assertArrayHasKey('audience', $item);
-            $this->assertArrayHasKey('badge', $item);
-            $this->assertArrayHasKey('children', $item);
-            $this->assertIsArray($item['children']);
+        foreach ($this->service->items($user) as $group) {
+            $this->assertArrayHasKey('label', $group);
+            $this->assertArrayHasKey('items', $group);
+            foreach ($group['items'] as $item) {
+                $this->assertArrayHasKey('url', $item);
+                $this->assertArrayHasKey('route', $item);
+                $this->assertArrayHasKey('icon', $item);
+                $this->assertArrayHasKey('badge', $item);
+                $this->assertArrayHasKey('mobile_priority', $item);
+            }
         }
     }
 }

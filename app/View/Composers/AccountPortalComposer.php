@@ -6,6 +6,8 @@ namespace App\View\Composers;
 
 use App\DTOs\AccountProfileSummaryData;
 use App\Services\Account\AccountMenuService;
+use App\Services\Account\PortalBadgeService;
+use App\Services\FrontendPortalAudienceResolver;
 use App\Services\Profile\ProfileService;
 use Illuminate\View\View;
 
@@ -19,6 +21,8 @@ final class AccountPortalComposer
     public function __construct(
         private readonly AccountMenuService $menuService,
         private readonly ProfileService $profileService,
+        private readonly PortalBadgeService $badges,
+        private readonly FrontendPortalAudienceResolver $audiences,
     ) {}
 
     public function compose(View $view): void
@@ -30,14 +34,16 @@ final class AccountPortalComposer
         }
 
         $user->loadMissing('profile.media');
+        $badges = $this->badges->for($user);
 
         $view->with([
-            'accountMenu' => $this->menuService->items($user),
+            'accountAudience' => $this->audiences->resolve($user),
+            'accountMenu' => $this->menuService->items($user, $badges),
             'accountProfileSummary' => AccountProfileSummaryData::fromUser(
                 $user,
                 $this->profileService->completion($user),
             ),
-            'accountNotificationCount' => $user->unreadNotifications()->count(),
+            'accountNotificationCount' => $badges['notifications'],
         ]);
     }
 }

@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\PortalAudience;
 use App\Http\Controllers\Controller;
-use App\Services\Instructor\InstructorOnboardingService;
+use App\Services\FrontendPortalAudienceResolver;
 use Illuminate\View\View;
 
 final class DashboardController extends Controller
 {
     public function __construct(
-        private readonly InstructorOnboardingService $instructorOnboarding,
+        private readonly FrontendPortalAudienceResolver $audiences,
     ) {}
 
     /**
@@ -24,8 +25,10 @@ final class DashboardController extends Controller
      */
     public function __invoke(): View
     {
-        return view('dashboard.index', [
-            'instructorOnboarding' => $this->instructorOnboarding->progress(auth()->user()),
-        ]);
+        $audience = $this->audiences->resolve(auth()->user());
+
+        abort_if($audience === PortalAudience::AdminOrUnsupported, 403);
+
+        return view('dashboard.index', ['portalAudience' => $audience]);
     }
 }

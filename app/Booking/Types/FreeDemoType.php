@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Types;
 
 use App\Booking\Contracts\BookingTypeInterface;
+use App\Booking\Validation\Rules\OneFreeDemoPerInstructorRule;
 
 final class FreeDemoType implements BookingTypeInterface
 {
@@ -37,7 +38,9 @@ final class FreeDemoType implements BookingTypeInterface
 
     public function rules(): array
     {
-        return [];
+        return [
+            OneFreeDemoPerInstructorRule::class,
+        ];
     }
 
     public function formRules(): array

@@ -6,6 +6,7 @@ use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\DTOs\CancelBookingData;
+use App\Booking\DTOs\CreateBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
@@ -223,6 +224,25 @@ try {
             $booking = app(BookingPaymentServiceInterface::class)->refundViaProvider($booking, $actor, 'Concurrency test: provider path.');
 
             return ['payment_status' => $booking->payment_status->value];
+        })(),
+
+        // Phase 24A — two workers race a free-demo booking for the SAME
+        // student+instructor pair (at different slots, so this never
+        // collides with the pre-existing duplicate-slot/overlap guards).
+        // The instructor-scoped GET_LOCK in BookingRepository::withInstructorLock()
+        // plus the freeDemoConsumed() re-check inside that lock must let
+        // exactly one caller create a booking; the loser must observe
+        // FreeDemoAlreadyUsedException, never a second row.
+        'book-free-demo' => (function () use ($args) {
+            $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
+                typeKey: 'free_demo',
+                studentId: (int) $args['student_id'],
+                instructorId: (int) $args['instructor_id'],
+                startsAt: CarbonImmutable::parse($args['starts_at']),
+                durationMinutes: 30,
+            ));
+
+            return ['booking_id' => $booking->id, 'status' => $booking->status->value];
         })(),
 
         // Phase 16B — RazorpayX destination provisioning race. Binds a

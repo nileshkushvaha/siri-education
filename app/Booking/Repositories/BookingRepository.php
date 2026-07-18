@@ -103,6 +103,19 @@ final class BookingRepository implements BookingRepositoryInterface
             ->exists();
     }
 
+    public function freeDemoConsumed(CreateBookingData $data): bool
+    {
+        return Booking::withTrashed()
+            ->forStudent($data->studentId)
+            ->forInstructor($data->instructorId)
+            ->whereHas('type', fn (Builder $type) => $type->where('key', $data->typeKey))
+            ->where(fn (Builder $query) => $query
+                ->where('status', '!=', BookingStatus::Cancelled)
+                ->orWhereNotNull('confirmed_at'))
+            ->lockForUpdate()
+            ->exists();
+    }
+
     public function activeCountForDay(int $instructorId, CarbonImmutable $day, ?string $ignoreBookingId = null): int
     {
         return Booking::query()

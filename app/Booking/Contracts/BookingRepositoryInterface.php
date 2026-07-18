@@ -65,6 +65,18 @@ interface BookingRepositoryInterface
     /** Same student + instructor + type + start already actively booked. */
     public function duplicateExists(CreateBookingData $data): bool;
 
+    /**
+     * SRS 11.13/11.39 — has this student already consumed their one
+     * free demo with this instructor? True for any booking of
+     * $data->typeKey for the pair that either is not Cancelled, or was
+     * Cancelled after having been confirmed at least once
+     * (confirmed_at set) — i.e. only a demo that was cancelled while
+     * still Pending, and never confirmed, fails to consume the
+     * allowance. Includes soft-deleted (archived) rows: archival never
+     * erases the historical fact that a demo happened.
+     */
+    public function freeDemoConsumed(CreateBookingData $data): bool;
+
     /** @return Collection<int, Booking> active bookings intersecting [$from, $to) */
     public function activeBetween(int $instructorId, CarbonImmutable $from, CarbonImmutable $to): Collection;
 

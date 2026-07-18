@@ -26,7 +26,9 @@ use App\Booking\Events\BookingConfirmed;
 use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
 use App\Booking\Exceptions\DuplicateBookingException;
+use App\Booking\Exceptions\FreeDemoAlreadyUsedException;
 use App\Booking\Registry\BookingTypeRegistry;
+use App\Booking\Types\FreeDemoType;
 use App\Booking\Validation\BookingValidationPipeline;
 use App\Booking\Validation\Rules\BookingWindowRule;
 use App\Booking\Validation\Rules\DuplicateBookingRule;
@@ -94,6 +96,15 @@ final class BookingService implements BookingServiceInterface
                 // Race-safe re-checks: another request may have won the lock first.
                 if ($this->bookings->duplicateExists($data)) {
                     throw DuplicateBookingException::for($data);
+                }
+
+                // SRS 11.13/11.39 — one free demo per instructor. Fast-fail
+                // copy lives in OneFreeDemoPerInstructorRule (FreeDemoType's
+                // own rule); this re-check under the instructor lock closes
+                // the race between two concurrent requests for the same
+                // student+instructor pair, exactly like duplicateExists above.
+                if ($data->typeKey === FreeDemoType::KEY && $this->bookings->freeDemoConsumed($data)) {
+                    throw FreeDemoAlreadyUsedException::make();
                 }
 
                 $this->availability->ensureAvailable(

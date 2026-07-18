@@ -95,10 +95,13 @@ class AccountMenuServiceTest extends TestCase
 
         $this->assertNotContains('My Bookings', $instructorLabels);
         $this->assertNotContains('Payments', $instructorLabels);
-        $this->assertNotContains('Homework', $instructorLabels);
         $this->assertContains('My Bookings', $studentLabels);
         $this->assertContains('Payments', $studentLabels);
         $this->assertContains('Homework', $studentLabels);
+
+        // Phase 23J — instructors get their own homework review queue, a
+        // distinct destination from the student's "submit homework" page.
+        $this->assertContains('Homework', $instructorLabels);
     }
 
     public function test_student_links_remain_visible_when_user_also_has_instructor_role(): void

@@ -21,4 +21,9 @@ class HomeworkAssignmentPolicy
     {
         return $user->id === $assignment->student_id;
     }
+
+    public function review(User $user, HomeworkAssignment $assignment): bool
+    {
+        return $user->id === $assignment->teacher_id;
+    }
 }

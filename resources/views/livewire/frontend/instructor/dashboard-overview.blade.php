@@ -72,7 +72,11 @@
                 <div class="space-y-2">
                     <a href="{{ route('dashboard.instructor.learning-plans') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">Learning plan reviews</span><span class="font-bold text-white">{{ $reviewDueLearningPlanCount }}</span></a>
                     <a href="{{ route('dashboard.instructor.learning-plans') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">Assessments to prepare</span><span class="font-bold text-white">{{ $pendingAssessmentLearningPlanCount }}</span></a>
-                    <div class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3"><span class="text-sm text-slate-300">Homework submissions</span><span class="font-bold text-white">{{ $homework['pending_reviews'] }}</span></div>
+                    @if($homework['pending_reviews'] > 0)
+                        <a href="{{ route('dashboard.instructor.homework') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">{{ $homework['pending_reviews'] }} {{ Str::plural('submission', $homework['pending_reviews']) }} waiting for review</span><span class="text-xs font-semibold text-indigo-300">Review Homework</span></a>
+                    @else
+                        <div class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3"><span class="text-sm text-slate-300">Homework submissions</span><span class="font-bold text-white">0</span></div>
+                    @endif
                     <a href="{{ route('dashboard.notifications') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">Unread notifications</span><span class="font-bold text-white">{{ $unreadCount }}</span></a>
                 </div>
             </x-account.card>

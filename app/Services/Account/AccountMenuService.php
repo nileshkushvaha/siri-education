@@ -89,6 +89,7 @@ final class AccountMenuService
                 $this->item('Learning Plans', 'dashboard.instructor.learning-plans', 'clipboard'),
                 $this->item('Availability', 'dashboard.instructor.availability', 'calendar', mobilePriority: 3),
                 $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard', mobilePriority: 2, mobileLabel: 'Lessons'),
+                $this->item('Homework', 'dashboard.instructor.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled),
                 $this->item('Reviews & Quality', 'dashboard.instructor.quality-insights', 'star'),
             ]],
             ['label' => 'Money', 'items' => [

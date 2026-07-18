@@ -55,4 +55,33 @@ final class HomeworkRepository implements HomeworkRepositoryInterface
             ->limit($limit)
             ->get();
     }
+
+    public function paginatedForTeacher(int $teacherId, int $perPage = 20): LengthAwarePaginator
+    {
+        return HomeworkAssignment::query()
+            ->forTeacher($teacherId)
+            ->where('status', HomeworkStatus::Submitted)
+            ->with(['student:id,first_name,last_name,name'])
+            ->orderBy('submitted_at')
+            ->paginate($perPage);
+    }
+
+    public function recentlyGradedForTeacher(int $teacherId, int $limit = 10): Collection
+    {
+        return HomeworkAssignment::query()
+            ->forTeacher($teacherId)
+            ->where('status', HomeworkStatus::Graded)
+            ->with(['student:id,first_name,last_name,name'])
+            ->latest('updated_at')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function pendingReviewCountForTeacher(int $teacherId): int
+    {
+        return HomeworkAssignment::query()
+            ->forTeacher($teacherId)
+            ->where('status', HomeworkStatus::Submitted)
+            ->count();
+    }
 }

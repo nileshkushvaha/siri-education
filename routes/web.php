@@ -25,6 +25,7 @@ use App\Http\Controllers\Forms\SupportController;
 use App\Http\Controllers\Instructor\InstructorApplicationController;
 use App\Http\Controllers\Instructor\InstructorAvailabilityController;
 use App\Http\Controllers\Instructor\InstructorController;
+use App\Http\Controllers\Instructor\InstructorHomeworkController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorLessonsController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
@@ -247,6 +248,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     // student-feedback form for completed lessons. No admin/Filament
     // surface; feedback here never edits a lesson, booking, or outcome.
     Route::get('/instructor/lessons', [InstructorLessonsController::class, 'index'])->name('instructor.lessons');
+    // Phase 23J — instructor-facing homework review queue (reuses the
+    // existing app/Homework/* domain; grading writes go through
+    // HomeworkService::review(), never straight to the model).
+    Route::get('/instructor/homework', [InstructorHomeworkController::class, 'index'])->name('instructor.homework');
     // Phase 17P — instructor-facing quality insights (read-only; the
     // instructor never moderates, resolves reports, or touches an
     // aggregate from here).

@@ -27,10 +27,21 @@ final class PortalBadgeService
     {
         return $this->resolved[$user->id] ??= [
             'notifications' => $this->safely(fn (): int => $user->unreadNotifications()->count()),
-            'homework' => $this->audiences->resolve($user) === PortalAudience::Student && $this->features->homework_enabled
-                ? $this->safely(fn (): int => (int) ($this->homework->statsForStudent($user->id)->pending ?? 0))
-                : 0,
+            'homework' => $this->homeworkBadge($user),
         ];
+    }
+
+    private function homeworkBadge(User $user): int
+    {
+        if (! $this->features->homework_enabled) {
+            return 0;
+        }
+
+        return match ($this->audiences->resolve($user)) {
+            PortalAudience::Student => $this->safely(fn (): int => (int) ($this->homework->statsForStudent($user->id)->pending ?? 0)),
+            PortalAudience::Instructor => $this->safely(fn (): int => $this->homework->pendingReviewCountForTeacher($user->id)),
+            default => 0,
+        };
     }
 
     private function safely(callable $read): int

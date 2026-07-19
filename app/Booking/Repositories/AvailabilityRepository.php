@@ -55,18 +55,41 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
 
     public function windowCovers(int $teacherId, CarbonImmutable $startsAt, CarbonImmutable $endsAt): bool
     {
-        if (! $startsAt->isSameDay($endsAt) && ! $endsAt->equalTo($startsAt->addDay()->startOfDay())) {
-            return false;
-        }
-
         $rows = TeacherAvailability::query()
             ->active()
             ->forTeacher($teacherId)
             ->with('teacher.profile')
             ->get();
 
+        return $this->rowsCover($rows, $startsAt, $endsAt);
+    }
+
+    /**
+     * Phase 24I — GAP-019: the coverage calculation itself, extracted so
+     * a HYPOTHETICAL window set (an availability mutation's proposed
+     * after-state, built from unsaved model clones) can be evaluated
+     * with the exact same timezone/day-of-week/effective-range/midnight
+     * semantics as the live windowCovers() check — never a second
+     * implementation. $fallbackTimezone covers rows whose teacher
+     * relation isn't loaded (clones).
+     *
+     * @param  iterable<TeacherAvailability>  $rows
+     */
+    public function rowsCover(iterable $rows, CarbonImmutable $startsAt, CarbonImmutable $endsAt, ?string $fallbackTimezone = null): bool
+    {
+        if (! $startsAt->isSameDay($endsAt) && ! $endsAt->equalTo($startsAt->addDay()->startOfDay())) {
+            return false;
+        }
+
         foreach ($rows as $row) {
-            $timezone = $row->timezone ?: $row->teacher?->profile?->timezone ?: config('app.timezone', 'UTC');
+            if (! $row->is_active) {
+                continue;
+            }
+
+            $timezone = $row->timezone
+                ?: ($row->relationLoaded('teacher') ? $row->teacher?->profile?->timezone : null)
+                ?: $fallbackTimezone
+                ?: config('app.timezone', 'UTC');
             $localStart = $startsAt->setTimezone($timezone);
             $localEnd = $endsAt->setTimezone($timezone);
 

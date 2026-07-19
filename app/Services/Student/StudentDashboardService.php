@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Student;
 
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\StudentBookingServiceInterface;
-use App\Booking\Enums\MeetingStatus;
+use App\Booking\Enums\MeetingJoinAvailability;
 use App\DTOs\StudentDashboard\StudentDashboardData;
 use App\Enums\LearningPlanMilestoneStatus;
 use App\Homework\Contracts\HomeworkServiceInterface;
@@ -33,6 +34,7 @@ final class StudentDashboardService
         private readonly ProfileService $profiles,
         private readonly FeatureSettings $features,
         private readonly MeetingSettings $meetings,
+        private readonly BookingMeetingServiceInterface $bookingMeetings,
     ) {}
 
     public function summary(User $student, int $unreadCount = 0): StudentDashboardData
@@ -81,17 +83,16 @@ final class StudentDashboardService
 
         $timezone = $student->profile?->timezone ?: config('app.timezone');
         $meeting = $booking->meeting;
-        $windowStartsAt = $meeting?->starts_at ?? $booking->starts_at;
-        $windowEndsAt = $meeting?->ends_at ?? $booking->ends_at;
-        $windowOpen = now()->betweenIncluded(
-            $windowStartsAt->subMinutes($this->meetings->meeting_link_visible_before_minutes),
-            $windowEndsAt->addMinutes($this->meetings->meeting_link_visible_after_minutes),
-        );
-        $joinUrl = $meeting?->status === MeetingStatus::Created
-            && $this->meetings->student_join_url_visible
-            && $windowOpen
-            ? $meeting->join_url
-            : null;
+
+        // Phase 24H.2B — GAP-013: the URL comes exclusively from the
+        // authoritative service (ownership + strict Active lifecycle +
+        // visibility setting + statuses + the ONE configured time-window
+        // calculation, no longer duplicated here). join_window_open is
+        // pure display metadata — the "link available near lesson time"
+        // hint — derived from the SAME authoritative availability
+        // result, never an independent (weaker) authorization decision.
+        $availability = $this->bookingMeetings->joinAvailabilityFor($booking, $this->meetings->student_join_url_visible);
+        $joinUrl = $this->bookingMeetings->studentJoinUrlFor($booking, $student);
 
         return [
             'reference' => $booking->reference,
@@ -101,7 +102,7 @@ final class StudentDashboardService
             'starts_at' => $booking->starts_at->timezone($timezone),
             'meeting_status' => $meeting?->status?->label() ?? 'Not scheduled',
             'join_url' => $joinUrl,
-            'join_window_open' => $windowOpen,
+            'join_window_open' => $availability === MeetingJoinAvailability::Available,
             'can_cancel' => Gate::forUser($student)->allows('cancel', $booking),
             'can_reschedule' => Gate::forUser($student)->allows('reschedule', $booking),
         ];

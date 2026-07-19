@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Booking\Contracts\BookingRepositoryInterface;
+use App\Booking\DTOs\AvailabilityChangeImpact;
 use App\Booking\Enums\Weekday;
 use App\Enums\InstructorStatus;
+use App\Exceptions\Instructor\AvailabilityChangeRequiresConfirmationException;
 use App\Models\TeacherAvailability;
 use App\Models\User;
 use App\Services\AuditTrailService;
@@ -19,6 +22,8 @@ final class InstructorAvailabilityService
 {
     public function __construct(
         private readonly AuditTrailService $auditTrail,
+        private readonly AvailabilityChangeImpactService $impact,
+        private readonly BookingRepositoryInterface $bookings,
     ) {}
 
     /**
@@ -74,11 +79,18 @@ final class InstructorAvailabilityService
      *     is_active?:bool
      * }  $data
      */
-    public function update(TeacherAvailability $availability, array $data, User $actor): TeacherAvailability
+    public function update(TeacherAvailability $availability, array $data, User $actor, ?string $impactConfirmation = null): TeacherAvailability
     {
-        return DB::transaction(function () use ($availability, $data, $actor): TeacherAvailability {
+        // Phase 24I — GAP-019: the instructor-scoped booking lock
+        // serializes this mutation (and its impact recheck) against
+        // booking creation/confirmation for the same instructor, so a
+        // booking can never slip in between the final impact check and
+        // the availability write. Lock outside, transaction inside —
+        // the same ordering BookingService::request() uses.
+        return $this->bookings->withInstructorLock($availability->teacher_id, fn (): TeacherAvailability => DB::transaction(function () use ($availability, $data, $actor, $impactConfirmation): TeacherAvailability {
             $teacher = $this->teacher((int) ($data['teacher_id'] ?? $availability->teacher_id));
             $this->assertCanManage($actor, $availability, $teacher, 'update');
+            $this->assertStillExists($availability);
 
             $normalized = [
                 'teacher_id' => $teacher->id,
@@ -98,6 +110,9 @@ final class InstructorAvailabilityService
             $this->assertValidEffectiveRange($payload['effective_from'], $payload['effective_until']);
             $this->assertNoOverlap($teacher, $payload, $availability);
 
+            $impact = $this->analyzeWindowMutation($teacher, $availability, $payload, 'window_updated');
+            $this->assertImpactAcknowledged($impact, $impactConfirmation);
+
             $previous = $availability->only(['teacher_id', 'day_of_week', 'start_time', 'end_time', 'timezone', 'effective_from', 'effective_until', 'is_active']);
             $availability->forceFill([
                 ...$payload,
@@ -110,17 +125,26 @@ final class InstructorAvailabilityService
                 'updated',
                 'Instructor availability window updated.',
                 $availability,
-                ['previous' => $previous, 'current' => $this->auditProperties($availability)],
+                [
+                    'previous' => $previous,
+                    'current' => $this->auditProperties($availability),
+                    ...$this->impactAuditProperties($impact),
+                ],
             );
 
             return $availability->refresh();
-        });
+        }));
     }
 
-    public function delete(TeacherAvailability $availability, User $actor): void
+    public function delete(TeacherAvailability $availability, User $actor, ?string $impactConfirmation = null): void
     {
-        DB::transaction(function () use ($availability, $actor): void {
+        $this->bookings->withInstructorLock($availability->teacher_id, fn () => DB::transaction(function () use ($availability, $actor, $impactConfirmation): void {
             $this->assertCanManage($actor, $availability, null, 'delete');
+            $this->assertStillExists($availability);
+
+            $teacher = $this->teacher($availability->teacher_id);
+            $impact = $this->analyzeWindowMutation($teacher, $availability, null, 'window_deleted');
+            $this->assertImpactAcknowledged($impact, $impactConfirmation);
 
             $properties = $this->auditProperties($availability);
             $availability->delete();
@@ -131,14 +155,83 @@ final class InstructorAvailabilityService
                 'deleted',
                 'Instructor availability window deleted.',
                 $availability,
-                $properties,
+                [...$properties, ...$this->impactAuditProperties($impact)],
             );
-        });
+        }));
     }
 
-    public function setActive(TeacherAvailability $availability, bool $active, User $actor): TeacherAvailability
+    public function setActive(TeacherAvailability $availability, bool $active, User $actor, ?string $impactConfirmation = null): TeacherAvailability
     {
-        return $this->update($availability, ['is_active' => $active], $actor);
+        return $this->update($availability, ['is_active' => $active], $actor, $impactConfirmation);
+    }
+
+    /**
+     * Phase 24I — GAP-019: builds the hypothetical after-state window
+     * set for this mutation (current active rows with the target row
+     * replaced by an unsaved clone carrying the proposed payload, or
+     * removed entirely for a delete) and runs the impact analysis.
+     * Creating/widening runs through this too and simply yields no
+     * affected bookings.
+     *
+     * @param  array<string, mixed>|null  $payload  null = the row is being removed
+     */
+    private function analyzeWindowMutation(User $teacher, TeacherAvailability $availability, ?array $payload, string $mutationType): AvailabilityChangeImpact
+    {
+        $currentRows = TeacherAvailability::query()
+            ->active()
+            ->forTeacher($availability->teacher_id)
+            ->with('teacher.profile')
+            ->get();
+
+        $proposedRows = $currentRows->reject(
+            fn (TeacherAvailability $row): bool => $row->getKey() === $availability->getKey(),
+        )->values();
+
+        if ($payload !== null) {
+            $clone = $availability->replicate();
+            $clone->forceFill($payload);
+            $proposedRows->push($clone);
+        }
+
+        $proposal = $payload ?? ['deleted' => $availability->getKey()];
+        $proposal['availability_id'] = (string) $availability->getKey();
+
+        return $this->impact->analyzeWindowChange($teacher, $currentRows, $proposedRows, $mutationType, $proposal);
+    }
+
+    /**
+     * Phase 24I: a duplicate submission (double-click, stale tab) can
+     * carry an in-memory model whose row is already gone — re-checked
+     * under the instructor lock so it fails safely instead of silently
+     * re-mutating and double-auditing.
+     */
+    private function assertStillExists(TeacherAvailability $availability): void
+    {
+        if (TeacherAvailability::query()->whereKey($availability->getKey())->doesntExist()) {
+            throw ValidationException::withMessages(['availability' => 'This availability window no longer exists.']);
+        }
+    }
+
+    private function assertImpactAcknowledged(AvailabilityChangeImpact $impact, ?string $impactConfirmation): void
+    {
+        if (! $impact->requiresConfirmation) {
+            return;
+        }
+
+        if (! $this->impact->fingerprintMatches($impact, $impactConfirmation)) {
+            throw new AvailabilityChangeRequiresConfirmationException($impact);
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function impactAuditProperties(AvailabilityChangeImpact $impact): array
+    {
+        return [
+            'affected_booking_count' => $impact->affectedCount,
+            'had_affected_bookings' => $impact->affectedCount > 0,
+            'impact_acknowledged' => $impact->requiresConfirmation,
+            'impact_fingerprint' => $impact->fingerprint !== '' ? substr($impact->fingerprint, 0, 16) : null,
+        ];
     }
 
     private function teacher(int $teacherId): User

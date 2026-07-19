@@ -1,4 +1,38 @@
 <div class="space-y-6">
+    {{-- Phase 24I — GAP-019: availability-change impact warning. Shown when a proposed reduction affects confirmed upcoming lessons; nothing has been changed yet. --}}
+    @if($pendingImpact !== null)
+        <div role="alert" aria-live="assertive" class="rounded-2xl border border-red-400/40 bg-red-500/10 p-5 text-sm text-red-100">
+            <p class="font-bold text-red-200">
+                <svg class="mr-1 inline h-4 w-4 align-text-bottom" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>
+                This change affects {{ $pendingImpact['count'] }} confirmed upcoming {{ Str::plural('lesson', $pendingImpact['count']) }}.
+            </p>
+            <p class="mt-2 leading-6">
+                Those lessons <span class="font-semibold">remain scheduled and unchanged</span> — you are still expected to teach them, or handle
+                them through the normal booking workflow (reschedule or cancellation). Saving this change only affects future bookings.
+            </p>
+            @if($pendingImpact['summaries'] !== [])
+                <ul class="mt-3 list-disc space-y-1 pl-5 text-red-200/90">
+                    @foreach($pendingImpact['summaries'] as $summary)
+                        <li>{{ $summary['starts_at'] }} <span class="text-red-300/70">(booking {{ $summary['reference'] }})</span></li>
+                    @endforeach
+                    @if($pendingImpact['count'] > count($pendingImpact['summaries']))
+                        <li class="list-none text-red-300/70">…and {{ $pendingImpact['count'] - count($pendingImpact['summaries']) }} more.</li>
+                    @endif
+                </ul>
+            @endif
+            <div class="mt-4 flex flex-wrap gap-3">
+                <button type="button" wire:click="confirmPendingImpact" wire:loading.attr="disabled"
+                        class="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-400 disabled:opacity-50">
+                    Confirm change
+                </button>
+                <button type="button" wire:click="cancelPendingImpact" wire:loading.attr="disabled"
+                        class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50">
+                    Go back
+                </button>
+            </div>
+        </div>
+    @endif
+
     @if($isOnVacation)
         <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200">
             <p class="font-semibold">Vacation mode is enabled.</p>

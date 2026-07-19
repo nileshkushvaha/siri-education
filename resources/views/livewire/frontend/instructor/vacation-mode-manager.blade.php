@@ -29,6 +29,12 @@
                     <p class="text-sm font-semibold text-white">Are you sure?</p>
                     <p class="mt-2 text-sm leading-6 text-slate-300">New students will not be able to book lessons while vacation mode is active.</p>
                     <p class="mt-1 text-sm leading-6 text-slate-300">Existing scheduled lessons are not affected.</p>
+                    @if($upcomingConfirmedLessons > 0)
+                        <p class="mt-1 text-sm leading-6 text-amber-200" role="status">
+                            You currently have {{ $upcomingConfirmedLessons }} confirmed upcoming {{ Str::plural('lesson', $upcomingConfirmedLessons) }} —
+                            these remain scheduled and you are still expected to teach them while on vacation.
+                        </p>
+                    @endif
                     <div class="mt-4 flex items-center gap-3">
                         <button type="button" wire:click="enableVacation" wire:loading.attr="disabled" wire:target="enableVacation"
                                 class="min-h-11 rounded-xl bg-amber-500 px-4 text-sm font-semibold text-slate-950 hover:bg-amber-400 transition disabled:opacity-50">

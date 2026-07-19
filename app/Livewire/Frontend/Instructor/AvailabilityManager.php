@@ -6,6 +6,7 @@ namespace App\Livewire\Frontend\Instructor;
 
 use App\Booking\Enums\Weekday;
 use App\Enums\InstructorStatus;
+use App\Exceptions\Instructor\AvailabilityChangeRequiresConfirmationException;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherUnavailability;
 use App\Services\Instructor\InstructorAvailabilityService;
@@ -47,6 +48,17 @@ final class AvailabilityManager extends Component
     public ?string $timeOffEndsAt = null;
 
     public ?string $timeOffReason = null;
+
+    /**
+     * Phase 24I — GAP-019: pending impact-confirmation state. When a
+     * reduction affects confirmed upcoming lessons, the first submission
+     * changes nothing and this warning state is populated instead:
+     * the action to re-run, the safe lesson summaries, and the opaque
+     * impact fingerprint required as explicit acknowledgment.
+     *
+     * @var array{action: string, arguments: array<string, mixed>, count: int, summaries: array<int, array{reference: string, starts_at: string}>, token: string}|null
+     */
+    public ?array $pendingImpact = null;
 
     public function mount(): void
     {
@@ -92,30 +104,77 @@ final class AvailabilityManager extends Component
         $this->refreshRows();
     }
 
-    public function toggleWindow(string $id): void
+    public function toggleWindow(string $id, ?string $impactConfirmation = null): void
     {
         $window = TeacherAvailability::query()
             ->where('teacher_id', auth()->id())
             ->findOrFail($id);
 
-        app(InstructorAvailabilityService::class)->setActive($window, ! $window->is_active, auth()->user());
+        try {
+            app(InstructorAvailabilityService::class)->setActive($window, ! $window->is_active, auth()->user(), $impactConfirmation);
+        } catch (AvailabilityChangeRequiresConfirmationException $exception) {
+            $this->capturePendingImpact('toggleWindow', ['id' => $id], $exception);
 
+            return;
+        }
+
+        $this->pendingImpact = null;
         $this->refreshRows();
     }
 
-    public function deleteWindow(string $id): void
+    public function deleteWindow(string $id, ?string $impactConfirmation = null): void
     {
         $window = TeacherAvailability::query()
             ->where('teacher_id', auth()->id())
             ->findOrFail($id);
 
-        app(InstructorAvailabilityService::class)->delete($window, auth()->user());
+        try {
+            app(InstructorAvailabilityService::class)->delete($window, auth()->user(), $impactConfirmation);
+        } catch (AvailabilityChangeRequiresConfirmationException $exception) {
+            $this->capturePendingImpact('deleteWindow', ['id' => $id], $exception);
 
+            return;
+        }
+
+        $this->pendingImpact = null;
         $this->dispatch('notify', type: 'success', message: 'Availability window removed.');
         $this->refreshRows();
     }
 
-    public function addTimeOff(): void
+    /** Explicit acknowledgment: re-runs the pending action carrying the impact fingerprint. A stale fingerprint simply re-surfaces a refreshed warning. */
+    public function confirmPendingImpact(): void
+    {
+        if ($this->pendingImpact === null) {
+            return;
+        }
+
+        $pending = $this->pendingImpact;
+
+        match ($pending['action']) {
+            'toggleWindow' => $this->toggleWindow($pending['arguments']['id'], $pending['token']),
+            'deleteWindow' => $this->deleteWindow($pending['arguments']['id'], $pending['token']),
+            'addTimeOff' => $this->addTimeOff($pending['token']),
+            default => null,
+        };
+    }
+
+    public function cancelPendingImpact(): void
+    {
+        $this->pendingImpact = null;
+    }
+
+    private function capturePendingImpact(string $action, array $arguments, AvailabilityChangeRequiresConfirmationException $exception): void
+    {
+        $this->pendingImpact = [
+            'action' => $action,
+            'arguments' => $arguments,
+            'count' => $exception->impact->affectedCount,
+            'summaries' => $exception->impact->affectedSummaries,
+            'token' => $exception->impact->fingerprint,
+        ];
+    }
+
+    public function addTimeOff(?string $impactConfirmation = null): void
     {
         $this->validate([
             'timeOffStartsAt' => ['required', 'date'],
@@ -124,14 +183,23 @@ final class AvailabilityManager extends Component
             'timeOffReason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        app(InstructorTimeOffService::class)->create([
-            'teacher_id' => auth()->id(),
-            'starts_at' => $this->timeOffStartsAt,
-            'ends_at' => $this->timeOffEndsAt,
-            'timezone' => $this->timezone,
-            'reason' => $this->timeOffReason,
-        ], auth()->user());
+        try {
+            app(InstructorTimeOffService::class)->create([
+                'teacher_id' => auth()->id(),
+                'starts_at' => $this->timeOffStartsAt,
+                'ends_at' => $this->timeOffEndsAt,
+                'timezone' => $this->timezone,
+                'reason' => $this->timeOffReason,
+            ], auth()->user(), $impactConfirmation);
+        } catch (AvailabilityChangeRequiresConfirmationException $exception) {
+            // Keep the proposed form values so the acknowledged proposal
+            // is exactly what gets re-submitted.
+            $this->capturePendingImpact('addTimeOff', [], $exception);
 
+            return;
+        }
+
+        $this->pendingImpact = null;
         $this->reset(['timeOffStartsAt', 'timeOffEndsAt', 'timeOffReason']);
         $this->dispatch('notify', type: 'success', message: 'Time off added.');
         $this->refreshRows();

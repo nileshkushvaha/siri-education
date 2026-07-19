@@ -35,6 +35,7 @@ use App\Models\LessonReviewEligibility;
 use App\Models\ReferralAttribution;
 use App\Models\ReferralCode;
 use App\Models\ReferralReward;
+use App\Models\TeacherAvailability;
 use App\Models\User;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
 use App\Referral\Contracts\ReferralCodeServiceInterface;
@@ -43,6 +44,7 @@ use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Services\Admin\SuperAdminGuardService;
+use App\Services\Instructor\InstructorAvailabilityService;
 use App\Services\Instructor\InstructorOnboardingService;
 use App\Services\Student\StudentFavoriteInstructorService;
 use App\Services\Student\StudentLifecycleService;
@@ -652,6 +654,24 @@ try {
             $applied = app(StudentLifecycleService::class)->alignLegacyVerifiedStudent($student);
 
             return ['applied' => $applied, 'student_status' => $student->fresh()->profile->student_status->value];
+        })(),
+
+        // Phase 24I — an availability reduction (deactivate window,
+        // unconfirmed) racing a free-demo booking for the same
+        // instructor. Both paths take the same booking:host:%d GET_LOCK,
+        // so exactly one order occurs: booking-first → the deactivation
+        // observes the fresh confirmed booking and is rejected with
+        // requires-confirmation (no mutation); deactivation-first → the
+        // booking's ensureAvailable() sees no covering window and fails.
+        // Never both succeeding, never a window deactivated with an
+        // unacknowledged affected booking.
+        'availability-deactivate' => (function () use ($args) {
+            $actor = User::query()->findOrFail($args['actor_id']);
+            $window = TeacherAvailability::query()->findOrFail($args['availability_id']);
+
+            $updated = app(InstructorAvailabilityService::class)->setActive($window, false, $actor);
+
+            return ['is_active' => (bool) $updated->is_active];
         })(),
 
         // Phase 24H.2 — an interactive student action (favorite) racing

@@ -216,7 +216,8 @@ class DemoAvailabilityReadPathConsistencyTest extends TestCase
     public function test_authoritative_booking_service_still_rejects_demo_creation_when_disabled(): void
     {
         $teacher = $this->makeTeacher();
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]); // Phase 24H.1A: booking requires an Active student
         $this->disableDemos();
 
         $this->expectException(FreeDemoUnavailableException::class);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Frontend\Student;
 
 use App\Booking\Contracts\AvailabilityServiceInterface;
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
@@ -22,8 +23,6 @@ use App\Booking\Services\CancellationRefundPolicy;
 use App\Booking\Services\RescheduleLimitPolicy;
 use App\Models\Booking;
 use App\Models\BookingPayment;
-use App\Services\Student\StudentLifecycleService;
-use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -465,16 +464,20 @@ final class BookingHistory extends Component
         return view('livewire.frontend.student.booking-history', [
             'history' => $this->bookings->bookingHistory(auth()->user(), 10, $status),
             'statuses' => BookingStatus::cases(),
-            // Phase 24H.2 — GAP-013: the meeting join URL is revealed to
-            // the student only when the account is an Active student, on
-            // a FRESH per-request status check (never a cached snapshot)
-            // — a Registered/Suspended/Archived/null-status account gets
-            // HTML that simply never contains the provider URL. Note the
-            // boundary: a URL a student already copied externally cannot
-            // be revoked by application code without provider-side
-            // integration; this controls what the application serves.
-            'joinUrlVisible' => app(MeetingSettings::class)->student_join_url_visible
-                && app(StudentLifecycleService::class)->isEligibleForStudentActions(auth()->user()->fresh()),
+            // Phase 24H.2A — GAP-013: the join URL comes exclusively from
+            // the authoritative BookingMeetingService::studentJoinUrlFor()
+            // (ownership + strict Active lifecycle on a fresh read +
+            // visibility setting + booking/meeting status) — this
+            // component renders only what the domain service releases,
+            // and the blade never reads meeting->join_url directly. A
+            // stale request after suspension therefore receives HTML
+            // with no provider URL. Boundary: a URL already copied
+            // externally cannot be revoked without provider integration;
+            // this controls what the application serves.
+            'joinUrl' => $this->selectedBooking !== null
+                ? app(BookingMeetingServiceInterface::class)
+                    ->studentJoinUrlFor($this->selectedBooking, auth()->user())
+                : null,
         ]);
     }
 

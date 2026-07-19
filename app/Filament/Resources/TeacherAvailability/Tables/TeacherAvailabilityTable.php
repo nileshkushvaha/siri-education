@@ -7,6 +7,7 @@ namespace App\Filament\Resources\TeacherAvailability\Tables;
 use App\Booking\Enums\Weekday;
 use App\Models\TeacherAvailability;
 use App\Services\Instructor\InstructorAvailabilityService;
+use App\Support\AvailabilityImpactConfirmation;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -74,8 +75,14 @@ class TeacherAvailabilityTable
                     ->authorize(fn (TeacherAvailability $record): bool => auth()->user()?->can('delete', $record) ?? false)
                     ->action(function (TeacherAvailability $record): void {
                         try {
-                            app(InstructorAvailabilityService::class)->delete($record, auth()->user());
-                            Notification::make()->title('Availability window deleted.')->success()->send();
+                            $applied = AvailabilityImpactConfirmation::run(
+                                'availability-delete:'.$record->getKey(),
+                                fn (?string $impactConfirmation) => app(InstructorAvailabilityService::class)->delete($record, auth()->user(), $impactConfirmation),
+                            );
+
+                            if ($applied) {
+                                Notification::make()->title('Availability window deleted.')->success()->send();
+                            }
                         } catch (ValidationException $e) {
                             Notification::make()->title('Unable to delete availability window.')->body($e->validator->errors()->first())->danger()->send();
                         } catch (AuthorizationException) {
@@ -101,8 +108,22 @@ class TeacherAvailabilityTable
                         ->authorize(fn (): bool => auth()->user()?->can('create', TeacherAvailability::class) ?? false)
                         ->action(function (Collection $records): void {
                             $service = app(InstructorAvailabilityService::class);
-                            $records->each(fn (TeacherAvailability $record): TeacherAvailability => $service->setActive($record, false, auth()->user()));
-                            Notification::make()->title('Windows deactivated')->warning()->send();
+                            $warned = 0;
+
+                            foreach ($records as $record) {
+                                $applied = AvailabilityImpactConfirmation::run(
+                                    'availability-deactivate:'.$record->getKey(),
+                                    fn (?string $impactConfirmation) => $service->setActive($record, false, auth()->user(), $impactConfirmation),
+                                );
+
+                                if (! $applied) {
+                                    $warned++;
+                                }
+                            }
+
+                            $warned > 0
+                                ? Notification::make()->title("Deactivated with {$warned} window(s) requiring impact confirmation — repeat to confirm those.")->warning()->send()
+                                : Notification::make()->title('Windows deactivated')->warning()->send();
                         })
                         ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make()
@@ -112,12 +133,25 @@ class TeacherAvailabilityTable
                             $actor = auth()->user();
                             $failures = 0;
 
+                            $warned = 0;
+
                             foreach ($records as $record) {
                                 try {
-                                    $service->delete($record, $actor);
+                                    $applied = AvailabilityImpactConfirmation::run(
+                                        'availability-delete:'.$record->getKey(),
+                                        fn (?string $impactConfirmation) => $service->delete($record, $actor, $impactConfirmation),
+                                    );
+
+                                    if (! $applied) {
+                                        $warned++;
+                                    }
                                 } catch (ValidationException|AuthorizationException) {
                                     $failures++;
                                 }
+                            }
+
+                            if ($warned > 0) {
+                                Notification::make()->title("{$warned} window(s) require impact confirmation — repeat the delete to confirm those.")->warning()->send();
                             }
 
                             $failures > 0

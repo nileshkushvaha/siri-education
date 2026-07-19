@@ -93,12 +93,13 @@
                         @endif
                     </dd>
                 </div>
-                @if($booking->status->value === 'confirmed' && $joinUrlVisible)
+                {{-- Phase 24H.2A — $joinUrl comes exclusively from BookingMeetingService::studentJoinUrlFor(); this blade never reads meeting->join_url directly. --}}
+                @if($booking->status->value === 'confirmed')
                     <div>
                         <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Meeting</dt>
-                        @if($booking->meeting?->status?->value === 'created' && $booking->meeting?->join_url)
-                            <dd class="mt-1"><a href="{{ $booking->meeting->join_url }}" target="_blank" rel="noopener" class="font-semibold text-indigo-300 underline underline-offset-2">Join link</a></dd>
-                            @if($booking->meeting->password)
+                        @if($joinUrl)
+                            <dd class="mt-1"><a href="{{ $joinUrl }}" target="_blank" rel="noopener" class="font-semibold text-indigo-300 underline underline-offset-2">Join link</a></dd>
+                            @if($booking->meeting?->password)
                                 <dd class="mt-1 text-xs text-slate-400">Passcode: {{ $booking->meeting->password }}</dd>
                             @endif
                         @else

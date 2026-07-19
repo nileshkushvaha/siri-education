@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Frontend\Instructor;
 
 use App\Enums\InstructorStatus;
+use App\Services\Instructor\AvailabilityChangeImpactService;
 use App\Services\Instructor\InstructorOnboardingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +24,9 @@ final class VacationModeManager extends Component
 {
     public bool $confirmingEnable = false;
 
+    /** Phase 24I — GAP-019 (informational): how many confirmed upcoming lessons the instructor still owes; shown in the enable-confirmation panel. Vacation never strands these — it only pauses NEW bookings. */
+    public int $upcomingConfirmedLessons = 0;
+
     public bool $confirmingResume = false;
 
     public function mount(): void
@@ -33,6 +37,8 @@ final class VacationModeManager extends Component
 
     public function confirmEnable(): void
     {
+        $this->upcomingConfirmedLessons = app(AvailabilityChangeImpactService::class)
+            ->upcomingConfirmedCount(auth()->user());
         $this->confirmingEnable = true;
     }
 

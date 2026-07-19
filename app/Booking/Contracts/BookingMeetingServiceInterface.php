@@ -9,6 +9,7 @@ use App\Booking\Enums\MeetingJoinAvailability;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
+use App\Models\User;
 
 /**
  * Creates and stores meeting details for confirmed bookings, idempotently
@@ -56,4 +57,16 @@ interface BookingMeetingServiceInterface
 
     /** The join URL when joinAvailabilityFor() would return Available, otherwise null. */
     public function joinUrlFor(Booking $booking, bool $roleVisible, ?LessonStatus $lessonStatus = null): ?string;
+
+    /**
+     * Phase 24H.2A/24H.2B — the complete authoritative STUDENT
+     * meeting-URL disclosure decision: null unless the viewer is the
+     * booking's student, passes the strict Active-lifecycle guard, and
+     * joinAvailabilityFor() resolves Available under the student
+     * visibility setting (Confirmed/Created, non-blank URL, and the
+     * current time inside the configured before/after visibility
+     * window). Student-facing surfaces and notifications must use this
+     * — never meeting->join_url directly.
+     */
+    public function studentJoinUrlFor(Booking $booking, ?User $viewer): ?string;
 }

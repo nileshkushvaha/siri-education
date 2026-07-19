@@ -23,6 +23,8 @@ final class MeetingUpdatedNotification extends BookingNotification
     public function __construct(
         public readonly Booking $booking,
         public readonly BookingMeeting $meeting,
+        /** Phase 24H.2A — false for a recipient (the student) whose lifecycle no longer permits meeting access; the URL/passcode are then omitted from every channel. */
+        public readonly bool $includeJoinUrl = true,
     ) {
         $this->onQueue('notifications');
     }
@@ -38,11 +40,17 @@ final class MeetingUpdatedNotification extends BookingNotification
                 $this->meeting->timezone,
             ));
 
-        if ($this->meeting->join_url !== null) {
+        if ($this->includeJoinUrl && $this->meeting->join_url !== null) {
             $mail->action('Join meeting', $this->meeting->join_url);
+        } else {
+            // Phase 24H.2B — outside the visibility window (or when the
+            // student's access is otherwise restricted) the credential is
+            // withheld; a safe platform link preserves the schedule
+            // information without disclosing the provider URL early.
+            $mail->action('View your booking', route('dashboard.my-bookings'));
         }
 
-        if ($this->meeting->password !== null) {
+        if ($this->includeJoinUrl && $this->meeting->password !== null) {
             $mail->line(sprintf('Passcode: %s', $this->meeting->password));
         }
 
@@ -54,7 +62,7 @@ final class MeetingUpdatedNotification extends BookingNotification
         return sprintf(
             'Meeting link updated for booking %s.%s',
             $this->booking->reference,
-            $this->meeting->join_url !== null ? ' New link: '.$this->meeting->join_url : '',
+            $this->includeJoinUrl && $this->meeting->join_url !== null ? ' New link: '.$this->meeting->join_url : '',
         );
     }
 }

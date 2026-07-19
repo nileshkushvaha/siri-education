@@ -33,6 +33,8 @@ use App\Settings\BookingSettings;
 use App\Settings\MeetingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
@@ -418,11 +420,19 @@ class BookingMeetingTest extends TestCase
         $booking = Booking::factory()->confirmed()->paid()->create([
             'instructor_id' => $this->teacher->id,
             'student_id' => $this->student->id,
+            // Phase 24H.2B: the resource releases the URL only inside the visibility window.
+            'starts_at' => now()->addMinutes(10),
+            'ends_at' => now()->addMinutes(40),
         ]);
         app(BookingMeetingServiceInterface::class)->saveManualMeeting($booking, new MeetingUpdateContext(joinUrl: 'https://meet.example.test/abc'));
 
+        // Phase 24H.2A: the resource releases the URL only to the
+        // booking's own Active student as the request viewer.
+        $viewerRequest = Request::create('/api/test');
+        $viewerRequest->setUserResolver(fn () => $this->student);
         $resource = (new StudentBookingResource($booking->fresh()->load('meeting')))
-            ->resolve();
+            ->toArray($viewerRequest);
+        $resource = collect($resource)->reject(fn ($v) => $v instanceof MissingValue)->all();
         $this->assertSame('https://meet.example.test/abc', $resource['meeting_url']);
 
         $pendingBooking = Booking::factory()->create([
@@ -431,7 +441,8 @@ class BookingMeetingTest extends TestCase
             'status' => BookingStatus::Pending,
         ]);
         $pendingResource = (new StudentBookingResource($pendingBooking))
-            ->resolve();
+            ->toArray($viewerRequest);
+        $pendingResource = collect($pendingResource)->reject(fn ($v) => $v instanceof MissingValue)->all();
         $this->assertArrayNotHasKey('meeting_url', $pendingResource);
     }
 

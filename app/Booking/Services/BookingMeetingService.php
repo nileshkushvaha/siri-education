@@ -20,10 +20,13 @@ use App\Booking\Events\MeetingCreated;
 use App\Booking\Events\MeetingUpdated;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Meetings\ManualMeetingProvider;
+use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
+use App\Models\User;
 use App\Services\AuditTrailService;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\MeetingSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +63,7 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
         private readonly MeetingProviderResolver $providers,
         private readonly MeetingSettings $settings,
         private readonly AuditTrailService $audit,
+        private readonly StudentLifecycleService $studentLifecycle,
     ) {}
 
     public function createMeeting(Booking $booking, ?string $providerKey = null): ?BookingMeeting
@@ -267,6 +271,49 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
         return $this->joinAvailabilityFor($booking, $roleVisible, $lessonStatus) === MeetingJoinAvailability::Available
             ? $booking->meeting?->join_url
             : null;
+    }
+
+    /**
+     * Phase 24H.2A/24H.2B — GAP-013: THE complete authoritative student
+     * meeting-URL disclosure decision. A meeting URL is a sensitive
+     * access credential; every student-facing surface (BookingHistory,
+     * the student dashboard, StudentBookingResource, and the meeting
+     * notifications at send time) must obtain it through here, never by
+     * reading meeting->join_url directly, so neither lifecycle nor
+     * time-window enforcement can be bypassed by a future UI/API caller.
+     *
+     * Returns the URL only when ALL of:
+     *  - the viewer IS the booking's student (ownership is the actor
+     *    evidence — a dual-role instructor viewing someone else's
+     *    booking is simply a non-owner here, and the instructor path
+     *    stays joinAvailabilityFor(), untouched);
+     *  - the viewer passes the central strict lifecycle guard
+     *    (student role + student_status === Active, fresh read —
+     *    Registered/Suspended/Archived/null/missing-profile all fail
+     *    closed with no state disclosure, surfaced as a plain null);
+     *  - joinUrlFor()/joinAvailabilityFor() — the ONE existing window
+     *    calculation, never duplicated here — resolves Available under
+     *    the student visibility setting: booking Confirmed, meeting
+     *    Created with a non-blank URL, and the current server time
+     *    inside [starts_at - meeting_link_visible_before_minutes,
+     *    ends_at + meeting_link_visible_after_minutes] (both boundary
+     *    instants inclusive; zero values collapse the window to exactly
+     *    [starts_at, ends_at]; all instants compared absolutely, so
+     *    display timezones never shift the window).
+     */
+    public function studentJoinUrlFor(Booking $booking, ?User $viewer): ?string
+    {
+        if ($viewer === null || $booking->student_id !== $viewer->id) {
+            return null;
+        }
+
+        try {
+            $this->studentLifecycle->assertEligibleForStudentAction($viewer);
+        } catch (StudentActionNotAvailableException) {
+            return null;
+        }
+
+        return $this->joinUrlFor($booking, $this->settings->student_join_url_visible);
     }
 
     /**

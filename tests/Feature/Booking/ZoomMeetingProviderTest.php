@@ -15,6 +15,7 @@ use App\Booking\Meetings\ManualMeetingProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
 use App\Booking\Services\MeetingProviderResolver;
 use App\Booking\Services\ZoomConfigurationService;
+use App\Enums\StudentStatus;
 use App\Filament\Pages\Settings\MeetingSettingsPage;
 use App\Http\Resources\Student\StudentBookingResource;
 use App\Models\Booking;
@@ -22,6 +23,8 @@ use App\Models\BookingMeeting;
 use App\Models\User;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
@@ -504,10 +507,23 @@ class ZoomMeetingProviderTest extends TestCase
             'provider_meeting_id' => '987654321',
             'host_url' => 'https://zoom.us/s/987654321?zak=host-start-token',
             'password' => 'p4ss',
+            // Phase 24H.2B: the resource releases the URL only inside the visibility window.
+            'starts_at' => now()->addMinutes(10),
+            'ends_at' => now()->addMinutes(40),
             'metadata' => ['zoom_status' => 'waiting'],
         ]);
 
-        $resource = (new StudentBookingResource($booking->fresh()->load('meeting')))->resolve();
+        // Phase 24H.2A: the resource releases the URL only to the
+        // booking's own Active student as the request viewer.
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $viewer = $booking->student;
+        $viewer->assignRole('student');
+        $viewer->profile()->update(['student_status' => StudentStatus::Active]);
+        $viewerRequest = Request::create('/api/test');
+        $viewerRequest->setUserResolver(fn () => $viewer);
+
+        $resource = (new StudentBookingResource($booking->fresh()->load('meeting')))->toArray($viewerRequest);
+        $resource = collect($resource)->reject(fn ($v) => $v instanceof MissingValue)->all();
 
         $this->assertSame('https://zoom.us/j/987654321', $resource['meeting_url']);
         $this->assertSame('p4ss', $resource['meeting_password']);

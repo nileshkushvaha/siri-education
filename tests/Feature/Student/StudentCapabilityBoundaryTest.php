@@ -415,11 +415,16 @@ class StudentCapabilityBoundaryTest extends TestCase
             'student_id' => $student->id,
             'instructor_id' => $instructor->id,
             'status' => BookingStatus::Confirmed,
-            'starts_at' => now()->addHours(2),
-            'ends_at' => now()->addHours(3),
+            // Phase 24H.2B: within the configured visibility window (15 min before by default).
+            'starts_at' => now()->addMinutes(10),
+            'ends_at' => now()->addMinutes(40),
         ]);
 
-        BookingMeeting::factory()->created()->create(['booking_id' => $booking->id]);
+        BookingMeeting::factory()->created()->create([
+            'booking_id' => $booking->id,
+            'starts_at' => now()->addMinutes(10),
+            'ends_at' => now()->addMinutes(40),
+        ]);
 
         return [$student, $booking];
     }

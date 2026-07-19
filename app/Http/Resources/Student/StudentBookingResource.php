@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Student;
 
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
-use App\Booking\Enums\MeetingStatus;
 use App\Models\Booking;
-use App\Settings\MeetingSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +16,15 @@ final class StudentBookingResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Phase 24H.2A — GAP-013: the URL comes exclusively from the
+        // authoritative service (viewer ownership + strict Active
+        // lifecycle + visibility setting + booking/meeting status) —
+        // this resource serializes only what the domain releases, and
+        // an ineligible viewer's payload contains no URL key at all
+        // (never an empty-but-present attribute).
+        $joinUrl = app(BookingMeetingServiceInterface::class)
+            ->studentJoinUrlFor($this->resource, $request->user());
+
         return [
             'reference' => $this->reference,
             'status' => $this->status->value,
@@ -41,29 +49,18 @@ final class StudentBookingResource extends JsonResource
             'grade' => $this->meta['grade'] ?? null,
             'recurring_group' => $this->meta['recurring_group'] ?? null,
             'notes' => $this->notes,
-            'meeting_url' => $this->when(
-                $this->meetingVisible(),
-                $this->meeting?->join_url,
-            ),
+            'meeting_url' => $this->when($joinUrl !== null, $joinUrl),
             // A join password (when the provider issued one) is not a
             // secret the same way host_url is — a student cannot join
             // without it. meeting.host_url/meeting.metadata are never
-            // included here.
+            // included here. Only present when the URL itself was released.
             'meeting_password' => $this->when(
-                $this->meetingVisible() && $this->meeting?->password !== null,
+                $joinUrl !== null && $this->meeting?->password !== null,
                 $this->meeting?->password,
             ),
-            'meeting_message' => $this->status === BookingStatus::Confirmed && ! $this->meetingVisible()
+            'meeting_message' => $this->status === BookingStatus::Confirmed && $joinUrl === null
                 ? 'Meeting link is being prepared.'
                 : null,
         ];
-    }
-
-    /** Student-visible only once confirmed, created, and the admin hasn't turned off student visibility. */
-    private function meetingVisible(): bool
-    {
-        return $this->status === BookingStatus::Confirmed
-            && $this->meeting?->status === MeetingStatus::Created
-            && app(MeetingSettings::class)->student_join_url_visible;
     }
 }

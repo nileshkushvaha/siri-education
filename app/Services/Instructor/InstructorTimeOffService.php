@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Booking\Contracts\BookingRepositoryInterface;
+use App\Booking\DTOs\AvailabilityChangeImpact;
+use App\Exceptions\Instructor\AvailabilityChangeRequiresConfirmationException;
 use App\Models\TeacherUnavailability;
 use App\Models\User;
 use App\Services\AuditTrailService;
@@ -16,6 +19,8 @@ final class InstructorTimeOffService
 {
     public function __construct(
         private readonly AuditTrailService $auditTrail,
+        private readonly AvailabilityChangeImpactService $impact,
+        private readonly BookingRepositoryInterface $bookings,
     ) {}
 
     /**
@@ -27,15 +32,30 @@ final class InstructorTimeOffService
      *     reason?:string|null
      * }  $data
      */
-    public function create(array $data, User $actor): TeacherUnavailability
+    public function create(array $data, User $actor, ?string $impactConfirmation = null): TeacherUnavailability
     {
-        return DB::transaction(function () use ($data, $actor): TeacherUnavailability {
+        // Phase 24I — GAP-019: serialized against booking creation for
+        // the same instructor (lock outside, transaction inside), so no
+        // booking can be confirmed inside the proposed blackout between
+        // the impact check and the write.
+        return $this->bookings->withInstructorLock((int) $data['teacher_id'], fn (): TeacherUnavailability => DB::transaction(function () use ($data, $actor, $impactConfirmation): TeacherUnavailability {
             $teacher = $this->teacher((int) $data['teacher_id']);
             $this->assertCanCreate($actor, $teacher);
 
             $payload = $this->payload($data, $teacher, $actor);
 
             $this->assertValidRange($payload['starts_at'], $payload['ends_at']);
+
+            $impact = $this->impact->analyzeTimeOffChange(
+                $teacher,
+                $payload['starts_at'],
+                $payload['ends_at'],
+                null,
+                null,
+                'time_off_created',
+                ['starts_at' => $payload['starts_at']->toIso8601String(), 'ends_at' => $payload['ends_at']->toIso8601String()],
+            );
+            $this->assertImpactAcknowledged($impact, $impactConfirmation);
 
             $leave = TeacherUnavailability::query()->create($payload);
 
@@ -45,11 +65,11 @@ final class InstructorTimeOffService
                 'created',
                 'Instructor time off created.',
                 $leave,
-                $this->auditProperties($leave),
+                [...$this->auditProperties($leave), ...$this->impactAuditProperties($impact)],
             );
 
             return $leave;
-        });
+        }));
     }
 
     /**
@@ -61,9 +81,9 @@ final class InstructorTimeOffService
      *     reason?:string|null
      * }  $data
      */
-    public function update(TeacherUnavailability $leave, array $data, User $actor): TeacherUnavailability
+    public function update(TeacherUnavailability $leave, array $data, User $actor, ?string $impactConfirmation = null): TeacherUnavailability
     {
-        return DB::transaction(function () use ($leave, $data, $actor): TeacherUnavailability {
+        return $this->bookings->withInstructorLock($leave->teacher_id, fn (): TeacherUnavailability => DB::transaction(function () use ($leave, $data, $actor, $impactConfirmation): TeacherUnavailability {
             $teacher = $this->teacher((int) ($data['teacher_id'] ?? $leave->teacher_id));
             $this->assertCanManage($actor, $leave, $teacher, 'update');
 
@@ -77,6 +97,17 @@ final class InstructorTimeOffService
 
             $this->assertValidRange($payload['starts_at'], $payload['ends_at']);
 
+            $impact = $this->impact->analyzeTimeOffChange(
+                $teacher,
+                $payload['starts_at'],
+                $payload['ends_at'],
+                $leave->starts_at,
+                $leave->ends_at,
+                'time_off_updated',
+                ['starts_at' => $payload['starts_at']->toIso8601String(), 'ends_at' => $payload['ends_at']->toIso8601String(), 'leave_id' => (string) $leave->getKey()],
+            );
+            $this->assertImpactAcknowledged($impact, $impactConfirmation);
+
             $previous = $leave->only(['teacher_id', 'starts_at', 'ends_at', 'timezone', 'reason']);
             $leave->forceFill([
                 ...$payload,
@@ -89,11 +120,33 @@ final class InstructorTimeOffService
                 'updated',
                 'Instructor time off updated.',
                 $leave,
-                ['previous' => $previous, 'current' => $this->auditProperties($leave)],
+                ['previous' => $previous, 'current' => $this->auditProperties($leave), ...$this->impactAuditProperties($impact)],
             );
 
             return $leave->refresh();
-        });
+        }));
+    }
+
+    private function assertImpactAcknowledged(AvailabilityChangeImpact $impact, ?string $impactConfirmation): void
+    {
+        if (! $impact->requiresConfirmation) {
+            return;
+        }
+
+        if (! $this->impact->fingerprintMatches($impact, $impactConfirmation)) {
+            throw new AvailabilityChangeRequiresConfirmationException($impact);
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function impactAuditProperties(AvailabilityChangeImpact $impact): array
+    {
+        return [
+            'affected_booking_count' => $impact->affectedCount,
+            'had_affected_bookings' => $impact->affectedCount > 0,
+            'impact_acknowledged' => $impact->requiresConfirmation,
+            'impact_fingerprint' => $impact->fingerprint !== '' ? substr($impact->fingerprint, 0, 16) : null,
+        ];
     }
 
     public function delete(TeacherUnavailability $leave, User $actor): void

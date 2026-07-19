@@ -6,7 +6,9 @@ namespace App\Filament\Resources\TeacherLeave\Pages;
 
 use App\Filament\Resources\TeacherLeave\TeacherLeaveResource;
 use App\Services\Instructor\InstructorTimeOffService;
+use App\Support\AvailabilityImpactConfirmation;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateTeacherLeave extends CreateRecord
@@ -15,6 +17,19 @@ class CreateTeacherLeave extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        return app(InstructorTimeOffService::class)->create($data, auth()->user());
+        $leave = null;
+
+        $applied = AvailabilityImpactConfirmation::run(
+            'leave-create:'.auth()->id(),
+            function (?string $impactConfirmation) use ($data, &$leave): void {
+                $leave = app(InstructorTimeOffService::class)->create($data, auth()->user(), $impactConfirmation);
+            },
+        );
+
+        if (! $applied || $leave === null) {
+            throw new Halt;
+        }
+
+        return $leave;
     }
 }

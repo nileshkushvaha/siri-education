@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use App\Exceptions\LastActiveSuperAdminException;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Models\InstructorCompensationAgreement;
@@ -81,6 +82,14 @@ class UsersTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('profile.student_status')
+                    ->label('Student')
+                    ->badge()
+                    ->formatStateUsing(fn (?StudentStatus $state): string => $state?->label() ?? '—')
+                    ->color(fn (?StudentStatus $state): string => $state?->color() ?? 'gray')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('email_verified_at')
                     ->label('Verified')
                     ->badge()
@@ -132,6 +141,19 @@ class UsersTable
                         }
 
                         return $query->whereHas('profile', fn (Builder $profileQuery) => $profileQuery->where('instructor_status', $value));
+                    }),
+
+                SelectFilter::make('student_status')
+                    ->label('Student Status')
+                    ->options(StudentStatus::class)
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (! filled($value)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('profile', fn (Builder $profileQuery) => $profileQuery->where('student_status', $value));
                     }),
 
                 TernaryFilter::make('email_verified_at')

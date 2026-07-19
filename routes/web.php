@@ -68,6 +68,7 @@ use App\Http\Middleware\EnsureInstructorWorkspaceAccess;
 use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
 use App\Services\PortalResolver;
+use App\Services\Student\StudentLifecycleService;
 use App\Support\InstructorApplicationIntent;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -202,6 +203,7 @@ Route::name('auth.')->middleware('auth')->group(function (): void {
 
         $request->fulfill();
         $user->update(['status' => User::STATUS_ACTIVE]);
+        app(StudentLifecycleService::class)->activateFromVerification($user);
 
         if (InstructorApplicationIntent::consume()) {
             return redirect()->route('dashboard.instructor.onboarding')

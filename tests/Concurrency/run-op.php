@@ -44,6 +44,7 @@ use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Instructor\InstructorOnboardingService;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\RazorpayXPayoutSettings;
 use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
 use Carbon\CarbonImmutable;
@@ -610,6 +611,28 @@ try {
             $profile = app(InstructorOnboardingService::class)->activate($instructor, $admin);
 
             return ['instructor_status' => $profile->instructor_status->value];
+        })(),
+
+        // Phase 24H — two workers race suspend() vs. archive() for the
+        // SAME student. StudentLifecycleService::transitionStatus()'s
+        // row lock must serialize the two, so exactly one commits and
+        // the other observes a rejected (stale-current-state) transition.
+        'student-suspend' => (function () use ($args) {
+            $admin = User::query()->findOrFail($args['admin_id']);
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $profile = app(StudentLifecycleService::class)->suspend($student, $admin, 'Concurrency test suspension.');
+
+            return ['student_status' => $profile->student_status->value];
+        })(),
+
+        'student-archive' => (function () use ($args) {
+            $admin = User::query()->findOrFail($args['admin_id']);
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $profile = app(StudentLifecycleService::class)->archive($student, $admin, 'Concurrency test archive.');
+
+            return ['student_status' => $profile->student_status->value];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

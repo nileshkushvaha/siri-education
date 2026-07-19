@@ -10,6 +10,7 @@ use App\Events\Auth\UserRegistered;
 use App\Exceptions\Auth\RegistrationException;
 use App\Models\User;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\PasswordPolicySettings;
 use App\Settings\RegistrationSettings;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,7 @@ final class RegistrationService
         private readonly PasswordPolicySettings $policySettings,
         private readonly ReferralAttributionServiceInterface $referralAttribution,
         private readonly RegistrationCaptchaService $captcha,
+        private readonly StudentLifecycleService $studentLifecycle,
     ) {}
 
     /**
@@ -72,6 +74,14 @@ final class RegistrationService
             // null until a user actually applies to teach).
             if ($role->name === 'student') {
                 $user->profile?->update(['student_status' => StudentStatus::Registered]);
+
+                // Auto-verified registrations (step 5) never hit the
+                // signed email-verification link, so this is the only
+                // place that trigger fires for them — same idempotent
+                // Registered-only entry point the verification route uses.
+                if ($autoVerify && ! $requireApproval) {
+                    $this->studentLifecycle->activateFromVerification($user);
+                }
 
                 // Referral attribution — students only, registration-time
                 // only, strictly best-effort: the service swallows every

@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             InstructorPermissionSeeder::class,
             InstructorDocumentRequirementPermissionSeeder::class,
             StudentPermissionSeeder::class,
+            StudentLifecyclePermissionSeeder::class,
             BookingTypeSeeder::class,
             BookingPermissionSeeder::class,
             BookingPaymentPermissionSeeder::class,

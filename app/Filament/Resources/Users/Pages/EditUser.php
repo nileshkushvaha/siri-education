@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Events\Auth\UserApproved;
 use App\Exceptions\LastActiveSuperAdminException;
+use App\Filament\Concerns\HasStudentLifecycleActions;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
@@ -17,6 +18,8 @@ use Spatie\Permission\Models\Role;
 
 class EditUser extends EditRecord
 {
+    use HasStudentLifecycleActions;
+
     protected static string $resource = UserResource::class;
 
     /** Snapshot of role names before the form is saved. */
@@ -26,6 +29,7 @@ class EditUser extends EditRecord
     {
         return [
             ViewAction::make(),
+            ...$this->studentLifecycleActions(),
             DeleteAction::make()
                 ->hidden(fn (): bool => $this->record->id === auth()->id()
                     || app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($this->record)

@@ -12,6 +12,7 @@ use App\Models\LoginHistory;
 use App\Models\User;
 use App\Notifications\Auth\NewDeviceLoginNotification;
 use App\Notifications\Auth\SuspiciousLoginNotification;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\AuthenticationSettings;
 use App\Support\UserAgentParser;
 
@@ -22,6 +23,7 @@ final class LoginService
         private readonly AuthenticationSettings $authSettings,
         private readonly LoginSecurityService $loginSecurity,
         private readonly AccountProtectionService $accountProtection,
+        private readonly StudentLifecycleService $studentLifecycle,
     ) {}
 
     public function attempt(
@@ -61,6 +63,16 @@ final class LoginService
                 LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountInactive->value, $sessionId);
 
                 return LoginResult::AccountInactive;
+            }
+
+            // Phase 24H — GAP-013: a suspended/archived student_status
+            // blocks login only when the account has no other legitimate
+            // (bookable instructor) capability — see
+            // StudentLifecycleService::blocksLogin() for the exact rule.
+            if ($this->studentLifecycle->blocksLogin($user)) {
+                LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::StudentAccountRestricted->value, $sessionId);
+
+                return LoginResult::StudentAccountRestricted;
             }
         }
 

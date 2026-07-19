@@ -71,6 +71,9 @@ class UserProfile extends Model implements HasMedia
         'instructor_review_reason',
         'instructor_documents_requested_reason',
         'student_status',
+        'student_status_changed_at',
+        'student_status_changed_by',
+        'student_status_reason',
         'student_academic_level_id',
         'student_preferred_language_id',
         'assignment_priority',
@@ -98,6 +101,7 @@ class UserProfile extends Model implements HasMedia
             'instructor_application_submitted_at' => 'datetime',
             'instructor_reviewed_at' => 'datetime',
             'student_status' => StudentStatus::class,
+            'student_status_changed_at' => 'datetime',
             'assignment_priority' => 'integer',
         ];
     }

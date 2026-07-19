@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Referral\Services;
 
 use App\Booking\Enums\BookingPaymentRecordStatus;
-use App\Enums\StudentStatus;
 use App\Lessons\Enums\LessonOutcome;
 use App\Models\BookingPayment;
 use App\Models\Lesson;
@@ -602,8 +601,17 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
             throw new ReferralException(sprintf('Reward #%d parties are no longer both students — reject it instead.', $reward->id));
         }
 
-        if ($referrer->status !== User::STATUS_ACTIVE
-            || in_array($referrer->profile?->student_status, [StudentStatus::Suspended, StudentStatus::Archived], true)) {
+        // Phase 24H — GAP-013: a suspended/archived student_status no
+        // longer rejects an already-held reward here. This check runs
+        // at APPROVAL time for money already calculated and owed —
+        // Suspended/Archived legitimately blocks becoming a NEW eligible
+        // referrer (see ReferralEligibilityService, still enforced), but
+        // must never forfeit an existing financial obligation, per this
+        // phase's "do not block money owed to the student merely
+        // because suspended/archived" requirement. User::status is
+        // still checked — that's the broader account-standing question
+        // (blocked/inactive), out of this phase's student-lifecycle scope.
+        if ($referrer->status !== User::STATUS_ACTIVE) {
             throw new ReferralException(sprintf('Reward #%d referrer is no longer an eligible active student — reject it instead.', $reward->id));
         }
 

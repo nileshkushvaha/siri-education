@@ -42,5 +42,17 @@ final class VerifiedActiveStudentRule implements BookingRuleInterface
         if ($this->authSettings->email_verification_required && $user->email_verified_at === null) {
             throw new BookingException('Please verify your email address before booking a lesson.');
         }
+
+        // Phase 24H — GAP-013: block only the BAD statuses (Suspended/
+        // Archived), not require Active — a positive "must be Active"
+        // requirement would instantly block every pre-existing student,
+        // since the one-time historical backfill left every existing
+        // profile at Registered and nothing promoted them since (no
+        // automatic trigger existed before this phase). This mirrors
+        // the same negative-check pattern the Referral module already
+        // uses for student eligibility.
+        if ($user->profile?->student_status?->blocksAccess() === true) {
+            throw new BookingException('Your account is not available for booking. Please contact support.');
+        }
     }
 }

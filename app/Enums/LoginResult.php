@@ -16,6 +16,7 @@ enum LoginResult: string
     case EmailUnverified = 'email_unverified';
     case AccountInactive = 'account_inactive';
     case AdminAccountOnly = 'admin_account_only';
+    case StudentAccountRestricted = 'student_account_restricted';
 
     public function message(): string
     {
@@ -37,6 +38,10 @@ enum LoginResult: string
             self::EmailUnverified => 'Please verify your email address before signing in.',
             self::AccountInactive => 'Your account is inactive. Please contact support.',
             self::AdminAccountOnly => 'These credentials do not match our records.',
+            // Deliberately as generic as the other account-status messages
+            // — never names "suspended"/"archived" or exposes the admin's
+            // recorded reason on the login screen (Phase 24H Step 8).
+            self::StudentAccountRestricted => 'Your account is not available. Please contact support.',
         };
     }
 

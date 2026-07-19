@@ -25,6 +25,7 @@ use App\Booking\Events\BookingCompleted;
 use App\Booking\Events\BookingConfirmed;
 use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
+use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\DuplicateBookingException;
 use App\Booking\Exceptions\FreeDemoAlreadyUsedException;
 use App\Booking\Exceptions\RescheduleLimitReachedException;
@@ -192,6 +193,7 @@ final class BookingService implements BookingServiceInterface
 
     public function reschedule(Booking $booking, RescheduleBookingData $data): Booking
     {
+        $this->assertStudentInitiatorNotRestricted($booking, $data->actor);
         $this->window->assertWithinWindow($data->startsAt);
 
         $previousStartsAt = $booking->starts_at;
@@ -254,6 +256,8 @@ final class BookingService implements BookingServiceInterface
 
     public function cancel(Booking $booking, CancelBookingData $data): Booking
     {
+        $this->assertStudentInitiatorNotRestricted($booking, $data->cancelledBy);
+
         $from = $booking->status;
         $decision = null;
 
@@ -326,6 +330,27 @@ final class BookingService implements BookingServiceInterface
     private function attendeeFor(CreateBookingData $data): ?User
     {
         return $data->studentId !== null ? User::find($data->studentId) : null;
+    }
+
+    /**
+     * Phase 24H — GAP-013: a suspended/archived student must not
+     * self-initiate a reschedule or cancellation ("Suspended/archived
+     * students should not initiate protected student actions"). Only
+     * gates the STUDENT actor — an instructor, admin, or system actor
+     * (e.g. cancelling/rescheduling on the student's behalf, or an
+     * expired-reservation release) is never blocked by the student's
+     * own status, since that's an administrative/protective action, not
+     * a student-initiated one.
+     */
+    private function assertStudentInitiatorNotRestricted(Booking $booking, BookingActor $actor): void
+    {
+        if ($actor !== BookingActor::Student) {
+            return;
+        }
+
+        if ($booking->student?->profile?->student_status?->blocksAccess() === true) {
+            throw new BookingException('Your account is not available for this action. Please contact support.');
+        }
     }
 
     /** @return array{BookingActor, ?int} */

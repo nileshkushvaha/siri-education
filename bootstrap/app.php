@@ -38,6 +38,16 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('auth.login');
         });
 
+        // Phase 24F — GAP-012/SRS-1-23: applied to the whole 'web' group
+        // (not listed per-route) so it also covers Livewire's update
+        // endpoint, which only ever receives the base 'web' group and
+        // never the app's own route-level middleware arrays. The
+        // middleware itself no-ops for any unauthenticated/guest
+        // request, so this is safe on public/guest-only pages too.
+        $middleware->web(append: [
+            TrackUserSession::class,
+        ]);
+
         $middleware->alias([
             'account.active' => EnsureAccountIsActive::class,
             'login.enabled' => EnsureLoginEnabled::class,

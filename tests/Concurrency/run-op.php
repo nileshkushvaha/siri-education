@@ -21,6 +21,7 @@ use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
+use App\Http\Middleware\TrackUserSession;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
 use App\Models\Booking;
@@ -581,6 +582,25 @@ try {
             app(SuperAdminGuardService::class)->protect($user, fn (User $u) => $u->update(['status' => User::STATUS_INACTIVE]));
 
             return ['user_id' => $user->id, 'status' => $user->fresh()->status];
+        })(),
+
+        // Phase 24F — two workers race the idle-expiry check for the SAME
+        // tracked session at (or just past) its expiry boundary.
+        // TrackUserSession::expireIfIdle()'s row lock must serialize the
+        // two, so the session is deleted (expired) exactly once — never
+        // twice, and never "revived" by a second request reading a
+        // stale, not-yet-deleted row.
+        'idle-session-check' => (function () use ($args) {
+            CarbonImmutable::setTestNow(CarbonImmutable::parse($args['now']));
+
+            $user = User::query()->findOrFail($args['user_id']);
+
+            $request = Request::create('/dashboard', 'GET');
+            $request->setUserResolver(fn () => $user);
+
+            $expired = app(TrackUserSession::class)->expireIfIdle($request, $args['session_id']);
+
+            return ['expired' => $expired];
         })(),
 
         'instructor-activate' => (function () use ($args) {

@@ -114,7 +114,7 @@ Route::get('/newsletter/unsubscribe/{token}', NewsletterUnsubscribeController::c
 
 // ── Dashboard (Frontend Portal — see PortalResolver) ─────────────────
 Route::get('/dashboard', DashboardController::class)->name('dashboard')
-    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'session.track', 'frontend.portal', EnsureSupportedFrontendPortalAudience::class]);
+    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'frontend.portal', EnsureSupportedFrontendPortalAudience::class]);
 
 // ── Frontend Auth (guests only) ─────────────────────────────────────
 Route::name('auth.')->middleware('guest')->group(function (): void {
@@ -236,7 +236,6 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     'email.verify.if.required',
     EnsureAccountIsActive::class,
     'password.change.required',
-    'session.track',
     'frontend.portal',
     EnsureSupportedFrontendPortalAudience::class,
 ])->group(function (): void {
@@ -341,7 +340,6 @@ Route::prefix('profile')->name('profile.')->middleware([
     'email.verify.if.required',
     EnsureAccountIsActive::class,
     'password.change.required',
-    'session.track',
     'frontend.portal',
     EnsureSupportedFrontendPortalAudience::class,
 ])->group(function (): void {
@@ -371,7 +369,6 @@ Route::prefix('admin')->name('admin.')->middleware([
     'email.verify.if.required',
     EnsureAccountIsActive::class,
     'password.change.required',
-    'session.track',
 ])->group(function (): void {
     // Page Preview
     Route::get('/pages/{page}/preview', PagePreviewController::class)->name('pages.preview');

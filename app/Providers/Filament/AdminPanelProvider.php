@@ -16,6 +16,7 @@ use App\Filament\Widgets\RecentLoginsWidget;
 use App\Filament\Widgets\RecentUsersWidget;
 use App\Filament\Widgets\StatsOverviewWidget;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
+use App\Http\Middleware\TrackUserSession;
 use App\Settings\GeneralSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Actions\Action;
@@ -125,6 +126,11 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 EnsurePasswordChangeRequired::class,
+                // Phase 24F — GAP-012/SRS-1-23: the Filament panel defines
+                // its own isolated middleware stack (never the app's
+                // 'web' group), so idle-timeout enforcement must be
+                // added here explicitly too.
+                TrackUserSession::class,
             ]);
     }
 

@@ -72,7 +72,9 @@ class PaymentConfigurationPage extends PaymentSettingsPage
             return;
         }
 
-        $this->saveConfigurationSettings($data);
+        if (! $this->saveConfigurationSettings($data)) {
+            return;
+        }
 
         Notification::make()
             ->title('Payment configuration saved')

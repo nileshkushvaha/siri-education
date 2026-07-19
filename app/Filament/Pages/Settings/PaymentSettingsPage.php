@@ -37,6 +37,7 @@ use Illuminate\Support\Str;
 abstract class PaymentSettingsPage extends Page
 {
     use HasSettingsAccess;
+    use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = null;
 
@@ -765,10 +766,16 @@ abstract class PaymentSettingsPage extends Page
             return;
         }
 
-        $this->saveBankSettings($data);
-        $this->saveGatewaySettings($data);
-        $this->saveConfigurationSettings($data);
-        $this->saveAdvancedSettings($data);
+        $bankOk = $this->saveBankSettings($data);
+        $gatewayOk = $this->saveGatewaySettings($data);
+        $configOk = $this->saveConfigurationSettings($data);
+        $advancedOk = $this->saveAdvancedSettings($data);
+
+        if (! $bankOk || ! $gatewayOk || ! $configOk || ! $advancedOk) {
+            // A failure notification was already shown by
+            // saveSettingsWithAudit() for whichever group failed.
+            return;
+        }
 
         Notification::make()
             ->title('Payment settings saved')
@@ -779,130 +786,126 @@ abstract class PaymentSettingsPage extends Page
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function saveBankSettings(array $data): void
+    protected function saveBankSettings(array $data): bool
     {
-        $bank = app(BankSettings::class);
-
-        $bank->enable_offline_payment = (bool) ($data['enable_offline_payment'] ?? false);
-        $bank->account_holder_name = $data['account_holder_name'] ?? null;
-        $bank->bank_name = $data['bank_name'] ?? null;
-        $bank->branch_name = $data['branch_name'] ?? null;
-        $bank->account_number = $data['account_number'] ?? null;
-        $bank->ifsc_code = isset($data['ifsc_code']) ? strtoupper((string) $data['ifsc_code']) : null;
-        $bank->swift_code = isset($data['swift_code']) ? strtoupper((string) $data['swift_code']) : null;
-        $bank->iban = isset($data['iban']) ? strtoupper((string) $data['iban']) : null;
-        $bank->account_type = $data['account_type'] ?? 'current';
-        $bank->upi_id = $data['upi_id'] ?? null;
-        $bank->qr_code_image = $data['qr_code_image'] ?? $bank->qr_code_image;
-        $bank->payment_instructions = $data['payment_instructions'] ?? null;
-        $bank->display_on_invoice = (bool) ($data['display_on_invoice'] ?? false);
-        $bank->display_on_payment_page = (bool) ($data['display_on_payment_page'] ?? false);
-        $bank->save();
+        return $this->saveSettingsWithAudit(BankSettings::class, 'settings', function (BankSettings $bank) use ($data): void {
+            $bank->enable_offline_payment = (bool) ($data['enable_offline_payment'] ?? false);
+            $bank->account_holder_name = $data['account_holder_name'] ?? null;
+            $bank->bank_name = $data['bank_name'] ?? null;
+            $bank->branch_name = $data['branch_name'] ?? null;
+            $bank->account_number = $data['account_number'] ?? null;
+            $bank->ifsc_code = isset($data['ifsc_code']) ? strtoupper((string) $data['ifsc_code']) : null;
+            $bank->swift_code = isset($data['swift_code']) ? strtoupper((string) $data['swift_code']) : null;
+            $bank->iban = isset($data['iban']) ? strtoupper((string) $data['iban']) : null;
+            $bank->account_type = $data['account_type'] ?? 'current';
+            $bank->upi_id = $data['upi_id'] ?? null;
+            $bank->qr_code_image = $data['qr_code_image'] ?? $bank->qr_code_image;
+            $bank->payment_instructions = $data['payment_instructions'] ?? null;
+            $bank->display_on_invoice = (bool) ($data['display_on_invoice'] ?? false);
+            $bank->display_on_payment_page = (bool) ($data['display_on_payment_page'] ?? false);
+        });
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function saveGatewaySettings(array $data): void
+    protected function saveGatewaySettings(array $data): bool
     {
-        $settings = app(PaymentGatewaySettings::class);
+        return $this->saveSettingsWithAudit(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $settings) use ($data): void {
+            foreach ($this->gatewayPrefixes() as $prefix) {
+                $enabledField = "{$prefix}_enabled";
+                $settings->{$enabledField} = (bool) ($data[$enabledField] ?? false);
+            }
 
-        foreach ($this->gatewayPrefixes() as $prefix) {
-            $enabledField = "{$prefix}_enabled";
-            $settings->{$enabledField} = (bool) ($data[$enabledField] ?? false);
-        }
+            $settings->stripe_sandbox_mode = (bool) ($data['stripe_sandbox_mode'] ?? true);
+            $settings->stripe_publishable_key = $data['stripe_publishable_key'] ?? null;
+            $settings->stripe_success_url = $data['stripe_success_url'] ?? null;
+            $settings->stripe_failure_url = $data['stripe_failure_url'] ?? null;
+            $settings->stripe_webhook_url = $data['stripe_webhook_url'] ?? null;
 
-        $settings->stripe_sandbox_mode = (bool) ($data['stripe_sandbox_mode'] ?? true);
-        $settings->stripe_publishable_key = $data['stripe_publishable_key'] ?? null;
-        $settings->stripe_success_url = $data['stripe_success_url'] ?? null;
-        $settings->stripe_failure_url = $data['stripe_failure_url'] ?? null;
-        $settings->stripe_webhook_url = $data['stripe_webhook_url'] ?? null;
+            $settings->razorpay_sandbox_mode = (bool) ($data['razorpay_sandbox_mode'] ?? true);
+            $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
+            $settings->razorpay_success_url = $data['razorpay_success_url'] ?? null;
+            $settings->razorpay_failure_url = $data['razorpay_failure_url'] ?? null;
+            $settings->razorpay_webhook_url = $data['razorpay_webhook_url'] ?? null;
 
-        $settings->razorpay_sandbox_mode = (bool) ($data['razorpay_sandbox_mode'] ?? true);
-        $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
-        $settings->razorpay_success_url = $data['razorpay_success_url'] ?? null;
-        $settings->razorpay_failure_url = $data['razorpay_failure_url'] ?? null;
-        $settings->razorpay_webhook_url = $data['razorpay_webhook_url'] ?? null;
+            $settings->paypal_mode = $data['paypal_mode'] ?? 'sandbox';
+            $settings->paypal_client_id = $data['paypal_client_id'] ?? null;
+            $settings->paypal_success_url = $data['paypal_success_url'] ?? null;
+            $settings->paypal_failure_url = $data['paypal_failure_url'] ?? null;
+            $settings->paypal_webhook_url = $data['paypal_webhook_url'] ?? null;
 
-        $settings->paypal_mode = $data['paypal_mode'] ?? 'sandbox';
-        $settings->paypal_client_id = $data['paypal_client_id'] ?? null;
-        $settings->paypal_success_url = $data['paypal_success_url'] ?? null;
-        $settings->paypal_failure_url = $data['paypal_failure_url'] ?? null;
-        $settings->paypal_webhook_url = $data['paypal_webhook_url'] ?? null;
+            $settings->cashfree_environment = $data['cashfree_environment'] ?? 'sandbox';
+            $settings->cashfree_app_id = $data['cashfree_app_id'] ?? null;
+            $settings->cashfree_success_url = $data['cashfree_success_url'] ?? null;
+            $settings->cashfree_failure_url = $data['cashfree_failure_url'] ?? null;
+            $settings->cashfree_webhook_url = $data['cashfree_webhook_url'] ?? null;
 
-        $settings->cashfree_environment = $data['cashfree_environment'] ?? 'sandbox';
-        $settings->cashfree_app_id = $data['cashfree_app_id'] ?? null;
-        $settings->cashfree_success_url = $data['cashfree_success_url'] ?? null;
-        $settings->cashfree_failure_url = $data['cashfree_failure_url'] ?? null;
-        $settings->cashfree_webhook_url = $data['cashfree_webhook_url'] ?? null;
+            $settings->payu_sandbox_mode = (bool) ($data['payu_sandbox_mode'] ?? true);
+            $settings->payu_merchant_id = $data['payu_merchant_id'] ?? null;
+            $settings->payu_public_key = $data['payu_public_key'] ?? null;
+            $settings->payu_success_url = $data['payu_success_url'] ?? null;
+            $settings->payu_failure_url = $data['payu_failure_url'] ?? null;
+            $settings->payu_webhook_url = $data['payu_webhook_url'] ?? null;
 
-        $settings->payu_sandbox_mode = (bool) ($data['payu_sandbox_mode'] ?? true);
-        $settings->payu_merchant_id = $data['payu_merchant_id'] ?? null;
-        $settings->payu_public_key = $data['payu_public_key'] ?? null;
-        $settings->payu_success_url = $data['payu_success_url'] ?? null;
-        $settings->payu_failure_url = $data['payu_failure_url'] ?? null;
-        $settings->payu_webhook_url = $data['payu_webhook_url'] ?? null;
+            $settings->phonepe_sandbox_mode = (bool) ($data['phonepe_sandbox_mode'] ?? true);
+            $settings->phonepe_merchant_id = $data['phonepe_merchant_id'] ?? null;
+            $settings->phonepe_salt_index = $data['phonepe_salt_index'] ?? null;
+            $settings->phonepe_success_url = $data['phonepe_success_url'] ?? null;
+            $settings->phonepe_failure_url = $data['phonepe_failure_url'] ?? null;
+            $settings->phonepe_webhook_url = $data['phonepe_webhook_url'] ?? null;
 
-        $settings->phonepe_sandbox_mode = (bool) ($data['phonepe_sandbox_mode'] ?? true);
-        $settings->phonepe_merchant_id = $data['phonepe_merchant_id'] ?? null;
-        $settings->phonepe_salt_index = $data['phonepe_salt_index'] ?? null;
-        $settings->phonepe_success_url = $data['phonepe_success_url'] ?? null;
-        $settings->phonepe_failure_url = $data['phonepe_failure_url'] ?? null;
-        $settings->phonepe_webhook_url = $data['phonepe_webhook_url'] ?? null;
+            $settings->manual_payment_instructions = $data['manual_payment_instructions'] ?? null;
 
-        $settings->manual_payment_instructions = $data['manual_payment_instructions'] ?? null;
-
-        // encrypted secrets
-        $this->saveEncryptedField($settings, 'stripe_secret_key', $data['stripe_secret_key'] ?? null);
-        $this->saveEncryptedField($settings, 'stripe_webhook_secret', $data['stripe_webhook_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'razorpay_key_secret', $data['razorpay_key_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'razorpay_webhook_secret', $data['razorpay_webhook_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'paypal_client_secret', $data['paypal_client_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'paypal_webhook_secret', $data['paypal_webhook_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'cashfree_secret_key', $data['cashfree_secret_key'] ?? null);
-        $this->saveEncryptedField($settings, 'cashfree_webhook_secret', $data['cashfree_webhook_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'payu_private_key', $data['payu_private_key'] ?? null);
-        $this->saveEncryptedField($settings, 'payu_webhook_secret', $data['payu_webhook_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'phonepe_salt_key', $data['phonepe_salt_key'] ?? null);
-        $this->saveEncryptedField($settings, 'phonepe_webhook_secret', $data['phonepe_webhook_secret'] ?? null);
-        $settings->save();
+            // encrypted secrets
+            $this->saveEncryptedField($settings, 'stripe_secret_key', $data['stripe_secret_key'] ?? null);
+            $this->saveEncryptedField($settings, 'stripe_webhook_secret', $data['stripe_webhook_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'razorpay_key_secret', $data['razorpay_key_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'razorpay_webhook_secret', $data['razorpay_webhook_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'paypal_client_secret', $data['paypal_client_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'paypal_webhook_secret', $data['paypal_webhook_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'cashfree_secret_key', $data['cashfree_secret_key'] ?? null);
+            $this->saveEncryptedField($settings, 'cashfree_webhook_secret', $data['cashfree_webhook_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'payu_private_key', $data['payu_private_key'] ?? null);
+            $this->saveEncryptedField($settings, 'payu_webhook_secret', $data['payu_webhook_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'phonepe_salt_key', $data['phonepe_salt_key'] ?? null);
+            $this->saveEncryptedField($settings, 'phonepe_webhook_secret', $data['phonepe_webhook_secret'] ?? null);
+        });
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function saveConfigurationSettings(array $data): void
+    protected function saveConfigurationSettings(array $data): bool
     {
-        $settings = app(PaymentConfigurationSettings::class);
-
-        $settings->currency = $data['currency'] ?? 'INR';
-        $settings->currency_symbol = $data['currency_symbol'] ?? '₹';
-        $settings->decimal_precision = (int) ($data['decimal_precision'] ?? 2);
-        $settings->default_tax_percent = (float) ($data['default_tax_percent'] ?? 0);
-        $settings->invoice_prefix = $data['invoice_prefix'] ?? 'INV';
-        $settings->invoice_number_length = (int) ($data['invoice_number_length'] ?? 8);
-        $settings->payment_due_days = (int) ($data['payment_due_days'] ?? 7);
-        $settings->allow_partial_payment = (bool) ($data['allow_partial_payment'] ?? false);
-        $settings->auto_generate_invoice = (bool) ($data['auto_generate_invoice'] ?? true);
-        $settings->auto_capture_payment = (bool) ($data['auto_capture_payment'] ?? true);
-        $settings->refund_enabled = (bool) ($data['refund_enabled'] ?? true);
-        $settings->save();
+        return $this->saveSettingsWithAudit(PaymentConfigurationSettings::class, 'settings', function (PaymentConfigurationSettings $settings) use ($data): void {
+            $settings->currency = $data['currency'] ?? 'INR';
+            $settings->currency_symbol = $data['currency_symbol'] ?? '₹';
+            $settings->decimal_precision = (int) ($data['decimal_precision'] ?? 2);
+            $settings->default_tax_percent = (float) ($data['default_tax_percent'] ?? 0);
+            $settings->invoice_prefix = $data['invoice_prefix'] ?? 'INV';
+            $settings->invoice_number_length = (int) ($data['invoice_number_length'] ?? 8);
+            $settings->payment_due_days = (int) ($data['payment_due_days'] ?? 7);
+            $settings->allow_partial_payment = (bool) ($data['allow_partial_payment'] ?? false);
+            $settings->auto_generate_invoice = (bool) ($data['auto_generate_invoice'] ?? true);
+            $settings->auto_capture_payment = (bool) ($data['auto_capture_payment'] ?? true);
+            $settings->refund_enabled = (bool) ($data['refund_enabled'] ?? true);
+        });
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function saveAdvancedSettings(array $data): void
+    protected function saveAdvancedSettings(array $data): bool
     {
-        $settings = app(PaymentAdvancedSettings::class);
-
-        $settings->webhook_timeout = (int) ($data['webhook_timeout'] ?? 30);
-        $settings->retry_failed_payments = (bool) ($data['retry_failed_payments'] ?? true);
-        $settings->queue_payment_events = (bool) ($data['queue_payment_events'] ?? true);
-        $settings->payment_logging = (bool) ($data['payment_logging'] ?? true);
-        $settings->enable_audit_log = (bool) ($data['enable_audit_log'] ?? true);
-        $settings->max_retry_count = (int) ($data['max_retry_count'] ?? 5);
-        $settings->save();
+        return $this->saveSettingsWithAudit(PaymentAdvancedSettings::class, 'settings', function (PaymentAdvancedSettings $settings) use ($data): void {
+            $settings->webhook_timeout = (int) ($data['webhook_timeout'] ?? 30);
+            $settings->retry_failed_payments = (bool) ($data['retry_failed_payments'] ?? true);
+            $settings->queue_payment_events = (bool) ($data['queue_payment_events'] ?? true);
+            $settings->payment_logging = (bool) ($data['payment_logging'] ?? true);
+            $settings->enable_audit_log = (bool) ($data['enable_audit_log'] ?? true);
+            $settings->max_retry_count = (int) ($data['max_retry_count'] ?? 5);
+        });
     }
 
     protected function saveEncryptedField(PaymentGatewaySettings $settings, string $field, ?string $value): void
@@ -914,20 +917,22 @@ abstract class PaymentSettingsPage extends Page
 
     protected function resetGatewayCredentials(): void
     {
-        $settings = app(PaymentGatewaySettings::class);
+        $ok = $this->saveSettingsWithAudit(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $settings): void {
+            foreach ([
+                'stripe_secret_key', 'stripe_webhook_secret',
+                'razorpay_key_secret', 'razorpay_webhook_secret',
+                'paypal_client_secret', 'paypal_webhook_secret',
+                'cashfree_secret_key', 'cashfree_webhook_secret',
+                'payu_private_key', 'payu_webhook_secret',
+                'phonepe_salt_key', 'phonepe_webhook_secret',
+            ] as $secretField) {
+                $settings->{$secretField} = null;
+            }
+        });
 
-        foreach ([
-            'stripe_secret_key', 'stripe_webhook_secret',
-            'razorpay_key_secret', 'razorpay_webhook_secret',
-            'paypal_client_secret', 'paypal_webhook_secret',
-            'cashfree_secret_key', 'cashfree_webhook_secret',
-            'payu_private_key', 'payu_webhook_secret',
-            'phonepe_salt_key', 'phonepe_webhook_secret',
-        ] as $secretField) {
-            $settings->{$secretField} = null;
+        if (! $ok) {
+            return;
         }
-
-        $settings->save();
 
         Notification::make()
             ->title('Gateway credentials reset')
@@ -942,13 +947,19 @@ abstract class PaymentSettingsPage extends Page
      */
     protected function markProductionChecklistReviewed(): void
     {
-        $settings = app(PaymentGatewaySettings::class);
-        $settings->production_ready_at = now()->toIso8601String();
-        $settings->save();
+        $reviewedAt = now()->toIso8601String();
+
+        $ok = $this->saveSettingsWithAudit(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $settings) use ($reviewedAt): void {
+            $settings->production_ready_at = $reviewedAt;
+        });
+
+        if (! $ok) {
+            return;
+        }
 
         Notification::make()
             ->title('Production checklist marked reviewed')
-            ->body('Recorded at '.$settings->production_ready_at.'. This does not enable any gateway by itself.')
+            ->body('Recorded at '.$reviewedAt.'. This does not enable any gateway by itself.')
             ->success()
             ->send();
     }
@@ -1004,7 +1015,9 @@ abstract class PaymentSettingsPage extends Page
      */
     protected function validateAndPersistGatewayReadiness(string $gateway): void
     {
-        $this->persistCredentialFieldsForValidation($gateway);
+        if (! $this->persistCredentialFieldsForValidation($gateway)) {
+            return;
+        }
 
         $result = match ($gateway) {
             'razorpay' => app(PaymentGatewayConfigurationService::class)->checkRazorpay(),
@@ -1043,28 +1056,27 @@ abstract class PaymentSettingsPage extends Page
      * is correct for the page's main "Save" button but wrong for a
      * per-gateway validation action (see validateAndPersistGatewayReadiness()).
      */
-    protected function persistCredentialFieldsForValidation(string $gateway): void
+    protected function persistCredentialFieldsForValidation(string $gateway): bool
     {
-        $settings = app(PaymentGatewaySettings::class);
         $data = $this->data;
 
-        $settings->{"{$gateway}_enabled"} = (bool) ($data["{$gateway}_enabled"] ?? false);
+        return $this->saveSettingsWithAudit(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $settings) use ($gateway, $data): void {
+            $settings->{"{$gateway}_enabled"} = (bool) ($data["{$gateway}_enabled"] ?? false);
 
-        match ($gateway) {
-            'razorpay' => (function () use ($settings, $data): void {
-                $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
-                $this->saveEncryptedField($settings, 'razorpay_key_secret', $data['razorpay_key_secret'] ?? null);
-                $this->saveEncryptedField($settings, 'razorpay_webhook_secret', $data['razorpay_webhook_secret'] ?? null);
-            })(),
-            'stripe' => (function () use ($settings, $data): void {
-                $settings->stripe_publishable_key = $data['stripe_publishable_key'] ?? null;
-                $this->saveEncryptedField($settings, 'stripe_secret_key', $data['stripe_secret_key'] ?? null);
-                $this->saveEncryptedField($settings, 'stripe_webhook_secret', $data['stripe_webhook_secret'] ?? null);
-            })(),
-            default => null,
-        };
-
-        $settings->save();
+            match ($gateway) {
+                'razorpay' => (function () use ($settings, $data): void {
+                    $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
+                    $this->saveEncryptedField($settings, 'razorpay_key_secret', $data['razorpay_key_secret'] ?? null);
+                    $this->saveEncryptedField($settings, 'razorpay_webhook_secret', $data['razorpay_webhook_secret'] ?? null);
+                })(),
+                'stripe' => (function () use ($settings, $data): void {
+                    $settings->stripe_publishable_key = $data['stripe_publishable_key'] ?? null;
+                    $this->saveEncryptedField($settings, 'stripe_secret_key', $data['stripe_secret_key'] ?? null);
+                    $this->saveEncryptedField($settings, 'stripe_webhook_secret', $data['stripe_webhook_secret'] ?? null);
+                })(),
+                default => null,
+            };
+        });
     }
 
     protected function testGatewayConnection(string $gateway): void

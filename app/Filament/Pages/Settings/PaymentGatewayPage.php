@@ -138,7 +138,9 @@ class PaymentGatewayPage extends PaymentSettingsPage
             return;
         }
 
-        $this->saveGatewaySettings($data);
+        if (! $this->saveGatewaySettings($data)) {
+            return;
+        }
 
         Notification::make()
             ->title('Payment gateways saved')

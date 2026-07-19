@@ -72,7 +72,9 @@ class PaymentBankAccountPage extends PaymentSettingsPage
             return;
         }
 
-        $this->saveBankSettings($data);
+        if (! $this->saveBankSettings($data)) {
+            return;
+        }
 
         Notification::make()
             ->title('Bank account settings saved')

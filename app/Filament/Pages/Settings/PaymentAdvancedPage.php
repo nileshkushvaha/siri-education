@@ -72,7 +72,9 @@ class PaymentAdvancedPage extends PaymentSettingsPage
             return;
         }
 
-        $this->saveAdvancedSettings($data);
+        if (! $this->saveAdvancedSettings($data)) {
+            return;
+        }
 
         Notification::make()
             ->title('Advanced payment settings saved')

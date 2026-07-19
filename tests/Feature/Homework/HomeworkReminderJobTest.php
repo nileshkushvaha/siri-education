@@ -10,6 +10,7 @@ use App\Enums\LearningPlanStatus;
 use App\Enums\StudentStatus;
 use App\Homework\Enums\HomeworkReminderStatus;
 use App\Homework\Enums\HomeworkStatus;
+use App\Homework\Reminders\HomeworkReminderChannelSender;
 use App\Jobs\Homework\SendHomeworkDueReminderJob;
 use App\Models\AcademicCategory;
 use App\Models\HomeworkAssignment;
@@ -76,7 +77,7 @@ final class HomeworkReminderJobTest extends TestCase
         $this->assertSame('assignment_completed', $fresh->failure_category);
     }
 
-    public function test_duplicate_queued_job_sends_at_most_once(): void
+    public function test_duplicate_queued_job_sends_each_channel_at_most_once(): void
     {
         Notification::fake();
         $reminder = $this->claimedReminder($this->pendingAssignment());
@@ -84,7 +85,11 @@ final class HomeworkReminderJobTest extends TestCase
         $this->runJob($reminder->id);
         $this->runJob($reminder->id); // duplicate — the row is no longer Pending
 
-        Notification::assertSentTimes(HomeworkDueReminderNotification::class, 1);
+        // Default settings enable 'database' + 'mail' — two channels,
+        // each sent exactly once, never twice, across both job runs.
+        Notification::assertSentTimes(HomeworkDueReminderNotification::class, 2);
+        Notification::assertSentTo($this->student, HomeworkDueReminderNotification::class, fn ($n, array $channels): bool => $channels === ['database']);
+        Notification::assertSentTo($this->student, HomeworkDueReminderNotification::class, fn ($n, array $channels): bool => $channels === ['mail']);
         $this->assertSame(HomeworkReminderStatus::Dispatched, $reminder->fresh()->status);
     }
 
@@ -294,7 +299,7 @@ final class HomeworkReminderJobTest extends TestCase
 
     private function runJob(int $reminderId): void
     {
-        (new SendHomeworkDueReminderJob($reminderId))->handle(app(AuditTrailService::class));
+        (new SendHomeworkDueReminderJob($reminderId))->handle(app(AuditTrailService::class), app(HomeworkReminderChannelSender::class));
     }
 
     private function pendingAssignment(int $dueInHours = 2): HomeworkAssignment

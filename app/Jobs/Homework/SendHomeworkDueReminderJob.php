@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Jobs\Homework;
 
 use App\Enums\StudentStatus;
+use App\Homework\Enums\HomeworkReminderChannelStatus;
 use App\Homework\Enums\HomeworkReminderStatus;
 use App\Homework\Enums\HomeworkStatus;
+use App\Homework\Reminders\HomeworkReminderChannelSender;
 use App\Models\HomeworkAssignment;
 use App\Models\HomeworkDueReminder;
 use App\Models\UserProfile;
-use App\Notifications\Homework\HomeworkDueReminderNotification;
 use App\Services\AuditTrailService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,16 +19,22 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 
 /**
- * Phase 24K — GAP-020 Step 14: sends one already-claimed reminder.
- * Carries only the reminder's ID (cheap re-hydration on retry); every
- * fact needed to decide whether to actually send is re-read fresh from
- * the database, never trusted from serialized state. Stale/superseded
- * work (already resolved, homework completed, due date changed,
- * student no longer Active) exits as a successful no-op or a recorded
- * Skip — never an exception, never a duplicate claim.
+ * Phase 24K — GAP-020 Step 14 / Phase 24K.1 partial-channel closure:
+ * sends one already-claimed reminder. Carries only the reminder's ID
+ * (cheap re-hydration on retry); every fact needed to decide whether to
+ * send is re-read fresh from the database, never trusted from
+ * serialized state.
+ *
+ * Delivery itself is delegated per-channel to HomeworkReminderChannelSender,
+ * which is the actual idempotency authority (Phase 24K.1) — this job's
+ * own $tries/backoff only control HOW OFTEN this orchestration re-runs;
+ * they never cause a channel that already succeeded to resend, because
+ * HomeworkReminderChannelSender re-checks each channel's own durable
+ * state before ever attempting it again.
  */
 final class SendHomeworkDueReminderJob implements ShouldQueue
 {
@@ -43,15 +50,16 @@ final class SendHomeworkDueReminderJob implements ShouldQueue
         $this->onQueue('notifications');
     }
 
-    public function handle(AuditTrailService $audit): void
+    public function handle(AuditTrailService $audit, HomeworkReminderChannelSender $sender): void
     {
         $prepared = DB::transaction(function () use ($audit): ?array {
             /** @var HomeworkDueReminder|null $reminder */
             $reminder = HomeworkDueReminder::query()->whereKey($this->reminderId)->lockForUpdate()->first();
 
             if ($reminder === null || $reminder->status !== HomeworkReminderStatus::Pending) {
-                // Already resolved by a previous attempt (or genuinely
-                // does not exist) — a successful no-op, not a failure.
+                // Already fully resolved (Dispatched/Skipped/Failed) by a
+                // previous attempt, or genuinely does not exist — a
+                // successful no-op, never a duplicate claim or send.
                 return null;
             }
 
@@ -66,6 +74,13 @@ final class SendHomeworkDueReminderJob implements ShouldQueue
                     'failure_category' => $skipReason,
                     'resolved_at' => now(),
                 ])->save();
+
+                // No channel attempts should occur once the parent has
+                // been decided ineligible — resolve any not-yet-attempted
+                // channel rows as Suppressed too, so nothing lingers Pending.
+                $reminder->channelDeliveries()
+                    ->whereIn('status', [HomeworkReminderChannelStatus::Pending, HomeworkReminderChannelStatus::Sending])
+                    ->update(['status' => HomeworkReminderChannelStatus::Suppressed->value, 'resolved_at' => now()]);
 
                 $audit->logSystem(
                     'homework',
@@ -90,43 +105,55 @@ final class SendHomeworkDueReminderJob implements ShouldQueue
         /** @var HomeworkDueReminder $reminder */
         $reminder = $prepared['reminder'];
 
-        // Never hold the transaction open while contacting a provider.
-        try {
-            $assignment->student->notify(new HomeworkDueReminderNotification($assignment));
-        } catch (Throwable $e) {
-            report($e);
+        // Per-channel: never holds a transaction open during delivery,
+        // never resends an already-Dispatched/Suppressed channel.
+        $sender->resolveAll($reminder, $assignment);
 
-            throw $e; // let the queue retry per $tries/$backoff
-        }
+        $aggregate = $sender->aggregateStatus($reminder);
 
-        DB::transaction(function () use ($reminder): void {
+        DB::transaction(function () use ($reminder, $aggregate, $audit): void {
             $fresh = HomeworkDueReminder::query()->whereKey($reminder->id)->lockForUpdate()->first();
 
             if ($fresh === null || $fresh->status !== HomeworkReminderStatus::Pending) {
                 return;
             }
 
-            $fresh->forceFill([
-                'status' => HomeworkReminderStatus::Dispatched,
-                'resolved_at' => now(),
-                'attempts' => $fresh->attempts + 1,
-            ])->save();
+            $status = match ($aggregate) {
+                'dispatched' => HomeworkReminderStatus::Dispatched,
+                'failed' => HomeworkReminderStatus::Failed,
+                default => null, // still pending — leave the reminder Pending for a later retry
+            };
+
+            if ($status === null) {
+                return;
+            }
+
+            $fresh->forceFill(['status' => $status, 'resolved_at' => now()])->save();
+
+            $audit->logSystem(
+                'homework',
+                $status === HomeworkReminderStatus::Dispatched ? 'due_reminder_dispatched' : 'due_reminder_failed',
+                $status === HomeworkReminderStatus::Dispatched
+                    ? 'Homework due-date reminder dispatched.'
+                    : 'Homework due-date reminder failed.',
+                $reminder->assignment,
+                ['reminder_id' => $reminder->id, 'offset_minutes' => $reminder->reminder_offset_minutes],
+            );
         });
 
-        $audit->logSystem(
-            'homework',
-            'due_reminder_dispatched',
-            'Homework due-date reminder dispatched.',
-            $assignment,
-            ['reminder_id' => $reminder->id, 'offset_minutes' => $reminder->reminder_offset_minutes],
-        );
+        if ($aggregate === 'pending') {
+            // At least one channel is still retryable — let the queue's
+            // own $tries/backoff bring this job back; already-resolved
+            // channels are untouched on the next attempt.
+            throw new RuntimeException('One or more homework reminder channels remain unresolved.');
+        }
     }
 
     /**
-     * Final-attempt failure: no more automatic retries remain. Recorded
-     * as a genuinely visible operational failure — a safe category
-     * only, never the exception message (which may echo provider
-     * response bodies).
+     * Final-attempt failure of the JOB ITSELF (not a per-channel
+     * failure, which never throws this far) — an unexpected error, or
+     * queue-level exhaustion while a channel was still retryable. A
+     * safe category only, never the exception message.
      */
     public function failed(?Throwable $exception): void
     {
@@ -141,7 +168,6 @@ final class SendHomeworkDueReminderJob implements ShouldQueue
                 'status' => HomeworkReminderStatus::Failed,
                 'failure_category' => 'transient_transport_error',
                 'resolved_at' => now(),
-                'attempts' => $reminder->attempts + 1,
             ])->save();
         });
 

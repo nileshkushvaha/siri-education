@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Homework\Enums\HomeworkReminderStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Phase 24K — GAP-020: append-only claim/operation ledger for
@@ -48,5 +49,11 @@ class HomeworkDueReminder extends Model
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recipient_user_id');
+    }
+
+    /** Phase 24K.1 — GAP-020: per-channel delivery state (idempotency + audit). */
+    public function channelDeliveries(): HasMany
+    {
+        return $this->hasMany(HomeworkReminderChannelDelivery::class, 'homework_due_reminder_id');
     }
 }

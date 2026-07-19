@@ -21,13 +21,16 @@ use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
+use App\Homework\Reminders\HomeworkReminderChannelSender;
 use App\Homework\Reminders\HomeworkReminderDispatcher;
 use App\Http\Middleware\TrackUserSession;
+use App\Jobs\Homework\SendHomeworkDueReminderJob;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\HomeworkAssignment;
+use App\Models\HomeworkDueReminder;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
@@ -46,6 +49,7 @@ use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Services\Admin\SuperAdminGuardService;
+use App\Services\AuditTrailService;
 use App\Services\Instructor\InstructorAvailabilityService;
 use App\Services\Instructor\InstructorOnboardingService;
 use App\Services\Student\StudentFavoriteInstructorService;
@@ -707,6 +711,22 @@ try {
             $outcome = app(HomeworkReminderDispatcher::class)->claimAndDispatch($assignment, (int) $args['offset_hours']);
 
             return ['outcome' => $outcome];
+        })(),
+
+        // Phase 24K.1 — two workers run the FULL reminder job for the
+        // SAME already-claimed reminder at the same instant. Each
+        // channel's claim transaction (lockForUpdate + Sending lease)
+        // must let exactly one worker actually invoke Notification::sendNow()
+        // per channel; the loser observes the row already
+        // Sending/Dispatched and skips. Never two database notification
+        // rows, never two real sends of the same channel.
+        'run-homework-reminder-job' => (function () use ($args) {
+            $job = new SendHomeworkDueReminderJob((int) $args['reminder_id']);
+            $job->handle(app(AuditTrailService::class), app(HomeworkReminderChannelSender::class));
+
+            $reminder = HomeworkDueReminder::query()->findOrFail($args['reminder_id']);
+
+            return ['status' => $reminder->status->value];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

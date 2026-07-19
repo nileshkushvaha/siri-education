@@ -5,6 +5,98 @@
         </div>
     @endif
 
+    <div class="mb-6">
+        @if (! $showAssignForm)
+            <button wire:click="openAssignForm"
+                    class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all">
+                Assign Homework
+            </button>
+        @else
+            <x-account.card>
+                <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-indigo-300 mb-2">Assign Homework</h2>
+                <p class="text-xs text-slate-400 mb-4">Homework must relate to a lesson or a learning plan — select at least one below.</p>
+
+                <div class="grid gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Student</label>
+                        <select wire:model.live="assignStudentId"
+                                class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                            <option value="">Choose a student…</option>
+                            @foreach ($studentOptions as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        @error('assignStudentId')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Lesson (completed)</label>
+                            <select wire:model="assignBookingId"
+                                    class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                                <option value="">No lesson link</option>
+                                @foreach ($bookingOptions as $id => $label)
+                                    <option value="{{ $id }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Learning plan</label>
+                            <select wire:model="assignPlanId"
+                                    class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                                <option value="">No plan link</option>
+                                @foreach ($planOptions as $id => $label)
+                                    <option value="{{ $id }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    @error('assignContext')<p class="text-xs text-rose-400" role="alert">{{ $message }}</p>@enderror
+
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Title</label>
+                        <input type="text" wire:model="assignTitle"
+                               class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40" />
+                        @error('assignTitle')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Subject</label>
+                            <input type="text" wire:model="assignSubject"
+                                   class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40" />
+                            @error('assignSubject')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Due date</label>
+                            <input type="datetime-local" wire:model="assignDueAt"
+                                   class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40" />
+                            @error('assignDueAt')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Description (optional)</label>
+                        <textarea wire:model="assignDescription" rows="3"
+                                  class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40"></textarea>
+                        @error('assignDescription')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button wire:click="assign" wire:loading.attr="disabled"
+                                class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all disabled:opacity-50">
+                            Assign
+                        </button>
+                        <button wire:click="cancelAssign"
+                                class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-all">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </x-account.card>
+        @endif
+    </div>
+
     <div class="mb-4 flex items-center justify-between">
         <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-amber-300">Pending Review</h2>
         <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-200">{{ $pending->total() }}</span>
@@ -21,6 +113,7 @@
                             <x-ui.badge :color="$assignment->status->color()">{{ $assignment->status->label() }}</x-ui.badge>
                         </div>
                         <p class="text-xs text-slate-400">{{ $assignment->subject }} &middot; {{ $assignment->student?->name ?? 'Student' }}</p>
+                        <x-homework.context-line :assignment="$assignment" />
                         <p class="text-xs text-slate-400 mt-1">Submitted {{ $assignment->submitted_at?->format('M j, Y g:i A') }}</p>
                     </div>
 
@@ -89,6 +182,7 @@
                     <x-ui.badge :color="$assignment->status->color()">{{ $assignment->status->label() }}</x-ui.badge>
                 </div>
                 <p class="text-xs text-slate-400">{{ $assignment->subject }} &middot; {{ $assignment->student?->name ?? 'Student' }}</p>
+                <x-homework.context-line :assignment="$assignment" />
                 @if($assignment->grade)
                     <p class="text-xs text-emerald-400 mt-1">Grade: {{ $assignment->grade }}</p>
                 @endif

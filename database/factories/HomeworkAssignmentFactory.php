@@ -3,7 +3,9 @@
 namespace Database\Factories;
 
 use App\Homework\Enums\HomeworkStatus;
+use App\Models\Booking;
 use App\Models\HomeworkAssignment;
+use App\Models\StudentLearningPlan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -15,6 +17,10 @@ class HomeworkAssignmentFactory extends Factory
     public function definition(): array
     {
         return [
+            // Phase 24J — GAP-021: the homework context CHECK constraint
+            // requires booking_id OR learning_plan_id; default to a
+            // completed lesson so bare factory rows stay valid.
+            'booking_id' => Booking::factory()->completed(),
             'teacher_id' => User::factory(),
             'student_id' => User::factory(),
             'subject' => fake()->randomElement(['maths', 'english', 'science', 'history']),
@@ -50,6 +56,27 @@ class HomeworkAssignmentFactory extends Factory
         return $this->state([
             'status' => HomeworkStatus::Pending,
             'due_at' => now()->subDays(3),
+        ]);
+    }
+
+    /** Link to a specific completed lesson, inheriting its student/instructor pair. */
+    public function forBooking(Booking $booking): static
+    {
+        return $this->state([
+            'booking_id' => $booking->id,
+            'student_id' => $booking->student_id,
+            'teacher_id' => $booking->instructor_id,
+        ]);
+    }
+
+    /** Plan-level homework: no lesson link, pair inherited from the plan. */
+    public function forLearningPlan(StudentLearningPlan $plan): static
+    {
+        return $this->state([
+            'booking_id' => null,
+            'learning_plan_id' => $plan->id,
+            'student_id' => $plan->student_user_id,
+            'teacher_id' => $plan->primary_instructor_user_id,
         ]);
     }
 }

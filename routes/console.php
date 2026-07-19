@@ -7,6 +7,7 @@ use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\CreditEligibleReferralRewards;
 use App\Console\Commands\ExpireLessonReviewEligibility;
 use App\Console\Commands\FinalizeDueLessons;
+use App\Console\Commands\Homework\SendHomeworkDueReminders;
 use App\Console\Commands\ProcessLessonEarningReconciliation;
 use App\Console\Commands\ProcessLessonRefunds;
 use App\Console\Commands\PublishScheduledContent;
@@ -193,6 +194,20 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-attendance-sync.log'));
+
+// Homework due-date reminders (GAP-020): claims and dispatches
+// reminders for each admin-configured offset. Idempotent — the
+// homework_due_reminders unique index is the actual concurrency
+// guarantee, so an overlapping/rerun is merely wasted work, never a
+// duplicate send; onOneServer() avoids that waste on a multi-node
+// deployment. Per-record failure isolation; a no-op until
+// homework.homework_due_reminders_enabled is on.
+app(Schedule::class)
+    ->command(SendHomeworkDueReminders::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/homework-due-reminders.log'));
 
 // Delayed referral-reward crediting: credits Eligible rewards
 // whose readiness time (hold period) has passed, through the single

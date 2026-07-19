@@ -27,6 +27,7 @@
                             @endif
                         </div>
                         <p class="text-xs text-slate-400">{{ $assignment->subject }} &middot; with {{ $assignment->teacher?->name ?? 'Teacher' }}</p>
+                        <x-homework.context-line :assignment="$assignment" />
                         <p class="text-xs text-slate-400 mt-1">Due {{ $assignment->due_at->format('M j, Y g:i A') }}</p>
                         @if($assignment->grade)
                             <p class="text-xs text-emerald-400 mt-1">Grade: {{ $assignment->grade }}</p>

@@ -21,11 +21,13 @@ use App\Earnings\DTOs\NormalizedPayoutEvent;
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutClientInterface;
+use App\Homework\Reminders\HomeworkReminderDispatcher;
 use App\Http\Middleware\TrackUserSession;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\HomeworkAssignment;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutMethod;
 use App\Models\InstructorWithdrawalRequest;
@@ -691,6 +693,20 @@ try {
             $favorite = app(StudentFavoriteInstructorService::class)->favorite($student, $instructor);
 
             return ['favorite_id' => $favorite->id];
+        })(),
+
+        // Phase 24K — two workers race claiming the SAME homework
+        // reminder identity (same assignment/recipient/due-date/offset).
+        // The homework_due_reminders composite unique index must let
+        // exactly one caller claim (and queue the send); the loser must
+        // observe "already_claimed", never a second row or a second
+        // queued send.
+        'claim-homework-reminder' => (function () use ($args) {
+            $assignment = HomeworkAssignment::query()->findOrFail($args['assignment_id']);
+
+            $outcome = app(HomeworkReminderDispatcher::class)->claimAndDispatch($assignment, (int) $args['offset_hours']);
+
+            return ['outcome' => $outcome];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class HomeworkAssignment extends Model
@@ -18,6 +19,7 @@ class HomeworkAssignment extends Model
 
     protected $fillable = [
         'booking_id',
+        'learning_plan_id',
         'teacher_id',
         'student_id',
         'subject',
@@ -45,6 +47,15 @@ class HomeworkAssignment extends Model
         return $this->belongsTo(Booking::class);
     }
 
+    /**
+     * Phase 24J — GAP-021: resolves soft-deleted plans so historical
+     * homework context stays visible after a plan is archived/removed.
+     */
+    public function learningPlan(): BelongsTo
+    {
+        return $this->belongsTo(StudentLearningPlan::class, 'learning_plan_id')->withTrashed();
+    }
+
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
@@ -53,6 +64,12 @@ class HomeworkAssignment extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(User::class, 'student_id');
+    }
+
+    /** Phase 24K — GAP-020: claimed/dispatched due-date reminder history. */
+    public function dueReminders(): HasMany
+    {
+        return $this->hasMany(HomeworkDueReminder::class, 'homework_assignment_id');
     }
 
     public function scopeForStudent(Builder $query, int $studentId): Builder

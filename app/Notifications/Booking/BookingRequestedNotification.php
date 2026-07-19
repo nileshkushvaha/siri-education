@@ -23,28 +23,32 @@ final class BookingRequestedNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('New booking request %s', $this->booking->reference))
             ->line(sprintf(
                 'You have a new %s request from %s for %s (%s).',
                 $this->booking->type->name,
                 $this->booking->student->name,
-                $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
-                $this->booking->timezone,
+                $this->booking->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ))
             ->line('Please confirm or decline this booking.')
             ->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return sprintf(
             'New %s request %s from %s for %s (%s). Please confirm or decline.',
             $this->booking->type->name,
             $this->booking->reference,
             $this->booking->student->name,
-            $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y H:i'),
-            $this->booking->timezone,
+            $this->booking->starts_at->timezone($timezone)->format('D, M j Y H:i'),
+            $timezone,
         );
     }
 }

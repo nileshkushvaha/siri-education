@@ -25,13 +25,15 @@ final class BookingCancelledNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         $mail = $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Booking %s cancelled', $this->booking->reference))
             ->line(sprintf(
                 'The %s scheduled for %s (%s) has been cancelled.',
                 $this->booking->type->name,
-                $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
-                $this->booking->timezone,
+                $this->booking->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ));
 
         if ($this->booking->cancellation_reason !== null) {
@@ -45,16 +47,17 @@ final class BookingCancelledNotification extends BookingNotification
         return $mail->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
+        $timezone = $this->recipientTimezone($notifiable);
         $refundLine = $this->refundLine();
 
         return sprintf(
             'Booking %s cancelled: %s on %s (%s).%s%s',
             $this->booking->reference,
             $this->booking->type->name,
-            $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y H:i'),
-            $this->booking->timezone,
+            $this->booking->starts_at->timezone($timezone)->format('D, M j Y H:i'),
+            $timezone,
             $this->booking->cancellation_reason !== null ? ' Reason: '.$this->booking->cancellation_reason : '',
             $refundLine !== null ? ' '.$refundLine : '',
         );

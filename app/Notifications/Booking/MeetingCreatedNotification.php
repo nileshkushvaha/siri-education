@@ -32,13 +32,15 @@ final class MeetingCreatedNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         $mail = $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Meeting link ready for booking %s', $this->booking->reference))
             ->line(sprintf(
                 'The meeting for your %s on %s (%s) is ready.',
                 $this->booking->type->name,
-                $this->meeting->starts_at->timezone($this->meeting->timezone)->format('D, M j Y \a\t H:i'),
-                $this->meeting->timezone,
+                $this->meeting->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ));
 
         if ($this->includeJoinUrl && $this->meeting->join_url !== null) {
@@ -58,13 +60,15 @@ final class MeetingCreatedNotification extends BookingNotification
         return $mail->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return sprintf(
             'Meeting ready for booking %s on %s (%s).%s',
             $this->booking->reference,
-            $this->meeting->starts_at->timezone($this->meeting->timezone)->format('D, M j Y H:i'),
-            $this->meeting->timezone,
+            $this->meeting->starts_at->timezone($timezone)->format('D, M j Y H:i'),
+            $timezone,
             $this->includeJoinUrl && $this->meeting->join_url !== null ? ' Join: '.$this->meeting->join_url : '',
         );
     }

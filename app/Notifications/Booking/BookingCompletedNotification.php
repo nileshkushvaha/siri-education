@@ -32,12 +32,14 @@ final class BookingCompletedNotification extends BookingNotification
             ));
 
         if ($this->isNoShow()) {
+            $timezone = $this->recipientTimezone($notifiable);
+
             return $mail
                 ->line(sprintf(
                     'The %s scheduled for %s (%s) was marked as a no-show.',
                     $this->booking->type->name,
-                    $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
-                    $this->booking->timezone,
+                    $this->booking->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                    $timezone,
                 ))
                 ->line('If this looks wrong, please get in touch and we will sort it out.')
                 ->line(sprintf('Reference: %s', $this->booking->reference));
@@ -49,7 +51,7 @@ final class BookingCompletedNotification extends BookingNotification
             ->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
         return sprintf(
             'Booking %s (%s) %s.',

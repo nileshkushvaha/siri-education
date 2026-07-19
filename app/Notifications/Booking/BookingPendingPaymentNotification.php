@@ -27,13 +27,15 @@ final class BookingPendingPaymentNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Complete your payment for booking %s', $this->booking->reference))
             ->line(sprintf(
                 'Your %s on %s (%s) is reserved and awaiting payment.',
                 $this->booking->type->name,
-                $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
-                $this->booking->timezone,
+                $this->booking->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ))
             ->line(sprintf('Amount due: %s %s', $this->booking->currency, $this->booking->price))
             ->action('Complete payment', route('dashboard.my-bookings'))
@@ -41,16 +43,18 @@ final class BookingPendingPaymentNotification extends BookingNotification
             ->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return sprintf(
             'Booking %s reserved — payment of %s %s pending for %s on %s (%s).',
             $this->booking->reference,
             $this->booking->currency,
             $this->booking->price,
             $this->booking->type->name,
-            $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y H:i'),
-            $this->booking->timezone,
+            $this->booking->starts_at->timezone($timezone)->format('D, M j Y H:i'),
+            $timezone,
         );
     }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Notifications\Booking\Concerns;
 
 use App\Booking\Services\NotificationChannelResolver;
+use App\Models\User;
+use App\Support\RecipientTimezoneResolver;
 use Illuminate\Support\Str;
 
 /**
@@ -24,12 +26,12 @@ trait RoutesBookingChannels
 
     public function toWhatsApp(object $notifiable): string
     {
-        return $this->plainText();
+        return $this->plainText($notifiable);
     }
 
     public function toSms(object $notifiable): string
     {
-        return $this->plainText();
+        return $this->plainText($notifiable);
     }
 
     /**
@@ -46,11 +48,30 @@ trait RoutesBookingChannels
     {
         return [
             'title' => Str::headline(Str::beforeLast(class_basename(static::class), 'Notification')),
-            'message' => $this->plainText(),
+            'message' => $this->plainText($notifiable),
             'booking_reference' => $this->booking->reference ?? null,
         ];
     }
 
-    /** One-line plain-text variant used by WhatsApp/SMS channels. */
-    abstract protected function plainText(): string;
+    /**
+     * One-line plain-text variant used by WhatsApp/SMS/database
+     * channels. Phase 24L — GAP-030: takes the actual notifiable so
+     * each recipient's own timezone can be resolved; never resolve
+     * from $this->booking->student or any other shared/cached value.
+     */
+    abstract protected function plainText(object $notifiable): string;
+
+    /**
+     * Phase 24L — GAP-030 (SRS-21-6, SRS §21.13/§21.16): resolves the
+     * ACTUAL notifiable's own timezone — never the booking's captured
+     * (student's) timezone, never another recipient's. AnonymousNotifiable
+     * (guest email routing) has no profile, so it falls back to the
+     * platform default.
+     */
+    protected function recipientTimezone(object $notifiable): string
+    {
+        return $notifiable instanceof User
+            ? RecipientTimezoneResolver::resolve($notifiable)
+            : RecipientTimezoneResolver::PLATFORM_FALLBACK;
+    }
 }

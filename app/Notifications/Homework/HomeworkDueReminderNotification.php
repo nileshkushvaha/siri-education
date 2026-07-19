@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Notifications\Homework;
 
-use App\Homework\Services\HomeworkRecipientTimezoneResolver;
 use App\Models\HomeworkAssignment;
 use App\Models\User;
 use App\Notifications\Concerns\ConfiguresTransactionalEmail;
 use App\Notifications\Contracts\TransactionalEmail;
 use App\Notifications\Homework\Concerns\RoutesHomeworkReminderChannels;
+use App\Support\RecipientTimezoneResolver;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -82,8 +82,8 @@ final class HomeworkDueReminderNotification extends Notification implements Tran
     private function formattedDueAt(object $notifiable): string
     {
         $timezone = $notifiable instanceof User
-            ? HomeworkRecipientTimezoneResolver::resolve($notifiable)
-            : HomeworkRecipientTimezoneResolver::PLATFORM_FALLBACK;
+            ? RecipientTimezoneResolver::resolve($notifiable)
+            : RecipientTimezoneResolver::PLATFORM_FALLBACK;
 
         return $this->assignment->due_at->timezone($timezone)->format('D, M j Y \a\t g:i A');
     }

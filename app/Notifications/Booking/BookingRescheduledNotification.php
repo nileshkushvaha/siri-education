@@ -24,7 +24,7 @@ final class BookingRescheduledNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $timezone = $this->booking->timezone;
+        $timezone = $this->recipientTimezone($notifiable);
 
         return $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Booking %s rescheduled', $this->booking->reference))
@@ -38,9 +38,9 @@ final class BookingRescheduledNotification extends BookingNotification
             ->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
-        $timezone = $this->booking->timezone;
+        $timezone = $this->recipientTimezone($notifiable);
 
         return sprintf(
             'Booking %s rescheduled: %s moved from %s to %s (%s).',

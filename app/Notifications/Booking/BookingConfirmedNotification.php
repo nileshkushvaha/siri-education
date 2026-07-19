@@ -22,13 +22,15 @@ final class BookingConfirmedNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         $mail = $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Booking %s confirmed', $this->booking->reference))
             ->line(sprintf(
                 'Your %s on %s (%s) is confirmed.',
                 $this->booking->type->name,
-                $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
-                $this->booking->timezone,
+                $this->booking->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ));
 
         if ($this->booking->meeting_url !== null) {
@@ -38,14 +40,16 @@ final class BookingConfirmedNotification extends BookingNotification
         return $mail->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return sprintf(
             'Booking %s confirmed: %s on %s (%s).',
             $this->booking->reference,
             $this->booking->type->name,
-            $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y H:i'),
-            $this->booking->timezone,
+            $this->booking->starts_at->timezone($timezone)->format('D, M j Y H:i'),
+            $timezone,
         );
     }
 }

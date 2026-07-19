@@ -28,6 +28,8 @@ final class BookingPaymentSucceededNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         return $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Payment received for booking %s', $this->booking->reference))
             ->line(sprintf(
@@ -35,14 +37,14 @@ final class BookingPaymentSucceededNotification extends BookingNotification
                 $this->booking->currency,
                 $this->booking->price,
                 $this->booking->type->name,
-                $this->booking->starts_at->timezone($this->booking->timezone)->format('D, M j Y \a\t H:i'),
-                $this->booking->timezone,
+                $this->booking->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ))
             ->action('View my bookings', route('dashboard.my-bookings'))
             ->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
         return sprintf(
             'Payment of %s %s received for booking %s.',

@@ -31,13 +31,15 @@ final class MeetingUpdatedNotification extends BookingNotification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $timezone = $this->recipientTimezone($notifiable);
+
         $mail = $this->configureMailMessage(new MailMessage)
             ->subject(sprintf('Meeting link updated for booking %s', $this->booking->reference))
             ->line(sprintf(
                 'The meeting link for your %s on %s (%s) has changed — please use the new link below.',
                 $this->booking->type->name,
-                $this->meeting->starts_at->timezone($this->meeting->timezone)->format('D, M j Y \a\t H:i'),
-                $this->meeting->timezone,
+                $this->meeting->starts_at->timezone($timezone)->format('D, M j Y \a\t H:i'),
+                $timezone,
             ));
 
         if ($this->includeJoinUrl && $this->meeting->join_url !== null) {
@@ -57,7 +59,7 @@ final class MeetingUpdatedNotification extends BookingNotification
         return $mail->line(sprintf('Reference: %s', $this->booking->reference));
     }
 
-    protected function plainText(): string
+    protected function plainText(object $notifiable): string
     {
         return sprintf(
             'Meeting link updated for booking %s.%s',

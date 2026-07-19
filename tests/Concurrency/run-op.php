@@ -41,6 +41,7 @@ use App\Referral\Contracts\ReferralEligibilityServiceInterface;
 use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
+use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Instructor\InstructorOnboardingService;
 use App\Settings\RazorpayXPayoutSettings;
 use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
@@ -567,6 +568,19 @@ try {
                 ->disable($code, $admin, 'Concurrency disable.');
 
             return ['status' => $result->status->value];
+        })(),
+
+        // Phase 24E — two workers race deactivating a DIFFERENT one of
+        // the last two active Super Admins. SuperAdminGuardService's
+        // named lifecycle lock must serialize the two, so whichever
+        // commits second re-reads the other's already-committed change
+        // and correctly refuses — never both succeeding.
+        'deactivate-super-admin' => (function () use ($args) {
+            $user = User::query()->findOrFail($args['user_id']);
+
+            app(SuperAdminGuardService::class)->protect($user, fn (User $u) => $u->update(['status' => User::STATUS_INACTIVE]));
+
+            return ['user_id' => $user->id, 'status' => $user->fresh()->status];
         })(),
 
         'instructor-activate' => (function () use ($args) {

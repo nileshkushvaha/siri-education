@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Roles\Schemas;
 
+use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Permission\PermissionGroupingService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -12,6 +13,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Spatie\Permission\Models\Role;
 
 class RoleForm
 {
@@ -39,7 +41,15 @@ class RoleForm
                                     ignoreRecord: true,
                                 )
                                 ->placeholder('e.g. content-manager')
-                                ->helperText('Use lowercase with hyphens. Must be unique.')
+                                // Phase 24E — GAP-010/SRS-23-7: UI convenience
+                                // only; the authoritative guard is
+                                // EditRole::mutateFormDataBeforeSave(), which
+                                // rejects an incompatible rename even if this
+                                // field is bypassed via a tampered payload.
+                                ->helperText(fn (?Role $record): string => $record?->name === SuperAdminGuardService::SUPER_ADMIN_ROLE
+                                    ? 'This is the platform\'s canonical Super Admin role and cannot be renamed.'
+                                    : 'Use lowercase with hyphens. Must be unique.')
+                                ->disabled(fn (?Role $record): bool => $record?->name === SuperAdminGuardService::SUPER_ADMIN_ROLE)
                                 ->columnSpan(2),
 
                             TextInput::make('guard_name')

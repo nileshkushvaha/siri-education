@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\InstructorStatus;
+use App\Exceptions\LastActiveSuperAdminException;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Models\InstructorCompensationAgreement;
+use App\Models\User;
+use App\Services\Admin\SuperAdminGuardService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -159,25 +162,46 @@ class UsersTable
                     ])),
                 DeleteAction::make()
                     ->hidden(fn ($record): bool => $record->id === auth()->id()
-                        || $record->isSuperAdmin()
-                    ),
+                        || app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record)
+                    )
+                    ->action(function ($record): void {
+                        try {
+                            app(SuperAdminGuardService::class)->protect($record, fn (User $user) => $user->delete());
+
+                            Notification::make()->title('User deleted')->success()->send();
+                        } catch (LastActiveSuperAdminException $e) {
+                            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                        }
+                    }),
             ])
 
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->action(function (DeleteBulkAction $action, Collection $records): void {
-                            $records
-                                ->reject(fn ($record) => $record->id === auth()->id()
-                                    || $record->isSuperAdmin()
-                                )
-                                ->each->delete();
+                            // Self-deletion (of the acting admin's own account)
+                            // is excluded regardless of Super Admin status —
+                            // a pre-existing, unrelated safety net, not this
+                            // phase's invariant.
+                            $targets = $records->reject(fn ($record) => $record->id === auth()->id());
 
-                            Notification::make()
-                                ->title('Deleted')
-                                ->body('Selected users have been deleted. Super admin accounts were skipped.')
-                                ->success()
-                                ->send();
+                            try {
+                                // Phase 24E — GAP-010/SRS-23-7: the whole
+                                // selection is evaluated as ONE proposed
+                                // mutation set. If deleting everyone in it
+                                // would leave zero active Super Admins, the
+                                // entire bulk delete is rejected atomically
+                                // — never just the row that trips the check.
+                                app(SuperAdminGuardService::class)->protectBatch($targets, fn (User $user) => $user->delete());
+
+                                Notification::make()
+                                    ->title('Deleted')
+                                    ->body('Selected users have been deleted.')
+                                    ->success()
+                                    ->send();
+                            } catch (LastActiveSuperAdminException $e) {
+                                Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                            }
                         }),
                     ExportBulkAction::make(),
                 ]),

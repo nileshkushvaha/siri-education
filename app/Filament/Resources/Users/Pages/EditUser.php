@@ -3,13 +3,17 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Events\Auth\UserApproved;
+use App\Exceptions\LastActiveSuperAdminException;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Services\Admin\SuperAdminGuardService;
 use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Spatie\Permission\Models\Role;
 
 class EditUser extends EditRecord
 {
@@ -24,9 +28,40 @@ class EditUser extends EditRecord
             ViewAction::make(),
             DeleteAction::make()
                 ->hidden(fn (): bool => $this->record->id === auth()->id()
-                    || $this->record->isSuperAdmin()
-                ),
+                    || app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($this->record)
+                )
+                ->action(function (): void {
+                    try {
+                        app(SuperAdminGuardService::class)->protect($this->record, fn (User $user) => $user->delete());
+
+                        Notification::make()->title('User deleted')->success()->send();
+
+                        $this->redirect($this->getResource()::getUrl('index'));
+                    } catch (LastActiveSuperAdminException $e) {
+                        Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                    }
+                }),
         ];
+    }
+
+    /**
+     * Phase 24E — GAP-010/SRS-23-7: wraps Filament's ENTIRE save
+     * lifecycle in the global Super Admin lifecycle lock, so a
+     * concurrent save of a different Super Admin account can never
+     * interleave with this one's check-then-write sequence. Always
+     * released via finally, including when beforeSave() halts the
+     * save.
+     */
+    public function save(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
+    {
+        $guard = app(SuperAdminGuardService::class);
+        $guard->acquireLock();
+
+        try {
+            parent::save($shouldRedirect, $shouldSendSavedNotification);
+        } finally {
+            $guard->releaseLock();
+        }
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -54,6 +89,45 @@ class EditUser extends EditRecord
         $this->wasMustChangePassword = (bool) $this->record->must_change_password;
         $this->previousPasswordHash = $this->record->password ?? '';
         $this->previousStatus = $this->record->status ?? '';
+
+        $this->assertSuperAdminInvariantForSubmittedData();
+    }
+
+    /**
+     * Phase 24E — GAP-010/SRS-23-7: this panel does not enable
+     * per-page database transactions (Filament\Pages\Concerns\
+     * CanUseDatabaseTransactions::hasDatabaseTransactions() is false
+     * here), so a role/status change already applied by Filament's own
+     * saveRelationships()/handleRecordUpdate() cannot be rolled back
+     * afterward — checking in afterSave() would be too late. The
+     * check must run HERE, against the SUBMITTED (not yet applied)
+     * form data, and halt the whole save before anything is written if
+     * it would leave zero active Super Admins.
+     */
+    private function assertSuperAdminInvariantForSubmittedData(): void
+    {
+        $guard = app(SuperAdminGuardService::class);
+
+        if (! $guard->isActiveSuperAdmin($this->record)) {
+            return;
+        }
+
+        $submittedRoleIds = $this->data['roles'] ?? null;
+        $submittedStatus = $this->data['status'] ?? $this->record->status;
+
+        $wouldStillHaveRole = $submittedRoleIds === null
+            || Role::query()->whereIn('id', $submittedRoleIds)->where('name', SuperAdminGuardService::SUPER_ADMIN_ROLE)->exists();
+
+        if ($wouldStillHaveRole && $submittedStatus === User::STATUS_ACTIVE) {
+            return;
+        }
+
+        if ($guard->countOtherActiveSuperAdmins($this->record) > 0) {
+            return;
+        }
+
+        Notification::make()->title('Action failed')->body(LastActiveSuperAdminException::make()->getMessage())->danger()->send();
+        $this->halt();
     }
 
     protected function afterSave(): void

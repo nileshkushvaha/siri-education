@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Users\Schemas;
 use App\Enums\LearningGoalStatus;
 use App\Models\Country;
 use App\Models\State;
+use App\Models\User;
+use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Security\PasswordRuleBuilder;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -86,7 +88,15 @@ class UserForm
                                             ])
                                             ->default('active')
                                             ->required()
-                                            ->native(false),
+                                            ->native(false)
+                                            // Phase 24E — GAP-010/SRS-23-7: UI hint only; the
+                                            // authoritative guard is EditUser::afterSave(),
+                                            // which rejects the save (rolling back this and
+                                            // any other change on the form) even if this
+                                            // helper text is stale or bypassed.
+                                            ->helperText(fn (?User $record): ?string => $record && app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record)
+                                                ? 'This is the last active Super Admin — changing status away from Active is not allowed.'
+                                                : null),
                                     ]),
                             ]),
 
@@ -268,7 +278,12 @@ class UserForm
                                             ->multiple()
                                             ->preload()
                                             ->searchable()
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            // Phase 24E — GAP-010/SRS-23-7: UI hint only; the
+                                            // authoritative guard is EditUser::afterSave().
+                                            ->helperText(fn (?User $record): ?string => $record && app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record)
+                                                ? 'This is the last active Super Admin — the Super Admin role cannot be removed here.'
+                                                : null),
                                     ]),
                             ]),
 

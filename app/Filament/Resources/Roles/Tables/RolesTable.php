@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Roles\Tables;
 
+use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
+use App\Services\Admin\SuperAdminGuardService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -21,6 +23,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -149,12 +152,41 @@ class RolesTable
                             ->send();
                     }),
 
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->action(function (Role $record): void {
+                        try {
+                            app(SuperAdminGuardService::class)->assertRoleNotCanonical($record);
+                            $record->delete();
+                            Notification::make()->title('Role deleted')->success()->send();
+                        } catch (CanonicalSuperAdminRoleProtectedException $e) {
+                            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                        }
+                    }),
             ])
 
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->action(function (DeleteBulkAction $action, Collection $records): void {
+                            $guard = app(SuperAdminGuardService::class);
+
+                            try {
+                                // Phase 24E — GAP-010/SRS-23-7: checked for
+                                // every role in the selection BEFORE any
+                                // deletion runs, so the canonical role being
+                                // anywhere in the batch rejects the whole
+                                // bulk action atomically.
+                                $records->each(fn (Role $role) => $guard->assertRoleNotCanonical($role));
+                            } catch (CanonicalSuperAdminRoleProtectedException $e) {
+                                Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+
+                                return;
+                            }
+
+                            $records->each->delete();
+
+                            Notification::make()->title('Deleted')->success()->send();
+                        }),
                     ExportBulkAction::make(),
                 ]),
             ])

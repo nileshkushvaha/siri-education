@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Roles\Pages;
 
+use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Services\Admin\SuperAdminGuardService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -24,19 +26,33 @@ class EditRole extends EditRecord
         return [
             ViewAction::make(),
             DeleteAction::make()
-                ->before(function (): void {
-                    /** @var Role $role */
-                    $role = $this->record;
-                    // Log before deletion so the record still exists as the subject.
-                    activity('roles')
-                        ->performedOn($role)
-                        ->causedBy(auth()->user())
-                        ->event('deleted')
-                        ->withProperties([
-                            'name' => $role->name,
-                            'permissions_count' => $role->permissions->count(),
-                        ])
-                        ->log('Role deleted');
+                ->hidden(fn (): bool => $this->record->name === SuperAdminGuardService::SUPER_ADMIN_ROLE)
+                ->action(function (): void {
+                    try {
+                        /** @var Role $role */
+                        $role = $this->record;
+
+                        app(SuperAdminGuardService::class)->assertRoleNotCanonical($role);
+
+                        // Log before deletion so the record still exists as the subject.
+                        activity('roles')
+                            ->performedOn($role)
+                            ->causedBy(auth()->user())
+                            ->event('deleted')
+                            ->withProperties([
+                                'name' => $role->name,
+                                'permissions_count' => $role->permissions->count(),
+                            ])
+                            ->log('Role deleted');
+
+                        $role->delete();
+
+                        Notification::make()->title('Role deleted')->success()->send();
+
+                        $this->redirect($this->getResource()::getUrl('index'));
+                    } catch (CanonicalSuperAdminRoleProtectedException $e) {
+                        Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                    }
                 }),
         ];
     }
@@ -56,7 +72,20 @@ class EditRole extends EditRecord
     {
         // selectedPermissions is updated live by Alpine via $wire.selectedPermissions
         // Only pass Spatie-fillable fields to the model save
-        return Arr::only($data, ['name', 'guard_name']);
+        $data = Arr::only($data, ['name', 'guard_name']);
+
+        // Phase 24E — GAP-010/SRS-23-7: every authorization path recognizes
+        // Super Admin access by this exact role NAME (Gate::before(),
+        // User::isSuperAdmin(), PortalResolver) — renaming it away would
+        // silently strip access from every Super Admin at once.
+        try {
+            app(SuperAdminGuardService::class)->assertCanonicalRoleNameUnchanged($this->record, $data['name'] ?? $this->record->name);
+        } catch (CanonicalSuperAdminRoleProtectedException $e) {
+            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            $this->halt();
+        }
+
+        return $data;
     }
 
     protected function afterSave(): void

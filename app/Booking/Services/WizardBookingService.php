@@ -19,6 +19,7 @@ use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Types\FreeDemoType;
 use App\Contracts\StudentFinancialVerificationGate;
 use App\Models\Booking;
 use App\Models\BookingType;
@@ -43,6 +44,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly TeacherAssignmentServiceInterface $assigner,
         private readonly AvailabilityServiceInterface $availability,
         private readonly StudentFinancialVerificationGate $financialVerification,
+        private readonly DemoAvailabilityResolver $demoAvailability,
     ) {}
 
     public function availableDates(
@@ -214,9 +216,24 @@ final class WizardBookingService implements WizardBookingServiceInterface
             ));
     }
 
-    /** @return Collection<int, User> */
+    /**
+     * Phase 24B.2 — the one place both availableDates() and
+     * availableSlots() (via slotsAcrossTeachers()) funnel through
+     * before any teacher-eligibility query or availability expansion.
+     * An explicit free-demo scheduling request must never return
+     * teachers/dates/slots implying a new demo can be created while the
+     * platform-wide feature is unavailable — and returning empty here,
+     * before eligibility/availability queries run, is also what keeps
+     * this from doing unnecessary work once demos are disabled.
+     *
+     * @return Collection<int, User>
+     */
     private function eligibleTeachers(string $typeKey, string $subject, int $grade, CarbonImmutable $startsAt, int $duration, ?int $teacherId = null): Collection
     {
+        if ($typeKey === FreeDemoType::KEY && ! $this->demoAvailability->isAvailable()) {
+            return new Collection;
+        }
+
         $criteria = new AssignmentCriteriaData($typeKey, $subject, $grade, $startsAt, $duration);
 
         if ($teacherId === null) {

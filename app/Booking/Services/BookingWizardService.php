@@ -16,7 +16,6 @@ use App\Booking\Types\FreeDemoType;
 use App\Enums\InstructorStatus;
 use App\Models\Booking;
 use App\Models\User;
-use App\Settings\FeatureSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -26,12 +25,13 @@ final class BookingWizardService
         private readonly WizardBookingServiceInterface $bookings,
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $teachers,
-        private readonly FeatureSettings $features,
+        private readonly DemoAvailabilityResolver $demoAvailability,
     ) {}
 
     /**
-     * Free Demo is omitted entirely while the platform-wide feature
-     * toggle is off (Phase 24B/GAP-026) — mount()'s query-param
+     * Free Demo is omitted entirely while it isn't effectively available
+     * (Phase 24B/24B.2, GAP-026 — DemoAvailabilityResolver: global
+     * toggle + booking-type active status) — mount()'s query-param
      * preselection and selectMode() both already refuse any key absent
      * from this list, so hiding it here is sufficient to keep a stale
      * `?type=free_demo` link from reaching step 2.
@@ -41,7 +41,7 @@ final class BookingWizardService
     public function bookingTypes(): Collection
     {
         return $this->types->allActive()
-            ->reject(fn ($type): bool => $type->key === FreeDemoType::KEY && ! $this->features->demo_lessons_enabled)
+            ->reject(fn ($type): bool => $type->key === FreeDemoType::KEY && ! $this->demoAvailability->isAvailable())
             ->map(fn ($type): array => [
                 'key' => $type->key,
                 'name' => $type->name,

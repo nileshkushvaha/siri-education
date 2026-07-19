@@ -17,6 +17,7 @@ use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Types\FreeDemoType;
 use App\Contracts\StudentFinancialVerificationGate;
 use App\Models\Booking;
 use App\Models\SubjectTopic;
@@ -40,11 +41,24 @@ final class StudentBookingService implements StudentBookingServiceInterface
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $teachers,
         private readonly StudentFinancialVerificationGate $financialVerification,
+        private readonly DemoAvailabilityResolver $demoAvailability,
     ) {}
 
+    /**
+     * Phase 24B.1 — an explicit free-demo lookup while the platform-wide
+     * feature is unavailable must never imply teachers are bookable for
+     * one: return an empty list rather than a misleading candidate set.
+     * Paid (and any other) type lookups are unaffected. The booking type
+     * itself being inactive is already rejected above by
+     * requireActiveByKey() before this check is even reached.
+     */
     public function availableTeachers(string $typeKey, string $subject, int $grade): Collection
     {
         $type = $this->types->requireActiveByKey($typeKey);
+
+        if ($typeKey === FreeDemoType::KEY && ! $this->demoAvailability->isAvailable()) {
+            return new Collection;
+        }
 
         return $this->teachers->eligible(new AssignmentCriteriaData(
             typeKey: $typeKey,

@@ -11,6 +11,8 @@ use App\Booking\DTOs\AvailabilityQueryData;
 use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\StudentBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
+use App\Booking\Services\DemoAvailabilityResolver;
+use App\Booking\Types\FreeDemoType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Student\StoreStudentBookingRequest;
 use App\Http\Requests\Api\Student\StudentSlotsRequest;
@@ -65,14 +67,28 @@ final class StudentBookingController extends Controller
         );
     }
 
-    public function slots(StudentSlotsRequest $request, AvailabilityServiceInterface $availability): AnonymousResourceCollection
+    /**
+     * Phase 24B.2 — this endpoint calls AvailabilityServiceInterface
+     * directly (no StudentBookingService/WizardBookingService in
+     * between for this specific teacher+type shape), so the demo-
+     * feature check must live here rather than in a service method
+     * this call never goes through. Booking-type-active is already
+     * guaranteed by StudentSlotsRequest's validation rule.
+     */
+    public function slots(StudentSlotsRequest $request, AvailabilityServiceInterface $availability, DemoAvailabilityResolver $demoAvailability): AnonymousResourceCollection
     {
+        $typeKey = $request->validated('type');
+
+        if ($typeKey === FreeDemoType::KEY && ! $demoAvailability->isAvailable()) {
+            return TimeSlotResource::collection(collect());
+        }
+
         $timezone = $request->validated('timezone', 'UTC');
         $date = CarbonImmutable::parse($request->validated('date'), $timezone)->startOfDay();
 
         return TimeSlotResource::collection($availability->slots(new AvailabilityQueryData(
             instructorId: (int) $request->validated('teacher_id'),
-            typeKey: $request->validated('type'),
+            typeKey: $typeKey,
             from: $date,
             to: $date->addDay(),
             timezone: $timezone,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Booking\Services\DemoAvailabilityResolver;
 use App\Enums\AcademicStatus;
 use App\Enums\InstructorStatus;
 use App\Models\AcademicLevel;
@@ -17,7 +18,6 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use App\Services\Profile\UserExperienceService;
-use App\Settings\FeatureSettings;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -36,7 +36,7 @@ final class InstructorService
         private readonly InstructorRatingAggregateServiceInterface $ratings,
         private readonly InstructorTrustBadgeResolver $trustBadges,
         private readonly InstructorProfileTextResolver $profileText,
-        private readonly FeatureSettings $features,
+        private readonly DemoAvailabilityResolver $demoAvailability,
     ) {}
 
     public function listing(Request $request): LengthAwarePaginator
@@ -212,11 +212,11 @@ final class InstructorService
         $summaryText = $this->profileText->summary($instructor, 160);
         $responseTimeLabel = $profile->response_time_minutes?->publicLabel();
         // Demo CTA never shows on a non-bookable preview (owner/admin viewing
-        // their own draft/suspended/etc. profile) even if offers_demo is set,
-        // and never shows at all while the platform-wide feature toggle is
-        // off (Phase 24B/GAP-026) — separate from is_active on the booking
-        // type, which controls whether Free Demo is operational at all.
-        $offersDemo = $isBookable && (bool) $profile->offers_demo && $this->features->demo_lessons_enabled;
+        // their own draft/suspended/etc. profile) even if offers_demo is
+        // set, and never shows at all while the free_demo booking type is
+        // inactive or the platform-wide feature toggle is off (Phase
+        // 24B/24B.1, GAP-026) — see DemoAvailabilityResolver.
+        $offersDemo = $this->offersDemo($profile, $isBookable);
 
         return compact(
             'instructor',
@@ -254,6 +254,7 @@ final class InstructorService
         $academicLevels = $this->academicLevelsFor($instructor)->take(3);
         $ratings = $this->ratingsFor($instructor);
         $availability = $this->availabilityPreview($instructor)->take(2);
+        $isBookable = in_array($profile?->instructor_status, InstructorStatus::bookable(), true);
 
         return [
             'model' => $instructor,
@@ -265,7 +266,7 @@ final class InstructorService
             'summary' => $this->profileText->summary($instructor),
             'verified' => $this->trustBadges->isVerified($instructor),
             'response_time_label' => $profile?->response_time_minutes?->publicLabel(),
-            'offers_demo' => (bool) $profile?->offers_demo,
+            'offers_demo' => $this->offersDemo($profile, $isBookable),
             'current_position' => $currentPosition
                 ? trim($currentPosition->designation.($currentPosition->organization_name ? ' · '.$currentPosition->organization_name : ''))
                 : null,
@@ -278,6 +279,19 @@ final class InstructorService
             'country' => $profile?->country?->name,
             'timezone' => $profile?->timezone,
         ];
+    }
+
+    /**
+     * Phase 24B.1 — the one place `offers_demo` is computed, shared by
+     * publicProfile() and card() so neither can drift from the other.
+     * Effective availability = instructor is currently bookable AND the
+     * instructor has opted into demos AND the platform-wide feature is
+     * available (DemoAvailabilityResolver: global toggle + booking-type
+     * active status).
+     */
+    private function offersDemo(?UserProfile $profile, bool $isBookable): bool
+    {
+        return $isBookable && (bool) $profile?->offers_demo && $this->demoAvailability->isAvailable();
     }
 
     /**

@@ -29,6 +29,7 @@ use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\Currency;
 use App\Models\HomeworkAssignment;
 use App\Models\HomeworkDueReminder;
 use App\Models\InstructorCompensationAgreement;
@@ -48,6 +49,7 @@ use App\Referral\Contracts\ReferralEligibilityServiceInterface;
 use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
+use App\Services\Admin\CurrencyStatusService;
 use App\Services\Admin\SuperAdminGuardService;
 use App\Services\AuditTrailService;
 use App\Services\Instructor\InstructorAvailabilityService;
@@ -711,6 +713,31 @@ try {
             $outcome = app(HomeworkReminderDispatcher::class)->claimAndDispatch($assignment, (int) $args['offset_hours']);
 
             return ['outcome' => $outcome];
+        })(),
+
+        // Phase 24M — two workers race a currency-status disable versus
+        // a NEW payment-attempt initiation for a booking in that same
+        // currency. Both sides lock the same Currency row (initiate()
+        // via CurrencyEligibilityPolicy::assertUsable(..., lock: true),
+        // the admin path via CurrencyStatusService) inside a DB
+        // transaction, so MySQL serializes the two: whichever commits
+        // first wins — disable-first rejects the payment attempt with
+        // no provider call; initiate-first lets the existing attempt
+        // proceed (the disable still commits afterward).
+        'disable-currency' => (function () use ($args) {
+            $currency = Currency::query()->findOrFail($args['currency_id']);
+
+            app(CurrencyStatusService::class)->update($currency, ['status' => 'inactive']);
+
+            return ['currency_id' => $currency->id, 'status' => 'inactive'];
+        })(),
+
+        'fake-initiate' => (function () use ($args) {
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+
+            $intent = app(BookingPaymentServiceInterface::class)->initiate($booking);
+
+            return ['booking_id' => $booking->id, 'status' => $intent->status, 'reference' => $intent->reference];
         })(),
 
         // Phase 24K.1 — two workers run the FULL reminder job for the

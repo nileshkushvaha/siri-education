@@ -114,7 +114,10 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
                 throw new ReferralException(sprintf('Reward #%d has no referrer.', $reward->id));
             }
 
-            $wallet = $this->wallets->getOrCreateWallet($referrer, null, $referrer);
+            // Phase 24M — GAP-031: an Eligible/Held reward is already an
+            // existing obligation — crediting it must not be blocked by
+            // the referrer's default currency being disabled later.
+            $wallet = $this->wallets->getOrCreateWalletForExistingObligation($referrer, null, $referrer);
 
             if ($wallet->currency_code !== $reward->reward_currency_code) {
                 return $this->hold($reward, 'currency_mismatch', sprintf(
@@ -289,7 +292,9 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
             // A currency-mismatch hold may only be released once the
             // referrer's wallet currency actually matches — never by
             // overriding currency. Otherwise the admin must reject.
-            $wallet = $this->wallets->getOrCreateWallet($reward->referrer, null, $reward->referrer);
+            // Phase 24M — GAP-031: the reward is already Held/Eligible —
+            // an existing obligation, not new activity.
+            $wallet = $this->wallets->getOrCreateWalletForExistingObligation($reward->referrer, null, $reward->referrer);
 
             if ($wallet->currency_code !== $reward->reward_currency_code) {
                 throw new ReferralException(sprintf(

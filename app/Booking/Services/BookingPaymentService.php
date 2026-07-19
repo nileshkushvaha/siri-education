@@ -23,6 +23,9 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\User;
 use App\Services\AuditTrailService;
+use App\Support\Financial\CurrencyEligibilityPolicy;
+use App\Support\Financial\Exceptions\CurrencyNotUsableException;
+use App\Support\Financial\FinancialOperation;
 use App\Wallet\Enums\WalletLedgerEntryType;
 use App\Wallet\Services\WalletLedgerService;
 use App\Wallet\Services\WalletService;
@@ -49,6 +52,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         private readonly AuditTrailService $audit,
         private readonly WalletService $wallets,
         private readonly WalletLedgerService $walletLedger,
+        private readonly CurrencyEligibilityPolicy $currencyEligibility,
     ) {}
 
     public function initiate(Booking $booking): PaymentIntentData
@@ -86,8 +90,24 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         // surfaces (Phase 16C concurrency tests). Locking the row before
         // reading forces the loser to observe the winner's committed
         // reference and reuse it instead.
+        //
+        // Phase 24M — GAP-031 Step 9: the Currency row is ALSO locked
+        // here (inside the same transaction), so a concurrent admin
+        // disable is serialized against this decision — whichever
+        // commits first wins; the loser observes the other's
+        // already-committed state. A stale browser page cannot initiate
+        // payment after an admin disables the currency: this re-checks
+        // Active status at the final internal boundary, never relying
+        // on the booking's earlier price-resolution check alone.
         $booking = DB::transaction(function () use ($booking): Booking {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+
+            try {
+                $this->currencyEligibility->assertUsable((string) $locked->currency, FinancialOperation::NewInitiation, lock: true);
+            } catch (CurrencyNotUsableException $e) {
+                throw new BookingException($e->getMessage());
+            }
+
             $reference = $locked->payment_reference ?? 'PAY-'.strtoupper(Str::random(12));
 
             // A retry after failure goes back to pending with the same reference.
@@ -300,7 +320,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
     private function tryCreditWalletForRefund(Booking $booking, BookingPayment $payment, User $student): bool
     {
         try {
-            $wallet = $this->wallets->getOrCreateWallet($student, $payment->currency_code);
+            $wallet = $this->wallets->getOrCreateWalletForExistingObligation($student, $payment->currency_code);
 
             $entry = $this->walletLedger->credit(
                 $wallet,
@@ -603,7 +623,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         }
 
         try {
-            $wallet = $this->wallets->getOrCreateWallet($student, $payment->currency_code);
+            $wallet = $this->wallets->getOrCreateWalletForExistingObligation($student, $payment->currency_code);
 
             $entry = $this->walletLedger->credit(
                 $wallet,

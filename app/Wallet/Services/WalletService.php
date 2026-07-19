@@ -9,6 +9,9 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\AuditTrailService;
 use App\Settings\GeneralSettings;
+use App\Support\Financial\CurrencyEligibilityPolicy;
+use App\Support\Financial\Exceptions\CurrencyNotUsableException;
+use App\Support\Financial\FinancialOperation;
 use App\Wallet\Enums\WalletStatus;
 use App\Wallet\Exceptions\WalletException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -26,15 +29,41 @@ final class WalletService
     public function __construct(
         private readonly AuditTrailService $auditTrail,
         private readonly GeneralSettings $generalSettings,
+        private readonly CurrencyEligibilityPolicy $currencyEligibility,
     ) {}
 
     /**
      * Find or atomically create the user's wallet in the given currency
-     * (or their resolved default currency). Safe to call concurrently —
-     * the DB's unique(user_id, currency_id) index is the final guard
-     * against a duplicate wallet, not just this method's own check.
+     * (or their resolved default currency) for NEW use. Requires an
+     * Active currency (Phase 24M — GAP-031): a wallet is never created
+     * in an inactive or soft-deleted currency for new activity. Safe to
+     * call concurrently — the DB's unique(user_id, currency_id) index
+     * is the final guard against a duplicate wallet, not just this
+     * method's own check.
+     *
+     * @throws CurrencyNotUsableException when the resolved currency is not Active
      */
     public function getOrCreateWallet(User $user, ?string $currencyCode = null, ?User $actor = null): Wallet
+    {
+        return $this->getOrCreateWalletInternal($user, $currencyCode, $actor, FinancialOperation::NewInitiation);
+    }
+
+    /**
+     * Phase 24M — GAP-031: the protective-credit counterpart. Resolves
+     * (creating if necessary) the user's wallet in the given currency
+     * WITHOUT requiring it to be currently Active — an existing
+     * obligation (refund, held reward, lesson-outcome credit) must
+     * remain payable even after the currency is later disabled. Never
+     * used to create a wallet for genuinely new, student-initiated
+     * activity — callers must always pass the ORIGINAL transaction's
+     * own currency code, never resolve "the user's current default."
+     */
+    public function getOrCreateWalletForExistingObligation(User $user, ?string $currencyCode = null, ?User $actor = null): Wallet
+    {
+        return $this->getOrCreateWalletInternal($user, $currencyCode, $actor, FinancialOperation::ProtectiveCredit);
+    }
+
+    private function getOrCreateWalletInternal(User $user, ?string $currencyCode, ?User $actor, FinancialOperation $operation): Wallet
     {
         $actor ??= $user;
 
@@ -42,7 +71,7 @@ final class WalletService
             throw new AuthorizationException;
         }
 
-        $currency = $this->resolveCurrency($user, $currencyCode);
+        $currency = $this->resolveCurrency($user, $currencyCode, $operation);
 
         $existing = Wallet::query()->forUser($user->id)->where('currency_id', $currency->id)->first();
 
@@ -170,18 +199,16 @@ final class WalletService
         }
     }
 
-    private function resolveCurrency(User $user, ?string $currencyCode): Currency
+    private function resolveCurrency(User $user, ?string $currencyCode, FinancialOperation $operation): Currency
     {
         $code = $currencyCode
             ?? $user->profile?->country?->defaultCurrency?->code
             ?? $this->generalSettings->default_currency;
 
-        $currency = Currency::query()->active()->where('code', $code)->first();
-
-        if ($currency === null) {
+        try {
+            return $this->currencyEligibility->assertUsable($code, $operation);
+        } catch (CurrencyNotUsableException) {
             throw ValidationException::withMessages(['currency' => "Currency \"{$code}\" is not active."]);
         }
-
-        return $currency;
     }
 }

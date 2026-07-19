@@ -12,6 +12,9 @@ use App\Models\StudentLessonPrice;
 use App\Models\Subject;
 use App\Models\User;
 use App\Settings\GeneralSettings;
+use App\Support\Financial\CurrencyEligibilityPolicy;
+use App\Support\Financial\Exceptions\CurrencyNotUsableException;
+use App\Support\Financial\FinancialOperation;
 
 /**
  * Single source of truth for what a booking costs, ahead of any
@@ -39,6 +42,7 @@ final class BookingPriceCalculator
     public function __construct(
         private readonly GeneralSettings $settings,
         private readonly StudentLessonPriceResolver $lessonPrices,
+        private readonly CurrencyEligibilityPolicy $currencyEligibility,
     ) {}
 
     /**
@@ -72,6 +76,16 @@ final class BookingPriceCalculator
 
         $matrixPrice = $this->resolveFromMatrix($type, $student, $subjectSlug, $grade, $instructorId);
         $baseAmount = $matrixPrice->amountDecimal();
+
+        // Phase 24M — GAP-031: a paid booking must never be created in a
+        // currency that can no longer collect new payment — it could
+        // never be paid. Re-checked again at BookingPaymentService::initiate()
+        // for the stale-page/currency-disabled-after-booking-creation case.
+        try {
+            $this->currencyEligibility->assertUsable($matrixPrice->currency_code, FinancialOperation::NewInitiation);
+        } catch (CurrencyNotUsableException $e) {
+            throw new BookingException($e->getMessage());
+        }
 
         return new BookingPriceData(
             baseAmount: $baseAmount,

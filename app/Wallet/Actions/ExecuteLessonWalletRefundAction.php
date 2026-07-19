@@ -122,7 +122,7 @@ final class ExecuteLessonWalletRefundAction
             // Credit through the existing wallet domain — full original
             // amount, original currency, never more, never converted.
             $actor = $admin ?? $disposition->resolver ?? $student;
-            $wallet = $this->wallets->getOrCreateWallet($student, $payment->currency_code);
+            $wallet = $this->wallets->getOrCreateWalletForExistingObligation($student, $payment->currency_code);
 
             $entry = $this->ledger->credit(
                 $wallet,

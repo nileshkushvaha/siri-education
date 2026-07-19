@@ -9,6 +9,7 @@ use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\DTOs\CancelBookingData;
+use App\Booking\DTOs\CancellationRefundDecision;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\Enums\BookingActivityAction;
@@ -227,9 +228,9 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
      * and finalizes in the same transaction — there is no external
      * call here to hold the lock open for.
      */
-    public function refundToWallet(Booking $booking, ?string $reason = null): Booking
+    public function refundToWallet(Booking $booking, ?string $reason = null, ?CancellationRefundDecision $decision = null): Booking
     {
-        return DB::transaction(function () use ($booking, $reason): Booking {
+        return DB::transaction(function () use ($booking, $reason, $decision): Booking {
             $booking = $this->lockedPaidBooking($booking);
             $payment = $this->lockedUnresolvedCapturedPayment($booking);
 
@@ -238,10 +239,11 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             // (wallet_ledger_entry_id) on success before we add the
             // resolution tag here, so it is never overwritten below.
             $credited = $student !== null && $this->tryCreditWalletForRefund($booking, $payment, $student);
+            $decisionMeta = $decision?->toMeta() ?? [];
 
             $payment->forceFill([
                 'metadata' => $credited
-                    ? [...($payment->metadata ?? []), 'refund_resolution' => 'wallet_credited', 'refund_reason' => $reason]
+                    ? [...($payment->metadata ?? []), 'refund_resolution' => 'wallet_credited', 'refund_reason' => $reason, ...$decisionMeta]
                     : [
                         ...($payment->metadata ?? []),
                         'refund_resolution' => 'manual_resolution_required',
@@ -250,10 +252,47 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                             ? 'Guest booking has no user account to hold a wallet credit — use refundViaProvider() or resolve manually.'
                             : 'Automatic wallet credit failed — needs manual admin/support resolution.',
                         'refund_reason' => $reason,
+                        ...$decisionMeta,
                     ],
             ])->save();
 
             return $this->finalizeRefundedBooking($booking, $reason);
+        });
+    }
+
+    /**
+     * Phase 24C — SRS 11.24/6.8: a late student cancellation is not
+     * refund-eligible. The booking is already Cancelled by the time
+     * this runs (BookingService::cancel() already committed); this
+     * only records the frozen decision on the payment for
+     * traceability. payment_status deliberately stays Paid — the
+     * platform retained the charge, nothing was refunded, so
+     * "Refunded" would misrepresent what happened (and would
+     * incorrectly count against revenue in reporting). No ledger
+     * entry, no gateway call. lockedUnresolvedCapturedPayment() is the
+     * same idempotency guard refundToWallet() relies on: a duplicate
+     * event delivery finds the payment already resolved and no-ops.
+     */
+    public function recordIneligibleCancellation(Booking $booking, CancellationRefundDecision $decision): Booking
+    {
+        return DB::transaction(function () use ($booking, $decision): Booking {
+            $booking = $this->lockedPaidBooking($booking);
+            $payment = $this->lockedUnresolvedCapturedPayment($booking);
+
+            $meta = ['refund_resolution' => 'not_eligible_late_cancellation', ...$decision->toMeta()];
+
+            $payment->forceFill(['metadata' => [...($payment->metadata ?? []), ...$meta]])->save();
+
+            $this->bookings->logActivity($booking, BookingActivityAction::PaymentStatusChanged, BookingActor::System, meta: $meta);
+            $this->audit->logSystem(
+                'payments',
+                'cancellation_not_refunded',
+                sprintf('Booking %s cancelled outside the refund window; no refund issued.', $booking->reference),
+                $booking,
+                $meta,
+            );
+
+            return $booking;
         });
     }
 

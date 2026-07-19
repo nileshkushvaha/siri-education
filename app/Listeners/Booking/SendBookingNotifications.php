@@ -84,11 +84,14 @@ final class SendBookingNotifications implements ShouldQueue
         // A lapsed payment reservation reads as "expired" to the student
         // (with a path back to booking again), not as a cancellation; the
         // instructor copy stays the standard cancellation notice either way.
+        // Phase 24C: the student copy states the frozen refund outcome
+        // ($event->refundDecision) — never a fresh recalculation, and
+        // never "refund initiated" for an ineligible cancellation.
         $this->send(
             'booking-cancelled',
             $event->booking->id,
             $event->booking->student,
-            $event->context->expired ? new BookingExpiredNotification($event->booking) : new BookingCancelledNotification($event->booking),
+            $event->context->expired ? new BookingExpiredNotification($event->booking) : new BookingCancelledNotification($event->booking, $event->refundDecision),
         );
 
         $this->send('booking-cancelled', $event->booking->id, $event->booking->instructor, new BookingCancelledNotification($event->booking));

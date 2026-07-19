@@ -115,6 +115,10 @@
                         &mdash; {{ $booking->cancellation_reason }}
                     @endif
                 </p>
+
+                @if($outcome = $this->cancellationOutcomeMessage())
+                    <p class="mt-2 rounded-xl bg-white/[0.04] px-4 py-3 text-sm text-slate-300">{{ $outcome }}</p>
+                @endif
             @endif
 
             @if($booking->payment_status->value === 'paid')
@@ -167,14 +171,28 @@
             @endif
 
             @if($isActive)
+                @php($rescheduleAllowance = $this->rescheduleAllowance())
+
                 <div class="mt-6 flex flex-wrap gap-3 border-t border-white/[0.07] pt-5">
-                    <x-ui.button type="button" wire:click="openReschedulePanel" size="sm">Reschedule</x-ui.button>
+                    @if($rescheduleAllowance === null || $rescheduleAllowance['allowed'])
+                        <x-ui.button type="button" wire:click="openReschedulePanel" size="sm">Reschedule</x-ui.button>
+                    @endif
                     <x-ui.button type="button" variant="danger" wire:click="openCancelPanel" size="sm">Cancel booking</x-ui.button>
                 </div>
 
+                @if($rescheduleAllowance !== null && ! $rescheduleAllowance['allowed'])
+                    <p class="mt-2 text-xs text-amber-300">You have reached the reschedule limit for this lesson.</p>
+                @endif
+
                 @if($reschedulePanelOpen)
                     <section class="mt-4 rounded-2xl bg-white/[0.04] p-4" aria-label="Reschedule booking">
-                        <label for="reschedule-date" class="block text-sm font-semibold text-slate-200">New date</label>
+                        @if($rescheduleAllowance !== null)
+                            <p class="text-xs text-slate-400">
+                                {{ $rescheduleAllowance['remaining'] === 1 ? '1 reschedule remaining' : $rescheduleAllowance['remaining'].' reschedules remaining' }}
+                            </p>
+                        @endif
+
+                        <label for="reschedule-date" class="mt-2 block text-sm font-semibold text-slate-200">New date</label>
                         <input
                             id="reschedule-date"
                             type="date"
@@ -206,7 +224,21 @@
 
                 @if($cancelPanelOpen)
                     <section class="mt-4 rounded-2xl bg-red-500/[0.06] p-4" aria-label="Cancel booking">
-                        <label for="cancel-reason" class="block text-sm font-semibold text-slate-200">Reason (optional)</label>
+                        @if($preview = $this->cancellationRefundPreview())
+                            @if($preview['eligible'])
+                                <p class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-300">Eligible for a full wallet refund.</p>
+                            @else
+                                <p class="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300">
+                                    This cancellation is outside the refund window and will not be refunded.
+                                    @if($preview['cutoff_at'])
+                                        The refund deadline was {{ $preview['cutoff_at']->timezone($booking->timezone)->format('D, M j Y \a\t H:i') }} ({{ $booking->timezone }}).
+                                    @endif
+                                </p>
+                            @endif
+                            <p class="mt-2 text-xs text-slate-400">Eligible refunds are credited to your wallet, not your original payment method.</p>
+                        @endif
+
+                        <label for="cancel-reason" class="mt-3 block text-sm font-semibold text-slate-200">Reason (optional)</label>
                         <textarea id="cancel-reason" rows="2" wire:model="cancelReason" maxlength="500"
                                   class="mt-1.5 block w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white shadow-sm focus:border-red-400 focus:outline-none focus:ring-4 focus:ring-red-400/20"></textarea>
                         <x-ui.button type="button" variant="danger" wire:click="confirmCancel" class="mt-3" size="sm">Yes, cancel this booking</x-ui.button>

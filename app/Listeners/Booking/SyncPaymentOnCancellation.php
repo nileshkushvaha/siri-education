@@ -16,6 +16,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * BookingPaymentServiceInterface::refundToWallet()). Refund-triggered
  * cancellations are already Refunded by the time this runs, so no loop
  * is possible.
+ *
+ * Phase 24C: never recomputes eligibility — $event->refundDecision was
+ * already frozen synchronously inside BookingService::cancel(), before
+ * this event ever dispatched, so a delayed queue worker can't observe
+ * a since-changed cancellation-window setting or a later clock. A null
+ * decision means BookingService::cancel() found nothing to decide
+ * about (payment_status wasn't Paid at cancellation time); this
+ * listener's own guard below is a defensive second check for the same
+ * fact, not a place that recomputes anything.
  */
 final class SyncPaymentOnCancellation implements ShouldQueue
 {
@@ -35,6 +44,14 @@ final class SyncPaymentOnCancellation implements ShouldQueue
             return;
         }
 
-        $this->payments->refundToWallet($event->booking, 'Booking cancelled');
+        $decision = $event->refundDecision;
+
+        if ($decision !== null && ! $decision->eligible) {
+            $this->payments->recordIneligibleCancellation($event->booking, $decision);
+
+            return;
+        }
+
+        $this->payments->refundToWallet($event->booking, 'Booking cancelled', $decision);
     }
 }

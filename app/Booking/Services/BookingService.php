@@ -27,6 +27,7 @@ use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
 use App\Booking\Exceptions\DuplicateBookingException;
 use App\Booking\Exceptions\FreeDemoAlreadyUsedException;
+use App\Booking\Exceptions\RescheduleLimitReachedException;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Types\FreeDemoType;
 use App\Booking\Validation\BookingValidationPipeline;
@@ -81,6 +82,8 @@ final class BookingService implements BookingServiceInterface
         private readonly CancelBookingAction $cancelAction,
         private readonly RescheduleBookingAction $rescheduleAction,
         private readonly CompleteBookingAction $completeAction,
+        private readonly CancellationRefundPolicy $refundPolicy,
+        private readonly RescheduleLimitPolicy $reschedulePolicy,
     ) {}
 
     public function request(CreateBookingData $data): Booking
@@ -199,6 +202,21 @@ final class BookingService implements BookingServiceInterface
         $booking = $this->bookings->withInstructorLock(
             $booking->instructor_id,
             fn (): Booking => DB::transaction(function () use ($booking, $data, $endsAt, $previousStartsAt, $previousEndsAt): Booking {
+                // Phase 24D — the allowance is re-derived from the
+                // durable, append-only booking_activities timeline under
+                // the same instructor-scoped lock that already
+                // serializes reschedules of this booking, and checked
+                // before the comparatively expensive availability
+                // search: an exhausted allowance is rejected before ever
+                // touching a slot. A rejected/failed attempt writes no
+                // Rescheduled activity row, so it never consumes the
+                // allowance.
+                $allowance = $this->reschedulePolicy->decide($booking, $data->actor);
+
+                if (! $allowance->allowed) {
+                    throw RescheduleLimitReachedException::make();
+                }
+
                 $this->availability->ensureAvailable(
                     $booking->instructor_id,
                     $data->startsAt,
@@ -214,11 +232,15 @@ final class BookingService implements BookingServiceInterface
                     BookingActivityAction::Rescheduled,
                     $data->actor,
                     Auth::id(),
-                    meta: array_filter([
-                        'previous_starts_at' => $previousStartsAt->toIso8601String(),
-                        'previous_ends_at' => $previousEndsAt->toIso8601String(),
-                        'reason' => $data->reason,
-                    ]),
+                    meta: array_filter(
+                        [
+                            'previous_starts_at' => $previousStartsAt->toIso8601String(),
+                            'previous_ends_at' => $previousEndsAt->toIso8601String(),
+                            'reason' => $data->reason,
+                            ...$allowance->toMeta(),
+                        ],
+                        static fn (mixed $value): bool => $value !== null,
+                    ),
                 );
 
                 return $booking;
@@ -233,9 +255,23 @@ final class BookingService implements BookingServiceInterface
     public function cancel(Booking $booking, CancelBookingData $data): Booking
     {
         $from = $booking->status;
+        $decision = null;
 
-        $booking = DB::transaction(function () use ($booking, $data, $from): Booking {
+        $booking = DB::transaction(function () use ($booking, $data, $from, &$decision): Booking {
             $booking = $this->cancelAction->execute($booking, $data);
+
+            // Phase 24C — freeze the refund-eligibility decision here,
+            // inside the same transaction as the status transition,
+            // using the just-persisted cancelled_at (never a fresh
+            // now() call) — before BookingCancelled dispatches, so the
+            // async listener that executes the refund and the listener
+            // that sends the notification both read this SAME answer
+            // instead of recomputing it later against a setting or
+            // clock that may have since changed. Only computed when
+            // there is a captured payment to make a decision about.
+            if ($booking->payment_status === BookingPaymentStatus::Paid) {
+                $decision = $this->refundPolicy->decide($booking, $data->cancelledBy, $booking->cancelled_at);
+            }
 
             $this->bookings->logActivity(
                 $booking,
@@ -244,13 +280,16 @@ final class BookingService implements BookingServiceInterface
                 Auth::id(),
                 $from,
                 BookingStatus::Cancelled,
-                array_filter(['reason' => $data->reason]),
+                array_filter(
+                    ['reason' => $data->reason, ...($decision?->toMeta() ?? [])],
+                    static fn (mixed $value): bool => $value !== null,
+                ),
             );
 
             return $booking;
         });
 
-        BookingCancelled::dispatch($booking, $data);
+        BookingCancelled::dispatch($booking, $data, $decision);
 
         return $booking;
     }

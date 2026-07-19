@@ -13,10 +13,13 @@ use App\Booking\DTOs\AvailabilityQueryData;
 use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\RescheduleBookingData;
 use App\Booking\Enums\BookingActor;
+use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
+use App\Booking\Services\CancellationRefundPolicy;
+use App\Booking\Services\RescheduleLimitPolicy;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Settings\MeetingSettings;
@@ -64,6 +67,10 @@ final class BookingHistory extends Component
 
     private RazorpayPaymentProvider $razorpay;
 
+    private CancellationRefundPolicy $refundPolicy;
+
+    private RescheduleLimitPolicy $reschedulePolicy;
+
     public function boot(
         StudentBookingServiceInterface $bookings,
         BookingRepositoryInterface $repository,
@@ -71,6 +78,8 @@ final class BookingHistory extends Component
         AvailabilityServiceInterface $availability,
         BookingPaymentServiceInterface $payments,
         RazorpayPaymentProvider $razorpay,
+        CancellationRefundPolicy $refundPolicy,
+        RescheduleLimitPolicy $reschedulePolicy,
     ): void {
         $this->bookings = $bookings;
         $this->repository = $repository;
@@ -78,6 +87,8 @@ final class BookingHistory extends Component
         $this->availability = $availability;
         $this->payments = $payments;
         $this->razorpay = $razorpay;
+        $this->refundPolicy = $refundPolicy;
+        $this->reschedulePolicy = $reschedulePolicy;
     }
 
     public function updatingStatusFilter(): void
@@ -183,7 +194,12 @@ final class BookingHistory extends Component
                 reason: filled($this->cancelReason) ? $this->cancelReason : null,
             ));
 
-            $this->selectedBooking = $updated->loadMissing(['type', 'instructor']);
+            // Phase 24C — the synchronous refund-execution listener
+            // mutates payment_status on its own freshly-queried copy of
+            // the booking, not this in-memory $updated instance, so a
+            // refresh is required or the modal would keep showing the
+            // pre-refund "Paid" state.
+            $this->selectedBooking = $updated->refresh()->loadMissing(['type', 'instructor']);
             $this->cancelPanelOpen = false;
         } catch (BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
@@ -366,6 +382,79 @@ final class BookingHistory extends Component
             ->where('booking_id', $this->selectedBooking->id)
             ->whereNotNull('metadata->wallet_ledger_entry_id')
             ->exists();
+    }
+
+    /**
+     * Phase 24D — the student-facing reschedule allowance for the
+     * selected booking. Purely informational: BookingService::reschedule()
+     * re-derives and enforces the same decision under the instructor
+     * lock, so a stale render here can never let a student bypass the
+     * configured limit.
+     *
+     * @return array{allowed: bool, remaining: int}|null
+     */
+    public function rescheduleAllowance(): ?array
+    {
+        if (! $this->selectedBooking || $this->selectedBooking->status->isTerminal()) {
+            return null;
+        }
+
+        $decision = $this->reschedulePolicy->decide($this->selectedBooking, BookingActor::Student);
+
+        return ['allowed' => $decision->allowed, 'remaining' => $decision->remaining()];
+    }
+
+    /**
+     * Phase 24C — pre-confirmation preview only, shown while the cancel
+     * panel is open on a still-paid booking. Deliberately uses now(): no
+     * commitment has happened yet, so there is nothing frozen to read
+     * back yet — this is exactly the one place a live recalculation is
+     * correct. Returns null when there is nothing to refund (free demo,
+     * unpaid/failed booking) so the view can omit the section entirely.
+     *
+     * @return array{eligible: bool, cutoff_at: ?CarbonImmutable}|null
+     */
+    public function cancellationRefundPreview(): ?array
+    {
+        if (! $this->selectedBooking || $this->selectedBooking->payment_status !== BookingPaymentStatus::Paid) {
+            return null;
+        }
+
+        $decision = $this->refundPolicy->decide($this->selectedBooking, BookingActor::Student, CarbonImmutable::now());
+
+        return ['eligible' => $decision->eligible, 'cutoff_at' => $decision->cutoffAt];
+    }
+
+    /**
+     * Phase 24C — the actual FROZEN outcome after cancellation, read
+     * back from the payment's own metadata (the same durable record
+     * BookingPaymentService wrote at cancellation time) — never a
+     * fresh policy recalculation, so this always matches what actually
+     * happened even if the setting has since changed.
+     */
+    public function cancellationOutcomeMessage(): ?string
+    {
+        if (! $this->selectedBooking || $this->selectedBooking->status !== BookingStatus::Cancelled) {
+            return null;
+        }
+
+        // Builder::value('metadata->refund_resolution') would silently
+        // return null here: Eloquent resolves a value() column back to
+        // an attribute via Str::afterLast($column, '.'), which only
+        // understands dot-paths, not MySQL's -> JSON operator — so the
+        // full row is read instead and the cast array is used directly.
+        $resolution = BookingPayment::query()
+            ->where('booking_id', $this->selectedBooking->id)
+            ->latest('created_at')
+            ->first()
+            ?->metadata['refund_resolution'] ?? null;
+
+        return match ($resolution) {
+            'wallet_credited' => 'The amount paid has been credited to your wallet.',
+            'not_eligible_late_cancellation' => 'This cancellation was outside the refund window, so no refund was issued.',
+            'manual_resolution_required' => 'Your refund is being reviewed by our team.',
+            default => null,
+        };
     }
 
     public function render(): View

@@ -6,7 +6,9 @@ use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\DTOs\CancelBookingData;
+use App\Booking\DTOs\CancellationRefundDecision;
 use App\Booking\DTOs\CreateBookingData;
+use App\Booking\DTOs\RescheduleBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
@@ -390,6 +392,49 @@ try {
             ));
 
             return ['applied' => $result->applied, 'review_id' => $result->review->id];
+        })(),
+
+        // Phase 24C — two workers race the SAME frozen ineligible-refund
+        // disposition against the SAME captured payment (a duplicate
+        // job/event delivery of one cancellation decision). The captured
+        // payment's row lock inside lockedUnresolvedCapturedPayment()
+        // must let exactly one caller record the disposition; the loser
+        // must see BookingException("already resolved"), never a second
+        // metadata write.
+        'record-ineligible-cancellation' => (function () use ($args) {
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+
+            $decision = new CancellationRefundDecision(
+                eligible: false,
+                policyCode: 'late_cancellation',
+                cutoffAt: CarbonImmutable::parse($args['cutoff_at']),
+                windowHours: (int) $args['window_hours'],
+                cancelledAt: CarbonImmutable::parse($args['cancelled_at']),
+                startsAt: CarbonImmutable::parse($args['starts_at']),
+            );
+
+            $booking = app(BookingPaymentServiceInterface::class)->recordIneligibleCancellation($booking, $decision);
+
+            return ['payment_status' => $booking->payment_status->value];
+        })(),
+
+        // Phase 24D — two workers race a reschedule of the SAME booking
+        // when only one allowance remains. The existing instructor-scoped
+        // GET_LOCK in BookingRepository::withInstructorLock() (already
+        // wrapping BookingService::reschedule()) must serialize the two
+        // attempts so the second one re-reads the just-committed
+        // successful count and is correctly rejected — never both
+        // succeeding, never a count exceeding the configured limit.
+        'reschedule-booking' => (function () use ($args) {
+            $booking = Booking::query()->findOrFail($args['booking_id']);
+            $actor = BookingActor::from($args['actor'] ?? 'student');
+
+            $updated = app(BookingServiceInterface::class)->reschedule($booking, new RescheduleBookingData(
+                startsAt: CarbonImmutable::parse($args['starts_at']),
+                actor: $actor,
+            ));
+
+            return ['booking_id' => $updated->id, 'starts_at' => $updated->starts_at->toIso8601String()];
         })(),
 
         'cancel-booking-as-user' => (function () use ($args) {

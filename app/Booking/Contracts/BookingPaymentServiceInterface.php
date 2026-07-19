@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Contracts;
 
+use App\Booking\DTOs\CancellationRefundDecision;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\Exceptions\BookingException;
@@ -52,9 +53,28 @@ interface BookingPaymentServiceInterface
      * by every automatic cancellation flow. Idempotent — a duplicate
      * call (e.g. a retried queued listener) has no additional effect.
      *
+     * $decision (Phase 24C), when supplied, is recorded as safe
+     * metadata on the payment for audit-traceability — it never
+     * changes whether this method credits the wallet; the caller
+     * (SyncPaymentOnCancellation) only invokes this method at all when
+     * the decision was already eligible.
+     *
      * @throws BookingException when the booking is not paid, or the payment cannot be attributed to a user
      */
-    public function refundToWallet(Booking $booking, ?string $reason = null): Booking;
+    public function refundToWallet(Booking $booking, ?string $reason = null, ?CancellationRefundDecision $decision = null): Booking;
+
+    /**
+     * Phase 24C — a paid booking was cancelled but CancellationRefundPolicy
+     * decided the cancellation is not refund-eligible (a late student
+     * cancellation). Records the frozen decision as an auditable
+     * no-refund disposition on the payment — no wallet ledger entry,
+     * no payment_status change (it stays Paid: the platform retains
+     * the charge), no gateway call. Idempotent — a duplicate delivery
+     * of the same event is a no-op once resolved.
+     *
+     * @throws BookingException when the booking is not paid
+     */
+    public function recordIneligibleCancellation(Booking $booking, CancellationRefundDecision $decision): Booking;
 
     /**
      * Exception-path refund: calls the real gateway directly. Never

@@ -30,6 +30,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -55,6 +56,8 @@ class RescheduleLimitExecutionTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);
 
@@ -63,7 +66,7 @@ class RescheduleLimitExecutionTest extends TestCase
                 ->forDay($day)->between('06:00:00', '22:00:00')->create();
         }
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->type = BookingType::factory()->create(['requires_approval' => false]);
     }
 

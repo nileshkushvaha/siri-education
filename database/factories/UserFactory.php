@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\StudentStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -41,5 +42,27 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /**
+     * Phase 24H.1A — GAP-013: a fully governed, Active student — the
+     * 'student' role assigned AND student_status explicitly Active on
+     * the profile UserObserver already creates. Use this (not a bare
+     * assignRole('student')) whenever a test needs a student who can
+     * actually pass StudentLifecycleService::isEligibleForStudentActions()
+     * (book, reschedule, cancel, etc.) — a bare role assignment leaves
+     * student_status null, which is invalid/ambiguous and always denied
+     * under the strict Active-only rule. Still requires the caller to
+     * pass ['status' => User::STATUS_ACTIVE] to create()/make() — this
+     * state only governs the STUDENT lifecycle column, not the
+     * whole-account status, which stays this factory's existing,
+     * separate concern.
+     */
+    public function activeStudent(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->assignRole('student');
+            $user->profile()->update(['student_status' => StudentStatus::Active]);
+        });
     }
 }

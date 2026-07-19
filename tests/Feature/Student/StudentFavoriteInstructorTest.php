@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use App\Models\User;
 use App\Services\Student\StudentFavoriteInstructorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,6 +28,7 @@ class StudentFavoriteInstructorTest extends TestCase
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
+        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
     }
 
     public function test_student_can_favorite_and_remove_bookable_instructor(): void

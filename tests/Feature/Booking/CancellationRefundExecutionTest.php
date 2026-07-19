@@ -27,6 +27,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -53,6 +54,8 @@ class CancellationRefundExecutionTest extends TestCase
             'minor_units' => 2, 'status' => 'active', 'sort_order' => 1,
         ]);
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $this->paidType = BookingType::factory()->create(['key' => 'paid_one_to_one', 'is_paid' => true]);
     }
 
@@ -66,7 +69,7 @@ class CancellationRefundExecutionTest extends TestCase
     /** @return array{0: Booking, 1: BookingPayment, 2: User} */
     private function paidBooking(CarbonImmutable $startsAt, int $amountMinor = 49900, string $currency = 'INR', ?BookingType $type = null): array
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $type ??= $this->paidType;
 
         $booking = Booking::factory()->create([
@@ -161,7 +164,7 @@ class CancellationRefundExecutionTest extends TestCase
     public function test_free_demo_cancellation_creates_no_wallet_entry(): void
     {
         $demoType = BookingType::factory()->create(['key' => 'free_demo', 'is_paid' => false]);
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $startsAt = CarbonImmutable::parse('2026-08-10 10:00:00', 'UTC');
 
         $booking = Booking::factory()->create([
@@ -183,7 +186,7 @@ class CancellationRefundExecutionTest extends TestCase
 
     public function test_unpaid_booking_cancellation_creates_no_refund(): void
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $startsAt = CarbonImmutable::parse('2026-08-10 10:00:00', 'UTC');
 
         $booking = Booking::factory()->create([

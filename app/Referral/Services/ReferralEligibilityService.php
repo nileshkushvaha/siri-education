@@ -216,7 +216,12 @@ final class ReferralEligibilityService implements ReferralEligibilityServiceInte
             return false;
         }
 
-        return ! in_array($referrer->profile?->student_status, [StudentStatus::Suspended, StudentStatus::Archived], true);
+        // Phase 24H.2 — GAP-013: aligned with the strict lifecycle rule
+        // — the referrer must be exactly Active (Registered/null no
+        // longer qualify), matching ReferralAttributionService. This
+        // gates EARNING NEW rewards only; already-earned/held rewards
+        // remain creditable (see ReferralRewardService, Phase 24H fix).
+        return $referrer->profile?->student_status === StudentStatus::Active;
     }
 
     private function capturedPayment(string $bookingId): ?BookingPayment

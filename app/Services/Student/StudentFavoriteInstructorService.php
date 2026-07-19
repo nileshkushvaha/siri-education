@@ -16,6 +16,7 @@ final class StudentFavoriteInstructorService
 {
     public function __construct(
         private readonly AuditTrailService $audit,
+        private readonly StudentLifecycleService $lifecycle,
     ) {}
 
     public function favorite(User $student, User $instructor): StudentFavoriteInstructor
@@ -23,6 +24,11 @@ final class StudentFavoriteInstructorService
         $this->ensureCanFavorite($student, $instructor);
 
         return DB::transaction(function () use ($student, $instructor): StudentFavoriteInstructor {
+            // Phase 24H.2 — GAP-013: re-checked INSIDE the transaction so
+            // the locked profile read serializes against a concurrent
+            // suspension (see assertEligibleForStudentAction()).
+            $this->lifecycle->assertEligibleForStudentAction($student);
+
             $favorite = StudentFavoriteInstructor::firstOrCreate([
                 'student_user_id' => $student->id,
                 'instructor_user_id' => $instructor->id,
@@ -46,6 +52,8 @@ final class StudentFavoriteInstructorService
     public function unfavorite(User $student, User $instructor): void
     {
         DB::transaction(function () use ($student, $instructor): void {
+            $this->lifecycle->assertEligibleForStudentAction($student);
+
             $favorite = StudentFavoriteInstructor::query()
                 ->where('student_user_id', $student->id)
                 ->where('instructor_user_id', $instructor->id)

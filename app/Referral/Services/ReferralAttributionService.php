@@ -233,8 +233,9 @@ final class ReferralAttributionService implements ReferralAttributionServiceInte
             return false;
         }
 
-        $studentStatus = $referrer->profile?->student_status;
-
-        return ! in_array($studentStatus, [StudentStatus::Suspended, StudentStatus::Archived], true);
+        // Phase 24H.2 — GAP-013: an "eligible active student" referrer
+        // now means exactly student_status === Active (Registered/null
+        // no longer qualify), aligned with the strict lifecycle rule.
+        return $referrer->profile?->student_status === StudentStatus::Active;
     }
 }

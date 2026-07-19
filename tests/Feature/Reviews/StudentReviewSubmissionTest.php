@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Reviews;
 
 use App\Booking\Enums\BookingPaymentStatus;
+use App\Enums\StudentStatus;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -442,6 +444,14 @@ class StudentReviewSubmissionTest extends TestCase
 
     // ── Helpers ──────────────────────────────────────────────────────
 
+    /** Phase 24H.2: review submission requires an Active student — booking-factory students start role-less with a null status. */
+    private function promoteToActiveStudent(User $student): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $student->assignRole('student');
+        $student->profile()->update(['student_status' => StudentStatus::Active]);
+    }
+
     private function paidLesson(): Lesson
     {
         $endsAt = now()->subHours(2)->startOfHour();
@@ -454,6 +464,8 @@ class StudentReviewSubmissionTest extends TestCase
             'price' => '499.00',
             'currency' => 'INR',
         ]);
+
+        $this->promoteToActiveStudent($booking->student);
 
         return $this->lifecycle->createFromBooking($booking);
     }
@@ -469,6 +481,8 @@ class StudentReviewSubmissionTest extends TestCase
             'price' => null,
             'currency' => null,
         ]);
+
+        $this->promoteToActiveStudent($booking->student);
 
         return $this->lifecycle->createFromBooking($booking);
     }

@@ -48,6 +48,7 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
         parent::setUp();
 
         $this->demoType = BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
     }
 
     private function makeTeacher(string $subject = 'maths'): User
@@ -67,9 +68,10 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
         return $teacher;
     }
 
+    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
     private function makeStudent(): User
     {
-        return User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     /** Distinct slots per $daysAhead keep tests isolated from the (separate) same-slot duplicate-booking rule. */

@@ -6,6 +6,7 @@ namespace App\Livewire\Frontend\Student;
 
 use App\Referral\Contracts\ReferralCodeServiceInterface;
 use App\Referral\Contracts\ReferralRewardServiceInterface;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\FeatureSettings;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -36,6 +37,16 @@ final class ReferFriend extends Component
         $user = auth()->user();
 
         abort_unless($user?->hasRole('student'), 403);
+
+        // Phase 24H.2 — GAP-013: referral participation is an Active-only
+        // capability; a Registered (or otherwise non-Active) student gets
+        // a plain 403 before the lazy code-create below can run. The
+        // service enforces this too — this abort just keeps the failure
+        // at the page boundary instead of a mid-mount exception.
+        abort_unless(
+            app(StudentLifecycleService::class)->isEligibleForStudentActions($user),
+            403,
+        );
 
         $referralCode = $codes->getOrCreateForStudent($user);
 

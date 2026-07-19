@@ -39,6 +39,7 @@ use App\Booking\Validation\Rules\TeacherAvailabilityRule;
 use App\Booking\Validation\Rules\VerifiedActiveStudentRule;
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\BookingSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +86,7 @@ final class BookingService implements BookingServiceInterface
         private readonly CompleteBookingAction $completeAction,
         private readonly CancellationRefundPolicy $refundPolicy,
         private readonly RescheduleLimitPolicy $reschedulePolicy,
+        private readonly StudentLifecycleService $studentLifecycle,
     ) {}
 
     public function request(CreateBookingData $data): Booking
@@ -333,9 +335,10 @@ final class BookingService implements BookingServiceInterface
     }
 
     /**
-     * Phase 24H — GAP-013: a suspended/archived student must not
-     * self-initiate a reschedule or cancellation ("Suspended/archived
-     * students should not initiate protected student actions"). Only
+     * Phase 24H.1 — GAP-013 correction: a self-initiated reschedule or
+     * cancellation now requires the student to be exactly Active
+     * (Registered is rejected too — see
+     * StudentLifecycleService::isEligibleForStudentActions()). Only
      * gates the STUDENT actor — an instructor, admin, or system actor
      * (e.g. cancelling/rescheduling on the student's behalf, or an
      * expired-reservation release) is never blocked by the student's
@@ -348,7 +351,9 @@ final class BookingService implements BookingServiceInterface
             return;
         }
 
-        if ($booking->student?->profile?->student_status?->blocksAccess() === true) {
+        $student = $booking->student;
+
+        if ($student !== null && ! $this->studentLifecycle->isEligibleForStudentActions($student)) {
             throw new BookingException('Your account is not available for this action. Please contact support.');
         }
     }

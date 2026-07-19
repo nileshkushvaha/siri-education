@@ -275,15 +275,16 @@ class StudentLifecycleServiceTest extends TestCase
         $this->assertNotNull(LoginHistory::query()->where('user_id', $student->id)->first()->logged_out_at);
     }
 
-    // ── 33. Multi-role behavior ───────────────────────────────────────────────
+    // ── 24/26. Multi-role behavior — Phase 24H.1: account-wide, no bypass ───
 
-    public function test_blocks_login_is_false_when_the_same_account_has_a_bookable_instructor_status(): void
+    /** Phase 24H.1 correction: a bookable instructor capability no longer bypasses the SRS's blanket authentication restriction. */
+    public function test_blocks_login_is_true_even_when_the_same_account_has_a_bookable_instructor_status(): void
     {
         $student = $this->studentWith(StudentStatus::Suspended);
         $student->assignRole('instructor');
         $student->profile()->update(['instructor_status' => InstructorStatus::Active]);
 
-        $this->assertFalse($this->service->blocksLogin($student->fresh()));
+        $this->assertTrue($this->service->blocksLogin($student->fresh()));
     }
 
     public function test_blocks_login_is_true_for_a_student_only_suspended_account(): void
@@ -307,5 +308,140 @@ class StudentLifecycleServiceTest extends TestCase
         $student = $this->studentWith(StudentStatus::Active);
 
         $this->assertFalse($this->service->blocksLogin($student->fresh()));
+    }
+
+    // ── Phase 24H.1A — strict isEligibleForStudentActions() ──────────────────
+
+    public function test_active_student_is_eligible_for_student_actions(): void
+    {
+        $student = $this->studentWith(StudentStatus::Active);
+
+        $this->assertTrue($this->service->isEligibleForStudentActions($student->fresh()));
+    }
+
+    public function test_registered_student_is_not_eligible(): void
+    {
+        $student = $this->studentWith(StudentStatus::Registered);
+
+        $this->assertFalse($this->service->isEligibleForStudentActions($student->fresh()));
+    }
+
+    public function test_suspended_student_is_not_eligible(): void
+    {
+        $student = $this->studentWith(StudentStatus::Suspended);
+
+        $this->assertFalse($this->service->isEligibleForStudentActions($student->fresh()));
+    }
+
+    public function test_archived_student_is_not_eligible(): void
+    {
+        $student = $this->studentWith(StudentStatus::Archived);
+
+        $this->assertFalse($this->service->isEligibleForStudentActions($student->fresh()));
+    }
+
+    /** Phase 24H.1A correction: null is invalid/ambiguous data, never an implicit Active grant (Phase 24H.1's carve-out is removed). */
+    public function test_null_status_student_is_not_eligible(): void
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student->assignRole('student');
+
+        $this->assertNull($student->fresh()->profile->student_status);
+        $this->assertFalse($this->service->isEligibleForStudentActions($student->fresh()));
+    }
+
+    public function test_missing_profile_student_is_not_eligible(): void
+    {
+        $student = $this->studentWith(StudentStatus::Active);
+        $student->profile()->delete();
+
+        $this->assertFalse($this->service->isEligibleForStudentActions($student->fresh()));
+    }
+
+    /** Direct service invocation cannot bypass strict status enforcement — there is no alternate/weaker entry point. */
+    public function test_direct_service_invocation_cannot_bypass_strict_status_enforcement(): void
+    {
+        $registered = $this->studentWith(StudentStatus::Registered);
+        $nullStatus = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $nullStatus->assignRole('student');
+
+        $this->assertFalse(app(StudentLifecycleService::class)->isEligibleForStudentActions($registered->fresh()));
+        $this->assertFalse(app(StudentLifecycleService::class)->isEligibleForStudentActions($nullStatus->fresh()));
+    }
+
+    // ── Phase 24H.1A — null-state prevention on role assignment ──────────────
+
+    public function test_initializing_a_null_status_student_role_sets_registered(): void
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student->assignRole('student');
+
+        $applied = $this->service->initializeStudentRoleIfNeeded($student, $this->admin);
+
+        $this->assertTrue($applied);
+        $this->assertSame(StudentStatus::Registered, $student->fresh()->profile->student_status);
+    }
+
+    public function test_initialization_does_not_overwrite_active(): void
+    {
+        $student = $this->studentWith(StudentStatus::Active);
+
+        $applied = $this->service->initializeStudentRoleIfNeeded($student, $this->admin);
+
+        $this->assertFalse($applied);
+        $this->assertSame(StudentStatus::Active, $student->fresh()->profile->student_status);
+    }
+
+    public function test_initialization_does_not_overwrite_suspended(): void
+    {
+        $student = $this->studentWith(StudentStatus::Suspended);
+
+        $applied = $this->service->initializeStudentRoleIfNeeded($student, $this->admin);
+
+        $this->assertFalse($applied);
+        $this->assertSame(StudentStatus::Suspended, $student->fresh()->profile->student_status);
+    }
+
+    public function test_initialization_does_not_overwrite_archived(): void
+    {
+        $student = $this->studentWith(StudentStatus::Archived);
+
+        $applied = $this->service->initializeStudentRoleIfNeeded($student, $this->admin);
+
+        $this->assertFalse($applied);
+        $this->assertSame(StudentStatus::Archived, $student->fresh()->profile->student_status);
+    }
+
+    public function test_initialization_produces_audit_evidence(): void
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student->assignRole('student');
+
+        $this->service->initializeStudentRoleIfNeeded($student, $this->admin);
+
+        $activity = Activity::query()
+            ->where('log_name', 'student')
+            ->where('event', 'student_status_changed')
+            ->where('subject_id', $student->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($this->admin->id, $activity->causer_id);
+        $this->assertNull($activity->properties['previous_status']);
+        $this->assertSame('registered', $activity->properties['new_status']);
+        $this->assertSame('role_assignment_initialization', $activity->properties['transition_source']);
+    }
+
+    /** A missing profile means there's nothing to initialize — no crash, no false-positive audit. */
+    public function test_initialization_is_a_no_op_when_profile_is_missing(): void
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student->assignRole('student');
+        $student->profile()->delete();
+
+        $applied = $this->service->initializeStudentRoleIfNeeded($student, $this->admin);
+
+        $this->assertFalse($applied);
     }
 }

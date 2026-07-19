@@ -13,10 +13,14 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H — GAP-013/SRS-1-16: suspended/archived students must not
- * establish (login) or retain (mid-session middleware) ordinary student
- * access, except when the same account also has a genuinely bookable
- * instructor capability (multi-role — Step 8's explicit carve-out).
+ * Phase 24H.1 — GAP-013/SRS-1-16 correction: suspended/archived students
+ * must not establish (login) or retain (mid-session middleware) access
+ * to the WHOLE account — including through another role on the same
+ * user. Phase 24H's original multi-role login exception (a bookable
+ * instructor capability letting a suspended/archived student profile
+ * still authenticate) was never an approved SRS deviation and has been
+ * removed; the SRS's blanket "Suspended or archived accounts shall be
+ * prevented from authenticating" is now enforced account-wide.
  */
 class StudentLoginEnforcementTest extends TestCase
 {
@@ -78,9 +82,9 @@ class StudentLoginEnforcementTest extends TestCase
         $this->assertAuthenticatedAs($student);
     }
 
-    // ── 33. Multi-role: a bookable instructor capability is not stranded ────
+    // ── 24/26. Multi-role: account-wide enforcement, no instructor bypass ───
 
-    public function test_a_suspended_student_with_a_bookable_instructor_status_can_still_log_in(): void
+    public function test_a_suspended_student_with_a_bookable_instructor_status_cannot_log_in(): void
     {
         $user = $this->studentWith(StudentStatus::Suspended);
         $user->assignRole('instructor');
@@ -88,7 +92,31 @@ class StudentLoginEnforcementTest extends TestCase
 
         $this->post(route('auth.login.store'), ['email' => $user->email, 'password' => 'password']);
 
-        $this->assertAuthenticatedAs($user);
+        $this->assertGuest();
+    }
+
+    public function test_an_archived_student_with_a_bookable_instructor_status_cannot_log_in(): void
+    {
+        $user = $this->studentWith(StudentStatus::Archived);
+        $user->assignRole('instructor');
+        $user->profile()->update(['instructor_status' => InstructorStatus::Approved]);
+
+        $this->post(route('auth.login.store'), ['email' => $user->email, 'password' => 'password']);
+
+        $this->assertGuest();
+    }
+
+    /** Instructor lifecycle status itself is untouched by student suspension — only authentication is blocked. */
+    public function test_instructor_lifecycle_state_is_unchanged_by_the_login_restriction(): void
+    {
+        $user = $this->studentWith(StudentStatus::Suspended);
+        $user->assignRole('instructor');
+        $user->profile()->update(['instructor_status' => InstructorStatus::Active]);
+
+        app(StudentLifecycleService::class)->blocksLogin($user->fresh());
+
+        $this->assertSame(InstructorStatus::Active, $user->fresh()->profile->instructor_status);
+        $this->assertTrue($user->fresh()->hasRole('instructor'));
     }
 
     // ── 7. Existing session is blocked mid-session (defense-in-depth) ───────

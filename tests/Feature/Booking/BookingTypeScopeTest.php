@@ -65,12 +65,10 @@ class BookingTypeScopeTest extends TestCase
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
     }
 
+    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
     private function student(): User
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
-
-        return $student;
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     private function paidTypeWithPrice(): array

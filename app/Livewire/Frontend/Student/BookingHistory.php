@@ -22,6 +22,7 @@ use App\Booking\Services\CancellationRefundPolicy;
 use App\Booking\Services\RescheduleLimitPolicy;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Services\Student\StudentLifecycleService;
 use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -464,7 +465,16 @@ final class BookingHistory extends Component
         return view('livewire.frontend.student.booking-history', [
             'history' => $this->bookings->bookingHistory(auth()->user(), 10, $status),
             'statuses' => BookingStatus::cases(),
-            'joinUrlVisible' => app(MeetingSettings::class)->student_join_url_visible,
+            // Phase 24H.2 — GAP-013: the meeting join URL is revealed to
+            // the student only when the account is an Active student, on
+            // a FRESH per-request status check (never a cached snapshot)
+            // — a Registered/Suspended/Archived/null-status account gets
+            // HTML that simply never contains the provider URL. Note the
+            // boundary: a URL a student already copied externally cannot
+            // be revoked by application code without provider-side
+            // integration; this controls what the application serves.
+            'joinUrlVisible' => app(MeetingSettings::class)->student_join_url_visible
+                && app(StudentLifecycleService::class)->isEligibleForStudentActions(auth()->user()->fresh()),
         ]);
     }
 

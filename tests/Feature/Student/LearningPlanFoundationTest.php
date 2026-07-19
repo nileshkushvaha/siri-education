@@ -6,6 +6,7 @@ namespace Tests\Feature\Student;
 
 use App\Enums\InstructorStatus;
 use App\Enums\LearningPlanStatus;
+use App\Enums\StudentStatus;
 use App\Models\AcademicCategory;
 use App\Models\AcademicLevel;
 use App\Models\Booking;
@@ -50,9 +51,11 @@ class LearningPlanFoundationTest extends TestCase
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
+        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
 
         $this->otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->otherStudent->assignRole('student');
+        $this->otherStudent->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
 
         $this->instructor = $this->makeInstructor(InstructorStatus::Approved);
 

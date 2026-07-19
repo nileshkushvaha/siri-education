@@ -24,6 +24,7 @@ final class LearningPlanService
 {
     public function __construct(
         private readonly AuditTrailService $audit,
+        private readonly StudentLifecycleService $lifecycle,
     ) {}
 
     /**
@@ -36,6 +37,15 @@ final class LearningPlanService
         }
 
         return DB::transaction(function () use ($actor, $goal, $data): StudentLearningPlan {
+            // Phase 24H.2 — GAP-013: only when the actor IS the owning
+            // student — an admin creating a plan via
+            // Create:StudentLearningPlan is governed by that permission
+            // alone. Checked inside the transaction (locked profile
+            // read) so it serializes against a concurrent suspension.
+            if ($goal->user_id === $actor->id) {
+                $this->lifecycle->assertEligibleForStudentAction($actor);
+            }
+
             /** @var StudentLearningGoal $lockedGoal */
             $lockedGoal = StudentLearningGoal::query()
                 ->whereKey($goal->id)

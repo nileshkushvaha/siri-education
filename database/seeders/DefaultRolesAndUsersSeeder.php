@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\Student\StudentLifecycleService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
@@ -45,6 +46,7 @@ class DefaultRolesAndUsersSeeder extends Seeder
 
         $student = $this->createUser('student@mailinator.com', 'student');
         $student->assignRole('student');
+        app(StudentLifecycleService::class)->initializeStudentRoleIfNeeded($student);
 
         $this->command->info('✓ Default roles and users seeded (admin, manager, instructor, student).');
     }

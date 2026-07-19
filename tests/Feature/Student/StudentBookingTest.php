@@ -45,7 +45,8 @@ class StudentBookingTest extends TestCase
         $category = AcademicCategory::create(['name' => 'Mathematics', 'slug' => 'mathematics']);
         $subject = Subject::create(['academic_category_id' => $category->id, 'name' => 'Maths', 'slug' => 'maths']);
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student->profile()->update(['phone_e164' => '+9199999'.str_pad((string) $this->student->id, 5, '0', STR_PAD_LEFT), 'phone_verified_at' => now()]); // paid bookings require a verified phone (StudentFinancialVerificationGate)
         $this->student->assignRole('student');
         UserProfile::updateOrCreate(['user_id' => $this->student->id], ['country_id' => $country->id]);
 

@@ -54,6 +54,7 @@ class DemoLessonsFeatureToggleTest extends TestCase
         parent::setUp();
 
         $this->demoType = BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
     }
 
     private function disableDemos(): void
@@ -91,9 +92,10 @@ class DemoLessonsFeatureToggleTest extends TestCase
         return $teacher;
     }
 
+    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
     private function makeStudent(): User
     {
-        return User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     private function slot(int $daysAhead): CarbonImmutable

@@ -9,6 +9,7 @@ use App\Homework\Actions\SubmitHomeworkAction;
 use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\HomeworkAssignment;
+use App\Services\Student\StudentLifecycleService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ final class HomeworkService implements HomeworkServiceInterface
         private readonly HomeworkRepositoryInterface $repository,
         private readonly SubmitHomeworkAction $submitAction,
         private readonly ReviewHomeworkAction $reviewAction,
+        private readonly StudentLifecycleService $lifecycle,
     ) {}
 
     public function paginatedForStudent(int $studentId, int $perPage = 15): LengthAwarePaginator
@@ -38,9 +40,18 @@ final class HomeworkService implements HomeworkServiceInterface
 
     public function submit(HomeworkAssignment $assignment, string $submissionText): HomeworkAssignment
     {
-        return DB::transaction(
-            fn (): HomeworkAssignment => $this->submitAction->execute($assignment, $submissionText),
-        );
+        return DB::transaction(function () use ($assignment, $submissionText): HomeworkAssignment {
+            // Phase 24H.2 — GAP-013: a submission is BY DEFINITION the
+            // assignment's student acting (HomeworkAssignmentPolicy::submit
+            // already restricts the HTTP actor to exactly that student),
+            // so the lifecycle guard applies to the assignment's student
+            // unconditionally. The instructor review() path below is
+            // untouched. Checked inside the transaction so the locked
+            // profile read serializes against a concurrent suspension.
+            $this->lifecycle->assertEligibleForStudentAction($assignment->student);
+
+            return $this->submitAction->execute($assignment, $submissionText);
+        });
     }
 
     public function paginatedForTeacher(int $teacherId, int $perPage = 20): LengthAwarePaginator

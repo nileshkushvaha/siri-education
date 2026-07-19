@@ -44,6 +44,7 @@ use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Instructor\InstructorOnboardingService;
+use App\Services\Student\StudentFavoriteInstructorService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\RazorpayXPayoutSettings;
 use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
@@ -633,6 +634,43 @@ try {
             $profile = app(StudentLifecycleService::class)->archive($student, $admin, 'Concurrency test archive.');
 
             return ['student_status' => $profile->student_status->value];
+        })(),
+
+        // Phase 24H.1 — a delayed verification/legacy-reconciliation
+        // activation racing an admin suspension for the SAME Registered
+        // student. Whichever commits first, the row lock in
+        // systemActivateFromRegistered()/transitionStatus() means the
+        // second caller re-reads the just-committed status: if suspend
+        // wins first, alignment sees "not Registered" and silently
+        // no-ops; if alignment wins first, suspend still succeeds (Active
+        // is a valid FROM-state for suspend too) — either ordering must
+        // converge to Suspended, never leave the account resurrected as
+        // Active.
+        'student-align-legacy' => (function () use ($args) {
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $applied = app(StudentLifecycleService::class)->alignLegacyVerifiedStudent($student);
+
+            return ['applied' => $applied, 'student_status' => $student->fresh()->profile->student_status->value];
+        })(),
+
+        // Phase 24H.2 — an interactive student action (favorite) racing
+        // an admin suspension of the SAME student. The favorite's
+        // in-transaction assertEligibleForStudentAction() takes a
+        // lockForUpdate() read on the same profile row suspend locks, so
+        // the two serialize: favorite-first → row created, then suspend
+        // commits; suspend-first → favorite observes Suspended and is
+        // rejected with the generic message, creating no row. Both
+        // orderings are valid; what may never happen is a favorite
+        // committing on stale pre-suspension state after the suspension
+        // is authoritative.
+        'student-favorite' => (function () use ($args) {
+            $student = User::query()->findOrFail($args['student_id']);
+            $instructor = User::query()->findOrFail($args['instructor_id']);
+
+            $favorite = app(StudentFavoriteInstructorService::class)->favorite($student, $instructor);
+
+            return ['favorite_id' => $favorite->id];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

@@ -22,6 +22,7 @@ use App\Reviews\Events\ReviewReportReviewStarted;
 use App\Reviews\Events\ReviewReportUpheld;
 use App\Reviews\Exceptions\ReviewValidationException;
 use App\Services\AuditTrailService;
+use App\Services\Student\StudentLifecycleService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
@@ -56,11 +57,21 @@ final class ReviewReportService implements ReviewReportServiceInterface
         private readonly ReviewReportRepositoryInterface $reports,
         private readonly ReviewModerationServiceInterface $moderation,
         private readonly AuditTrailService $audit,
+        private readonly StudentLifecycleService $lifecycle,
     ) {}
 
     public function submit(LessonReview $review, User $reporter, SubmitReviewReportData $data): ReviewReport
     {
         $this->authorizeReport($reporter, $review);
+
+        // Phase 24H.2 — GAP-013: reporting is open to any authorized
+        // active user (LessonReviewPolicy::report), so the lifecycle
+        // guard applies only when the reporter IS a student — an
+        // instructor/staff reporter without the student role is governed
+        // solely by the existing permission check above.
+        if ($reporter->hasRole('student')) {
+            $this->lifecycle->assertEligibleForStudentAction($reporter);
+        }
 
         return $this->submitAction->execute($review, $reporter, $data);
     }

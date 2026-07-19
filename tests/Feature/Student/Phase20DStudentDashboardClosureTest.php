@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\DTOs\StudentDashboard\StudentDashboardData;
+use App\Enums\StudentStatus;
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Models\User;
 use App\Services\Student\StudentDashboardService;
@@ -27,6 +28,7 @@ final class Phase20DStudentDashboardClosureTest extends TestCase
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE, 'email_verified_at' => now()]);
         $this->student->assignRole('student');
+        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
     }
 
     public function test_dashboard_markup_has_accessible_progress_and_responsive_contracts(): void

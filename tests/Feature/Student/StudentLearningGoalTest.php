@@ -6,6 +6,7 @@ namespace Tests\Feature\Student;
 
 use App\Enums\AcademicStatus;
 use App\Enums\LearningGoalStatus;
+use App\Enums\StudentStatus;
 use App\Models\AcademicCategory;
 use App\Models\AcademicLevel;
 use App\Models\Subject;
@@ -34,6 +35,7 @@ class StudentLearningGoalTest extends TestCase
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
+        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
 
         $category = AcademicCategory::create(['name' => 'Mathematics', 'slug' => 'mathematics']);
         $this->subject = Subject::create(['academic_category_id' => $category->id, 'name' => 'Algebra', 'slug' => 'algebra']);
@@ -114,6 +116,7 @@ class StudentLearningGoalTest extends TestCase
     {
         $other = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $other->assignRole('student');
+        $other->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
 
         $goal = app(StudentLearningGoalService::class)->create($other, [
             'subject_id' => $this->subject->id,

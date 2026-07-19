@@ -52,8 +52,11 @@ class BookingFlowHardeningTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $this->teacher = $this->makeTeacher('maths');
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student->profile()->update(['phone_e164' => '+9199999'.str_pad((string) $this->student->id, 5, '0', STR_PAD_LEFT), 'phone_verified_at' => now()]); // paid bookings require a verified phone (StudentFinancialVerificationGate)
 
         // Narrow 09:00-11:00 window (not the usual 09-17) so an "outside
         // availability" slot at 14:00 is easy to construct.
@@ -114,7 +117,7 @@ class BookingFlowHardeningTest extends TestCase
         $slot = $this->slot();
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
 
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->expectException(SlotUnavailableException::class);
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $otherStudent, $slot));
@@ -156,7 +159,7 @@ class BookingFlowHardeningTest extends TestCase
         $slot = $this->slot();
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
 
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $overlapping = $slot->addMinutes(15);
 
         $this->expectException(SlotUnavailableException::class);
@@ -171,7 +174,7 @@ class BookingFlowHardeningTest extends TestCase
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
 
         // Starts exactly when the first booking ends — still inside the 15-minute buffer.
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $backToBack = $slot->addMinutes(30);
 
         $this->expectException(SlotUnavailableException::class);
@@ -213,7 +216,7 @@ class BookingFlowHardeningTest extends TestCase
         $slot = $this->slot();
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $this->student, $slot));
 
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $laterSameDay = $slot->addHour();
 
         $this->expectException(SlotUnavailableException::class);
@@ -283,8 +286,10 @@ class BookingFlowHardeningTest extends TestCase
     public function test_host_lock_prevents_two_different_attendees_taking_the_same_slot(): void
     {
         $slot = $this->slot();
-        $studentA = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $studentB = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $studentA = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        $studentA->profile()->update(['phone_e164' => '+9199999'.str_pad((string) $studentA->id, 5, '0', STR_PAD_LEFT), 'phone_verified_at' => now()]);
+        $studentB = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        $studentB->profile()->update(['phone_e164' => '+9199999'.str_pad((string) $studentB->id, 5, '0', STR_PAD_LEFT), 'phone_verified_at' => now()]);
 
         app(BookingServiceInterface::class)->request($this->bookingData($this->teacher, $studentA, $slot));
 
@@ -385,7 +390,7 @@ class BookingFlowHardeningTest extends TestCase
             $this->bookingData($this->teacher, $this->student, $this->slot()),
         );
 
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->assertTrue($this->student->can('view', $booking));
         $this->assertFalse($otherStudent->can('view', $booking));

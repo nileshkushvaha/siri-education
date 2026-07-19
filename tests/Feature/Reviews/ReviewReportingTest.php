@@ -6,6 +6,7 @@ namespace Tests\Feature\Reviews;
 
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
@@ -40,6 +41,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -593,6 +595,12 @@ class ReviewReportingTest extends TestCase
 
     private function openEligibility(Lesson $lesson): LessonReviewEligibility
     {
+        // Phase 24H.2: review submission requires an Active student —
+        // booking-factory students start role-less with a null status.
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $lesson->student->assignRole('student');
+        $lesson->student->profile()->update(['student_status' => StudentStatus::Active]);
+
         $this->outcomes->finalize($lesson->refresh(), LessonOutcome::Completed);
 
         return LessonReviewEligibility::query()->where('lesson_id', $lesson->id)->firstOrFail();
@@ -664,6 +672,8 @@ class ReviewReportingTest extends TestCase
     {
         $reporter = User::factory()->create(array_merge(['status' => 'active'], $overrides));
         $reporter->assignRole('student');
+        // Phase 24H.2: student-authenticated reporting requires an Active student.
+        $reporter->profile()->update(['student_status' => StudentStatus::Active]);
 
         return $reporter;
     }

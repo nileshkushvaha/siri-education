@@ -26,12 +26,12 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H — GAP-013: a suspended/archived student must not initiate a
- * new booking, reschedule, or cancellation. Blocks only the BAD statuses
- * (Suspended/Archived) rather than requiring Active — see
- * VerifiedActiveStudentRule's own comment: requiring Active would
- * instantly block every pre-existing student, since the historical
- * backfill left every existing profile at Registered.
+ * Phase 24H.1A — GAP-013 strict correction: student_status must be
+ * exactly Active for ordinary student business actions (booking
+ * creation, reschedule, cancellation). Registered, Suspended, Archived,
+ * a missing profile, AND a null student_status are all rejected — null
+ * is invalid/ambiguous data, never an implicit grant of capability. See
+ * StudentLifecycleService::isEligibleForStudentActions().
  */
 class StudentLifecycleBookingEligibilityTest extends TestCase
 {
@@ -113,11 +113,75 @@ class StudentLifecycleBookingEligibilityTest extends TestCase
         ));
     }
 
-    /** A Registered (not-yet-Active) student is not newly blocked — avoids the legacy-backfill regression. */
-    public function test_registered_student_can_still_create_a_booking(): void
+    /**
+     * Phase 24H.1 — GAP-013 correction: Active is now authoritative, so
+     * a Registered (not-yet-Active) student is correctly rejected too,
+     * not just Suspended/Archived. (Phase 24H's original, now-corrected
+     * behavior treated Registered as usable — see
+     * StudentLifecycleService::isEligibleForStudentActions().)
+     */
+    public function test_registered_student_cannot_create_a_booking(): void
     {
         $teacher = $this->makeTeacher();
         $student = $this->makeStudent(StudentStatus::Registered);
+
+        $this->expectException(BookingException::class);
+
+        app(BookingServiceInterface::class)->request(new CreateBookingData(
+            typeKey: 'free_demo',
+            studentId: $student->id,
+            instructorId: $teacher->id,
+            startsAt: $this->slot(3),
+            durationMinutes: 30,
+        ));
+    }
+
+    /**
+     * Phase 24H.1A — a null student_status (never processed by the
+     * lifecycle — e.g. the student role assigned without going through
+     * registration) is invalid/ambiguous data, not an implicit pass —
+     * corrects Phase 24H.1's unapproved null-is-unblocked carve-out.
+     */
+    public function test_a_student_with_no_lifecycle_status_cannot_create_a_booking(): void
+    {
+        $teacher = $this->makeTeacher();
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student->assignRole('student');
+
+        $this->expectException(BookingException::class);
+
+        app(BookingServiceInterface::class)->request(new CreateBookingData(
+            typeKey: 'free_demo',
+            studentId: $student->id,
+            instructorId: $teacher->id,
+            startsAt: $this->slot(3),
+            durationMinutes: 30,
+        ));
+    }
+
+    /** A student role with no profile row at all (should never happen structurally, but defensively) is also rejected. */
+    public function test_a_student_with_a_missing_profile_cannot_create_a_booking(): void
+    {
+        $teacher = $this->makeTeacher();
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student->assignRole('student');
+        $student->profile()->delete();
+
+        $this->expectException(BookingException::class);
+
+        app(BookingServiceInterface::class)->request(new CreateBookingData(
+            typeKey: 'free_demo',
+            studentId: $student->id,
+            instructorId: $teacher->id,
+            startsAt: $this->slot(3),
+            durationMinutes: 30,
+        ));
+    }
+
+    public function test_active_student_can_create_a_booking(): void
+    {
+        $teacher = $this->makeTeacher();
+        $student = $this->makeStudent(StudentStatus::Active);
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',

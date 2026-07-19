@@ -377,6 +377,21 @@ class RegistrationIntegrationTest extends TestCase
         ]);
     }
 
+    /** Phase 24H.1A test item 13: auto-verified registration must produce student_status Active, not merely User::status Active. */
+    public function test_student_status_is_active_when_default_role_is_student_and_auto_verified(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $s = app(RegistrationSettings::class);
+        $s->default_role = 'student';
+        $s->auto_verify_email = true;
+        $s->save();
+
+        $this->post(route('auth.register.store'), $this->validPayload());
+
+        $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
+        $this->assertSame(StudentStatus::Active, $user->profile->student_status);
+    }
+
     public function test_auto_verified_user_is_logged_in_and_redirected_to_dashboard(): void
     {
         $s = app(RegistrationSettings::class);

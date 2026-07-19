@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Student;
 
-use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
+use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Models\LoginHistory;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -53,11 +53,32 @@ final class StudentLifecycleService
      */
     public function activateFromVerification(User $student): void
     {
-        DB::transaction(function () use ($student): void {
+        $this->systemActivateFromRegistered($student, 'email_verification', 'Student account activated (email verification)');
+    }
+
+    /**
+     * Phase 24H.1 — GAP-013 Step 5: system-triggered Registered -> Active
+     * for a legacy account the reconciliation command has already
+     * determined is eligible (student role, verified email, whole-account
+     * Active, no ambiguity). Shares the exact same locked, idempotent
+     * transition primitive as activateFromVerification() — the only
+     * difference is transition_source, so the two remain distinguishable
+     * in the audit trail. Returns whether a transition actually happened
+     * (false for anyone not currently Registered under the row lock —
+     * e.g. a race with a real verification event, or a second run).
+     */
+    public function alignLegacyVerifiedStudent(User $student): bool
+    {
+        return $this->systemActivateFromRegistered($student, 'legacy_verified_student_alignment', 'Student account activated (legacy verified-student alignment)');
+    }
+
+    private function systemActivateFromRegistered(User $student, string $source, string $description): bool
+    {
+        return DB::transaction(function () use ($student, $source, $description): bool {
             $profile = UserProfile::query()->where('user_id', $student->id)->lockForUpdate()->first();
 
             if ($profile === null || $profile->student_status !== StudentStatus::Registered) {
-                return;
+                return false;
             }
 
             $this->applyTransition($profile, StudentStatus::Active, null, null);
@@ -65,14 +86,66 @@ final class StudentLifecycleService
             $this->auditTrail->logSystem(
                 'student',
                 'student_status_changed',
-                'Student account activated (email verification)',
+                $description,
                 $student,
                 [
                     'previous_status' => StudentStatus::Registered->value,
                     'new_status' => StudentStatus::Active->value,
-                    'transition_source' => 'email_verification',
+                    'transition_source' => $source,
                 ],
             );
+
+            return true;
+        });
+    }
+
+    /**
+     * Phase 24H.1A — GAP-013 Step: null-state prevention. Whenever a
+     * first-party path grants the 'student' role to a user whose
+     * profile doesn't already carry a governed student_status (i.e. it
+     * is null — this never happens through RegistrationService, which
+     * always sets Registered atomically with role assignment, but CAN
+     * happen through an admin granting the role to a pre-existing user
+     * via Filament, a seeder, or any other internal role-assignment
+     * path), this initializes student_status to Registered — never
+     * Active, since assigning a role is not the same as verifying or
+     * activating an account, and normal verification/activation rules
+     * still apply afterward.
+     *
+     * Idempotent and safe to call unconditionally after any role grant:
+     * no-ops (returns false, no write, no audit) if the profile is
+     * missing entirely, or if student_status is already set to ANYTHING
+     * (Registered/Active/Suspended/Archived) — this only ever fills a
+     * genuinely null status and never overwrites an existing one.
+     *
+     * $actor is the admin who performed the role grant, if any (null for
+     * a system/seeder-driven grant) — audited via logUser()/logSystem()
+     * accordingly, same convention as every other transition here.
+     */
+    public function initializeStudentRoleIfNeeded(User $user, ?User $actor = null): bool
+    {
+        return DB::transaction(function () use ($user, $actor): bool {
+            $profile = UserProfile::query()->where('user_id', $user->id)->lockForUpdate()->first();
+
+            if ($profile === null || $profile->student_status !== null) {
+                return false;
+            }
+
+            $profile->update(['student_status' => StudentStatus::Registered]);
+
+            $properties = [
+                'previous_status' => null,
+                'new_status' => StudentStatus::Registered->value,
+                'transition_source' => 'role_assignment_initialization',
+            ];
+
+            if ($actor !== null) {
+                $this->auditTrail->logUser($actor, 'student', 'student_status_changed', 'Student lifecycle initialized after role assignment', $user, $properties);
+            } else {
+                $this->auditTrail->logSystem('student', 'student_status_changed', 'Student lifecycle initialized after role assignment', $user, $properties);
+            }
+
+            return true;
         });
     }
 
@@ -130,24 +203,82 @@ final class StudentLifecycleService
 
     /**
      * True if this student's account must be blocked from ordinary
-     * login entirely. A Suspended/Archived student_status does NOT
-     * block login by itself when the same account also holds a genuine,
-     * bookable instructor capability — suspending the student side must
-     * not silently strand an approved instructor workspace (Phase 24H
-     * Step 8's explicit multi-role instruction). A student-only account
-     * (or one whose instructor side isn't bookable) is fully blocked,
-     * matching the SRS's blanket "Suspended or archived accounts shall
-     * be prevented from authenticating."
+     * login entirely. Phase 24H.1 — GAP-013 correction: the SRS states
+     * plainly that "Suspended or archived accounts shall be prevented
+     * from authenticating until their status changes," with no
+     * multi-role carve-out. Phase 24H's original implementation let a
+     * bookable instructor capability on the same account bypass this;
+     * that exception was never an approved SRS deviation and is removed
+     * here — a Suspended/Archived student_status now blocks the WHOLE
+     * account's authentication, regardless of any other role/status on
+     * it. This does not touch instructor_status itself, roles, or any
+     * booking/lesson/earning data — only the ability to authenticate.
      */
     public function blocksLogin(User $student): bool
     {
         $profile = $student->profile;
 
-        if ($profile === null || $profile->student_status === null || ! $profile->student_status->blocksAccess()) {
-            return false;
+        return $profile !== null && ($profile->student_status?->blocksAccess() ?? false);
+    }
+
+    /**
+     * Phase 24H.1A — GAP-013 strict correction: the single authoritative
+     * gate for ordinary student business actions (booking creation,
+     * reschedule, cancellation). Requires student_status to be exactly
+     * Active — Registered, Suspended, Archived, a missing profile, and a
+     * null student_status are ALL rejected. A null status is invalid or
+     * ambiguous legacy/incomplete data, never an implicit grant of
+     * student capability (Phase 24H.1's null-is-unblocked carve-out was
+     * an unapproved weakening of this authorization boundary and has
+     * been removed). See StudentLifecycleService::initializeStudentRole()
+     * and the students:reconcile-lifecycle-status command for how a
+     * null/legacy status gets to a real governed status instead.
+     */
+    public function isEligibleForStudentActions(User $student): bool
+    {
+        return $student->profile?->student_status === StudentStatus::Active;
+    }
+
+    /**
+     * Phase 24H.2 — GAP-013: the single authoritative guard for every
+     * interactive student capability (favorites, review submission and
+     * reporting, learning goals, learning-plan drafts, homework
+     * submission, referral participation, ...). Requires the student
+     * role AND exactly one linked profile AND student_status === Active;
+     * fails closed for Registered, Suspended, Archived, a null status,
+     * and a missing profile — with ONE generic exception that never
+     * reveals which of those it was.
+     *
+     * Reads the status fresh from the database (never the possibly-stale
+     * loaded relation), and — when called inside an open transaction —
+     * reads it under lockForUpdate() on the same profile row
+     * transitionStatus() locks, so a state-changing student action
+     * wrapped in a transaction serializes against a concurrent
+     * suspension: whichever commits first wins, and the loser observes
+     * the committed state instead of a stale pre-suspension snapshot.
+     * Read-only callers outside a transaction get a plain fresh read
+     * (locking would hold nothing).
+     *
+     * Never mutates state; takes the actor explicitly rather than
+     * reading auth() so queue/console/test callers behave identically.
+     */
+    public function assertEligibleForStudentAction(User $student): void
+    {
+        if (! $student->hasRole('student')) {
+            throw StudentActionNotAvailableException::make();
         }
 
-        return ! in_array($profile->instructor_status, InstructorStatus::bookable(), true);
+        $query = UserProfile::query()->where('user_id', $student->id);
+
+        if (DB::transactionLevel() > 0) {
+            $query->lockForUpdate();
+        }
+
+        // Eloquent's value() applies the model's enum cast, so this is a
+        // StudentStatus instance (or null for a missing profile/status).
+        if ($query->value('student_status') !== StudentStatus::Active) {
+            throw StudentActionNotAvailableException::make();
+        }
     }
 
     /**
@@ -202,11 +333,7 @@ final class StudentLifecycleService
 
     private function profileBlocksLogin(UserProfile $profile): bool
     {
-        if ($profile->student_status === null || ! $profile->student_status->blocksAccess()) {
-            return false;
-        }
-
-        return ! in_array($profile->instructor_status, InstructorStatus::bookable(), true);
+        return $profile->student_status?->blocksAccess() ?? false;
     }
 
     /**

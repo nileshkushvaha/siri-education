@@ -38,6 +38,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Mockery;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -58,7 +59,10 @@ class BookingMeetingTest extends TestCase
     {
         parent::setUp();
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        $this->student->profile()->update(['phone_e164' => '+9199999'.str_pad((string) $this->student->id, 5, '0', STR_PAD_LEFT), 'phone_verified_at' => now()]); // paid bookings require a verified phone (StudentFinancialVerificationGate)
 
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
 use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
+use App\Services\Student\StudentLifecycleService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -157,6 +158,18 @@ class EditUser extends EditRecord
                 'roles_removed' => $removed,
                 'current_roles' => $newRoles,
             ]);
+        }
+
+        // Phase 24H.1A — GAP-013: this panel doesn't wrap the whole save
+        // in one DB transaction (see the docblock on save() above), so
+        // Filament's own role sync and this initialization aren't one
+        // atomic unit. That's acceptable here specifically because the
+        // failure mode is fail-closed either way: isEligibleForStudentActions()
+        // requires student_status === Active, so a role granted without
+        // (yet) a governed status still correctly denies student
+        // capability rather than granting it.
+        if (in_array('student', $added, true)) {
+            app(StudentLifecycleService::class)->initializeStudentRoleIfNeeded($fresh, $admin);
         }
 
         // If admin set a new password, store old hash and reset the expiry clock

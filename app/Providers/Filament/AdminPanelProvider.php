@@ -25,6 +25,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -97,6 +98,21 @@ class AdminPanelProvider extends PanelProvider
                 CacheManagerPage::class,
                 SchedulerMonitorPage::class,
                 QueueMonitorPage::class,
+            ])
+            // Phase 24O — GAP-033: Pulse's dashboard is the package's
+            // own route (never rewritten as a Filament page) — this is
+            // a plain link, gated by the SAME 'viewPulse' Gate ability
+            // Pulse's own Authorize middleware enforces on the route
+            // itself, so a hidden-but-reachable link can never be the
+            // only protection.
+            ->navigationItems([
+                NavigationItem::make('Application Performance')
+                    ->icon(Heroicon::OutlinedChartBar)
+                    ->group('System')
+                    ->sort(4)
+                    ->url(fn (): string => '/'.config('pulse.path', 'pulse'))
+                    ->openUrlInNewTab()
+                    ->visible(fn (): bool => auth()->user()?->can('viewPulse') ?? false),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

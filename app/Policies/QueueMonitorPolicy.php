@@ -26,6 +26,24 @@ class QueueMonitorPolicy
         }
     }
 
+    /**
+     * Phase 24N — GAP-034: a distinct, recovery-action permission —
+     * viewing failed jobs never implies the ability to retry them.
+     */
+    public function retryFailedJobs(AuthUser $user): bool
+    {
+        if ($this->isSuperAdmin($user)) {
+            return true;
+        }
+
+        try {
+            return method_exists($user, 'hasPermissionTo')
+                && $user->hasPermissionTo('queue_monitor.retry_failed_jobs');
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
+    }
+
     private function isSuperAdmin(AuthUser $user): bool
     {
         return method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();

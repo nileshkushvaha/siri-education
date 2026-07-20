@@ -43,6 +43,7 @@ use App\Models\ReferralCode;
 use App\Models\ReferralReward;
 use App\Models\TeacherAvailability;
 use App\Models\User;
+use App\Queue\Services\FailedJobRetryService;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
 use App\Referral\Contracts\ReferralCodeServiceInterface;
 use App\Referral\Contracts\ReferralEligibilityServiceInterface;
@@ -713,6 +714,19 @@ try {
             $outcome = app(HomeworkReminderDispatcher::class)->claimAndDispatch($assignment, (int) $args['offset_hours']);
 
             return ['outcome' => $outcome];
+        })(),
+
+        // Phase 24N — two workers race retrying the SAME failed job by
+        // UUID. FailedJobRetryService's row lock on failed_jobs must let
+        // exactly one worker requeue+forget it; the loser's fresh
+        // re-read (under the lock) finds the row already gone and
+        // returns NotFound — never a duplicate enqueue.
+        'retry-failed-job' => (function () use ($args) {
+            $actor = User::query()->findOrFail($args['actor_id']);
+
+            $result = app(FailedJobRetryService::class)->retry($actor, $args['uuid']);
+
+            return ['outcome' => $result->outcome->value];
         })(),
 
         // Phase 24M — two workers race a currency-status disable versus

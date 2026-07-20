@@ -137,7 +137,9 @@
         @endif
 
         {{-- ── Section 3: Failed Jobs ───────────────────────────────────────── --}}
-        @if(config('queue.default') === 'database')
+        {{-- Gated on the failed-job driver (independent of queue.default —
+             a failure is logged here regardless of which connection dispatched it). --}}
+        @if(in_array(config('queue.failed.driver'), ['database-uuids', 'database'], true))
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 overflow-hidden">
                 <div class="fi-section-header flex items-center gap-3 px-6 py-4 border-b border-gray-200 dark:border-white/10">
                     <x-filament::icon icon="heroicon-o-exclamation-triangle" class="h-5 w-5 {{ $failed['count'] > 0 ? 'text-danger-400' : 'text-gray-400' }}" />
@@ -171,29 +173,11 @@
                         </div>
                     @endif
 
-                    {{-- Recent failures --}}
-                    <div class="hidden lg:grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] gap-x-4 px-6 py-3 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">UUID</span>
-                        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Queue</span>
-                        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Failed</span>
-                        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Exception</span>
-                    </div>
-                    <div class="divide-y divide-gray-100 dark:divide-white/5">
-                        @foreach($failed['recent'] as $job)
-                            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] gap-x-4 gap-y-1 px-6 py-4 items-start">
-                                <code class="text-xs font-mono text-gray-500 dark:text-gray-400 truncate" title="{{ $job['uuid'] }}">{{ substr($job['uuid'], 0, 8) }}…</code>
-                                <code class="text-xs font-mono text-primary-600 dark:text-primary-400">{{ $job['queue'] }}</code>
-                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $job['failed_at'] }}</span>
-                                <span class="text-xs text-danger-600 dark:text-danger-400 truncate" title="{{ $job['exception'] }}">{{ $job['exception'] }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <div class="border-t border-gray-100 dark:border-white/5 px-6 py-3">
-                        <p class="text-xs text-gray-400 dark:text-gray-500">
-                            Showing the 5 most recent failures. To retry: <code class="font-mono">php artisan queue:retry all</code>. To flush: <code class="font-mono">php artisan queue:flush</code>.
-                        </p>
-                    </div>
+                    {{-- Phase 24N — GAP-034: the full, paginated, retryable failed-jobs table. --}}
+                    <p class="px-6 pt-4 text-xs text-gray-400 dark:text-gray-500">
+                        Retrying may repeat the job's operation. Confirm that the underlying issue has been resolved before retrying.
+                    </p>
+                    {{ $this->table }}
                 @endif
             </div>
         @endif

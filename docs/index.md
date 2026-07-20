@@ -28,6 +28,7 @@
 | Cache Manager | cache-manager.md |
 | Scheduler Monitor | scheduler.md |
 | Queue Monitor | queue-monitor.md |
+| Pulse Monitoring | pulse-monitoring.md |
 | Testing | testing.md |
 | Standards | standards.md |
 | Decisions | decisions.md |

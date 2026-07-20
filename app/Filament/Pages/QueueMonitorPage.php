@@ -4,16 +4,32 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Models\FailedJob;
+use App\Queue\DTOs\FailedJobRetryResult;
+use App\Queue\Enums\FailedJobRetryOutcome;
+use App\Queue\Services\FailedJobRetryService;
+use App\Queue\Support\FailedJobPayloadSummary;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
-class QueueMonitorPage extends Page
+class QueueMonitorPage extends Page implements HasTable
 {
+    use InteractsWithTable;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
 
     protected static ?string $navigationLabel = 'Queue Monitor';
@@ -53,6 +69,13 @@ class QueueMonitorPage extends Page
         return static::canAccess();
     }
 
+    private function canRetry(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && $user->can('queue_monitor.retry_failed_jobs');
+    }
+
     // ── Page metadata ──────────────────────────────────────────────────────
 
     public function getTitle(): string|Htmlable
@@ -74,7 +97,128 @@ class QueueMonitorPage extends Page
         ];
     }
 
-    // ── Data ──────────────────────────────────────────────────────────────
+    // ── Failed-jobs table (Phase 24N — GAP-034) ─────────────────────────────
+
+    /**
+     * Whether the `database-uuids`/`database` failed-job driver is
+     * active — independent of `queue.default` (the connection new jobs
+     * dispatch to). A failure logged while any connection was active
+     * still lands in this same table, so the failed-jobs surface must
+     * not hide behind the CURRENT default connection.
+     */
+    private function usesDatabaseFailedJobDriver(): bool
+    {
+        return in_array(config('queue.failed.driver'), ['database-uuids', 'database'], true);
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(fn () => $this->usesDatabaseFailedJobDriver() ? FailedJob::query() : FailedJob::query()->whereRaw('1 = 0'))
+            ->columns([
+                TextColumn::make('uuid')
+                    ->label('Reference')
+                    ->formatStateUsing(fn (string $state): string => substr($state, 0, 8).'…')
+                    ->copyable()
+                    ->copyableState(fn (string $state): string => $state),
+                TextColumn::make('payload')
+                    ->label('Job')
+                    ->formatStateUsing(fn (string $state): string => FailedJobPayloadSummary::fromRawPayload($state)->displayName ?? '(unknown job class)'),
+                TextColumn::make('connection')
+                    ->badge(),
+                TextColumn::make('queue')
+                    ->badge()
+                    ->color('gray'),
+                TextColumn::make('failed_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->since(),
+                TextColumn::make('exception')
+                    ->label('Exception')
+                    ->formatStateUsing(fn (string $state): string => FailedJobPayloadSummary::exceptionSummary($state))
+                    ->wrap()
+                    ->toggleable(),
+            ])
+            ->defaultSort('failed_at', 'desc')
+            ->recordActions([
+                Action::make('retry')
+                    ->label('Retry')
+                    ->icon('heroicon-m-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalDescription('The job will be placed back on its original queue. This does not guarantee it will succeed. Retrying may repeat the job\'s operation — confirm the underlying issue has been resolved before continuing.')
+                    ->authorize(fn (): bool => $this->canRetry())
+                    ->action(fn (FailedJob $record) => $this->handleRetry($record->uuid)),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('retry_selected')
+                        ->label('Retry selected')
+                        ->icon('heroicon-m-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalDescription('Selected jobs will be placed back on their original queues. This does not guarantee they will succeed. Retrying may repeat a job\'s operation — confirm the underlying issue has been resolved before continuing.')
+                        ->authorize(fn (): bool => $this->canRetry())
+                        ->action(fn (Collection $records) => $this->handleBulkRetry($records))
+                        ->deselectRecordsAfterCompletion(),
+                ]),
+            ])
+            ->emptyStateIcon(Heroicon::OutlinedCheckCircle)
+            ->emptyStateHeading('No failed jobs')
+            ->emptyStateDescription('The failed_jobs table is empty.');
+    }
+
+    private function handleRetry(string $uuid): void
+    {
+        $result = app(FailedJobRetryService::class)->retry(auth()->user(), $uuid);
+
+        $this->notifyRetryResult($result);
+    }
+
+    /** @param  Collection<int, FailedJob>  $records */
+    private function handleBulkRetry(Collection $records): void
+    {
+        $service = app(FailedJobRetryService::class);
+        $actor = auth()->user();
+
+        $counts = [
+            FailedJobRetryOutcome::Retried->value => 0,
+            FailedJobRetryOutcome::NotFound->value => 0,
+            FailedJobRetryOutcome::UnsupportedConnection->value => 0,
+            FailedJobRetryOutcome::EnqueueFailed->value => 0,
+        ];
+
+        // Bounded by the admin's own selection — never an unbounded
+        // "retry every failed job" sweep. One job's failure never hides
+        // another's result — each is processed and tallied independently.
+        foreach ($records as $record) {
+            $result = $service->retry($actor, $record->uuid);
+            $counts[$result->outcome->value]++;
+        }
+
+        Notification::make()
+            ->title('Bulk retry complete')
+            ->body(sprintf(
+                'Retried: %d · Already retried/not found: %d · Unsupported: %d · Failed: %d',
+                $counts[FailedJobRetryOutcome::Retried->value],
+                $counts[FailedJobRetryOutcome::NotFound->value],
+                $counts[FailedJobRetryOutcome::UnsupportedConnection->value],
+                $counts[FailedJobRetryOutcome::EnqueueFailed->value],
+            ))
+            ->{$counts[FailedJobRetryOutcome::Retried->value] > 0 ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    private function notifyRetryResult(FailedJobRetryResult $result): void
+    {
+        Notification::make()
+            ->title($result->outcome->isSuccess() ? 'Job re-queued' : 'Retry did not complete')
+            ->body($result->message)
+            ->{$result->outcome->isSuccess() ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    // ── Data (existing summary sections, unchanged) ─────────────────────────
 
     public function getQueueInfo(): array
     {
@@ -118,10 +262,8 @@ class QueueMonitorPage extends Page
 
     public function getFailedJobStats(): array
     {
-        $driver = config('queue.default', 'sync');
-
-        if ($driver !== 'database') {
-            return ['count' => 0, 'byQueue' => [], 'recent' => []];
+        if (! $this->usesDatabaseFailedJobDriver()) {
+            return ['count' => 0, 'byQueue' => []];
         }
 
         $count = DB::table('failed_jobs')->count();
@@ -134,23 +276,7 @@ class QueueMonitorPage extends Page
             ->map(fn ($r) => ['queue' => $r->queue, 'count' => (int) $r->total])
             ->all();
 
-        $recent = DB::table('failed_jobs')
-            ->orderByDesc('failed_at')
-            ->limit(5)
-            ->get(['uuid', 'queue', 'connection', 'failed_at', 'exception'])
-            ->map(function ($r) {
-                $firstLine = str($r->exception)->before("\n")->limit(120)->toString();
-
-                return [
-                    'uuid' => $r->uuid,
-                    'queue' => $r->queue,
-                    'failed_at' => Carbon::parse($r->failed_at)->diffForHumans(),
-                    'exception' => $firstLine,
-                ];
-            })
-            ->all();
-
-        return compact('count', 'byQueue', 'recent');
+        return compact('count', 'byQueue');
     }
 
     public function isWorkerLikelyRunning(): bool

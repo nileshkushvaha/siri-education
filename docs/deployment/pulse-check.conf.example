@@ -1,0 +1,25 @@
+; Phase 24O — GAP-033: example Supervisor program definition for Laravel
+; Pulse's `pulse:check` process. This file is a template only — it is never
+; loaded by Supervisor as-is and this repository never starts the process
+; it describes. Copy it to the real server's Supervisor config directory
+; (typically /etc/supervisor/conf.d/) and replace every <PLACEHOLDER>
+; before use.
+;
+; `pulse:check` is a long-running loop (like a queue worker) that collects
+; server-level metrics (CPU/memory/storage) for Pulse's Servers card. It is
+; only needed on hosts you want represented in that card — API/web nodes
+; that don't run it simply won't appear there; nothing else in Pulse
+; depends on it.
+
+[program:pulse-check]
+command=php <APP_PATH>/artisan pulse:check
+directory=<APP_PATH>
+user=<APP_USER>
+numprocs=1
+autostart=true
+autorestart=true
+startsecs=5
+stopwaitsecs=10
+stdout_logfile=<LOG_PATH>/pulse-check.log
+stderr_logfile=<LOG_PATH>/pulse-check-error.log
+stopsignal=SIGTERM

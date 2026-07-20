@@ -40,6 +40,8 @@ class DatabaseSeeder extends Seeder
             FeedbackPermissionSeeder::class,
             WalletPermissionSeeder::class,
             ReferralPermissionSeeder::class,
+            QueueMonitorPermissionSeeder::class,
+            PulsePermissionSeeder::class,
             // Phase 18B — the reporting-foundation permission set. No data
             // dependency of its own; placed after every domain it reports
             // on so it can be reasoned about as "reads everything above".

@@ -50,6 +50,7 @@ use App\Policies\LearningPlanReviewPolicy;
 use App\Policies\NavigationMenuPolicy;
 use App\Policies\PermissionPolicy;
 use App\Policies\ProfilePolicy;
+use App\Policies\PulsePolicy;
 use App\Policies\QueueMonitorPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\SchedulerMonitorPolicy;
@@ -74,8 +75,11 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Pulse\Facades\Pulse;
+use Laravel\Pulse\Pulse as PulseManager;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -96,6 +100,37 @@ class AppServiceProvider extends ServiceProvider
         $this->registerSchedulerHistoryListeners();
         $this->registerRateLimiters();
         $this->guardAgainstDestructiveDatabaseCommands();
+        $this->configurePulse();
+    }
+
+    /**
+     * Phase 24O — GAP-033: Pulse's stock user resolver (Laravel\Pulse\Users)
+     * returns the user's email in the "Usage" card's `extra` field by
+     * default — overridden here to a display name only. Avoids touching
+     * $user->profile (Pulse bulk-loads only the User model itself via
+     * findMany(); resolving avatarUrl() would N+1-load a profile per
+     * row) — no email, phone, billing, KYC, or financial data is ever
+     * returned. A user Pulse cannot resolve (deleted/missing) never
+     * reaches this callback at all — Laravel\Pulse\Users::find() only
+     * invokes the field resolver when a user was actually found,
+     * falling back to its own safe "ID: {key}" label otherwise.
+     */
+    private function configurePulse(): void
+    {
+        if (! $this->app->bound(PulseManager::class)) {
+            return;
+        }
+
+        Pulse::user(fn (object $user): array => [
+            'name' => filled($user->name ?? null) ? $user->name : sprintf('User #%s', $user->getAuthIdentifier()),
+        ]);
+
+        // Recorder failures must never break a real request/job — Pulse
+        // already wraps every recorder in its own rescue(); this only
+        // routes that swallowed exception through the app's normal,
+        // already-redacting exception logger instead of being silently
+        // discarded, so an operator can still see it happened.
+        Pulse::handleExceptionsUsing(fn (Throwable $e) => report($e));
     }
 
     /**
@@ -156,6 +191,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('scheduler_monitor.run', [SchedulerMonitorPolicy::class, 'runTask']);
 
         Gate::define('queue_monitor.view', [QueueMonitorPolicy::class, 'viewPage']);
+        Gate::define('queue_monitor.retry_failed_jobs', [QueueMonitorPolicy::class, 'retryFailedJobs']);
+
+        // Phase 24O — GAP-033: 'viewPulse' is Laravel Pulse's own fixed
+        // Gate ability name (its Authorize middleware calls exactly
+        // this), overriding the package's local-environment-only default.
+        Gate::define('viewPulse', [PulsePolicy::class, 'view']);
 
         Gate::define('instructor.viewAny', [InstructorPolicy::class, 'viewAny']);
         Gate::define('instructor.view', [InstructorPolicy::class, 'view']);

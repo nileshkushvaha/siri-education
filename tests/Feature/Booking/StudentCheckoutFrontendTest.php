@@ -72,8 +72,7 @@ class StudentCheckoutFrontendTest extends TestCase
 
     private function student(): User
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         // A resolvable billing country is required before checkout
         // (Phase 10.2C-Fix) — most tests in this file exercise payment
         // behavior, not the profile-completeness gate itself, so it's

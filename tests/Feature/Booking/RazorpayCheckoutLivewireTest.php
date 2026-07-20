@@ -105,8 +105,7 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     public function test_student_can_pay_via_the_booking_wizard(): void
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
         $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
@@ -145,8 +144,7 @@ class RazorpayCheckoutLivewireTest extends TestCase
         // proven, not just BookingPriceCalculator's exception.
         StudentLessonPrice::query()->delete();
 
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
         $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
@@ -172,8 +170,7 @@ class RazorpayCheckoutLivewireTest extends TestCase
         // browser event — order id, amount, currency, public key,
         // student name/email — and nothing else (no key_secret, no
         // webhook_secret, no raw gateway/admin metadata).
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
         $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
@@ -206,8 +203,7 @@ class RazorpayCheckoutLivewireTest extends TestCase
         // drives verifyPayment() with a bad signature through the actual
         // Livewire component a browser would call, not the provider class
         // directly (RazorpayCheckoutTest already covers that layer).
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
         $booking = app(StudentBookingServiceInterface::class)->book(new StudentBookingData(
@@ -233,8 +229,7 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     public function test_student_can_retry_payment_from_booking_history(): void
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
         $booking = app(StudentBookingServiceInterface::class)->book(new StudentBookingData(
@@ -261,11 +256,9 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     public function test_student_cannot_pay_for_another_students_booking(): void
     {
-        $owner = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $owner->assignRole('student');
+        $owner = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($owner);
-        $intruder = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $intruder->assignRole('student');
+        $intruder = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $booking = app(StudentBookingServiceInterface::class)->book(new StudentBookingData(
             typeKey: 'paid_one_to_one',

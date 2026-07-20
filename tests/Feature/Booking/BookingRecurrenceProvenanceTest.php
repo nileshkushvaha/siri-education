@@ -61,10 +61,7 @@ class BookingRecurrenceProvenanceTest extends TestCase
 
     private function student(): User
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
-
-        return $student;
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     private function paidTypeWithPrice(): array

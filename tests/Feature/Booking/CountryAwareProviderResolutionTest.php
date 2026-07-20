@@ -25,6 +25,7 @@ use App\Settings\PaymentGatewaySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Mockery;
+use Spatie\Permission\Models\Role;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -47,6 +48,8 @@ class CountryAwareProviderResolutionTest extends TestCase
         Currency::query()->firstOrCreate(['code' => 'INR'], ['name' => 'Indian Rupee', 'symbol' => '₹', 'numeric_code' => '356', 'minor_units' => 2, 'status' => 'active']);
         Currency::query()->firstOrCreate(['code' => 'USD'], ['name' => 'US Dollar', 'symbol' => '$', 'numeric_code' => '840', 'minor_units' => 2, 'status' => 'active']);
         Currency::query()->firstOrCreate(['code' => 'GBP'], ['name' => 'British Pound', 'symbol' => '£', 'numeric_code' => '826', 'minor_units' => 2, 'status' => 'active']);
+
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
 
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);
@@ -80,7 +83,7 @@ class CountryAwareProviderResolutionTest extends TestCase
     private function studentInCountry(string $iso2, ?array $paymentRouting): User
     {
         $country = Country::factory()->create(['iso2' => $iso2, 'payment_routing' => $paymentRouting]);
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => $country->id]);
 
         return $student;

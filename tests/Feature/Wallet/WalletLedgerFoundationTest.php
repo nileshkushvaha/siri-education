@@ -53,8 +53,7 @@ class WalletLedgerFoundationTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $this->student->assignRole('student');
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->inr = Currency::query()->firstOrCreate(
             ['code' => 'INR'],
@@ -388,8 +387,7 @@ class WalletLedgerFoundationTest extends TestCase
     public function test_student_cannot_view_another_users_wallet_via_policy(): void
     {
         $wallet = app(WalletService::class)->getOrCreateWallet($this->student, 'INR');
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $otherStudent->assignRole('student');
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->assertTrue($this->student->can('view', $wallet));
         $this->assertFalse($otherStudent->can('view', $wallet));

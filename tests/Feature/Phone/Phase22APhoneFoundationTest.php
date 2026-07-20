@@ -15,6 +15,7 @@ use App\Models\Currency;
 use App\Models\PhoneVerificationChallenge;
 use App\Models\User;
 use App\Services\Phone\PhoneNumberService;
+use App\Settings\AuthenticationSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
@@ -85,18 +86,43 @@ final class Phase22APhoneFoundationTest extends TestCase
         $this->assertNotNull($challenge->fresh()->consumed_at);
     }
 
-    public function test_financial_gate_allows_free_demo_and_requires_verified_phone_for_paid_booking(): void
+    /**
+     * Phase 24R — GAP: revalidated against docs/SRS.md §2.5 ("Phone
+     * Number (Optional for Version 1)") and §11.14 ("Student must be
+     * registered and verified" — no phone/mobile requirement). Phone
+     * verification (this file's other tests, above) remains a real,
+     * working, optional profile feature — it is simply no longer a
+     * precondition for paid bookings. StudentFinancialVerificationGate
+     * now checks email verification instead; see
+     * app/Services/Student/DefaultStudentFinancialVerificationGate.php.
+     */
+    public function test_financial_gate_allows_free_demo_and_checks_email_verification_for_paid_booking(): void
     {
+        app(AuthenticationSettings::class)->email_verification_required = true;
+        app(AuthenticationSettings::class)->save();
+
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
-        $student = User::factory()->create();
+        $student = User::factory()->create(['email_verified_at' => null]);
         $student->assignRole('student');
         $free = BookingType::factory()->create(['is_paid' => false]);
         $paid = BookingType::factory()->create(['is_paid' => true]);
         $gate = app(StudentFinancialVerificationGate::class);
 
+        // Free demo is never governed by this gate, verified or not.
         $gate->assertEligible($student->fresh('profile'), $free);
-        $this->expectException(BookingException::class);
+
+        // Unverified email blocks a paid booking...
+        try {
+            $gate->assertEligible($student->fresh('profile'), $paid);
+            $this->fail('Expected a BookingException for an unverified email.');
+        } catch (BookingException) {
+            // expected
+        }
+
+        // ...but no phone/phone-verification data is required at all.
+        $student->forceFill(['email_verified_at' => now()])->save();
         $gate->assertEligible($student->fresh('profile'), $paid);
+        $this->assertNull($student->profile?->phone_e164);
     }
 
     private function country(string $iso2, string $currencyCode = 'USD', string $dialCode = '+1'): Country

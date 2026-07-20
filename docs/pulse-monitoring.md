@@ -77,6 +77,168 @@ comparing it against a computed literal, or assumes MD5 specifically),
 test is designed to fail loudly and flag that this substitution needs
 re-evaluation before the upgrade is safe to ship.
 
+## Runtime instability: OPcache interned-strings exhaustion (Phase 24O.2)
+
+After the migration/hash fix above, the live `/pulse` dashboard still
+intermittently returned HTTP 500 during real Livewire polling (`POST
+/livewire-.../update`), with errors like:
+
+> The script tried to call a method on an incomplete object. Please
+> ensure that the class definition "Illuminate\Support\Collection" ...
+> was loaded _before_ unserialize() gets called ...
+
+**This was fully independent of the MD5/SHA2 migration work** — it
+involves the app's `cache` table (Laravel's own `DatabaseStore`), never
+the `pulse_*` tables.
+
+### Evidence classification (Phase 24O.2A revalidation)
+
+Phase 24O.2's report used causal language ("root cause") that ran ahead of
+what had actually been demonstrated. Restated precisely, distinguishing
+what is proven from what is still a hypothesis pending the Phase 24O.2A
+controlled experiment (see below):
+
+- **Proven failure boundary**: Pulse card `Collection` values, serialized
+  through the app's database cache (`cache` table, Laravel's
+  `DatabaseStore`), intermittently deserialize as `__PHP_Incomplete_Class`
+  in the long-running local `php artisan serve` process. Reproduced
+  **deterministically** (2nd consecutive Livewire update call for the same
+  card, 100% of the time) via real authenticated `update` requests.
+- **Proven correlated condition**: at the time of failure, the serving
+  process reported `opcache.interned_strings_buffer=8` (MB, PHP's own
+  default) with `interned_strings_usage.free_memory: 0` — fully exhausted.
+- **Proven mitigation**: routing Pulse's card cache to the `array` store
+  (`PULSE_CACHE_DRIVER=array`) avoids serialization entirely and
+  eliminated the observed failures (30/30 + 50/50 requests, zero
+  failures, against the live server).
+- **Unproven hypothesis**: that interned-strings-buffer exhaustion is the
+  direct PHP-engine-level cause of the `__PHP_Incomplete_Class` result.
+  This was a plausible, evidence-correlated theory, not a demonstrated
+  causal mechanism — no controlled experiment isolated the buffer as the
+  variable that flips the outcome. Phase 24O.2A's controlled reproduction
+  matrix (below) tests this directly.
+
+Also traced end-to-end for completeness: the failing read is
+`vendor/laravel/pulse/src/Livewire/Queues.php:35` (`$queues->keys()->...`
+— `$queues` comes from `Card::graph()` → `Pulse::graph()` →
+`DatabaseStorage::graph()`, cached via Pulse's own
+`RemembersQueries::remember()` trait, i.e. plain `Cache::remember()` —
+**not** `Cache::flexible()`; that theory was positively excluded: nothing
+in this app, Livewire, Filament, or Pulse calls `flexible()`, and the
+`illuminate:cache:flexible:created:...` key seen earlier is just
+`DatabaseStore::forgetManyIfExpired()`'s routine opportunistic-GC pattern,
+applied to every key regardless of whether `flexible()` was ever used for
+it). The exact failing cache row's raw bytes were fetched directly from
+MySQL and unserialized successfully in an isolated CLI script — the
+stored bytes were never malformed. `opcache.enable_cli` is `Off` (PHP's
+own CLI SAPI default), so every CLI reproduction attempt and the entire
+PHPUnit suite run with OPcache completely disabled, while `php artisan
+serve`'s SAPI (`cli-server`) is governed by the regular `opcache.enable`
+(`On`) — the only place OPcache is active for this app.
+
+### Controlled causality experiment (Phase 24O.2A) — hypothesis rejected
+
+Four cases, each on its own clean `php -S` process (matching exactly what
+`php artisan serve` launches internally) on a separate port, each run 3
+times from a fresh process start, with the same bounded workload (1
+authenticated `GET /pulse`, 30 sequential Livewire updates on one card, 50
+updates distributed across all 10 cards, one bounded 5-way concurrent
+`GET /pulse` burst):
+
+| Case | Config | Effective settings (confirmed via live diagnostic) | Result (×3 runs, identical every time) |
+|---|---|---|---|
+| A | Database Pulse cache, default OPcache config | `opcache.enable=1`, buffer=8MB, `free_memory: 0` | **Fails**: 1/30 sequential ok, 13/50 distributed ok, 18 new incomplete-object errors per run |
+| B | Database Pulse cache, `-d opcache.enable=0` (this process only) | `opcache.enable=0` (confirmed disabled) | **Fails identically to A**: 1/30, 13/50, 18 errors per run |
+| C | Database Pulse cache, `-d opcache.interned_strings_buffer=32` (this process only) | `opcache.enable=1`, buffer=32MB, `free_memory` 8.25MB→7.86MB (never exhausted, before *and* after the full workload) | **Fails identically to A**: 1/30, 13/50, 18 errors per run |
+| D | Array Pulse cache (`PULSE_CACHE_DRIVER=array`), default OPcache config | `opcache.enable=1`, buffer=8MB, `free_memory: 0` (same exhausted buffer as A) | **Succeeds every time**: 30/30, 50/50, 0 errors per run |
+
+**Conclusion: the interned-strings-buffer-exhaustion hypothesis is
+rejected by direct controlled experiment.** Per the Phase 24O.2A decision
+criteria, causality could only be claimed if B and C succeeded while A
+failed — instead, B (OPcache fully off) and C (buffer generously sized
+and confirmed never exhausted, even after the full workload) **fail
+identically to A** in every one of 3 clean-process replicates each (same
+exact 1/30, 13/50, 18-error signature down to the number). The buffer's
+exhaustion state has no measurable effect on the outcome. Whatever is
+actually happening is specific to the `cli-server` SAPI's
+`serialize()`/`unserialize()` handling of `Illuminate\Support\Collection`
+under PHP 8.5.7 (this app has not been run against another PHP minor
+version to compare) — **not** OPcache in any configuration tested.
+
+The array-store mitigation (Case D) remains independently proven: 3/3
+clean runs, 240 total requests (30+50 sequential/distributed ×3, plus
+bursts), zero failures, regardless of the (still-exhausted) OPcache
+buffer state — its effectiveness comes from avoiding the
+serialize/unserialize round-trip entirely, not from anything to do with
+OPcache.
+
+**Minimal sanitized reproducer** (for a possible future upstream PHP/Laravel
+report — not filed without explicit approval):
+
+```php
+// Under PHP's built-in "cli-server" SAPI (php -S host:port router.php),
+// with a Laravel 13 app: cache a Collection via the database cache
+// driver, then read it back on a second HTTP request to the same
+// long-running process. Observed on PHP 8.5.7 (macOS/Homebrew):
+// unserialize() intermittently/deterministically (after the first
+// request that populates the cache) yields an object whose class
+// resolves as __PHP_Incomplete_Class for Illuminate\Support\Collection,
+// even though: (a) the stored serialized bytes are provably well-formed
+// (verified by unserializing the same bytes successfully in an isolated
+// CLI process with the same autoloader loaded), and (b) the failure is
+// unaffected by opcache.enable or opcache.interned_strings_buffer in
+// either direction (see the 4-case matrix above). Root cause within the
+// PHP/Laravel/Livewire stack not yet identified.
+Route::get('/repro', function () {
+    return Cache::remember('collection-repro', 60, fn () => collect(['a' => 1]));
+});
+```
+
+### Correction
+
+`config/pulse.php`'s `'cache' => env('PULSE_CACHE_DRIVER')` is Pulse's own,
+already-shipped, documented mechanism for pointing its *own* card-level
+cache at a **different** store than the app's main `CACHE_STORE`. This
+local `.env` now sets `PULSE_CACHE_DRIVER=array` — the `array` store never
+serializes/unserializes at all (values are kept as live PHP references for
+the request's lifetime only), so it fully sidesteps the exact codepath
+that failed. This is:
+
+- **Not** a global PHP/OPcache/system configuration change. The Phase
+  24O.2A controlled experiment (below) directly rejected
+  `opcache.interned_strings_buffer` as the cause, so raising it would not
+  even have fixed the underlying problem — it's excluded on the evidence,
+  not merely deferred as an out-of-scope global change.
+- **Not** vendor code.
+- Scoped only to Pulse's own card caching — the app's main
+  `CACHE_STORE=database` (sessions, other caching) is untouched, confirmed
+  by test (`test_correction_does_not_purge_unrelated_cache_or_session_records`).
+- A one-line, reversible, per-environment `.env` override, consistent with
+  how this app already treats Pulse's environment-tunable knobs.
+
+**Trade-off, stated plainly:** Pulse's card values are no longer cached
+*across* separate HTTP requests on this machine (the `array` store is
+request-scoped) — every poll recomputes fresh. Pulse's underlying queries
+are already lightweight/indexed, and for a local dev box this is a
+reasonable price for a stable dashboard. **This is a local-environment
+workaround, not a default recommendation.** `.env.example` documents
+`PULSE_CACHE_DRIVER` (commented out) with guidance not to set it
+preemptively — new environments get Pulse's normal caching behavior
+(the app's `CACHE_STORE`) by default, and should only switch to `array`
+if they actually observe the same "incomplete object" failure under real
+Livewire polling.
+
+### Verification
+
+Reproduced the original failure live (2nd consecutive Livewire update
+call, 100% of the time), applied the fix, then verified: 30/30 sequential
+polls succeeded for one card, and 5/5 sequential polls succeeded across
+**all 10** Pulse dashboard cards (50 requests, zero failures) — all
+against the real running server, using real authenticated Livewire
+update requests. A bounded concurrent burst of 5 parallel `/pulse` loads
+also succeeded. `/up` and the frontend home page remained healthy
+throughout.
+
 ## Enabling Pulse
 
 `.env.example` still ships `PULSE_ENABLED=false` — activation is a
@@ -217,3 +379,4 @@ migrate/enable happening to run in a safe order:
 | `database/migrations/2026_07_20_150026_create_pulse_tables.php` | Customized migration (SHA2-based `key_hash` for mysql/mariadb — see above) |
 | `tests/Unit/PulseMigrationHashCompatibilityTest.php` | Verifies the hash substitution's safety + schema/index correctness |
 | `tests/Feature/Admin/PulseStorageCompatibilityTest.php` | Exercises the real Pulse storage API (record/aggregate/trim) with benign data |
+| `tests/Feature/Admin/PulseCacheStoreCompatibilityTest.php` | Verifies the `PULSE_CACHE_DRIVER=array` fix's mechanics (round-trip, nested values, real Livewire card lifecycle, no unrelated-cache impact) |

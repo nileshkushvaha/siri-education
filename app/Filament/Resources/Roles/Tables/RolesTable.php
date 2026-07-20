@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Roles\Tables;
 
 use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
+use App\Models\User;
+use App\Services\Admin\RoleAuditRecorder;
 use App\Services\Admin\SuperAdminGuardService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -24,6 +26,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -141,8 +144,16 @@ class RolesTable
                         // gated by the same AssignPermissions:Role permission EditRole/
                         // CreateRole already require. Replicate:Role alone must not be a
                         // side-door around that gate.
-                        if (auth()->user()?->can('AssignPermissions:Role')) {
+                        $admin = auth()->user();
+                        $copiedPermissions = [];
+
+                        if ($admin?->can('AssignPermissions:Role')) {
+                            $copiedPermissions = $original->permissions->pluck('name')->all();
                             $replica->syncPermissions($original->permissions);
+                        }
+
+                        if ($admin instanceof User) {
+                            app(RoleAuditRecorder::class)->recordReplicated($admin, $original, $replica, $copiedPermissions, 'RolesTable.replicate');
                         }
 
                         Notification::make()
@@ -156,7 +167,17 @@ class RolesTable
                     ->action(function (Role $record): void {
                         try {
                             app(SuperAdminGuardService::class)->assertRoleNotCanonical($record);
-                            $record->delete();
+
+                            $admin = auth()->user();
+
+                            DB::transaction(function () use ($record, $admin): void {
+                                if ($admin instanceof User) {
+                                    app(RoleAuditRecorder::class)->recordDeleted($admin, $record, 'RolesTable.delete');
+                                }
+
+                                $record->delete();
+                            });
+
                             Notification::make()->title('Role deleted')->success()->send();
                         } catch (CanonicalSuperAdminRoleProtectedException $e) {
                             Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
@@ -183,7 +204,22 @@ class RolesTable
                                 return;
                             }
 
-                            $records->each->delete();
+                            $admin = auth()->user();
+                            $recorder = app(RoleAuditRecorder::class);
+
+                            // One audit event per role — keeps each event's
+                            // subject/permission-count accurate and lets the
+                            // Activity Log filter/find a specific role's
+                            // deletion, rather than one opaque batch entry.
+                            DB::transaction(function () use ($records, $admin, $recorder): void {
+                                $records->each(function (Role $role) use ($admin, $recorder): void {
+                                    if ($admin instanceof User) {
+                                        $recorder->recordDeleted($admin, $role, 'RolesTable.bulkDelete');
+                                    }
+
+                                    $role->delete();
+                                });
+                            });
 
                             Notification::make()->title('Deleted')->success()->send();
                         }),

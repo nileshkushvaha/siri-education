@@ -6,12 +6,15 @@ namespace App\Filament\Resources\Roles\Pages;
 
 use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Models\User;
+use App\Services\Admin\RoleAuditRecorder;
 use App\Services\Admin\SuperAdminGuardService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 class EditRole extends EditRecord
@@ -20,6 +23,11 @@ class EditRole extends EditRecord
 
     /** @var array<string> Permission names selected in the matrix */
     public array $selectedPermissions = [];
+
+    /** @var array<string> Snapshot of the role's permission names before this save. */
+    private array $oldPermissions = [];
+
+    private ?string $previousName = null;
 
     protected function getHeaderActions(): array
     {
@@ -34,18 +42,18 @@ class EditRole extends EditRecord
 
                         app(SuperAdminGuardService::class)->assertRoleNotCanonical($role);
 
-                        // Log before deletion so the record still exists as the subject.
-                        activity('roles')
-                            ->performedOn($role)
-                            ->causedBy(auth()->user())
-                            ->event('deleted')
-                            ->withProperties([
-                                'name' => $role->name,
-                                'permissions_count' => $role->permissions->count(),
-                            ])
-                            ->log('Role deleted');
+                        $admin = auth()->user();
 
-                        $role->delete();
+                        // Audit + delete wrapped together: they either both
+                        // commit or both roll back. Log before deletion so
+                        // the record still exists as the subject.
+                        DB::transaction(function () use ($role, $admin): void {
+                            if ($admin instanceof User) {
+                                app(RoleAuditRecorder::class)->recordDeleted($admin, $role, 'EditRole');
+                            }
+
+                            $role->delete();
+                        });
 
                         Notification::make()->title('Role deleted')->success()->send();
 
@@ -70,6 +78,11 @@ class EditRole extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Snapshot BEFORE Filament's own handleRecordUpdate() applies $data
+        // to the record — the audit diff needs the true pre-mutation name.
+        $this->previousName = $this->record->name;
+        $this->oldPermissions = $this->record->permissions->pluck('name')->all();
+
         // selectedPermissions is updated live by Alpine via $wire.selectedPermissions
         // Only pass Spatie-fillable fields to the model save
         $data = Arr::only($data, ['name', 'guard_name']);
@@ -95,40 +108,26 @@ class EditRole extends EditRecord
 
         $data = $this->data;
 
-        // Set extra columns directly
-        $role->description = $data['description'] ?? null;
-        $role->status = $data['status'] ?? 'active';
-        $role->remarks = $data['remarks'] ?? null;
-        $role->saveQuietly();
+        DB::transaction(function () use ($role, $data): void {
+            // Set extra columns directly
+            $role->description = $data['description'] ?? null;
+            $role->status = $data['status'] ?? 'active';
+            $role->remarks = $data['remarks'] ?? null;
+            $otherFieldsChanged = $role->isDirty(['description', 'status', 'remarks']);
+            $role->saveQuietly();
 
-        // Authoritative server-side guard — even a tampered Livewire payload
-        // cannot change permissions without AssignPermissions:Role. The hidden
-        // Section in RoleForm is UI convenience only, not the real boundary.
-        if ($this->userCanAssignPermissions()) {
-            $oldPermissions = $role->permissions->pluck('name')->toArray();
+            // Authoritative server-side guard — even a tampered Livewire payload
+            // cannot change permissions without AssignPermissions:Role. The hidden
+            // Section in RoleForm is UI convenience only, not the real boundary.
+            if ($this->userCanAssignPermissions()) {
+                $role->syncPermissions($this->selectedPermissions);
+            }
 
-            $role->syncPermissions($this->selectedPermissions);
-
-            $added = array_diff($this->selectedPermissions, $oldPermissions);
-            $removed = array_diff($oldPermissions, $this->selectedPermissions);
-
-            activity('roles')
-                ->performedOn($role)
-                ->causedBy(auth()->user())
-                ->event('updated')
-                ->withProperties([
-                    'permissions_added' => array_values($added),
-                    'permissions_removed' => array_values($removed),
-                    'total_permissions' => count($this->selectedPermissions),
-                ])
-                ->log('Role updated');
-        } else {
-            activity('roles')
-                ->performedOn($role)
-                ->causedBy(auth()->user())
-                ->event('updated')
-                ->log('Role updated');
-        }
+            $admin = auth()->user();
+            if ($admin instanceof User) {
+                app(RoleAuditRecorder::class)->recordUpdated($admin, $role, $this->previousName, $this->oldPermissions, 'EditRole', $otherFieldsChanged);
+            }
+        });
 
         Notification::make()
             ->title('Role saved')

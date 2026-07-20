@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Services\AuditTrailService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\PasswordPolicySettings;
 use Filament\Resources\Pages\CreateRecord;
@@ -31,6 +32,24 @@ class CreateUser extends CreateRecord
                 ->causedBy(auth()->user())
                 ->event('password_change_required')
                 ->log('Password change required on first login');
+        }
+
+        // Phase 24Q — GAP-011: role assignment happens via Filament's own
+        // relationship field (UserForm's roles Select) before this hook
+        // runs — mirrors EditUser::afterSave()'s 'roles_updated' shape so
+        // both surfaces are filterable/comparable the same way in the
+        // Activity Log. A brand-new user always has "added" roles only
+        // (there is no "before" state on create); skipped entirely if no
+        // role was assigned.
+        $admin = auth()->user();
+        $initialRoles = $this->record->roles->pluck('name')->all();
+
+        if ($admin instanceof User && $initialRoles !== []) {
+            app(AuditTrailService::class)->logUser($admin, 'users', 'roles_updated', 'User roles assigned on creation', $this->record, [
+                'roles_added' => $initialRoles,
+                'roles_removed' => [],
+                'current_roles' => $initialRoles,
+            ]);
         }
 
         // Phase 24H.1A — GAP-013: a brand-new user created directly

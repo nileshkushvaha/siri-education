@@ -43,6 +43,14 @@ class RolePermissionAssignmentTest extends TestCase
 
         $superAdminRole = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         $managerRole = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        // Phase 24Q — GAP-011: InstructorOnboardingResource::getNavigationBadge()
+        // scopes User::role('instructor') on every admin page load (Filament
+        // evaluates every resource's nav badge on every page, not just its own).
+        // Without this role seeded, any admin panel page in this test throws
+        // RoleDoesNotExist — a test-isolation gap, not a role/permission
+        // behavior this test is meant to cover. Same fix pattern used
+        // elsewhere in this suite for the identical root cause.
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
 
         $this->superAdmin = User::factory()->create(['status' => 'active']);
         $this->superAdmin->assignRole($superAdminRole);

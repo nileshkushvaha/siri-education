@@ -307,15 +307,6 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
-    // ── Student booking (JSON, session-auth — reuses the Booking Engine) ──
-    // The `pay` route is deliberately not registered: it previously
-    // accepted a client-submitted `payment_reference` with no gateway
-    // verification, letting a student mark their own booking paid
-    // without ever paying (see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md).
-    // Payment confirmation is only reachable through a verified provider
-    // callback/webhook (BookingPaymentWebhookController,
-    // RazorpayPaymentProvider::verifyCheckout()) or the fake provider's
-    // local/testing-only simulate action.
     Route::prefix('bookings')->name('bookings.')->group(function (): void {
         Route::get('/', [StudentBookingController::class, 'index'])->name('index');
         Route::get('/teachers', [StudentBookingController::class, 'teachers'])->name('teachers');

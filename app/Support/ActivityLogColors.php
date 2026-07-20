@@ -16,7 +16,7 @@ final class ActivityLogColors
             'deleted', 'login_failed' => 'danger',
             'login', 'logout', 'password_reset', 'auto_published',
             'manually_ran', 'webhook_received', 'role_created',
-            'photo_removed', 'password_reset_requested' => 'info',
+            'photo_removed', 'password_reset_requested', 'replicated' => 'info',
             default => 'gray',
         };
     }

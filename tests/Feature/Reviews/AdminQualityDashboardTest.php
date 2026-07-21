@@ -9,6 +9,8 @@ use App\Booking\DTOs\CancelBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
+use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Filament\Pages\ReviewsQualityDashboard;
 use App\Filament\Widgets\Quality\AlertQueueWidget;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
@@ -258,6 +260,57 @@ class AdminQualityDashboardTest extends TestCase
         $this->instructorUser(); // never reviewed at all — no aggregate row exists
 
         $this->assertCount(0, $this->dashboard->lowRatedInstructors());
+    }
+
+    // ── Phase 24U: proves the fixture fix did not weaken lifecycle enforcement ──
+
+    /**
+     * Direct evidence that switching this file's implicit student
+     * fixture to activeStudent() did not loosen
+     * StudentLifecycleService — a genuinely non-Active student is still
+     * rejected by the exact same guard the now-passing tests satisfy.
+     */
+    public function test_a_non_active_student_is_still_rejected_when_submitting_a_review(): void
+    {
+        $instructor = $this->instructorUser();
+        $lesson = $this->paidLesson($instructor);
+        $eligibility = $this->openEligibility($lesson);
+
+        $eligibility->student->profile()->update(['student_status' => StudentStatus::Suspended]);
+
+        $this->expectException(StudentActionNotAvailableException::class);
+
+        $this->submissions->submit($eligibility->fresh(), $eligibility->student->fresh(), new SubmitStudentReviewData(
+            overallRating: 5,
+            content: 'Should never be persisted.',
+        ));
+    }
+
+    /**
+     * The dashboard's read service applies no instructor-lifecycle
+     * filter at all (confirmed by inspection — no InstructorStatus
+     * reference anywhere under app/Quality/) — an instructor who has
+     * since been suspended or never got past Pending must still surface
+     * existing quality signals, since staff triage is exactly why those
+     * signals were recorded. This is the accepted, unchanged behavior;
+     * this test proves it explicitly rather than leaving it implicit.
+     */
+    public function test_an_instructor_no_longer_approved_still_surfaces_existing_quality_signals(): void
+    {
+        $instructor = $this->instructorUser();
+        $this->submitPublicReview($instructor, overallRating: 1);
+
+        $instructor->profile()->update(['instructor_status' => InstructorStatus::Suspended]);
+
+        $lowRated = $this->dashboard->lowRatedInstructors();
+        $this->assertCount(0, $lowRated); // below the min review-count threshold (3) — not a status exclusion
+
+        $this->submitPublicReview($instructor, overallRating: 2);
+        $this->submitPublicReview($instructor, overallRating: 2);
+
+        $lowRatedAfterThreshold = $this->dashboard->lowRatedInstructors();
+        $this->assertCount(1, $lowRatedAfterThreshold);
+        $this->assertSame($instructor->id, $lowRatedAfterThreshold->first()->instructorId);
     }
 
     // ── 17–19. No-show authoritative filtering ─────────────────────────
@@ -527,10 +580,7 @@ class AdminQualityDashboardTest extends TestCase
 
     private function reporterUser(): User
     {
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
-
-        return $reporter;
+        return $this->activeStudent();
     }
 
     private function admin(): User
@@ -541,11 +591,27 @@ class AdminQualityDashboardTest extends TestCase
         return $admin;
     }
 
+    /**
+     * Phase 24U — GAP: confirmedBooking()/paidLesson()/demoLesson() used
+     * to default their student to a bare User::factory() — no 'student'
+     * role, no Active StudentStatus. StudentReviewService::submit() and
+     * BookingService::assertStudentInitiatorNotRestricted() (Phase
+     * 24H.1/24H.2) now enforce StudentLifecycleService on any
+     * student-initiated action, rejecting that bare fixture before this
+     * file's own review/dashboard logic is ever reached. These tests
+     * exercise dashboard/review/quality behavior, not lifecycle
+     * rejection, so the implicit student is now a real activeStudent().
+     */
+    private function activeStudent(): User
+    {
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+    }
+
     private function confirmedBooking(User $instructor, ?User $student = null): Booking
     {
         return Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? $this->activeStudent()->id,
             'starts_at' => now()->addDay(),
             'ends_at' => now()->addDay()->addHour(),
             'payment_status' => BookingPaymentStatus::NotRequired,
@@ -561,7 +627,7 @@ class AdminQualityDashboardTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? $this->activeStudent()->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -578,7 +644,7 @@ class AdminQualityDashboardTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? $this->activeStudent()->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

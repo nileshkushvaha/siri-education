@@ -137,7 +137,7 @@ class AlertQueueWidget extends TableWidget
                     ->form([
                         Select::make('assignee_id')
                             ->label('Assign To')
-                            ->options(fn () => User::query()->role('manager')->pluck('name', 'id'))
+                            ->options(fn () => self::managerOptions())
                             ->searchable()
                             ->required(),
                     ])
@@ -202,6 +202,18 @@ class AlertQueueWidget extends TableWidget
             ])
             ->paginated([10, 25, 50])
             ->defaultPaginationPageOption(10);
+    }
+
+    /**
+     * Phase 24T: extracted from the inline Select options closure so it's
+     * directly testable. A temporarily-missing 'manager' role must yield
+     * an empty option list, never a 500 on this widget's assign action.
+     *
+     * @return array<int, string>
+     */
+    private static function managerOptions(): array
+    {
+        return User::query()->whereHasRoleNamed('manager')->pluck('name', 'id')->all();
     }
 
     /** Run a service call, converting domain failures into panel notifications — mirrors BookingsTable::callService(). */

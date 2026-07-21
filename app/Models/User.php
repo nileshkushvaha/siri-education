@@ -9,6 +9,7 @@ use App\Services\PortalResolver;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -233,6 +234,33 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
     public function isSuperAdmin(): bool
     {
         return $this->hasRole('super_admin');
+    }
+
+    // ── Role query scopes ────────────────────────────────────────────
+
+    /**
+     * Phase 24T — GAP: Spatie's own `role()` scope pre-resolves the role
+     * name via Role::findByName(), which throws RoleDoesNotExist when
+     * that row doesn't exist yet (fresh install, partial deployment, a
+     * seeder that hasn't run). That's correct for authorization checks
+     * (hasRole(), Gate::before(), policies — untouched, unaffected by
+     * this scope) but wrong for read-only list/count/report/options
+     * queries, where a temporarily-missing role should simply mean "no
+     * matching users" — never a 500 on an otherwise-unrelated page.
+     *
+     * whereHas('roles', ...) by name+guard is the join Spatie's own
+     * scope ultimately builds once the role is resolved — this performs
+     * the identical query when the role exists, and just matches zero
+     * rows (never an exception) when it doesn't. Never calls
+     * Role::findByName(), never creates anything — a pure read.
+     *
+     * Only for read paths. Do not use this to replace hasRole() (already
+     * non-throwing — it checks the user's own loaded roles, never
+     * resolves the role row) or any authorization/Gate/policy check.
+     */
+    public function scopeWhereHasRoleNamed(Builder $query, string $name, string $guard = 'web'): Builder
+    {
+        return $query->whereHas('roles', fn (Builder $q) => $q->where('name', $name)->where('guard_name', $guard));
     }
 
     // ── Status helpers ───────────────────────────────────────────────

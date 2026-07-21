@@ -88,7 +88,11 @@ final class AccountProtectionService
         }
 
         if ($this->settings->notify_admin && $actor && $actor->id !== $user->id) {
-            User::role('super_admin')
+            // Phase 24T: whereHasRoleNamed(), not role() — a missing
+            // super_admin role must never crash the manual-lock action
+            // itself; it should just mean "no one to notify".
+            User::query()
+                ->whereHasRoleNamed('super_admin')
                 ->where('id', '!=', $user->id)
                 ->each(function (User $admin) use ($user, $actor): void {
                     $admin->notify(new AdminAccountLockedNotification($user, $actor?->email ?? 'admin'));

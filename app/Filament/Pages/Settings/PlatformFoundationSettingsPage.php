@@ -205,11 +205,17 @@ class PlatformFoundationSettingsPage extends Page
             return;
         }
 
-        $this->saveBooking($data);
-        $this->saveWallet($data);
-        $this->saveInstructor($data);
-        $this->saveLocalization($data);
-        $this->saveFeatures($data);
+        $bookingOk = $this->saveBooking($data);
+        $walletOk = $this->saveWallet($data);
+        $instructorOk = $this->saveInstructor($data);
+        $localizationOk = $this->saveLocalization($data);
+        $featuresOk = $this->saveFeatures($data);
+
+        if (! $bookingOk || ! $walletOk || ! $instructorOk || ! $localizationOk || ! $featuresOk) {
+            // A failure notification was already shown by
+            // saveSettingsWithAudit() for whichever group failed.
+            return;
+        }
 
         Notification::make()
             ->title('Platform foundation settings saved')
@@ -237,72 +243,62 @@ class PlatformFoundationSettingsPage extends Page
     }
 
     /** @param array<string, mixed> $data */
-    private function saveBooking(array $data): void
+    private function saveBooking(array $data): bool
     {
-        $settings = app(BookingSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->demo_duration_minutes = (int) $data['demo_duration_minutes'];
-        $settings->reservation_expiry_minutes = (int) $data['reservation_expiry_minutes'];
-        $settings->minimum_booking_notice_minutes = (int) $data['minimum_booking_notice_minutes'];
-        $settings->maximum_advance_booking_days = (int) $data['maximum_advance_booking_days'];
-        $settings->cancellation_window_hours = (int) $data['cancellation_window_hours'];
-        $settings->reschedule_limit = (int) $data['reschedule_limit'];
-        $settings->no_show_grace_minutes = (int) $data['no_show_grace_minutes'];
-        $settings->auto_completion_delay_minutes = (int) $data['auto_completion_delay_minutes'];
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
+        return $this->saveSettingsWithAudit(BookingSettings::class, 'settings', function (BookingSettings $settings) use ($data): void {
+            $settings->demo_duration_minutes = (int) $data['demo_duration_minutes'];
+            $settings->reservation_expiry_minutes = (int) $data['reservation_expiry_minutes'];
+            $settings->minimum_booking_notice_minutes = (int) $data['minimum_booking_notice_minutes'];
+            $settings->maximum_advance_booking_days = (int) $data['maximum_advance_booking_days'];
+            $settings->cancellation_window_hours = (int) $data['cancellation_window_hours'];
+            $settings->reschedule_limit = (int) $data['reschedule_limit'];
+            $settings->no_show_grace_minutes = (int) $data['no_show_grace_minutes'];
+            $settings->auto_completion_delay_minutes = (int) $data['auto_completion_delay_minutes'];
+        });
     }
 
     /** @param array<string, mixed> $data */
-    private function saveWallet(array $data): void
+    private function saveWallet(array $data): bool
     {
-        $settings = app(WalletSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->minimum_recharge_amount = (float) $data['minimum_recharge_amount'];
-        $settings->maximum_recharge_amount = (float) $data['maximum_recharge_amount'];
-        $settings->low_balance_threshold = (float) $data['low_balance_threshold'];
-        $settings->recurring_deduction_hours_before_lesson = (int) $data['recurring_deduction_hours_before_lesson'];
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
+        return $this->saveSettingsWithAudit(WalletSettings::class, 'settings', function (WalletSettings $settings) use ($data): void {
+            $settings->minimum_recharge_amount = (float) $data['minimum_recharge_amount'];
+            $settings->maximum_recharge_amount = (float) $data['maximum_recharge_amount'];
+            $settings->low_balance_threshold = (float) $data['low_balance_threshold'];
+            $settings->recurring_deduction_hours_before_lesson = (int) $data['recurring_deduction_hours_before_lesson'];
+        });
     }
 
     /** @param array<string, mixed> $data */
-    private function saveInstructor(array $data): void
+    private function saveInstructor(array $data): bool
     {
-        $settings = app(InstructorSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->approval_required = (bool) ($data['approval_required'] ?? false);
-        $settings->profile_publish_requires_approval = (bool) ($data['profile_publish_requires_approval'] ?? false);
-        $settings->featured_instructor_limit = (int) $data['featured_instructor_limit'];
-        $settings->availability_required_for_public_profile = (bool) ($data['availability_required_for_public_profile'] ?? false);
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
+        return $this->saveSettingsWithAudit(InstructorSettings::class, 'settings', function (InstructorSettings $settings) use ($data): void {
+            $settings->approval_required = (bool) ($data['approval_required'] ?? false);
+            $settings->profile_publish_requires_approval = (bool) ($data['profile_publish_requires_approval'] ?? false);
+            $settings->featured_instructor_limit = (int) $data['featured_instructor_limit'];
+            $settings->availability_required_for_public_profile = (bool) ($data['availability_required_for_public_profile'] ?? false);
+        });
     }
 
     /** @param array<string, mixed> $data */
-    private function saveLocalization(array $data): void
+    private function saveLocalization(array $data): bool
     {
-        $settings = app(LocalizationSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->default_country = strtoupper((string) $data['default_country']);
-        $settings->country_detection_enabled = (bool) ($data['country_detection_enabled'] ?? false);
-        $settings->allow_user_locale_switching = (bool) ($data['allow_user_locale_switching'] ?? false);
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
+        return $this->saveSettingsWithAudit(LocalizationSettings::class, 'settings', function (LocalizationSettings $settings) use ($data): void {
+            $settings->default_country = strtoupper((string) $data['default_country']);
+            $settings->country_detection_enabled = (bool) ($data['country_detection_enabled'] ?? false);
+            $settings->allow_user_locale_switching = (bool) ($data['allow_user_locale_switching'] ?? false);
+        });
     }
 
     /** @param array<string, mixed> $data */
-    private function saveFeatures(array $data): void
+    private function saveFeatures(array $data): bool
     {
-        $settings = app(FeatureSettings::class);
-        $before = $this->snapshotSettings($settings);
-        $settings->demo_lessons_enabled = (bool) ($data['demo_lessons_enabled'] ?? false);
-        $settings->wallet_enabled = (bool) ($data['wallet_enabled'] ?? false);
-        $settings->referral_enabled = (bool) ($data['referral_enabled'] ?? false);
-        $settings->waitlist_enabled = (bool) ($data['waitlist_enabled'] ?? false);
-        $settings->homework_enabled = (bool) ($data['homework_enabled'] ?? false);
-        $settings->recording_enabled = (bool) ($data['recording_enabled'] ?? false);
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
+        return $this->saveSettingsWithAudit(FeatureSettings::class, 'settings', function (FeatureSettings $settings) use ($data): void {
+            $settings->demo_lessons_enabled = (bool) ($data['demo_lessons_enabled'] ?? false);
+            $settings->wallet_enabled = (bool) ($data['wallet_enabled'] ?? false);
+            $settings->referral_enabled = (bool) ($data['referral_enabled'] ?? false);
+            $settings->waitlist_enabled = (bool) ($data['waitlist_enabled'] ?? false);
+            $settings->homework_enabled = (bool) ($data['homework_enabled'] ?? false);
+            $settings->recording_enabled = (bool) ($data['recording_enabled'] ?? false);
+        });
     }
 }

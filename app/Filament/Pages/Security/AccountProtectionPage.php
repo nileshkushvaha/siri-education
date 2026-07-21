@@ -175,10 +175,9 @@ class AccountProtectionPage extends Page
             return;
         }
 
-        app(SecuritySettingsService::class)->saveAccountProtection(
-            $data,
-            app(AccountProtectionSettings::class),
-        );
+        if (! app(SecuritySettingsService::class)->saveAccountProtection($data)) {
+            return;
+        }
 
         Notification::make()->title('Account protection settings saved')->success()->send();
     }

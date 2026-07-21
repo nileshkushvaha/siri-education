@@ -376,35 +376,35 @@ class GeneralSettingsPage extends Page
             return;
         }
 
-        $settings = app(GeneralSettings::class);
-        $before = $this->snapshotSettings($settings);
+        $saved = $this->saveSettingsWithAudit(GeneralSettings::class, 'settings', function (GeneralSettings $settings) use ($data): void {
+            $settings->app_name = $data['app_name'];
+            $settings->app_short_name = $data['app_short_name'] ?? null;
+            $settings->organization_name = $data['organization_name'] ?? null;
+            $settings->support_email = $data['support_email'];
+            $settings->support_phone = $data['support_phone'] ?? null;
+            $settings->website_url = $data['website_url'] ?? null;
+            $settings->address = $data['address'] ?? null;
+            $settings->logo = $data['logo'] ?? $settings->logo;
+            $settings->logo_dark = $data['logo_dark'] ?? $settings->logo_dark;
+            $settings->favicon = $data['favicon'] ?? $settings->favicon;
+            $settings->default_timezone = $data['default_timezone'];
+            $settings->default_language = $data['default_language'];
+            $settings->date_format = $data['date_format'];
+            $settings->time_format = $data['time_format'];
+            $settings->default_currency = $data['default_currency'];
+            $settings->decimal_precision = (int) $data['decimal_precision'];
+            $settings->maintenance_mode = (bool) ($data['maintenance_mode'] ?? false);
+            $settings->footer_copyright = $data['footer_copyright'] ?? null;
+            $settings->footer_text = $data['footer_text'] ?? null;
+            $settings->homepage_display = $data['homepage_display'] ?? 'template';
+            $settings->homepage_id = ($data['homepage_display'] ?? 'template') === 'static_page'
+                                            ? ($data['homepage_id'] ?? null)
+                                            : null;
+        });
 
-        $settings->app_name = $data['app_name'];
-        $settings->app_short_name = $data['app_short_name'] ?? null;
-        $settings->organization_name = $data['organization_name'] ?? null;
-        $settings->support_email = $data['support_email'];
-        $settings->support_phone = $data['support_phone'] ?? null;
-        $settings->website_url = $data['website_url'] ?? null;
-        $settings->address = $data['address'] ?? null;
-        $settings->logo = $data['logo'] ?? $settings->logo;
-        $settings->logo_dark = $data['logo_dark'] ?? $settings->logo_dark;
-        $settings->favicon = $data['favicon'] ?? $settings->favicon;
-        $settings->default_timezone = $data['default_timezone'];
-        $settings->default_language = $data['default_language'];
-        $settings->date_format = $data['date_format'];
-        $settings->time_format = $data['time_format'];
-        $settings->default_currency = $data['default_currency'];
-        $settings->decimal_precision = (int) $data['decimal_precision'];
-        $settings->maintenance_mode = (bool) ($data['maintenance_mode'] ?? false);
-        $settings->footer_copyright = $data['footer_copyright'] ?? null;
-        $settings->footer_text = $data['footer_text'] ?? null;
-        $settings->homepage_display = $data['homepage_display'] ?? 'template';
-        $settings->homepage_id = ($data['homepage_display'] ?? 'template') === 'static_page'
-                                        ? ($data['homepage_id'] ?? null)
-                                        : null;
-
-        $settings->save();
-        $this->logSettingsUpdate('settings', $settings, $before);
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()
             ->title('General settings saved')
@@ -414,19 +414,21 @@ class GeneralSettingsPage extends Page
 
     public function resetDefaults(): void
     {
-        $settings = app(GeneralSettings::class);
+        $saved = $this->saveSettingsWithAudit(GeneralSettings::class, 'settings', function (GeneralSettings $settings): void {
+            $settings->default_timezone = 'Asia/Kolkata';
+            $settings->default_language = 'en';
+            $settings->date_format = 'Y-m-d';
+            $settings->time_format = 'H:i';
+            $settings->default_currency = 'INR';
+            $settings->decimal_precision = 2;
+            $settings->maintenance_mode = false;
+            $settings->homepage_display = 'template';
+            $settings->homepage_id = null;
+        });
 
-        $settings->default_timezone = 'Asia/Kolkata';
-        $settings->default_language = 'en';
-        $settings->date_format = 'Y-m-d';
-        $settings->time_format = 'H:i';
-        $settings->default_currency = 'INR';
-        $settings->decimal_precision = 2;
-        $settings->maintenance_mode = false;
-        $settings->homepage_display = 'template';
-        $settings->homepage_id = null;
-
-        $settings->save();
+        if (! $saved) {
+            return;
+        }
 
         $this->mount(); // reload form
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Filament\Pages\Security\SessionPage;
+use App\Models\Activity;
 use App\Models\User;
 use App\Services\Security\AdminSessionService;
 use App\Settings\SessionSettings;
@@ -141,5 +142,43 @@ class SessionSettingsTest extends TestCase
         Livewire::test(SessionPage::class)
             ->call('forceLogoutAll')
             ->assertNotified('All sessions terminated');
+    }
+
+    // ── Phase 24S: settings-save audit coverage (distinct from forceLogoutAll's own event) ──
+
+    public function test_save_creates_a_settings_updated_audit_event_with_the_diff(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(SessionPage::class)
+            ->set('data.idle_timeout', 60)
+            ->call('save');
+
+        $activity = Activity::where('log_name', 'security')
+            ->where('event', 'settings_updated')
+            ->where('properties->settings_class', SessionSettings::class)
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(120, $activity->properties['changed']['idle_timeout']['from']);
+        $this->assertSame(60, $activity->properties['changed']['idle_timeout']['to']);
+    }
+
+    public function test_saving_with_no_changes_creates_no_settings_updated_audit_event(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        $settings = app(SessionSettings::class);
+
+        Livewire::test(SessionPage::class)
+            ->set('data.idle_timeout', $settings->idle_timeout)
+            ->set('data.allow_multiple_sessions', $settings->allow_multiple_sessions)
+            ->set('data.force_logout_on_password_change', $settings->force_logout_on_password_change)
+            ->call('save');
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'security',
+            'event' => 'settings_updated',
+        ]);
     }
 }

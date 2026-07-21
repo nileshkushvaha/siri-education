@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Filament\Pages\Security\LoginSecurityPage;
+use App\Models\Activity;
 use App\Models\User;
 use App\Settings\LoginSecuritySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -119,5 +120,46 @@ class LoginSecuritySettingsTest extends TestCase
             ->set('data.lockout_duration', 0)
             ->call('save')
             ->assertHasErrors(['data.lockout_duration']);
+    }
+
+    // ── Phase 24S: audit coverage via the shared atomic+audited helper ──────
+
+    public function test_save_creates_an_audit_event_with_the_diff(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(LoginSecurityPage::class)
+            ->set('data.max_failed_attempts', 10)
+            ->call('save');
+
+        $activity = Activity::where('log_name', 'security')
+            ->where('event', 'settings_updated')
+            ->where('properties->settings_class', LoginSecuritySettings::class)
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(5, $activity->properties['changed']['max_failed_attempts']['from']);
+        $this->assertSame(10, $activity->properties['changed']['max_failed_attempts']['to']);
+    }
+
+    public function test_saving_with_no_changes_creates_no_audit_event(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        $settings = app(LoginSecuritySettings::class);
+
+        Livewire::test(LoginSecurityPage::class)
+            ->set('data.max_failed_attempts', $settings->max_failed_attempts)
+            ->set('data.lockout_duration', $settings->lockout_duration)
+            ->set('data.throttling_enabled', $settings->throttling_enabled)
+            ->set('data.reset_throttling_enabled', $settings->reset_throttling_enabled)
+            ->set('data.notify_user_on_failed', $settings->notify_user_on_failed)
+            ->set('data.notify_admin_on_lock', $settings->notify_admin_on_lock)
+            ->call('save');
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'security',
+            'event' => 'settings_updated',
+        ]);
     }
 }

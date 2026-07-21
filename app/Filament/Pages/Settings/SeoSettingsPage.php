@@ -26,6 +26,7 @@ use Illuminate\Contracts\Support\Htmlable;
 class SeoSettingsPage extends Page
 {
     use HasSettingsAccess;
+    use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMagnifyingGlass;
 
@@ -224,21 +225,23 @@ class SeoSettingsPage extends Page
             return;
         }
 
-        $settings = app(SeoSettings::class);
+        $saved = $this->saveSettingsWithAudit(SeoSettings::class, 'settings', function (SeoSettings $settings) use ($data): void {
+            $settings->meta_title = $data['meta_title'] ?? null;
+            $settings->meta_description = $data['meta_description'] ?? null;
+            $settings->meta_keywords = $data['meta_keywords'] ?? null;
+            $settings->robots = $data['robots'];
+            $settings->canonical_url = $data['canonical_url'] ?? null;
+            $settings->google_search_console_verification = $data['google_search_console_verification'] ?? null;
+            $settings->google_analytics_id = $data['google_analytics_id'] ?? null;
+            $settings->google_tag_manager_id = $data['google_tag_manager_id'] ?? null;
+            $settings->facebook_pixel_id = $data['facebook_pixel_id'] ?? null;
+            $settings->og_image = $data['og_image'] ?? $settings->og_image;
+            $settings->twitter_card = $data['twitter_card'];
+        });
 
-        $settings->meta_title = $data['meta_title'] ?? null;
-        $settings->meta_description = $data['meta_description'] ?? null;
-        $settings->meta_keywords = $data['meta_keywords'] ?? null;
-        $settings->robots = $data['robots'];
-        $settings->canonical_url = $data['canonical_url'] ?? null;
-        $settings->google_search_console_verification = $data['google_search_console_verification'] ?? null;
-        $settings->google_analytics_id = $data['google_analytics_id'] ?? null;
-        $settings->google_tag_manager_id = $data['google_tag_manager_id'] ?? null;
-        $settings->facebook_pixel_id = $data['facebook_pixel_id'] ?? null;
-        $settings->og_image = $data['og_image'] ?? $settings->og_image;
-        $settings->twitter_card = $data['twitter_card'];
-
-        $settings->save();
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()
             ->title('SEO settings saved')

@@ -187,10 +187,9 @@ class LoginSecurityPage extends Page
             return;
         }
 
-        app(SecuritySettingsService::class)->saveLoginSecurity(
-            $data,
-            app(LoginSecuritySettings::class),
-        );
+        if (! app(SecuritySettingsService::class)->saveLoginSecurity($data)) {
+            return;
+        }
 
         Notification::make()->title('Login security settings saved')->success()->send();
     }

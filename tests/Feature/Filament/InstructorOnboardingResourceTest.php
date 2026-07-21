@@ -221,4 +221,58 @@ final class InstructorOnboardingResourceTest extends TestCase
             ActivityLogRelationManager::class,
         ], InstructorOnboardingResource::getRelations());
     }
+
+    // ── Phase 24S.1: navigation badge resilience when the instructor role row doesn't exist ──
+
+    /**
+     * Filament evaluates every registered resource's getNavigationBadge()
+     * on every admin page load — not just this resource's own pages.
+     * Before this fix, pendingReviewQuery() used the Spatie `role()`
+     * scope, which resolves the role name via Role::findByName() and
+     * throws RoleDoesNotExist when that row is absent (fresh install,
+     * partial deployment, an out-of-order seeder run) — crashing
+     * completely unrelated admin pages with a 500. This must degrade to
+     * "nothing pending", never a fatal error.
+     */
+    public function test_navigation_badge_returns_null_and_does_not_throw_when_the_instructor_role_row_is_absent(): void
+    {
+        // setUp() seeds 'instructor' for the rest of this file's tests —
+        // remove it here to reproduce the exact fresh-install/partial-
+        // deployment condition this fix targets.
+        Role::where('name', 'instructor')->where('guard_name', 'web')->delete();
+
+        $this->assertNull(InstructorOnboardingResource::getNavigationBadge());
+    }
+
+    public function test_navigation_badge_read_never_creates_the_instructor_role(): void
+    {
+        Role::where('name', 'instructor')->where('guard_name', 'web')->delete();
+
+        InstructorOnboardingResource::getNavigationBadge();
+
+        $this->assertFalse(
+            Role::where('name', 'instructor')->where('guard_name', 'web')->exists(),
+            'A read-only badge computation must never create the missing role as a side effect.'
+        );
+    }
+
+    /**
+     * The prior (unfixed) failure mode was specifically that UNRELATED
+     * admin pages 500'd because Filament evaluates every resource's nav
+     * badge on every page load — proven here directly against a
+     * completely unrelated settings page, with no role pre-seeded at
+     * all, mirroring the exact conditions the 8 previously-failing
+     * Phase 24S render tests hit.
+     */
+    public function test_an_unrelated_settings_page_renders_without_the_instructor_role_seeded(): void
+    {
+        Role::where('name', 'instructor')->where('guard_name', 'web')->delete();
+
+        $superAdmin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $superAdmin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+
+        $this->actingAs($superAdmin)
+            ->get('/admin/settings/general')
+            ->assertOk();
+    }
 }

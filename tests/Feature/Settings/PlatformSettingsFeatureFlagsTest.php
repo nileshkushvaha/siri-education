@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Settings;
 
 use App\Filament\Pages\Settings\PlatformFoundationSettingsPage;
+use App\Models\Activity;
 use App\Models\User;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
@@ -171,5 +172,102 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
 
         $this->assertSame(360, $booking->minimum_booking_notice_minutes);
         $this->assertSame(45, $booking->maximum_advance_booking_days);
+    }
+
+    // ── Phase 24S: audit coverage across the five underlying settings classes ──
+
+    public function test_saving_changes_across_multiple_domains_writes_one_event_per_changed_settings_class(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+        $this->actingAs($admin);
+
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->set('data.demo_duration_minutes', 40)
+            ->set('data.reservation_expiry_minutes', 25)
+            ->set('data.minimum_recharge_amount', 250)
+            ->set('data.approval_required', false)
+            ->set('data.default_country', 'us')
+            ->set('data.wallet_enabled', true)
+            ->call('save')
+            ->assertNotified('Platform foundation settings saved');
+
+        $events = Activity::query()
+            ->where('log_name', 'settings')
+            ->where('event', 'settings_updated')
+            ->get()
+            ->groupBy(fn (Activity $a) => $a->properties['settings_class']);
+
+        $this->assertCount(1, $events->get(BookingSettings::class, collect()), 'Two changed Booking fields must produce exactly one Booking event.');
+        $bookingChanged = $events[BookingSettings::class]->first()->properties['changed'];
+        $this->assertArrayHasKey('demo_duration_minutes', $bookingChanged);
+        $this->assertArrayHasKey('reservation_expiry_minutes', $bookingChanged);
+
+        $this->assertCount(1, $events->get(WalletSettings::class, collect()));
+        $this->assertCount(1, $events->get(InstructorSettings::class, collect()));
+        $this->assertCount(1, $events->get(LocalizationSettings::class, collect()));
+        $this->assertCount(1, $events->get(FeatureSettings::class, collect()));
+    }
+
+    public function test_saving_platform_foundation_settings_with_no_changes_creates_no_audit_events(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+        $this->actingAs($admin);
+
+        $booking = app(BookingSettings::class);
+        $wallet = app(WalletSettings::class);
+        $instructor = app(InstructorSettings::class);
+        $localization = app(LocalizationSettings::class);
+        $features = app(FeatureSettings::class);
+
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->set('data.demo_duration_minutes', $booking->demo_duration_minutes)
+            ->set('data.reservation_expiry_minutes', $booking->reservation_expiry_minutes)
+            ->set('data.minimum_booking_notice_minutes', $booking->minimum_booking_notice_minutes)
+            ->set('data.maximum_advance_booking_days', $booking->maximum_advance_booking_days)
+            ->set('data.cancellation_window_hours', $booking->cancellation_window_hours)
+            ->set('data.reschedule_limit', $booking->reschedule_limit)
+            ->set('data.no_show_grace_minutes', $booking->no_show_grace_minutes)
+            ->set('data.auto_completion_delay_minutes', $booking->auto_completion_delay_minutes)
+            ->set('data.minimum_recharge_amount', $wallet->minimum_recharge_amount)
+            ->set('data.maximum_recharge_amount', $wallet->maximum_recharge_amount)
+            ->set('data.low_balance_threshold', $wallet->low_balance_threshold)
+            ->set('data.recurring_deduction_hours_before_lesson', $wallet->recurring_deduction_hours_before_lesson)
+            ->set('data.approval_required', $instructor->approval_required)
+            ->set('data.profile_publish_requires_approval', $instructor->profile_publish_requires_approval)
+            ->set('data.featured_instructor_limit', $instructor->featured_instructor_limit)
+            ->set('data.availability_required_for_public_profile', $instructor->availability_required_for_public_profile)
+            ->set('data.default_country', $localization->default_country)
+            ->set('data.country_detection_enabled', $localization->country_detection_enabled)
+            ->set('data.allow_user_locale_switching', $localization->allow_user_locale_switching)
+            ->set('data.demo_lessons_enabled', $features->demo_lessons_enabled)
+            ->set('data.wallet_enabled', $features->wallet_enabled)
+            ->set('data.referral_enabled', $features->referral_enabled)
+            ->set('data.waitlist_enabled', $features->waitlist_enabled)
+            ->set('data.homework_enabled', $features->homework_enabled)
+            ->set('data.recording_enabled', $features->recording_enabled)
+            ->call('save');
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'settings',
+            'event' => 'settings_updated',
+        ]);
+    }
+
+    public function test_unauthorized_user_cannot_save_platform_foundation_settings(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $student = User::factory()->create(['status' => 'active']);
+        $student->assignRole('student');
+
+        $this->actingAs($student)
+            ->get('/admin/settings/platform-foundation')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'settings',
+            'event' => 'settings_updated',
+        ]);
     }
 }

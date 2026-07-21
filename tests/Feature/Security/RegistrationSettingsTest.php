@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Filament\Pages\Security\RegistrationPage;
+use App\Models\Activity;
 use App\Models\User;
 use App\Settings\RegistrationSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -150,5 +151,45 @@ class RegistrationSettingsTest extends TestCase
         $settings->save();
 
         $this->get(route('auth.register'))->assertOk();
+    }
+
+    // ── Phase 24S: audit coverage via the shared atomic+audited helper ──────
+
+    public function test_save_creates_an_audit_event_with_the_diff(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(RegistrationPage::class)
+            ->set('data.self_registration_enabled', true)
+            ->call('save');
+
+        $activity = Activity::where('log_name', 'security')
+            ->where('event', 'settings_updated')
+            ->where('properties->settings_class', RegistrationSettings::class)
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertFalse($activity->properties['changed']['self_registration_enabled']['from']);
+        $this->assertTrue($activity->properties['changed']['self_registration_enabled']['to']);
+    }
+
+    public function test_saving_with_no_changes_creates_no_audit_event(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        $settings = app(RegistrationSettings::class);
+
+        Livewire::test(RegistrationPage::class)
+            ->set('data.self_registration_enabled', $settings->self_registration_enabled)
+            ->set('data.default_role', $settings->default_role)
+            ->set('data.require_admin_approval', $settings->require_admin_approval)
+            ->set('data.send_welcome_email', $settings->send_welcome_email)
+            ->set('data.auto_verify_email', $settings->auto_verify_email)
+            ->call('save');
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'security',
+            'event' => 'settings_updated',
+        ]);
     }
 }

@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Crypt;
 class MailSettingsPage extends Page
 {
     use HasSettingsAccess;
+    use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;
 
@@ -294,30 +295,32 @@ class MailSettingsPage extends Page
             return;
         }
 
-        $settings = app(MailSettings::class);
+        $saved = $this->saveSettingsWithAudit(MailSettings::class, 'settings', function (MailSettings $settings) use ($data): void {
+            $settings->from_name = $data['from_name'];
+            $settings->from_email = $data['from_email'];
+            $settings->transactional_domain = $data['transactional_domain'] ?? null;
+            foreach (['auth', 'booking', 'payment', 'tutor', 'wallet', 'support', 'admin'] as $area) {
+                $settings->{"{$area}_from_name"} = $data["{$area}_from_name"] ?? $settings->from_name;
+                $settings->{"{$area}_from_email"} = $data["{$area}_from_email"] ?? $settings->from_email;
+            }
+            $settings->driver = $data['driver'];
+            $settings->host = $data['host'];
+            $settings->port = (int) $data['port'];
+            $settings->username = $data['username'] ?? null;
+            $settings->encryption = $data['encryption'];
+            $settings->queue_emails = (bool) ($data['queue_emails'] ?? false);
+            $settings->connection_timeout = (int) ($data['connection_timeout'] ?? 30);
+            $settings->retry_attempts = (int) ($data['retry_attempts'] ?? 3);
 
-        $settings->from_name = $data['from_name'];
-        $settings->from_email = $data['from_email'];
-        $settings->transactional_domain = $data['transactional_domain'] ?? null;
-        foreach (['auth', 'booking', 'payment', 'tutor', 'wallet', 'support', 'admin'] as $area) {
-            $settings->{"{$area}_from_name"} = $data["{$area}_from_name"] ?? $settings->from_name;
-            $settings->{"{$area}_from_email"} = $data["{$area}_from_email"] ?? $settings->from_email;
+            // Only update password if a new one was provided — encrypt it
+            if (filled($data['password'] ?? null)) {
+                $settings->password = Crypt::encryptString($data['password']);
+            }
+        });
+
+        if (! $saved) {
+            return;
         }
-        $settings->driver = $data['driver'];
-        $settings->host = $data['host'];
-        $settings->port = (int) $data['port'];
-        $settings->username = $data['username'] ?? null;
-        $settings->encryption = $data['encryption'];
-        $settings->queue_emails = (bool) ($data['queue_emails'] ?? false);
-        $settings->connection_timeout = (int) ($data['connection_timeout'] ?? 30);
-        $settings->retry_attempts = (int) ($data['retry_attempts'] ?? 3);
-
-        // Only update password if a new one was provided — encrypt it
-        if (filled($data['password'] ?? null)) {
-            $settings->password = Crypt::encryptString($data['password']);
-        }
-
-        $settings->save();
 
         Notification::make()
             ->title('Mail settings saved')

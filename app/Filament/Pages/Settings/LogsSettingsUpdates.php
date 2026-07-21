@@ -53,6 +53,7 @@ trait LogsSettingsUpdates
         'routing_number',
         'sort_code',
         'beneficiary_account_number',
+        'razorpayx_account_number',
     ];
 
     /**
@@ -109,18 +110,19 @@ trait LogsSettingsUpdates
      *
      * @param  class-string  $settingsClass
      * @param  Closure(Settings): void  $mutate  mutates settings fields only — must never call ->save() itself
+     * @param  array<string, mixed>  $extraProperties  merged into the audit event's properties (e.g. a change reason) — never used for field values themselves
      * @return bool true if the change (if any) committed; false if the save failed and was rolled back
      */
-    protected function saveSettingsWithAudit(string $settingsClass, string $logName, Closure $mutate): bool
+    protected function saveSettingsWithAudit(string $settingsClass, string $logName, Closure $mutate, array $extraProperties = []): bool
     {
         $settings = app($settingsClass);
         $before = $this->snapshotSettings($settings);
 
         try {
-            DB::transaction(function () use ($settings, $logName, $before, $mutate): void {
+            DB::transaction(function () use ($settings, $logName, $before, $mutate, $extraProperties): void {
                 $mutate($settings);
                 $settings->save();
-                $this->logSettingsUpdate($logName, $settings, $before);
+                $this->logSettingsUpdate($logName, $settings, $before, $extraProperties);
             });
 
             return true;
@@ -148,8 +150,11 @@ trait LogsSettingsUpdates
         }
     }
 
-    /** @param array<string, mixed> $before */
-    protected function logSettingsUpdate(string $logName, Settings $settings, array $before): void
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $extraProperties  merged alongside settings_class/changed — e.g. ['reason' => $reason]
+     */
+    protected function logSettingsUpdate(string $logName, Settings $settings, array $before, array $extraProperties = []): void
     {
         $user = auth()->user();
 
@@ -179,7 +184,7 @@ trait LogsSettingsUpdates
             'settings_updated',
             class_basename($settings).' updated',
             null,
-            ['settings_class' => $settings::class, 'changed' => $changed],
+            [...['settings_class' => $settings::class, 'changed' => $changed], ...$extraProperties],
         );
     }
 
@@ -215,7 +220,7 @@ trait LogsSettingsUpdates
             return true;
         }
 
-        foreach (['password', 'secret', 'token', 'api_key', 'private_key', 'signature', 'salt_key'] as $needle) {
+        foreach (['password', 'secret', 'token', 'api_key', 'private_key', 'signature', 'salt_key', 'credentials_json'] as $needle) {
             if (str_contains(strtolower($key), $needle)) {
                 return true;
             }

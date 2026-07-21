@@ -112,4 +112,32 @@ class GeneralSettingsTest extends TestCase
 
         $this->assertDatabaseMissing('activity_log', ['log_name' => 'settings', 'event' => 'settings_updated']);
     }
+
+    public function test_reset_defaults_persists_and_audits_atomically(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+        $this->actingAs($admin);
+
+        $settings = app(GeneralSettings::class);
+        $settings->default_timezone = 'America/New_York';
+        $settings->default_currency = 'USD';
+        $settings->save();
+
+        $component = Livewire::test(GeneralSettingsPage::class);
+        $component->instance()->resetDefaults();
+
+        $reloaded = app()->make(GeneralSettings::class)->refresh();
+        $this->assertSame('Asia/Kolkata', $reloaded->default_timezone);
+        $this->assertSame('INR', $reloaded->default_currency);
+
+        $activity = Activity::where('log_name', 'settings')
+            ->where('event', 'settings_updated')
+            ->where('properties->settings_class', GeneralSettings::class)
+            ->first();
+
+        $this->assertNotNull($activity, 'resetDefaults() must be audited — the pre-24S implementation called ->save() a second time outside the audited path.');
+        $this->assertSame('America/New_York', $activity->properties['changed']['default_timezone']['from']);
+        $this->assertSame('Asia/Kolkata', $activity->properties['changed']['default_timezone']['to']);
+    }
 }

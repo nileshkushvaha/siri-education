@@ -304,7 +304,6 @@ class InstructorEarningSettingsPage extends Page
         }
 
         $settings = app(InstructorEarningSettings::class);
-        $before = $this->snapshotSettings($settings);
 
         // Phase 14.5 — the three financial feature switches flow ONLY
         // through FinancialFeatureConfigurationService, which enforces
@@ -340,34 +339,41 @@ class InstructorEarningSettingsPage extends Page
             return;
         }
 
-        $settings->demo_compensation_policy = $data['demo_compensation_policy'];
-        $settings->demo_fixed_amount_minor = $data['demo_fixed_amount_minor'] !== null && $data['demo_fixed_amount_minor'] !== ''
-            ? (int) $data['demo_fixed_amount_minor']
-            : null;
-        $settings->hold_days = (int) $data['hold_days'];
-        $settings->auto_release_enabled = (bool) $data['auto_release_enabled'];
-        $settings->minimum_settlement_amount_minor = $data['minimum_settlement_amount_minor'] !== null && $data['minimum_settlement_amount_minor'] !== ''
-            ? (int) $data['minimum_settlement_amount_minor']
-            : null;
-        $settings->settlement_frequency = $data['settlement_frequency'];
-        $settings->minimum_withdrawal_minor = (int) $data['minimum_withdrawal_minor'];
-        $settings->maximum_withdrawal_minor = $data['maximum_withdrawal_minor'] !== null && $data['maximum_withdrawal_minor'] !== ''
-            ? (int) $data['maximum_withdrawal_minor']
-            : null;
-        $settings->maximum_active_requests_per_instructor = max(1, (int) $data['maximum_active_requests_per_instructor']);
-        $settings->payout_method_verification_required = (bool) $data['payout_method_verification_required'];
-        $settings->instructor_cancellation_enabled = (bool) $data['instructor_cancellation_enabled'];
-        $settings->withdrawal_review_required = (bool) $data['withdrawal_review_required'];
-        $settings->payout_provider = $data['payout_provider'];
-        $settings->payout_maker_checker_enabled = (bool) $data['payout_maker_checker_enabled'];
-        $settings->payout_auto_retry_enabled = (bool) $data['payout_auto_retry_enabled'];
-        $settings->payout_reconciliation_enabled = (bool) $data['payout_reconciliation_enabled'];
-        $settings->payout_max_attempts = max(1, (int) $data['payout_max_attempts']);
-        $settings->payout_unknown_timeout_minutes = max(1, (int) $data['payout_unknown_timeout_minutes']);
+        // The three financial switches above already persisted (and
+        // audited, via FinancialFeatureConfigurationService) through
+        // applySwitch() — $settings is a scoped singleton, so it already
+        // reflects those changes here. This final atomic step covers the
+        // remaining, non-preflighted fields only.
+        $saved = $this->saveSettingsWithAudit(InstructorEarningSettings::class, 'settings', function (InstructorEarningSettings $settings) use ($data): void {
+            $settings->demo_compensation_policy = $data['demo_compensation_policy'];
+            $settings->demo_fixed_amount_minor = $data['demo_fixed_amount_minor'] !== null && $data['demo_fixed_amount_minor'] !== ''
+                ? (int) $data['demo_fixed_amount_minor']
+                : null;
+            $settings->hold_days = (int) $data['hold_days'];
+            $settings->auto_release_enabled = (bool) $data['auto_release_enabled'];
+            $settings->minimum_settlement_amount_minor = $data['minimum_settlement_amount_minor'] !== null && $data['minimum_settlement_amount_minor'] !== ''
+                ? (int) $data['minimum_settlement_amount_minor']
+                : null;
+            $settings->settlement_frequency = $data['settlement_frequency'];
+            $settings->minimum_withdrawal_minor = (int) $data['minimum_withdrawal_minor'];
+            $settings->maximum_withdrawal_minor = $data['maximum_withdrawal_minor'] !== null && $data['maximum_withdrawal_minor'] !== ''
+                ? (int) $data['maximum_withdrawal_minor']
+                : null;
+            $settings->maximum_active_requests_per_instructor = max(1, (int) $data['maximum_active_requests_per_instructor']);
+            $settings->payout_method_verification_required = (bool) $data['payout_method_verification_required'];
+            $settings->instructor_cancellation_enabled = (bool) $data['instructor_cancellation_enabled'];
+            $settings->withdrawal_review_required = (bool) $data['withdrawal_review_required'];
+            $settings->payout_provider = $data['payout_provider'];
+            $settings->payout_maker_checker_enabled = (bool) $data['payout_maker_checker_enabled'];
+            $settings->payout_auto_retry_enabled = (bool) $data['payout_auto_retry_enabled'];
+            $settings->payout_reconciliation_enabled = (bool) $data['payout_reconciliation_enabled'];
+            $settings->payout_max_attempts = max(1, (int) $data['payout_max_attempts']);
+            $settings->payout_unknown_timeout_minutes = max(1, (int) $data['payout_unknown_timeout_minutes']);
+        });
 
-        $settings->save();
-
-        $this->logSettingsUpdate('settings', $settings, $before);
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()->title('Instructor earning settings saved')->success()->send();
     }

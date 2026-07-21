@@ -26,7 +26,6 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use JsonException;
 
@@ -298,10 +297,7 @@ class MeetingSettingsPage extends Page
             }
         }
 
-        $settings = app(MeetingSettings::class);
-        $before = $this->snapshotSettings($settings);
-
-        DB::transaction(function () use ($data, $settings, $newGoogleCredentials): void {
+        $saved = $this->saveSettingsWithAudit(MeetingSettings::class, 'settings', function (MeetingSettings $settings) use ($data, $newGoogleCredentials): void {
             $settings->meetings_enabled = (bool) ($data['meetings_enabled'] ?? false);
             $settings->default_provider = $data['default_provider'];
             $settings->manual_provider_enabled = (bool) ($data['manual_provider_enabled'] ?? false);
@@ -338,11 +334,12 @@ class MeetingSettingsPage extends Page
             if (filled($data['zoom_client_secret'] ?? null)) {
                 $settings->zoom_client_secret = Crypt::encryptString((string) $data['zoom_client_secret']);
             }
-
-            $settings->save();
         });
 
-        $this->logSettingsUpdate('settings', $settings, $before);
+        if (! $saved) {
+            return;
+        }
+
         $this->mount();
 
         Notification::make()

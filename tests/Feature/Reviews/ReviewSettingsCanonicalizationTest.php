@@ -6,6 +6,8 @@ namespace Tests\Feature\Reviews;
 
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
+use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Filament\Pages\Settings\PlatformFoundationSettingsPage;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
@@ -60,6 +62,9 @@ class ReviewSettingsCanonicalizationTest extends TestCase
 
         $this->lifecycle = app(LessonLifecycleServiceInterface::class);
         $this->outcomes = app(LessonOutcomeServiceInterface::class);
+
+        // activeStudent() (Phase 24H.1A) requires the role to exist first.
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
     }
 
     // ── Decoy retirement ─────────────────────────────────────────────
@@ -170,8 +175,7 @@ class ReviewSettingsCanonicalizationTest extends TestCase
     {
         $review = $this->publishedReview();
         $this->seed(ReviewPermissionSeeder::class);
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->enableReviews(['reviews_enabled' => false, 'review_reporting_enabled' => true]);
 
@@ -194,6 +198,29 @@ class ReviewSettingsCanonicalizationTest extends TestCase
         $this->outcomes->finalize($lesson->refresh(), LessonOutcome::Completed);
 
         NotificationFacade::assertNotSentTo($lesson->student, ReviewRequestedNotification::class);
+    }
+
+    // ── Phase 24S.1: fixing the review-eligible-student fixture must not weaken lifecycle enforcement ──
+
+    public function test_a_non_active_student_is_still_rejected_by_the_lifecycle_guard_not_review_eligibility(): void
+    {
+        $this->enableReviews();
+        $lesson = $this->paidLesson();
+        $this->outcomes->finalize($lesson->refresh(), LessonOutcome::Completed);
+        $eligibility = LessonReviewEligibility::query()->where('lesson_id', $lesson->id)->firstOrFail();
+
+        // The eligibility window's student is Active by construction
+        // (paidLesson() now uses activeStudent()) — suspend them after
+        // the window opened, mirroring a real lifecycle transition.
+        $eligibility->student->profile()->update(['student_status' => StudentStatus::Suspended]);
+
+        $this->expectException(StudentActionNotAvailableException::class);
+
+        app(StudentReviewServiceInterface::class)->submit(
+            $eligibility,
+            $eligibility->student->fresh(),
+            new SubmitStudentReviewData(overallRating: 5, content: 'Should never be persisted.'),
+        );
     }
 
     // ── Disabled-state preservation: historical data untouched ───────
@@ -230,12 +257,27 @@ class ReviewSettingsCanonicalizationTest extends TestCase
 
     // ── Helpers ────────────────────────────────────────────────────────
 
+    /**
+     * Phase 24S.1 — GAP: the booking's default factory student is a bare
+     * User::factory() with no 'student' role and no Active lifecycle
+     * status. That was fine when this file was written, but
+     * StudentReviewService::submit() now enforces
+     * StudentLifecycleService::assertEligibleForStudentAction() (Phase
+     * 24H.2) — a bare-factory student is rejected before review-eligibility
+     * logic is ever reached. These tests exercise review/settings
+     * canonicalization, not lifecycle rejection, so the student must be a
+     * real activeStudent() — the same pattern used everywhere else in the
+     * suite since Phase 24H.1A/24H.2.
+     */
     private function paidLesson(?User $instructor = null): Lesson
     {
         $endsAt = now()->subHours(2)->startOfHour();
 
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+
         $booking = Booking::factory()->confirmed()->create(array_filter([
             'booking_type_id' => BookingType::factory()->paid(),
+            'student_id' => $student->id,
             'instructor_id' => $instructor?->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,

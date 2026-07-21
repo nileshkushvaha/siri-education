@@ -266,26 +266,33 @@ class RazorpayXPayoutSettingsPage extends Page
             return;
         }
 
-        $settings = app(RazorpayXPayoutSettings::class);
-        $before = $this->snapshotSettings($settings);
+        $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings) use ($data): void {
+            $settings->razorpayx_enabled = (bool) $data['razorpayx_enabled'];
+            $settings->razorpayx_environment = $data['razorpayx_environment'];
+            $settings->razorpayx_key_id = filled($data['razorpayx_key_id']) ? $data['razorpayx_key_id'] : null;
+            $settings->razorpayx_account_number = filled($data['razorpayx_account_number']) ? $data['razorpayx_account_number'] : null;
+            $settings->razorpayx_default_mode = $data['razorpayx_default_mode'];
+            $settings->razorpayx_default_purpose = $data['razorpayx_default_purpose'];
+            $settings->razorpayx_queue_if_low_balance = (bool) $data['razorpayx_queue_if_low_balance'];
+            $settings->razorpayx_expected_outbound_ips = $this->parseIps($data['razorpayx_expected_outbound_ips'] ?? '');
+            $settings->razorpayx_contact_provisioning_enabled = (bool) $data['razorpayx_contact_provisioning_enabled'];
+            $settings->razorpayx_fund_account_provisioning_enabled = (bool) $data['razorpayx_fund_account_provisioning_enabled'];
 
-        $settings->razorpayx_enabled = (bool) $data['razorpayx_enabled'];
-        $settings->razorpayx_environment = $data['razorpayx_environment'];
-        $settings->razorpayx_key_id = filled($data['razorpayx_key_id']) ? $data['razorpayx_key_id'] : null;
-        $settings->razorpayx_account_number = filled($data['razorpayx_account_number']) ? $data['razorpayx_account_number'] : null;
-        $settings->razorpayx_default_mode = $data['razorpayx_default_mode'];
-        $settings->razorpayx_default_purpose = $data['razorpayx_default_purpose'];
-        $settings->razorpayx_queue_if_low_balance = (bool) $data['razorpayx_queue_if_low_balance'];
-        $settings->razorpayx_expected_outbound_ips = $this->parseIps($data['razorpayx_expected_outbound_ips'] ?? '');
-        $settings->razorpayx_contact_provisioning_enabled = (bool) $data['razorpayx_contact_provisioning_enabled'];
-        $settings->razorpayx_fund_account_provisioning_enabled = (bool) $data['razorpayx_fund_account_provisioning_enabled'];
+            // Secrets are never re-displayed — a blank submission means
+            // "keep the existing stored value", same rule as the Payment
+            // Gateway and Meeting settings pages.
+            if (filled($data['razorpayx_key_secret'] ?? null)) {
+                $settings->razorpayx_key_secret = Crypt::encryptString((string) $data['razorpayx_key_secret']);
+            }
 
-        $this->saveEncryptedField($settings, 'razorpayx_key_secret', $data['razorpayx_key_secret'] ?? null);
-        $this->saveEncryptedField($settings, 'razorpayx_webhook_secret', $data['razorpayx_webhook_secret'] ?? null);
+            if (filled($data['razorpayx_webhook_secret'] ?? null)) {
+                $settings->razorpayx_webhook_secret = Crypt::encryptString((string) $data['razorpayx_webhook_secret']);
+            }
+        });
 
-        $settings->save();
-
-        $this->logSettingsUpdate('razorpayx_payout', $settings, $before);
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()->title('RazorpayX settings saved')->success()->send();
 
@@ -294,12 +301,16 @@ class RazorpayXPayoutSettingsPage extends Page
 
     public function validateConfiguration(): void
     {
-        $settings = app(RazorpayXPayoutSettings::class);
-        $issues = app(RazorpayXPayoutConfigurationValidator::class)->issues($settings);
+        $issues = app(RazorpayXPayoutConfigurationValidator::class)->issues(app(RazorpayXPayoutSettings::class));
 
-        $settings->razorpayx_config_status = $issues === [] ? 'ready' : 'invalid';
-        $settings->razorpayx_last_checked_at = now()->toIso8601String();
-        $settings->save();
+        $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings) use ($issues): void {
+            $settings->razorpayx_config_status = $issues === [] ? 'ready' : 'invalid';
+            $settings->razorpayx_last_checked_at = now()->toIso8601String();
+        });
+
+        if (! $saved) {
+            return;
+        }
 
         if ($issues !== []) {
             Notification::make()
@@ -317,13 +328,20 @@ class RazorpayXPayoutSettingsPage extends Page
 
     public function checkHealth(): void
     {
-        $provider = app(RazorpayXInstructorPayoutProvider::class);
-        $health = $provider->healthCheck();
+        // The external probe's result is the data being persisted, so it
+        // necessarily happens before the atomic save — never inside the
+        // settings transaction itself (Phase 24S: no provider call is
+        // ever wrapped in the audited DB transaction).
+        $health = app(RazorpayXInstructorPayoutProvider::class)->healthCheck();
 
-        $settings = app(RazorpayXPayoutSettings::class);
-        $settings->razorpayx_last_health_check_at = now()->toIso8601String();
-        $settings->razorpayx_last_health_status = $health->healthy ? 'healthy' : 'unhealthy';
-        $settings->save();
+        $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings) use ($health): void {
+            $settings->razorpayx_last_health_check_at = now()->toIso8601String();
+            $settings->razorpayx_last_health_status = $health->healthy ? 'healthy' : 'unhealthy';
+        });
+
+        if (! $saved) {
+            return;
+        }
 
         if (! $health->healthy) {
             Notification::make()
@@ -340,20 +358,30 @@ class RazorpayXPayoutSettingsPage extends Page
 
     public function confirmIpAllowlisting(): void
     {
-        $settings = app(RazorpayXPayoutSettings::class);
-        $settings->razorpayx_ip_allowlisting_confirmed_at = now()->toIso8601String();
-        $settings->razorpayx_ip_allowlisting_confirmed_by = auth()->id();
-        $settings->save();
+        $adminId = auth()->id();
+
+        $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings) use ($adminId): void {
+            $settings->razorpayx_ip_allowlisting_confirmed_at = now()->toIso8601String();
+            $settings->razorpayx_ip_allowlisting_confirmed_by = $adminId;
+        });
+
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()->title('IP allowlisting confirmed')->success()->send();
     }
 
     private function rotateWebhookSecret(string $newSecret): void
     {
-        $settings = app(RazorpayXPayoutSettings::class);
-        $settings->razorpayx_previous_webhook_secret = $settings->razorpayx_webhook_secret;
-        $settings->razorpayx_webhook_secret = Crypt::encryptString($newSecret);
-        $settings->save();
+        $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings) use ($newSecret): void {
+            $settings->razorpayx_previous_webhook_secret = $settings->razorpayx_webhook_secret;
+            $settings->razorpayx_webhook_secret = Crypt::encryptString($newSecret);
+        });
+
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()
             ->title('Webhook secret rotated')
@@ -364,12 +392,16 @@ class RazorpayXPayoutSettingsPage extends Page
 
     public function clearInvalidCredentials(): void
     {
-        $settings = app(RazorpayXPayoutSettings::class);
-        $settings->razorpayx_key_secret = null;
-        $settings->razorpayx_webhook_secret = null;
-        $settings->razorpayx_previous_webhook_secret = null;
-        $settings->razorpayx_config_status = 'not_configured';
-        $settings->save();
+        $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings): void {
+            $settings->razorpayx_key_secret = null;
+            $settings->razorpayx_webhook_secret = null;
+            $settings->razorpayx_previous_webhook_secret = null;
+            $settings->razorpayx_config_status = 'not_configured';
+        });
+
+        if (! $saved) {
+            return;
+        }
 
         Notification::make()->title('Credentials cleared')->success()->send();
     }

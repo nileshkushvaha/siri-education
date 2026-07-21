@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Filament\Pages\Security\PasswordPolicyPage;
+use App\Models\Activity;
 use App\Models\User;
 use App\Settings\PasswordPolicySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -165,5 +166,52 @@ class PasswordPolicySettingsTest extends TestCase
     public function test_password_histories_table_exists(): void
     {
         $this->assertTrue(Schema::hasTable('user_password_histories'));
+    }
+
+    // ── Phase 24S: audit coverage via the shared atomic+audited helper ──────
+
+    public function test_save_creates_an_audit_event_with_the_diff(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(PasswordPolicyPage::class)
+            ->set('data.min_length', 12)
+            ->set('data.require_special', true)
+            ->call('save');
+
+        $activity = Activity::where('log_name', 'security')
+            ->where('event', 'settings_updated')
+            ->where('properties->settings_class', PasswordPolicySettings::class)
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame($this->superAdmin->id, $activity->causer_id);
+        $this->assertSame(8, $activity->properties['changed']['min_length']['from']);
+        $this->assertSame(12, $activity->properties['changed']['min_length']['to']);
+    }
+
+    public function test_saving_with_no_changes_creates_no_audit_event(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        $settings = app(PasswordPolicySettings::class);
+
+        Livewire::test(PasswordPolicyPage::class)
+            ->set('data.min_length', $settings->min_length)
+            ->set('data.require_uppercase', $settings->require_uppercase)
+            ->set('data.require_lowercase', $settings->require_lowercase)
+            ->set('data.require_number', $settings->require_number)
+            ->set('data.require_special', $settings->require_special)
+            ->set('data.prevent_reuse', $settings->prevent_reuse)
+            ->set('data.password_history_count', $settings->password_history_count)
+            ->set('data.expiry_enabled', $settings->expiry_enabled)
+            ->set('data.expiry_days', $settings->expiry_days)
+            ->set('data.force_change_on_first_login', $settings->force_change_on_first_login)
+            ->call('save');
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'security',
+            'event' => 'settings_updated',
+        ]);
     }
 }

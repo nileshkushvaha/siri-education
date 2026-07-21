@@ -163,8 +163,11 @@ class AuthenticationSettingsTest extends TestCase
     {
         $this->actingAs($this->superAdmin);
 
+        // login_enabled already defaults to true — flip it to a genuinely
+        // different value so this is a real change, not a no-op (Phase
+        // 24S: no-op saves correctly create no audit event).
         Livewire::test(AuthenticationPage::class)
-            ->set('data.login_enabled', true)
+            ->set('data.login_enabled', false)
             ->call('save');
 
         $this->assertDatabaseHas('activity_log', [
@@ -188,10 +191,10 @@ class AuthenticationSettingsTest extends TestCase
             ->first();
 
         $this->assertNotNull($log);
-        $changes = $log->properties['changes'] ?? [];
-        $this->assertArrayHasKey('login_enabled', $changes);
-        $this->assertTrue($changes['login_enabled']['old']);
-        $this->assertFalse($changes['login_enabled']['new']);
+        $changed = $log->properties['changed'] ?? [];
+        $this->assertArrayHasKey('login_enabled', $changed);
+        $this->assertTrue($changed['login_enabled']['from']);
+        $this->assertFalse($changed['login_enabled']['to']);
     }
 
     // ── login_enabled enforcement ───────────────────────────────────────────

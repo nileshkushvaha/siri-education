@@ -192,10 +192,9 @@ class AuthenticationPage extends Page
             return;
         }
 
-        app(SecuritySettingsService::class)->saveAuthentication(
-            $data,
-            app(AuthenticationSettings::class),
-        );
+        if (! app(SecuritySettingsService::class)->saveAuthentication($data)) {
+            return;
+        }
 
         Notification::make()->title('Authentication settings saved')->success()->send();
     }

@@ -407,4 +407,20 @@ class ReviewQualitySettingsPageTest extends TestCase
 
         $this->assertSame($before, app(ReviewSettings::class)->refresh()->review_window_days);
     }
+
+    // ── Phase 24S: no-op save creates no audit event ─────────────────────
+
+    public function test_saving_with_no_changes_creates_no_audit_event(): void
+    {
+        $this->actingAs($this->admin());
+
+        $this->fillWith(Livewire::test(ReviewQualitySettingsPage::class), $this->validState())
+            ->call('save')
+            ->assertNotified('Reviews & Quality settings saved');
+
+        $this->assertDatabaseMissing('activity_log', [
+            'log_name' => 'reviews',
+            'event' => 'settings_updated',
+        ]);
+    }
 }

@@ -180,10 +180,9 @@ class RegistrationPage extends Page
             return;
         }
 
-        app(SecuritySettingsService::class)->saveRegistration(
-            $data,
-            app(RegistrationSettings::class),
-        );
+        if (! app(SecuritySettingsService::class)->saveRegistration($data)) {
+            return;
+        }
 
         Notification::make()->title('Registration settings saved')->success()->send();
     }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Models\User;
-use App\Services\AuditTrailService;
 use App\Settings\ReviewSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -24,7 +23,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
@@ -355,7 +353,7 @@ class ReviewQualitySettingsPage extends Page
             return;
         }
 
-        DB::transaction(function () use ($data, $settings): void {
+        $saved = $this->saveSettingsWithAudit(ReviewSettings::class, 'reviews', function (ReviewSettings $settings) use ($data): void {
             $settings->reviews_enabled = (bool) $data['reviews_enabled'];
             $settings->paid_lesson_reviews_enabled = (bool) $data['paid_lesson_reviews_enabled'];
             $settings->demo_review_policy = $data['demo_review_policy'];
@@ -393,11 +391,12 @@ class ReviewQualitySettingsPage extends Page
             $settings->review_channel_email_enabled = (bool) $data['review_channel_email_enabled'];
             $settings->review_channel_whatsapp_enabled = (bool) $data['review_channel_whatsapp_enabled'];
             $settings->review_channel_sms_enabled = (bool) $data['review_channel_sms_enabled'];
+        }, $reason !== null ? ['reason' => $reason] : []);
 
-            $settings->save();
-        });
+        if (! $saved) {
+            return;
+        }
 
-        $this->logSettingsUpdateWithReason('reviews', $settings, $before, $reason);
         $this->mount();
 
         $warnings = $this->stubProviderWarnings($data, $before);
@@ -500,43 +499,6 @@ class ReviewQualitySettingsPage extends Page
         }
 
         return $warnings;
-    }
-
-    /** @param array<string, mixed> $before */
-    private function logSettingsUpdateWithReason(string $logName, ReviewSettings $settings, array $before, ?string $reason): void
-    {
-        $user = auth()->user();
-
-        if (! $user) {
-            return;
-        }
-
-        $changed = [];
-
-        foreach (get_object_vars($settings) as $key => $value) {
-            if (! array_key_exists($key, $before) || $before[$key] === $value) {
-                continue;
-            }
-
-            $changed[$key] = ['from' => $before[$key], 'to' => $value];
-        }
-
-        if ($changed === [] && $reason === null) {
-            return;
-        }
-
-        app(AuditTrailService::class)->logUser(
-            $user,
-            $logName,
-            'settings_updated',
-            class_basename($settings).' updated',
-            null,
-            array_filter([
-                'settings_class' => $settings::class,
-                'changed' => $changed,
-                'reason' => $reason,
-            ], fn ($value) => $value !== null),
-        );
     }
 
     private function canUpdate(): bool

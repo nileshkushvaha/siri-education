@@ -178,10 +178,9 @@ class SessionPage extends Page
             return;
         }
 
-        app(SecuritySettingsService::class)->saveSession(
-            $data,
-            app(SessionSettings::class),
-        );
+        if (! app(SecuritySettingsService::class)->saveSession($data)) {
+            return;
+        }
 
         Notification::make()->title('Session settings saved')->success()->send();
     }

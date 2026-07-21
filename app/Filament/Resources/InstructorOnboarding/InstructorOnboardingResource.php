@@ -85,10 +85,22 @@ class InstructorOnboardingResource extends Resource
             ->with('profile');
     }
 
+    /**
+     * Phase 24S.1 — GAP: Filament evaluates every registered resource's
+     * getNavigationBadge() on every admin page load, not just this
+     * resource's own pages. The Spatie `role()` query scope pre-resolves
+     * the role name via Role::findByName(), which throws RoleDoesNotExist
+     * if that row doesn't exist yet (fresh install, partial deployment,
+     * seeder not yet run) — crashing completely unrelated admin pages
+     * with a 500. whereHas('roles', ...) by name/guard instead performs
+     * the identical join when the role exists, and simply matches zero
+     * rows (not an exception) when it doesn't — a missing optional role
+     * record must never crash navigation.
+     */
     public static function pendingReviewQuery(): Builder
     {
         return User::query()
-            ->role('instructor')
+            ->whereHas('roles', fn (Builder $query) => $query->where('name', 'instructor')->where('guard_name', 'web'))
             ->whereHas('profile', fn (Builder $query) => $query->whereIn('instructor_status', InstructorStatus::needsReview()));
     }
 

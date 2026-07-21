@@ -7,12 +7,15 @@ namespace Tests\Feature\Settings;
 use App\Booking\Contracts\ZoomMeetingClient;
 use App\Filament\Pages\Settings\MeetingSettingsPage;
 use App\Filament\Pages\Settings\PlatformFoundationSettingsPage;
+use App\Models\Activity;
 use App\Models\User;
+use App\Services\AuditTrailService;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Livewire\Livewire;
 use Mockery;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -203,5 +206,108 @@ class MeetingSettingsPageTest extends TestCase
         Livewire::test(MeetingSettingsPage::class)
             ->call('testGoogleConfiguration')
             ->assertNotified('Google configuration: not_configured');
+    }
+
+    // ── Phase 24S: audit coverage, atomicity, and credential redaction ──────
+
+    private function latestMeetingSettingsUpdate(): ?Activity
+    {
+        return Activity::query()
+            ->where('event', 'settings_updated')
+            ->where('properties->settings_class', MeetingSettings::class)
+            ->latest('id')
+            ->first();
+    }
+
+    public function test_google_credentials_json_is_never_stored_in_audit_metadata(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(MeetingSettingsPage::class)
+            ->set('data.default_provider', 'google_meet')
+            ->set('data.google_meet_enabled', true)
+            ->set('data.google_auth_type', 'service_account')
+            ->set('data.google_calendar_id', 'primary')
+            ->set('data.google_credentials_json', self::FIRST_CREDENTIALS_JSON)
+            ->call('save');
+
+        $activity = $this->latestMeetingSettingsUpdate();
+        $this->assertNotNull($activity);
+
+        $changed = $activity->properties['changed']['google_credentials_json'];
+        $this->assertEqualsCanonicalizing(['changed', 'previously_set', 'now_set', 'action'], array_keys($changed));
+        $this->assertSame('set', $changed['action']);
+
+        $serialized = (string) json_encode($activity->properties);
+        $this->assertStringNotContainsString('FAKE_PRIVATE_KEY_TOKEN', $serialized);
+        $this->assertStringNotContainsString('client_email', $serialized);
+        $this->assertStringNotContainsString(self::FIRST_CREDENTIALS_JSON, $serialized);
+    }
+
+    public function test_zoom_client_secret_is_never_stored_in_audit_metadata(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(MeetingSettingsPage::class)
+            ->set('data.zoom_enabled', true)
+            ->set('data.zoom_client_id', 'synthetic-zoom-client-id')
+            ->set('data.zoom_client_secret', 'synthetic-zoom-client-secret')
+            ->call('save');
+
+        $activity = $this->latestMeetingSettingsUpdate();
+        $this->assertNotNull($activity);
+
+        $changed = $activity->properties['changed']['zoom_client_secret'];
+        $this->assertSame('set', $changed['action']);
+
+        // The public client_id is a plain, visible before/after value.
+        $this->assertSame('synthetic-zoom-client-id', $activity->properties['changed']['zoom_client_id']['to']);
+
+        $serialized = (string) json_encode($activity->properties);
+        $this->assertStringNotContainsString('synthetic-zoom-client-secret', $serialized);
+    }
+
+    public function test_saving_meeting_settings_with_no_changes_creates_no_audit_event(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        $settings = app(MeetingSettings::class);
+
+        Livewire::test(MeetingSettingsPage::class)
+            ->set('data.meetings_enabled', $settings->meetings_enabled)
+            ->set('data.default_provider', $settings->default_provider)
+            ->call('save');
+
+        $this->assertNull($this->latestMeetingSettingsUpdate());
+    }
+
+    public function test_a_forced_audit_failure_rolls_back_the_meeting_settings_change(): void
+    {
+        $settings = app(MeetingSettings::class);
+        $settings->meetings_enabled = false;
+        $settings->save();
+
+        $this->actingAs($this->superAdmin());
+
+        $this->app->instance(AuditTrailService::class, new class
+        {
+            public function logUser(...$args): never
+            {
+                throw new RuntimeException('Simulated audit failure');
+            }
+        });
+
+        Livewire::test(MeetingSettingsPage::class)
+            ->set('data.meetings_enabled', true)
+            ->set('data.default_provider', 'google_meet')
+            ->call('save');
+
+        // The settings write must not have committed either — proves the
+        // save() and its audit record share one transaction, not two
+        // separate steps (the pre-24S implementation wrote the audit
+        // event AFTER its own manual DB::transaction had already
+        // committed the settings change).
+        $this->assertFalse(app(MeetingSettings::class)->meetings_enabled);
+        $this->assertNull($this->latestMeetingSettingsUpdate());
     }
 }

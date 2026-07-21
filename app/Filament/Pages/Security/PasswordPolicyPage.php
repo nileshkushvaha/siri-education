@@ -198,10 +198,9 @@ class PasswordPolicyPage extends Page
             return;
         }
 
-        app(SecuritySettingsService::class)->savePasswordPolicy(
-            $data,
-            app(PasswordPolicySettings::class),
-        );
+        if (! app(SecuritySettingsService::class)->savePasswordPolicy($data)) {
+            return;
+        }
 
         Notification::make()->title('Password policy saved')->success()->send();
     }

@@ -22,16 +22,23 @@ use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\AuditTrailService;
+use App\Services\Student\StudentLifecycleService;
+use App\Settings\FeatureSettings;
 use App\Support\Financial\CurrencyEligibilityPolicy;
 use App\Support\Financial\Exceptions\CurrencyNotUsableException;
 use App\Support\Financial\FinancialOperation;
+use App\Support\MoneyFormatter;
 use App\Wallet\Enums\WalletLedgerEntryType;
+use App\Wallet\Exceptions\InsufficientBalanceException;
+use App\Wallet\Exceptions\WalletNotUsableException;
 use App\Wallet\Services\WalletLedgerService;
 use App\Wallet\Services\WalletService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Provider-agnostic payment workflow + booking/payment status sync:
@@ -53,6 +60,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         private readonly WalletService $wallets,
         private readonly WalletLedgerService $walletLedger,
         private readonly CurrencyEligibilityPolicy $currencyEligibility,
+        private readonly StudentLifecycleService $studentLifecycle,
     ) {}
 
     public function initiate(Booking $booking): PaymentIntentData
@@ -144,17 +152,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 return ['late_terminal', $this->handleLateTerminalPayment($locked, $reference)];
             }
 
-            $locked = $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Paid, $reference);
-            $locked = $this->bookings->clearReservation($locked);
-
-            $this->logPayment($locked, BookingPaymentStatus::Paid, ['payment_reference' => $reference]);
-
-            // Sync: a paid reservation confirms itself unless the type needs approval.
-            if ($locked->status === BookingStatus::Pending && ! $locked->type->requires_approval) {
-                $locked = $this->bookingService->confirm($locked);
-            }
-
-            return ['normal', $locked];
+            return ['normal', $this->finalizeSuccessfulPayment($locked, $reference)];
         });
 
         // After commit only — and never for Option B's late-terminal path,
@@ -166,6 +164,199 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         }
 
         return $booking;
+    }
+
+    /**
+     * The successful-payment mutation shared by every settlement path
+     * (gateway markPaid(), and payWithWallet() below): payment_status
+     * → Paid, reservation cleared, activity logged, and — unless the
+     * type needs approval — the booking auto-confirms. $locked must
+     * already be a row-locked, non-terminal booking; callers own their
+     * own transaction and reference/precondition checks.
+     */
+    private function finalizeSuccessfulPayment(Booking $locked, string $reference): Booking
+    {
+        $locked = $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Paid, $reference);
+        $locked = $this->bookings->clearReservation($locked);
+
+        $this->logPayment($locked, BookingPaymentStatus::Paid, ['payment_reference' => $reference]);
+
+        if ($locked->status === BookingStatus::Pending && ! $locked->type->requires_approval) {
+            $locked = $this->bookingService->confirm($locked);
+        }
+
+        return $locked;
+    }
+
+    /**
+     * Wallet checkout: no gateway, no redirect, no webhook — the whole
+     * operation is one synchronous request, so unlike initiate()/
+     * markPaid() there is no separate "create order" step and no
+     * external reference to correlate. $student must be the booking's
+     * own student; there is deliberately no admin-pays-on-behalf-of
+     * path here (unlike BookingPolicy::pay(), which also allows an
+     * Update:Booking permission holder for gateway checkout).
+     *
+     * The wallet debit and the booking/payment finalization commit as
+     * one transaction: a debit can never be persisted without the
+     * booking finalizing, and the booking can never finalize without
+     * the debit. A retried/duplicate call is made safe by the row lock
+     * below (see its own comment) rather than an idempotency key alone
+     * — the debit is still given one (keyed on the fresh BookingPayment
+     * attempt's id), matching every other WalletLedgerService caller's
+     * convention, but the lock is the actual defense here.
+     */
+    public function payWithWallet(Booking $booking, User $student): Booking
+    {
+        $booking = DB::transaction(function () use ($booking, $student): Booking {
+            // Locked, re-validated read — identical discipline to
+            // markPaid()/initiate(). A concurrent second call for the
+            // same booking blocks here until the first commits, then
+            // observes payment_status no longer Pending and is rejected
+            // by assertWalletPaymentAllowed() below: no separate
+            // idempotency bookkeeping is needed, the lock plus this
+            // precondition together make a double-debit impossible.
+            $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+
+            $this->assertWalletPaymentAllowed($locked, $student);
+
+            $wallet = $this->resolveMatchingWallet($locked, $student);
+            $payment = $this->createWalletPaymentAttempt($locked, $student);
+
+            try {
+                $this->walletLedger->debit(
+                    $wallet,
+                    $payment->amount_minor,
+                    WalletLedgerEntryType::BookingPayment,
+                    $student,
+                    idempotencyKey: $this->walletDebitIdempotencyKey($payment),
+                    description: sprintf('Payment for booking %s.', $locked->reference),
+                    sourceType: BookingPayment::class,
+                    sourceId: (string) $payment->id,
+                );
+            } catch (InsufficientBalanceException) {
+                throw new BookingException('Your wallet balance is not sufficient to pay for this booking.');
+            } catch (WalletNotUsableException) {
+                throw new BookingException('Your wallet is not currently usable. Please contact support.');
+            }
+
+            $payment->forceFill([
+                'status' => BookingPaymentRecordStatus::Captured,
+                'paid_at' => now(),
+            ])->save();
+
+            return $this->finalizeSuccessfulPayment($locked, $payment->idempotency_key);
+        });
+
+        // Same after-commit discipline as markPaid(): the notification/
+        // meeting-creation pipeline must only ever react to a genuinely
+        // committed payment.
+        BookingPaymentSucceeded::dispatch($booking);
+
+        return $booking;
+    }
+
+    /**
+     * Every precondition a wallet payment must satisfy, re-checked
+     * against the just-locked row — never the caller-supplied $booking,
+     * which may already be stale.
+     */
+    private function assertWalletPaymentAllowed(Booking $locked, User $student): void
+    {
+        if ($student->id !== $locked->student_id) {
+            throw new BookingException('You may only pay for your own booking.');
+        }
+
+        $this->studentLifecycle->assertEligibleForStudentAction($student);
+
+        if (! app(FeatureSettings::class)->wallet_enabled) {
+            throw new BookingException('Wallet payments are not currently enabled.');
+        }
+
+        if ($locked->status->isTerminal()) {
+            throw new BookingException(sprintf(
+                'Booking %s is %s and cannot accept a new payment.',
+                $locked->reference,
+                $locked->status->label(),
+            ));
+        }
+
+        if (! $locked->payment_status->isPayable()) {
+            throw new BookingException(sprintf(
+                'Booking %s does not await payment (status: %s).',
+                $locked->reference,
+                $locked->payment_status->label(),
+            ));
+        }
+    }
+
+    /**
+     * The wallet must already exist in exactly the booking's currency —
+     * wallet payment never creates a wallet in a different currency
+     * than the student's own (single-currency, SRS §13.7), and never
+     * silently converts. A student with no wallet yet gets one lazily
+     * created in their OWN resolved default currency (never the
+     * booking's), then compared the same as if it already existed.
+     */
+    private function resolveMatchingWallet(Booking $locked, User $student): Wallet
+    {
+        try {
+            $wallet = $this->wallets->getOrCreateWallet($student, null, $student);
+        } catch (CurrencyNotUsableException|ValidationException) {
+            // WalletService::resolveCurrency() translates an inactive
+            // currency into a ValidationException, not
+            // CurrencyNotUsableException — both must map to the same
+            // safe message here, since money is never earned/re-thrown
+            // as a raw framework validation error to the payer.
+            throw new BookingException('Your wallet currency is not currently active.');
+        }
+
+        if (strtoupper($wallet->currency_code) !== strtoupper((string) $locked->currency)) {
+            throw new BookingException('Your wallet currency does not match this booking\'s currency.');
+        }
+
+        try {
+            $this->currencyEligibility->assertUsable((string) $locked->currency, FinancialOperation::NewInitiation, lock: true);
+        } catch (CurrencyNotUsableException) {
+            throw new BookingException('This booking\'s currency is not currently active.');
+        }
+
+        return $wallet;
+    }
+
+    /**
+     * A fresh BookingPayment attempt for this wallet payment. No
+     * firstOrCreate()-style reuse is needed: this only ever runs after
+     * assertWalletPaymentAllowed() has confirmed the booking still
+     * awaits payment, inside the same transaction/row-lock as the debit
+     * and finalization below — either everything here commits together,
+     * or (on any failure) the whole attempt, including this row, rolls
+     * back, so a failed try leaves nothing behind to reuse or collide
+     * with a subsequent one. The idempotency_key is wallet-prefixed and
+     * unambiguous — never a value that could be mistaken for a real
+     * gateway reference (see FakePaymentProvider::createPayment() for
+     * the 'PAY-' convention this deliberately does not imitate).
+     */
+    private function createWalletPaymentAttempt(Booking $locked, User $student): BookingPayment
+    {
+        $minorUnits = MoneyFormatter::minorUnitsFor((string) $locked->currency);
+        $amountMinor = (int) round(((float) $locked->price) * (10 ** $minorUnits));
+
+        return BookingPayment::query()->create([
+            'booking_id' => $locked->id,
+            'user_id' => $student->id,
+            'provider' => 'wallet',
+            'amount_minor' => $amountMinor,
+            'currency_code' => (string) $locked->currency,
+            'status' => BookingPaymentRecordStatus::Pending,
+            'idempotency_key' => 'WALLET-'.strtoupper(Str::random(12)),
+            'metadata' => ['wallet_payment' => true],
+        ]);
+    }
+
+    private function walletDebitIdempotencyKey(BookingPayment $payment): string
+    {
+        return sprintf('booking-payment:wallet:%s', $payment->id);
     }
 
     /**

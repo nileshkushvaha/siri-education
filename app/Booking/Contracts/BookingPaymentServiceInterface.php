@@ -33,6 +33,20 @@ interface BookingPaymentServiceInterface
     public function initiate(Booking $booking): PaymentIntentData;
 
     /**
+     * Pays for the booking directly from the student's own wallet
+     * balance — a synchronous, self-contained alternative to gateway
+     * checkout with no redirect, webhook, or reconciliation lifecycle.
+     * $student must be the booking's own student; no admin-on-behalf-of
+     * path exists for this method. Debits the wallet and finalizes the
+     * booking/payment atomically — either both happen or neither does.
+     *
+     * @throws BookingException when the booking does not await payment, the actor is not the booking's own student,
+     *                          the wallet feature is disabled, the currency is not usable, or the wallet balance
+     *                          is insufficient
+     */
+    public function payWithWallet(Booking $booking, User $student): Booking;
+
+    /**
      * Payment succeeded — settle and confirm the reservation.
      *
      * @throws BookingException when the reference does not match

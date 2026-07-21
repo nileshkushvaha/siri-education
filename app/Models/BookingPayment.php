@@ -16,10 +16,14 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * One gateway payment attempt for a booking. Not the wallet ledger —
- * this tracks a booking's order/payment lifecycle with a gateway; it
- * never records money movement between wallets. Never stores card/UPI
- * details or the raw webhook/checkout signature.
+ * One payment attempt for a booking — via a gateway (provider =
+ * razorpay/stripe/fake) or directly from the student's own wallet
+ * (provider = 'wallet', no provider_order_id/provider_payment_id, no
+ * webhook). Not the wallet ledger itself — a wallet-paid row never
+ * records the wallet's own balance movement, only that this booking
+ * was settled that way; the actual debit lives on its own
+ * WalletLedgerEntry, linked back here via source_type/source_id. Never
+ * stores card/UPI details or the raw webhook/checkout signature.
  */
 class BookingPayment extends Model
 {

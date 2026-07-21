@@ -23,6 +23,10 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Settings\BookingSettings;
+use App\Settings\FeatureSettings;
+use App\Wallet\Enums\WalletLedgerEntryType;
+use App\Wallet\Services\WalletLedgerService;
+use App\Wallet\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -453,5 +457,47 @@ class CancellationRefundExecutionTest extends TestCase
             ->where('description', 'like', '%cancelled outside the refund window%')
             ->exists();
         $this->assertTrue($auditEntry, 'Ineligible cancellation must also be traceable in the unified audit log.');
+    }
+
+    // ── Phase 25B (GAP-002) — a wallet-paid booking refunds through the ────
+    // same unmodified pipeline as a gateway-paid booking: SyncPaymentOnCancellation
+    // only ever looks for a Captured BookingPayment row regardless of provider.
+
+    public function test_wallet_paid_booking_cancellation_credits_the_wallet_through_the_unmodified_refund_pipeline(): void
+    {
+        app(FeatureSettings::class)->wallet_enabled = true;
+
+        $this->setWindow(24);
+        $startsAt = CarbonImmutable::parse('2026-08-10 10:00:00', 'UTC');
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+
+        $booking = Booking::factory()->create([
+            'student_id' => $student->id,
+            'booking_type_id' => $this->paidType->id,
+            'status' => BookingStatus::Pending,
+            'payment_status' => BookingPaymentStatus::Pending,
+            'starts_at' => $startsAt,
+            'ends_at' => $startsAt->addMinutes(30),
+            'price' => '499.00',
+            'currency' => 'INR',
+        ]);
+
+        $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+        app(WalletLedgerService::class)->credit($wallet, 100000, WalletLedgerEntryType::PromotionalCredit, $student);
+
+        $paid = app(BookingPaymentServiceInterface::class)->payWithWallet($booking, $student);
+        $this->assertSame(BookingPaymentStatus::Paid, $paid->payment_status);
+        $this->assertSame(50100, $wallet->fresh()->balance_minor);
+
+        $this->cancel($paid, BookingActor::Student, $startsAt->subHours(48));
+
+        $walletAfterRefund = $wallet->fresh();
+        $this->assertSame(100000, $walletAfterRefund->balance_minor, 'The refund must restore the wallet-paid amount, using the same refundToWallet() path as a gateway payment.');
+        // 3 entries: the initial funding credit, the wallet-payment debit, and the cancellation-refund credit.
+        $this->assertSame(3, WalletLedgerEntry::query()->where('wallet_id', $wallet->id)->count());
+
+        $payment = BookingPayment::query()->where('booking_id', $paid->id)->sole();
+        $this->assertSame('wallet', $payment->provider);
+        $this->assertSame('wallet_credited', $payment->fresh()->metadata['refund_resolution']);
     }
 }

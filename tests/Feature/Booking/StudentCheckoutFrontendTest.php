@@ -26,7 +26,11 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Settings\BookingSettings;
+use App\Settings\FeatureSettings;
 use App\Settings\PaymentGatewaySettings;
+use App\Wallet\Enums\WalletLedgerEntryType;
+use App\Wallet\Services\WalletLedgerService;
+use App\Wallet\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Livewire\Livewire;
@@ -160,10 +164,8 @@ class StudentCheckoutFrontendTest extends TestCase
             ->assertSee('Pay now');
     }
 
-    public function test_wallet_option_shows_as_coming_soon_for_a_paid_booking(): void
+    public function test_wallet_option_is_hidden_when_wallet_payments_are_disabled(): void
     {
-        // Wallet-to-booking debit is explicitly out of scope this phase
-        // (spec section E) — the option must be visible but inert.
         $this->configureRazorpay();
         $this->fakeRazorpayOrder();
         $student = $this->student();
@@ -172,8 +174,44 @@ class StudentCheckoutFrontendTest extends TestCase
         Livewire::actingAs($student)
             ->test(BookingHistory::class)
             ->call('viewBooking', $booking->id)
-            ->assertSee('wallet balance')
-            ->assertSee('coming soon');
+            ->assertSee('Pay now')
+            ->assertDontSee('Pay from wallet');
+    }
+
+    public function test_wallet_option_shows_pay_from_wallet_when_enabled_with_sufficient_balance(): void
+    {
+        app(FeatureSettings::class)->wallet_enabled = true;
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrder();
+        $student = $this->student();
+        $booking = $this->paidBooking($student);
+
+        $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+        app(WalletLedgerService::class)->credit($wallet, 100000, WalletLedgerEntryType::PromotionalCredit, $student);
+
+        Livewire::actingAs($student)
+            ->test(BookingHistory::class)
+            ->call('viewBooking', $booking->id)
+            ->assertSee('Wallet balance')
+            ->assertSee('Pay from wallet');
+    }
+
+    public function test_wallet_option_shows_insufficient_balance_message_when_enabled_with_low_balance(): void
+    {
+        app(FeatureSettings::class)->wallet_enabled = true;
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrder();
+        $student = $this->student();
+        $booking = $this->paidBooking($student);
+
+        $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+        app(WalletLedgerService::class)->credit($wallet, 100, WalletLedgerEntryType::PromotionalCredit, $student);
+
+        Livewire::actingAs($student)
+            ->test(BookingHistory::class)
+            ->call('viewBooking', $booking->id)
+            ->assertSee('not sufficient')
+            ->assertDontSee('Pay from wallet');
     }
 
     public function test_student_does_not_see_pay_now_for_free_demo_booking(): void
@@ -452,8 +490,7 @@ class StudentCheckoutFrontendTest extends TestCase
         $component = Livewire::actingAs($student)
             ->test(BookingHistory::class)
             ->call('viewBooking', $booking->id)
-            ->call('initiatePayment')
-            ->assertSee('coming soon');
+            ->call('initiatePayment');
 
         $html = $component->html();
         $this->assertStringNotContainsString('sk_test_abc123', $html);

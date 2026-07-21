@@ -462,7 +462,23 @@
                                         <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
                                     </x-ui.button>
 
-                                    <p class="mt-2 text-[11px] text-slate-500">Wallet payment is not available for this booking yet. Available payment methods appear securely above.</p>
+                                    @if($walletOption['available'] ?? false)
+                                        <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/40 p-3 text-left">
+                                            <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Pay with wallet</p>
+                                            <p class="mt-1 text-xs text-slate-400">Wallet balance: <span class="font-semibold text-white">{{ $walletOption['balance_formatted'] }}</span></p>
+
+                                            @if($walletOption['sufficient'] ?? false)
+                                                <x-ui.button type="button" variant="ghost" class="mt-2 w-full justify-center" wire:click="payWithWallet" wire:loading.attr="disabled" wire:target="payWithWallet">
+                                                    <span wire:loading.remove wire:target="payWithWallet">Pay from wallet</span>
+                                                    <span wire:loading wire:target="payWithWallet">Paying...</span>
+                                                </x-ui.button>
+                                            @else
+                                                <p class="mt-2 text-[11px] text-amber-300">Your wallet balance is not sufficient to pay for this booking.</p>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <p class="mt-2 text-[11px] text-slate-500">Wallet payment is not available for this booking yet. Available payment methods appear securely above.</p>
+                                    @endif
 
                                     @if(($paymentOrder['provider'] ?? null) === 'stripe')
                                         {{-- wire:ignore: this subtree is polled by checkPaymentStatus() every

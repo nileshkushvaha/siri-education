@@ -143,7 +143,21 @@
                         <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
                     </x-ui.button>
 
-                    <p class="mt-2 text-[11px] text-slate-500">Pay with wallet balance — coming soon.</p>
+                    @if($this->walletOption()['available'] ?? false)
+                        <div class="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Pay with wallet</p>
+                            <p class="mt-1 text-xs text-slate-400">Wallet balance: <span class="font-semibold text-white">{{ $this->walletOption()['balance_formatted'] }}</span></p>
+
+                            @if($this->walletOption()['sufficient'] ?? false)
+                                <x-ui.button type="button" variant="ghost" size="sm" class="mt-2" wire:click="payWithWallet" wire:loading.attr="disabled" wire:target="payWithWallet">
+                                    <span wire:loading.remove wire:target="payWithWallet">Pay from wallet</span>
+                                    <span wire:loading wire:target="payWithWallet">Paying...</span>
+                                </x-ui.button>
+                            @else
+                                <p class="mt-2 text-[11px] text-amber-300">Your wallet balance is not sufficient to pay for this booking.</p>
+                            @endif
+                        </div>
+                    @endif
 
                     @if(($paymentOrder['provider'] ?? null) === 'stripe')
                         {{-- wire:ignore: this subtree is polled by checkPaymentStatus() every few

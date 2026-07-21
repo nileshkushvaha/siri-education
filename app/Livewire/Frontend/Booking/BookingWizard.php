@@ -11,6 +11,10 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
+use App\Models\Wallet;
+use App\Settings\FeatureSettings;
+use App\Support\MoneyFormatter;
+use App\Wallet\Support\WalletMoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
@@ -95,6 +99,16 @@ final class BookingWizard extends Component
     public array $paymentOrder = [];
 
     public string $paymentBanner = '';
+
+    /**
+     * Display-only — never treated as authoritative. Populated by
+     * refreshWalletOption() whenever the payment-awaiting phase is
+     * reached or re-rendered; payWithWallet() always re-checks balance
+     * and eligibility itself before debiting anything.
+     *
+     * @var array<string, mixed>
+     */
+    public array $walletOption = [];
 
     /**
      * Set once in mount() from a server-validated slug lookup and never
@@ -292,6 +306,7 @@ final class BookingWizard extends Component
                 $booking = $this->wizard->book($payload);
                 $this->bookingId = $booking->id;
                 $this->result = $this->wizard->result($booking);
+                $this->refreshWalletOption();
             }
 
             $this->goToPhase('confirmed');
@@ -360,6 +375,73 @@ final class BookingWizard extends Component
         } catch (BookingException $exception) {
             $this->paymentBanner = $exception->getMessage();
         }
+    }
+
+    /**
+     * Pays the reserved booking directly from the student's wallet — no
+     * gateway, no redirect, settles in this one request. See
+     * BookingHistory::payWithWallet() for the identical pattern.
+     */
+    public function payWithWallet(): void
+    {
+        $this->paymentBanner = '';
+
+        if ($this->bookingId === null) {
+            return;
+        }
+
+        try {
+            $booking = $this->bookings->findOrFail($this->bookingId);
+            $booking = $this->payments->payWithWallet($booking, auth()->user());
+
+            $this->result = $this->wizard->result($booking);
+        } catch (BookingException $exception) {
+            $this->paymentBanner = $exception->getMessage();
+        }
+
+        $this->refreshWalletOption();
+    }
+
+    /**
+     * Display-only wallet-balance snapshot for the payment-awaiting
+     * screen — never authoritative; payWithWallet() re-validates
+     * everything itself. Reads the wallet if one already exists but
+     * never creates one merely from viewing this screen.
+     */
+    private function refreshWalletOption(): void
+    {
+        $this->walletOption = [];
+
+        if ($this->bookingId === null || ! app(FeatureSettings::class)->wallet_enabled) {
+            return;
+        }
+
+        $booking = $this->bookings->findOrFail($this->bookingId)->refresh();
+
+        if (! $booking->payment_status->isPayable()) {
+            return;
+        }
+
+        $wallet = Wallet::query()
+            ->forUser((int) auth()->id())
+            ->where('currency_code', $booking->currency)
+            ->with('currency')
+            ->first();
+
+        if ($wallet === null) {
+            $this->walletOption = ['available' => false];
+
+            return;
+        }
+
+        $minorUnits = MoneyFormatter::minorUnitsFor((string) $booking->currency);
+        $amountMinor = (int) round(((float) $booking->price) * (10 ** $minorUnits));
+
+        $this->walletOption = [
+            'available' => true,
+            'sufficient' => $wallet->available_balance_minor >= $amountMinor,
+            'balance_formatted' => WalletMoneyFormatter::format($wallet->available_balance_minor, $wallet->currency, $wallet->currency_code),
+        ];
     }
 
     /** Local/testing-only — see BookingHistory::simulateFakePayment() for the identical rationale. */

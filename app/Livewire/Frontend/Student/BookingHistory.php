@@ -23,6 +23,10 @@ use App\Booking\Services\CancellationRefundPolicy;
 use App\Booking\Services\RescheduleLimitPolicy;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\Wallet;
+use App\Settings\FeatureSettings;
+use App\Support\MoneyFormatter;
+use App\Wallet\Support\WalletMoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -277,6 +281,30 @@ final class BookingHistory extends Component
     }
 
     /**
+     * Pays the selected booking directly from the student's wallet — no
+     * gateway, no redirect, settles in this one request. See
+     * BookingWizard::payWithWallet() for the identical pattern.
+     */
+    public function payWithWallet(): void
+    {
+        if (! $this->selectedBooking) {
+            return;
+        }
+
+        Gate::authorize('pay', $this->selectedBooking);
+
+        $this->modalBanner = '';
+
+        try {
+            $booking = $this->payments->payWithWallet($this->selectedBooking, auth()->user());
+
+            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'instructor']);
+        } catch (BookingException $exception) {
+            $this->modalBanner = $exception->getMessage();
+        }
+    }
+
+    /**
      * Polled by the Stripe Payment Element partial after
      * stripe.confirmPayment() returns client-side — never trusted as
      * settlement itself, only a signal to re-check what the server
@@ -455,6 +483,45 @@ final class BookingHistory extends Component
             'manual_resolution_required' => 'Your refund is being reviewed by our team.',
             default => null,
         };
+    }
+
+    /**
+     * Display-only wallet-balance snapshot for the payment-awaiting
+     * section — never authoritative; payWithWallet() re-validates
+     * balance and eligibility itself before debiting anything. Reads
+     * the wallet if one already exists but never creates one merely
+     * from viewing this screen.
+     *
+     * @return array{available: bool, sufficient?: bool, balance_formatted?: string}|null
+     */
+    public function walletOption(): ?array
+    {
+        if (! $this->selectedBooking || ! app(FeatureSettings::class)->wallet_enabled) {
+            return null;
+        }
+
+        if (! $this->selectedBooking->payment_status->isPayable()) {
+            return null;
+        }
+
+        $wallet = Wallet::query()
+            ->forUser((int) auth()->id())
+            ->where('currency_code', $this->selectedBooking->currency)
+            ->with('currency')
+            ->first();
+
+        if ($wallet === null) {
+            return ['available' => false];
+        }
+
+        $minorUnits = MoneyFormatter::minorUnitsFor((string) $this->selectedBooking->currency);
+        $amountMinor = (int) round(((float) $this->selectedBooking->price) * (10 ** $minorUnits));
+
+        return [
+            'available' => true,
+            'sufficient' => $wallet->available_balance_minor >= $amountMinor,
+            'balance_formatted' => WalletMoneyFormatter::format($wallet->available_balance_minor, $wallet->currency, $wallet->currency_code),
+        ];
     }
 
     public function render(): View

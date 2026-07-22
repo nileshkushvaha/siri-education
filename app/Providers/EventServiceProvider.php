@@ -38,6 +38,8 @@ use App\Listeners\Earnings\CreateEarningOnLessonCompleted;
 use App\Listeners\Earnings\ReevaluateLessonFinancialDisposition;
 use App\Listeners\Earnings\ReverseEarningOnLessonCancelled;
 use App\Listeners\Earnings\SyncEarningOnLessonDisputed;
+use App\Listeners\LearningPlans\RecalculateLearningPlanProgressOnLessonOutcomeFinalized;
+use App\Listeners\LearningPlans\RecalculateLearningPlanProgressOnLessonOutcomeOverridden;
 use App\Listeners\Lesson\CreateLessonOnBookingConfirmed;
 use App\Listeners\Lesson\SyncLessonOnBookingCancelled;
 use App\Listeners\Lesson\SyncLessonOnBookingCompleted;
@@ -234,12 +236,14 @@ class EventServiceProvider extends ServiceProvider
             DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized::class,
             // Phase 19D — the only automatic referral-reward trigger.
             EvaluateReferralRewardOnLessonOutcomeFinalized::class,
+            RecalculateLearningPlanProgressOnLessonOutcomeFinalized::class,
         ],
         LessonOutcomeOverridden::class => [
             ReevaluateLessonFinancialDisposition::class,
             ReevaluateReviewEligibilityOnLessonOutcomeOverridden::class,
             ReevaluateQualityAlertOnLessonOutcomeOverridden::class,
             ReevaluateReferralRewardOnLessonOutcomeOverridden::class,
+            RecalculateLearningPlanProgressOnLessonOutcomeOverridden::class,
         ],
         // Phase 19D — a refunded lesson invalidates its referral reward.
         LessonRefundCompleted::class => [

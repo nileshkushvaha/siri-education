@@ -50,6 +50,14 @@
                     <h3 class="text-sm font-semibold text-slate-200">Progress Review</h3>
                     <textarea wire:model="reviewSummary" rows="4" placeholder="Review summary"
                               class="w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-white placeholder:text-slate-500"></textarea>
+                    <div>
+                        <label for="reviewProgressPercent" class="block text-xs text-slate-400 mb-1">Overall progress (%)</label>
+                        <input type="number" id="reviewProgressPercent" wire:model="reviewProgressPercent" min="0" max="100" step="1"
+                               placeholder="Leave blank if not assessed this review"
+                               class="w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-white placeholder:text-slate-500">
+                        <p class="mt-1 text-xs text-slate-500">Your current structured assessment of the student's overall progress — leave blank for "not assessed," not 0.</p>
+                        @error('reviewProgressPercent') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
+                    </div>
                     <button class="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-semibold text-white">Create</button>
                 </form>
             </div>

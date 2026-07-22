@@ -145,7 +145,7 @@ final class StudentDashboardService
             ->whereIn('status', [LearningPlanMilestoneStatus::Pending, LearningPlanMilestoneStatus::InProgress])
             ->orderBy('sort_order')->value('title');
         $review = LearningPlanReview::query()->where('learning_plan_id', $plan->id)
-            ->whereNotNull('reviewed_at')->latest('reviewed_at')->first(['reviewed_at', 'summary']);
+            ->whereNotNull('reviewed_at')->latest('reviewed_at')->first(['reviewed_at', 'summary', 'progress_percent']);
 
         return [
             'title' => $plan->title,
@@ -158,6 +158,7 @@ final class StudentDashboardService
             'next_milestone' => $next,
             'last_review_at' => $review?->reviewed_at,
             'last_review' => $review?->summary,
+            'last_review_progress_percent' => $review?->progress_percent,
         ];
     }
 

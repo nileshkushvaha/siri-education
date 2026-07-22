@@ -14,6 +14,7 @@ class LearningPlanReview extends Model
         'student_user_id',
         'instructor_user_id',
         'review_number',
+        'progress_percent',
         'summary',
         'progress_notes',
         'challenges',
@@ -29,6 +30,7 @@ class LearningPlanReview extends Model
     {
         return [
             'review_number' => 'integer',
+            'progress_percent' => 'integer',
             'reviewed_at' => 'datetime',
         ];
     }

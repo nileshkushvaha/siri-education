@@ -6,32 +6,26 @@ namespace App\Services\Student;
 
 use App\Enums\LearningPlanMilestoneStatus;
 use App\Homework\Enums\HomeworkStatus;
+use App\Lessons\Enums\LessonOutcome;
 use App\Models\StudentLearningPlan;
 
 /**
  * The single source of a learning plan's progress percentage (SRS
- * §6.17 item 5 / GAP-023). Averages every SRS evidence domain the
- * current data model can reliably attribute to exactly one plan —
- * milestones and directly-linked homework today — giving each
- * applicable domain equal weight and excluding a domain from the
- * average entirely when the plan has no applicable records in it,
- * rather than penalizing the plan with an invented zero.
+ * §6.17.5 / GAP-023). Averages every SRS evidence domain — milestones,
+ * directly-linked homework, plan-linked lessons, and the latest
+ * structured academic-review assessment — giving each applicable
+ * domain equal weight and excluding a domain entirely when the plan
+ * has no applicable evidence in it, rather than penalizing the plan
+ * with an invented zero.
  *
- * Lessons and periodic reviews are deliberately NOT included yet:
- *
- * - No relationship exists anywhere in the schema between
- *   Lesson/Booking and StudentLearningPlan, so a lesson cannot be
- *   attributed to exactly one plan without inventing a new
- *   relationship — a schema/workflow change, not a calculation fix.
- *   lessonsPercentage() is the preserved boundary for when a real
- *   link exists.
- * - LearningPlanReview carries no structured completion/progress
- *   field (every column is free text) and `reviewed_at` is always
- *   set at creation time — there is no draft state, so every review
- *   row is trivially "done" the instant it exists. Reading a
- *   completion signal from it would require inventing a review
- *   schedule/quota the SRS does not define. reviewsPercentage() is
- *   the preserved boundary for when a structured field is added.
+ * The review domain is deliberately NOT an average of every review: a
+ * review has no draft/finalized lifecycle of its own (`reviewed_at` is
+ * always set at creation), so a persisted review with both
+ * `reviewed_at` and a non-null `progress_percent` is finalized
+ * evidence by construction, and only the LATEST such review is read —
+ * it is the instructor's current structured assessment, not a
+ * historical checkpoint to be averaged with earlier ones. Reviews
+ * without a structured percentage (free text only) never contribute.
  *
  * Read-only: never mutates the plan or its relations.
  */
@@ -88,16 +82,59 @@ final class LearningPlanProgressCalculator
         return $this->percentage($completed, $total);
     }
 
-    /** Preserved boundary — see class docblock. Not yet computable. */
+    /**
+     * The latest eligible review's structured percentage — never an
+     * average across reviews, never inferred from free text, never a
+     * count of "reviews completed." Ordered by the authoritative
+     * review timestamp, primary key as a deterministic tie-breaker.
+     * reorder() clears the reviews() relation's default
+     * orderBy('review_number'), which would otherwise take precedence
+     * over the ordering this method actually needs.
+     */
     private function reviewsPercentage(StudentLearningPlan $plan): ?int
     {
-        return null;
+        $review = $plan->reviews()
+            ->reorder()
+            ->whereNotNull('reviewed_at')
+            ->whereNotNull('progress_percent')
+            ->orderByDesc('reviewed_at')
+            ->orderByDesc('id')
+            ->first(['id', 'progress_percent']);
+
+        return $review?->progress_percent;
     }
 
-    /** Preserved boundary — see class docblock. Not yet computable. */
+    /**
+     * Only finalized outcomes that represent an expected, settled
+     * learning activity enter the denominator: Completed plus every
+     * finalized no-show variant (the lesson happened, on schedule, but
+     * did not produce completed learning). Pending (unfinalized) and
+     * TechnicalIssue (parked in Disputed, not yet resolved) are
+     * excluded entirely — not "0%", simply not yet evidence. Cancelled
+     * lessons are excluded per SRS §6.17.5 cancellation treatment.
+     * Soft-deleted lessons are excluded automatically by Lesson's
+     * default query scope.
+     */
     private function lessonsPercentage(StudentLearningPlan $plan): ?int
     {
-        return null;
+        $countedOutcomes = [
+            LessonOutcome::Completed->value,
+            LessonOutcome::StudentNoShow->value,
+            LessonOutcome::InstructorNoShow->value,
+            LessonOutcome::BothAbsent->value,
+        ];
+
+        $total = $plan->lessons()->whereIn('outcome', $countedOutcomes)->count();
+
+        if ($total === 0) {
+            return null;
+        }
+
+        $completed = $plan->lessons()
+            ->where('outcome', LessonOutcome::Completed->value)
+            ->count();
+
+        return $this->percentage($completed, $total);
     }
 
     private function percentage(int $completed, int $total): int

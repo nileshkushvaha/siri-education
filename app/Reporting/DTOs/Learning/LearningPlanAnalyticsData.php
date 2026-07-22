@@ -20,7 +20,8 @@ use App\Reporting\DTOs\Operations\LabeledCountRow;
  * basis. `averageActiveProgressPercent` is the mean of the
  * domain-maintained `progress_percent` (§6.17-5 — recalculated by
  * LearningPlanProgressCalculator as the average of each applicable
- * evidence domain: milestones and directly-linked homework today,
+ * evidence domain: milestones, directly-linked homework, plan-linked
+ * lessons, and the latest structured academic-review percentage,
  * excluding a domain entirely when the plan has no applicable
  * records in it; forced to 100 on manual plan completion) across
  * currently Active plans, null when no plan is Active. No completion

@@ -3,9 +3,11 @@
 namespace Database\Factories;
 
 use App\Lessons\Enums\LessonAttendanceStatus;
+use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\Lesson;
+use App\Models\StudentLearningPlan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
@@ -63,5 +65,25 @@ class LessonFactory extends Factory
     public function cancelled(): static
     {
         return $this->state(['status' => LessonStatus::Cancelled]);
+    }
+
+    /** Links to a specific plan, inheriting its student/instructor/subject/level so the pair stays consistent with LessonLearningPlanResolver's own matching invariant. */
+    public function forLearningPlan(StudentLearningPlan $plan): static
+    {
+        return $this->state([
+            'learning_plan_id' => $plan->id,
+            'student_id' => $plan->student_user_id,
+            'instructor_id' => $plan->primary_instructor_user_id,
+            'subject_id' => $plan->subject_id,
+            'academic_level_id' => $plan->academic_level_id,
+        ]);
+    }
+
+    public function withOutcome(LessonOutcome $outcome): static
+    {
+        return $this->state([
+            'outcome' => $outcome,
+            'outcome_finalized_at' => $outcome !== LessonOutcome::Pending ? now() : null,
+        ]);
     }
 }

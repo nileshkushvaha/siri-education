@@ -7,11 +7,13 @@ namespace App\Lessons\Actions;
 use App\Lessons\Contracts\LessonRepositoryInterface;
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonStatus;
+use App\Lessons\Services\LessonLearningPlanResolver;
 use App\Models\AcademicLevel;
 use App\Models\Booking;
 use App\Models\Lesson;
 use App\Models\Subject;
 use App\Models\SubjectTopic;
+use App\Services\Student\LearningPlanProgressService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,11 +21,22 @@ use Illuminate\Support\Facades\DB;
  * academic context (subject/topic) from the booking's Phase 12.5 meta.
  * Eligibility and idempotency are LessonLifecycleService's job — this
  * action only resolves the snapshot and writes.
+ *
+ * SRS §6.17.5 / §6.17.10 (GAP-023): also resolves an optional learning-
+ * plan association through LessonLearningPlanResolver — server-side
+ * only, never a client-supplied plan id. Demo (unpaid) bookings are
+ * never candidates for association: no SRS rule or existing workflow
+ * supports attaching a pre-plan demo to a learning plan. A newly
+ * associated plan is recalculated in the same transaction as the
+ * lesson write, since it has no prior lesson evidence to have already
+ * counted.
  */
 final class CreateLessonFromBookingAction
 {
     public function __construct(
         private readonly LessonRepositoryInterface $lessons,
+        private readonly LessonLearningPlanResolver $planResolver,
+        private readonly LearningPlanProgressService $progress,
     ) {}
 
     public function execute(Booking $booking): Lesson
@@ -31,25 +44,39 @@ final class CreateLessonFromBookingAction
         $meta = $booking->meta ?? [];
         $topic = $this->resolveTopic($meta['topic_id'] ?? null);
         $subjectId = $topic?->subject_id ?? $this->resolveSubjectId($meta['subject'] ?? null);
+        $academicLevelId = $this->resolveAcademicLevelId($meta['grade'] ?? null);
 
-        return DB::transaction(fn (): Lesson => $this->lessons->create([
-            'booking_id' => $booking->id,
-            'student_id' => $booking->student_id,
-            'instructor_id' => $booking->instructor_id,
-            'subject_id' => $subjectId,
-            'subject_topic_id' => $topic?->id,
-            // Bookings carry a grade int, not a level id — resolve the
-            // level only when it is unambiguous; the raw grade is kept
-            // in the sanitized metadata snapshot below either way.
-            'academic_level_id' => $this->resolveAcademicLevelId($meta['grade'] ?? null),
-            'starts_at' => $booking->starts_at,
-            'ends_at' => $booking->ends_at,
-            'timezone' => $booking->timezone ?? 'UTC',
-            'status' => LessonStatus::Scheduled,
-            'student_attendance_status' => LessonAttendanceStatus::Pending,
-            'instructor_attendance_status' => LessonAttendanceStatus::Pending,
-            'metadata' => $this->sanitizedSnapshot($booking, $meta),
-        ]));
+        $plan = $booking->type?->is_paid === true
+            ? $this->planResolver->resolve($booking->student_id, $subjectId, $academicLevelId, $booking->instructor_id)
+            : null;
+
+        return DB::transaction(function () use ($booking, $subjectId, $topic, $academicLevelId, $meta, $plan): Lesson {
+            $lesson = $this->lessons->create([
+                'booking_id' => $booking->id,
+                'student_id' => $booking->student_id,
+                'instructor_id' => $booking->instructor_id,
+                'subject_id' => $subjectId,
+                'subject_topic_id' => $topic?->id,
+                // Bookings carry a grade int, not a level id — resolve the
+                // level only when it is unambiguous; the raw grade is kept
+                // in the sanitized metadata snapshot below either way.
+                'academic_level_id' => $academicLevelId,
+                'learning_plan_id' => $plan?->id,
+                'starts_at' => $booking->starts_at,
+                'ends_at' => $booking->ends_at,
+                'timezone' => $booking->timezone ?? 'UTC',
+                'status' => LessonStatus::Scheduled,
+                'student_attendance_status' => LessonAttendanceStatus::Pending,
+                'instructor_attendance_status' => LessonAttendanceStatus::Pending,
+                'metadata' => $this->sanitizedSnapshot($booking, $meta),
+            ]);
+
+            if ($plan !== null) {
+                $this->progress->recalculate($plan, null);
+            }
+
+            return $lesson;
+        });
     }
 
     private function resolveTopic(mixed $topicId): ?SubjectTopic

@@ -21,6 +21,9 @@ final class LearningPlans extends Component
 
     public string $reviewSummary = '';
 
+    /** Nullable so an admin/instructor can leave it blank ("not assessed") without it being coerced to 0. */
+    public ?int $reviewProgressPercent = null;
+
     public function recordAssessment(LearningPlanService $plans): void
     {
         $plan = $this->selectedPlan();
@@ -43,10 +46,17 @@ final class LearningPlans extends Component
 
     public function createReview(LearningPlanService $plans): void
     {
+        $this->validate([
+            'reviewProgressPercent' => ['nullable', 'integer', 'min:0', 'max:100'],
+        ]);
+
         $plan = $this->selectedPlan();
-        $plans->createReview(auth()->user(), $plan, ['summary' => $this->reviewSummary]);
+        $plans->createReview(auth()->user(), $plan, [
+            'summary' => $this->reviewSummary,
+            'progress_percent' => $this->reviewProgressPercent,
+        ]);
         session()->flash('success', 'Progress review created.');
-        $this->reset('reviewSummary');
+        $this->reset(['reviewSummary', 'reviewProgressPercent']);
     }
 
     public function render(): View

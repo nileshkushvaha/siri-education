@@ -37,6 +37,7 @@ class Lesson extends Model
         'subject_id',
         'subject_topic_id',
         'academic_level_id',
+        'learning_plan_id',
         'starts_at',
         'ends_at',
         'timezone',
@@ -110,6 +111,12 @@ class Lesson extends Model
     public function academicLevel(): BelongsTo
     {
         return $this->belongsTo(AcademicLevel::class);
+    }
+
+    /** withTrashed() — a since-archived plan must still resolve here so historical association survives, mirroring HomeworkAssignment::learningPlan(). */
+    public function learningPlan(): BelongsTo
+    {
+        return $this->belongsTo(StudentLearningPlan::class, 'learning_plan_id')->withTrashed();
     }
 
     public function completer(): BelongsTo

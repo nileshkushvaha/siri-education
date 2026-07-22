@@ -277,11 +277,14 @@ final class LearningPlanService
         $this->assertAssignedInstructorOrAdmin($actor, $plan, 'Create:LearningPlanReview');
         $this->assertWritable($plan);
 
-        return DB::transaction(function () use ($actor, $plan, $data): LearningPlanReview {
+        $progressPercent = $this->validatedReviewProgressPercent($data['progress_percent'] ?? null);
+
+        return DB::transaction(function () use ($actor, $plan, $data, $progressPercent): LearningPlanReview {
             $review = $plan->reviews()->create([
                 'student_user_id' => $plan->student_user_id,
                 'instructor_user_id' => $actor->hasRole('instructor') ? $actor->id : $plan->primary_instructor_user_id,
                 'review_number' => (int) ($data['review_number'] ?? ($plan->reviews()->count() + 1)),
+                'progress_percent' => $progressPercent,
                 'summary' => $data['summary'] ?? null,
                 'progress_notes' => $data['progress_notes'] ?? null,
                 'challenges' => $data['challenges'] ?? null,
@@ -303,8 +306,41 @@ final class LearningPlanService
                 'review_number' => $review->review_number,
             ]);
 
+            // A review is finalized the instant it exists (reviewed_at is
+            // always set here) — recalculate unconditionally and let
+            // LearningPlanProgressService's own unchanged-value skip
+            // absorb the no-op case of a percentage-less review.
+            $this->progress->recalculate($plan, $actor);
+
             return $review;
         });
+    }
+
+    /**
+     * The single validation gate for the structured review percentage,
+     * regardless of caller (Livewire form validation is a UI-layer
+     * convenience, not a substitute for this). Null/blank means "no
+     * structured assessment" — never coerced to 0.
+     */
+    private function validatedReviewProgressPercent(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $isWholeNumber = is_int($value) || (is_string($value) && ctype_digit($value));
+
+        if (! $isWholeNumber) {
+            throw ValidationException::withMessages(['progress_percent' => 'Overall progress must be a whole number from 0 to 100.']);
+        }
+
+        $intValue = (int) $value;
+
+        if ($intValue < 0 || $intValue > 100) {
+            throw ValidationException::withMessages(['progress_percent' => 'Overall progress must be between 0 and 100.']);
+        }
+
+        return $intValue;
     }
 
     public function markReviewDue(User $actor, StudentLearningPlan $plan): StudentLearningPlan

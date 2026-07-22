@@ -102,6 +102,11 @@ class StudentLearningPlan extends Model
         return $this->hasMany(HomeworkAssignment::class, 'learning_plan_id');
     }
 
+    public function lessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class, 'learning_plan_id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

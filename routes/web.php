@@ -51,6 +51,8 @@ use App\Http\Controllers\Student\StudentBookingHistoryController;
 use App\Http\Controllers\Student\StudentCertificatesController;
 use App\Http\Controllers\Student\StudentFavoriteInstructorController;
 use App\Http\Controllers\Student\StudentHomeworkController;
+use App\Http\Controllers\Student\StudentInvoiceDownloadController;
+use App\Http\Controllers\Student\StudentInvoicesController;
 use App\Http\Controllers\Student\StudentLearningGoalController;
 use App\Http\Controllers\Student\StudentLearningPlanController;
 use App\Http\Controllers\Student\StudentNotificationsController;
@@ -303,6 +305,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/my-bookings', [StudentBookingHistoryController::class, 'index'])->name('my-bookings');
     Route::get('/payments', [StudentPaymentsController::class, 'index'])->name('payments');
     Route::get('/wallet', [StudentWalletController::class, 'index'])->name('wallet');
+    Route::get('/invoices', [StudentInvoicesController::class, 'index'])->name('invoices');
+    // Authorization is re-checked inside the controller on every
+    // request (InvoicePolicy::view()) — owner or View:Invoice only.
+    Route::get('/invoices/{invoice}/download', StudentInvoiceDownloadController::class)->name('invoices.download');
     Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');

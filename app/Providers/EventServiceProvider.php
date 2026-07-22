@@ -52,6 +52,7 @@ use App\Listeners\Mail\LogResendEmailEvent;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
+use App\Listeners\Payment\GenerateInvoiceOnBookingPaymentSucceeded;
 use App\Listeners\Quality\DetectInstructorCancellationQualityRiskOnBookingCancelled;
 use App\Listeners\Quality\DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized;
 use App\Listeners\Quality\DetectLowRatingQualityRiskOnStudentReviewPublished;
@@ -78,6 +79,7 @@ use App\Listeners\Reviews\SendReviewRejectedNotification;
 use App\Listeners\Reviews\SendReviewReportedNotification;
 use App\Listeners\Reviews\SendReviewRequestedNotification;
 use App\Listeners\Reviews\SendReviewSubmittedNotification;
+use App\Listeners\Wallet\GenerateInvoiceOnWalletRechargeSucceeded;
 use App\Listeners\Wallet\SendWalletNotifications;
 use App\Quality\Events\InstructorQualityAlertCreated;
 use App\Referral\Events\ReferralRewardCredited;
@@ -208,9 +210,11 @@ class EventServiceProvider extends ServiceProvider
         ],
         BookingPaymentSucceeded::class => [
             [SendBookingNotifications::class, 'handlePaymentSucceeded'],
+            GenerateInvoiceOnBookingPaymentSucceeded::class,
         ],
         WalletRechargeSucceeded::class => [
             [SendWalletNotifications::class, 'handleRechargeSucceeded'],
+            GenerateInvoiceOnWalletRechargeSucceeded::class,
         ],
         MeetingCreated::class => [
             [SendMeetingNotifications::class, 'handleCreated'],

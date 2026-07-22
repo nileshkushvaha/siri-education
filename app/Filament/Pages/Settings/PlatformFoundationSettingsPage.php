@@ -190,7 +190,9 @@ class PlatformFoundationSettingsPage extends Page
                             Toggle::make('referral_enabled')->label('Referral'),
                             Toggle::make('waitlist_enabled')->label('Waitlist'),
                             Toggle::make('homework_enabled')->label('Homework'),
-                            Toggle::make('recording_enabled')->label('Recording'),
+                            Toggle::make('recording_enabled')
+                                ->label('Recording')
+                                ->helperText('Platform-wide outer switch. The meeting-level recording default (Meeting Settings) has no effect while this is off.'),
                         ]),
                     ]),
             ]),

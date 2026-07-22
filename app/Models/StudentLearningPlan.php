@@ -97,6 +97,11 @@ class StudentLearningPlan extends Model
         return $this->hasMany(LearningPlanAdjustment::class, 'learning_plan_id')->latest('created_at');
     }
 
+    public function homeworkAssignments(): HasMany
+    {
+        return $this->hasMany(HomeworkAssignment::class, 'learning_plan_id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

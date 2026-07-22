@@ -1063,7 +1063,7 @@ final class MetricRegistry implements MetricRegistryInterface
             new MetricDefinition(
                 key: 'average_active_plan_progress',
                 label: 'Average progress of active plans',
-                description: 'Mean of the domain-maintained progress_percent across currently Active plans (§7.1 Outcome A: LearningPlanService recalculates it as completed÷total milestones and forces 100 on completion). Null when no plan is Active — never a fabricated 0%.',
+                description: 'Mean of the domain-maintained progress_percent across currently Active plans (§6.17-5: LearningPlanProgressCalculator averages each applicable evidence domain — milestones, directly-linked homework — excluding domains with no applicable records; forces 100 on manual plan completion). Null when no plan is Active — never a fabricated 0%.',
                 sourceDomain: 'Learning Plans (student_learning_plans.progress_percent)',
                 timestampField: 'n/a (current-state average)',
                 includedStatuses: ['active'],
@@ -1076,7 +1076,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanService::recalculateProgress (source domain) surfaced by LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanProgressCalculator (source domain) surfaced by LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
             ),
             new MetricDefinition(
                 key: 'milestones_achieved',

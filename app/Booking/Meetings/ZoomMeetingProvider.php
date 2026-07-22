@@ -156,6 +156,12 @@ final class ZoomMeetingProvider implements MeetingProviderInterface
                 'join_before_host' => false,
                 'waiting_room' => true,
                 'mute_upon_entry' => true,
+                // Deliberately unconditional, regardless of
+                // RecordingAvailabilityResolver's result: no
+                // capture/storage/retention/access pipeline exists to
+                // safely receive a real recording, so this provider
+                // never requests one, even when the platform-level and
+                // meeting-level recording settings are both enabled.
                 'auto_recording' => 'none',
                 'host_video' => true,
                 'participant_video' => false,

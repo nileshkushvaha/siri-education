@@ -14,6 +14,7 @@ use App\Models\HomeworkAssignment;
 use App\Models\StudentLearningPlan;
 use App\Models\User;
 use App\Services\AuditTrailService;
+use App\Services\Student\LearningPlanProgressService;
 use App\Services\Student\StudentLifecycleService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -30,6 +31,7 @@ final class HomeworkService implements HomeworkServiceInterface
         private readonly HomeworkContextValidator $context,
         private readonly AssignHomeworkAction $assignAction,
         private readonly AuditTrailService $audit,
+        private readonly LearningPlanProgressService $progress,
     ) {}
 
     public function assign(
@@ -71,6 +73,8 @@ final class HomeworkService implements HomeworkServiceInterface
                 ],
             );
 
+            $this->progress->recalculate($plan, $instructor);
+
             return $assignment;
         });
     }
@@ -91,6 +95,7 @@ final class HomeworkService implements HomeworkServiceInterface
             // other link makes clearing this one reject as "neither".
             $finalBookingId = array_key_exists('booking_id', $changes) ? $changes['booking_id'] : $fresh->booking_id;
             $finalPlanId = array_key_exists('learning_plan_id', $changes) ? $changes['learning_plan_id'] : $fresh->learning_plan_id;
+            $previousPlanId = $fresh->learning_plan_id;
 
             [$booking, $plan] = $this->context->validate(
                 $fresh->student,
@@ -114,6 +119,20 @@ final class HomeworkService implements HomeworkServiceInterface
                 $fresh,
                 $this->contextAuditProperties($booking, $plan),
             );
+
+            // Only re-derive progress for plans whose homework set
+            // actually changed — an unrelated field edit (or a
+            // booking-only relink) must never touch either plan.
+            if ((string) $previousPlanId !== (string) $plan?->id) {
+                $this->progress->recalculate($plan, $actor);
+
+                if ($previousPlanId !== null) {
+                    $this->progress->recalculate(
+                        StudentLearningPlan::query()->withTrashed()->find($previousPlanId),
+                        $actor,
+                    );
+                }
+            }
 
             return $fresh->refresh();
         });
@@ -186,8 +205,17 @@ final class HomeworkService implements HomeworkServiceInterface
 
     public function review(HomeworkAssignment $assignment, string $feedback, ?string $grade = null): HomeworkAssignment
     {
-        return DB::transaction(
-            fn (): HomeworkAssignment => $this->reviewAction->execute($assignment, $feedback, $grade),
-        );
+        return DB::transaction(function () use ($assignment, $feedback, $grade): HomeworkAssignment {
+            $graded = $this->reviewAction->execute($assignment, $feedback, $grade);
+
+            // No actor is threaded through this pre-existing signature —
+            // the assigning teacher (the only one who can grade, per
+            // HomeworkAssignmentPolicy) is attributed on the plan's
+            // updated_by, same as every other homework-triggered
+            // recalculation in this service.
+            $this->progress->recalculate($graded->learningPlan, $graded->teacher);
+
+            return $graded;
+        });
     }
 }

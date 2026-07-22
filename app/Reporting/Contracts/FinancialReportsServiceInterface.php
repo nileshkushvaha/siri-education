@@ -11,6 +11,8 @@ use App\Reporting\DTOs\Finance\ReconciliationIssueRow;
 use App\Reporting\DTOs\Finance\RefundLinkageRow;
 use App\Reporting\DTOs\Finance\RefundSummaryData;
 use App\Reporting\DTOs\Finance\WalletFinancialSummaryData;
+use App\Reporting\DTOs\Finance\WalletRechargeMonitoringRow;
+use App\Reporting\DTOs\Finance\WalletRechargeMonitoringSummary;
 use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
 use App\Reporting\Filters\ReportFilters;
 use App\Reporting\ValueObjects\ReportingPeriod;
@@ -70,4 +72,17 @@ interface FinancialReportsServiceInterface
     public function canViewPayments(User $user): bool;
 
     public function canViewInstructorFinancials(User $user): bool;
+
+    /** @throws AuthorizationException */
+    public function rechargeMonitoringSummary(User $user): WalletRechargeMonitoringSummary;
+
+    /**
+     * @param  array{status?: ?string, provider?: ?string, currencyCode?: ?string, reference?: ?string, capturedUncreditedOnly?: bool, staleOnly?: bool}  $params
+     * @return LengthAwarePaginator<int, WalletRechargeMonitoringRow>
+     *
+     * @throws AuthorizationException
+     */
+    public function paginatedRechargeMonitoring(User $user, array $params, ?ReportingPeriod $period = null, int $perPage = 25): LengthAwarePaginator;
+
+    public function canViewRechargeMonitoring(User $user): bool;
 }

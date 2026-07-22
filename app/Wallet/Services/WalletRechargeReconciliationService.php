@@ -30,8 +30,13 @@ use App\Wallet\Exceptions\WalletException;
  */
 final class WalletRechargeReconciliationService
 {
-    /** How long a non-terminal recharge waits before its first reconciliation check. */
-    private const int DUE_AFTER_MINUTES = 10;
+    /**
+     * How long a non-terminal recharge waits before its first
+     * reconciliation check. Public: also the operational-monitoring
+     * staleness threshold (App\Reporting\Repositories\WalletFinancialReportRepository) —
+     * one number, reused, not duplicated.
+     */
+    public const int DUE_AFTER_MINUTES = 10;
 
     public function __construct(
         private readonly WalletRechargeServiceInterface $recharges,

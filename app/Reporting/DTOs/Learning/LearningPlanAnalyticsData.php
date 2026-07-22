@@ -18,11 +18,13 @@ use App\Reporting\DTOs\Operations\LabeledCountRow;
  * `averageActiveProgressPercent`, breakdowns) are as-of-now and never
  * period-scoped; period-event figures each name their own timestamp
  * basis. `averageActiveProgressPercent` is the mean of the
- * domain-maintained `progress_percent` (§7.1 Outcome A — recalculated
- * by LearningPlanService as completed÷total milestones, forced to 100
- * on completion) across currently Active plans, null when no plan is
- * Active. No completion *rate* exists (§7.2 — cohort denominator
- * unproven in V1).
+ * domain-maintained `progress_percent` (§6.17-5 — recalculated by
+ * LearningPlanProgressCalculator as the average of each applicable
+ * evidence domain: milestones and directly-linked homework today,
+ * excluding a domain entirely when the plan has no applicable
+ * records in it; forced to 100 on manual plan completion) across
+ * currently Active plans, null when no plan is Active. No completion
+ * *rate* exists (§7.2 — cohort denominator unproven in V1).
  *
  * @param  array<string, int>  $currentByStatus  LearningPlanStatus::value => count
  * @param  list<LabeledCountRow>  $bySubject  current plans per subject (historical subjects retained)

@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\Reporting\Repositories;
 
+use App\Models\WalletRecharge;
 use App\Reporting\DTOs\Finance\RefundLinkageRow;
 use App\Reporting\DTOs\Finance\RefundSummaryData;
 use App\Reporting\DTOs\Finance\WalletFinancialSummaryData;
+use App\Reporting\DTOs\Finance\WalletRechargeMonitoringRow;
+use App\Reporting\DTOs\Finance\WalletRechargeMonitoringSummary;
 use App\Reporting\Filters\ReportFilters;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use App\Settings\WalletSettings;
+use App\Wallet\Enums\WalletRechargeOperationalClassification;
+use App\Wallet\Enums\WalletRechargeStatus;
+use App\Wallet\Services\WalletRechargeReconciliationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
@@ -171,6 +177,117 @@ final class WalletFinancialReportRepository
                 'lastSyncedAt' => $row->last_synced_at !== null ? (string) $row->last_synced_at : null,
             ])
             ->all();
+    }
+
+    /**
+     * Current-state (never period-scoped) counts for the monitoring
+     * summary cards — an attempt stuck for a week is exactly as
+     * operationally relevant today as one stuck five minutes ago.
+     */
+    public function rechargeMonitoringSummary(): WalletRechargeMonitoringSummary
+    {
+        $breakdown = $this->rechargeAttemptStatusBreakdown();
+        $cutoff = CarbonImmutable::now()->subMinutes(WalletRechargeReconciliationService::DUE_AFTER_MINUTES);
+
+        $stale = (int) DB::table('wallet_recharges')
+            ->whereIn('status', [WalletRechargeStatus::ProviderCreated->value, WalletRechargeStatus::AwaitingConfirmation->value])
+            ->where('created_at', '<=', $cutoff)
+            ->count();
+
+        return new WalletRechargeMonitoringSummary(
+            providerCreated: $breakdown[WalletRechargeStatus::ProviderCreated->value] ?? 0,
+            awaitingConfirmation: $breakdown[WalletRechargeStatus::AwaitingConfirmation->value] ?? 0,
+            capturedCreditPending: $breakdown[WalletRechargeStatus::CreditPending->value] ?? 0,
+            capturedCreditFailed: $breakdown[WalletRechargeStatus::CreditFailed->value] ?? 0,
+            succeeded: $breakdown[WalletRechargeStatus::Succeeded->value] ?? 0,
+            providerTerminalFailures: $breakdown[WalletRechargeStatus::Failed->value] ?? 0,
+            stale: $stale,
+            generatedAtIso: CarbonImmutable::now()->toIso8601String(),
+        );
+    }
+
+    /**
+     * The operational monitoring table — one row per recharge attempt,
+     * safe/masked fields only. Read-only: never mutates a recharge;
+     * WalletRechargeReconciliationService/WalletRechargeService own
+     * every state transition.
+     *
+     * @param  array{status?: ?string, provider?: ?string, currencyCode?: ?string, reference?: ?string, capturedUncreditedOnly?: bool, staleOnly?: bool, periodStartUtc?: ?CarbonImmutable, periodEndUtcExclusive?: ?CarbonImmutable}  $params
+     */
+    public function paginatedRechargeMonitoring(array $params, bool $maskStudentIdentity, int $perPage = 25): LengthAwarePaginator
+    {
+        $cutoff = CarbonImmutable::now()->subMinutes(WalletRechargeReconciliationService::DUE_AFTER_MINUTES);
+
+        $query = WalletRecharge::query()->with(['user:id,name,first_name']);
+
+        if (filled($params['status'] ?? null)) {
+            $query->where('status', $params['status']);
+        }
+
+        if (filled($params['provider'] ?? null)) {
+            $query->where('provider', $params['provider']);
+        }
+
+        if (filled($params['currencyCode'] ?? null)) {
+            $query->where('currency_code', strtoupper((string) $params['currencyCode']));
+        }
+
+        if (filled($params['reference'] ?? null)) {
+            // idempotency_key is varchar(100) — the column itself bounds
+            // the search input; no unbounded LIKE scan risk beyond that.
+            $query->where('idempotency_key', 'like', '%'.mb_substr((string) $params['reference'], 0, 100).'%');
+        }
+
+        if (($params['capturedUncreditedOnly'] ?? false) === true) {
+            $query->whereIn('status', [WalletRechargeStatus::CreditPending->value, WalletRechargeStatus::CreditFailed->value]);
+        }
+
+        if (($params['staleOnly'] ?? false) === true) {
+            $query->whereIn('status', [WalletRechargeStatus::ProviderCreated->value, WalletRechargeStatus::AwaitingConfirmation->value])
+                ->where('created_at', '<=', $cutoff);
+        }
+
+        if (($params['periodStartUtc'] ?? null) instanceof CarbonImmutable) {
+            $query->where('created_at', '>=', $params['periodStartUtc']);
+        }
+
+        if (($params['periodEndUtcExclusive'] ?? null) instanceof CarbonImmutable) {
+            $query->where('created_at', '<', $params['periodEndUtcExclusive']);
+        }
+
+        return $query
+            ->orderByDesc('created_at')
+            ->paginate($perPage)
+            ->through(fn (WalletRecharge $recharge): WalletRechargeMonitoringRow => new WalletRechargeMonitoringRow(
+                id: $recharge->id,
+                reference: $recharge->idempotency_key,
+                studentLabel: $this->studentLabel($recharge, $maskStudentIdentity),
+                currencyCode: $recharge->currency_code,
+                amountMinor: $recharge->amount_minor,
+                provider: $recharge->provider,
+                status: $recharge->status,
+                classification: WalletRechargeOperationalClassification::fromRecharge($recharge, $cutoff),
+                failureCode: $recharge->failure_code,
+                providerConfirmedAtUtc: $recharge->provider_confirmed_at,
+                succeededAtUtc: $recharge->succeeded_at,
+                failedAtUtc: $recharge->failed_at,
+                lastSyncedAtUtc: $recharge->last_synced_at,
+                createdAtUtc: CarbonImmutable::parse($recharge->created_at, 'UTC'),
+                maskedProviderOrderId: $this->mask($recharge->provider_order_id),
+                maskedProviderPaymentId: $this->mask($recharge->provider_payment_id),
+            ));
+    }
+
+    /** Mirrors StudentEngagementReportService::studentLabel()'s exact masking convention — first-initial + '***' when the viewer lacks ViewStudentReports. */
+    private function studentLabel(WalletRecharge $recharge, bool $mask): string
+    {
+        if (! $mask) {
+            return $recharge->user?->name ?? sprintf('Student #%d', $recharge->user_id);
+        }
+
+        $first = trim((string) $recharge->user?->first_name);
+
+        return $first === '' ? 'Student' : mb_substr($first, 0, 1).'***';
     }
 
     // ── Refunds (lesson financial dispositions + executed wallet credits) ──

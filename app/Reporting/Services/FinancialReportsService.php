@@ -12,6 +12,7 @@ use App\Reporting\DTOs\Finance\InstructorFinancialSummaryData;
 use App\Reporting\DTOs\Finance\PaymentFinancialSummaryData;
 use App\Reporting\DTOs\Finance\RefundSummaryData;
 use App\Reporting\DTOs\Finance\WalletFinancialSummaryData;
+use App\Reporting\DTOs\Finance\WalletRechargeMonitoringSummary;
 use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
 use App\Reporting\Enums\ReportDataFreshness;
 use App\Reporting\Filters\ReportFilters;
@@ -105,6 +106,30 @@ final class FinancialReportsService implements FinancialReportsServiceInterface
     public function canViewInstructorFinancials(User $user): bool
     {
         return $this->allowed($user, 'earnings_settlements', 'ViewInstructorCompensationReports');
+    }
+
+    public function rechargeMonitoringSummary(User $user): WalletRechargeMonitoringSummary
+    {
+        $this->authorize($user, 'recharge_monitoring', 'ViewWalletReports');
+
+        return $this->wallets->rechargeMonitoringSummary();
+    }
+
+    public function paginatedRechargeMonitoring(User $user, array $params, ?ReportingPeriod $period = null, int $perPage = 25): LengthAwarePaginator
+    {
+        $this->authorize($user, 'recharge_monitoring', 'ViewWalletReports');
+
+        if ($period !== null) {
+            $params['periodStartUtc'] = $period->startUtc;
+            $params['periodEndUtcExclusive'] = $period->endUtcExclusive;
+        }
+
+        return $this->wallets->paginatedRechargeMonitoring($params, ! $this->access->canViewFullStudentIdentity($user), $perPage);
+    }
+
+    public function canViewRechargeMonitoring(User $user): bool
+    {
+        return $this->allowed($user, 'recharge_monitoring', 'ViewWalletReports');
     }
 
     // ── Internals ─────────────────────────────────────────────────────────

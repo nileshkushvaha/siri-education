@@ -13,6 +13,7 @@ use App\Filament\Pages\InstructorPerformance;
 use App\Filament\Pages\LearningAnalytics;
 use App\Filament\Pages\MarketplaceSupplyDemand;
 use App\Filament\Pages\PaymentsReconciliation;
+use App\Filament\Pages\RechargeMonitoring;
 use App\Filament\Pages\ReferralCommunicationReports;
 use App\Filament\Pages\ReviewsQualityDashboard;
 use App\Filament\Pages\StudentEngagement;
@@ -301,6 +302,23 @@ final class ReportRegistry implements ReportRegistryInterface
                 freshness: ReportDataFreshness::Live,
                 routeName: WalletRefunds::class,
                 exportAvailable: true,
+                available: true,
+            ),
+            new ReportDefinition(
+                key: 'recharge_monitoring',
+                label: 'Recharge Monitoring',
+                description: 'Operational health of wallet recharge attempts across Razorpay, Stripe, and Fake/local providers — captured-but-uncredited, stale, and terminal-failure visibility. Read-only.',
+                category: ReportCategory::Wallet,
+                requiredViewPermission: 'ViewWalletReports',
+                requiredExportPermission: null,
+                sensitive: true,
+                financial: true,
+                supportedFilters: [ReportFilterKey::Currency],
+                defaultPeriodPreset: ReportingPeriodPreset::Last30Days,
+                dataSourceDomain: 'Wallet (wallet_recharges)',
+                freshness: ReportDataFreshness::Live,
+                routeName: RechargeMonitoring::class,
+                exportAvailable: false,
                 available: true,
             ),
             new ReportDefinition(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Booking\Services\GoogleCalendarConfigurationService;
+use App\Booking\Services\RecordingAvailabilityResolver;
 use App\Booking\Services\ZoomConfigurationService;
 use App\Settings\MeetingSettings;
 use BackedEnum;
@@ -89,6 +90,7 @@ class MeetingSettingsPage extends Page
             'meeting_link_visible_before_minutes' => $meeting->meeting_link_visible_before_minutes,
             'meeting_link_visible_after_minutes' => $meeting->meeting_link_visible_after_minutes,
             'meeting_recording_enabled' => $meeting->recording_enabled,
+            'effective_recording_availability' => app(RecordingAvailabilityResolver::class)->isAvailable() ? 'Available' : 'Unavailable',
             'recording_retention_days' => $meeting->recording_retention_days,
             'create_after_demo_booking_confirmation' => $meeting->create_after_demo_booking_confirmation,
             'create_after_paid_booking_confirmation' => $meeting->create_after_paid_booking_confirmation,
@@ -173,7 +175,12 @@ class MeetingSettingsPage extends Page
                         $this->integerInput('meeting_link_visible_after_minutes', 'Visible After', 0, 10080),
                         Toggle::make('meeting_recording_enabled')
                             ->label('Record Sessions by Default')
-                            ->helperText('Applies once the Recording feature flag is enabled.'),
+                            ->helperText('Never takes effect on its own — the platform-wide Recording feature flag (Settings → Platform Foundation) must also be enabled. This setting cannot override a disabled global switch.'),
+                        TextInput::make('effective_recording_availability')
+                            ->label('Effective Recording Availability')
+                            ->helperText('Computed live from the platform-wide Recording flag AND this meeting-level default — both must be enabled for recording to be considered available.')
+                            ->disabled()
+                            ->dehydrated(false),
                         $this->integerInput('recording_retention_days', 'Retention Days', 0, 3650),
                         Toggle::make('create_after_demo_booking_confirmation')
                             ->label('Auto-create for Demo/Free Bookings'),

@@ -25,6 +25,7 @@ final class LearningPlanService
     public function __construct(
         private readonly AuditTrailService $audit,
         private readonly StudentLifecycleService $lifecycle,
+        private readonly LearningPlanProgressService $progress,
     ) {}
 
     /**
@@ -238,6 +239,8 @@ final class LearningPlanService
                 'milestone_id' => $milestone->id,
             ]);
 
+            $this->progress->recalculate($plan, $actor);
+
             return $milestone;
         });
     }
@@ -255,7 +258,7 @@ final class LearningPlanService
                 'updated_by' => $actor->id,
             ])->save();
 
-            $this->recalculateProgress($plan, $actor);
+            $this->progress->recalculate($plan, $actor);
 
             $this->audit->logUser($actor, 'learning_plans', 'learning_plan_milestone_completed', 'Learning plan milestone completed.', $plan, [
                 'learning_plan_id' => $plan->id,
@@ -399,18 +402,5 @@ final class LearningPlanService
         if ($plan->primary_instructor_user_id !== $actor->id && ! $actor->can($permission)) {
             throw new AuthorizationException;
         }
-    }
-
-    private function recalculateProgress(StudentLearningPlan $plan, User $actor): void
-    {
-        $total = $plan->milestones()->count();
-        $completed = $plan->milestones()
-            ->where('status', LearningPlanMilestoneStatus::Completed->value)
-            ->count();
-
-        $plan->forceFill([
-            'progress_percent' => $total > 0 ? (int) round(($completed / $total) * 100) : 0,
-            'updated_by' => $actor->id,
-        ])->save();
     }
 }

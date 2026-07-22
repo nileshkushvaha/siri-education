@@ -13,6 +13,7 @@ use App\Console\Commands\ProcessLessonRefunds;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReconcileBookingPayments;
 use App\Console\Commands\ReconcileInstructorPayouts;
+use App\Console\Commands\ReconcileWalletRecharges;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
@@ -137,6 +138,17 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/booking-payments-reconcile.log'));
+
+// Reconcile due wallet recharge attempts against the provider — the
+// wallet-domain counterpart of the sweep above, never sharing a table
+// or code path with it. Idempotent via WalletRechargeService's own
+// locked settlement/credit-retry methods.
+app(Schedule::class)
+    ->command(ReconcileWalletRecharges::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/wallet-recharges-reconcile.log'));
 
 // Re-sync meetings whose Google conference creation is still pending —
 // conference creation is asynchronous, so an event insert can succeed

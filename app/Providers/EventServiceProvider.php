@@ -76,6 +76,7 @@ use App\Listeners\Reviews\SendReviewRejectedNotification;
 use App\Listeners\Reviews\SendReviewReportedNotification;
 use App\Listeners\Reviews\SendReviewRequestedNotification;
 use App\Listeners\Reviews\SendReviewSubmittedNotification;
+use App\Listeners\Wallet\SendWalletNotifications;
 use App\Quality\Events\InstructorQualityAlertCreated;
 use App\Referral\Events\ReferralRewardCredited;
 use App\Referral\Events\ReferralRewardHeld;
@@ -96,6 +97,7 @@ use App\Reviews\Events\StudentReviewRejected;
 use App\Reviews\Events\StudentReviewRestored;
 use App\Reviews\Events\StudentReviewSubmitted;
 use App\Wallet\Events\LessonRefundCompleted;
+use App\Wallet\Events\WalletRechargeSucceeded;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Mail\Events\MessageSending;
@@ -204,6 +206,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         BookingPaymentSucceeded::class => [
             [SendBookingNotifications::class, 'handlePaymentSucceeded'],
+        ],
+        WalletRechargeSucceeded::class => [
+            [SendWalletNotifications::class, 'handleRechargeSucceeded'],
         ],
         MeetingCreated::class => [
             [SendMeetingNotifications::class, 'handleCreated'],

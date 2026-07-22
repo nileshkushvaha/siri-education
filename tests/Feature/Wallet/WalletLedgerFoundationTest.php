@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
+use App\Models\WalletRecharge;
 use App\Settings\FeatureSettings;
 use App\Settings\GeneralSettings;
 use App\Wallet\Enums\WalletLedgerDirection;
@@ -405,12 +406,18 @@ class WalletLedgerFoundationTest extends TestCase
             ->assertSee('Promotional Credit');
     }
 
-    public function test_recharge_cta_does_not_create_razorpay_order(): void
+    public function test_viewing_the_recharge_form_creates_no_provider_order_or_wallet(): void
     {
         $response = $this->actingAs($this->student)->get(route('dashboard.wallet'))->assertOk();
 
-        $response->assertSee('Coming soon');
+        // Wallet recharge (Phase 25D) is real now — the page shows a live
+        // amount input, never the old disabled placeholder — but merely
+        // viewing it must still create nothing: no wallet, no attempt, no
+        // provider order.
+        $response->assertSee('Recharge wallet');
         $this->assertFalse(Schema::hasTable('razorpay_orders'));
+        $this->assertNull(Wallet::query()->forUser($this->student->id)->first());
+        $this->assertSame(0, WalletRecharge::query()->where('user_id', $this->student->id)->count());
     }
 
     // ── Boundary ─────────────────────────────────────────────────────────

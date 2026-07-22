@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\MeetingAttendanceWebhookController;
 use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
+use App\Http\Controllers\Api\WalletRechargeWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,13 @@ Route::post('/webhooks/payments/generic/{gateway}', PaymentWebhookController::cl
 Route::post('/webhooks/bookings/payments/{provider}', BookingPaymentWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('api.bookings.payments.webhook');
+
+// Wallet recharge provider notifications — a separate financial domain
+// from booking payments; never shares a route, controller, or table
+// with the collection side.
+Route::post('/webhooks/wallets/recharges/{provider}', WalletRechargeWebhookController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.wallets.recharges.webhook');
 
 // Meeting attendance provider notifications — signature verified
 // before parsing; gated by meeting.attendance_webhooks_enabled;

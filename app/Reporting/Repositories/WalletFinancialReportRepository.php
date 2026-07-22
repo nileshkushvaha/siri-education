@@ -124,6 +124,55 @@ final class WalletFinancialReportRepository
             ->count();
     }
 
+    // ── Recharge attempts (SRS §13.33 operational visibility) ──────────────
+
+    /**
+     * Attempt-level breakdown — the ledger movements above only ever
+     * show a SETTLED (RechargeConfirmed) credit; a pending/failed/
+     * credit_failed attempt never posts a ledger entry at all, so this
+     * is the only place those states are visible.
+     *
+     * @return array<string, int>
+     */
+    public function rechargeAttemptStatusBreakdown(): array
+    {
+        return DB::table('wallet_recharges')
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+    }
+
+    /**
+     * Recharge attempts a provider has captured but that have not yet
+     * reached the wallet — SRS §13.33's "payment succeeded but wallet
+     * credit failed" / "callback delayed" cases. Read-only; never
+     * mutates anything — WalletRechargeReconciliationService owns the
+     * actual retry.
+     *
+     * @return list<array{id: string, provider: string, amountMinor: int, currency: string, status: string, failureCode: ?string, providerConfirmedAt: ?string, lastSyncedAt: ?string}>
+     */
+    public function uncreditedCapturedRecharges(int $limit = 50): array
+    {
+        return DB::table('wallet_recharges')
+            ->whereIn('status', ['credit_pending', 'credit_failed'])
+            ->orderBy('provider_confirmed_at')
+            ->limit($limit)
+            ->get(['id', 'provider', 'amount_minor', 'currency_code', 'status', 'failure_code', 'provider_confirmed_at', 'last_synced_at'])
+            ->map(fn ($row) => [
+                'id' => (string) $row->id,
+                'provider' => (string) $row->provider,
+                'amountMinor' => (int) $row->amount_minor,
+                'currency' => (string) $row->currency_code,
+                'status' => (string) $row->status,
+                'failureCode' => $row->failure_code !== null ? (string) $row->failure_code : null,
+                'providerConfirmedAt' => $row->provider_confirmed_at !== null ? (string) $row->provider_confirmed_at : null,
+                'lastSyncedAt' => $row->last_synced_at !== null ? (string) $row->last_synced_at : null,
+            ])
+            ->all();
+    }
+
     // ── Refunds (lesson financial dispositions + executed wallet credits) ──
 
     public function refundSummary(ReportingPeriod $period, ReportFilters $filters): RefundSummaryData

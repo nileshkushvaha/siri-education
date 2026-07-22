@@ -65,6 +65,8 @@ use App\Services\Phone\PhoneVerificationService;
 use App\Services\Phone\UnavailablePhoneOtpSender;
 use App\Services\Student\DefaultStudentFinancialVerificationGate;
 use App\Settings\LoginSecuritySettings;
+use App\Wallet\Contracts\WalletRechargeServiceInterface;
+use App\Wallet\Services\WalletRechargeService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
@@ -89,6 +91,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PhoneVerificationServiceInterface::class, PhoneVerificationService::class);
         $this->app->bind(StudentFinancialVerificationGate::class, DefaultStudentFinancialVerificationGate::class);
         $this->app->bind(InstructorEligibilityServiceInterface::class, InstructorEligibilityService::class);
+        $this->app->bind(WalletRechargeServiceInterface::class, WalletRechargeService::class);
     }
 
     public function boot(): void
@@ -339,6 +342,15 @@ class AppServiceProvider extends ServiceProvider
         // public, unauthenticated endpoint.
         RateLimiter::for('razorpayx-payout-webhook', function (Request $request) {
             return Limit::perMinute(120)->by($request->ip());
+        });
+
+        // Wallet recharge initiation — applied manually via
+        // ThrottlesLivewireRequests (Livewire actions never hit
+        // route-level throttle middleware). Per-student, not per-IP:
+        // bounds repeated-click/retry provider-order creation without
+        // punishing a shared network.
+        RateLimiter::for('wallet-recharge-initiate', function (Request $request) {
+            return Limit::perMinute(5)->by((string) $request->input('user_id'));
         });
     }
 }

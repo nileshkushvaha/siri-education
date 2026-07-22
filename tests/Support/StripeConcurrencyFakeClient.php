@@ -22,6 +22,9 @@ final class StripeConcurrencyFakeClient implements StripeGatewayClient
 {
     public function __construct(
         private readonly bool $simulateTimeoutOnCreate = false,
+        /** Wallet-recharge reconciliation races need retrievePaymentIntent() to report an authoritative amount/currency — null preserves the original booking-domain behavior, which never reads these fields. */
+        private readonly ?int $retrieveAmountReceived = null,
+        private readonly ?string $retrieveCurrency = null,
     ) {}
 
     public function createPaymentIntent(string $secretKey, array $params, string $idempotencyKey): array
@@ -47,11 +50,13 @@ final class StripeConcurrencyFakeClient implements StripeGatewayClient
 
     public function retrievePaymentIntent(string $secretKey, string $paymentIntentId): array
     {
-        return [
+        return array_filter([
             'id' => $paymentIntentId,
             'client_secret' => $paymentIntentId.'_secret_retrieved',
             'status' => 'succeeded',
-        ];
+            'amount_received' => $this->retrieveAmountReceived,
+            'currency' => $this->retrieveCurrency,
+        ], fn (mixed $value): bool => $value !== null);
     }
 
     public function createRefund(string $secretKey, array $params): array

@@ -24,16 +24,76 @@
         <x-account.card>
             <div class="flex flex-col items-center justify-center py-12 text-center">
                 <h3 class="text-slate-300 font-semibold mb-2">No wallet yet</h3>
-                <p class="text-slate-400 text-sm max-w-xs">Your wallet will be set up once recharge is available.</p>
+                <p class="text-slate-400 text-sm max-w-xs">Recharge below to set up your wallet.</p>
             </div>
         </x-account.card>
     @endif
 
+    <x-account.card>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Recharge wallet</h2>
+
+        @if($rechargeAvailable)
+            <p class="mt-2 text-xs text-slate-400">
+                Currency: <span class="font-semibold text-white">{{ $rechargeCurrencyCode }}</span>
+                &middot; Min {{ $rechargeLimits['min'] }} &middot; Max {{ $rechargeLimits['max'] }}
+            </p>
+
+            @if($rechargeBanner)
+                <div class="mt-3 rounded-xl border border-indigo-300/30 bg-indigo-400/10 px-4 py-3 text-sm text-indigo-200" role="alert">
+                    {{ $rechargeBanner }}
+                </div>
+            @endif
+
+            <form wire:submit.prevent="initiateRecharge" class="mt-3 flex flex-wrap items-end gap-3">
+                <div>
+                    <label for="recharge-amount" class="block text-xs font-semibold text-slate-400 mb-1">Amount ({{ $rechargeCurrencyCode }})</label>
+                    <input
+                        type="text"
+                        id="recharge-amount"
+                        wire:model="rechargeAmount"
+                        inputmode="decimal"
+                        placeholder="e.g. 500"
+                        class="w-40 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-100 px-3 py-2 focus:outline-none focus:border-indigo-500/40"
+                    />
+                </div>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="initiateRecharge">
+                    <span wire:loading.remove wire:target="initiateRecharge">Recharge</span>
+                    <span wire:loading wire:target="initiateRecharge">Preparing payment...</span>
+                </x-ui.button>
+            </form>
+
+            @if($pendingStripeRechargeId)
+                {{-- wire:ignore: this subtree is polled by pollWalletRechargeStatus()
+                     every few seconds while awaiting the webhook — Livewire must
+                     never re-morph it, or the mounted Stripe Elements iframe
+                     (DOM Livewire doesn't know about) would be torn down
+                     mid-confirmation. --}}
+                <div class="mt-3" wire:ignore>
+                    <div id="wallet-recharge-stripe-payment-element" class="rounded-lg bg-white p-3"></div>
+                    <p id="wallet-recharge-stripe-payment-errors" class="mt-2 text-xs font-semibold text-rose-300" role="alert"></p>
+                    <x-ui.button type="button" id="wallet-recharge-stripe-confirm-button" class="mt-3 w-full justify-center" disabled>
+                        Confirm card payment
+                    </x-ui.button>
+                </div>
+            @endif
+
+            @if($pendingFakeRecharge && app()->environment(['local', 'testing']))
+                <div class="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200">Test mode — fake provider</p>
+                    <div class="mt-2 flex gap-2">
+                        <x-ui.button type="button" size="sm" wire:click="simulateFakeRecharge(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
+                        <x-ui.button type="button" size="sm" variant="ghost" wire:click="simulateFakeRecharge(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
+                    </div>
+                </div>
+            @endif
+        @else
+            <p class="mt-2 text-xs text-slate-500">Wallet recharge is not currently available for your account.</p>
+        @endif
+    </x-account.card>
+
     <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Statement</h2>
-        <button type="button" disabled title="Coming soon" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-500 bg-white/[0.03] border border-white/[0.06] cursor-not-allowed">
-            Recharge (Coming soon)
-        </button>
     </div>
 
     <x-account.card>
@@ -71,3 +131,6 @@
         @endif
     </x-account.card>
 </div>
+
+@include('livewire.frontend.student.partials.wallet-recharge-checkout-script')
+@include('livewire.frontend.student.partials.wallet-recharge-stripe-checkout-script')

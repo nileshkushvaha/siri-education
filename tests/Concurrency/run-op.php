@@ -4,6 +4,7 @@ declare(strict_types=1);
 use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
+use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\CancellationRefundDecision;
@@ -59,11 +60,14 @@ use App\Services\Student\StudentFavoriteInstructorService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\RazorpayXPayoutSettings;
 use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
+use App\Wallet\Contracts\WalletRechargeServiceInterface;
+use App\Wallet\Services\WalletRechargeReconciliationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Support\RazorpayConcurrencyFakeClient;
 use Tests\Support\RazorpayXConcurrencyFakeClient;
 use Tests\Support\StripeConcurrencyFakeClient;
 
@@ -768,6 +772,128 @@ try {
             $reminder = HomeworkDueReminder::query()->findOrFail($args['reminder_id']);
 
             return ['status' => $reminder->status->value];
+        })(),
+
+        // Wallet recharge (SRS §13.11) collection-side races — mirrors
+        // the Stripe collection ops above: a network-free fake client
+        // (Mockery cannot cross a process boundary) so the property
+        // under test is the database/service layer's locking and
+        // idempotency, never this client's behavior.
+        'wallet-recharge-initiate' => (function () use ($args) {
+            app()->instance(RazorpayGatewayClient::class, new RazorpayConcurrencyFakeClient);
+            app()->instance(StripeGatewayClient::class, new StripeConcurrencyFakeClient);
+
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $checkout = app(WalletRechargeServiceInterface::class)->initiate($student, (int) $args['amount_minor']);
+
+            return ['reference' => $checkout->reference, 'provider' => $checkout->provider];
+        })(),
+
+        // Dispatches a genuinely signed Razorpay webhook POST through
+        // the real HTTP kernel (routing + middleware +
+        // WalletRechargeWebhookController), exactly as a real Razorpay
+        // delivery would arrive — never a direct service call.
+        'wallet-recharge-webhook-succeed' => (function () use ($args, $app) {
+            $body = json_encode([
+                'event' => 'payment.captured',
+                'payload' => [
+                    'payment' => [
+                        'entity' => [
+                            'id' => $args['payment_id'],
+                            'order_id' => $args['order_id'],
+                            'amount' => $args['amount_minor'],
+                            'currency' => $args['currency'],
+                            'notes' => ['wallet_recharge_reference' => $args['reference']],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR);
+
+            $signature = hash_hmac('sha256', $body, $args['webhook_secret']);
+
+            $request = Request::create(
+                '/api/webhooks/wallets/recharges/razorpay',
+                'POST',
+                [], [], [],
+                [
+                    'HTTP_X_RAZORPAY_SIGNATURE' => $signature,
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_ACCEPT' => 'application/json',
+                ],
+                $body,
+            );
+
+            $response = $app->make(HttpKernel::class)->handle($request);
+
+            return ['status_code' => $response->getStatusCode(), 'content' => $response->getContent()];
+        })(),
+
+        // The Razorpay Checkout.js browser-verify fast path — raced
+        // against wallet-recharge-webhook-succeed above for the SAME
+        // recharge; exactly one of the two may ever post the
+        // RechargeConfirmed ledger credit.
+        'wallet-recharge-verify' => (function () use ($args) {
+            $student = User::query()->findOrFail($args['student_id']);
+
+            $recharge = app(WalletRechargeServiceInterface::class)->verifyRazorpayCheckout(
+                $student,
+                (string) $args['order_id'],
+                (string) $args['payment_id'],
+                (string) $args['signature'],
+            );
+
+            return ['status' => $recharge->status->value];
+        })(),
+
+        'wallet-recharge-reconcile' => (function () use ($args) {
+            app()->instance(RazorpayGatewayClient::class, new RazorpayConcurrencyFakeClient);
+            app()->instance(StripeGatewayClient::class, new StripeConcurrencyFakeClient(
+                retrieveAmountReceived: isset($args['stripe_amount_received']) ? (int) $args['stripe_amount_received'] : null,
+                retrieveCurrency: $args['stripe_currency'] ?? null,
+            ));
+
+            $examined = app(WalletRechargeReconciliationService::class)->reconcileDue((int) ($args['limit'] ?? 200));
+
+            return ['examined' => $examined];
+        })(),
+
+        // Dispatches a genuinely signed Stripe webhook POST through the
+        // real HTTP kernel — mirrors wallet-recharge-webhook-succeed and
+        // stripe-webhook-succeed above for the booking domain.
+        'wallet-recharge-stripe-webhook-succeed' => (function () use ($args, $app) {
+            $body = json_encode([
+                'type' => 'payment_intent.succeeded',
+                'data' => [
+                    'object' => [
+                        'id' => $args['intent_id'],
+                        'amount' => $args['amount_minor'],
+                        'amount_received' => $args['amount_minor'],
+                        'currency' => $args['currency'],
+                        'status' => 'succeeded',
+                        'metadata' => ['wallet_recharge_reference' => $args['reference']],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR);
+
+            $timestamp = time();
+            $signature = hash_hmac('sha256', "{$timestamp}.{$body}", $args['webhook_secret']);
+
+            $request = Request::create(
+                '/api/webhooks/wallets/recharges/stripe',
+                'POST',
+                [], [], [],
+                [
+                    'HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}",
+                    'CONTENT_TYPE' => 'application/json',
+                    'HTTP_ACCEPT' => 'application/json',
+                ],
+                $body,
+            );
+
+            $response = $app->make(HttpKernel::class)->handle($request);
+
+            return ['status_code' => $response->getStatusCode(), 'content' => $response->getContent()];
         })(),
 
         default => throw new InvalidArgumentException("Unknown operation: {$operation}"),

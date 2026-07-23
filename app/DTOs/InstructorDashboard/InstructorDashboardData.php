@@ -26,5 +26,6 @@ final readonly class InstructorDashboardData
         public bool $payoutsAvailable,
         public int $unreadNotifications,
         public array $onboarding,
+        public int $waitlistDemandCount = 0,
     ) {}
 }

@@ -26,11 +26,12 @@
                 <h2 id="teaching-snapshot-title" class="mt-1 text-lg font-semibold text-white">Teaching snapshot</h2>
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <x-account.stat-card label="Upcoming" :value="(string) $upcomingCount" gradient="from-indigo-500 to-violet-500" icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             <x-account.stat-card label="Completed" :value="(string) $completedSessions" gradient="from-emerald-500 to-teal-500" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             <x-account.stat-card label="Teaching hours" :value="number_format($teachingHours, 1)" gradient="from-amber-500 to-orange-500" icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             <x-account.stat-card label="Subjects" :value="(string) $subjectCount" gradient="from-pink-500 to-rose-500" icon="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            <x-account.stat-card label="Waitlist demand" :value="(string) $waitlistDemandCount" gradient="from-cyan-500 to-sky-500" icon="M12 4.5v15m7.5-7.5h-15" />
         </div>
     </section>
 

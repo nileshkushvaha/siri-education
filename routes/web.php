@@ -62,6 +62,7 @@ use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\StudentReferralController;
 use App\Http\Controllers\Student\StudentReviewsController;
 use App\Http\Controllers\Student\StudentUpcomingClassesController;
+use App\Http\Controllers\Student\StudentWaitlistController;
 use App\Http\Controllers\Student\StudentWalletController;
 use App\Http\Controllers\Student\StudentWishlistController;
 use App\Http\Controllers\TagController;
@@ -251,6 +252,9 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/learning-plans', [StudentLearningPlanController::class, 'index'])->name('learning-plans');
     Route::post('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'store'])->name('favorite-instructors.store');
     Route::delete('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'destroy'])->name('favorite-instructors.destroy');
+    Route::get('/waitlist', [StudentWaitlistController::class, 'index'])->name('waitlist');
+    Route::post('/waitlist/{instructor}', [StudentWaitlistController::class, 'store'])->name('waitlist.store');
+    Route::delete('/waitlist/{instructor}', [StudentWaitlistController::class, 'destroy'])->name('waitlist.destroy');
     Route::get('/reviews', [StudentReviewsController::class,      'index'])->name('reviews');
     Route::get('/notifications', [StudentNotificationsController::class, 'index'])->name('notifications');
     Route::post('/notifications/read-all', [StudentNotificationsController::class, 'markAllRead'])->name('notifications.read-all');

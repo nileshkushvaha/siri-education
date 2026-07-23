@@ -12,10 +12,12 @@ use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Support\InstructorPayoutEligibility;
 use App\Enums\InstructorStatus;
 use App\Enums\LearningPlanStatus;
+use App\Enums\WaitlistEntryStatus;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\Booking;
 use App\Models\HomeworkAssignment;
 use App\Models\InstructorEarning;
+use App\Models\InstructorWaitlistEntry;
 use App\Models\StudentLearningPlan;
 use App\Models\User;
 use App\Settings\MeetingSettings;
@@ -118,6 +120,10 @@ final class InstructorDashboardService
                 'show_prompt' => $this->onboardingPromptVisible($status),
                 'variant' => $status === InstructorStatus::Rejected ? 'rejected' : 'in_progress',
             ],
+            waitlistDemandCount: InstructorWaitlistEntry::query()
+                ->where('instructor_user_id', $instructor->id)
+                ->where('status', WaitlistEntryStatus::Waiting->value)
+                ->count(),
         );
     }
 

@@ -22,6 +22,8 @@ final class DashboardOverview extends Component
 
     public int $subjectCount = 0;
 
+    public int $waitlistDemandCount = 0;
+
     public int $assignedActiveLearningPlanCount = 0;
 
     public int $reviewDueLearningPlanCount = 0;
@@ -58,6 +60,7 @@ final class DashboardOverview extends Component
         $this->completedSessions = $summary->completedLessons;
         $this->teachingHours = $summary->teachingHours;
         $this->subjectCount = $summary->subjectCount;
+        $this->waitlistDemandCount = $summary->waitlistDemandCount;
         $this->nextClasses = $summary->nextLessons;
         $this->assignedActiveLearningPlanCount = $summary->learningPlans['active'];
         $this->reviewDueLearningPlanCount = $summary->learningPlans['reviews_due'];

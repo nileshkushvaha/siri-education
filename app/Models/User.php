@@ -198,6 +198,18 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(StudentFavoriteInstructor::class, 'student_user_id');
     }
 
+    /** Waitlist entries this user joined as a student (SRS §6.19, GAP-018). */
+    public function instructorWaitlistEntries(): HasMany
+    {
+        return $this->hasMany(InstructorWaitlistEntry::class, 'student_user_id');
+    }
+
+    /** Waitlist entries naming this user as the instructor (SRS §10.28/§10.29 demand visibility). */
+    public function receivedWaitlistEntries(): HasMany
+    {
+        return $this->hasMany(InstructorWaitlistEntry::class, 'instructor_user_id');
+    }
+
     public function favoritedByStudentRows(): HasMany
     {
         return $this->hasMany(StudentFavoriteInstructor::class, 'instructor_user_id');

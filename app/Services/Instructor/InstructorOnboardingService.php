@@ -14,6 +14,7 @@ use App\Models\UserEducation;
 use App\Models\UserExperience;
 use App\Models\UserProfile;
 use App\Services\AuditTrailService;
+use App\Waitlist\Events\InstructorAvailabilityOpened;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -394,7 +395,7 @@ final class InstructorOnboardingService
     {
         $this->authorizeSelfOrLifecyclePermission($actor, $instructor, self::VACATION_PERMISSION);
 
-        return $this->transitionStatus(
+        $profile = $this->transitionStatus(
             $actor,
             $instructor,
             [InstructorStatus::Vacation],
@@ -402,6 +403,14 @@ final class InstructorOnboardingService
             'instructor_vacation_ended',
             'Instructor vacation ended',
         );
+
+        // SRS §10.28/§10.33-4 — GAP-018: an instructor becoming bookable
+        // again after Vacation is a real "instructor now has open
+        // capacity" event. Dispatched after transitionStatus()'s own
+        // transaction commits (ShouldDispatchAfterCommit).
+        InstructorAvailabilityOpened::dispatch($instructor, 'vacation_resumed', (string) $instructor->id);
+
+        return $profile;
     }
 
     /** Active/Vacation/Approved -> Suspended. Reason mandatory. */

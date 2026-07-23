@@ -79,6 +79,10 @@ use App\Listeners\Reviews\SendReviewRejectedNotification;
 use App\Listeners\Reviews\SendReviewReportedNotification;
 use App\Listeners\Reviews\SendReviewRequestedNotification;
 use App\Listeners\Reviews\SendReviewSubmittedNotification;
+use App\Listeners\Waitlist\FulfillWaitlistOnBookingConfirmed;
+use App\Listeners\Waitlist\ProcessWaitlistOnBookingCancelled;
+use App\Listeners\Waitlist\ProcessWaitlistOnBookingRescheduled;
+use App\Listeners\Waitlist\ProcessWaitlistOnInstructorAvailabilityOpened;
 use App\Listeners\Wallet\GenerateInvoiceOnWalletRechargeSucceeded;
 use App\Listeners\Wallet\SendWalletNotifications;
 use App\Quality\Events\InstructorQualityAlertCreated;
@@ -100,6 +104,7 @@ use App\Reviews\Events\StudentReviewPublished;
 use App\Reviews\Events\StudentReviewRejected;
 use App\Reviews\Events\StudentReviewRestored;
 use App\Reviews\Events\StudentReviewSubmitted;
+use App\Waitlist\Events\InstructorAvailabilityOpened;
 use App\Wallet\Events\LessonRefundCompleted;
 use App\Wallet\Events\WalletRechargeSucceeded;
 use Illuminate\Auth\Events\Verified;
@@ -190,6 +195,7 @@ class EventServiceProvider extends ServiceProvider
             [RecordBookingLifecycleAudit::class, 'handleConfirmed'],
             CreateMeetingOnBookingConfirmed::class,
             CreateLessonOnBookingConfirmed::class,
+            FulfillWaitlistOnBookingConfirmed::class,
         ],
         BookingCancelled::class => [
             [SendBookingNotifications::class, 'handleCancelled'],
@@ -198,10 +204,12 @@ class EventServiceProvider extends ServiceProvider
             SyncLessonOnBookingCancelled::class,
             CancelMeetingOnBookingCancelled::class,
             DetectInstructorCancellationQualityRiskOnBookingCancelled::class,
+            ProcessWaitlistOnBookingCancelled::class,
         ],
         BookingRescheduled::class => [
             [SendBookingNotifications::class, 'handleRescheduled'],
             [RecordBookingLifecycleAudit::class, 'handleRescheduled'],
+            ProcessWaitlistOnBookingRescheduled::class,
         ],
         BookingCompleted::class => [
             [SendBookingNotifications::class, 'handleCompleted'],
@@ -215,6 +223,9 @@ class EventServiceProvider extends ServiceProvider
         WalletRechargeSucceeded::class => [
             [SendWalletNotifications::class, 'handleRechargeSucceeded'],
             GenerateInvoiceOnWalletRechargeSucceeded::class,
+        ],
+        InstructorAvailabilityOpened::class => [
+            ProcessWaitlistOnInstructorAvailabilityOpened::class,
         ],
         MeetingCreated::class => [
             [SendMeetingNotifications::class, 'handleCreated'],

@@ -343,6 +343,20 @@
                                     {{ $isFavorite ? 'Remove from Favorites' : 'Add to Favorites' }}
                                 </button>
                             </form>
+
+                            @if(app(\App\Settings\FeatureSettings::class)->waitlist_enabled)
+                                @php($isWaitlisted = auth()->user()->instructorWaitlistEntries()->where('instructor_user_id', $instructor->id)->where('status', \App\Enums\WaitlistEntryStatus::Waiting->value)->exists())
+                                <form method="POST" action="{{ $isWaitlisted ? route('dashboard.waitlist.destroy', $instructor) : route('dashboard.waitlist.store', $instructor) }}" class="mt-3">
+                                    @csrf
+                                    @if($isWaitlisted)
+                                        @method('DELETE')
+                                    @endif
+                                    <button type="submit" class="w-full rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:bg-white/10">
+                                        {{ $isWaitlisted ? 'Leave Waitlist' : 'Join Waitlist' }}
+                                    </button>
+                                    <p class="mt-2 text-[11px] text-slate-500">First-come, first-served — joining does not guarantee a slot when availability opens.</p>
+                                </form>
+                            @endif
                         @endif
                     @else
                         <form method="POST" action="{{ route('dashboard.favorite-instructors.store', $instructor) }}" class="mt-5">

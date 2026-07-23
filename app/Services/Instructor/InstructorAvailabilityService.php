@@ -12,6 +12,7 @@ use App\Exceptions\Instructor\AvailabilityChangeRequiresConfirmationException;
 use App\Models\TeacherAvailability;
 use App\Models\User;
 use App\Services\AuditTrailService;
+use App\Waitlist\Events\InstructorAvailabilityOpened;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,7 +41,7 @@ final class InstructorAvailabilityService
      */
     public function create(array $data, User $actor): TeacherAvailability
     {
-        return DB::transaction(function () use ($data, $actor): TeacherAvailability {
+        $availability = DB::transaction(function () use ($data, $actor): TeacherAvailability {
             $teacher = $this->teacher((int) $data['teacher_id']);
             $this->assertCanCreate($actor, $teacher);
 
@@ -65,6 +66,17 @@ final class InstructorAvailabilityService
 
             return $availability;
         });
+
+        // SRS §10.28/§10.33-4 — GAP-018: a newly published (active)
+        // window is exactly the "instructor later opens matching
+        // availability" trigger. Dispatched after the transaction
+        // above commits (ShouldDispatchAfterCommit); a draft/inactive
+        // window is not bookable capacity and must not notify anyone.
+        if ($availability->is_active) {
+            InstructorAvailabilityOpened::dispatch($availability->teacher, 'availability_created', (string) $availability->id);
+        }
+
+        return $availability;
     }
 
     /**

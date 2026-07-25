@@ -11,17 +11,20 @@ use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Homework\Exceptions\HomeworkException;
 use App\Models\Booking;
 use App\Models\HomeworkAssignment;
+use App\Models\HomeworkResourceVersion;
 use App\Models\StudentLearningPlan;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 final class HomeworkList extends Component
 {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     public ?string $reviewingId = null;
 
@@ -41,11 +44,21 @@ final class HomeworkList extends Component
 
     public string $assignDueAt = '';
 
+    /** GAP-022: optional instructor resource attached at assignment-creation time. */
+    #[Validate('nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
+    public ?TemporaryUploadedFile $assignResource = null;
+
     #[Validate('required|string|min:3|max:5000')]
     public string $feedbackText = '';
 
     #[Validate('nullable|string|max:20')]
     public string $grade = '';
+
+    /** GAP-022: resource attached from the Pending Review row (assignment already exists). */
+    public ?string $resourceAssignmentId = null;
+
+    #[Validate('nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
+    public ?TemporaryUploadedFile $newResource = null;
 
     private HomeworkServiceInterface $homework;
 
@@ -104,9 +117,11 @@ final class HomeworkList extends Component
             return;
         }
 
+        $instructor = auth()->user();
+
         try {
-            $this->homework->assign(
-                auth()->user(),
+            $assignment = $this->homework->assign(
+                $instructor,
                 $student,
                 [
                     'title' => trim($this->assignTitle),
@@ -125,6 +140,10 @@ final class HomeworkList extends Component
             return;
         }
 
+        if ($this->assignResource instanceof TemporaryUploadedFile) {
+            $this->homework->addResource($instructor, $assignment, $this->assignResource);
+        }
+
         $this->resetAssignForm();
         session()->flash('success', 'Homework assigned successfully.');
     }
@@ -139,7 +158,73 @@ final class HomeworkList extends Component
         $this->assignSubject = '';
         $this->assignDescription = '';
         $this->assignDueAt = '';
+        $this->assignResource = null;
         $this->resetValidation();
+    }
+
+    public function startAddResource(string $assignmentId): void
+    {
+        $this->resourceAssignmentId = $assignmentId;
+        $this->newResource = null;
+        $this->resetValidation();
+    }
+
+    public function cancelAddResource(): void
+    {
+        $this->resourceAssignmentId = null;
+        $this->newResource = null;
+        $this->resetValidation();
+    }
+
+    /** GAP-022: attach an instructor resource to an already-existing (Pending Review) assignment. */
+    public function uploadResource(string $assignmentId): void
+    {
+        $assignment = $this->repository->findOrFail($assignmentId);
+        $this->authorize('manageResources', $assignment);
+
+        $this->validateOnly('newResource');
+
+        if (! $this->newResource instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        try {
+            $this->homework->addResource(auth()->user(), $assignment, $this->newResource);
+        } catch (HomeworkException $e) {
+            $this->addError('newResource', $e->getMessage());
+
+            return;
+        }
+
+        $this->newResource = null;
+        $this->resourceAssignmentId = null;
+    }
+
+    public function removeResource(string $assignmentId, string $mediaId): void
+    {
+        $assignment = $this->repository->findOrFail($assignmentId);
+        $this->authorize('manageResources', $assignment);
+
+        try {
+            $this->homework->removeResource(auth()->user(), $assignment, $mediaId);
+        } catch (HomeworkException $e) {
+            $this->addError('newResource', $e->getMessage());
+        }
+    }
+
+    /** GAP-022 (37A): detach a reusable library resource version — attaching happens from the Resource Library page. */
+    public function detachLibraryVersion(string $assignmentId, string $versionId): void
+    {
+        $assignment = $this->repository->findOrFail($assignmentId);
+        $this->authorize('manageResources', $assignment);
+
+        $version = HomeworkResourceVersion::query()->findOrFail($versionId);
+
+        try {
+            $this->homework->detachResourceVersion(auth()->user(), $assignment, $version);
+        } catch (HomeworkException $e) {
+            $this->addError('newResource', $e->getMessage());
+        }
     }
 
     public function startReview(string $assignmentId): void

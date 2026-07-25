@@ -36,4 +36,10 @@ class HomeworkAssignmentPolicy
     {
         return $user->id === $assignment->teacher_id;
     }
+
+    /** GAP-022: only the assigning instructor manages instructor-provided resources. */
+    public function manageResources(User $user, HomeworkAssignment $assignment): bool
+    {
+        return $user->id === $assignment->teacher_id;
+    }
 }

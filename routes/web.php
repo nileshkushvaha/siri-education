@@ -16,6 +16,7 @@ use App\Http\Controllers\Booking\BookingWizardPageController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\HomeworkResourceDownloadController;
 use App\Http\Controllers\Dashboard\MessagingController;
 use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Instructor\InstructorAvailabilityController;
 use App\Http\Controllers\Instructor\InstructorController;
 use App\Http\Controllers\Instructor\InstructorFinanceController;
 use App\Http\Controllers\Instructor\InstructorHomeworkController;
+use App\Http\Controllers\Instructor\InstructorHomeworkResourceController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorLessonsController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
@@ -287,6 +289,8 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
         // app/Homework/* domain; grading writes go through
         // HomeworkService::review(), never straight to the model).
         Route::get('/instructor/homework', [InstructorHomeworkController::class, 'index'])->name('instructor.homework');
+        // GAP-022 (37A) — instructor's own reusable resource library.
+        Route::get('/instructor/homework/resources', [InstructorHomeworkResourceController::class, 'index'])->name('instructor.homework.resources');
         // Instructor-facing quality insights — read-only; the instructor
         // never moderates, resolves reports, or touches an aggregate here.
         Route::get('/instructor/quality-insights', [InstructorQualityInsightsController::class, 'index'])->name('instructor.quality-insights');
@@ -317,6 +321,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/invoices/{invoice}/download', StudentInvoiceDownloadController::class)->name('invoices.download');
     Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
+    // GAP-022 — authorization is re-checked inside the controller on
+    // every request (HomeworkAssignmentPolicy::view()); shared by
+    // student and instructor since either may be the authorized viewer.
+    Route::get('/homework/resources/{media}/download', HomeworkResourceDownloadController::class)->name('homework.resources.download');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
     // ── Support Cases (Phase 31, GAP-016) — shared by student and

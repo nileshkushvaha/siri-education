@@ -9,7 +9,11 @@ use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Homework\Repositories\HomeworkRepository;
 use App\Homework\Services\HomeworkService;
 use App\Models\HomeworkAssignment;
+use App\Models\HomeworkResource;
+use App\Models\HomeworkResourceVersion;
 use App\Policies\HomeworkAssignmentPolicy;
+use App\Policies\HomeworkResourcePolicy;
+use App\Policies\HomeworkResourceVersionPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,5 +28,7 @@ class HomeworkServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(HomeworkAssignment::class, HomeworkAssignmentPolicy::class);
+        Gate::policy(HomeworkResource::class, HomeworkResourcePolicy::class);
+        Gate::policy(HomeworkResourceVersion::class, HomeworkResourceVersionPolicy::class);
     }
 }

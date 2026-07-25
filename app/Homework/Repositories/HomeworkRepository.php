@@ -17,7 +17,7 @@ final class HomeworkRepository implements HomeworkRepositoryInterface
     {
         return HomeworkAssignment::query()
             ->forStudent($studentId)
-            ->with(['teacher', 'booking.type', 'learningPlan'])
+            ->with(['teacher', 'booking.type', 'learningPlan', 'media', 'resourceVersions.resource', 'resourceVersions.media'])
             ->orderByRaw("status = 'pending' desc")
             ->orderBy('due_at')
             ->paginate($perPage);
@@ -62,7 +62,7 @@ final class HomeworkRepository implements HomeworkRepositoryInterface
         return HomeworkAssignment::query()
             ->forTeacher($teacherId)
             ->where('status', HomeworkStatus::Submitted)
-            ->with(['student:id,first_name,last_name,name', 'booking.type', 'learningPlan'])
+            ->with(['student:id,first_name,last_name,name', 'booking.type', 'learningPlan', 'media', 'resourceVersions.resource', 'resourceVersions.media'])
             ->orderBy('submitted_at')
             ->paginate($perPage);
     }

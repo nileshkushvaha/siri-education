@@ -110,6 +110,7 @@ final class AccountMenuService
                 $this->item('Vacation Mode', 'dashboard.instructor.vacation', 'calendar'),
                 $this->item('My Lessons', 'dashboard.instructor.lessons', 'clipboard', mobilePriority: 2, mobileLabel: 'Lessons'),
                 $this->item('Homework', 'dashboard.instructor.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled),
+                $this->item('Resource Library', 'dashboard.instructor.homework.resources', 'clipboard', enabled: $this->features->homework_enabled),
                 $this->item('Students', 'dashboard.instructor.students', 'user'),
             ]],
             ['label' => 'Performance', 'items' => [

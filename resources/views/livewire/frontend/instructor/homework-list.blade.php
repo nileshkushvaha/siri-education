@@ -82,6 +82,12 @@
                         @error('assignDescription')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
                     </div>
 
+                    <div>
+                        <label for="assignResource" class="block text-xs text-slate-400 mb-1">Resource for the student (optional, PDF or image)</label>
+                        <input type="file" id="assignResource" wire:model="assignResource" accept=".pdf,.jpg,.jpeg,.png,.webp" class="text-xs text-slate-300">
+                        @error('assignResource')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                    </div>
+
                     <div class="flex items-center gap-2">
                         <button wire:click="assign" wire:loading.attr="disabled"
                                 class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all disabled:opacity-50">
@@ -127,6 +133,65 @@
 
                 @if($assignment->submission_text)
                     <p class="mt-3 rounded-xl bg-white/[0.03] px-3 py-2 text-xs leading-5 text-slate-300">{{ $assignment->submission_text }}</p>
+                @endif
+
+                @if($assignment->getMedia('submission_attachments')->isNotEmpty())
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach($assignment->getMedia('submission_attachments') as $media)
+                            <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="text-xs text-indigo-300 underline">
+                                {{ $media->file_name }} ({{ $media->human_readable_size }})
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
+
+                <div class="mt-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 mb-1.5">Resources</p>
+                    @foreach($assignment->getMedia('instructor_resources') as $media)
+                        <div class="flex items-center gap-2 text-xs text-slate-300 mb-1" wire:key="resource-{{ $media->id }}">
+                            <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="underline text-indigo-300">{{ $media->file_name }}</a>
+                            <span class="text-slate-500">({{ $media->human_readable_size }})</span>
+                            <button wire:click="removeResource('{{ $assignment->id }}', '{{ $media->id }}')"
+                                    wire:confirm="Remove this resource?"
+                                    class="text-rose-400 hover:text-rose-300">Remove</button>
+                        </div>
+                    @endforeach
+
+                    @if($resourceAssignmentId === $assignment->id)
+                        <div class="mt-2">
+                            <input type="file" wire:model="newResource" accept=".pdf,.jpg,.jpeg,.png,.webp" class="text-xs text-slate-300">
+                            @error('newResource')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                            <div class="flex items-center gap-2 mt-2">
+                                <button wire:click="uploadResource('{{ $assignment->id }}')"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all">
+                                    Upload
+                                </button>
+                                <button wire:click="cancelAddResource" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    @else
+                        <button wire:click="startAddResource('{{ $assignment->id }}')" class="mt-1 text-xs text-indigo-300 underline">
+                            + Add resource
+                        </button>
+                    @endif
+                </div>
+
+                @if($assignment->resourceVersions->isNotEmpty())
+                    <div class="mt-3">
+                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 mb-1.5">Library Resources</p>
+                        @foreach($assignment->resourceVersions as $version)
+                            <div class="flex items-center gap-2 text-xs text-slate-300 mb-1" wire:key="lib-{{ $version->id }}">
+                                @if($version->getFirstMedia('file'))
+                                    <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="underline text-indigo-300">
+                                        {{ $version->resource->title }} (v{{ $version->version_number }})
+                                    </a>
+                                @endif
+                                <button wire:click="detachLibraryVersion('{{ $assignment->id }}', '{{ $version->id }}')" wire:confirm="Detach this resource?" class="text-rose-400 hover:text-rose-300">Detach</button>
+                            </div>
+                        @endforeach
+                    </div>
                 @endif
 
                 @if($reviewingId === $assignment->id)

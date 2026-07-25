@@ -10,16 +10,22 @@ use App\Homework\Exceptions\HomeworkException;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 final class HomeworkList extends Component
 {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     public ?string $submittingId = null;
 
     #[Validate('required|string|min:3|max:5000')]
     public string $submissionText = '';
+
+    /** GAP-022: optional submission attachment, uploaded atomically with the text response. */
+    #[Validate('nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
+    public ?TemporaryUploadedFile $submissionAttachment = null;
 
     private HomeworkServiceInterface $homework;
 
@@ -38,12 +44,14 @@ final class HomeworkList extends Component
 
         $this->submittingId = $assignmentId;
         $this->submissionText = '';
+        $this->submissionAttachment = null;
     }
 
     public function cancelSubmission(): void
     {
         $this->submittingId = null;
         $this->submissionText = '';
+        $this->submissionAttachment = null;
         $this->resetValidation();
     }
 
@@ -55,7 +63,7 @@ final class HomeworkList extends Component
         $this->validate();
 
         try {
-            $this->homework->submit($assignment, $this->submissionText);
+            $this->homework->submit($assignment, $this->submissionText, $this->submissionAttachment);
         } catch (HomeworkException $e) {
             $this->addError('submissionText', $e->getMessage());
 
@@ -64,6 +72,7 @@ final class HomeworkList extends Component
 
         $this->submittingId = null;
         $this->submissionText = '';
+        $this->submissionAttachment = null;
         session()->flash('success', 'Homework submitted successfully.');
     }
 

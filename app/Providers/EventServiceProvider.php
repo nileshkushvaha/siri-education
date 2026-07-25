@@ -84,6 +84,7 @@ use App\Listeners\Reviews\SendReviewRejectedNotification;
 use App\Listeners\Reviews\SendReviewReportedNotification;
 use App\Listeners\Reviews\SendReviewRequestedNotification;
 use App\Listeners\Reviews\SendReviewSubmittedNotification;
+use App\Listeners\SupportCases\SendSupportCaseNotifications;
 use App\Listeners\Waitlist\FulfillWaitlistOnBookingConfirmed;
 use App\Listeners\Waitlist\ProcessWaitlistOnBookingCancelled;
 use App\Listeners\Waitlist\ProcessWaitlistOnBookingRescheduled;
@@ -109,6 +110,10 @@ use App\Reviews\Events\StudentReviewPublished;
 use App\Reviews\Events\StudentReviewRejected;
 use App\Reviews\Events\StudentReviewRestored;
 use App\Reviews\Events\StudentReviewSubmitted;
+use App\SupportCases\Events\SupportCaseAssigned;
+use App\SupportCases\Events\SupportCaseCreated;
+use App\SupportCases\Events\SupportCaseReplyAdded;
+use App\SupportCases\Events\SupportCaseStatusChanged;
 use App\Waitlist\Events\InstructorAvailabilityOpened;
 use App\Wallet\Events\LessonRefundCompleted;
 use App\Wallet\Events\WalletRechargeSucceeded;
@@ -358,6 +363,22 @@ class EventServiceProvider extends ServiceProvider
         ],
         SuspiciousActivityFlagRecorded::class => [
             SendSuspiciousActivityFlagRecordedNotification::class,
+        ],
+        // Phase 31 — GAP-016 support/dispute case management. Admin
+        // awareness (new critical case, escalation, user replied,
+        // reopened) flows separately through the Activity Log pipeline
+        // (AuditTrailService → ActivityCreated → NotifyAdminsOnActivity).
+        SupportCaseCreated::class => [
+            [SendSupportCaseNotifications::class, 'handleCreated'],
+        ],
+        SupportCaseAssigned::class => [
+            [SendSupportCaseNotifications::class, 'handleAssigned'],
+        ],
+        SupportCaseReplyAdded::class => [
+            [SendSupportCaseNotifications::class, 'handleReplyAdded'],
+        ],
+        SupportCaseStatusChanged::class => [
+            [SendSupportCaseNotifications::class, 'handleStatusChanged'],
         ],
     ];
 

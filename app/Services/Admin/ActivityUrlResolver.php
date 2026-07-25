@@ -12,6 +12,7 @@ use App\Filament\Pages\Security\RegistrationPage;
 use App\Filament\Pages\Security\SessionPage;
 use App\Filament\Resources\ActivityLog\ActivityLogResource;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Resources\SupportCases\SupportCaseResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\Activity;
 use Throwable;
@@ -31,6 +32,7 @@ final class ActivityUrlResolver
                 'roles' => $this->resolveRoleUrl($activity),
                 'security' => $this->resolveSecurityUrl($activity),
                 'auth' => $this->resolveAuthUrl($activity),
+                'support_cases' => $this->resolveSupportCaseUrl($activity),
                 default => ActivityLogResource::getUrl('index'),
             };
         } catch (Throwable) {
@@ -92,5 +94,14 @@ final class ActivityUrlResolver
         }
 
         return ActivityLogResource::getUrl('index');
+    }
+
+    private function resolveSupportCaseUrl(Activity $activity): string
+    {
+        if ($activity->subject_id) {
+            return SupportCaseResource::getUrl('view', ['record' => $activity->subject_id]);
+        }
+
+        return SupportCaseResource::getUrl('index');
     }
 }

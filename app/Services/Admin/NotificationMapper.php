@@ -459,6 +459,34 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
+            // ── Support cases (Phase 31, GAP-016) — participant
+            //     notifications (created/assigned/reply/status) flow via
+            //     SendSupportCaseNotifications; only the events needing
+            //     broader staff attention map here. ────────────────────
+            $log === 'support_cases' && $event === 'case_created' => [
+                'title' => 'New Support Case',
+                'actor_label' => 'Opened by',
+                'icon' => 'heroicon-o-lifebuoy',
+                'color' => 'info',
+                'priority' => 2,
+            ],
+
+            $log === 'support_cases' && $event === 'case_escalated' => [
+                'title' => 'Support Case Escalated',
+                'actor_label' => 'Escalated by',
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'color' => 'danger',
+                'priority' => 3,
+            ],
+
+            $log === 'support_cases' && $event === 'case_reopened' => [
+                'title' => 'Support Case Reopened',
+                'actor_label' => 'Reopened by',
+                'icon' => 'heroicon-o-arrow-uturn-left',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
             // ── Everything else: silence ──────────────────────────────────
             default => null,
         };

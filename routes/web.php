@@ -16,6 +16,7 @@ use App\Http\Controllers\Booking\BookingWizardPageController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
 use App\Http\Controllers\Faq\PublicFaqController;
 use App\Http\Controllers\Forms\CallbackController;
@@ -316,6 +317,18 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
+
+    // ── Support Cases (Phase 31, GAP-016) — shared by student and
+    //    instructor audiences; SupportCaseType is derived from the
+    //    acting user's active workspace, not a separate route group.
+    //    Authorization is re-checked inside the controller on every
+    //    request (SupportCasePolicy) — owner or explicit permission only.
+    Route::get('/support-cases', [SupportCaseController::class, 'index'])->name('support-cases');
+    Route::get('/support-cases/create', [SupportCaseController::class, 'create'])->name('support-cases.create');
+    Route::post('/support-cases', [SupportCaseController::class, 'store'])->name('support-cases.store');
+    Route::get('/support-cases/{supportCase}', [SupportCaseController::class, 'show'])->name('support-cases.show');
+    Route::post('/support-cases/{supportCase}/reply', [SupportCaseController::class, 'reply'])->name('support-cases.reply');
+    Route::post('/support-cases/{supportCase}/reopen', [SupportCaseController::class, 'reopen'])->name('support-cases.reopen');
 
     Route::prefix('bookings')->name('bookings.')->group(function (): void {
         Route::get('/', [StudentBookingController::class, 'index'])->name('index');

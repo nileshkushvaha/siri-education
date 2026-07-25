@@ -75,6 +75,7 @@ final class AccountMenuService
             ]],
             ['label' => 'Account', 'items' => [
                 $this->item('My Profile', 'profile.show', 'user', permission: 'profile.view'),
+                $this->item('Support Cases', 'dashboard.support-cases', 'lifebuoy'),
                 $this->item('FAQs', 'dashboard.faqs', 'help'),
             ]],
         ];
@@ -91,6 +92,7 @@ final class AccountMenuService
                 ['label' => 'Account', 'items' => [
                     $this->item('Notifications', 'dashboard.notifications', 'bell', $badges['notifications'] ?? 0),
                     $this->item('My Profile', 'profile.show', 'user', permission: 'profile.view'),
+                    $this->item('Support Cases', 'dashboard.support-cases', 'lifebuoy'),
                     $this->item('FAQs', 'dashboard.faqs', 'help'),
                 ]],
             ];
@@ -121,6 +123,7 @@ final class AccountMenuService
             ['label' => 'Account', 'items' => [
                 $this->item('Notifications', 'dashboard.notifications', 'bell', $badges['notifications'] ?? 0),
                 $this->item('My Profile', 'profile.show', 'user', permission: 'profile.view'),
+                $this->item('Support Cases', 'dashboard.support-cases', 'lifebuoy'),
                 $this->item('FAQs', 'dashboard.faqs', 'help'),
             ]],
         ];

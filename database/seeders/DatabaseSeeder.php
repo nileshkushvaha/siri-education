@@ -58,6 +58,8 @@ class DatabaseSeeder extends Seeder
             InstructorSeeder::class,
             InstructorDocumentRequirementSeeder::class,
             FaqSeeder::class,
+            // Phase 31 — GAP-016 support/dispute case management.
+            SupportCasePermissionSeeder::class,
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Country\Support\CountryFeatureFlags;
 use Database\Factories\CountryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -74,5 +75,14 @@ class Country extends Model
             ->logFillable()
             ->logOnlyDirty()
             ->dontLogEmptyChanges();
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Country $country): void {
+            if ($country->feature_flags !== null) {
+                $country->feature_flags = CountryFeatureFlags::validate($country->feature_flags);
+            }
+        });
     }
 }

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Homework\Services;
 
+use App\Country\Enums\CountryFeature;
+use App\Country\Services\CountryFeatureResolver;
+use App\Country\Services\CountryResolver;
 use App\Homework\Actions\AssignHomeworkAction;
 use App\Homework\Actions\ReviewHomeworkAction;
 use App\Homework\Actions\SubmitHomeworkAction;
 use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Contracts\HomeworkServiceInterface;
+use App\Homework\Exceptions\HomeworkException;
 use App\Models\Booking;
 use App\Models\HomeworkAssignment;
 use App\Models\StudentLearningPlan;
@@ -32,6 +36,8 @@ final class HomeworkService implements HomeworkServiceInterface
         private readonly AssignHomeworkAction $assignAction,
         private readonly AuditTrailService $audit,
         private readonly LearningPlanProgressService $progress,
+        private readonly CountryFeatureResolver $countryFeatures,
+        private readonly CountryResolver $countryResolver,
     ) {}
 
     public function assign(
@@ -46,6 +52,15 @@ final class HomeworkService implements HomeworkServiceInterface
         // path, and Gate::before never reaches direct service calls.
         if (! $instructor->hasRole('instructor')) {
             throw new AuthorizationException('Only instructors can assign homework.');
+        }
+
+        // GAP-029: homework had no enforcement boundary for
+        // FeatureSettings::homework_enabled before this phase (only UI
+        // menu badges read it) — this is a new gate, not a replacement
+        // of one. Resolved against the instructor's own country, since
+        // assigning homework is an instructor action (requirement #3).
+        if (! $this->countryFeatures->isEnabled(CountryFeature::Homework, $this->countryResolver->forInstructor($instructor))) {
+            throw new HomeworkException('Homework is not currently available for your country.');
         }
 
         return DB::transaction(function () use ($instructor, $student, $attributes, $bookingId, $learningPlanId): HomeworkAssignment {

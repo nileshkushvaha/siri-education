@@ -22,6 +22,9 @@ class MeetingSettings extends Settings
 
     public int $meeting_link_visible_after_minutes;
 
+    /** SRS §26.36/§26.43 — how far ahead of an upcoming online lesson the missing-meeting-link sweep starts alerting. */
+    public int $missing_meeting_link_threshold_minutes;
+
     public bool $recording_enabled;
 
     public int $recording_retention_days;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Alerts\Events\OperationalAlertRecorded;
 use App\Booking\Events\BookingCancelled;
 use App\Booking\Events\BookingCompleted;
 use App\Booking\Events\BookingConfirmed;
@@ -24,6 +25,10 @@ use App\Lessons\Events\LessonCompleted;
 use App\Lessons\Events\LessonDisputed;
 use App\Lessons\Events\LessonOutcomeFinalized;
 use App\Lessons\Events\LessonOutcomeOverridden;
+use App\Listeners\Alerts\CreateOperationalAlertOnActivity;
+use App\Listeners\Alerts\CreateOperationalAlertOnJobFailed;
+use App\Listeners\Alerts\CreateOperationalAlertOnWalletRechargeCreditFailed;
+use App\Listeners\Alerts\SendOperationalAlertRecordedNotification;
 use App\Listeners\Auth\LogLoginActivity;
 use App\Listeners\Auth\SendApprovalNotification;
 use App\Listeners\Auth\SendRegistrationNotifications;
@@ -121,6 +126,7 @@ use App\SupportCases\Events\SupportCaseReplyAdded;
 use App\SupportCases\Events\SupportCaseStatusChanged;
 use App\Waitlist\Events\InstructorAvailabilityOpened;
 use App\Wallet\Events\LessonRefundCompleted;
+use App\Wallet\Events\WalletRechargeCreditFailed;
 use App\Wallet\Events\WalletRechargeSucceeded;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -129,6 +135,7 @@ use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Notifications\Events\NotificationFailed;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Queue\Events\JobFailed;
 use Resend\Laravel\Events\EmailBounced;
 use Resend\Laravel\Events\EmailComplained;
 use Resend\Laravel\Events\EmailDelivered;
@@ -144,6 +151,7 @@ class EventServiceProvider extends ServiceProvider
             NotifyAdminsOnActivity::class,
             NotifyInstructorOnProfileActivity::class,
             NotifyInstructorOnPayoutActivity::class,
+            CreateOperationalAlertOnActivity::class,
         ],
         UserRegistered::class => [
             SendRegistrationNotifications::class,
@@ -395,6 +403,16 @@ class EventServiceProvider extends ServiceProvider
         ],
         MessageReported::class => [
             EvaluateRepeatedMessageReportsOnMessageReported::class,
+        ],
+        // Phase 35 — GAP-035 durable operational alerts.
+        OperationalAlertRecorded::class => [
+            SendOperationalAlertRecordedNotification::class,
+        ],
+        WalletRechargeCreditFailed::class => [
+            CreateOperationalAlertOnWalletRechargeCreditFailed::class,
+        ],
+        JobFailed::class => [
+            CreateOperationalAlertOnJobFailed::class,
         ],
     ];
 

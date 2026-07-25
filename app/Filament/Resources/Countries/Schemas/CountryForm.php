@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Countries\Schemas;
 
 use App\Booking\Enums\PaymentProviderCode;
+use App\Country\Enums\CountryFeature;
 use App\Models\Currency;
 use App\Models\Language;
 use DateTimeZone;
@@ -172,6 +173,20 @@ class CountryForm
                             ->nullable()
                             ->maxLength(500)
                             ->placeholder('Internal notes about this country\'s gateway choice (optional).'),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Feature Availability')
+                    ->description('Disable a platform feature for this country only. A feature can never be turned on here if it is disabled platform-wide, and a feature requiring another (e.g. Wallet Recharge requires Wallet) cannot be enabled while its dependency is off for this country.')
+                    ->icon('heroicon-o-adjustments-vertical')
+                    ->schema([
+                        Grid::make(3)->schema(
+                            collect(CountryFeature::cases())
+                                ->map(fn (CountryFeature $feature): Toggle => Toggle::make("feature_flags.{$feature->value}")
+                                    ->label($feature->label())
+                                    ->default(true))
+                                ->all()
+                        ),
                     ])
                     ->columnSpanFull(),
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Types;
 
 use App\Booking\Contracts\BookingTypeInterface;
+use App\Booking\Validation\Rules\PaidBookingsCountryEnabledRule;
 
 final class PaidOneToOneType implements BookingTypeInterface
 {
@@ -37,7 +38,9 @@ final class PaidOneToOneType implements BookingTypeInterface
 
     public function rules(): array
     {
-        return [];
+        return [
+            PaidBookingsCountryEnabledRule::class,
+        ];
     }
 
     public function formRules(): array

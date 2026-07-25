@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Waitlist\Services;
 
+use App\Country\Enums\CountryFeature;
+use App\Country\Services\CountryFeatureResolver;
+use App\Country\Services\CountryResolver;
 use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
 use App\Enums\WaitlistEntryStatus;
@@ -39,11 +42,13 @@ final class WaitlistService
         private readonly AuditTrailService $audit,
         private readonly StudentLifecycleService $studentLifecycle,
         private readonly NotificationIdempotencyGuard $idempotency,
+        private readonly CountryFeatureResolver $countryFeatures,
+        private readonly CountryResolver $countryResolver,
     ) {}
 
     public function join(User $actor, User $instructor): InstructorWaitlistEntry
     {
-        if (! app(FeatureSettings::class)->waitlist_enabled) {
+        if (! $this->countryFeatures->isEnabled(CountryFeature::Waitlist, $this->countryResolver->forStudent($actor))) {
             throw new WaitlistException('Waitlists are not currently enabled.');
         }
 

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Referral\Services;
 
+use App\Country\Enums\CountryFeature;
+use App\Country\Services\CountryFeatureResolver;
+use App\Country\Services\CountryResolver;
 use App\Enums\StudentStatus;
 use App\Models\ReferralAttribution;
 use App\Models\ReferralCode;
@@ -15,7 +18,6 @@ use App\Referral\Enums\ReferralAttributionSource;
 use App\Referral\Events\ReferralAttributed;
 use App\Referral\Exceptions\ReferralException;
 use App\Services\AuditTrailService;
-use App\Settings\FeatureSettings;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -37,8 +39,9 @@ final class ReferralAttributionService implements ReferralAttributionServiceInte
 {
     public function __construct(
         private readonly ReferralCodeServiceInterface $codes,
-        private readonly FeatureSettings $features,
         private readonly AuditTrailService $auditTrail,
+        private readonly CountryFeatureResolver $countryFeatures,
+        private readonly CountryResolver $countryResolver,
     ) {}
 
     public function attributeFromRegistration(User $referredStudent, ?string $rawCode, ?string $source = null): ?ReferralAttribution
@@ -64,7 +67,7 @@ final class ReferralAttributionService implements ReferralAttributionServiceInte
 
     private function attempt(User $referredStudent, string $rawCode, ?string $source): ?ReferralAttribution
     {
-        if (! $this->features->referral_enabled) {
+        if (! $this->countryFeatures->isEnabled(CountryFeature::Referrals, $this->countryResolver->forStudent($referredStudent))) {
             return null;
         }
 

@@ -19,13 +19,15 @@ use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Events\BookingPaymentSucceeded;
 use App\Booking\Exceptions\BookingException;
+use App\Country\Enums\CountryFeature;
+use App\Country\Services\CountryFeatureResolver;
+use App\Country\Services\CountryResolver;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\AuditTrailService;
 use App\Services\Student\StudentLifecycleService;
-use App\Settings\FeatureSettings;
 use App\Support\Financial\CurrencyEligibilityPolicy;
 use App\Support\Financial\Exceptions\CurrencyNotUsableException;
 use App\Support\Financial\FinancialOperation;
@@ -61,6 +63,8 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         private readonly WalletLedgerService $walletLedger,
         private readonly CurrencyEligibilityPolicy $currencyEligibility,
         private readonly StudentLifecycleService $studentLifecycle,
+        private readonly CountryFeatureResolver $countryFeatures,
+        private readonly CountryResolver $countryResolver,
     ) {}
 
     public function initiate(Booking $booking): PaymentIntentData
@@ -269,7 +273,14 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
         $this->studentLifecycle->assertEligibleForStudentAction($student);
 
-        if (! app(FeatureSettings::class)->wallet_enabled) {
+        // GAP-029: wallet lesson payment requires both Wallet and Paid
+        // Bookings to be effectively enabled for the student's country —
+        // composed here rather than as its own registry feature, since
+        // no distinct global switch for "wallet lesson payment" exists.
+        $country = $this->countryResolver->forStudent($student);
+
+        if (! $this->countryFeatures->isEnabled(CountryFeature::Wallet, $country)
+            || ! $this->countryFeatures->isEnabled(CountryFeature::PaidBookings, $country)) {
             throw new BookingException('Wallet payments are not currently enabled.');
         }
 

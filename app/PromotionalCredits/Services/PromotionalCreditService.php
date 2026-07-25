@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\PromotionalCredits\Services;
 
+use App\Country\Enums\CountryFeature;
+use App\Country\Services\CountryFeatureResolver;
+use App\Country\Services\CountryResolver;
 use App\Enums\StudentStatus;
 use App\Models\Currency;
 use App\Models\PromotionalCreditCampaign;
@@ -15,7 +18,6 @@ use App\PromotionalCredits\Enums\PromotionalCreditIssuanceType;
 use App\PromotionalCredits\Events\PromotionalCreditIssued;
 use App\PromotionalCredits\Exceptions\PromotionalCreditException;
 use App\Services\AuditTrailService;
-use App\Settings\FeatureSettings;
 use App\Wallet\Enums\WalletLedgerEntryType;
 use App\Wallet\Exceptions\WalletException;
 use App\Wallet\Services\WalletLedgerService;
@@ -40,7 +42,8 @@ final class PromotionalCreditService
         private readonly WalletService $wallets,
         private readonly WalletLedgerService $ledger,
         private readonly AuditTrailService $auditTrail,
-        private readonly FeatureSettings $features,
+        private readonly CountryFeatureResolver $countryFeatures,
+        private readonly CountryResolver $countryResolver,
     ) {}
 
     // ── Campaign management ─────────────────────────────────────────────
@@ -188,7 +191,7 @@ final class PromotionalCreditService
         string $idempotencyKey,
     ): PromotionalCreditIssuance {
         $this->assertCanIssue($admin);
-        $this->assertGloballyEnabled();
+        $this->assertGloballyEnabled($student);
         $this->assertPositiveAmount($amountMinor);
         $this->assertReason($reason);
         $this->assertEligibleStudent($student);
@@ -310,10 +313,12 @@ final class PromotionalCreditService
         }
     }
 
-    private function assertGloballyEnabled(): void
+    private function assertGloballyEnabled(User $student): void
     {
-        if (! $this->features->promotional_credit_enabled) {
-            throw new PromotionalCreditException('Promotional credits are currently disabled platform-wide.');
+        $country = $this->countryResolver->forStudent($student);
+
+        if (! $this->countryFeatures->isEnabled(CountryFeature::PromotionalCredits, $country)) {
+            throw new PromotionalCreditException('Promotional credits are not currently available for this student.');
         }
     }
 

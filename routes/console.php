@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\Commands\AccruePeriodicCompensation;
+use App\Console\Commands\Alerts\CheckMissingMeetingLinksCommand;
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\CreditEligibleReferralRewards;
 use App\Console\Commands\ExpireLessonReviewEligibility;
@@ -67,6 +68,15 @@ app(Schedule::class)
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/lessons-auto-complete.log'));
+
+// Phase 35 (GAP-035) — SRS §26.36 "Missing Meeting Link Alert". Runs
+// often enough that a meeting created shortly before the threshold
+// still gets caught while the alert stays open.
+app(Schedule::class)
+    ->command(CheckMissingMeetingLinksCommand::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/alerts-missing-meeting-links.log'));
 
 // The evidence-driven finalizer: seals due attendance records,
 // determines outcomes from evidence, and finalizes through the outcome

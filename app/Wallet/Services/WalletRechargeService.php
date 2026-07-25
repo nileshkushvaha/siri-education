@@ -9,13 +9,15 @@ use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\GatewayRequestException;
 use App\Booking\Services\PaymentProviderResolver;
+use App\Country\Enums\CountryFeature;
+use App\Country\Services\CountryFeatureResolver;
+use App\Country\Services\CountryResolver;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletRecharge;
 use App\Services\AuditTrailService;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Services\Student\StudentLifecycleService;
-use App\Settings\FeatureSettings;
 use App\Settings\PaymentGatewaySettings;
 use App\Settings\WalletSettings;
 use App\Support\Financial\CurrencyEligibilityPolicy;
@@ -66,13 +68,17 @@ final class WalletRechargeService implements WalletRechargeServiceInterface
         private readonly RazorpayGatewayClient $razorpay,
         private readonly StripeGatewayClient $stripe,
         private readonly AuditTrailService $audit,
+        private readonly CountryFeatureResolver $countryFeatures,
+        private readonly CountryResolver $countryResolver,
     ) {}
 
     public function initiate(User $student, int $amountMinor): WalletRechargeCheckoutData
     {
         $this->studentLifecycle->assertEligibleForStudentAction($student);
 
-        if (! app(FeatureSettings::class)->wallet_enabled) {
+        $country = $this->countryResolver->forStudent($student);
+
+        if (! $this->countryFeatures->isEnabled(CountryFeature::WalletRecharge, $country)) {
             throw new WalletException('Wallet recharge is not currently enabled.');
         }
 

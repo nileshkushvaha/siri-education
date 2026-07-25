@@ -64,6 +64,8 @@ class DatabaseSeeder extends Seeder
             MessagingPermissionSeeder::class,
             // Phase 33 — GAP-041 remaining promotional-credit portion.
             PromotionalCreditPermissionSeeder::class,
+            // Phase 35 — GAP-035 durable operational alerts.
+            OperationalAlertPermissionSeeder::class,
         ]);
     }
 }

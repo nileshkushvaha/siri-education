@@ -48,6 +48,13 @@ final class ComplianceThresholdSnapshot
                 'severity' => $settings->unusual_manual_wallet_adjustments_severity,
                 'cooldown_minutes' => $settings->unusual_manual_wallet_adjustments_cooldown_minutes,
             ],
+            SuspiciousActivityRuleCode::RepeatedMessageReports => [
+                'enabled' => $settings->repeated_message_reports_enabled,
+                'threshold' => $settings->repeated_message_reports_threshold,
+                'window_days' => $settings->repeated_message_reports_window_days,
+                'severity' => $settings->repeated_message_reports_severity,
+                'cooldown_minutes' => $settings->repeated_message_reports_cooldown_minutes,
+            ],
         };
     }
 }

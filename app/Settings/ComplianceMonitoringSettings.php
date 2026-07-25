@@ -61,6 +61,16 @@ class ComplianceMonitoringSettings extends Settings
 
     public int $unusual_manual_wallet_adjustments_cooldown_minutes;
 
+    public bool $repeated_message_reports_enabled;
+
+    public int $repeated_message_reports_threshold;
+
+    public int $repeated_message_reports_window_days;
+
+    public string $repeated_message_reports_severity;
+
+    public int $repeated_message_reports_cooldown_minutes;
+
     public static function group(): string
     {
         return 'compliance_monitoring';

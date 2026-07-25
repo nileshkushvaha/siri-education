@@ -36,6 +36,7 @@ use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
 use App\Listeners\Compliance\EvaluateExcessiveBookingCancellationsOnBookingCancelled;
 use App\Listeners\Compliance\EvaluateRepeatedFailedLoginsOnLoginFailed;
+use App\Listeners\Compliance\EvaluateRepeatedMessageReportsOnMessageReported;
 use App\Listeners\Compliance\EvaluateRepeatedReferralFraudHoldsOnReferralRewardHeld;
 use App\Listeners\Compliance\SendSuspiciousActivityFlagRecordedNotification;
 use App\Listeners\Earnings\ClassifyLessonFinancialDisposition;
@@ -54,6 +55,7 @@ use App\Listeners\Mail\LogNotificationFailed;
 use App\Listeners\Mail\LogNotificationSending;
 use App\Listeners\Mail\LogNotificationSent;
 use App\Listeners\Mail\LogResendEmailEvent;
+use App\Listeners\Messaging\SendMessagingNotifications;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
@@ -91,6 +93,8 @@ use App\Listeners\Waitlist\ProcessWaitlistOnBookingRescheduled;
 use App\Listeners\Waitlist\ProcessWaitlistOnInstructorAvailabilityOpened;
 use App\Listeners\Wallet\GenerateInvoiceOnWalletRechargeSucceeded;
 use App\Listeners\Wallet\SendWalletNotifications;
+use App\Messaging\Events\MessageReported;
+use App\Messaging\Events\MessageSent as MessagingMessageSent;
 use App\Quality\Events\InstructorQualityAlertCreated;
 use App\Referral\Events\ReferralRewardCredited;
 use App\Referral\Events\ReferralRewardHeld;
@@ -379,6 +383,13 @@ class EventServiceProvider extends ServiceProvider
         ],
         SupportCaseStatusChanged::class => [
             [SendSupportCaseNotifications::class, 'handleStatusChanged'],
+        ],
+        // Phase 32 — GAP-017 controlled student-instructor messaging.
+        MessagingMessageSent::class => [
+            [SendMessagingNotifications::class, 'handleMessageSent'],
+        ],
+        MessageReported::class => [
+            EvaluateRepeatedMessageReportsOnMessageReported::class,
         ],
     ];
 

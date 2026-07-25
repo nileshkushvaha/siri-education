@@ -9,6 +9,7 @@ use App\Models\BookingPayment;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\Invoice;
 use App\Models\Lesson;
+use App\Models\Message;
 use App\Models\User;
 use App\Models\WalletLedgerEntry;
 use App\SupportCases\Enums\SupportCaseCategory;
@@ -45,6 +46,7 @@ class StoreSupportCaseRequest extends FormRequest
                 WalletLedgerEntry::class,
                 InstructorWithdrawalRequest::class,
                 User::class,
+                Message::class,
             ])],
             'linked_record_id' => ['nullable', 'required_with:linked_record_type', 'string', 'max:60'],
         ];

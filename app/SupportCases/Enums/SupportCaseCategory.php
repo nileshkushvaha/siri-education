@@ -31,6 +31,7 @@ enum SupportCaseCategory: string
     case Referral = 'referral';
     case Review = 'review';
     case Homework = 'homework';
+    case Messaging = 'messaging';
     case TechnicalIssue = 'technical_issue';
     case PolicyViolation = 'policy_violation';
     case Other = 'other';
@@ -59,6 +60,7 @@ enum SupportCaseCategory: string
             self::Referral => 'Referral / Reward',
             self::Review => 'Review / Rating',
             self::Homework => 'Homework / Resources',
+            self::Messaging => 'Messaging / Communication',
             self::TechnicalIssue => 'Technical Issue',
             self::PolicyViolation => 'Policy Violation',
             self::Other => 'Other',

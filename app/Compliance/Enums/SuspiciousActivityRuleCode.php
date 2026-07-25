@@ -16,6 +16,7 @@ enum SuspiciousActivityRuleCode: string
     case ExcessiveBookingCancellations = 'excessive_booking_cancellations';
     case RepeatedReferralFraudHolds = 'repeated_referral_fraud_holds';
     case UnusualManualWalletAdjustments = 'unusual_manual_wallet_adjustments';
+    case RepeatedMessageReports = 'repeated_message_reports';
 
     public function label(): string
     {
@@ -24,6 +25,7 @@ enum SuspiciousActivityRuleCode: string
             self::ExcessiveBookingCancellations => 'Excessive Booking Cancellations',
             self::RepeatedReferralFraudHolds => 'Repeated Referral Fraud Holds',
             self::UnusualManualWalletAdjustments => 'Unusual Manual Wallet Adjustments',
+            self::RepeatedMessageReports => 'Repeated Message Reports',
         };
     }
 
@@ -34,6 +36,7 @@ enum SuspiciousActivityRuleCode: string
             self::ExcessiveBookingCancellations => SuspiciousActivityCategory::Booking,
             self::RepeatedReferralFraudHolds => SuspiciousActivityCategory::Referral,
             self::UnusualManualWalletAdjustments => SuspiciousActivityCategory::Wallet,
+            self::RepeatedMessageReports => SuspiciousActivityCategory::Messaging,
         };
     }
 }

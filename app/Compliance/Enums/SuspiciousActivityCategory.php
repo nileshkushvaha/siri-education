@@ -10,6 +10,7 @@ enum SuspiciousActivityCategory: string
     case Booking = 'booking';
     case Referral = 'referral';
     case Wallet = 'wallet';
+    case Messaging = 'messaging';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum SuspiciousActivityCategory: string
             self::Booking => 'Booking',
             self::Referral => 'Referral',
             self::Wallet => 'Wallet',
+            self::Messaging => 'Messaging',
         };
     }
 }

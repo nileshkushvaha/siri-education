@@ -487,6 +487,17 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
+            // ── Messaging (Phase 32, GAP-017) — participant notifications
+            //     (new message) flow via SendMessagingNotifications; only
+            //     reported messages need broader staff attention here. ──
+            $log === 'messaging' && $event === 'message_reported' => [
+                'title' => 'Message Reported',
+                'actor_label' => 'Reported by',
+                'icon' => 'heroicon-o-flag',
+                'color' => 'warning',
+                'priority' => 2,
+            ],
+
             // ── Everything else: silence ──────────────────────────────────
             default => null,
         };

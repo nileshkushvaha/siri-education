@@ -9,6 +9,7 @@ use App\Models\BookingPayment;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\Invoice;
 use App\Models\Lesson;
+use App\Models\Message;
 use App\Models\User;
 use App\Models\WalletLedgerEntry;
 use App\SupportCases\Enums\SupportCaseCategory;
@@ -76,6 +77,7 @@ class SupportCaseForm
                                 WalletLedgerEntry::class => 'Wallet Transaction',
                                 InstructorWithdrawalRequest::class => 'Withdrawal',
                                 User::class => 'Instructor',
+                                Message::class => 'Message',
                             ])
                             ->native(false),
                         TextInput::make('linked_record_id')

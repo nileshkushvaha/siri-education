@@ -16,6 +16,7 @@ use App\Http\Controllers\Booking\BookingWizardPageController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\MessagingController;
 use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
 use App\Http\Controllers\Faq\PublicFaqController;
@@ -329,6 +330,18 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/support-cases/{supportCase}', [SupportCaseController::class, 'show'])->name('support-cases.show');
     Route::post('/support-cases/{supportCase}/reply', [SupportCaseController::class, 'reply'])->name('support-cases.reply');
     Route::post('/support-cases/{supportCase}/reopen', [SupportCaseController::class, 'reopen'])->name('support-cases.reopen');
+
+    // ── Messaging (Phase 32, GAP-017) — shared by student and
+    //    instructor audiences; eligibility (confirmed paid booking or
+    //    active learning plan) is re-checked on every send, never just
+    //    at conversation-open time. Authorization is re-checked inside
+    //    the controller on every request (ConversationPolicy).
+    Route::get('/messages', [MessagingController::class, 'index'])->name('messages');
+    Route::get('/messages/start/{target}', [MessagingController::class, 'start'])->name('messages.start');
+    Route::get('/messages/{conversation}', [MessagingController::class, 'show'])->name('messages.show');
+    Route::post('/messages/{conversation}/reply', [MessagingController::class, 'reply'])->name('messages.reply');
+    Route::post('/messages/{conversation}/report/{message}', [MessagingController::class, 'report'])->name('messages.report');
+    Route::post('/messages/{conversation}/close', [MessagingController::class, 'close'])->name('messages.close');
 
     Route::prefix('bookings')->name('bookings.')->group(function (): void {
         Route::get('/', [StudentBookingController::class, 'index'])->name('index');

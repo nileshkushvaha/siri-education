@@ -9,6 +9,7 @@ use App\Models\BookingPayment;
 use App\Models\InstructorWithdrawalRequest;
 use App\Models\Invoice;
 use App\Models\Lesson;
+use App\Models\Message;
 use App\Models\User;
 use App\Models\WalletLedgerEntry;
 use App\SupportCases\Exceptions\UnauthorizedLinkedRecordException;
@@ -36,6 +37,7 @@ final class LinkedRecordAuthorizer
         WalletLedgerEntry::class => 'wallet_transaction',
         InstructorWithdrawalRequest::class => 'withdrawal',
         User::class => 'instructor',
+        Message::class => 'message',
     ];
 
     /**
@@ -71,6 +73,7 @@ final class LinkedRecordAuthorizer
             BookingPayment::class, Invoice::class, WalletLedgerEntry::class => $record->user_id === $requester->id,
             InstructorWithdrawalRequest::class => $record->instructor_id === $requester->id,
             User::class => $this->hasInteractedWithInstructor($requester, $record),
+            Message::class => $record->conversation->isParticipant($requester),
             default => false,
         };
     }

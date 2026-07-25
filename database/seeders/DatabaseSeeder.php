@@ -60,6 +60,8 @@ class DatabaseSeeder extends Seeder
             FaqSeeder::class,
             // Phase 31 — GAP-016 support/dispute case management.
             SupportCasePermissionSeeder::class,
+            // Phase 32 — GAP-017 controlled student-instructor messaging.
+            MessagingPermissionSeeder::class,
         ]);
     }
 }

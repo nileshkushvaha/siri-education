@@ -30,6 +30,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Testing\TestResponse;
 use Mockery;
+use Spatie\Permission\Models\Role;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -65,7 +66,8 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
     {
         parent::setUp();
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);
         TeacherSubject::factory()->state(['teacher_id' => $this->teacher->id])->subject('maths', 1, 12)->create();
@@ -250,7 +252,7 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
         // only registered key BookingTypeRegistry recognizes; the column
         // is globally unique, so a second row is never created here),
         // separate student/country/currency, same canonical rule.
-        $stripeStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $stripeStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $sharedType = BookingType::query()->where('key', 'paid_one_to_one')->firstOrFail();
         $usd = Currency::query()->where('code', 'USD')->firstOrFail();
         $usdCountry = Country::factory()->create(['default_currency_id' => $usd->id]);

@@ -29,6 +29,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -49,6 +50,7 @@ class DemoSchedulingReadPathTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $this->demoType = BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30]);
     }
 
@@ -148,7 +150,7 @@ class DemoSchedulingReadPathTest extends TestCase
         // for this item, per the phase brief's own "if that endpoint
         // accepts free_demo" qualifier.
         $teacher = $this->makeTeacher();
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',
@@ -297,7 +299,7 @@ class DemoSchedulingReadPathTest extends TestCase
     public function test_authoritative_booking_creation_rejection_is_unaffected(): void
     {
         $teacher = $this->makeTeacher();
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->disableDemos();
 
         $this->expectException(FreeDemoUnavailableException::class);
@@ -316,7 +318,7 @@ class DemoSchedulingReadPathTest extends TestCase
     public function test_existing_demo_booking_remains_operational_after_scheduling_paths_are_disabled(): void
     {
         $teacher = $this->makeTeacher();
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $booking = app(BookingServiceInterface::class)->request(new CreateBookingData(
             typeKey: 'free_demo',

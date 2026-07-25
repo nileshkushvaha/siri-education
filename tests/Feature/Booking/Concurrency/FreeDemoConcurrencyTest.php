@@ -11,6 +11,7 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use Carbon\CarbonImmutable;
+use Spatie\Permission\Models\Role;
 
 /**
  * Phase 24A — real multi-process race for SRS 11.13/11.39 ("one free
@@ -26,6 +27,8 @@ class FreeDemoConcurrencyTest extends ConcurrencyTestCase
 {
     public function test_concurrent_free_demo_requests_for_the_same_pair_resolve_exactly_once(): void
     {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $teacher->id], ['instructor_status' => 'approved']);
         TeacherSubject::factory()->state(['teacher_id' => $teacher->id])->subject('maths', 1, 12)->create();
@@ -40,7 +43,7 @@ class FreeDemoConcurrencyTest extends ConcurrencyTestCase
 
         BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30]);
 
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $slotA = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
         $slotB = CarbonImmutable::now('UTC')->addDays(4)->setTime(11, 0)->toIso8601String();

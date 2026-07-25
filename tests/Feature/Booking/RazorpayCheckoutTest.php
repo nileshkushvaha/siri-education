@@ -20,6 +20,7 @@ use App\Filament\Resources\BookingPayments\BookingPaymentResource;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingType;
+use App\Models\Currency;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -57,7 +58,8 @@ class RazorpayCheckoutTest extends TestCase
     {
         parent::setUp();
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);
@@ -175,6 +177,17 @@ class RazorpayCheckoutTest extends TestCase
 
     public function test_razorpay_blocks_non_inr_currency(): void
     {
+        // USD must itself be a real, active currency here — otherwise
+        // CurrencyEligibilityPolicy::assertUsable() (GAP-031's
+        // currency-wide gate, checked before any provider is consulted)
+        // rejects it first, and this test would never actually reach
+        // Razorpay's own provider-specific currency-support check,
+        // which is what it exists to verify.
+        Currency::query()->firstOrCreate(['code' => 'USD'], [
+            'name' => 'US Dollar', 'symbol' => '$', 'numeric_code' => '840',
+            'minor_units' => 2, 'status' => 'active', 'sort_order' => 2,
+        ]);
+
         $this->configureRazorpay();
         $this->fakeRazorpayOrderApi();
 

@@ -260,8 +260,7 @@ class ReviewQualityNotificationTest extends TestCase
     {
         $review = $this->submitPublicReview()->fresh();
         $admin = $this->admin();
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => 'active']);
         Notification::fake();
 
         $this->reports->submit($review, $reporter, new SubmitReviewReportData(reason: ReviewReportReason::Spam));
@@ -441,8 +440,7 @@ class ReviewQualityNotificationTest extends TestCase
     {
         $this->seed(ReviewPermissionSeeder::class);
         $review = $this->submitPublicReview()->fresh();
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => 'active']);
         $marker = 'a-distinctive-report-explanation-991233';
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(
@@ -474,8 +472,7 @@ class ReviewQualityNotificationTest extends TestCase
     {
         $this->seed(ReviewPermissionSeeder::class);
         $review = $this->submitPublicReview()->fresh();
-        $reporter = User::factory()->create(['status' => 'active', 'first_name' => 'Distinctivereportername']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => 'active', 'first_name' => 'Distinctivereportername']);
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(reason: ReviewReportReason::Spam));
 
@@ -531,8 +528,7 @@ class ReviewQualityNotificationTest extends TestCase
     {
         $this->seed(ReviewPermissionSeeder::class);
         $review = $this->submitPublicReview()->fresh();
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => 'active']);
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(reason: ReviewReportReason::Spam));
         $statusBefore = $report->status;
@@ -599,6 +595,7 @@ class ReviewQualityNotificationTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor->id,
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -616,6 +613,7 @@ class ReviewQualityNotificationTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

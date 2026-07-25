@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Settings\BookingSettings;
 use Carbon\CarbonImmutable;
+use Spatie\Permission\Models\Role;
 
 /**
  * Phase 24D — real multi-process race proving that when only one
@@ -30,6 +31,8 @@ class RescheduleLimitConcurrencyTest extends ConcurrencyTestCase
 {
     public function test_concurrent_reschedules_for_the_final_allowance_resolve_to_exactly_one_success(): void
     {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $settings = app(BookingSettings::class);
         $settings->reschedule_limit = 1;
         $settings->save();
@@ -41,7 +44,7 @@ class RescheduleLimitConcurrencyTest extends ConcurrencyTestCase
                 ->forDay($day)->between('06:00:00', '22:00:00')->create();
         }
 
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $type = BookingType::factory()->create(['requires_approval' => false]);
         $startsAt = CarbonImmutable::now()->addDays(1)->setTime(10, 0);
 

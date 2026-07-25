@@ -74,7 +74,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         $category = AcademicCategory::create(['name' => 'Mathematics', 'slug' => 'mathematics']);
         $this->subject = Subject::create(['academic_category_id' => $category->id, 'name' => 'Maths', 'slug' => 'maths']);
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->student->id], ['country_id' => $this->country->id]);
     }
 
@@ -343,7 +344,7 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         $this->assertSame(45, (int) $slot->diffInMinutes($booking->ends_at));
 
         // Back-to-back start (ignoring the 15-minute buffer) must be rejected.
-        $otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $otherStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->expectException(SlotUnavailableException::class);
         app(BookingServiceInterface::class)->request(new CreateBookingData(

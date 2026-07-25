@@ -30,6 +30,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Testing\TestResponse;
 use Mockery;
+use Spatie\Permission\Models\Role;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -60,7 +61,8 @@ class PaymentTerminalStateTest extends TestCase
 
         Currency::query()->firstOrCreate(['code' => 'INR'], ['name' => 'Indian Rupee', 'symbol' => '₹', 'numeric_code' => '356', 'minor_units' => 2, 'status' => 'active']);
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);

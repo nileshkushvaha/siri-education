@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -58,6 +59,7 @@ class InstructorRatingAggregateTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $this->lifecycle = app(LessonLifecycleServiceInterface::class);
         $this->outcomes = app(LessonOutcomeServiceInterface::class);
         $this->submissions = app(StudentReviewServiceInterface::class);
@@ -529,7 +531,7 @@ class InstructorRatingAggregateTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor?->id ?? User::factory(),
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => ($student ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]))->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -546,7 +548,7 @@ class InstructorRatingAggregateTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor?->id ?? User::factory(),
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => ($student ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]))->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

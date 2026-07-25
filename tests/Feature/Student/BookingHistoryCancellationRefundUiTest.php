@@ -39,8 +39,7 @@ class BookingHistoryCancellationRefundUiTest extends TestCase
             'minor_units' => 2, 'status' => 'active', 'sort_order' => 1,
         ]);
 
-        $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $this->student->assignRole('student');
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     private function setWindow(int $hours): void

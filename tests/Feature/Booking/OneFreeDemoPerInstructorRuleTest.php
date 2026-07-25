@@ -349,12 +349,27 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
             ->call('submit')
             ->assertSet('step', 7);
 
-        $secondStart = $this->slot(7)->toIso8601String();
-        Livewire::actingAs($student)
+        $secondSlot = $this->slot(7);
+        $secondStart = $secondSlot->toIso8601String();
+        // The wizard's calendar is month-scoped (BookingWizard::loadDates()
+        // caps its window at the end of the currently-viewed month) — a
+        // fixed +7-day offset from "now" can legitimately land in the
+        // following month depending on which day of the month the suite
+        // runs on. Advance the wizard's own visible month to match the
+        // target date's month before selecting it, exactly as a real
+        // user would click "next month", rather than assuming a
+        // same-month offset.
+        $component = Livewire::actingAs($student)
             ->withQueryParams(['instructor' => $teacher->slug, 'type' => 'free_demo', 'subject' => 'maths'])
             ->test('frontend.booking.booking-wizard')
-            ->call('selectGrade', 5)
-            ->call('selectDate', $this->slot(7)->toDateString())
+            ->call('selectGrade', 5);
+
+        for ($month = CarbonImmutable::now('UTC')->startOfMonth(); $month->lt($secondSlot->startOfMonth()); $month = $month->addMonthNoOverflow()) {
+            $component->call('nextMonth');
+        }
+
+        $component
+            ->call('selectDate', $secondSlot->toDateString())
             ->call('selectSlot', $secondStart)
             ->call('submit')
             ->assertSet('step', 6)

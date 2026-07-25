@@ -6,6 +6,7 @@ namespace Tests\Feature\Instructor;
 
 use App\Booking\Enums\Weekday;
 use App\Enums\InstructorStatus;
+use App\Models\BookingType;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -210,6 +211,13 @@ class InstructorDetailTest extends TestCase
 
     public function test_booking_links_carry_the_current_instructor_context(): void
     {
+        // The demo CTA is gated by DemoAvailabilityResolver (platform
+        // toggle AND an active `free_demo` BookingType row) in addition
+        // to the instructor's own offers_demo flag — see
+        // InstructorService::offersDemo(). Without a real BookingType
+        // row here, the demo link is correctly never rendered.
+        BookingType::factory()->create(['key' => 'free_demo', 'duration_minutes' => 30]);
+
         $instructor = $this->makeInstructor();
         TeacherSubject::factory()->create([
             'teacher_id' => $instructor->id,

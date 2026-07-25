@@ -16,6 +16,7 @@ use App\Models\UserProfile;
 use App\Settings\AuthenticationSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -36,6 +37,7 @@ class StudentEligibilityRuleTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], ['instructor_status' => 'approved']);
         TeacherSubject::factory()->state(['teacher_id' => $this->teacher->id])->subject('maths', 1, 12)->create();
@@ -65,7 +67,7 @@ class StudentEligibilityRuleTest extends TestCase
 
     public function test_active_verified_student_can_book(): void
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $booking = app(BookingServiceInterface::class)->request($this->bookingData($student));
 
@@ -110,7 +112,7 @@ class StudentEligibilityRuleTest extends TestCase
         app(AuthenticationSettings::class)->email_verification_required = false;
         app(AuthenticationSettings::class)->save();
 
-        $student = User::factory()->unverified()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->unverified()->create(['status' => User::STATUS_ACTIVE]);
 
         $booking = app(BookingServiceInterface::class)->request($this->bookingData($student));
 
@@ -122,7 +124,7 @@ class StudentEligibilityRuleTest extends TestCase
         // Confirms the deliberate scoping decision: a missing billing
         // country never blocks *booking creation* — only paid checkout,
         // and only at the UI layer (BookingWizard/BookingHistory).
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => null]);
 
         $booking = app(BookingServiceInterface::class)->request($this->bookingData($student));

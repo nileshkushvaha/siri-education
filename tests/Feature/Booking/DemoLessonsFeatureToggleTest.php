@@ -31,6 +31,7 @@ use App\Services\Instructor\InstructorService;
 use App\Settings\FeatureSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -305,12 +306,15 @@ class DemoLessonsFeatureToggleTest extends TestCase
         $teacher = $this->makeTeacher();
         $teacher->assignRole('instructor');
 
-        $enabledProfile = app(InstructorService::class)->publicProfile($teacher);
+        $request = Request::create('/instructors/'.$teacher->slug);
+        $request->setLaravelSession($this->app['session']->driver());
+
+        $enabledProfile = app(InstructorService::class)->publicProfile($teacher, $request);
         $this->assertTrue($enabledProfile['offersDemo']);
 
         $this->disableDemos();
 
-        $disabledProfile = app(InstructorService::class)->publicProfile($teacher);
+        $disabledProfile = app(InstructorService::class)->publicProfile($teacher, $request);
         $this->assertFalse($disabledProfile['offersDemo']);
     }
 

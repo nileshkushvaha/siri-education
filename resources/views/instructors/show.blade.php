@@ -368,6 +368,55 @@
                     @endauth
                 </x-ui.card>
 
+                @if($pricingSubject)
+                    <x-ui.card class="border-white/10 bg-white/[0.04]">
+                        <h2 class="text-lg font-bold text-white">Lesson Pricing</h2>
+
+                        @if($subjects->count() > 1)
+                            <div class="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Pricing subject">
+                                @foreach($subjects as $subjectOption)
+                                    <a href="{{ route('instructors.show', [$instructor, 'subject' => $subjectOption['slug']]) }}"
+                                       role="tab"
+                                       aria-selected="{{ $subjectOption['slug'] === $pricingSubject->slug ? 'true' : 'false' }}"
+                                       class="rounded-full px-3 py-1 text-xs font-bold {{ $subjectOption['slug'] === $pricingSubject->slug ? 'bg-indigo-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20' }}">
+                                        {{ $subjectOption['name'] }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @if($countryContext->country)
+                            <p class="mt-3 text-xs text-slate-400">
+                                Prices for <strong class="text-slate-200">{{ $countryContext->country->name }}</strong>@if($countryContext->isGuestDefault) (default){{ ' ' }}<a href="{{ route('instructors.index') }}" class="underline">change on the marketplace</a>@endif
+                            </p>
+
+                            @if($priceQuote?->state === \App\Booking\Enums\MarketplacePriceState::Available)
+                                <div class="mt-4 space-y-2">
+                                    @foreach($priceQuote->options as $option)
+                                        <div class="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
+                                            <span class="text-sm text-slate-300">{{ $option->durationMinutes }} minutes</span>
+                                            <span class="text-base font-black text-white">{{ $option->formattedAmount }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                @if($priceQuote->isFrom)
+                                    <p class="mt-2 text-[11px] text-slate-500">Prices vary by session length.</p>
+                                @endif
+                            @elseif($priceQuote?->state === \App\Booking\Enums\MarketplacePriceState::Unavailable)
+                                <p class="mt-4 text-sm text-slate-400">Price unavailable for this selection. Continue to the booking flow for current details.</p>
+                            @endif
+                        @else
+                            <p class="mt-3 text-sm text-slate-400">
+                                @auth
+                                    Complete your billing country to view local pricing.
+                                @else
+                                    <a href="{{ route('instructors.index') }}" class="underline">Select your billing country</a> on the marketplace to view prices.
+                                @endauth
+                            </p>
+                        @endif
+                    </x-ui.card>
+                @endif
+
                 @if($languages->isNotEmpty())
                     <x-ui.card class="border-white/10 bg-white/[0.04]">
                         <h2 class="text-lg font-bold text-white">Languages</h2>

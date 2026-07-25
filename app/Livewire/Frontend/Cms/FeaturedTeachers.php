@@ -6,7 +6,7 @@ namespace App\Livewire\Frontend\Cms;
 
 use App\Services\Instructor\InstructorService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
+use Illuminate\Http\Request;
 use Livewire\Component;
 
 final class FeaturedTeachers extends Component
@@ -43,15 +43,10 @@ final class FeaturedTeachers extends Component
         $this->linkUrl = $linkUrl;
     }
 
-    public function render(InstructorService $instructors): View
+    public function render(InstructorService $instructors, Request $request): View
     {
         return view('livewire.frontend.cms.featured-teachers', [
-            'teachers' => $this->featuredTeachers($instructors),
+            'teachers' => $instructors->featuredCards($request, $this->limit),
         ]);
-    }
-
-    private function featuredTeachers(InstructorService $instructors): Collection
-    {
-        return $instructors->featured($this->limit);
     }
 }

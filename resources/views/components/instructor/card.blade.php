@@ -11,6 +11,8 @@
     $isStudentViewer = $viewer?->hasRole('student') ?? false;
     $canFavorite = $isStudentViewer && $model && $viewer->id !== $model->id;
     $isFavorite = $canFavorite ? $viewer->favoriteInstructors()->whereKey($model->id)->exists() : false;
+    /** @var \App\Booking\DTOs\MarketplacePriceQuote|null $price */
+    $price = $instructor['price'] ?? null;
 @endphp
 
 <div {{ $attributes->merge(['class' => 'flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-100/70']) }}>
@@ -109,6 +111,22 @@
                 </div>
             @endif
         </div>
+
+        @if($price)
+            <div class="mt-5 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
+                @if($price->state === \App\Booking\Enums\MarketplacePriceState::Available)
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $price->isFrom ? 'From' : 'Lesson price' }}</span>
+                    <p class="mt-0.5 text-lg font-black text-slate-950">
+                        {{ $price->isFrom ? $price->lowest->formattedAmount : $price->exact->formattedAmount }}
+                        <span class="text-xs font-semibold text-slate-500">/ {{ ($price->isFrom ? $price->lowest->durationMinutes : $price->exact->durationMinutes) }} min</span>
+                    </p>
+                @elseif($price->state === \App\Booking\Enums\MarketplacePriceState::MissingCountry)
+                    <p class="text-xs font-semibold text-slate-500">Select your billing country to view prices</p>
+                @else
+                    <p class="text-xs font-semibold text-slate-500">Price unavailable for this selection</p>
+                @endif
+            </div>
+        @endif
 
         <div class="mt-auto flex items-center gap-3 pt-6">
             <a href="{{ $instructor['url'] }}" class="inline-flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-indigo-100 transition hover:-translate-y-0.5 hover:from-indigo-700 hover:to-violet-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">

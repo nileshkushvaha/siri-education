@@ -35,38 +35,7 @@
                 @if($teachers->isNotEmpty())
                     <div class="mt-10 grid grid-cols-1 gap-5 {{ $gridColumns }}">
                         @foreach($teachers as $teacher)
-                            @php
-                                $profile = $teacher->profile;
-                                $avatarUrl = $profile?->avatarUrl;
-                                $summary = $profile?->short_bio ?: $profile?->headline;
-                            @endphp
-
-                            <article class="h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/60">
-                                <a href="{{ route('instructors.show', $teacher) }}" class="flex h-full flex-col rounded-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">
-                                    <div class="flex items-center gap-4">
-                                        <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 text-lg font-black text-indigo-700 ring-1 ring-indigo-100">
-                                            @if($avatarUrl)
-                                                <img src="{{ $avatarUrl }}" alt="{{ $teacher->name }}" class="h-full w-full object-cover">
-                                            @else
-                                                {{ mb_substr($teacher->name, 0, 1) }}
-                                            @endif
-                                        </div>
-
-                                        <div class="min-w-0">
-                                            <h3 class="truncate text-base font-black text-slate-950">{{ $teacher->name }}</h3>
-                                            @if($profile?->headline)
-                                                <p class="truncate text-sm text-slate-500">{{ $profile->headline }}</p>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    @if($summary)
-                                        <p class="mt-5 text-sm leading-6 text-slate-600">{{ \Illuminate\Support\Str::limit($summary, 150) }}</p>
-                                    @endif
-
-                                    <span class="mt-auto pt-5 text-sm font-black text-indigo-600">View public profile →</span>
-                                </a>
-                            </article>
+                            <x-instructor.card :instructor="$teacher" />
                         @endforeach
                     </div>
                 @endif

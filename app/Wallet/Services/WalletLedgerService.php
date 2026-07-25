@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Wallet\Services;
 
+use App\Compliance\Rules\UnusualManualWalletAdjustmentsRule;
+use App\Compliance\Services\ComplianceMonitoringService;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
@@ -19,6 +21,8 @@ use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * The only place a wallet's *_minor columns are ever written. Every
@@ -39,6 +43,8 @@ final class WalletLedgerService
 {
     public function __construct(
         private readonly AuditTrailService $auditTrail,
+        private readonly UnusualManualWalletAdjustmentsRule $complianceRule,
+        private readonly ComplianceMonitoringService $compliance,
     ) {}
 
     public function credit(
@@ -237,6 +243,24 @@ final class WalletLedgerService
             $entry,
             ['direction' => $direction->value, 'amount_minor' => $amountMinor],
         );
+
+        // Compliance monitoring runs strictly after the adjustment has
+        // already been posted and audited — a monitoring failure must
+        // never roll back or alter this already-committed wallet
+        // action, so it is deliberately isolated and only logged.
+        try {
+            $signal = $this->complianceRule->evaluate($actor);
+
+            if ($signal !== null) {
+                $this->compliance->record($signal);
+            }
+        } catch (Throwable $e) {
+            Log::error('Compliance monitoring failed for a wallet admin adjustment.', [
+                'wallet_id' => $wallet->id,
+                'actor_id' => $actor->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
 
         return $entry;
     }

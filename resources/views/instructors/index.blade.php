@@ -134,6 +134,38 @@
                 <p class="text-sm font-bold text-slate-500">Showing {{ $instructors->firstItem() ?? 0 }}–{{ $instructors->lastItem() ?? 0 }} of <strong class="text-slate-950">{{ $instructors->total() }}</strong></p>
             </div>
 
+            @if(request('subject'))
+                @if($pricingCountryContext->country)
+                    <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>
+                            Showing lesson prices for <strong class="text-slate-700">{{ $pricingCountryContext->country->name }}</strong>
+                            @if($pricingCountryContext->isGuestDefault)(default)@endif
+                        </span>
+                        @if($pricingCountryContext->isGuestDefault && $pricingCountries->isNotEmpty())
+                            <form method="GET" class="inline-flex items-center gap-1.5">
+                                @foreach(request()->except('pricing_country') as $key => $value)
+                                    @if(is_array($value))
+                                        @foreach($value as $v)<input type="hidden" name="{{ $key }}[]" value="{{ $v }}">@endforeach
+                                    @else
+                                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                    @endif
+                                @endforeach
+                                <label for="pricing_country" class="sr-only">Change pricing country</label>
+                                <select id="pricing_country" name="pricing_country" onchange="this.form.submit()" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-indigo-700">
+                                    @foreach($pricingCountries as $c)
+                                        <option value="{{ $c->iso2 }}" @selected($c->id === $pricingCountryContext->country->id)>{{ $c->name }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        @endif
+                    </div>
+                @elseif(! $pricingCountryContext->isAuthenticatedStudent)
+                    <p class="mt-3 text-xs text-slate-500">Select your billing country to view prices.</p>
+                @endif
+            @else
+                <p class="mt-3 text-xs text-slate-500">Choose a subject above to see localized lesson prices on each card.</p>
+            @endif
+
             @if($instructors->isEmpty())
                 <div class="mt-8 rounded-[2rem] border border-dashed border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-10 text-center shadow-sm sm:p-14" data-marketplace-reveal>
                     <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 text-2xl font-black text-indigo-700" aria-hidden="true">⌕</span>

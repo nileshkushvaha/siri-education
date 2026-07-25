@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Instructor;
 
+use App\Booking\DTOs\MarketplacePriceQuote;
 use App\Booking\Services\DemoAvailabilityResolver;
+use App\Booking\Services\MarketplaceCountryResolver;
+use App\Booking\Services\MarketplaceLessonPriceService;
 use App\Enums\AcademicStatus;
 use App\Enums\InstructorStatus;
 use App\Models\AcademicLevel;
@@ -37,6 +40,8 @@ final class InstructorService
         private readonly InstructorTrustBadgeResolver $trustBadges,
         private readonly InstructorProfileTextResolver $profileText,
         private readonly DemoAvailabilityResolver $demoAvailability,
+        private readonly MarketplaceLessonPriceService $marketplacePrices,
+        private readonly MarketplaceCountryResolver $marketplaceCountry,
     ) {}
 
     public function listing(Request $request): LengthAwarePaginator
@@ -90,8 +95,43 @@ final class InstructorService
 
     public function directory(Request $request): LengthAwarePaginator
     {
-        return $this->listing($request)
-            ->through(fn (User $instructor): array => $this->card($instructor));
+        $paginated = $this->listing($request);
+
+        // Pricing needs one concrete subject to key off — a search
+        // filtered by subject gives an honest, bounded batch quote; an
+        // unfiltered listing spans instructors teaching different
+        // subjects at different subject-specific prices, so no single
+        // card price could be shown without silently picking one for
+        // the student (never done). See MarketplaceLessonPriceService's
+        // docblock for why this stays a batch call, not one resolver
+        // call per card.
+        $subject = $this->resolveContextSubject($request->string('subject')->trim()->toString());
+        $quotes = null;
+
+        if ($subject !== null) {
+            $academicLevel = $this->resolveContextAcademicLevel($request->string('academic_level')->trim()->toString());
+            $country = $this->marketplaceCountry->resolve($request->user(), $request)->country;
+            $quotes = $this->marketplacePrices->batchQuoteFor(collect($paginated->items()), $country, $subject, $academicLevel);
+        }
+
+        return $paginated->through(fn (User $instructor): array => $this->card($instructor, $quotes?->get($instructor->id)));
+    }
+
+    /**
+     * Small, fixed-size lists (home page widgets) — bounded enough that
+     * one MarketplaceLessonPriceService::quoteFor() call per instructor
+     * (using their own primary subject, mirroring the same "primary
+     * subject" concept publicProfile() already uses for booking links)
+     * is not the N+1 the batch path exists to avoid.
+     */
+    public function featuredCards(Request $request, int $limit = 4): Collection
+    {
+        $country = $this->marketplaceCountry->resolve($request->user(), $request)->country;
+
+        return $this->featured($limit)->map(fn (User $instructor): array => $this->card(
+            $instructor,
+            $this->primarySubjectQuote($instructor, $country),
+        ));
     }
 
     public function filters(): array
@@ -166,8 +206,10 @@ final class InstructorService
         ];
     }
 
-    public function publicProfile(User $instructor, ?User $viewer = null): array
+    public function publicProfile(User $instructor, Request $request): array
     {
+        $viewer = $request->user();
+
         abort_unless($instructor->hasRole('instructor'), 404);
 
         $instructor->loadMissing($this->detailRelations());
@@ -196,7 +238,18 @@ final class InstructorService
         $languages = $this->languagesFor($instructor);
         $ratings = $this->ratingsFor($instructor);
         $availabilityPreview = $this->availabilityPreview($instructor);
-        $related = $this->related($instructor)->map(fn (User $relatedInstructor): array => $this->card($relatedInstructor));
+
+        $countryContext = $this->marketplaceCountry->resolve($viewer, $request);
+        $pricingSubject = $this->selectedProfileSubject($instructor, $subjects, $request->string('subject')->trim()->toString());
+        $pricingLevel = $this->selectedProfileAcademicLevel($instructor, $viewer, $request->string('academic_level')->trim()->toString());
+        $priceQuote = $pricingSubject !== null
+            ? $this->marketplacePrices->quoteFor($instructor, $countryContext->country, $pricingSubject, $pricingLevel)
+            : null;
+
+        $related = $this->related($instructor)->map(fn (User $relatedInstructor): array => $this->card(
+            $relatedInstructor,
+            $this->primarySubjectQuote($relatedInstructor, $countryContext->country),
+        ));
 
         $skills = $experiences
             ->flatMap(fn ($experience) => $experience->skills ?? [])
@@ -240,10 +293,67 @@ final class InstructorService
             'headlineText',
             'biographyText',
             'summaryText',
+            'priceQuote',
+            'pricingSubject',
+            'countryContext',
         );
     }
 
-    public function card(User $instructor): array
+    /**
+     * The instructor's own primary subject unless the viewer explicitly
+     * selected a different one of that SAME instructor's active
+     * subjects — a query id/slug is never trusted against any other
+     * instructor's catalogue.
+     *
+     * @param  Collection<int, array{name: string, slug: string}>  $subjects
+     */
+    private function selectedProfileSubject(User $instructor, Collection $subjects, string $requested): ?Subject
+    {
+        if ($requested !== '') {
+            $ownedSlug = $subjects->firstWhere('slug', $requested);
+
+            if ($ownedSlug !== null) {
+                $subject = Subject::query()->active()->where('slug', $requested)->first();
+
+                if ($subject !== null) {
+                    return $subject;
+                }
+            }
+        }
+
+        $primarySlug = $subjects->first()['slug'] ?? null;
+
+        return is_string($primarySlug) ? Subject::query()->active()->where('slug', $primarySlug)->first() : null;
+    }
+
+    /**
+     * A viewer-selected level must belong to this instructor's own
+     * configured coverage. Absent a valid selection, an authenticated
+     * student's own recorded academic level is used when the
+     * instructor also covers it; otherwise "all levels" (null).
+     */
+    private function selectedProfileAcademicLevel(User $instructor, ?User $viewer, string $requested): ?AcademicLevel
+    {
+        $ownedLevels = $this->academicLevelsFor($instructor);
+
+        if ($requested !== '') {
+            $owned = $ownedLevels->firstWhere('slug', $requested) ?? $ownedLevels->firstWhere('id', $requested);
+
+            if ($owned !== null) {
+                return AcademicLevel::query()->active()->whereKey($owned['id'])->first();
+            }
+        }
+
+        $studentLevelId = $viewer?->profile?->student_academic_level_id;
+
+        if ($studentLevelId !== null && $ownedLevels->firstWhere('id', $studentLevelId) !== null) {
+            return AcademicLevel::query()->active()->whereKey($studentLevelId)->first();
+        }
+
+        return null;
+    }
+
+    public function card(User $instructor, ?MarketplacePriceQuote $priceQuote = null): array
     {
         $instructor->loadMissing($this->cardRelations());
 
@@ -278,7 +388,43 @@ final class InstructorService
             'years_experience' => $this->experienceService->yearsOfExperience($instructor),
             'country' => $profile?->country?->name,
             'timezone' => $profile?->timezone,
+            'price' => $priceQuote,
         ];
+    }
+
+    /** Read-only preview using the instructor's own primary (first alphabetical) subject — the same concept publicProfile() already uses for its default booking links. Null when the instructor teaches nothing resolvable to a Subject master row. */
+    private function primarySubjectQuote(User $instructor, ?Country $country): ?MarketplacePriceQuote
+    {
+        $slug = $this->subjectsFor($instructor)->first()['slug'] ?? null;
+        $subject = is_string($slug) ? Subject::query()->active()->where('slug', $slug)->first() : null;
+
+        if ($subject === null) {
+            return null;
+        }
+
+        return $this->marketplacePrices->quoteFor($instructor, $country, $subject, null);
+    }
+
+    private function resolveContextSubject(string $value): ?Subject
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        return Subject::query()->active()
+            ->where(fn (Builder $q) => $q->whereKey($value)->orWhere('slug', $value))
+            ->first();
+    }
+
+    private function resolveContextAcademicLevel(string $value): ?AcademicLevel
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        return AcademicLevel::query()->active()
+            ->where(fn (Builder $q) => $q->whereKey($value)->orWhere('slug', $value))
+            ->first();
     }
 
     /**

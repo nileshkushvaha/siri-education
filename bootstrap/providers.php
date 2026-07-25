@@ -3,6 +3,7 @@
 use App\Providers\AppServiceProvider;
 use App\Providers\BookingServiceProvider;
 use App\Providers\CmsServiceProvider;
+use App\Providers\ComplianceServiceProvider;
 use App\Providers\EarningServiceProvider;
 use App\Providers\FeedbackServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
@@ -20,6 +21,7 @@ return [
     AppServiceProvider::class,
     BookingServiceProvider::class,
     CmsServiceProvider::class,
+    ComplianceServiceProvider::class,
     EarningServiceProvider::class,
     FormsServiceProvider::class,
     FrontendServiceProvider::class,

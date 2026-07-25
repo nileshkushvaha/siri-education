@@ -40,6 +40,9 @@ class DatabaseSeeder extends Seeder
             FeedbackPermissionSeeder::class,
             WalletPermissionSeeder::class,
             ReferralPermissionSeeder::class,
+            // Phase 30 — reads Auth/Booking/Referral/Wallet signals, so
+            // placed after all four domains it monitors.
+            SuspiciousActivityFlagPermissionSeeder::class,
             QueueMonitorPermissionSeeder::class,
             PulsePermissionSeeder::class,
             // Phase 18B — the reporting-foundation permission set. No data

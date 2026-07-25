@@ -12,6 +12,7 @@ use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
 use App\Booking\Events\MeetingCreated;
 use App\Booking\Events\MeetingUpdated;
+use App\Compliance\Events\SuspiciousActivityFlagRecorded;
 use App\Events\ActivityCreated;
 use App\Events\Auth\LoginFailed;
 use App\Events\Auth\UserApproved;
@@ -33,6 +34,10 @@ use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
+use App\Listeners\Compliance\EvaluateExcessiveBookingCancellationsOnBookingCancelled;
+use App\Listeners\Compliance\EvaluateRepeatedFailedLoginsOnLoginFailed;
+use App\Listeners\Compliance\EvaluateRepeatedReferralFraudHoldsOnReferralRewardHeld;
+use App\Listeners\Compliance\SendSuspiciousActivityFlagRecordedNotification;
 use App\Listeners\Earnings\ClassifyLessonFinancialDisposition;
 use App\Listeners\Earnings\CreateEarningOnLessonCompleted;
 use App\Listeners\Earnings\ReevaluateLessonFinancialDisposition;
@@ -149,6 +154,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         LoginFailed::class => [
             [LogLoginActivity::class, 'handleLoginFailed'],
+            EvaluateRepeatedFailedLoginsOnLoginFailed::class,
         ],
         NotificationSending::class => [
             LogNotificationSending::class,
@@ -205,6 +211,7 @@ class EventServiceProvider extends ServiceProvider
             CancelMeetingOnBookingCancelled::class,
             DetectInstructorCancellationQualityRiskOnBookingCancelled::class,
             ProcessWaitlistOnBookingCancelled::class,
+            EvaluateExcessiveBookingCancellationsOnBookingCancelled::class,
         ],
         BookingRescheduled::class => [
             [SendBookingNotifications::class, 'handleRescheduled'],
@@ -270,6 +277,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         ReferralRewardHeld::class => [
             [SendReferralRewardNotifications::class, 'handleHeld'],
+            EvaluateRepeatedReferralFraudHoldsOnReferralRewardHeld::class,
         ],
         ReferralRewardReversed::class => [
             [SendReferralRewardNotifications::class, 'handleReversed'],
@@ -347,6 +355,9 @@ class EventServiceProvider extends ServiceProvider
         // are deliberately not wired to any notification listener here.
         InstructorQualityAlertCreated::class => [
             SendInstructorQualityAlertCreatedNotification::class,
+        ],
+        SuspiciousActivityFlagRecorded::class => [
+            SendSuspiciousActivityFlagRecordedNotification::class,
         ],
     ];
 

@@ -46,6 +46,9 @@ class FeatureSettings extends Settings
 
     public bool $recording_enabled;
 
+    /** GAP-041 / SRS §16.35 "Promotional credit permissions" — the global on/off switch (§20.17 "Promotional credit enabled/disabled"). */
+    public bool $promotional_credit_enabled;
+
     public static function group(): string
     {
         return 'features';

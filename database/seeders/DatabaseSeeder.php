@@ -62,6 +62,8 @@ class DatabaseSeeder extends Seeder
             SupportCasePermissionSeeder::class,
             // Phase 32 — GAP-017 controlled student-instructor messaging.
             MessagingPermissionSeeder::class,
+            // Phase 33 — GAP-041 remaining promotional-credit portion.
+            PromotionalCreditPermissionSeeder::class,
         ]);
     }
 }

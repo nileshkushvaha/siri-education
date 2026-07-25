@@ -95,6 +95,7 @@ use App\Listeners\Wallet\GenerateInvoiceOnWalletRechargeSucceeded;
 use App\Listeners\Wallet\SendWalletNotifications;
 use App\Messaging\Events\MessageReported;
 use App\Messaging\Events\MessageSent as MessagingMessageSent;
+use App\PromotionalCredits\Events\PromotionalCreditIssued;
 use App\Quality\Events\InstructorQualityAlertCreated;
 use App\Referral\Events\ReferralRewardCredited;
 use App\Referral\Events\ReferralRewardHeld;
@@ -239,6 +240,10 @@ class EventServiceProvider extends ServiceProvider
         WalletRechargeSucceeded::class => [
             [SendWalletNotifications::class, 'handleRechargeSucceeded'],
             GenerateInvoiceOnWalletRechargeSucceeded::class,
+        ],
+        // Phase 33 — GAP-041 remaining promotional-credit portion.
+        PromotionalCreditIssued::class => [
+            [SendWalletNotifications::class, 'handlePromotionalCreditIssued'],
         ],
         InstructorAvailabilityOpened::class => [
             ProcessWaitlistOnInstructorAvailabilityOpened::class,

@@ -19,6 +19,7 @@
 | Booking Engine | booking.md |
 | Support & Dispute Case Management | support-cases.md |
 | Controlled Student–Instructor Messaging | messaging.md |
+| Promotional Wallet Credit Campaigns | promotional-credits.md |
 | Financial Domain (Earnings · Compensation · Settlement · Withdrawals · Payout Execution) | financial-domain-architecture.md |
 | Phase 16A — Payout Execution & Reconciliation Foundation | phase-16a-payout-execution-reconciliation-foundation.md |
 | Phase 16A.1 — Payment Collection & Payout Provider Routing | payment-collection-and-payout-provider-routing.md |

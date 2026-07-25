@@ -388,6 +388,53 @@ final class WalletFinancialReportRepository
         return new Paginator($rows, $total, $perPage, $page, ['path' => Paginator::resolveCurrentPath()]);
     }
 
+    // ── Promotional credits (GAP-041, Phase 33) ─────────────────────────────
+
+    /**
+     * Per-campaign issuance totals — a natural extension of this same
+     * repository (requirement #9), not a speculative new module.
+     * `movements()` above already surfaces promotional_credit rows in
+     * its generic entry_type breakdown with zero code change; this adds
+     * the one thing that breakdown cannot show: which CAMPAIGN the
+     * credits came from.
+     *
+     * @return list<array{campaignId: int, campaignName: string, issuedCount: int, issuedAmountMinor: int, currencyCode: string, budgetMinor: ?int}>
+     */
+    public function promotionalCreditCampaignSummary(): array
+    {
+        return DB::table('promotional_credit_issuances')
+            ->join('promotional_credit_campaigns', 'promotional_credit_campaigns.id', '=', 'promotional_credit_issuances.campaign_id')
+            ->selectRaw('promotional_credit_campaigns.id as campaign_id, promotional_credit_campaigns.name as campaign_name, promotional_credit_campaigns.total_budget_minor, promotional_credit_issuances.currency_code, count(*) as aggregate, COALESCE(SUM(promotional_credit_issuances.amount_minor), 0) as amount')
+            ->groupBy('promotional_credit_campaigns.id', 'promotional_credit_campaigns.name', 'promotional_credit_campaigns.total_budget_minor', 'promotional_credit_issuances.currency_code')
+            ->orderBy('promotional_credit_campaigns.name')
+            ->get()
+            ->map(fn ($row) => [
+                'campaignId' => (int) $row->campaign_id,
+                'campaignName' => (string) $row->campaign_name,
+                'issuedCount' => (int) $row->aggregate,
+                'issuedAmountMinor' => (int) $row->amount,
+                'currencyCode' => (string) $row->currency_code,
+                'budgetMinor' => $row->total_budget_minor !== null ? (int) $row->total_budget_minor : null,
+            ])
+            ->all();
+    }
+
+    /** Manual (non-campaign) issuances are excluded from campaign summaries by definition — this is their own bounded aggregate. */
+    public function manualPromotionalCreditTotal(): array
+    {
+        return DB::table('promotional_credit_issuances')
+            ->whereNull('campaign_id')
+            ->selectRaw('currency_code, count(*) as aggregate, COALESCE(SUM(amount_minor), 0) as amount')
+            ->groupBy('currency_code')
+            ->get()
+            ->map(fn ($row) => [
+                'currencyCode' => (string) $row->currency_code,
+                'issuedCount' => (int) $row->aggregate,
+                'issuedAmountMinor' => (int) $row->amount,
+            ])
+            ->all();
+    }
+
     // ── Internals ─────────────────────────────────────────────────────────
 
     private function lowBalanceWallets(WalletSettings $settings): int

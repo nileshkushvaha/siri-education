@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Wallet;
 
 use App\Models\PromotionalCreditIssuance;
+use App\Notifications\Templates\NotificationTemplateChannel;
+use App\Notifications\Templates\NotificationTemplateKey;
+use App\Notifications\Templates\NotificationTemplateRenderer;
 use App\Support\MoneyFormatter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -33,19 +36,36 @@ final class PromotionalCreditIssuedNotification extends WalletNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->configureMailMessage(new MailMessage)
-            ->subject('Promotional credit received')
-            ->line(sprintf('Your wallet was credited with %s.', $this->amountFormatted()))
-            ->when($this->issuance->campaign !== null, fn (MailMessage $mail) => $mail->line(sprintf('Campaign: %s', $this->issuance->campaign->name)))
-            ->action('View my wallet', route('dashboard.wallet'));
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::PromotionalCreditIssued,
+            NotificationTemplateChannel::Mail,
+            [
+                'amount' => $this->amountFormatted(),
+                'campaign_line' => $this->issuance->campaign !== null ? sprintf('Campaign: %s', $this->issuance->campaign->name) : '',
+            ],
+        );
+
+        $mail = $this->configureMailMessage(new MailMessage)->subject($rendered->subject);
+
+        foreach ($rendered->lines as $line) {
+            $mail->line($line);
+        }
+
+        return $mail->action('View my wallet', route('dashboard.wallet'));
     }
 
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::PromotionalCreditIssued,
+            NotificationTemplateChannel::Database,
+            ['amount' => $this->amountFormatted()],
+        );
+
         return [
-            'title' => 'Promotional Credit Received',
-            'message' => sprintf('Your wallet was credited with %s.', $this->amountFormatted()),
+            'title' => $rendered->subject,
+            'message' => $rendered->message(),
             'promotional_credit_issuance_id' => $this->issuance->id,
         ];
     }

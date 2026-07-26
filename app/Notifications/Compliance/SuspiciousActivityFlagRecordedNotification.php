@@ -6,6 +6,9 @@ namespace App\Notifications\Compliance;
 
 use App\Models\SuspiciousActivityFlag;
 use App\Notifications\Admin\AdminAlertNotification;
+use App\Notifications\Templates\NotificationTemplateChannel;
+use App\Notifications\Templates\NotificationTemplateKey;
+use App\Notifications\Templates\NotificationTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Queue\SerializesModels;
@@ -35,18 +38,36 @@ final class SuspiciousActivityFlagRecordedNotification extends AdminAlertNotific
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->configureMailMessage(new MailMessage)
-            ->subject('New compliance flag requires review')
-            ->line(sprintf('A %s-severity compliance flag (%s) was recorded and needs review.', $this->flag->severity->label(), $this->flag->reference))
-            ->line(sprintf('Rule: %s.', $this->flag->rule_code->label()))
-            ->action('Open compliance queue', route('filament.admin.resources.suspicious-activity-flags.index'));
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::SuspiciousActivityFlagged,
+            NotificationTemplateChannel::Mail,
+            [
+                'severity' => $this->flag->severity->label(),
+                'reference' => $this->flag->reference,
+                'rule_name' => $this->flag->rule_code->label(),
+            ],
+        );
+
+        $mail = $this->configureMailMessage(new MailMessage)->subject($rendered->subject);
+
+        foreach ($rendered->lines as $line) {
+            $mail->line($line);
+        }
+
+        return $mail->action('Open compliance queue', route('filament.admin.resources.suspicious-activity-flags.index'));
     }
 
     public function toDatabase(object $notifiable): array
     {
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::SuspiciousActivityFlagged,
+            NotificationTemplateChannel::Database,
+            ['severity' => $this->flag->severity->label(), 'reference' => $this->flag->reference],
+        );
+
         return [
-            'title' => 'New compliance flag',
-            'message' => sprintf('A %s-severity compliance flag (%s) was recorded and needs review.', $this->flag->severity->label(), $this->flag->reference),
+            'title' => $rendered->subject,
+            'message' => $rendered->message(),
             'flag_id' => $this->flag->id,
             'reference' => $this->flag->reference,
             'action_url' => route('filament.admin.resources.suspicious-activity-flags.index'),

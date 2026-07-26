@@ -6,6 +6,9 @@ namespace App\Notifications\Wallet;
 
 use App\Models\User;
 use App\Models\WalletRecharge;
+use App\Notifications\Templates\NotificationTemplateChannel;
+use App\Notifications\Templates\NotificationTemplateKey;
+use App\Notifications\Templates\NotificationTemplateRenderer;
 use App\Support\MoneyFormatter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -33,26 +36,35 @@ final class WalletRechargeSucceededNotification extends WalletNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->configureMailMessage(new MailMessage)
-            ->subject('Wallet recharge successful')
-            ->line(sprintf('Your wallet was recharged with %s.', $this->amountFormatted()))
-            ->action('View my wallet', route('dashboard.wallet'))
-            ->line(sprintf('Reference: %s', $this->recharge->idempotency_key));
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::WalletRechargeSucceeded,
+            NotificationTemplateChannel::Mail,
+            ['amount' => $this->amountFormatted(), 'reference' => $this->recharge->idempotency_key],
+        );
+
+        $mail = $this->configureMailMessage(new MailMessage)->subject($rendered->subject);
+
+        foreach ($rendered->lines as $line) {
+            $mail->line($line);
+        }
+
+        return $mail->action('View my wallet', route('dashboard.wallet'));
     }
 
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::WalletRechargeSucceeded,
+            NotificationTemplateChannel::Database,
+            ['amount' => $this->amountFormatted()],
+        );
+
         return [
-            'title' => 'Wallet Recharge Successful',
-            'message' => $this->plainText($notifiable),
+            'title' => $rendered->subject,
+            'message' => $rendered->message(),
             'wallet_recharge_reference' => $this->recharge->idempotency_key,
         ];
-    }
-
-    protected function plainText(object $notifiable): string
-    {
-        return sprintf('Your wallet was recharged with %s.', $this->amountFormatted());
     }
 
     private function amountFormatted(): string

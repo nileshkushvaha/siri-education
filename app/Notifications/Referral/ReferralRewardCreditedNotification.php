@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications\Referral;
 
+use App\Notifications\Templates\NotificationTemplateChannel;
+use App\Notifications\Templates\NotificationTemplateKey;
+use App\Notifications\Templates\NotificationTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -21,10 +24,19 @@ final class ReferralRewardCreditedNotification extends ReferralNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->configureMailMessage(new MailMessage)
-            ->subject('Referral reward credited to your wallet')
-            ->line($this->plainText())
-            ->action('View your wallet', route('dashboard.wallet'));
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::ReferralRewardCredited,
+            NotificationTemplateChannel::Mail,
+            ['amount' => $this->formattedAmount, 'referred_name' => $this->maskedReferredName],
+        );
+
+        $mail = $this->configureMailMessage(new MailMessage)->subject($rendered->subject);
+
+        foreach ($rendered->lines as $line) {
+            $mail->line($line);
+        }
+
+        return $mail->action('View your wallet', route('dashboard.wallet'));
     }
 
     protected function plainText(): string

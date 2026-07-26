@@ -9,6 +9,9 @@ use App\Models\User;
 use App\Notifications\Concerns\ConfiguresTransactionalEmail;
 use App\Notifications\Contracts\TransactionalEmail;
 use App\Notifications\Homework\Concerns\RoutesHomeworkReminderChannels;
+use App\Notifications\Templates\NotificationTemplateChannel;
+use App\Notifications\Templates\NotificationTemplateKey;
+use App\Notifications\Templates\NotificationTemplateRenderer;
 use App\Support\RecipientTimezoneResolver;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -52,25 +55,42 @@ final class HomeworkDueReminderNotification extends Notification implements Tran
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->configureMailMessage(new MailMessage)
-            ->subject(sprintf('Homework due %s', $this->remainingTimeWording($notifiable)))
-            ->line(sprintf('"%s" is due %s.', $this->assignment->title, $this->remainingTimeWording($notifiable)))
-            ->line(sprintf('Due: %s', $this->formattedDueAt($notifiable)))
-            ->when($this->contextLabel() !== null, fn (MailMessage $mail) => $mail->line((string) $this->contextLabel()))
-            ->action('View homework', route('dashboard.homework'));
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::HomeworkDueReminder,
+            NotificationTemplateChannel::Mail,
+            [
+                'homework_title' => $this->assignment->title,
+                'due_wording' => $this->remainingTimeWording($notifiable),
+                'due_date' => $this->formattedDueAt($notifiable),
+                'context_label' => $this->contextLabel() ?? '',
+            ],
+        );
+
+        $mail = $this->configureMailMessage(new MailMessage)->subject($rendered->subject);
+
+        foreach ($rendered->lines as $line) {
+            $mail->line($line);
+        }
+
+        return $mail->action('View homework', route('dashboard.homework'));
     }
 
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
+        $rendered = app(NotificationTemplateRenderer::class)->render(
+            NotificationTemplateKey::HomeworkDueReminder,
+            NotificationTemplateChannel::Database,
+            [
+                'homework_title' => $this->assignment->title,
+                'due_wording' => $this->remainingTimeWording($notifiable),
+                'due_date' => $this->formattedDueAt($notifiable),
+            ],
+        );
+
         return [
-            'title' => 'Homework due soon',
-            'message' => sprintf(
-                '"%s" is due %s (%s).',
-                $this->assignment->title,
-                $this->remainingTimeWording($notifiable),
-                $this->formattedDueAt($notifiable),
-            ),
+            'title' => $rendered->subject,
+            'message' => $rendered->message(),
         ];
     }
 

@@ -1,6 +1,8 @@
 <?php
 
 use App\Booking\Exceptions\BookingException;
+use App\Content\Redirects\Services\RedirectDestinationGuard;
+use App\Content\Redirects\Services\RedirectService;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureAdminPortal;
 use App\Http\Middleware\EnsureEmailVerifiedIfRequired;
@@ -17,6 +19,7 @@ use Illuminate\Foundation\Exceptions\Renderer\Renderer;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -69,6 +72,37 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('auth/verify-email/*')) {
                 return response()->view('auth.verification-expired', [], 403);
             }
+        });
+
+        // GAP-036 (SRS §22.25/26) — public-only, runs before the friendly
+        // 404 page below so a managed redirect always wins over a plain
+        // "not found." Registered ahead of the generic HttpExceptionInterface
+        // handler so it gets first refusal on every 404. Ignores admin/API/
+        // internal routes via the same RedirectDestinationGuard target
+        // validation reuses — a 404 inside those areas is never a
+        // candidate for a public SEO redirect.
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
+            if (! $request->isMethod('GET') || $request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            if (app(RedirectDestinationGuard::class)->isProhibited($request->path())) {
+                return null;
+            }
+
+            $resolution = app(RedirectService::class)->resolve($request->path());
+
+            if ($resolution === null) {
+                return null;
+            }
+
+            $target = $resolution['url'];
+
+            if ($request->getQueryString()) {
+                $target .= '?'.$request->getQueryString();
+            }
+
+            return redirect($target, $resolution['status']);
         });
 
         // Friendly web HTTP error pages are for non-debug environments only.

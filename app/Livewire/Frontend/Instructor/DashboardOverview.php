@@ -12,6 +12,9 @@ final class DashboardOverview extends Component
 {
     public int $unreadCount = 0;
 
+    /** Phase 37B: pre-computed by PortalBadgeService/AccountPortalComposer — avoids a duplicate pendingReviewCountForTeacher() query. */
+    public int $pendingHomeworkCount = 0;
+
     public int $upcomingCount = 0;
 
     public int $todayCount = 0;
@@ -53,7 +56,7 @@ final class DashboardOverview extends Component
 
     public function mount(InstructorDashboardService $dashboard): void
     {
-        $summary = $dashboard->summary(auth()->user(), $this->unreadCount);
+        $summary = $dashboard->summary(auth()->user(), $this->unreadCount, $this->pendingHomeworkCount);
 
         $this->upcomingCount = $summary->upcomingLessons;
         $this->todayCount = $summary->todayLessons;

@@ -33,7 +33,16 @@ final class InstructorDashboardService
         private readonly MeetingSettings $meetingSettings,
     ) {}
 
-    public function summary(User $instructor, int $unreadNotifications = 0): InstructorDashboardData
+    /**
+     * $pendingHomeworkReviews mirrors $unreadNotifications: when the
+     * caller already has the count (PortalBadgeService, via
+     * AccountPortalComposer, computes the identical
+     * pendingReviewCountForTeacher() value for the nav badge on every
+     * request this widget renders on), pass it in to avoid running the
+     * same COUNT query twice in one request. Null preserves the original
+     * self-contained behavior for any other caller.
+     */
+    public function summary(User $instructor, int $unreadNotifications = 0, ?int $pendingHomeworkReviews = null): InstructorDashboardData
     {
         $timezone = $instructor->profile?->timezone ?: config('app.timezone');
         $now = CarbonImmutable::now($timezone);
@@ -103,7 +112,7 @@ final class InstructorDashboardService
                 'assessments_due' => (clone $plans)->where('status', LearningPlanStatus::AwaitingAssessment)->whereDoesntHave('assessments')->count(),
             ],
             homework: [
-                'pending_reviews' => (clone $submittedHomework)->count(),
+                'pending_reviews' => $pendingHomeworkReviews ?? (clone $submittedHomework)->count(),
                 'recent_submissions' => (clone $submittedHomework)->with('student:id,first_name,last_name,name')->latest('submitted_at')->limit(3)->get()->map(fn (HomeworkAssignment $assignment): array => [
                     'id' => $assignment->id,
                     'title' => $assignment->title,

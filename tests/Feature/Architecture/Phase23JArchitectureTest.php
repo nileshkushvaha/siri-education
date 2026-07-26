@@ -23,14 +23,39 @@ final class Phase23JArchitectureTest extends TestCase
         $this->assertDirectoryDoesNotExist(app_path('Services/InstructorHomework'));
         $this->assertDirectoryDoesNotExist(app_path('InstructorHomework'));
 
+        // The original guard here was "exactly one Homework-named model
+        // exists" — a proxy for the real invariant: no PARALLEL
+        // assignment/submission/review tracker was created alongside
+        // HomeworkAssignment. That proxy broke as soon as legitimate
+        // satellite models were added (Phase 24K reminders, Phase 37A
+        // library). Replaced with an explicit allow-list: any Homework-
+        // named model not on this list is exactly the duplicate-domain
+        // regression this test exists to catch, and must be justified
+        // here before being added.
+        $expectedHomeworkModels = [
+            'HomeworkAssignment.php', // the single source of truth for assignment/submission/review state
+            'HomeworkDueReminder.php', // Phase 24K (GAP-020) — due-date reminder claim/dispatch history
+            'HomeworkReminderChannelDelivery.php', // Phase 24K (GAP-020) — per-channel reminder delivery record
+            'HomeworkResource.php', // Phase 37A (GAP-022) — reusable library resource metadata
+            'HomeworkResourceVersion.php', // Phase 37A (GAP-022) — immutable published resource version
+        ];
+
         $matches = [];
         foreach ($this->phpFilesUnder(app_path('Models')) as $file) {
             if (str_contains(basename($file), 'Homework')) {
-                $matches[] = $file;
+                $matches[] = basename($file);
             }
         }
 
-        $this->assertCount(1, $matches, 'Exactly one Homework model must exist (App\\Models\\HomeworkAssignment).');
+        sort($matches);
+        sort($expectedHomeworkModels);
+        $this->assertSame(
+            $expectedHomeworkModels,
+            $matches,
+            'An unexpected Homework-named model was found. If it is a deliberate, reviewed addition to the '
+            .'Homework domain, add it to $expectedHomeworkModels above; otherwise it is a parallel/duplicate '
+            .'homework-tracking entity and must be removed.',
+        );
     }
 
     public function test_instructor_homework_service_extends_the_existing_contracts_not_a_new_one(): void
@@ -44,15 +69,24 @@ final class Phase23JArchitectureTest extends TestCase
         $this->assertIsString($repositoryInterface);
         $this->assertStringContainsString('paginatedForTeacher', $repositoryInterface);
 
-        // Only one concrete implementation of each contract exists.
         $this->assertFileExists(app_path('Homework/Services/HomeworkService.php'));
         $this->assertFileExists(app_path('Homework/Repositories/HomeworkRepository.php'));
 
-        $serviceMatches = [];
-        foreach ($this->phpFilesUnder(app_path('Homework/Services')) as $file) {
-            $serviceMatches[] = $file;
-        }
-        $this->assertCount(1, $serviceMatches);
+        // The original guard counted files in app/Homework/Services and
+        // required exactly one — broken by legitimate collaborators
+        // (HomeworkContextValidator, HomeworkNotificationChannelResolver)
+        // that were never competing service implementations. The real
+        // invariant — "only one class implements HomeworkServiceInterface
+        // anywhere in the app" — is checked directly and scans the whole
+        // app/ tree, so a parallel implementation placed outside this
+        // folder would still be caught.
+        $implementations = array_values(array_filter(
+            $this->phpFilesUnder(app_path()),
+            fn (string $file): bool => str_contains(file_get_contents($file), 'implements HomeworkServiceInterface'),
+        ));
+
+        $this->assertCount(1, $implementations, 'Exactly one class must implement HomeworkServiceInterface.');
+        $this->assertStringContainsString('Homework/Services/HomeworkService.php', $implementations[0]);
     }
 
     public function test_livewire_component_never_writes_to_the_database_directly(): void
@@ -105,7 +139,16 @@ final class Phase23JArchitectureTest extends TestCase
     {
         $service = file_get_contents(app_path('Services/Instructor/InstructorDashboardService.php'));
         $this->assertIsString($service);
-        $this->assertStringContainsString("'pending_reviews' => (clone \$submittedHomework)->count()", $service);
+
+        // Phase 37B: the widget accepts the count PortalBadgeService
+        // already computed for the nav badge (same pattern as
+        // $unreadNotifications) instead of always re-running its own
+        // COUNT query — this closed a genuine duplicate-query regression
+        // caught by Phase20BPortalShellTest's query-count bound. The
+        // bounded clone()->count() fallback must still exist for callers
+        // that don't have a pre-computed value.
+        $this->assertStringContainsString('?int $pendingHomeworkReviews = null', $service);
+        $this->assertStringContainsString("'pending_reviews' => \$pendingHomeworkReviews ?? (clone \$submittedHomework)->count()", $service);
     }
 
     public function test_reuses_the_existing_homework_status_enum(): void

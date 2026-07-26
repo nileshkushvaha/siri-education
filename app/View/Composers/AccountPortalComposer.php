@@ -47,6 +47,10 @@ final class AccountPortalComposer
                 $this->profileService->completion($user),
             ),
             'accountNotificationCount' => $badges['notifications'],
+            // Phase 37B: shared with the instructor dashboard widget so it
+            // never re-queries the exact same pendingReviewCountForTeacher()
+            // count PortalBadgeService already computed for the nav badge.
+            'accountHomeworkPendingCount' => $badges['homework'],
             'accountWalletEnabled' => $this->wallets->enabledFor($audience),
             'accountWalletSummary' => $this->wallets->for($user, $audience),
             'accountReferralEnabled' => $this->wallets->referralEnabledFor($audience),

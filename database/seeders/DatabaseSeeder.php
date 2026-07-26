@@ -66,6 +66,8 @@ class DatabaseSeeder extends Seeder
             PromotionalCreditPermissionSeeder::class,
             // Phase 35 — GAP-035 durable operational alerts.
             OperationalAlertPermissionSeeder::class,
+            // Phase 38 — GAP-036 managed SEO redirects.
+            RedirectPermissionSeeder::class,
         ]);
     }
 }

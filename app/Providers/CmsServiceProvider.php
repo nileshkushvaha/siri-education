@@ -9,9 +9,11 @@ use App\Content\Rendering\ContentRenderer;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\PostCategory;
+use App\Models\Redirect;
 use App\Models\Tag;
 use App\Observers\ContentBlockObserver;
 use App\Policies\ContentBlockPolicy;
+use App\Policies\RedirectPolicy;
 use App\Services\PageRenderService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
@@ -58,5 +60,6 @@ class CmsServiceProvider extends ServiceProvider
     private function registerPolicies(): void
     {
         Gate::policy(ContentBlock::class, ContentBlockPolicy::class);
+        Gate::policy(Redirect::class, RedirectPolicy::class);
     }
 }

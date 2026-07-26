@@ -18,10 +18,12 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Referral\Enums\ReferralRewardStatus;
+use App\Services\Instructor\RecommendationService;
 use App\Services\Profile\ProfileService;
 use App\Settings\FeatureSettings;
 use App\Settings\MeetingSettings;
 use App\Wallet\Support\WalletMoneyFormatter;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
 
@@ -35,6 +37,8 @@ final class StudentDashboardService
         private readonly FeatureSettings $features,
         private readonly MeetingSettings $meetings,
         private readonly BookingMeetingServiceInterface $bookingMeetings,
+        private readonly RecommendationService $recommendations,
+        private readonly Request $request,
     ) {}
 
     public function summary(User $student, int $unreadCount = 0): StudentDashboardData
@@ -56,6 +60,11 @@ final class StudentDashboardService
             favorites: $this->widget('favorite instructors', fn () => $this->favoriteInstructors($student), $errors),
             notifications: $this->widget('notifications', fn () => $this->notifications($student, $unreadCount), $errors),
             profile: $this->widget('profile', fn () => $this->profile($student), $errors),
+            recommendedInstructors: $this->widget(
+                'recommended instructors',
+                fn () => $this->recommendations->recommendedForYou($student, $this->request, 4)->all(),
+                $errors,
+            ),
             errors: $errors,
         );
     }

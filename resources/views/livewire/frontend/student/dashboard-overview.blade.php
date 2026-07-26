@@ -83,5 +83,24 @@
         <div class="flex flex-col gap-3 rounded-2xl border border-amber-400/15 bg-amber-500/[.05] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-semibold text-white">Complete your profile · {{ $dashboard->profile['completion'] }}%</p><p class="mt-1 text-xs text-slate-400">Add {{ implode(', ', array_slice($dashboard->profile['missing'], 0, 2)) }} to get more relevant learning options.</p></div><a href="{{ route('profile.show') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">Complete profile →</a></div>
     @endif
 
+    @if(! empty($dashboard->recommendedInstructors))
+        <section class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 md:p-6">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Recommended for you</h2>
+                    <p class="mt-1 text-sm text-slate-400">Matched to your learning plans and favorite instructors.</p>
+                </div>
+                <a href="{{ route('instructors.index') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Explore all →</a>
+            </div>
+            <div class="mt-5 flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory xl:grid xl:grid-cols-4 xl:overflow-visible xl:pb-0">
+                @foreach($dashboard->recommendedInstructors as $recommendedInstructor)
+                    <div class="w-[18rem] shrink-0 snap-start xl:w-auto">
+                        <x-instructor.card :instructor="$recommendedInstructor" />
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     @if($dashboard->errors)<p class="text-center text-xs text-slate-400" role="status">Some dashboard information is temporarily unavailable. Your learning data is safe.</p>@endif
 </div>

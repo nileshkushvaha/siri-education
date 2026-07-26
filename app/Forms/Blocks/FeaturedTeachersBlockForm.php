@@ -16,6 +16,17 @@ class FeaturedTeachersBlockForm
                 ->description('Content comes from the CMS; instructor records come from the public instructor service.')
                 ->collapsible(false)
                 ->schema([
+                    Select::make('section')
+                        ->label('Recommendation Section')
+                        ->options([
+                            'featured' => 'Featured Instructors (admin-curated)',
+                            'popular' => 'Popular Instructors (highest rated)',
+                            'new' => 'New Instructors (recently joined)',
+                            'recommended_for_you' => 'Recommended for You (personalized, falls back to Popular)',
+                        ])
+                        ->default('featured')
+                        ->required()
+                        ->helperText('GAP-025: which recommendation strategy this block displays. Eligibility, pricing, and ranking are identical across sections — only the selection changes.'),
                     TextInput::make('eyebrow')->label('Eyebrow')->maxLength(120),
                     TextInput::make('title')->label('Title')->maxLength(255),
                     Textarea::make('description')->label('Description')->rows(3)->maxLength(700),

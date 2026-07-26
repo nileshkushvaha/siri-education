@@ -7,5 +7,6 @@
     :columns="(int) ($columns ?? 4)"
     :link-label="$link_label ?? ''"
     :link-url="$link_url ?? ''"
+    :section="$section ?? 'featured'"
     wire:key="featured-teachers-{{ $block_id ?? md5(($title ?? '').($limit ?? 4)) }}"
 />

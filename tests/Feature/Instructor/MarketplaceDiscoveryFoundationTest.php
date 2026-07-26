@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use App\Models\AcademicCategory;
 use App\Models\AcademicLevel;
 use App\Models\Booking;
@@ -207,6 +208,10 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
     {
         $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $student->assignRole('student');
+        // Phase 24H.2 — GAP-013: interactive student actions (favoriting
+        // included) require an Active student_status; a bare role
+        // assignment leaves it null and is always denied.
+        $student->profile()->update(['student_status' => StudentStatus::Active]);
         $instructor = $this->makeInstructor('Favorite Instructor', InstructorStatus::Approved);
 
         $this->get(route('instructors.index'))
@@ -279,6 +284,9 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
     {
         $studentInstructor = $this->makeInstructor('Student Instructor', InstructorStatus::Approved);
         $studentInstructor->assignRole('student');
+        // Phase 24H.2 — GAP-013: see above — required for the duplicate-
+        // favorite assertion below to ever reach the actual create path.
+        $studentInstructor->profile()->update(['student_status' => StudentStatus::Active]);
         $nonBookable = $this->makeInstructor('Non Bookable Instructor', InstructorStatus::Suspended);
 
         $this->actingAs($studentInstructor)

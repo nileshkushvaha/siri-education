@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Livewire\Frontend\Cms;
 
-use App\Services\Instructor\InstructorService;
+use App\Services\Instructor\RecommendationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Livewire\Component;
 
+/**
+ * GAP-025 — the same CMS block now drives every Version 1 recommendation
+ * section via $section, reusing the existing audited page/post block
+ * save flow as its "admin configuration" (requirement #9) rather than a
+ * new settings page. $section defaults to 'featured' so every block
+ * already placed on existing pages keeps its original behavior.
+ */
 final class FeaturedTeachers extends Component
 {
     public string $eyebrow = '';
@@ -25,6 +32,8 @@ final class FeaturedTeachers extends Component
 
     public string $linkUrl = '';
 
+    public string $section = 'featured';
+
     public function mount(
         string $eyebrow = '',
         string $title = '',
@@ -33,6 +42,7 @@ final class FeaturedTeachers extends Component
         int $columns = 4,
         string $linkLabel = '',
         string $linkUrl = '',
+        string $section = 'featured',
     ): void {
         $this->eyebrow = $eyebrow;
         $this->title = $title;
@@ -41,12 +51,20 @@ final class FeaturedTeachers extends Component
         $this->columns = $columns;
         $this->linkLabel = $linkLabel;
         $this->linkUrl = $linkUrl;
+        $this->section = $section;
     }
 
-    public function render(InstructorService $instructors, Request $request): View
+    public function render(RecommendationService $recommendations, Request $request): View
     {
+        $teachers = match ($this->section) {
+            'popular' => $recommendations->popular($request, $this->limit),
+            'new' => $recommendations->newInstructors($request, $this->limit),
+            'recommended_for_you' => $recommendations->recommendedForYou($request->user(), $request, $this->limit),
+            default => $recommendations->featured($request, $this->limit),
+        };
+
         return view('livewire.frontend.cms.featured-teachers', [
-            'teachers' => $instructors->featuredCards($request, $this->limit),
+            'teachers' => $teachers,
         ]);
     }
 }

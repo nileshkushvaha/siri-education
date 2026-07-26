@@ -253,6 +253,19 @@
         />
     </div>
 
+    <div class="bg-white">
+        <livewire:frontend.cms.featured-teachers
+            eyebrow="Loved by students"
+            title="Popular instructors"
+            description="Ranked by review volume and average rating — never random, never sponsored."
+            :limit="4"
+            :columns="4"
+            link-label="Explore all instructors"
+            :link-url="route('instructors.index')"
+            section="popular"
+        />
+    </div>
+
     <section class="bg-white py-16 sm:py-20">
         <div class="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
             <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 to-violet-700 p-8 text-white shadow-xl shadow-indigo-200 sm:p-10">

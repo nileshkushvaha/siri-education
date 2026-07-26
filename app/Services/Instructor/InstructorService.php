@@ -128,10 +128,7 @@ final class InstructorService
     {
         $country = $this->marketplaceCountry->resolve($request->user(), $request)->country;
 
-        return $this->featured($limit)->map(fn (User $instructor): array => $this->card(
-            $instructor,
-            $this->primarySubjectQuote($instructor, $country),
-        ));
+        return $this->cardsFor($this->featured($limit), $country);
     }
 
     public function filters(): array
@@ -164,13 +161,88 @@ final class InstructorService
             ->values();
     }
 
+    /**
+     * GAP-025: deterministic — no random ordering. Prefers instructors
+     * who share at least one of this instructor's ACTIVE, subject-
+     * master-linked subjects (SRS §8.21 "filters shall only present
+     * active Academic Framework entities"), ranked by popularity; tops
+     * up with popularity-only matches if the subject-matched set is
+     * smaller than $limit so the section is never sparse.
+     */
     public function related(User $instructor, int $limit = 3): Collection
     {
-        return $this->baseQuery()
-            ->where('users.id', '!=', $instructor->id)
-            ->inRandomOrder()
-            ->limit($limit)
-            ->get();
+        $subjectSlugs = $this->activeSubjectSlugsFor($instructor);
+
+        $query = $this->baseQuery()->where('users.id', '!=', $instructor->id);
+
+        if ($subjectSlugs->isNotEmpty()) {
+            $query->whereHas(
+                'teacherSubjects.subjectMaster',
+                fn (Builder $subjectQuery) => $subjectQuery->whereIn('slug', $subjectSlugs),
+            );
+        }
+
+        $matched = $this->applyPopularityOrder($query)->limit($limit)->get();
+
+        if ($subjectSlugs->isNotEmpty() && $matched->count() < $limit) {
+            $more = $this->applyPopularityOrder(
+                $this->baseQuery()
+                    ->where('users.id', '!=', $instructor->id)
+                    ->whereNotIn('users.id', $matched->pluck('id')),
+            )->limit($limit - $matched->count())->get();
+
+            $matched = $matched->concat($more);
+        }
+
+        return $matched;
+    }
+
+    /**
+     * Subject-master slugs for this instructor's ACTIVE-status-linked
+     * subjects only — the matchable signal for related/recommended
+     * ranking. Distinct from subjectsFor(), which shows everything the
+     * instructor claims to teach (including unreconciled free-text
+     * subjects) for plain display purposes and must not change.
+     *
+     * @return Collection<int, string>
+     */
+    public function activeSubjectSlugsFor(User $instructor): Collection
+    {
+        return TeacherSubject::query()
+            ->where('teacher_id', $instructor->id)
+            ->whereHas('subjectMaster', fn (Builder $q) => $q->where('status', AcademicStatus::Active))
+            ->with('subjectMaster:id,slug,status')
+            ->get()
+            ->pluck('subjectMaster.slug')
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Deterministic popularity ranking shared by every recommendation
+     * section: more (eligible) reviews first, then higher average
+     * rating, then name — never random, never per-row queries (a
+     * single LEFT JOIN against the existing durable rating aggregate
+     * table, Phase 17K).
+     */
+    public function applyPopularityOrder(Builder $query): Builder
+    {
+        return $query
+            ->leftJoin('instructor_rating_aggregates', 'instructor_rating_aggregates.instructor_id', '=', 'users.id')
+            ->orderByRaw('COALESCE(instructor_rating_aggregates.eligible_review_count, 0) DESC')
+            ->orderByRaw('COALESCE(instructor_rating_aggregates.overall_rating_sum / NULLIF(instructor_rating_aggregates.eligible_review_count, 0), 0) DESC')
+            ->orderBy('users.name')
+            ->orderBy('users.id');
+    }
+
+    /** @param Collection<int, User> $instructors */
+    public function cardsFor(Collection $instructors, ?Country $country): Collection
+    {
+        return $instructors->map(fn (User $instructor): array => $this->card(
+            $instructor,
+            $this->primarySubjectQuote($instructor, $country),
+        ));
     }
 
     /**
@@ -246,10 +318,7 @@ final class InstructorService
             ? $this->marketplacePrices->quoteFor($instructor, $countryContext->country, $pricingSubject, $pricingLevel)
             : null;
 
-        $related = $this->related($instructor)->map(fn (User $relatedInstructor): array => $this->card(
-            $relatedInstructor,
-            $this->primarySubjectQuote($relatedInstructor, $countryContext->country),
-        ));
+        $related = $this->cardsFor($this->related($instructor), $countryContext->country);
 
         $skills = $experiences
             ->flatMap(fn ($experience) => $experience->skills ?? [])
@@ -393,7 +462,7 @@ final class InstructorService
     }
 
     /** Read-only preview using the instructor's own primary (first alphabetical) subject — the same concept publicProfile() already uses for its default booking links. Null when the instructor teaches nothing resolvable to a Subject master row. */
-    private function primarySubjectQuote(User $instructor, ?Country $country): ?MarketplacePriceQuote
+    public function primarySubjectQuote(User $instructor, ?Country $country): ?MarketplacePriceQuote
     {
         $slug = $this->subjectsFor($instructor)->first()['slug'] ?? null;
         $subject = is_string($slug) ? Subject::query()->active()->where('slug', $slug)->first() : null;
@@ -659,7 +728,14 @@ final class InstructorService
         $query->whereRaw('1 = 0');
     }
 
-    private function baseQuery(): Builder
+    /**
+     * The single eligibility boundary for public marketplace exposure —
+     * public visibility, active account, bookable instructor_status
+     * (approved, not suspended/archived/draft). GAP-025's
+     * RecommendationService builds every section on top of this SAME
+     * query rather than re-deriving eligibility.
+     */
+    public function baseQuery(): Builder
     {
         return User::query()
             ->join('user_profiles', 'users.id', '=', 'user_profiles.user_id')

@@ -6,6 +6,7 @@ namespace App\Booking\Services;
 
 use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
+use App\Booking\Contracts\MeetingProviderInterface;
 use App\Booking\DTOs\MeetingCreationContext;
 use App\Booking\DTOs\MeetingCreationResult;
 use App\Booking\DTOs\MeetingUpdateContext;
@@ -19,6 +20,7 @@ use App\Booking\Enums\MeetingStatus;
 use App\Booking\Events\MeetingCreated;
 use App\Booking\Events\MeetingUpdated;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Jobs\CaptureLessonRecordingJob;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Lessons\Enums\LessonStatus;
@@ -64,6 +66,7 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
         private readonly MeetingSettings $settings,
         private readonly AuditTrailService $audit,
         private readonly StudentLifecycleService $studentLifecycle,
+        private readonly RecordingService $recordings,
     ) {}
 
     public function createMeeting(Booking $booking, ?string $providerKey = null): ?BookingMeeting
@@ -113,7 +116,33 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
 
         $this->dispatchTransitionEvents($booking, $meeting, $previousStatus, $previousJoinUrl);
 
+        if ($meeting->status === MeetingStatus::Created) {
+            $this->registerRecordingIfEligible($booking, $meeting, $provider);
+        }
+
         return $meeting;
+    }
+
+    /**
+     * GAP-028 — registration only creates the Recording row (idempotent,
+     * cheap); the actual capture is a SEPARATE queued job dispatched
+     * afterCommit so a slow/failed provider fetch can never block or
+     * fail meeting creation itself. Delayed until
+     * recording_capture_delay_minutes after the LESSON ends (not after
+     * now) — a lesson booked for tomorrow must not trigger an capture
+     * attempt tonight.
+     */
+    private function registerRecordingIfEligible(Booking $booking, BookingMeeting $meeting, MeetingProviderInterface $provider): void
+    {
+        $recording = $this->recordings->registerIfEligible($booking, $meeting, $provider);
+
+        if ($recording === null) {
+            return;
+        }
+
+        CaptureLessonRecordingJob::dispatch($recording->id)
+            ->afterCommit()
+            ->delay($meeting->ends_at->addMinutes(max(0, $this->settings->recording_capture_delay_minutes)));
     }
 
     public function saveManualMeeting(Booking $booking, MeetingUpdateContext $context): ?BookingMeeting

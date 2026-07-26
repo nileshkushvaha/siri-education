@@ -14,6 +14,7 @@ use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Meetings\Concerns\BuildsSafeMeetingContent;
 use App\Booking\Meetings\Concerns\SanitizesProviderMessages;
+use App\Booking\Services\RecordingEligibilityResolver;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use App\Settings\MeetingSettings;
@@ -46,6 +47,7 @@ final class ZoomMeetingProvider implements MeetingProviderInterface
     public function __construct(
         private readonly ZoomMeetingClient $client,
         private readonly MeetingSettings $settings,
+        private readonly RecordingEligibilityResolver $recordingEligibility,
     ) {}
 
     public function key(): string
@@ -156,13 +158,14 @@ final class ZoomMeetingProvider implements MeetingProviderInterface
                 'join_before_host' => false,
                 'waiting_room' => true,
                 'mute_upon_entry' => true,
-                // Deliberately unconditional, regardless of
-                // RecordingAvailabilityResolver's result: no
-                // capture/storage/retention/access pipeline exists to
-                // safely receive a real recording, so this provider
-                // never requests one, even when the platform-level and
-                // meeting-level recording settings are both enabled.
-                'auto_recording' => 'none',
+                // GAP-028: driven by the full eligibility chain, not a
+                // hardcode. This provider never declares
+                // MeetingRecordingProviderInterface, so
+                // "provider_capability_missing" always fails the check
+                // today — auto_recording stays 'none' in practice until
+                // a future phase adds real Zoom recording-fetch support,
+                // at which point this line needs no further change.
+                'auto_recording' => $this->recordingEligibility->evaluate($booking, $this)->eligible ? 'cloud' : 'none',
                 'host_video' => true,
                 'participant_video' => false,
             ],

@@ -107,6 +107,24 @@ class MeetingSettings extends Settings
     /** Bounded retries per meeting before a sync failure is marked permanent. */
     public int $attendance_sync_max_attempts;
 
+    /** GAP-028 — minutes after a booking ends before the first recording-capture attempt. */
+    public int $recording_capture_delay_minutes;
+
+    /** Transient capture failures keep retrying until this many minutes after the booking end. */
+    public int $recording_capture_retry_minutes;
+
+    /** Meetings whose booking ended longer ago than this are never capture candidates. */
+    public int $recording_capture_max_age_hours;
+
+    /** Meetings per processing chunk in recordings:capture. */
+    public int $recording_capture_batch_size;
+
+    /** Bounded retries per meeting before a capture failure is marked permanent. */
+    public int $recording_capture_max_attempts;
+
+    /** Recordings per processing chunk in recordings:expire. */
+    public int $recording_expiry_batch_size;
+
     public static function group(): string
     {
         return 'meeting';

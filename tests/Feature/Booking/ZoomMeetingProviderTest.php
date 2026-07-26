@@ -21,6 +21,7 @@ use App\Http\Resources\Student\StudentBookingResource;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use App\Models\User;
+use App\Settings\FeatureSettings;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -332,6 +333,43 @@ class ZoomMeetingProviderTest extends TestCase
         $serialized = $meeting->toArray();
         $this->assertArrayNotHasKey('host_url', $serialized);
         $this->assertArrayNotHasKey('password', $serialized);
+    }
+
+    /**
+     * GAP-028 — auto_recording is now driven by RecordingEligibilityResolver
+     * rather than a hardcoded string, but Zoom deliberately never implements
+     * MeetingRecordingProviderInterface, so the capability gate always fails
+     * and the payload stays 'none' even with every recording flag enabled.
+     * requirement #2 ("preserve current auto_recording => none behavior")
+     * holds for Zoom specifically; RecordingEligibilityResolverTest proves
+     * the same chain flips to eligible for a provider that DOES implement
+     * the capability interface (FakeMeetingProvider).
+     */
+    public function test_auto_recording_stays_none_for_zoom_even_with_every_recording_flag_enabled(): void
+    {
+        $this->configureZoom();
+        $features = app(FeatureSettings::class);
+        $features->recording_enabled = true;
+        $features->save();
+        $settings = app(MeetingSettings::class);
+        $settings->recording_enabled = true;
+        $settings->save();
+
+        $client = $this->bindFakeClient();
+        $booking = $this->eligibleBooking();
+        $booking->student->profile->update(['consents_to_recording' => true]);
+        $booking->instructor->profile->update(['consents_to_recording' => true]);
+
+        $client->shouldReceive('createMeeting')
+            ->once()
+            ->withArgs(function (string $hostUser, array $payload): bool {
+                $this->assertSame('none', $payload['settings']['auto_recording']);
+
+                return true;
+            })
+            ->andReturn($this->sanitizedZoomMeeting());
+
+        app(BookingMeetingServiceInterface::class)->createMeeting($booking, ZoomMeetingProvider::KEY);
     }
 
     public function test_zoom_meeting_metadata_never_contains_raw_response_or_secrets(): void

@@ -73,7 +73,10 @@ use App\Booking\Services\WizardBookingService;
 use App\Booking\Types\FreeDemoType;
 use App\Booking\Types\PaidOneToOneType;
 use App\Booking\Validation\BookingValidationPipeline;
+use App\Models\Recording;
+use App\Policies\RecordingPolicy;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class BookingServiceProvider extends ServiceProvider
@@ -84,6 +87,11 @@ class BookingServiceProvider extends ServiceProvider
         $this->bindSingletons();
         $this->registerBookingTypes();
         $this->registerAssignmentEngine();
+    }
+
+    public function boot(): void
+    {
+        Gate::policy(Recording::class, RecordingPolicy::class);
     }
 
     private function bindInterfaces(): void

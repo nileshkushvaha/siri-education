@@ -6,15 +6,18 @@ namespace App\Booking\Meetings;
 
 use App\Booking\Contracts\MeetingAttendanceProviderInterface;
 use App\Booking\Contracts\MeetingProviderInterface;
+use App\Booking\Contracts\MeetingRecordingProviderInterface;
 use App\Booking\DTOs\MeetingCancellationResult;
 use App\Booking\DTOs\MeetingCreationContext;
 use App\Booking\DTOs\MeetingCreationResult;
 use App\Booking\DTOs\MeetingUpdateContext;
 use App\Booking\DTOs\ProviderAttendanceEvent;
 use App\Booking\DTOs\ProviderAttendanceWebhook;
+use App\Booking\DTOs\ProviderRecordingResult;
 use App\Booking\Enums\MeetingAttendanceEventType;
 use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\AttendanceSyncUnavailableException;
+use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidAttendanceWebhookException;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
@@ -29,8 +32,13 @@ use Throwable;
  * participants, and late evidence. Registered ONLY in the testing
  * environment (BookingServiceProvider) — production keeps the original
  * "no fake meeting provider" decision. Moves no data anywhere.
+ *
+ * GAP-028: also the only provider implementing
+ * MeetingRecordingProviderInterface — real providers (Zoom/Google Meet/
+ * Manual) all decline recording support until a future phase adds it
+ * for real (SRS §12.31 "where the active provider supports it").
  */
-final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, MeetingProviderInterface
+final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, MeetingProviderInterface, MeetingRecordingProviderInterface
 {
     public const string KEY = 'fake';
 
@@ -47,12 +55,22 @@ final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, M
 
     public static bool $supportsWebhooks = true;
 
+    public static bool $supportsRecording = true;
+
+    /** Null = "not ready yet" (transient) — the default, realistic state. */
+    public static ?ProviderRecordingResult $nextRecordingResult = null;
+
+    public static bool $failNextRecordingFetch = false;
+
     public static function reset(): void
     {
         self::$syncEvents = [];
         self::$failNextSync = false;
         self::$supportsSync = true;
         self::$supportsWebhooks = true;
+        self::$supportsRecording = true;
+        self::$nextRecordingResult = null;
+        self::$failNextRecordingFetch = false;
     }
 
     public static function sign(string $body): string
@@ -237,5 +255,23 @@ final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, M
         } catch (Throwable) {
             throw new InvalidAttendanceWebhookException('Malformed timestamp.');
         }
+    }
+
+    // ── MeetingRecordingProviderInterface ─────────────────────────────
+
+    public function supportsRecording(): bool
+    {
+        return self::$supportsRecording;
+    }
+
+    public function fetchRecording(BookingMeeting $meeting): ?ProviderRecordingResult
+    {
+        if (self::$failNextRecordingFetch) {
+            self::$failNextRecordingFetch = false;
+
+            throw new BookingException('Fake provider recording fetch failed.');
+        }
+
+        return self::$nextRecordingResult;
     }
 }

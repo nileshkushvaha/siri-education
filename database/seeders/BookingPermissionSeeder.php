@@ -37,6 +37,10 @@ class BookingPermissionSeeder extends Seeder
         // Student-facing pricing matrix (Phase 10.2D) — admin only, never
         // granted to the instructor role.
         'ViewAny:StudentLessonPrice', 'View:StudentLessonPrice', 'Create:StudentLessonPrice', 'Update:StudentLessonPrice', 'Delete:StudentLessonPrice', 'Restore:StudentLessonPrice',
+        // GAP-028 — recording access is participant-or-explicitly-
+        // permitted-admin only; no Create/Update/Delete permission
+        // exists because RecordingService is the only writer.
+        'ViewAny:Recording', 'View:Recording',
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [

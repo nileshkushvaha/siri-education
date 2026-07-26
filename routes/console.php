@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Console\Commands\AccruePeriodicCompensation;
 use App\Console\Commands\Alerts\CheckMissingMeetingLinksCommand;
 use App\Console\Commands\AutoCompleteLessons;
+use App\Console\Commands\CaptureLessonRecordings;
 use App\Console\Commands\CreditEligibleReferralRewards;
+use App\Console\Commands\ExpireLessonRecordings;
 use App\Console\Commands\ExpireLessonReviewEligibility;
 use App\Console\Commands\FinalizeDueLessons;
 use App\Console\Commands\Homework\SendHomeworkDueReminders;
@@ -216,6 +218,29 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-attendance-sync.log'));
+
+// GAP-028 recording capture reconciliation: complements the queued
+// CaptureLessonRecordingJob dispatched at meeting-creation time — picks
+// up anything the delayed job missed and retries transient provider
+// failures within the configured window. Idempotent (capture()
+// re-checks status under a row lock); a no-op unless
+// meeting.recording_enabled (plus every other eligibility gate) is on.
+app(Schedule::class)
+    ->command(CaptureLessonRecordings::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/recordings-capture.log'));
+
+// GAP-028 retention cleanup: deletes the media file for recordings
+// past their configured retention window, keeping metadata for
+// historical/audit evidence. Bounded per run (recording_expiry_batch_size).
+app(Schedule::class)
+    ->command(ExpireLessonRecordings::class)
+    ->daily()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/recordings-expire.log'));
 
 // Homework due-date reminders (GAP-020): claims and dispatches
 // reminders for each admin-configured offset. Idempotent — the

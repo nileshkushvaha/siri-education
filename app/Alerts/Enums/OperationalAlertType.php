@@ -22,6 +22,7 @@ enum OperationalAlertType: string
     case PaymentReconciliationIssue = 'payment_reconciliation_issue';
     case PayoutReconciliationIssue = 'payout_reconciliation_issue';
     case WalletRechargeCreditFailed = 'wallet_recharge_credit_failed';
+    case RecordingCaptureFailed = 'recording_capture_failed';
 
     public function label(): string
     {
@@ -33,6 +34,7 @@ enum OperationalAlertType: string
             self::PaymentReconciliationIssue => 'Payment Reconciliation Issue',
             self::PayoutReconciliationIssue => 'Payout Reconciliation Issue',
             self::WalletRechargeCreditFailed => 'Wallet Recharge Credit Failed',
+            self::RecordingCaptureFailed => 'Recording Capture Failed',
         };
     }
 
@@ -41,7 +43,8 @@ enum OperationalAlertType: string
         return match ($this) {
             self::MeetingCreationFailed,
             self::MeetingCancellationFailed,
-            self::MissingMeetingLink => OperationalAlertCategory::BookingMeeting,
+            self::MissingMeetingLink,
+            self::RecordingCaptureFailed => OperationalAlertCategory::BookingMeeting,
 
             self::PaymentReconciliationIssue,
             self::PayoutReconciliationIssue,

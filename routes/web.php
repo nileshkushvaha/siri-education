@@ -18,6 +18,7 @@ use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\HomeworkResourceDownloadController;
 use App\Http\Controllers\Dashboard\MessagingController;
+use App\Http\Controllers\Dashboard\RecordingDownloadController;
 use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
 use App\Http\Controllers\Faq\PublicFaqController;
@@ -325,6 +326,10 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     // every request (HomeworkAssignmentPolicy::view()); shared by
     // student and instructor since either may be the authorized viewer.
     Route::get('/homework/resources/{media}/download', HomeworkResourceDownloadController::class)->name('homework.resources.download');
+    // GAP-028 — authorization re-checked inside the controller on every
+    // request (RecordingPolicy::view()); shared by student and
+    // instructor since either may be the authorized viewer.
+    Route::get('/recordings/{media}/download', RecordingDownloadController::class)->name('recordings.download');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
     // ── Support Cases (Phase 31, GAP-016) — shared by student and

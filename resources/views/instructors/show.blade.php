@@ -101,8 +101,8 @@
                 <div class="min-w-0 lg:col-span-2">
                     <div class="flex flex-col gap-6 sm:flex-row sm:items-end">
                         <div class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-500 via-indigo-500 to-violet-600 text-4xl font-black text-white shadow-2xl shadow-indigo-950/40 ring-4 ring-white/10">
-                            @if($profile->avatarUrl)
-                                <img src="{{ $profile->avatarUrl }}" alt="{{ $instructor->name }}" class="h-full w-full object-cover">
+                            @if($profile->avatarThumbUrl)
+                                <img src="{{ $profile->avatarThumbUrl }}" alt="{{ $instructor->name }}" class="h-full w-full object-cover">
                             @else
                                 {{ mb_substr($instructor->name, 0, 1) }}
                             @endif

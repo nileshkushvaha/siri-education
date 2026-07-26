@@ -169,6 +169,19 @@ class OperationalAlertSourcesTest extends TestCase
         $this->assertSame(0, OperationalAlert::query()->count());
     }
 
+    /** GAP-037 requirement #8 — media conversion failures reuse the existing generic queue-health alert bucket, no new alert type/category. */
+    public function test_a_failed_media_conversion_job_creates_a_critical_queue_system_alert(): void
+    {
+        $job = $this->fakeQueueJob('Spatie\\MediaLibrary\\Conversions\\Jobs\\PerformConversionsJob');
+
+        event(new JobFailed('database', $job, new \RuntimeException('Simulated conversion failure')));
+
+        $alert = OperationalAlert::query()->where('type', OperationalAlertType::CriticalFailedJob->value)->sole();
+
+        $this->assertSame(OperationalAlertSeverity::Critical, $alert->severity);
+        $this->assertSame(OperationalAlertCategory::NotificationQueueSystem, $alert->category);
+    }
+
     // ── 5. Missing meeting link sweep ────────────────────────────────────
 
     public function test_the_sweep_flags_an_upcoming_booking_with_no_meeting_link(): void

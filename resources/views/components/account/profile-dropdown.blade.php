@@ -22,8 +22,8 @@
     >
         {{-- Avatar --}}
         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
-            @if($user->avatar_url)
-                <img src="{{ $user->avatar_url }}" class="w-full h-full object-cover" alt="{{ $displayName }}">
+            @if($user->avatar_thumb_url)
+                <img src="{{ $user->avatar_thumb_url }}" class="w-full h-full object-cover" alt="{{ $displayName }}">
             @else
                 <span class="text-white font-bold text-xs">{{ $initials }}</span>
             @endif
@@ -58,8 +58,8 @@
         <div class="px-4 py-3.5 border-b border-violet-100/80">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    @if($user->avatar_url)
-                        <img src="{{ $user->avatar_url }}" class="w-full h-full object-cover" alt="">
+                    @if($user->avatar_thumb_url)
+                        <img src="{{ $user->avatar_thumb_url }}" class="w-full h-full object-cover" alt="">
                     @else
                         <span class="text-white font-bold text-sm">{{ $initials }}</span>
                     @endif

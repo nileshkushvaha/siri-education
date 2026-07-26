@@ -10,8 +10,8 @@
             <div wire:key="favorite-instructor-{{ $instructor->id }}" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4 {{ !$loop->last ? 'border-b border-white/[0.06]' : '' }}">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
-                        @if($instructor->avatarUrl)
-                            <img src="{{ $instructor->avatarUrl }}" alt="{{ $instructor->name }}" class="w-full h-full object-cover">
+                        @if($instructor->avatarThumbUrl)
+                            <img src="{{ $instructor->avatarThumbUrl }}" alt="{{ $instructor->name }}" class="w-full h-full object-cover">
                         @else
                             {{ strtoupper(substr($instructor->name, 0, 1)) }}
                         @endif

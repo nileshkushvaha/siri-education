@@ -57,9 +57,11 @@ class LessonTechnicalIssueReport extends Model implements HasMedia
         ];
     }
 
+    /** Phase 41A — private (GAP-037/41A audit): technical-issue evidence must never sit on the public disk. */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('evidence')
+            ->useDisk('local')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
     }
 

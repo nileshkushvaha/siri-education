@@ -7,7 +7,7 @@
     $user = auth()->user();
     $userName   = $user?->first_name ?? explode(' ', $user?->name ?? 'User')[0];
     $userEmail  = $user?->email ?? '';
-    $userAvatar = $user?->avatar_url ?? '';
+    $userAvatar = $user?->avatar_thumb_url ?? '';
 @endphp
 
 <div x-data="{

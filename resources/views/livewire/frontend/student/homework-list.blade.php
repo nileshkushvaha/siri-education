@@ -36,7 +36,10 @@
                         @if($assignment->getMedia('instructor_resources')->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach($assignment->getMedia('instructor_resources') as $media)
-                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="text-xs text-indigo-300 underline">
+                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-300 underline">
+                                        @if(str_starts_with($media->mime_type, 'image/'))
+                                            <img src="{{ route('dashboard.homework.resources.download', $media) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
+                                        @endif
                                         {{ $media->file_name }} ({{ $media->human_readable_size }})
                                     </a>
                                 @endforeach
@@ -46,7 +49,10 @@
                         @if($assignment->getMedia('submission_attachments')->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach($assignment->getMedia('submission_attachments') as $media)
-                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="text-xs text-slate-400 underline">
+                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-slate-400 underline">
+                                        @if(str_starts_with($media->mime_type, 'image/'))
+                                            <img src="{{ route('dashboard.homework.resources.download', $media) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
+                                        @endif
                                         Your upload: {{ $media->file_name }} ({{ $media->human_readable_size }})
                                     </a>
                                 @endforeach
@@ -57,7 +63,10 @@
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach($assignment->resourceVersions as $version)
                                     @if($version->getFirstMedia('file'))
-                                        <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="text-xs text-indigo-300 underline">
+                                        <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-300 underline">
+                                            @if(str_starts_with($version->getFirstMedia('file')->mime_type, 'image/'))
+                                                <img src="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
+                                            @endif
                                             {{ $version->resource->title }} (v{{ $version->version_number }})
                                         </a>
                                     @endif

@@ -114,6 +114,9 @@
                                 <div class="flex items-center gap-2 text-xs text-slate-300 mb-1.5" wire:key="version-{{ $version->id }}">
                                     <span class="font-semibold">v{{ $version->version_number }}</span>
                                     @if($version->getFirstMedia('file'))
+                                        @if(str_starts_with($version->getFirstMedia('file')->mime_type, 'image/'))
+                                            <img src="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover">
+                                        @endif
                                         <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="underline text-indigo-300">
                                             {{ $version->getFirstMedia('file')->file_name }} ({{ $version->getFirstMedia('file')->human_readable_size }})
                                         </a>

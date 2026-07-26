@@ -6,8 +6,8 @@
         @foreach($experiences as $experience)
             <div class="flex gap-4">
                 <div class="w-12 h-12 rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.07] flex items-center justify-center flex-shrink-0">
-                    @if($experience->getFirstMediaUrl('company_logo'))
-                        <img src="{{ $experience->getFirstMediaUrl('company_logo') }}" class="w-full h-full object-cover" alt="{{ $experience->organization_name }}">
+                    @if($experience->companyLogoThumbUrl)
+                        <img src="{{ $experience->companyLogoThumbUrl }}" class="w-full h-full object-cover" alt="{{ $experience->organization_name }}">
                     @else
                         <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>

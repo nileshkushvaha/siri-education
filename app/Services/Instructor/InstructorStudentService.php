@@ -190,7 +190,7 @@ final class InstructorStudentService
                 studentId: (int) $row->student_id,
                 studentSlug: $student?->slug ?? '',
                 name: $student?->name ?? 'Student',
-                avatarUrl: $student?->profile?->avatarUrl,
+                avatarUrl: $student?->profile?->avatarThumbUrl,
                 lessonsCount: (int) $row->lessons_count,
                 completedLessons: (int) $row->completed_lessons,
                 upcomingLessonsCount: (int) $row->upcoming_lessons_count,

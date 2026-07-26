@@ -6,6 +6,8 @@ use App\Content\Contracts\HasContentBlocks;
 use App\Content\Models\ContentBlock;
 use App\Enums\PageStatus;
 use App\Enums\PageVisibility;
+use App\Support\Media\Concerns\HasStandardImageConversions;
+use App\Support\Media\StandardImageConversion;
 use Database\Factories\PageFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -18,11 +20,12 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Page extends Model implements HasContentBlocks, HasMedia
 {
     /** @use HasFactory<PageFactory> */
-    use HasFactory, HasUuids, InteractsWithMedia, LogsActivity, SoftDeletes;
+    use HasFactory, HasStandardImageConversions, HasUuids, InteractsWithMedia, LogsActivity, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -83,13 +86,25 @@ class Page extends Model implements HasContentBlocks, HasMedia
             ->useFallbackUrl(url('/images/placeholder.png'));
     }
 
+    /** GAP-037 — 800px display conversion for the public CMS page featured image (SEO og:image, PagesTable admin thumbnail). */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addDisplayConversion('featured-image');
+    }
+
     /**
-     * Get featured image URL
+     * Get featured image URL. Safely falls back to the original until
+     * the queued conversion is generated, and to the configured
+     * placeholder when no media exists at all.
      */
     public function featuredImageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->getFirstMediaUrl('featured-image')
+            get: fn (): string => $this->urlForStandardConversion('featured-image', StandardImageConversion::Display)
         );
     }
 

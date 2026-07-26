@@ -6,6 +6,8 @@ use App\Content\Contracts\HasContentBlocks;
 use App\Content\Models\ContentBlock;
 use App\Enums\PageStatus;
 use App\Enums\PageVisibility;
+use App\Support\Media\Concerns\HasStandardImageConversions;
+use App\Support\Media\StandardImageConversion;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -20,11 +22,12 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Post extends Model implements HasContentBlocks, HasMedia
 {
     /** @use HasFactory<PostFactory> */
-    use HasFactory, HasUuids, InteractsWithMedia, LogsActivity, SoftDeletes;
+    use HasFactory, HasStandardImageConversions, HasUuids, InteractsWithMedia, LogsActivity, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -87,10 +90,21 @@ class Post extends Model implements HasContentBlocks, HasMedia
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
     }
 
+    /** GAP-037 — 800px display conversion for the public blog featured image. gallery is left unconverted (no confirmed display consumer). */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addDisplayConversion('featured-image');
+    }
+
+    /** GAP-037 — safely falls back to the original until the queued conversion is generated. */
     public function featuredImageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn (): string => $this->getFirstMediaUrl('featured-image')
+            get: fn (): string => $this->urlForStandardConversion('featured-image', StandardImageConversion::Display),
         );
     }
 

@@ -138,7 +138,10 @@
                 @if($assignment->getMedia('submission_attachments')->isNotEmpty())
                     <div class="mt-2 flex flex-wrap gap-2">
                         @foreach($assignment->getMedia('submission_attachments') as $media)
-                            <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="text-xs text-indigo-300 underline">
+                            <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-300 underline">
+                                @if(str_starts_with($media->mime_type, 'image/'))
+                                    <img src="{{ route('dashboard.homework.resources.download', $media) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
+                                @endif
                                 {{ $media->file_name }} ({{ $media->human_readable_size }})
                             </a>
                         @endforeach
@@ -149,6 +152,9 @@
                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 mb-1.5">Resources</p>
                     @foreach($assignment->getMedia('instructor_resources') as $media)
                         <div class="flex items-center gap-2 text-xs text-slate-300 mb-1" wire:key="resource-{{ $media->id }}">
+                            @if(str_starts_with($media->mime_type, 'image/'))
+                                <img src="{{ route('dashboard.homework.resources.download', $media) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover">
+                            @endif
                             <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="underline text-indigo-300">{{ $media->file_name }}</a>
                             <span class="text-slate-500">({{ $media->human_readable_size }})</span>
                             <button wire:click="removeResource('{{ $assignment->id }}', '{{ $media->id }}')"
@@ -184,6 +190,9 @@
                         @foreach($assignment->resourceVersions as $version)
                             <div class="flex items-center gap-2 text-xs text-slate-300 mb-1" wire:key="lib-{{ $version->id }}">
                                 @if($version->getFirstMedia('file'))
+                                    @if(str_starts_with($version->getFirstMedia('file')->mime_type, 'image/'))
+                                        <img src="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover">
+                                    @endif
                                     <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="underline text-indigo-300">
                                         {{ $version->resource->title }} (v{{ $version->version_number }})
                                     </a>

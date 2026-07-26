@@ -439,8 +439,8 @@ final class InstructorService
             'model' => $instructor,
             'name' => $instructor->name,
             'url' => route('instructors.show', $instructor),
-            'avatar_url' => $profile?->avatarUrl,
-            'cover_url' => $instructor->getFirstMediaUrl('instructor_cover'),
+            'avatar_url' => $profile?->avatarThumbUrl,
+            'cover_url' => $instructor->coverDisplayUrl,
             'headline' => $this->profileText->headline($instructor),
             'summary' => $this->profileText->summary($instructor),
             'verified' => $this->trustBadges->isVerified($instructor),
@@ -633,7 +633,7 @@ final class InstructorService
             ->map(fn (User $instructor): array => [
                 'name' => $instructor->name,
                 'url' => route('instructors.show', $instructor),
-                'avatar_url' => $instructor->profile?->avatarUrl,
+                'avatar_url' => $instructor->profile?->avatarThumbUrl,
                 'headline' => $this->profileText->headline($instructor),
             ]);
     }

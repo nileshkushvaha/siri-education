@@ -43,7 +43,12 @@
                     <p class="text-sm text-slate-300 whitespace-pre-line">{{ $msg->body }}</p>
 
                     @if($msg->getFirstMedia('attachment'))
-                        <a href="{{ $msg->getFirstMediaUrl('attachment') }}" class="mt-1 inline-block text-xs text-indigo-300 underline" target="_blank" rel="noopener">Attachment</a>
+                        <a href="{{ route('dashboard.media.download', $msg->getFirstMedia('attachment')) }}" class="mt-1 inline-flex items-center gap-1.5 text-xs text-indigo-300 underline" target="_blank" rel="noopener">
+                            @if(str_starts_with($msg->getFirstMedia('attachment')->mime_type, 'image/'))
+                                <img src="{{ route('dashboard.media.download', $msg->getFirstMedia('attachment')) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
+                            @endif
+                            Attachment
+                        </a>
                     @endif
 
                     @if(!$isMine)

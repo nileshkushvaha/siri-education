@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Homework\Enums\HomeworkResourceCollection;
 use App\Homework\Enums\HomeworkStatus;
+use App\Support\Media\Concerns\HasStandardImageConversions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,10 +17,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class HomeworkAssignment extends Model implements HasMedia
 {
-    use HasFactory, HasUuids, InteractsWithMedia, SoftDeletes;
+    use HasFactory, HasStandardImageConversions, HasUuids, InteractsWithMedia, SoftDeletes;
 
     protected $fillable = [
         'booking_id',
@@ -59,6 +61,16 @@ class HomeworkAssignment extends Model implements HasMedia
                 ->useDisk('local')
                 ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
         }
+    }
+
+    /** GAP-037 — small private preview for image resources/submissions; PDFs are never converted (mime-guarded), stay download-only. */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addPreviewConversion(...array_map(fn (HomeworkResourceCollection $c): string => $c->value, HomeworkResourceCollection::cases()));
     }
 
     public function booking(): BelongsTo

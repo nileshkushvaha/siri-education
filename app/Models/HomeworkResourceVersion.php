@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Media\Concerns\HasStandardImageConversions;
 use Database\Factories\HomeworkResourceVersionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * GAP-022 / SRS-7-8: one immutable, published version of a
@@ -23,7 +25,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class HomeworkResourceVersion extends Model implements HasMedia
 {
     /** @use HasFactory<HomeworkResourceVersionFactory> */
-    use HasFactory, HasUuids, InteractsWithMedia;
+    use HasFactory, HasStandardImageConversions, HasUuids, InteractsWithMedia;
 
     protected $fillable = [
         'homework_resource_id',
@@ -46,6 +48,16 @@ class HomeworkResourceVersion extends Model implements HasMedia
             ->useDisk('local')
             ->singleFile()
             ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+    }
+
+    /** GAP-037 — small private preview for image resource versions; PDFs are never converted (mime-guarded), stay download-only. */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addPreviewConversion('file');
     }
 
     public function resource(): BelongsTo

@@ -367,7 +367,7 @@
                 </div>
                 <div class="mt-10 grid gap-6 md:grid-cols-3">
                     @foreach($recentPosts as $index => $post)
-                        @php $postImage = $post->getFirstMediaUrl('featured-image'); @endphp
+                        @php $postImage = $post->featured_image_url; @endphp
                         <article class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-100/60">
                             <a href="{{ route('blog.show', $post->slug) }}" class="block focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-indigo-100">
                                 <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ ['from-indigo-500 to-violet-600','from-cyan-500 to-blue-600','from-rose-500 to-orange-400'][$index % 3] }}">

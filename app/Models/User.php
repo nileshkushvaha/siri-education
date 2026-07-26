@@ -6,6 +6,8 @@ namespace App\Models;
 
 use App\Notifications\Auth\VerifyEmailNotification;
 use App\Services\PortalResolver;
+use App\Support\Media\Concerns\HasStandardImageConversions;
+use App\Support\Media\StandardImageConversion;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -23,11 +25,12 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasMedia, MustVerifyEmail
 {
-    use HasFactory, HasRoles, InteractsWithMedia, LogsActivity, Notifiable;
+    use HasFactory, HasRoles, HasStandardImageConversions, InteractsWithMedia, LogsActivity, Notifiable;
 
     // ── Status constants ────────────────────────────────────────────
     public const STATUS_PENDING = 'pending_verification';
@@ -234,6 +237,14 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         );
     }
 
+    /** GAP-037 — 150x150 thumbnail for card/list/dropdown rendering. */
+    public function avatarThumbUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => $this->profile?->avatarThumbUrl,
+        );
+    }
+
     // ── Authorization helpers ────────────────────────────────────────
 
     /**
@@ -399,6 +410,24 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
             ->useDisk('public')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+    }
+
+    /** GAP-037 — 800px display conversion for the public instructor cover banner. */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addDisplayConversion('instructor_cover');
+    }
+
+    /** GAP-037 — safely falls back to the original until the queued conversion is generated. */
+    public function coverDisplayUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->urlForStandardConversion('instructor_cover', StandardImageConversion::Display),
+        );
     }
 
     // ── Activity Log ─────────────────────────────────────────────────

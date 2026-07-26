@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Support\Concerns\PreventsHardDeletion;
+use App\Support\Media\Concerns\HasStandardImageConversions;
 use Database\Factories\MessageFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * One message, immutable in content (SRS §17.31/§17.41 — no edit
@@ -29,7 +31,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class Message extends Model implements HasMedia
 {
     /** @use HasFactory<MessageFactory> */
-    use HasFactory, HasUuids, InteractsWithMedia, PreventsHardDeletion;
+    use HasFactory, HasStandardImageConversions, HasUuids, InteractsWithMedia, PreventsHardDeletion;
 
     protected $fillable = [
         'conversation_id',
@@ -51,11 +53,23 @@ class Message extends Model implements HasMedia
         ];
     }
 
+    /** Phase 41A — private (GAP-037/41A audit): messaging attachments may contain personal content and must never sit on the public disk. */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('attachment')
+            ->useDisk('local')
             ->singleFile()
             ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+    }
+
+    /** GAP-037 — small private preview for image attachments; PDFs are never converted (mime-guarded), stay download-link-only. */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addPreviewConversion('attachment');
     }
 
     public function conversation(): BelongsTo

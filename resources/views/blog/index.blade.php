@@ -62,10 +62,10 @@
                     style="animation-delay: {{ min($index * 0.07, 0.35) }}s"
                 >
                     {{-- Featured image --}}
-                    @if($post->getFirstMediaUrl('featured-image'))
+                    @if($post->featured_image_url)
                         <div class="overflow-hidden aspect-video bg-slate-900">
                             <img
-                                src="{{ $post->getFirstMediaUrl('featured-image') }}"
+                                src="{{ $post->featured_image_url }}"
                                 alt="{{ $post->title }}"
                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 loading="lazy"

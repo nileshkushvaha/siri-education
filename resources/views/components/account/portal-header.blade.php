@@ -40,8 +40,8 @@
                         :aria-expanded="accountMenuOpen.toString()"
                         aria-controls="account-header-menu">
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-700 text-xs font-bold">
-                        @if($profileSummary?->avatarUrl)
-                            <img src="{{ $profileSummary->avatarUrl }}" alt="" class="h-full w-full object-cover">
+                        @if($profileSummary?->avatarThumbUrl)
+                            <img src="{{ $profileSummary->avatarThumbUrl }}" alt="" class="h-full w-full object-cover">
                         @else
                             {{ strtoupper(mb_substr(auth()->user()->first_name ?? auth()->user()->name, 0, 1)) }}
                         @endif

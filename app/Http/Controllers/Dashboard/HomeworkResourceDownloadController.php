@@ -8,10 +8,12 @@ use App\Homework\Enums\HomeworkResourceCollection;
 use App\Http\Controllers\Controller;
 use App\Models\HomeworkAssignment;
 use App\Models\HomeworkResourceVersion;
+use App\Support\Media\StandardImageConversion;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * GAP-022 — the real security boundary for homework resources,
@@ -26,7 +28,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class HomeworkResourceDownloadController extends Controller
 {
-    public function __invoke(Media $media): StreamedResponse
+    public function __invoke(Request $request, Media $media): Response
     {
         $model = $media->model;
 
@@ -43,6 +45,15 @@ final class HomeworkResourceDownloadController extends Controller
             Gate::authorize('view', $model);
         } else {
             abort(403);
+        }
+
+        // Phase 41A requirement #5 — inline preview thumbnails must go
+        // through this exact same authorization check, never a raw
+        // conversion URL on the private 'local' disk.
+        if ($request->boolean('preview') && $media->hasGeneratedConversion(StandardImageConversion::Preview->value)) {
+            return response()->file(
+                Storage::disk($media->disk)->path($media->getPathRelativeToRoot(StandardImageConversion::Preview->value)),
+            );
         }
 
         return Storage::disk($media->disk)->download(

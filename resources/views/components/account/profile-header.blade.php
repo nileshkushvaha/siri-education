@@ -5,9 +5,9 @@
     <div class="relative rounded-2xl border border-white/[0.05] overflow-hidden mb-6" data-account-profile-header data-variant="full">
         {{-- Cover --}}
         <div class="h-36 sm:h-48 relative group/cover"
-             style="{{ $summary->coverUrl ? '' : 'background:linear-gradient(135deg,rgba(99,102,241,.18) 0%,rgba(139,92,246,.14) 50%,rgba(59,130,246,.10) 100%);' }}">
-            @if($summary->coverUrl)
-                <img src="{{ $summary->coverUrl }}" class="w-full h-full object-cover" alt="Cover">
+             style="{{ $summary->coverDisplayUrl ? '' : 'background:linear-gradient(135deg,rgba(99,102,241,.18) 0%,rgba(139,92,246,.14) 50%,rgba(59,130,246,.10) 100%);' }}">
+            @if($summary->coverDisplayUrl)
+                <img src="{{ $summary->coverDisplayUrl }}" class="w-full h-full object-cover" alt="Cover">
             @endif
             {{ $coverActions ?? '' }}
         </div>
@@ -18,8 +18,8 @@
                     <div class="w-20 h-20 rounded-2xl overflow-hidden border-4 border-surface-dark bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-xl shadow-indigo-500/20">
                         {{ $avatar ?? '' }}
                         @if(!isset($avatar))
-                            @if($summary->avatarUrl)
-                                <img src="{{ $summary->avatarUrl }}" class="w-full h-full object-cover" alt="{{ $summary->name }}">
+                            @if($summary->avatarThumbUrl)
+                                <img src="{{ $summary->avatarThumbUrl }}" class="w-full h-full object-cover" alt="{{ $summary->name }}">
                             @else
                                 <span class="text-3xl font-bold text-white">{{ $summary->initial }}</span>
                             @endif
@@ -74,8 +74,8 @@
     <div data-account-profile-header data-variant="compact">
         <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                @if($summary->avatarUrl)
-                    <img src="{{ $summary->avatarUrl }}" class="w-full h-full object-cover" alt="{{ $summary->name }}">
+                @if($summary->avatarThumbUrl)
+                    <img src="{{ $summary->avatarThumbUrl }}" class="w-full h-full object-cover" alt="{{ $summary->name }}">
                 @else
                     <span class="text-white font-bold text-lg">{{ $summary->initial }}</span>
                 @endif

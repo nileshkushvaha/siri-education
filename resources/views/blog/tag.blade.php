@@ -59,9 +59,9 @@
                     class="group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden transition-all duration-300 hover:-translate-y-1 card-glow animate-fade-in-up"
                     style="animation-delay: {{ min($index * 0.07, 0.35) }}s"
                 >
-                    @if($post->getFirstMediaUrl('featured-image'))
+                    @if($post->featured_image_url)
                         <div class="overflow-hidden aspect-video bg-slate-900">
-                            <img src="{{ $post->getFirstMediaUrl('featured-image') }}" alt="{{ $post->title }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                            <img src="{{ $post->featured_image_url }}" alt="{{ $post->title }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
                         </div>
                     @else
                         <div class="aspect-video bg-gradient-to-br from-violet-900/30 to-indigo-900/20"></div>

@@ -23,6 +23,16 @@ final class CriticalJobClassifier
     /** @var list<string> */
     private const array BOOKING_MEETING_PATTERNS = ['Booking', 'Meeting', 'Lesson'];
 
+    /**
+     * GAP-037 requirement #8 — Spatie Media Library's own queued
+     * conversion/responsive-image jobs (image optimization/thumbnail
+     * generation, SRS §26.24 "File and Media Job Monitoring"). Routed
+     * to the existing generic queue-health bucket, not a new category:
+     * a failed avatar/cover conversion is a system/queue-health signal,
+     * not a booking/finance-continuity one.
+     */
+    private const array MEDIA_PATTERNS = ['PerformConversionsJob', 'GenerateResponsiveImagesJob'];
+
     public static function category(?string $displayName): ?OperationalAlertCategory
     {
         if ($displayName === null || $displayName === '') {
@@ -38,6 +48,12 @@ final class CriticalJobClassifier
         foreach (self::BOOKING_MEETING_PATTERNS as $pattern) {
             if (str_contains($displayName, $pattern)) {
                 return OperationalAlertCategory::BookingMeeting;
+            }
+        }
+
+        foreach (self::MEDIA_PATTERNS as $pattern) {
+            if (str_contains($displayName, $pattern)) {
+                return OperationalAlertCategory::NotificationQueueSystem;
             }
         }
 

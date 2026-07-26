@@ -7,6 +7,8 @@ namespace App\Models;
 use App\Enums\InstructorResponseTime;
 use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
+use App\Support\Media\Concerns\HasStandardImageConversions;
+use App\Support\Media\StandardImageConversion;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,10 +17,11 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class UserProfile extends Model implements HasMedia
 {
-    use InteractsWithMedia, LogsActivity, SoftDeletes;
+    use HasStandardImageConversions, InteractsWithMedia, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -183,6 +186,22 @@ class UserProfile extends Model implements HasMedia
             ->acceptsMimeTypes(['video/mp4', 'video/webm', 'video/quicktime']);
     }
 
+    /**
+     * GAP-037 — avatar gets a fixed 150x150 thumbnail (card/list/dropdown
+     * use); cover gets an 800px display conversion (profile banner use).
+     * Both KYC document collections and introduction_video are
+     * deliberately left unconverted — see Phase 41 final report.
+     */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addThumbConversion('avatar');
+        $this->addDisplayConversion('cover');
+    }
+
     public function avatarUrl(): Attribute
     {
         return Attribute::make(
@@ -190,10 +209,26 @@ class UserProfile extends Model implements HasMedia
         );
     }
 
+    /** GAP-037 — 150x150 thumbnail for card/list/dropdown rendering, safely falling back to the original until the queued conversion is generated. */
+    public function avatarThumbUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->urlForStandardConversion('avatar', StandardImageConversion::Thumb),
+        );
+    }
+
     public function coverUrl(): Attribute
     {
         return Attribute::make(
             get: fn (): ?string => $this->getFirstMediaUrl('cover') ?: null,
+        );
+    }
+
+    /** GAP-037 — 800px display conversion for the public/account profile banner, safely falling back to the original until generated. */
+    public function coverDisplayUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->urlForStandardConversion('cover', StandardImageConversion::Display),
         );
     }
 

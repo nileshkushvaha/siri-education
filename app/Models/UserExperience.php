@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\EmploymentType;
+use App\Support\Media\Concerns\HasStandardImageConversions;
+use App\Support\Media\StandardImageConversion;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class UserExperience extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia, SoftDeletes;
+    use HasFactory, HasStandardImageConversions, InteractsWithMedia, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -93,11 +97,32 @@ class UserExperience extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        // Public — a display logo, evidence-backed by the profile experience timeline (Phase 41).
         $this->addMediaCollection('company_logo')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
+        // Phase 41A — private (GAP-037/41A audit): supporting documents may contain personal/sensitive content.
         $this->addMediaCollection('supporting_documents')
+            ->useDisk('local')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+    }
+
+    /** GAP-037 — 150x150 thumbnail for the small company-logo icon in the experience timeline. supporting_documents is left unconverted (no confirmed display consumer). */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($this->skipStandardImageConversions($media)) {
+            return;
+        }
+
+        $this->addThumbConversion('company_logo');
+    }
+
+    /** GAP-037 — safely falls back to the original until the queued conversion is generated. */
+    public function companyLogoThumbUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->urlForStandardConversion('company_logo', StandardImageConversion::Thumb),
+        );
     }
 }

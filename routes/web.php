@@ -19,6 +19,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\HomeworkResourceDownloadController;
 use App\Http\Controllers\Dashboard\MessagingController;
 use App\Http\Controllers\Dashboard\RecordingDownloadController;
+use App\Http\Controllers\Dashboard\SecureMediaDownloadController;
 use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
 use App\Http\Controllers\Faq\PublicFaqController;
@@ -330,6 +331,12 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     // request (RecordingPolicy::view()); shared by student and
     // instructor since either may be the authorized viewer.
     Route::get('/recordings/{media}/download', RecordingDownloadController::class)->name('recordings.download');
+    // Phase 41A — the one reusable download boundary for every other
+    // private collection (Message, SupportCase, LessonTechnicalIssueReport,
+    // UserExperience::supporting_documents, UserEducation). Authorization
+    // is re-checked inside the controller via Gate::authorize('view', ...)
+    // against whichever Policy is registered for the owning model.
+    Route::get('/media/{media}/download', SecureMediaDownloadController::class)->name('media.download');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
     // ── Support Cases (Phase 31, GAP-016) — shared by student and
@@ -420,6 +427,12 @@ Route::prefix('admin')->name('admin.')->middleware([
     // inside the controller on every request; see InstructorDocumentPolicy.
     Route::get('/instructor-documents/{media}/download', InstructorDocumentDownloadController::class)
         ->name('instructor-documents.download');
+    // Phase 41A — the SAME SecureMediaDownloadController as the
+    // dashboard route below, registered here too since managers/staff
+    // use the admin portal and cannot reach /dashboard/* at all
+    // (EnsureSupportedFrontendPortalAudience). One controller, two
+    // portal entry points — not a second authorization system.
+    Route::get('/media/{media}/download', SecureMediaDownloadController::class)->name('media.download');
 });
 
 // ── Public Pages (CMS) Catch-all (must stay last) ───────────────────

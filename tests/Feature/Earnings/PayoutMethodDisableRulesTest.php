@@ -22,8 +22,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §5 — a payout method must never be silently disabled while
- * an active withdrawal (submitted / under_review / approved /
+ * A payout method must never be silently disabled while an active
+ * withdrawal (submitted / under_review / approved /
  * processing) depends on it, immutable snapshot or not: a method may be
  * disabled precisely because the destination is compromised, and the
  * pending payment must be resolved first, explicitly.
@@ -88,8 +88,8 @@ class PayoutMethodDisableRulesTest extends TestCase
 
     public function test_method_with_processing_withdrawal_cannot_be_disabled(): void
     {
-        // `processing` is unreachable from any Phase 15 UI, but the rule
-        // must already hold for the execution phase.
+        // `processing` is reached via the admin's "Queue for Execution"
+        // action; this rule must hold there too.
         [$instructor, $method] = $this->methodWithWithdrawal(InstructorWithdrawalStatus::Processing);
 
         $this->expectException(PayoutMethodException::class);

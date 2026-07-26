@@ -7,8 +7,8 @@ namespace App\Quality\DTOs;
 /**
  * One row in the "low-rated" / "highly-rated" instructor dashboard
  * lists. Deliberately has no numeric "quality score" field — only the
- * same average/distribution/counts the public rating aggregate (Phase
- * 17K) and quality-alert domain (Phase 17N) already expose.
+ * same average/distribution/counts the public rating aggregate and
+ * quality-alert domain already expose.
  */
 final readonly class InstructorRatingHealthRow
 {

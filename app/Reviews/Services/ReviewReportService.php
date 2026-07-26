@@ -64,9 +64,9 @@ final class ReviewReportService implements ReviewReportServiceInterface
     {
         $this->authorizeReport($reporter, $review);
 
-        // Phase 24H.2 — GAP-013: reporting is open to any authorized
-        // active user (LessonReviewPolicy::report), so the lifecycle
-        // guard applies only when the reporter IS a student — an
+        // Reporting is open to any authorized active user
+        // (LessonReviewPolicy::report), so the lifecycle guard applies
+        // only when the reporter IS a student — an
         // instructor/staff reporter without the student role is governed
         // solely by the existing permission check above.
         if ($reporter->hasRole('student')) {

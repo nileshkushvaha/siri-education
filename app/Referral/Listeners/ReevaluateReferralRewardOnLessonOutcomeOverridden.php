@@ -16,8 +16,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * reversed (or parked reversal_required) after. Toward Completed: the
  * lesson is evaluated exactly like a fresh finalization. The event
  * carries no acting admin, so a credited reward's wallet reversal
- * lands in the visible reversal_required state for Phase 19E rather
- * than being performed by a fabricated actor.
+ * lands in the visible reversal_required state for an
+ * admin decision rather than being performed by a fabricated actor.
  */
 final class ReevaluateReferralRewardOnLessonOutcomeOverridden implements ShouldQueue
 {

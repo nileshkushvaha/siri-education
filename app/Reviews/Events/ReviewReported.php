@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** A user reported a published public review. After-commit only. No listener attached in Phase 17M — reserved for a future notification/quality-alert phase. */
+/** A user reported a published public review. After-commit only. Listened to by SendReviewReportedNotification. */
 final class ReviewReported implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

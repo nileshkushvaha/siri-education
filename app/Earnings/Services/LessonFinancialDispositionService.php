@@ -29,8 +29,8 @@ use Illuminate\Support\Facades\DB;
  * existing mechanisms exclusively: holds go through
  * InstructorEarningService::holdForDispute() (DisputedHold detaches
  * from open settlement batches and is excluded from the settleable
- * scope), completed-lesson earnings stay with the Phase 14
- * LessonCompleted listener, and cancellations stay with the booking
+ * scope), completed-lesson earnings stay with the LessonCompleted
+ * listener, and cancellations stay with the booking
  * cancellation refund/reversal pipeline. Settled or paid earnings are
  * never touched — conflicts route to manual review with an admin hold.
  */
@@ -107,8 +107,8 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
         return DB::transaction(function () use ($lesson, $previousOutcome, $newOutcome, $overrideReason): LessonFinancialDisposition {
             $disposition = $this->lockForLesson($lesson);
 
-            // Phase 17V closure — a redelivered event carrying the exact
-            // override already applied (same target outcome) is a
+            // A redelivered event carrying the exact override already
+            // applied (same target outcome) is a
             // harmless replay: short-circuit before appending another
             // near-duplicate history entry and bumping version again.
             // Nothing distinguishes a genuinely new override that
@@ -137,8 +137,8 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
             $disposition->version = $disposition->version + 1;
             $disposition->forceFill(['resolved_at' => null, 'resolved_by' => null, 'resolution_reason' => null]);
 
-            // Phase 17F: a refund already went out for the previous outcome.
-            // Never silently debit the wallet and never delete the refund —
+            // A refund already went out for the previous outcome. Never
+            // silently debit the wallet and never delete the refund —
             // the record keeps its ledger linkage and a human reconciles.
             if ($disposition->refund_ledger_entry_id !== null) {
                 $disposition->fill([

@@ -120,7 +120,7 @@ class ReferralRewardReversalTest extends TestCase
 
         $result = $this->rewards()->reevaluateLesson($lesson, null, 'lesson_refunded');
 
-        // Never falsely Reversed — visibly parked for Phase 19E instead.
+        // Never falsely Reversed — visibly parked for an admin decision instead.
         $this->assertSame(ReferralRewardStatus::Credited, $result->status);
         $this->assertSame('reversal_required', $result->hold_reason);
         $this->assertNull($result->reversal_ledger_entry_id);

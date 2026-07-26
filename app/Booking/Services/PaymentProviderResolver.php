@@ -17,7 +17,7 @@ use Illuminate\Contracts\Foundation\Application;
  * The single safe seam between "which provider is selected" and "may it
  * actually be used right now".
  *
- * Routing order for current()/resolveKey() (Phase 10.2A):
+ * Routing order for current()/resolveKey():
  *   1. Country::payment_routing (JSON: {"provider": "razorpay", "enabled": true})
  *      when a country is given — the pre-existing, previously-unwired
  *      localization-foundation column, reused as-is (see

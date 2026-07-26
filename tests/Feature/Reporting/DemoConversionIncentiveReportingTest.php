@@ -22,8 +22,8 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * GAP-008 requirement #8 — the instructor financial report is the
- * natural extension point for incentive award numbers (unlike the
+ * The instructor financial report is the natural extension point for
+ * incentive award numbers (unlike the
  * pre-existing marketplace demo-conversion-RATE metric, which is
  * deliberately student-only/unattributed by design — see
  * DemoConversionData's own docblock — and is left untouched).

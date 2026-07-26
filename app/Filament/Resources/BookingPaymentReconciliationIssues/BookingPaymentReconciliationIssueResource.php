@@ -15,9 +15,9 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Finance-visible reconciliation queue for the collection domain
- * (Phase 16C) — mirrors InstructorPayoutReconciliationIssueResource.
- * Rows are written exclusively by BookingPaymentReconciliationService —
+ * Finance-visible reconciliation queue for the collection domain —
+ * mirrors InstructorPayoutReconciliationIssueResource. Rows are written
+ * exclusively by BookingPaymentReconciliationService —
  * no Create or Edit page exists. Resolution closes the issue only; it
  * never marks a booking paid or otherwise mutates payment state.
  */

@@ -45,7 +45,7 @@ use Illuminate\Support\Facades\Schema;
  * rejects switch writes from anywhere else. Chosen rule (documented):
  * disabling earnings transactionally auto-disables periodic
  * compensation, since periodic accrual is meaningless without the
- * earnings pipeline. Withdrawal enablement does NOT require Phase 16
+ * earnings pipeline. Withdrawal enablement does NOT require payout
  * provider credentials — requests only reserve earnings.
  */
 final class FinancialFeatureConfigurationService implements FinancialFeatureConfigurationServiceInterface
@@ -280,8 +280,8 @@ final class FinancialFeatureConfigurationService implements FinancialFeatureConf
     }
 
     /**
-     * RazorpayX-specific preflight (Phase 16B) — only evaluated when the
-     * configured payout provider actually resolves to `razorpayx`.
+     * RazorpayX-specific preflight — only evaluated when the configured
+     * payout provider actually resolves to `razorpayx`.
      * Structural only; the provider's own healthCheck() (a genuine
      * network probe) is already covered above via the generic
      * provider_unhealthy check.

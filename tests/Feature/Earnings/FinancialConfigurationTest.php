@@ -32,7 +32,7 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 14.5 — the financial feature switches flow only through
+ * The financial feature switches flow only through
  * FinancialFeatureConfigurationService: direct saves throw, Filament
  * relays through the service, preflights gate every enable path, retry
  * backoff bounds the sweep, and the consolidated schema carries no
@@ -197,9 +197,9 @@ class FinancialConfigurationTest extends TestCase
         $this->assertFalse($settings->periodic_compensation_enabled);
     }
 
-    // ── Phase 17 closure audit: financial_disposition_enabled,
-    // lesson_refund_execution_enabled, earning_reconciliation_execution_enabled
-    // now share the same guarded write path as the original four switches.
+    // financial_disposition_enabled, lesson_refund_execution_enabled,
+    // earning_reconciliation_execution_enabled share the same guarded
+    // write path as the original four switches.
 
     public function test_direct_settings_save_cannot_flip_the_financial_disposition_switch(): void
     {
@@ -335,7 +335,7 @@ class FinancialConfigurationTest extends TestCase
         $this->assertFalse(app(InstructorEarningSettings::class)->refresh()->earnings_enabled);
     }
 
-    // ── Phase 16A: payout execution readiness ────────────────────────
+    // ── Payout execution readiness ────────────────────────────────────
 
     public function test_payout_execution_cannot_enable_while_withdrawals_disabled(): void
     {
@@ -363,9 +363,9 @@ class FinancialConfigurationTest extends TestCase
 
     public function test_payout_execution_readiness_fails_for_an_unregistered_provider(): void
     {
-        // 'razorpayx' is a registered adapter as of Phase 16B — use a
-        // key that is genuinely never registered to keep testing this
-        // failure mode specifically.
+        // 'razorpayx' is a registered adapter — use a key that is
+        // genuinely never registered to keep testing this failure mode
+        // specifically.
         $this->setFinancialSettings(['earnings_enabled' => true, 'withdrawals_enabled' => true, 'payout_provider' => 'stripe_connect']);
 
         $readiness = $this->configuration->evaluatePayoutExecutionReadiness();
@@ -518,7 +518,7 @@ class FinancialConfigurationTest extends TestCase
         $this->assertContains('iwa_request_earning_unique', $indexNames('instructor_withdrawal_allocations'));
         $this->assertContains('next_retry_at', Schema::getColumnListing('instructor_compensation_exceptions'));
 
-        // Phase 16A
+        // Payout execution schema
         $this->assertContains('ipa_withdrawal_sequence_unique', $indexNames('instructor_payout_attempts'));
         $this->assertContains('ipa_provider_idempotency_unique', $indexNames('instructor_payout_attempts'));
         $this->assertContains('ippe_provider_event_unique', $indexNames('instructor_payout_provider_events'));

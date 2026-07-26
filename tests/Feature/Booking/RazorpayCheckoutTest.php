@@ -69,9 +69,9 @@ class RazorpayCheckoutTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — createPaidBookingTypeWithPrice() also
-        // seeds the matching StudentLessonPrice (INR, all levels, 60min).
+        // BookingType::factory()->paid() does not carry a price —
+        // createPaidBookingTypeWithPrice() also seeds the matching
+        // StudentLessonPrice (INR, all levels, 60min).
         $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 499.00, 'INR');
         $this->assignBillingCountry($this->student, $priced['country']);
     }
@@ -178,9 +178,9 @@ class RazorpayCheckoutTest extends TestCase
     public function test_razorpay_blocks_non_inr_currency(): void
     {
         // USD must itself be a real, active currency here — otherwise
-        // CurrencyEligibilityPolicy::assertUsable() (GAP-031's
-        // currency-wide gate, checked before any provider is consulted)
-        // rejects it first, and this test would never actually reach
+        // CurrencyEligibilityPolicy::assertUsable() (the currency-wide
+        // gate, checked before any provider is consulted) rejects it
+        // first, and this test would never actually reach
         // Razorpay's own provider-specific currency-support check,
         // which is what it exists to verify.
         Currency::query()->firstOrCreate(['code' => 'USD'], [
@@ -584,7 +584,7 @@ class RazorpayCheckoutTest extends TestCase
         $this->assertSame(BookingPaymentStatus::Paid, $booking->refresh()->payment_status);
     }
 
-    // ── F. No guest booking API exists at all (Phase 17U.3) ──────────
+    // ── F. No guest booking API exists at all ────────────────────────
 
     public function test_guest_booking_api_no_longer_exists(): void
     {
@@ -678,8 +678,8 @@ class RazorpayCheckoutTest extends TestCase
         ], $body)->assertOk()->assertJsonPath('status', 'processed');
 
         $this->assertSame(BookingPaymentStatus::Paid, $booking->refresh()->payment_status);
-        // Phase 16A.1: the fake provider now creates (and captures) its own
-        // BookingPayment row too, matching every real adapter — needed so
+        // The fake provider creates (and captures) its own BookingPayment
+        // row too, matching every real adapter — needed so
         // a fake-provider booking's cancellation refund has a captured
         // row to resolve, same as Razorpay/Stripe.
         $this->assertSame(1, BookingPayment::count());

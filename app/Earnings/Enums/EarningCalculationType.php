@@ -6,10 +6,10 @@ namespace App\Earnings\Enums;
 
 /**
  * How an earning's amount was derived, stored immutably per row. Every
- * type is agreement-based (Phase 14.2) — instructor compensation is
- * never calculated from the student-facing price, and the commission-era
- * types (percentage / global fixed) were removed entirely in Phase 14.4
- * after verifying zero historical rows ever used them.
+ * type is agreement-based — instructor compensation is never calculated
+ * from the student-facing price, and the commission-era types
+ * (percentage / global fixed) were removed entirely after verifying
+ * zero historical rows ever used them.
  */
 enum EarningCalculationType: string
 {
@@ -17,7 +17,7 @@ enum EarningCalculationType: string
     case Periodic = 'periodic';
     case DemoFixed = 'demo_fixed';
 
-    /** GAP-008 (SRS §15.18) — a fixed bonus for converting a demo to a paid lesson, never derived from the compensation agreement. */
+    /** A fixed bonus for converting a demo to a paid lesson, never derived from the compensation agreement (SRS §15.18). */
     case DemoConversionIncentive = 'demo_conversion_incentive';
 
     /** Reserved for a future audited manual-adjustment flow — no code path produces it yet. */

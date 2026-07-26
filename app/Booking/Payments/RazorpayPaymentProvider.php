@@ -130,7 +130,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
                     // Deliberately the PAYMENT reference ($reference,
                     // = booking_payments.idempotency_key, same value as
                     // `receipt` above), not $booking->reference — mirrors
-                    // the identical Phase 16C fix in StripePaymentProvider.
+                    // the identical fix in StripePaymentProvider.
                     // parseWebhook() reads this back and hands it straight
                     // to BookingRepository::findByPaymentReference(), which
                     // queries the `payment_reference` column. Using the

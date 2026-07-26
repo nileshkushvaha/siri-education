@@ -26,8 +26,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §12 — the notification pipeline can never precede, alter,
- * or duplicate financial state: notifications hang off audit entries
+ * The notification pipeline can never precede, alter, or duplicate
+ * financial state: notifications hang off audit entries
  * written only after the financial transaction commits, idempotent
  * replays add no second entry, and the queued listener is read-only
  * against financial tables (a retry re-reads, never re-writes).

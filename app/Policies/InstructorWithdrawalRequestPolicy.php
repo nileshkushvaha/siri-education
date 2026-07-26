@@ -81,9 +81,9 @@ class InstructorWithdrawalRequestPolicy
     }
 
     /**
-     * Queues an approved withdrawal for payout execution (Phase 16A).
-     * Permission-only here — maker-checker separation (approver cannot
-     * also execute) is a financial invariant enforced authoritatively by
+     * Queues an approved withdrawal for payout execution. Permission-only
+     * here — maker-checker separation (approver cannot also execute) is a
+     * financial invariant enforced authoritatively by
      * InstructorPayoutExecutionService, not duplicated here.
      */
     public function executePayout(User $user, InstructorWithdrawalRequest $request): bool

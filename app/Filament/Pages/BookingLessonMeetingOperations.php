@@ -32,8 +32,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18C — the Booking, Lesson & Meeting Operations report
- * (SRS Chapter 19: Operations Dashboard / Booking Report / Meeting
+ * The Booking, Lesson & Meeting Operations report (SRS Chapter 19:
+ * Operations Dashboard / Booking Report / Meeting
  * Report / No-Show Report). Every figure is delegated to
  * {@see BookingLessonMeetingOperationsReportServiceInterface} — this
  * page holds only filter state and never queries a source domain

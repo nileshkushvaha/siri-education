@@ -7,10 +7,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16A — the execution segment's remaining columns.
- * processing_at/paid_at/failed_at already exist (Phase 15 schema,
- * reserved for this phase). `reversed_at`/`reversed_by` back the new
- * paid -> reversed transition; `recovered_*` back the explicit,
+ * The execution segment's remaining columns.
+ * processing_at/paid_at/failed_at already exist. `reversed_at`/`reversed_by`
+ * back the paid -> reversed transition; `recovered_*` back the explicit,
  * authorized failed -> approved recovery (never automatic).
  */
 return new class extends Migration

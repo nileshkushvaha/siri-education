@@ -123,15 +123,14 @@ final class BookingService implements BookingServiceInterface
                 // Paid bookings are reservations: they hold the slot as
                 // Pending until payment settles (BookingPaymentService
                 // confirms) or the hold lapses (booking:release-expired).
-                // A paid type with no valid price configured anywhere
-                // (pricing matrix miss AND no legacy price/currency) is a
+                // A paid type with no valid price configured is a
                 // configuration error, not a free booking — calculate()
-                // throws rather than silently waiving the fee (Phase
-                // 10.2C-Fix). subject/grade (Phase 10.2D) come from
-                // $data->meta the same way StudentBookingResource reads
-                // them back — see CreateBookingData's meta doc comment.
-                // $data->instructorId (Phase 10.2F) lets an instructor-specific
-                // price override the base price when one is configured.
+                // throws rather than silently waiving the fee.
+                // subject/grade come from $data->meta the same way
+                // StudentBookingResource reads them back — see
+                // CreateBookingData's meta doc comment. $data->instructorId
+                // lets an instructor-specific price override the base
+                // price when one is configured.
                 $price = $this->priceCalculator->calculate(
                     $type,
                     $this->attendeeFor($data),
@@ -206,15 +205,14 @@ final class BookingService implements BookingServiceInterface
         $booking = $this->bookings->withInstructorLock(
             $booking->instructor_id,
             fn (): Booking => DB::transaction(function () use ($booking, $data, $endsAt, $previousStartsAt, $previousEndsAt): Booking {
-                // Phase 24D — the allowance is re-derived from the
-                // durable, append-only booking_activities timeline under
-                // the same instructor-scoped lock that already
-                // serializes reschedules of this booking, and checked
-                // before the comparatively expensive availability
-                // search: an exhausted allowance is rejected before ever
-                // touching a slot. A rejected/failed attempt writes no
-                // Rescheduled activity row, so it never consumes the
-                // allowance.
+                // The allowance is re-derived from the durable, append-only
+                // booking_activities timeline under the same
+                // instructor-scoped lock that already serializes
+                // reschedules of this booking, and checked before the
+                // comparatively expensive availability search: an
+                // exhausted allowance is rejected before ever touching a
+                // slot. A rejected/failed attempt writes no Rescheduled
+                // activity row, so it never consumes the allowance.
                 $allowance = $this->reschedulePolicy->decide($booking, $data->actor);
 
                 if (! $allowance->allowed) {
@@ -266,15 +264,15 @@ final class BookingService implements BookingServiceInterface
         $booking = DB::transaction(function () use ($booking, $data, $from, &$decision): Booking {
             $booking = $this->cancelAction->execute($booking, $data);
 
-            // Phase 24C — freeze the refund-eligibility decision here,
-            // inside the same transaction as the status transition,
-            // using the just-persisted cancelled_at (never a fresh
-            // now() call) — before BookingCancelled dispatches, so the
-            // async listener that executes the refund and the listener
-            // that sends the notification both read this SAME answer
-            // instead of recomputing it later against a setting or
-            // clock that may have since changed. Only computed when
-            // there is a captured payment to make a decision about.
+            // Freeze the refund-eligibility decision here, inside the same
+            // transaction as the status transition, using the
+            // just-persisted cancelled_at (never a fresh now() call) —
+            // before BookingCancelled dispatches, so the async listener
+            // that executes the refund and the listener that sends the
+            // notification both read this SAME answer instead of
+            // recomputing it later against a setting or clock that may
+            // have since changed. Only computed when there is a captured
+            // payment to make a decision about.
             if ($booking->payment_status === BookingPaymentStatus::Paid) {
                 $decision = $this->refundPolicy->decide($booking, $data->cancelledBy, $booking->cancelled_at);
             }
@@ -335,9 +333,8 @@ final class BookingService implements BookingServiceInterface
     }
 
     /**
-     * Phase 24H.1 — GAP-013 correction: a self-initiated reschedule or
-     * cancellation now requires the student to be exactly Active
-     * (Registered is rejected too — see
+     * A self-initiated reschedule or cancellation requires the student
+     * to be exactly Active (Registered is rejected too — see
      * StudentLifecycleService::isEligibleForStudentActions()). Only
      * gates the STUDENT actor — an instructor, admin, or system actor
      * (e.g. cancelling/rescheduling on the student's behalf, or an

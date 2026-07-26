@@ -26,11 +26,11 @@ use Throwable;
  * Everything accepted flows through LessonAttendanceService →
  * RecordAttendanceAction, so fingerprint idempotency, out-of-order
  * merging, interval-union overlap handling, late-evidence flagging,
- * sealed records, and cancelled-booking rejection all keep their
- * Phase 17A/17B semantics. Unknown meetings and unresolved/ambiguous
- * participants settle as operational review rows and never create
- * attendance. Logs carry ids and reasons only — no payloads, no
- * participant identifiers.
+ * sealed records, and cancelled-booking rejection all apply
+ * consistently. Unknown meetings and unresolved/ambiguous participants
+ * settle as operational review rows and never create attendance. Logs
+ * carry ids and reasons only — no payloads, no participant
+ * identifiers.
  */
 final class MeetingAttendanceIngestionService implements MeetingAttendanceIngestionServiceInterface
 {

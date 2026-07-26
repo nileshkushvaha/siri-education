@@ -10,10 +10,10 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * A new student registered with a valid referral code and the permanent
  * attribution row was created. Carries stable identifiers only — never
- * models — so listeners (Phase 19D notifications, reward evaluation)
- * load fresh state and can never leak referred-student PII by accident.
+ * models — so a listener always loads fresh state and can never leak
+ * referred-student PII by accident.
  *
- * Phase 19B attaches no listeners.
+ * No listeners are attached to this event.
  */
 final class ReferralAttributed implements ShouldDispatchAfterCommit
 {

@@ -15,7 +15,8 @@ use Illuminate\Queue\SerializesModels;
 /**
  * A new piece of attendance evidence was applied (duplicates never fire
  * this). Dispatched only after the transaction commits. No earnings,
- * refund, homework, review, or notification listeners yet (Phase 17A).
+ * refund, homework, review, or notification listener is attached to
+ * this event.
  */
 final class AttendanceRecorded implements ShouldDispatchAfterCommit
 {

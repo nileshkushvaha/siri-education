@@ -24,7 +24,7 @@ use App\Settings\ReviewSettings;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single writer of student reviews (Phase 17I). Authorization is
+ * The single writer of student reviews. Authorization is
  * the caller's job (StudentReviewService checks the eligibility policy
  * before calling this); this action assumes the acting student is
  * already authorized and focuses purely on: lock → revalidate →
@@ -70,8 +70,8 @@ final class SubmitLessonReviewAction
                 ));
             }
 
-            // Master switch (Phase 17U.2 §3): even an eligibility window
-            // opened before reviews were disabled must stop accepting a
+            // Master switch: even an eligibility window opened before
+            // reviews were disabled must stop accepting a
             // genuinely new submission the instant the switch flips off.
             // The idempotent "already used" branch above runs first, so
             // this never blocks a harmless retry of a submission that

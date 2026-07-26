@@ -16,8 +16,8 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §8 — corrupted or undecryptable encrypted payloads
- * (payload tampering, APP_KEY rotation without re-encryption) must fail
+ * Corrupted or undecryptable encrypted payloads (payload tampering,
+ * APP_KEY rotation without re-encryption) must fail
  * with safe messages: no ciphertext, no decryption internals, no bank
  * context. Operational key-rotation requirements are documented in
  * docs/architecture/phase-15.1-financial-integrity-closure.md.

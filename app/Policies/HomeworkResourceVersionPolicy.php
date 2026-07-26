@@ -10,10 +10,10 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * GAP-022 (37A) — requirement #7: a student/instructor may view a
- * version only through a homework assignment they are actually a party
- * to; owning the parent HomeworkResource also grants access (the
- * library owner can always preview their own published versions).
+ * A student/instructor may view a version only through a homework
+ * assignment they are actually a party to; owning the parent
+ * HomeworkResource also grants access (the library owner can always
+ * preview their own published versions).
  */
 class HomeworkResourceVersionPolicy
 {

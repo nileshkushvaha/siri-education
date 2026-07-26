@@ -13,8 +13,8 @@ use App\Settings\FeatureSettings;
 use Spatie\Permission\Models\Role;
 
 /**
- * Real multi-process races for the Phase 19B referral invariants: the
- * user_id unique index makes code generation single-winner, and the
+ * Real multi-process races for the referral invariants: the user_id
+ * unique index makes code generation single-winner, and the
  * referred_student_id unique index makes attribution single-winner.
  * Both losers must degrade gracefully (same code returned / null),
  * never error out of a registration.

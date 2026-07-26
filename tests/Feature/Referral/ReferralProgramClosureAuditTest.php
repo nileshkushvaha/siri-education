@@ -25,12 +25,12 @@ use Tests\Feature\Referral\Concerns\BuildsReferralRewardFixtures;
 use Tests\TestCase;
 
 /**
- * Phase 19E — the formal Student Referral Program closure audit. These
- * assertions are the machine-readable form of the Phase 19A–19E
- * invariants: one switch, one campaign source, one credit path, one
- * reversal path, permanent single attribution, immutable financial
- * history, operational coverage for every non-terminal state, and a
- * reporting surface that reconciles exactly with the domain records.
+ * The formal Student Referral Program closure audit. These assertions
+ * are the machine-readable form of the program's invariants: one
+ * switch, one campaign source, one credit path, one reversal path,
+ * permanent single attribution, immutable financial history,
+ * operational coverage for every non-terminal state, and a reporting
+ * surface that reconciles exactly with the domain records.
  */
 class ReferralProgramClosureAuditTest extends TestCase
 {

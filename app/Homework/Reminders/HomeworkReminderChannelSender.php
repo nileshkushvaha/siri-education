@@ -20,7 +20,7 @@ use Ramsey\Uuid\Uuid;
 use Throwable;
 
 /**
- * Phase 24K.1 — GAP-020 partial-channel idempotency. Sends each
+ * Partial-channel idempotency. Sends each
  * notification channel independently via Notification::sendNow() with
  * an explicit single-channel array — this bypasses Laravel's
  * all-channels-in-one-call semantics entirely, so a mail failure can

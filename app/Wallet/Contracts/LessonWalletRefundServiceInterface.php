@@ -10,8 +10,8 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * Phase 17F — wallet-only refund execution for approved dispositions.
- * Version 1 never calls a gateway refund API: gateway-paid lessons are
+ * Wallet-only refund execution for approved dispositions. Version 1
+ * never calls a gateway refund API: gateway-paid lessons are
  * credited to the student wallet and the original payment record is
  * preserved. All balance changes flow through WalletLedgerService.
  */

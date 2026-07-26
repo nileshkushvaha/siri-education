@@ -17,8 +17,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24M — GAP-031: wallet creation for NEW use requires an Active
- * currency; protective credits (refunds, reversals, held-reward
+ * Wallet creation for NEW use requires an Active currency; protective
+ * credits (refunds, reversals, held-reward
  * crediting) must remain payable even after the currency is disabled.
  */
 final class WalletCurrencyEnforcementTest extends TestCase

@@ -384,7 +384,7 @@ class InstructorWithdrawalTest extends TestCase
         $this->assertSame(20000, (int) InstructorWithdrawalAllocation::query()->sum('amount_minor'));
     }
 
-    // ── Phase 14 boundary: settlement vs reservation ─────────────────
+    // ── Settlement vs reservation boundary ────────────────────────────
 
     public function test_reserved_earnings_leave_the_settlement_pool(): void
     {

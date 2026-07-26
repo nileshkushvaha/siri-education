@@ -7,8 +7,8 @@ namespace Tests\Feature\Earnings\RazorpayX;
 use Tests\TestCase;
 
 /**
- * Structural guarantees specific to the RazorpayX adapter (Phase 16B),
- * on top of the provider-neutral architecture proven in
+ * Structural guarantees specific to the RazorpayX adapter, on top of
+ * the provider-neutral architecture proven in
  * FinancialArchitectureTest.
  */
 class RazorpayXArchitectureTest extends TestCase

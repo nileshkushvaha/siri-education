@@ -15,8 +15,8 @@ use App\Country\Services\CountryResolver;
 use App\Models\User;
 
 /**
- * SRS-20-5 / GAP-026, extended by GAP-029 (SRS §20.36/§21.36) — the
- * platform-wide `demo_lessons_enabled` switch AND the requesting
+ * SRS-20-5, extended by SRS §20.36/§21.36 — the platform-wide
+ * `demo_lessons_enabled` switch AND the requesting
  * student's country-level override both control whether NEW free-demo
  * bookings may be created; neither has any bearing on
  * `BookingType::is_active` (which controls whether the configured

@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One frozen pre-edit snapshot of a student review (Phase 17R).
- * Append-only: written exclusively by EditStudentReviewAction, never
+ * One frozen pre-edit snapshot of a student review. Append-only:
+ * written exclusively by EditStudentReviewAction, never
  * updated, never deleted. Content here is the SANITIZED text the
  * review itself carried — raw prohibited text never existed on the
  * review row, so it structurally cannot exist here. Full revision

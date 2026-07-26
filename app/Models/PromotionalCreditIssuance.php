@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One immutable promotional-credit issuance record (GAP-041, SRS
+ * One immutable promotional-credit issuance record (SRS
  * §16.17-§16.19) — written exclusively by
  * PromotionalCreditService::issueCampaignCredit()/issueManualCredit().
  * Never updated, never deleted.

@@ -307,8 +307,8 @@ class InstructorEarningSettingsPage extends Page
 
         $settings = app(InstructorEarningSettings::class);
 
-        // Phase 14.5 — the three financial feature switches flow ONLY
-        // through FinancialFeatureConfigurationService, which enforces
+        // The three financial feature switches flow ONLY through
+        // FinancialFeatureConfigurationService, which enforces
         // the activation preflights regardless of caller. This page just
         // relays the request and displays the service's readiness result.
         $configuration = app(FinancialFeatureConfigurationServiceInterface::class);

@@ -11,9 +11,9 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * An approved earning reconciliation executed (Phase 17G): an earning
- * was created, held, released, or reversed for a finalized lesson
- * outcome. After-commit only; no listeners are attached in this phase.
+ * An approved earning reconciliation executed: an earning was created,
+ * held, released, or reversed for a finalized lesson outcome.
+ * After-commit only; nothing currently listens for it.
  */
 final class LessonEarningReconciled implements ShouldDispatchAfterCommit
 {

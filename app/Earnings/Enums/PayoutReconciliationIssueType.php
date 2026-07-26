@@ -18,9 +18,9 @@ enum PayoutReconciliationIssueType: string
     case StaleProcessing = 'stale_processing';
     case ProviderUnavailable = 'provider_unavailable';
 
-    // RazorpayX-specific (Phase 16B) — destination provisioning and
-    // payout-status reconciliation issues that have no generic
-    // equivalent above. Never created for any other provider.
+    // RazorpayX-specific — destination provisioning and payout-status
+    // reconciliation issues that have no generic equivalent above.
+    // Never created for any other provider.
     case RazorpayXContactProvisioningUnknown = 'razorpayx_contact_provisioning_unknown';
     case RazorpayXFundAccountProvisioningUnknown = 'razorpayx_fund_account_provisioning_unknown';
     case RazorpayXContactMismatch = 'razorpayx_contact_mismatch';

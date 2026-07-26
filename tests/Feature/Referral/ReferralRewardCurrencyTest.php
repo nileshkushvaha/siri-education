@@ -14,11 +14,10 @@ use Tests\Feature\Referral\Concerns\BuildsReferralRewardFixtures;
 use Tests\TestCase;
 
 /**
- * Phase 24M — GAP-031 Step 8: an already-Eligible/Held referral reward
- * is an existing obligation and must remain creditable even after the
- * referrer's currency is later disabled. New participation/issuance
- * is unaffected by this phase (out of scope — no new campaign/eligibility
- * logic was touched).
+ * An already-Eligible/Held referral reward is an existing obligation
+ * and must remain creditable even after the referrer's currency is
+ * later disabled. New participation/issuance is unaffected — no
+ * campaign/eligibility logic changes with the currency's status.
  */
 final class ReferralRewardCurrencyTest extends TestCase
 {
@@ -55,18 +54,17 @@ final class ReferralRewardCurrencyTest extends TestCase
         $this->assertContains($credited->status, [ReferralRewardStatus::Credited, ReferralRewardStatus::Held]);
         // Never an uncaught exception — the only two legitimate outcomes
         // are a successful credit, or a (currency-mismatch, unrelated to
-        // active-status) hold, exactly as before this phase.
+        // active-status) hold.
     }
 
     // ── 18: new referral issuance follows the documented policy ──────
 
     public function test_new_reward_evaluation_still_requires_the_lesson_currency_to_be_usable(): void
     {
-        // Not an active-currency rejection today (GAP-031 does not
-        // extend to reward CALCULATION, only to CREDITING an existing
-        // obligation) — this documents that evaluateCompletedLesson()
-        // is unaffected by this phase's changes and continues to
-        // produce a reward exactly as before.
+        // Not an active-currency rejection: the currency-Active
+        // requirement applies only to CREDITING an existing obligation,
+        // never to reward CALCULATION — evaluateCompletedLesson()
+        // continues to produce a reward regardless of currency status.
         [, $referred] = $this->attributedPair();
         $this->activeCampaign();
         $lesson = $this->completedPaidLesson($referred);

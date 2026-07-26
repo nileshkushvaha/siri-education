@@ -48,7 +48,7 @@ enum CompensationExceptionCategory: string
         return $this !== self::PermanentlyIneligible;
     }
 
-    /** The audit event name (the missing-agreement one keeps its Phase 14.2 name — the admin NotificationMapper listens for it). */
+    /** The audit event name (the missing-agreement one keeps its original name — the admin NotificationMapper listens for it). */
     public function auditEvent(): string
     {
         return $this === self::MissingAgreement

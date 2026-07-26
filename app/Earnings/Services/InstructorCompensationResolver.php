@@ -24,8 +24,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The active compensation resolver. Phase 14.3: the canonical
- * resolution timestamp is the lesson's SCHEDULED START — the agreement
+ * The active compensation resolver. The canonical resolution timestamp
+ * is the lesson's SCHEDULED START — the agreement
  * in force when the service was delivered pays for it, no matter when
  * the instructor marks completion, when auto-completion fires, or when
  * the queue processes the event. Resolution therefore searches the

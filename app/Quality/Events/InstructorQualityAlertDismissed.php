@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** An admin dismissed an alert as not a genuine quality concern. After-commit only. No listener attached in Phase 17N. */
+/** An admin dismissed an alert as not a genuine quality concern. After-commit only. No listener is attached to this event. */
 final class InstructorQualityAlertDismissed implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

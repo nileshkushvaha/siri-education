@@ -24,7 +24,7 @@ interface ReferralAttributionServiceInterface
     public function attributeFromRegistration(User $referredStudent, ?string $rawCode, ?string $source = null): ?ReferralAttribution;
 
     /**
-     * Phase 19E — exceptional, audited attribution correction (SRS
+     * Exceptional, audited attribution correction (SRS
      * 16.10 "Admin may correct attribution only with permission and
      * audit reason"). Requires CorrectReferralAttribution and a reason;
      * locks the attribution; refuses once ANY reward row exists (the

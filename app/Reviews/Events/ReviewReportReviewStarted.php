@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** An admin started investigating a pending report. After-commit only. No listener attached in Phase 17M. */
+/** An admin started investigating a pending report. After-commit only. No listener is attached to this event. */
 final class ReviewReportReviewStarted implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

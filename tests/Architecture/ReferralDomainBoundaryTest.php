@@ -7,11 +7,12 @@ namespace Tests\Architecture;
 use Tests\TestCase;
 
 /**
- * Phase 19B — permanent guards for the Referral domain boundary.
+ * Permanent guards for the Referral domain boundary.
  *
- * The Version 1 referral program is registration-attribution only: the
- * domain must not touch money (Wallet/Earnings/Payments/Booking), must
- * not listen to lesson outcomes yet, and must expose no public
+ * The Version 1 referral program moves money only through the Wallet
+ * ledger service — never Earnings, gateways, or payment providers
+ * directly. Its lesson-outcome listeners stay thin triggers (no money
+ * math, no ledger writes) and the domain exposes no public
  * code-validation surface that could become an account-enumeration
  * oracle. Registration integrates through exactly one approved point
  * (RegistrationService); the frontends never attribute directly.
@@ -22,9 +23,9 @@ class ReferralDomainBoundaryTest extends TestCase
 
     public function test_referral_domain_touches_money_only_through_approved_wallet_services(): void
     {
-        // Phase 19D: the reward service legitimately uses the wallet
-        // domain's public services and the lesson/booking read surface.
-        // It must never depend on Earnings, gateways, or providers.
+        // The reward service legitimately uses the wallet domain's
+        // public services and the lesson/booking read surface. It must
+        // never depend on Earnings, gateways, or providers.
         foreach ($this->phpFilesUnder(base_path('app/Referral')) as $file) {
             $contents = (string) file_get_contents($file);
 
@@ -60,8 +61,8 @@ class ReferralDomainBoundaryTest extends TestCase
 
         $this->assertSame([base_path('app/Referral/Services/ReferralRewardService.php')], $calculationOwners);
 
-        // The four Phase 19D listeners exist, live in the domain, and
-        // stay thin — no money math, no ledger service, no direct writes.
+        // The four listeners exist, live in the domain, and stay thin —
+        // no money math, no ledger service, no direct writes.
         $listeners = $this->phpFilesUnder(base_path('app/Referral/Listeners'));
         $this->assertCount(4, $listeners);
 
@@ -111,10 +112,10 @@ class ReferralDomainBoundaryTest extends TestCase
 
         sort($callers);
 
-        // Phase 19E added exactly one more approved surface: the admin
-        // correction action. It may only ever call correctAttribution —
-        // never attributeFromRegistration, which stays exclusive to
-        // RegistrationService.
+        // Exactly one more approved surface exists beyond RegistrationService:
+        // the admin correction action. It may only ever call
+        // correctAttribution — never attributeFromRegistration, which
+        // stays exclusive to RegistrationService.
         $this->assertSame(
             [
                 base_path('app/Filament/Resources/ReferralAttributions/Tables/ReferralAttributionsTable.php'),
@@ -179,8 +180,8 @@ class ReferralDomainBoundaryTest extends TestCase
             $this->assertStringNotContainsString('referral.enabled', (string) file_get_contents($file), 'FeatureSettings::$referral_enabled is the single referral switch.');
         }
 
-        // Phase 19C retired ReferralSettings entirely — referral_campaigns
-        // is the single source of reward rules and FeatureSettings the
+        // ReferralSettings is retired entirely — referral_campaigns is
+        // the single source of reward rules and FeatureSettings the
         // single switch. The class must never come back.
         $this->assertFalse(class_exists('App\Settings\ReferralSettings'));
     }

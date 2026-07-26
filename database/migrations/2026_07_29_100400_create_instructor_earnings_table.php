@@ -7,8 +7,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 14.5 consolidated baseline. One earning per canonical source:
- * unique lesson_id for lesson compensation (nullable — periodic
+ * One earning per canonical source: unique lesson_id for lesson
+ * compensation (nullable — periodic
  * compensation carries no lesson) and unique source_type+source_id for
  * every category. Money is integer minor units only — never floats,
  * and amounts come exclusively from compensation agreements: no

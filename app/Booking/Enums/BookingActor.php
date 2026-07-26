@@ -11,8 +11,8 @@ use App\Models\User;
  * Who performed a lifecycle mutation (cancel, reschedule). Mirrors the
  * Activity Log actor-type concept (User, Guest, System) but scoped to
  * booking participants — every booking participant is an authenticated
- * platform user (Phase 17U.3: no unauthenticated guest participant
- * concept exists anywhere in the Booking domain).
+ * platform user (no unauthenticated guest participant concept exists
+ * anywhere in the Booking domain).
  */
 enum BookingActor: string
 {

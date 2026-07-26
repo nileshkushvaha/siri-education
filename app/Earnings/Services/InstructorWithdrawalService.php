@@ -37,8 +37,9 @@ use Illuminate\Support\Str;
  * canonical rows, reserves earnings FIFO, freezes the payment
  * destination into an encrypted snapshot, and stores balance snapshots.
  * Every later transition passes the enum state machine; rejection and
- * cancellation release reservations in the same transaction. Phase 15
- * never moves money: approved is the terminal operational state here.
+ * cancellation release reservations in the same transaction. This
+ * service never moves money: approved is the terminal operational
+ * state here.
  */
 final class InstructorWithdrawalService implements InstructorWithdrawalServiceInterface
 {

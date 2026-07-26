@@ -30,9 +30,8 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 10.2B — wires PaymentProviderResolver's country-aware routing
- * (built in Phase 10.2A but never threaded into an actual checkout
- * entry point) into BookingPaymentService::initiate()/checkoutPayload().
+ * PaymentProviderResolver's country-aware routing wired into
+ * BookingPaymentService::initiate()/checkoutPayload().
  */
 class CountryAwareProviderResolutionTest extends TestCase
 {
@@ -96,9 +95,9 @@ class CountryAwareProviderResolutionTest extends TestCase
             'duration_minutes' => 60,
         ]);
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — seed a matching StudentLessonPrice for
-        // this exact student's own billing country (set by studentInCountry()).
+        // BookingType::factory()->paid() does not carry a price — seed a
+        // matching StudentLessonPrice for this exact student's own
+        // billing country (set by studentInCountry()).
         $currencyModel = Currency::query()->firstOrCreate(
             ['code' => $currency],
             ['name' => $currency, 'symbol' => $currency, 'numeric_code' => '000', 'minor_units' => 2, 'status' => 'active'],

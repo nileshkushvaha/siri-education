@@ -11,8 +11,8 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 16B RazorpayX-specific permissions (Filament Shield naming).
- * Deliberately does NOT include Manage/MarkPaid/Delete/Edit — no manual
+ * RazorpayX-specific permissions (Filament Shield naming). Deliberately
+ * does NOT include Manage/MarkPaid/Delete/Edit — no manual
  * mark-paid path exists for any provider (see
  * InstructorPayoutExecutionPermissionSeeder). Execution itself stays
  * gated by the existing `Execute:InstructorPayoutAttempt` permission —

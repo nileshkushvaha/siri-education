@@ -26,9 +26,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H.1A — GAP-013 strict correction: student_status must be
- * exactly Active for ordinary student business actions (booking
- * creation, reschedule, cancellation). Registered, Suspended, Archived,
+ * student_status must be exactly Active for ordinary student business
+ * actions (booking creation, reschedule, cancellation). Registered,
+ * Suspended, Archived,
  * a missing profile, AND a null student_status are all rejected — null
  * is invalid/ambiguous data, never an implicit grant of capability. See
  * StudentLifecycleService::isEligibleForStudentActions().
@@ -114,11 +114,9 @@ class StudentLifecycleBookingEligibilityTest extends TestCase
     }
 
     /**
-     * Phase 24H.1 — GAP-013 correction: Active is now authoritative, so
-     * a Registered (not-yet-Active) student is correctly rejected too,
-     * not just Suspended/Archived. (Phase 24H's original, now-corrected
-     * behavior treated Registered as usable — see
-     * StudentLifecycleService::isEligibleForStudentActions().)
+     * Active is authoritative, so a Registered (not-yet-Active) student
+     * is rejected too, not just Suspended/Archived — see
+     * StudentLifecycleService::isEligibleForStudentActions().
      */
     public function test_registered_student_cannot_create_a_booking(): void
     {
@@ -137,10 +135,9 @@ class StudentLifecycleBookingEligibilityTest extends TestCase
     }
 
     /**
-     * Phase 24H.1A — a null student_status (never processed by the
-     * lifecycle — e.g. the student role assigned without going through
-     * registration) is invalid/ambiguous data, not an implicit pass —
-     * corrects Phase 24H.1's unapproved null-is-unblocked carve-out.
+     * A null student_status (never processed by the lifecycle — e.g.
+     * the student role assigned without going through registration) is
+     * invalid/ambiguous data, never an implicit pass.
      */
     public function test_a_student_with_no_lifecycle_status_cannot_create_a_booking(): void
     {

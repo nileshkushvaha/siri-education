@@ -34,10 +34,10 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 17E — the financial-disposition bridge: classification matrix,
- * earning holds + settlement exclusion, override re-evaluation,
- * settled-money protection, admin resolution, and the guarantee that
- * no money moves in this phase.
+ * The financial-disposition bridge: classification matrix, earning
+ * holds + settlement exclusion, override re-evaluation, settled-money
+ * protection, admin resolution, and the guarantee that no money moves
+ * here.
  */
 class LessonFinancialDispositionTest extends TestCase
 {
@@ -78,7 +78,7 @@ class LessonFinancialDispositionTest extends TestCase
         $this->assertSame(LessonFinancialDispositionStatus::NoAction, $disposition->processing_status);
         $this->assertSame($earning->id, $disposition->instructor_earning_id);
         $this->assertSame('completed_paid', $disposition->reason_code);
-        // The Phase 14 pipeline created exactly one earning — untouched.
+        // The earning-creation pipeline created exactly one earning — untouched.
         $this->assertSame(InstructorEarningStatus::PendingHold, $earning->status);
     }
 
@@ -161,8 +161,8 @@ class LessonFinancialDispositionTest extends TestCase
     }
 
     /**
-     * Phase 17U.4 — DisputedHold is not a terminal earning status (a hold
-     * later resolves back to Releasable, or on to Reversed/Cancelled), so
+     * DisputedHold is not a terminal earning status (a hold later
+     * resolves back to Releasable, or on to Reversed/Cancelled), so
      * SyncEarningOnLessonDisputed's isTerminal()-only guard did not catch
      * a redelivered LessonDisputed event for an earning already on hold:
      * DisputedHold -> DisputedHold is not an allowed transition and threw
@@ -239,8 +239,8 @@ class LessonFinancialDispositionTest extends TestCase
     }
 
     /**
-     * Phase 17U.4 — classify()'s lockForUpdate() locks nothing when no
-     * row exists yet, so two truly concurrent callers can both pass the
+     * classify()'s lockForUpdate() locks nothing when no row exists
+     * yet, so two truly concurrent callers can both pass the
      * existence check before either inserts; the loser's insert then
      * collides on the unique lesson_id constraint. This confirms that
      * constraint is real and raises exactly the exception type classify()
@@ -314,8 +314,8 @@ class LessonFinancialDispositionTest extends TestCase
     }
 
     /**
-     * Phase 17V closure re-audit — a redelivered LessonOutcomeOverridden
-     * event (or a directly-repeated override call for the identical
+     * A redelivered LessonOutcomeOverridden event (or a
+     * directly-repeated override call for the identical
      * target outcome) used to append another near-duplicate history
      * entry and bump version again on every replay. reevaluate() now
      * short-circuits when the disposition's current outcome already

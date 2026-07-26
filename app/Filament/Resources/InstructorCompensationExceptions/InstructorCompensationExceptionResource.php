@@ -15,8 +15,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * The admin queue of unresolved compensation exceptions (Phase 14.3):
- * completed lessons whose earning creation was blocked. Rows are
+ * The admin queue of unresolved compensation exceptions: completed
+ * lessons whose earning creation was blocked. Rows are
  * system-written, retried by the hourly sweep or manually, resolved —
  * never edited or deleted — once the earning exists.
  */

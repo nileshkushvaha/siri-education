@@ -7,14 +7,12 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17U.1 follow-up — the live FK audit after the first
- * remediation migration found three more `users`-referencing
- * cascades reaching records the same phase's "historical child
- * records" list explicitly protects (wallet ledger entries,
- * instructor rating aggregates), unreachable via the booking-centric
- * chain the first migration covered but still directly deletable by
- * physically deleting a `users` row. Same treatment: `ON DELETE
- * RESTRICT`, no data touched.
+ * A live FK audit found three more `users`-referencing cascades
+ * reaching historical child records that must be protected (wallet
+ * ledger entries, instructor rating aggregates), unreachable via the
+ * booking-centric chain an earlier migration covered but still
+ * directly deletable by physically deleting a `users` row. Same
+ * treatment: `ON DELETE RESTRICT`, no data touched.
  */
 return new class extends Migration
 {

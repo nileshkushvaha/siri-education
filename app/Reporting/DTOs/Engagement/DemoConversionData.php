@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Engagement;
 
 /**
- * Phase 18D §6.6 (Outcome A) — demo-to-paid conversion, reusing the
- * EXISTING authoritative definition (`BookingAnalyticsRepository::conversion()`,
+ * Demo-to-paid conversion, reusing the EXISTING authoritative
+ * definition (`BookingAnalyticsRepository::conversion()`,
  * covered by BookingAnalyticsTest) verbatim:
  *
  * - Demo booker: distinct student with a `free_demo` booking created in

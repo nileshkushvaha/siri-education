@@ -35,10 +35,10 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18A — the user-facing "Report Review" Livewire UI. Every
+ * The user-facing "Report Review" Livewire UI. Every
  * domain rule (authorization, reason validity, duplicate prevention,
  * sanitization, audit logging) is enforced exclusively by the existing
- * Phase 17M ReviewReportServiceInterface/SubmitReviewReportAction; this
+ * ReviewReportServiceInterface/SubmitReviewReportAction; this
  * suite only proves the UI correctly reaches — and never bypasses or
  * duplicates — that backend, end to end through the existing admin
  * queue.
@@ -117,8 +117,8 @@ class ReviewReportUiTest extends TestCase
         // + Report:LessonReview) — exactly like ReviewReportService's own
         // authorizeReport() — so it does not by itself reject a private-
         // feedback id. The instance-level "is this review even eligible
-        // to be reported" check belongs solely to SubmitReviewReportAction
-        // (Phase 17M), which the component must never re-implement. A
+        // to be reported" check belongs solely to SubmitReviewReportAction,
+        // which the component must never re-implement. A
         // tampered review id therefore still safely rejects at submission,
         // creating no report and revealing no internal status/mode.
         $privateFeedback = $this->submitPrivateFeedback()->fresh();
@@ -172,9 +172,9 @@ class ReviewReportUiTest extends TestCase
     public function test_empty_report_reason_configuration_still_renders_safely(): void
     {
         // ReviewReportReason has no per-reason enable/disable flag — the
-        // full enum is always the authoritative, fixed list (Phase 18A
-        // discovery finding). This test documents that the form has no
-        // separate "no reasons configured" failure mode to exercise.
+        // full enum is always the authoritative, fixed list. This test
+        // documents that the form has no separate "no reasons
+        // configured" failure mode to exercise.
         $this->assertNotEmpty(ReviewReportReason::cases());
     }
 

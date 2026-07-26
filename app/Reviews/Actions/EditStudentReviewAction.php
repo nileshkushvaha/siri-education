@@ -23,8 +23,8 @@ use App\Services\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single writer of student review edits (Phase 17R). One
- * transaction: lock → revalidate editability (ReviewEditPolicy, under
+ * The single writer of student review edits. One transaction: lock →
+ * revalidate editability (ReviewEditPolicy, under
  * lock — never trusted from the page that rendered the form) →
  * validate against the review's OWN stored settings snapshot (a
  * historical review keeps its original rating policy forever) →

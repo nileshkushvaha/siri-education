@@ -16,7 +16,7 @@ use App\Settings\InstructorEarningSettings;
  * lesson, updated on every attempt (attempt_count / last_attempt_at /
  * current category), resolved — never deleted — once the earning
  * exists. Reasons stored here are UI-safe; the audit trail gets the
- * category event (missing_agreement keeps its Phase 14.2 event name so
+ * category event (missing_agreement keeps its original event name so
  * the admin NotificationMapper alert continues to fire).
  */
 final class CompensationExceptionService
@@ -29,8 +29,8 @@ final class CompensationExceptionService
     ) {}
 
     /**
-     * Bounded retry backoff (Phase 14.5): after attempt N, the next
-     * automatic sweep pick-up is delayed by an escalating schedule —
+     * Bounded retry backoff: after attempt N, the next automatic sweep
+     * pick-up is delayed by an escalating schedule —
      * attempt 1 → next hourly sweep, 2 → +2h, 3 → +6h, 4 → +24h, then
      * daily — until compensation_retry_max_attempts marks the exception
      * exhausted. Exhausted and permanent exceptions never loop; the

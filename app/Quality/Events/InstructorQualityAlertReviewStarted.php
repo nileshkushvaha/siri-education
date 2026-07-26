@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** An admin started investigating an open alert. After-commit only. No listener attached in Phase 17N. */
+/** An admin started investigating an open alert. After-commit only. No listener is attached to this event. */
 final class InstructorQualityAlertReviewStarted implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

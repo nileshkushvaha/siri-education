@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Crypt;
 use Tests\TestCase;
 
 /**
- * Phase 10.2A — admin-facing readiness bookkeeping. Never calls a
- * gateway (format/settings inspection only), so every test here runs
+ * Admin-facing readiness bookkeeping. Never calls a gateway
+ * (format/settings inspection only), so every test here runs
  * with no HTTP faking and no mocked SDK client.
  */
 class PaymentGatewayConfigurationServiceTest extends TestCase

@@ -70,17 +70,15 @@ abstract class ConcurrencyTestCase extends TestCase
         // Committed fixtures must not leak into the transaction-wrapped
         // remainder of the suite.
         //
-        // Phase 16C.1 root-cause fix: this call used to discard exec()'s
-        // exit code entirely — a transient migration failure (the
-        // just-finished race's child processes each hold their own MySQL
-        // connection; a connection's locks are not always guaranteed
-        // released the instant the client process exits, and
-        // migrate:fresh's DROP TABLE/metadata-lock acquisition can
-        // transiently collide with that) was completely invisible,
-        // silently leaving a later, unrelated test class to inherit a
-        // partially-rebuilt database (traced during Phase 16C.1's
-        // full-suite audit to exactly this). Fixed: the exit code is
-        // checked, a genuine failure now fails loudly instead of
+        // This call used to discard exec()'s exit code entirely — a
+        // transient migration failure (the just-finished race's child
+        // processes each hold their own MySQL connection; a connection's
+        // locks are not always guaranteed released the instant the
+        // client process exits, and migrate:fresh's DROP TABLE/metadata-
+        // lock acquisition can transiently collide with that) was
+        // completely invisible, silently leaving a later, unrelated test
+        // class to inherit a partially-rebuilt database. The exit code
+        // is now checked, a genuine failure fails loudly instead of
         // silently, and a bounded retry absorbs the transient case.
         // (`DB::purge()` was tried here too and reverted — it throws
         // "Target class [config] does not exist", since tearDownAfterClass()

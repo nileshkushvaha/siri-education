@@ -26,8 +26,8 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18G — referral, review-rate and notification reporting:
- * ledger-only referral truth, submission-rate definition, notification
+ * Referral, review-rate and notification reporting: ledger-only
+ * referral truth, submission-rate definition, notification
  * activity semantics, structural-absence honesty (no conversion, no
  * delivery rate, no messaging), permission separation, privacy and
  * zero side effects.
@@ -263,7 +263,7 @@ class ReferralCommunicationReportsTest extends TestCase
 
         $rates = $this->reports->reviewQualityRates($admin, $this->period(), $this->filters());
 
-        $this->assertSame(4.5, $rates->platformAverageRating, 'Identical formula to the Phase 17 owner — never recomputed from raw reviews.');
+        $this->assertSame(4.5, $rates->platformAverageRating, 'Identical formula to AdminQualityDashboardRepository::platformAverageRating() — never recomputed from raw reviews.');
         $this->assertSame(4, $rates->publishedEligibleReviewCount);
     }
 

@@ -60,7 +60,7 @@ class BookingPayment extends Model
         ];
     }
 
-    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion. */
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class)->withTrashed();

@@ -9,8 +9,8 @@ namespace App\Reviews\DTOs;
  * section needs, other than the paginated recent-reviews list (which
  * stays a separate, independently-paginated call — see
  * `InstructorQualityInsightsServiceInterface::recentReviewsFor()`).
- * `ratingSummary` is the exact Phase 17K DTO, reused unchanged — no
- * value on this DTO is ever recalculated from it.
+ * `ratingSummary` is the exact InstructorRatingSummaryData DTO, reused
+ * unchanged — no value on this DTO is ever recalculated from it.
  */
 final readonly class InstructorQualityInsightsData
 {

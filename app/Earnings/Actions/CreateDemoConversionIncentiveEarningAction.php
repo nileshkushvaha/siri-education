@@ -14,8 +14,8 @@ use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * GAP-008 requirement #5 — persists the earning row for an awarded
- * demo-conversion incentive. Mirrors CreateInstructorEarningFromLessonAction
+ * Persists the earning row for an awarded demo-conversion incentive.
+ * Mirrors CreateInstructorEarningFromLessonAction
  * exactly: `lesson_id` stays null (this is not lesson compensation),
  * `source_type`/`source_id` (the award's own id) is the uniqueness
  * boundary a duplicate/replayed call resolves against.

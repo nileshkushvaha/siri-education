@@ -22,7 +22,7 @@ use App\Wallet\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single writer of lesson-outcome wallet refunds (Phase 17F).
+ * The single writer of lesson-outcome wallet refunds.
  *
  * Wallet-only by design: gateway-paid lessons are credited to the
  * student wallet — no Stripe/Razorpay refund API is ever called and

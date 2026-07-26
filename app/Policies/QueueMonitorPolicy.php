@@ -27,8 +27,8 @@ class QueueMonitorPolicy
     }
 
     /**
-     * Phase 24N — GAP-034: a distinct, recovery-action permission —
-     * viewing failed jobs never implies the ability to retry them.
+     * A distinct, recovery-action permission — viewing failed jobs never
+     * implies the ability to retry them.
      */
     public function retryFailedJobs(AuthUser $user): bool
     {

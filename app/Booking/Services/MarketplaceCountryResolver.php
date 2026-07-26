@@ -12,15 +12,14 @@ use Illuminate\Http\Request;
 
 /**
  * The single authority on which country a marketplace pricing preview
- * localizes to (SRS §9.14/GAP-024). An authenticated student's own
- * canonical billing country is never overridden by a client-supplied
- * value. A guest's explicit choice — validated against active
- * countries, never trusted blindly — is remembered for the session;
- * absent a choice, the platform's own configured anonymous-preview
- * default (`LocalizationSettings::default_country`) is used and
- * flagged as such, never silently presented as the guest's own
- * country. No IP geolocation is performed — none exists elsewhere in
- * this codebase, and this phase does not add one.
+ * localizes to (SRS §9.14). An authenticated student's own canonical
+ * billing country is never overridden by a client-supplied value. A
+ * guest's explicit choice — validated against active countries, never
+ * trusted blindly — is remembered for the session; absent a choice,
+ * the platform's own configured anonymous-preview default
+ * (`LocalizationSettings::default_country`) is used and flagged as
+ * such, never silently presented as the guest's own country. No IP
+ * geolocation is performed — none exists elsewhere in this codebase.
  */
 final class MarketplaceCountryResolver
 {

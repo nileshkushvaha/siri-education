@@ -20,9 +20,10 @@ use Illuminate\Support\Str;
 use Tests\Support\ManagesFinancialSettings;
 
 /**
- * Real multi-process races for the Phase 16A execution/reconciliation
+ * Real multi-process races for the payout execution/reconciliation
  * layer, on top of the same tests/Concurrency/run-op.php harness proven
- * in Phase 15.1/14.4. QUEUE_CONNECTION=sync in .env.testing means
+ * against the compensation and withdrawal/settlement domains.
+ * QUEUE_CONNECTION=sync in .env.testing means
  * queueExecution() runs InitiateInstructorPayout inline within the
  * worker process, so "queue" and "execute" happen atomically from the
  * test's point of view — exactly what the "concurrent execution" and

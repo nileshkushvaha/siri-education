@@ -28,8 +28,8 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 24R — GAP: revalidated StudentFinancialVerificationGate against
- * docs/SRS.md §2.5 ("Phone Number (Optional for Version 1)") and §11.14
+ * StudentFinancialVerificationGate is validated against docs/SRS.md
+ * §2.5 ("Phone Number (Optional for Version 1)") and §11.14
  * ("Student must be registered and verified" — no phone/mobile
  * requirement). "Verified" for a student means EMAIL verification
  * throughout the SRS. The previous phone_e164/phone_verified_at

@@ -41,7 +41,7 @@ final class BookingAnalyticsRepository implements BookingAnalyticsRepositoryInte
     public function conversion(CarbonImmutable $from, CarbonImmutable $to): object
     {
         // Booker identity: every booking has an authenticated student_id
-        // (Phase 17U.3 — no guest booking concept exists).
+        // — no guest booking concept exists.
         return (object) (array) DB::selectOne(
             'SELECT COUNT(DISTINCT d.booker) AS demo_bookers,
                     COUNT(DISTINCT CASE WHEN p.id IS NOT NULL THEN d.booker END) AS converted

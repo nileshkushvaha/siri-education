@@ -30,15 +30,14 @@ use Spatie\Permission\Models\Role;
 use Tests\Support\CreatesStudentLessonPrices;
 
 /**
- * Real multi-process races for Phase 16C's Stripe collection additions
- * (concurrent initiation, webhook-vs-reconciliation, webhook-vs-expiry,
+ * Real multi-process races for Stripe collection (concurrent
+ * initiation, webhook-vs-reconciliation, webhook-vs-expiry,
  * webhook-vs-cancellation, duplicate-webhook-vs-wallet-credit, and
  * timeout-vs-fallback). Reuses the tests/Concurrency/run-op.php harness
- * proven throughout the financial domain (Phase 15.1/14.4/16A/16A.1).
- * The 7th spec'd scenario ("wallet refund vs provider refund") is
- * already covered by BookingRefundConcurrencyTest.php — not duplicated
- * here, just re-run as part of the same 3-consecutive-run verification
- * pass.
+ * used throughout the financial domain. The 7th spec'd scenario
+ * ("wallet refund vs provider refund") is already covered by
+ * BookingRefundConcurrencyTest.php — not duplicated here, just re-run
+ * as part of the same 3-consecutive-run verification pass.
  */
 class StripePaymentConcurrencyTest extends ConcurrencyTestCase
 {
@@ -335,10 +334,10 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
             'intent_id' => $payment->provider_order_id,
             'amount_minor' => $payment->amount_minor,
             'currency' => strtolower($payment->currency_code),
-            // The PAYMENT reference — see the fix in StripePaymentProvider::createPayment()'s
-            // metadata construction (Phase 16C bugfix); a real Stripe
-            // webhook's metadata.booking_reference now carries this value,
-            // never $booking->reference.
+            // The PAYMENT reference — see StripePaymentProvider::createPayment()'s
+            // metadata construction; a real Stripe webhook's
+            // metadata.booking_reference carries this value, never
+            // $booking->reference.
             'booking_reference' => $payment->idempotency_key,
             'webhook_secret' => self::WEBHOOK_SECRET,
         ];

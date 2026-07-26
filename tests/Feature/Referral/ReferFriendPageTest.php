@@ -33,7 +33,7 @@ class ReferFriendPageTest extends TestCase
     {
         $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $student->assignRole('student');
-        $student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
+        $student->profile()->update(['student_status' => StudentStatus::Active]); // interactive student actions require Active status.
 
         return $student;
     }

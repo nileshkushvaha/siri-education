@@ -11,8 +11,8 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 14.2 compensation-agreement permissions (Filament Shield
- * naming). Idempotent — required after deploy: policies fall back to
+ * Compensation-agreement permissions (Filament Shield naming).
+ * Idempotent — required after deploy: policies fall back to
  * "deny" for permissions that do not exist, so without this only
  * super_admin can manage compensation. Instructors never receive
  * mutation permissions — their own-agreement visibility is

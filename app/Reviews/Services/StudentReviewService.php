@@ -26,10 +26,10 @@ final class StudentReviewService implements StudentReviewServiceInterface
             throw new AuthorizationException('You may not submit a review for this eligibility.');
         }
 
-        // Phase 24H.2 — GAP-013: review submission is an interactive
-        // student action; requires an Active student at submission time.
-        // Additional to (never replacing) the existing eligibility/
-        // ownership/one-review rules above and inside the action.
+        // Review submission is an interactive student action; requires
+        // an Active student at submission time. Additional to (never
+        // replacing) the existing eligibility/ownership/one-review
+        // rules above and inside the action.
         $this->lifecycle->assertEligibleForStudentAction($student);
 
         return $this->submit->execute($eligibility, $student, $data);

@@ -28,14 +28,13 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24A — SRS 11.13/11.39: a student may book only one free demo
- * per instructor. Covers the domain rule (OneFreeDemoPerInstructorRule),
+ * SRS 11.13/11.39: a student may book only one free demo per
+ * instructor. Covers the domain rule (OneFreeDemoPerInstructorRule),
  * its concurrency-safe re-check in BookingService::request(), and the
- * historical-status interpretation documented in the phase report
- * (only a demo cancelled before ever being confirmed fails to consume
- * the allowance — everything that reached Confirmed at least once,
- * including a later cancellation, no-show, or soft-deleted/archived
- * row, consumes it).
+ * historical-status interpretation (only a demo cancelled before ever
+ * being confirmed fails to consume the allowance — everything that
+ * reached Confirmed at least once, including a later cancellation,
+ * no-show, or soft-deleted/archived row, consumes it).
  */
 class OneFreeDemoPerInstructorRuleTest extends TestCase
 {
@@ -68,7 +67,7 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
         return $teacher;
     }
 
-    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
+    /** An Active student_status is required for booking eligibility — bare role assignment leaves student_status null, which is always denied. */
     private function makeStudent(): User
     {
         return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);

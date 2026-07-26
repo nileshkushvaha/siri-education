@@ -27,9 +27,9 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * Phase 17C — provider attendance ingestion: signed webhooks,
- * normalization, participant resolution, idempotency, sync
- * reconciliation, failure isolation, and privacy guarantees.
+ * Provider attendance ingestion: signed webhooks, normalization,
+ * participant resolution, idempotency, sync reconciliation, failure
+ * isolation, and privacy guarantees.
  */
 class MeetingAttendanceIngestionTest extends TestCase
 {

@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-008 — the admin settings surface for DemoConversionIncentiveSettings.
+ * The admin settings surface for DemoConversionIncentiveSettings.
  * Every change is audit-logged atomically via the shared
  * LogsSettingsUpdates trait, matching every other settings page.
  */

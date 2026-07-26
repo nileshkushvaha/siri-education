@@ -13,8 +13,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 14.2 §12/§13 — the compensation admin surface: no percentage
- * controls anywhere, agreement management is permission-gated, and the
+ * The compensation admin surface: no percentage controls anywhere,
+ * agreement management is permission-gated, and the
  * global settings page points to per-instructor agreements instead of
  * exposing any global amount.
  */

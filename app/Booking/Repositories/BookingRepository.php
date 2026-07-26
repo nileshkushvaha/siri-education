@@ -158,7 +158,7 @@ final class BookingRepository implements BookingRepositoryInterface
             ->get();
     }
 
-    /** withTrashed() — a student's own booking history remains visible even after an admin archives one of their terminal bookings (Phase 17U.1); archived rows are never upcoming or actionable regardless. */
+    /** withTrashed() — a student's own booking history remains visible even after an admin archives one of their terminal bookings; archived rows are never upcoming or actionable regardless. */
     public function paginatedForUser(int $userId, int $perPage = 15, ?BookingStatus $status = null): LengthAwarePaginator
     {
         return Booking::withTrashed()

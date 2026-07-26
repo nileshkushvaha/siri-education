@@ -276,14 +276,14 @@ class EventServiceProvider extends ServiceProvider
         LessonCancelled::class => [
             ReverseEarningOnLessonCancelled::class,
         ],
-        // Phase 17E — the financial-decision bridge: classification and
+        // The financial-decision bridge: classification and
         // holds only, gated by financial_disposition_enabled; earning
         // creation stays exclusively with CreateEarningOnLessonCompleted.
         LessonOutcomeFinalized::class => [
             ClassifyLessonFinancialDisposition::class,
             OpenReviewEligibilityOnLessonOutcomeFinalized::class,
             DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized::class,
-            // Phase 19D — the only automatic referral-reward trigger.
+            // The only automatic referral-reward trigger.
             EvaluateReferralRewardOnLessonOutcomeFinalized::class,
             RecalculateLearningPlanProgressOnLessonOutcomeFinalized::class,
         ],
@@ -309,37 +309,37 @@ class EventServiceProvider extends ServiceProvider
         ReferralRewardReversed::class => [
             [SendReferralRewardNotifications::class, 'handleReversed'],
         ],
-        // Phase 17S — the eligible student is notified a completed
-        // lesson is ready for review; no recurring reminder is scheduled.
+        // The eligible student is notified a completed lesson is ready
+        // for review; no recurring reminder is scheduled.
         LessonReviewEligibilityOpened::class => [
             SendReviewRequestedNotification::class,
         ],
-        // Phase 17J — automatic moderation of a newly submitted review.
-        // Phase 17S adds the student's submission-received confirmation.
+        // Automatic moderation of a newly submitted review, plus the
+        // student's submission-received confirmation.
         StudentReviewSubmitted::class => [
             ModerateReviewOnStudentReviewSubmitted::class,
             SendReviewSubmittedNotification::class,
         ],
-        // Phase 17S — a review reached a final state that genuinely
-        // needs a human (Flagged, or Submitted with auto-publish
-        // declined). Dispatched only from the authoritative decision
-        // points themselves — see StudentReviewModerationRequired's
-        // docblock. One notification per review version, never a
-        // separate duplicate for "flagged" vs "needs moderation".
+        // A review reached a final state that genuinely needs a human
+        // (Flagged, or Submitted with auto-publish declined). Dispatched
+        // only from the authoritative decision points themselves — see
+        // StudentReviewModerationRequired's docblock. One notification
+        // per review version, never a separate duplicate for "flagged"
+        // vs "needs moderation".
         StudentReviewModerationRequired::class => [
             SendReviewModerationRequiredNotification::class,
         ],
-        // Phase 17R — an edited review re-enters the SAME moderation
-        // pipeline (the action already moved it to its re-moderation
-        // status), and the aggregate reconciler converges the rating
-        // contribution. No notification/response/scoring listener here.
+        // An edited review re-enters the SAME moderation pipeline (the
+        // action already moved it to its re-moderation status), and the
+        // aggregate reconciler converges the rating contribution. No
+        // notification/response/scoring listener here.
         StudentReviewEdited::class => [
             ModerateReviewOnStudentReviewEdited::class,
             ReconcileRatingContributionOnStudentReviewEdited::class,
         ],
-        // Phase 17K — instructor rating aggregate reconciliation. All five
-        // listeners delegate to the same idempotent reconcile() entry
-        // point; no aggregate mutation happens inside moderation services.
+        // Instructor rating aggregate reconciliation. All five listeners
+        // delegate to the same idempotent reconcile() entry point; no
+        // aggregate mutation happens inside moderation services.
         StudentReviewPublished::class => [
             ReconcileRatingContributionOnStudentReviewPublished::class,
             DetectLowRatingQualityRiskOnStudentReviewPublished::class,
@@ -362,24 +362,24 @@ class EventServiceProvider extends ServiceProvider
             ReconcileRatingContributionOnStudentReviewArchived::class,
             ReevaluateQualityAlertOnStudentReviewArchived::class,
         ],
-        // Phase 17N — instructor quality-alert detection from an upheld
-        // serious review report. Fingerprint keys on the review, not the
+        // Instructor quality-alert detection from an upheld serious
+        // review report. Fingerprint keys on the review, not the
         // report, so multiple reports against the same review collapse
         // to one alert.
         ReviewReportUpheld::class => [
             DetectSeriousReviewReportQualityRiskOnReviewReportUpheld::class,
         ],
-        // Phase 17S — report-authorized administrators are notified of
-        // every new report. Dismissed/duplicate resolution events are
+        // Report-authorized administrators are notified of every new
+        // report. Dismissed/duplicate resolution events are
         // deliberately not wired to any notification listener here.
         ReviewReported::class => [
             SendReviewReportedNotification::class,
         ],
-        // Phase 17S — quality-alert-authorized administrators are
-        // notified of every new alert, regardless of type — one generic
-        // notification, never a per-type template. The instructor the
-        // alert concerns is never notified. Resolved/dismissed events
-        // are deliberately not wired to any notification listener here.
+        // Quality-alert-authorized administrators are notified of every
+        // new alert, regardless of type — one generic notification,
+        // never a per-type template. The instructor the alert concerns
+        // is never notified. Resolved/dismissed events are deliberately
+        // not wired to any notification listener here.
         InstructorQualityAlertCreated::class => [
             SendInstructorQualityAlertCreatedNotification::class,
         ],

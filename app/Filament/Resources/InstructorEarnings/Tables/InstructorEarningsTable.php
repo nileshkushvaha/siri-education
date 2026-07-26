@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Every lifecycle mutation routes through InstructorEarningService.
  * Admin-only surface; amounts are agreement-based — no student-pricing
- * column exists anywhere on this table by design (Phase 14.4).
+ * column exists anywhere on this table by design.
  */
 class InstructorEarningsTable
 {

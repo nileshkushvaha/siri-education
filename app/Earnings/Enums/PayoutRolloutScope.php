@@ -6,10 +6,9 @@ namespace App\Earnings\Enums;
 
 /**
  * Rollout POLICY, not a kill switch — `payout_execution_enabled`
- * remains the authoritative switch (false throughout Phase 16A/16A.1).
- * This narrows what a route resolution is even allowed to consider once
- * execution is eventually turned on, independent of whether any
- * specific provider adapter exists yet.
+ * remains the authoritative switch. This narrows what a route
+ * resolution is even allowed to consider once execution is turned on,
+ * independent of which provider adapters are registered.
  */
 enum PayoutRolloutScope: string
 {

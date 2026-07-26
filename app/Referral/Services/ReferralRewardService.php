@@ -45,13 +45,13 @@ use Illuminate\Support\Facades\Log;
  * wallet (profile country default → platform default, exactly
  * WalletService::getOrCreateWallet's own resolution). A reward whose
  * currency differs is Held with reason currency_mismatch — visible for
- * Phase 19E, never converted, never silently dropped.
+ * an admin decision, never converted, never silently dropped.
  *
  * Reversal rule: WalletLedgerService::reverse() requires a wallet-
  * manage actor. When invalidation arrives without one (automated
  * refund/override events), a credited reward keeps status Credited and
- * gains the visible `reversal_required` reason — Phase 19E completes
- * the reversal with a real administrator. It is never falsely marked
+ * gains the visible `reversal_required` reason — an admin decision
+ * completes the reversal with a real administrator. It is never falsely marked
  * Reversed without a reversal ledger entry (DB CHECK enforces this).
  */
 final class ReferralRewardService implements ReferralRewardServiceInterface
@@ -114,9 +114,9 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
                 throw new ReferralException(sprintf('Reward #%d has no referrer.', $reward->id));
             }
 
-            // Phase 24M — GAP-031: an Eligible/Held reward is already an
-            // existing obligation — crediting it must not be blocked by
-            // the referrer's default currency being disabled later.
+            // An Eligible/Held reward is already an existing obligation —
+            // crediting it must not be blocked by the referrer's default
+            // currency being disabled later.
             $wallet = $this->wallets->getOrCreateWalletForExistingObligation($referrer, null, $referrer);
 
             if ($wallet->currency_code !== $reward->reward_currency_code) {
@@ -292,8 +292,8 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
             // A currency-mismatch hold may only be released once the
             // referrer's wallet currency actually matches — never by
             // overriding currency. Otherwise the admin must reject.
-            // Phase 24M — GAP-031: the reward is already Held/Eligible —
-            // an existing obligation, not new activity.
+            // The reward is already Held/Eligible — an existing
+            // obligation, not new activity.
             $wallet = $this->wallets->getOrCreateWalletForExistingObligation($reward->referrer, null, $reward->referrer);
 
             if ($wallet->currency_code !== $reward->reward_currency_code) {
@@ -606,16 +606,16 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
             throw new ReferralException(sprintf('Reward #%d parties are no longer both students — reject it instead.', $reward->id));
         }
 
-        // Phase 24H — GAP-013: a suspended/archived student_status no
-        // longer rejects an already-held reward here. This check runs
-        // at APPROVAL time for money already calculated and owed —
-        // Suspended/Archived legitimately blocks becoming a NEW eligible
-        // referrer (see ReferralEligibilityService, still enforced), but
-        // must never forfeit an existing financial obligation, per this
-        // phase's "do not block money owed to the student merely
-        // because suspended/archived" requirement. User::status is
-        // still checked — that's the broader account-standing question
-        // (blocked/inactive), out of this phase's student-lifecycle scope.
+        // A suspended/archived student_status does not reject an
+        // already-held reward here. This check runs at APPROVAL time for
+        // money already calculated and owed — Suspended/Archived
+        // legitimately blocks becoming a NEW eligible referrer (see
+        // ReferralEligibilityService, still enforced), but must never
+        // forfeit an existing financial obligation: money owed to the
+        // student is never blocked merely because they are now
+        // suspended/archived. User::status is still checked — that's the
+        // broader account-standing question (blocked/inactive), separate
+        // from student-lifecycle status.
         if ($referrer->status !== User::STATUS_ACTIVE) {
             throw new ReferralException(sprintf('Reward #%d referrer is no longer an eligible active student — reject it instead.', $reward->id));
         }

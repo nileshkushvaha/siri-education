@@ -11,8 +11,8 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 16A payout-execution permissions (Filament Shield naming).
- * Idempotent — required after deploy: policies fall back to "deny" for
+ * Payout-execution permissions (Filament Shield naming). Idempotent —
+ * required after deploy: policies fall back to "deny" for
  * permissions that do not exist, so without this only super_admin can
  * queue, retry, cancel, or reconcile a payout. No manual mark-paid
  * permission exists, and none ever should — only a provider-confirmed

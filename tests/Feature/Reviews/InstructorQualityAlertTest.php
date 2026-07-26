@@ -46,7 +46,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 17N — instructor quality-alert foundation: low-rating,
+ * Instructor quality-alert foundation: low-rating,
  * instructor-no-show, instructor-attributed-cancellation, and
  * upheld-serious-report detection; fingerprint-based deduplication
  * across duplicate/concurrent events; non-destructive reevaluation
@@ -479,16 +479,16 @@ class InstructorQualityAlertTest extends TestCase
     }
 
     /**
-     * Phase 17V closure re-audit — the test above only proves the
-     * Policy-layer self-exclusion (InstructorQualityAlertPolicy::
-     * resolve()) works for a `manager` role. Gate::before grants
-     * super_admin a global permission bypass that skips the policy
-     * entirely, and Spatie roles are not mutually exclusive, so an
-     * account holding both `instructor` and `super_admin` was able to
-     * resolve/dismiss/reassign a quality alert about their own conduct
-     * until InstructorQualityAlertService::authorizeResolve() gained an
-     * independent self-relationship check, mirroring the identical fix
-     * already applied to ReviewModerationService/ReviewReportService.
+     * The test above only proves the Policy-layer self-exclusion
+     * (InstructorQualityAlertPolicy::resolve()) works for a `manager`
+     * role. Gate::before grants super_admin a global permission bypass
+     * that skips the policy entirely, and Spatie roles are not mutually
+     * exclusive, so an account holding both `instructor` and
+     * `super_admin` must not be able to resolve/dismiss/reassign a
+     * quality alert about their own conduct —
+     * InstructorQualityAlertService::authorizeResolve() has an
+     * independent self-relationship check, mirroring the identical
+     * guard on ReviewModerationService/ReviewReportService.
      */
     public function test_instructor_who_is_also_super_admin_cannot_resolve_their_own_alert(): void
     {

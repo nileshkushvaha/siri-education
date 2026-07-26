@@ -16,8 +16,8 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * A promotional-credit campaign (GAP-041, SRS §16.17-§16.19) — the
- * single authoritative source of a campaign's fixed credit amount,
+ * A promotional-credit campaign (SRS §16.17-§16.19) — the single
+ * authoritative source of a campaign's fixed credit amount,
  * currency, and limits. Status moves only through
  * PromotionalCreditService; Archived campaigns are preserved forever
  * (PreventsHardDeletion, no soft delete), mirroring ReferralCampaign.

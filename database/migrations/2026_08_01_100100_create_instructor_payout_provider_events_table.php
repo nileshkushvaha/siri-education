@@ -7,10 +7,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16A — the foundation Phase 16B's provider webhook controller
- * will write into. Nothing writes here yet: Phase 16A ingests fake-
- * provider events only through InstructorPayoutReconciliationService /
- * tests, never a public route. `payload_hash` gives duplicate
+ * Provider payout status notifications, written by
+ * InstructorPayoutExecutionService after normalizeEvent() validates
+ * them — for both the fake provider (reconciliation service / tests)
+ * and RazorpayX's public webhook route. `payload_hash` gives duplicate
  * detection independent of `provider_event_id` (a provider that
  * reissues the same logical event under a new ID is still caught).
  */

@@ -56,7 +56,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17S — review & quality notifications: event-to-recipient
+ * Review & quality notifications: event-to-recipient
  * coverage, own-permission admin resolution, replay/concurrency
  * idempotency, channel routing, and the guarantee that every payload
  * stays privacy-safe and no notification listener ever mutates
@@ -548,7 +548,7 @@ class ReviewQualityNotificationTest extends TestCase
 
         $this->assertSame(BookingPaymentStatus::Paid, $lesson->fresh()->booking->payment_status);
         $this->assertSame(LessonOutcome::Completed, $lesson->fresh()->outcome);
-        // The aggregate is only ever created/updated by the Phase 17K
+        // The aggregate is only ever created/updated by the rating
         // reconciler reacting to a *Published* review — notification
         // listeners never touch it.
         $this->assertLessThanOrEqual($aggregateCountBefore + 1, InstructorRatingAggregate::query()->count());

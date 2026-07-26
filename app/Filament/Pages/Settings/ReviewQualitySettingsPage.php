@@ -45,7 +45,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  * as it was.
  *
  * View/mutate are two distinct permissions (`settings.reviews_quality.view`
- * / `.update`, Phase 17U.2 §10) — access to see the page does not imply
+ * / `.update`) — access to see the page does not imply
  * the ability to save it; save() re-checks the update permission at
  * execution time, not just via a hidden button.
  */

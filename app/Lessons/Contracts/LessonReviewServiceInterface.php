@@ -21,7 +21,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  * ReviewAttendance:Lesson permission and a reason, is row-locked
  * against concurrent reviewers, and is audited with previous/new state.
  * Accepted evidence flows through LessonAttendanceService; outcome
- * changes delegate to the Phase 17A outcome service — this service
+ * changes delegate to the outcome service — this service
  * never touches outcome columns or attendance aggregates itself.
  */
 interface LessonReviewServiceInterface

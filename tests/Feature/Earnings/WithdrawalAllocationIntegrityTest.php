@@ -25,8 +25,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §4 — reservation-ledger invariants, both the ones the
- * services enforce and the ones the database now enforces on its own
+ * Reservation-ledger invariants, both the ones the services enforce
+ * and the ones the database enforces on its own
  * (positive amounts via CHECK, uniqueness via iwa_request_earning_unique).
  */
 class WithdrawalAllocationIntegrityTest extends TestCase

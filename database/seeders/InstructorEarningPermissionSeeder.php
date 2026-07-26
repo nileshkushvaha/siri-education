@@ -30,8 +30,8 @@ class InstructorEarningPermissionSeeder extends Seeder
     ];
 
     /**
-     * Phase 14.5 cleanup: earnings and settlement batches are immutable
-     * financial records — no workflow edits or deletes them, so the
+     * Earnings and settlement batches are immutable financial records
+     * — no workflow edits or deletes them, so the
      * Update/Delete permissions were removed entirely (policies return
      * false for everyone; lifecycle mutations use the precise Release /
      * Reverse / Approve / MarkPaid / Cancel permissions above).

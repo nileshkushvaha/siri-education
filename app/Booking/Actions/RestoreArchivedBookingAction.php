@@ -12,8 +12,8 @@ use App\Services\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single writer of booking restoration (Phase 17U.1). Restoration
- * means restoring administrative *visibility* of the preserved
+ * The single writer of booking restoration. Restoration means
+ * restoring administrative *visibility* of the preserved
  * record only — it clears `deleted_at` and nothing else. It never
  * reopens availability, recreates a reservation/meeting, reconfirms
  * payment, reverses a refund, recreates an earning, republishes a

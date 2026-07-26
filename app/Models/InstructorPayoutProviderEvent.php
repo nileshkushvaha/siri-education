@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A received provider event, already verified/normalized before this
  * row exists (see InstructorPayoutProviderInterface::normalizeEvent()).
- * The Phase 16A ingestion path is internal (reconciliation service /
- * tests) only — no public route writes here. Never hard-deleted; a
+ * The ingestion path is internal (reconciliation service / tests) only
+ * — no public route writes here. Never hard-deleted; a
  * duplicate event is recorded and linked via duplicate_of_id, not
  * discarded, so the duplicate-detection history stays auditable.
  */

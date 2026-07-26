@@ -60,9 +60,9 @@ final class InstructorPayoutEligibilityService implements InstructorPayoutEligib
             }
         }
 
-        // Country-specific override (Phase 16A.1 plumbing — no country
-        // has payout_routing configured yet; falls back to the single
-        // configured provider, which is 'fake' throughout this phase).
+        // Country-specific override — no country has payout_routing
+        // configured yet; falls back to the single configured provider
+        // (default: 'fake').
         $providerKey = $this->countryRoutedProvider($destinationCountryIso2) ?? $this->settings->payout_provider;
 
         if (! $this->providers->has($providerKey)) {

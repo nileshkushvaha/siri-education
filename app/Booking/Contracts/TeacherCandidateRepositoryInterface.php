@@ -31,7 +31,7 @@ interface TeacherCandidateRepositoryInterface
 
     /**
      * The teacher has active, admin-approved coverage for this exact
-     * topic (Phase 12.5), at a level covering $grade (null coverage
+     * topic, at a level covering $grade (null coverage
      * level = all levels; null $grade = any level accepted). Explicit
      * coverage is required when a topic is selected — whole-subject
      * rows never imply topic coverage.

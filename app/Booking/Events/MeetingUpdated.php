@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
  * manual link, or a provider retry replaced the meeting). Dispatched
  * only when the join URL actually differs — an admin re-saving without
  * a real change never fires it. ShouldDispatchAfterCommit: kept
- * consistent with the rest of the Booking event family (Phase 17U.4).
+ * consistent with the rest of the Booking event family.
  */
 final class MeetingUpdated implements ShouldDispatchAfterCommit
 {

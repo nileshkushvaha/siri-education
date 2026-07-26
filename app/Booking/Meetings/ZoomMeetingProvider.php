@@ -158,7 +158,7 @@ final class ZoomMeetingProvider implements MeetingProviderInterface
                 'join_before_host' => false,
                 'waiting_room' => true,
                 'mute_upon_entry' => true,
-                // GAP-028: driven by the full eligibility chain, not a
+                // Driven by the full eligibility chain, not a
                 // hardcode. This provider never declares
                 // MeetingRecordingProviderInterface, so
                 // "provider_capability_missing" always fails the check

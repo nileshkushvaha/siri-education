@@ -32,7 +32,7 @@ interface LessonConfirmationServiceInterface
     public function submitConfirmation(Lesson $lesson, User $user, AttendanceConfirmationData $data): LessonAttendanceConfirmation;
 
     /**
-     * In-window reports also place the Phase 17B outcome hold (via the
+     * In-window reports also place the outcome hold (via the
      * attendance record's technical-issue flag); late or
      * post-finalization reports are stored flagged for review only.
      *

@@ -11,14 +11,13 @@ use ReflectionMethod;
 use Tests\TestCase;
 
 /**
- * Phase 10.2A audit — found and fixed during the audit itself: the
- * "Validate Credentials" action previously called
+ * The "Validate Credentials" action must not call
  * saveGatewaySettings($this->data), which persists *every* gateway's
- * current form state, not just the one being validated. An admin
+ * current form state, not just the one being validated — an admin
  * mid-edit on another tab (e.g. an unsaved `stripe_enabled` toggle)
  * would have that unrelated change silently committed by clicking
- * "Validate Credentials" for Razorpay. Fixed by scoping persistence to
- * only the gateway actually being validated
+ * "Validate Credentials" for Razorpay. Persistence is scoped to only
+ * the gateway actually being validated
  * (persistCredentialFieldsForValidation()).
  */
 class PaymentGatewaySettingsAdminTest extends TestCase

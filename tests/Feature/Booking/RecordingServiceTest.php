@@ -30,8 +30,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-028 — RecordingService is the single authoritative writer for
- * the `recordings` table: idempotent registration/capture, private
+ * RecordingService is the single authoritative writer for the
+ * `recordings` table: idempotent registration/capture, private
  * storage, retry/alerting, retention/expiry, and access authorization.
  */
 final class RecordingServiceTest extends TestCase

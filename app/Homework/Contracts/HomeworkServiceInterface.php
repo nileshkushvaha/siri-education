@@ -19,7 +19,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 interface HomeworkServiceInterface
 {
     /**
-     * Phase 24J — GAP-021: create a homework assignment linked to a
+     * Create a homework assignment linked to a
      * completed lesson (booking) and/or a writable learning plan owned
      * by the student/instructor pair. At least one link is mandatory.
      *
@@ -56,7 +56,7 @@ interface HomeworkServiceInterface
     public function attentionForStudent(int $studentId, int $limit = 3): Collection;
 
     /**
-     * GAP-022: $attachment is the student's own optional submission file,
+     * $attachment is the student's own optional submission file,
      * attached atomically with the text submission — there is no separate
      * "add submission attachment later" path since resubmission is not
      * implemented.
@@ -77,7 +77,7 @@ interface HomeworkServiceInterface
     public function review(HomeworkAssignment $assignment, string $feedback, ?string $grade = null): HomeworkAssignment;
 
     /**
-     * GAP-022: instructor-provided resource upload. Only the assigning
+     * Instructor-provided resource upload. Only the assigning
      * instructor may add resources, and only while the assignment is not
      * yet graded and its linked learning plan (if any) is still writable.
      *
@@ -92,7 +92,7 @@ interface HomeworkServiceInterface
      */
     public function removeResource(User $instructor, HomeworkAssignment $assignment, string $mediaId): void;
 
-    // ── GAP-022 (37A): reusable, versioned resource library ───────────
+    // ── Reusable, versioned resource library ──────────────────────────
 
     /**
      * @param  array<string, mixed>  $attributes  title/description/subject_id/academic_level_id

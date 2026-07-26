@@ -3,8 +3,8 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 16A — payout execution settings. `payout_execution_enabled`
- * joins the three existing service-guarded switches (all four may only
+ * Payout execution settings. `payout_execution_enabled` joins the
+ * three existing service-guarded switches (all four may only
  * be flipped through FinancialFeatureConfigurationService). The other
  * keys here are plain settings (provider selection, maker-checker,
  * retry/reconciliation policy) — not kill switches, so they save

@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16A — one row per logical payout-execution attempt against an
- * approved withdrawal. `execution_sequence` numbers successive attempts
+ * One row per logical payout-execution attempt against an approved
+ * withdrawal. `execution_sequence` numbers successive attempts
  * for the same withdrawal (a fresh attempt only ever follows a
  * terminal, pre-acceptance failure); `idempotency_key` +
  * `request_fingerprint` make retrying the SAME logical execution safe.

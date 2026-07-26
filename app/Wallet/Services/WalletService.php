@@ -35,8 +35,8 @@ final class WalletService
     /**
      * Find or atomically create the user's wallet in the given currency
      * (or their resolved default currency) for NEW use. Requires an
-     * Active currency (Phase 24M — GAP-031): a wallet is never created
-     * in an inactive or soft-deleted currency for new activity. Safe to
+     * Active currency: a wallet is never created in an inactive or
+     * soft-deleted currency for new activity. Safe to
      * call concurrently — the DB's unique(user_id, currency_id) index
      * is the final guard against a duplicate wallet, not just this
      * method's own check.
@@ -49,8 +49,8 @@ final class WalletService
     }
 
     /**
-     * Phase 24M — GAP-031: the protective-credit counterpart. Resolves
-     * (creating if necessary) the user's wallet in the given currency
+     * The protective-credit counterpart. Resolves (creating if
+     * necessary) the user's wallet in the given currency
      * WITHOUT requiring it to be currently Active — an existing
      * obligation (refund, held reward, lesson-outcome credit) must
      * remain payable even after the currency is later disabled. Never
@@ -187,8 +187,8 @@ final class WalletService
     }
 
     /**
-     * Instructors may only manage their own wallet is intentionally NOT a
-     * rule here — Phase 9 exposes wallets to students read-only and to
+     * Instructors may only manage their own wallet is intentionally NOT
+     * a rule here — wallets are exposed to students read-only and to
      * admins for management. Only an actor with the Shield permission
      * (or super_admin, via Gate::before()) may freeze/unfreeze/close.
      */

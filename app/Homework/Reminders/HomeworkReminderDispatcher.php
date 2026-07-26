@@ -15,12 +15,12 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Phase 24K — GAP-020 Step 8: atomically claims a single reminder
- * identity for one candidate. Revalidates the assignment fresh, under
- * a row lock, before ever attempting to claim — a candidate that fails
- * revalidation here is skipped and no row is written at all (distinct
- * from the queued job's own last-moment revalidation in Step 10, which
- * runs against an ALREADY-claimed row). The unique index on
+ * Atomically claims a single reminder identity for one candidate.
+ * Revalidates the assignment fresh, under a row lock, before ever
+ * attempting to claim — a candidate that fails revalidation here is
+ * skipped and no row is written at all (distinct from the queued job's
+ * own last-moment revalidation, which runs against an ALREADY-claimed
+ * row). The unique index on
  * homework_due_reminders is the actual concurrency guarantee: a lost
  * race on insert is treated as "already claimed," never a duplicate
  * send. No provider/queue dispatch happens while the transaction is open.

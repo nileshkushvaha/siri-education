@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** An admin resolved an alert (with a recorded recommendation, never an automatic action). After-commit only. No listener attached in Phase 17N. */
+/** An admin resolved an alert (with a recorded recommendation, never an automatic action). After-commit only. No listener is attached to this event. */
 final class InstructorQualityAlertResolved implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

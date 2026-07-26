@@ -11,8 +11,8 @@ use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §6 — currency-aware minor-unit handling. The exponent
- * comes from the canonical currencies.minor_units column, never a
+ * Currency-aware minor-unit handling. The exponent comes from the
+ * canonical currencies.minor_units column, never a
  * hardcoded "divide by 100", and no PHP float ever touches a canonical
  * amount in either direction.
  */

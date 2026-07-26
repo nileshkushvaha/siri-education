@@ -23,11 +23,11 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * SRS §20.8 / GAP-027: FeatureSettings::recording_enabled is the
- * platform-wide outer switch over MeetingSettings::recording_enabled.
- * These tests cover RecordingAvailabilityResolver in isolation and the
- * enforcement boundaries around it — never GAP-028 (recording capture,
- * storage, retention, or provider ingestion), which stays unimplemented.
+ * SRS §20.8: FeatureSettings::recording_enabled is the platform-wide
+ * outer switch over MeetingSettings::recording_enabled. These tests
+ * cover RecordingAvailabilityResolver in isolation and the enforcement
+ * boundaries around it — not the full capture/storage/retention
+ * pipeline, which is covered by RecordingService/RecordingCaptureJobAndSweepTest.
  */
 class RecordingFeatureToggleTest extends TestCase
 {
@@ -183,9 +183,10 @@ class RecordingFeatureToggleTest extends TestCase
         $client->shouldReceive('createMeeting')
             ->once()
             ->withArgs(function (string $hostUser, array $payload): bool {
-                // GAP-028 (capture/storage/retention) remains unimplemented —
-                // Zoom's payload must stay unconditional regardless of the
-                // resolver's result.
+                // The booking here is confirmed+paid but has no recorded
+                // participant consent, so RecordingEligibilityResolver still
+                // resolves ineligible even with both toggles on — auto_recording
+                // stays 'none'.
                 $this->assertSame('none', $payload['settings']['auto_recording']);
 
                 return true;

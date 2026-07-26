@@ -14,10 +14,9 @@ use App\Earnings\Exceptions\PayoutProviderException;
 use Illuminate\Http\Request;
 
 /**
- * The provider-neutral payout boundary. Implement per provider (the
- * fake provider today; a future real payout gateway adapter outside
- * this phase's scope), register in EarningServiceProvider, select via
- * InstructorEarningSettings::payout_provider.
+ * The provider-neutral payout boundary. Implemented per provider
+ * (fake and RazorpayX today), registered in EarningServiceProvider,
+ * selected via InstructorEarningSettings::payout_provider.
  * InstructorPayoutExecutionService never knows which provider is
  * active. Deliberately distinct from
  * Booking\Contracts\PaymentProviderInterface: payout semantics
@@ -59,9 +58,8 @@ interface InstructorPayoutProviderInterface
     public function healthCheck(): PayoutProviderHealth;
 
     /**
-     * The provider's static, declared shape (§5/§6 of the Phase 16A.1
-     * routing audit). The generic payout domain reads this instead of
-     * ever branching on a provider name — see
+     * The provider's static, declared shape. The generic payout domain
+     * reads this instead of ever branching on a provider name — see
      * `InstructorPayoutEligibilityService`, which is the only caller
      * that should need it.
      */

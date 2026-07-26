@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Persists the earning row for an eligible completed lesson from a
  * resolved compensation agreement. Eligibility, idempotency, and the
- * amount resolution are upstream jobs — this action only writes.
- * Phase 14.2: no student amount or platform margin is ever persisted
- * for new earnings; the immutable agreement snapshot lives in metadata.
+ * amount resolution are upstream jobs — this action only writes. No
+ * student amount or platform margin is ever persisted for new earnings;
+ * the immutable agreement snapshot lives in metadata.
  */
 final class CreateInstructorEarningFromLessonAction
 {

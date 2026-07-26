@@ -24,9 +24,8 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 18C data-provenance decision (Outcome B, §6.1): the recurring-
- * booking workflow already knew the recurrence frequency at creation
- * time but never persisted it. These tests prove the new
+ * The recurring-booking workflow knows the recurrence frequency at
+ * creation time and persists it. These tests prove the
  * `bookings.recurrence_frequency` column is populated correctly by
  * BOTH independent recurring-booking creation paths
  * (`WizardBookingService`/`StudentBookingService`), left `null` for

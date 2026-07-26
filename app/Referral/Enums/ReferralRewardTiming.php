@@ -7,7 +7,7 @@ namespace App\Referral\Enums;
 /**
  * When an eligible reward becomes creditable (SRS 16.14). Immediate
  * requires hold_days = 0; AfterHoldDays requires hold_days >= 1 — both
- * enforced by a DB CHECK. Phase 19D consumes this; nothing credits yet.
+ * enforced by a DB CHECK.
  */
 enum ReferralRewardTiming: string
 {

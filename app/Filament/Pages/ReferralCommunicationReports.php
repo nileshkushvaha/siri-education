@@ -20,8 +20,8 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18G — Referrals, Quality & Communications (SRS Chapters 16–19).
- * Three independently permission-gated sections delegated entirely to
+ * Referrals, Quality & Communications (SRS Chapters 16–19). Three
+ * independently permission-gated sections delegated entirely to
  * {@see ReferralCommunicationReportServiceInterface}; this page holds
  * only filter state. A viewer sees exactly the sections their
  * permissions allow; the page is reachable when at least one section
@@ -50,7 +50,8 @@ class ReferralCommunicationReports extends Page
     public ?string $customEnd = null;
 
     // Livewire hydrates select values as strings — kept ?string, cast
-    // once in filters() (Phase 18C hydration-regression lesson).
+    // once in filters() rather than typed here, to avoid a hydration
+    // regression.
     public ?string $currencyCode = null;
 
     public ?string $instructorId = null;

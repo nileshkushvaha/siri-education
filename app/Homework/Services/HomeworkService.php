@@ -57,18 +57,16 @@ final class HomeworkService implements HomeworkServiceInterface
         ?string $bookingId = null,
         ?int $learningPlanId = null,
     ): HomeworkAssignment {
-        // Phase 24J — GAP-021: explicit actor context. Only instructors
+        // Explicit actor context. Only instructors
         // assign homework (SRS §11.32); there is no admin assignment
         // path, and Gate::before never reaches direct service calls.
         if (! $instructor->hasRole('instructor')) {
             throw new AuthorizationException('Only instructors can assign homework.');
         }
 
-        // GAP-029: homework had no enforcement boundary for
-        // FeatureSettings::homework_enabled before this phase (only UI
-        // menu badges read it) — this is a new gate, not a replacement
-        // of one. Resolved against the instructor's own country, since
-        // assigning homework is an instructor action (requirement #3).
+        // Country-level Homework feature enforcement. Resolved against
+        // the instructor's own country, since assigning homework is an
+        // instructor action.
         if (! $this->countryFeatures->isEnabled(CountryFeature::Homework, $this->countryResolver->forInstructor($instructor))) {
             throw new HomeworkException('Homework is not currently available for your country.');
         }
@@ -200,7 +198,7 @@ final class HomeworkService implements HomeworkServiceInterface
     public function submit(HomeworkAssignment $assignment, string $submissionText, ?UploadedFile $attachment = null): HomeworkAssignment
     {
         return DB::transaction(function () use ($assignment, $submissionText, $attachment): HomeworkAssignment {
-            // Phase 24H.2 — GAP-013: a submission is BY DEFINITION the
+            // A submission is BY DEFINITION the
             // assignment's student acting (HomeworkAssignmentPolicy::submit
             // already restricts the HTTP actor to exactly that student),
             // so the lifecycle guard applies to the assignment's student
@@ -258,7 +256,7 @@ final class HomeworkService implements HomeworkServiceInterface
     }
 
     /**
-     * GAP-022: a small, fixed bound — no existing configurable
+     * A small, fixed bound — no existing configurable
      * size/count-limit settings pattern exists anywhere in the codebase
      * (Messaging/KYC uploads hardcode their limits in FormRequest/Livewire
      * validation rules too), so this mirrors that precedent rather than
@@ -356,7 +354,7 @@ final class HomeworkService implements HomeworkServiceInterface
         }
     }
 
-    // ── GAP-022 (37A): reusable, versioned resource library ───────────
+    // ── Reusable, versioned resource library ──────────────────────────
 
     public function createResource(User $instructor, array $attributes): HomeworkResource
     {

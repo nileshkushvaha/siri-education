@@ -19,9 +19,9 @@ use App\Settings\InstructorEarningSettings;
 use Carbon\CarbonImmutable;
 
 /**
- * Phase 14.4 — real multi-process races on the compensation domain
- * (same harness as the Phase 15.1 withdrawal/settlement races): the
- * instructor owner-row lock plus the DB uniqueness backstops
+ * Real multi-process races on the compensation domain (same harness as
+ * the withdrawal/settlement races): the instructor owner-row lock plus
+ * the DB uniqueness backstops
  * (ica_active_owner_unique, icp_agreement_period_unique,
  * ie_source_unique) must hold under genuine parallel MySQL connections.
  */

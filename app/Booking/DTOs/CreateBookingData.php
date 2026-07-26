@@ -11,14 +11,14 @@ use Carbon\CarbonImmutable;
 /**
  * Immutable input for requesting a booking. Built by FormRequests (HTTP)
  * or callers such as console commands — never inside Services. Every
- * booking has an authenticated student (Phase 17U.3 — no unauthenticated
- * guest booking concept exists anywhere in this domain).
+ * booking has an authenticated student — no unauthenticated guest
+ * booking concept exists anywhere in this domain.
  */
 final readonly class CreateBookingData
 {
     /**
      * @param  array<string, mixed>  $meta  type-specific payload (subject, grade, recurring_group, …)
-     * @param  RecurrenceFrequency|null  $recurrenceFrequency  Phase 18C data-provenance field — set only by
+     * @param  RecurrenceFrequency|null  $recurrenceFrequency  Data-provenance field — set only by
      *                                                         the recurring-booking creation path (never inferred later), null for every single/non-recurring
      *                                                         booking. This is the sole authoritative source for reporting's single/daily/weekly classification.
      */

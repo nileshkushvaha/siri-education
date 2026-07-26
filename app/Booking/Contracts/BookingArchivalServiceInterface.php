@@ -13,8 +13,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * Single entry point for administratively archiving/restoring a
- * booking (Phase 17U.1 — remediates Phase 17T Finding S-2). Archiving
- * always soft-deletes; nothing here — or anywhere reachable from
+ * booking. Archiving always soft-deletes; nothing here — or anywhere reachable from
  * it — ever physically deletes a booking or any dependent record.
  */
 interface BookingArchivalServiceInterface

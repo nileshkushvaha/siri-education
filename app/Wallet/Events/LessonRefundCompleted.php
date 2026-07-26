@@ -11,10 +11,10 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * A lesson-outcome wallet refund was credited (Phase 17F). Fires at
- * most once per disposition (the ledger idempotency key guarantees a
- * single credit), only after the transaction commits. No listeners are
- * attached in this phase — notifications belong to a later one.
+ * A lesson-outcome wallet refund was credited. Fires at most once per
+ * disposition (the ledger idempotency key guarantees a single credit),
+ * only after the transaction commits. Listened to by
+ * ReverseReferralRewardOnLessonRefundCompleted.
  */
 final class LessonRefundCompleted implements ShouldDispatchAfterCommit
 {

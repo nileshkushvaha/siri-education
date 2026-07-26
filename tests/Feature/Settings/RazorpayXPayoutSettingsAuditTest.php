@@ -20,8 +20,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24S — GAP: RazorpayXPayoutSettingsPage had ZERO test coverage
- * before this phase. Its main save() called an undefined
+ * RazorpayXPayoutSettingsPage previously had no test coverage. Its main
+ * save() called an undefined
  * saveEncryptedField() method (a real, previously-unreachable-without-
  * crashing production bug — this class never extended PaymentSettingsPage,
  * which is where that helper actually lives) — fixed inline as part of

@@ -31,8 +31,8 @@ interface InstructorEarningServiceInterface
     public function createFromLesson(Lesson $lesson): ?InstructorEarning;
 
     /**
-     * Phase 17G — create an admin-approved reconciliation earning for a
-     * lesson that never completed (approved student no-show / both-absent
+     * Create an admin-approved reconciliation earning for a lesson that
+     * never completed (approved student no-show / both-absent
      * compensation, or an override to Completed whose earning is
      * missing). Same compensation resolver, creation action, and
      * snapshot as createFromLesson — only the completed-status
@@ -47,8 +47,8 @@ interface InstructorEarningServiceInterface
     public function createForReconciliation(Lesson $lesson, ?User $actor = null, ?string $reasonCode = null): ?InstructorEarning;
 
     /**
-     * GAP-008 — create the earning for an already-awarded demo-to-paid
-     * conversion incentive. The award itself (idempotency, eligibility,
+     * Create the earning for an already-awarded demo-to-paid conversion
+     * incentive. The award itself (idempotency, eligibility,
      * concurrency) is DemoConversionIncentiveService's responsibility —
      * this only writes the earning, exactly once per award, reusing
      * the same settings-gated (earnings_enabled) and hold_days
@@ -74,7 +74,7 @@ interface InstructorEarningServiceInterface
     /**
      * Restore a disputed-hold earning to pending_hold after the dispute
      * resolved in the instructor's favour (the existing restore
-     * transition, exposed for Phase 17G reconciliation). Idempotent.
+     * transition, exposed for earning reconciliation). Idempotent.
      *
      * @throws EarningException
      */

@@ -25,9 +25,9 @@ use App\Models\Subject;
  * that same instructor — it is never used as a tie-breaker or a
  * fallback source for anything, it's a full override. No fallback
  * exists beyond this — a miss always throws, and
- * `BookingPriceCalculator` (the only caller) does not catch it.
- * `booking_types.price`/`currency` were removed in Phase 10.2D-Cleanup;
- * this resolver's output is the sole source of a paid lesson's price.
+ * `BookingPriceCalculator` (the only caller) does not catch it. There
+ * is no `booking_types.price`/`currency` fallback — this resolver's
+ * output is the sole source of a paid lesson's price.
  */
 final class StudentLessonPriceResolver
 {

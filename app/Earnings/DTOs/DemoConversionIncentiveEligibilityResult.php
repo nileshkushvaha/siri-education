@@ -7,10 +7,10 @@ namespace App\Earnings\DTOs;
 use App\Models\Lesson;
 
 /**
- * GAP-008 — every branch of DemoConversionIncentiveEligibilityResolver
- * returns a stable, machine-readable reason code (never a boolean
- * alone), matching this codebase's established eligibility-DTO
- * convention (e.g. RecordingEligibilityResult).
+ * Every branch of DemoConversionIncentiveEligibilityResolver returns a
+ * stable, machine-readable reason code (never a boolean alone),
+ * matching this codebase's established eligibility-DTO convention
+ * (e.g. RecordingEligibilityResult).
  */
 final readonly class DemoConversionIncentiveEligibilityResult
 {

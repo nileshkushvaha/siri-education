@@ -18,7 +18,7 @@ use Illuminate\Queue\SerializesModels;
  * re-fire it: markPaid() requires payment_status === Pending.
  * ShouldDispatchAfterCommit: kept consistent with the rest of the
  * Booking event family — a queued listener must never observe a
- * payment settlement that isn't durably committed yet (Phase 17U.4).
+ * payment settlement that isn't durably committed yet.
  */
 final class BookingPaymentSucceeded implements ShouldDispatchAfterCommit
 {

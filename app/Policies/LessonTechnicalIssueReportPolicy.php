@@ -10,10 +10,10 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Phase 41A — evidence visibility is scoped to the reporter plus
- * whoever can already review lesson attendance (delegates to the
- * existing LessonPolicy::reviewAttendance() ability, reusing
- * ReviewAttendance:Lesson rather than seeding a new permission).
+ * Evidence visibility is scoped to the reporter plus whoever can
+ * already review lesson attendance (delegates to the existing
+ * LessonPolicy::reviewAttendance() ability, reusing ReviewAttendance:Lesson
+ * rather than seeding a new permission).
  *
  * Deliberately NOT extended to "the other lesson participant": a
  * report may reflect on the other party's performance (SRS §12.28 —

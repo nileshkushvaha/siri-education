@@ -28,8 +28,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * GAP-028 (SRS §12.18-21/31) — the single authoritative boundary for
- * the recording pipeline: eligibility (via RecordingEligibilityResolver),
+ * SRS §12.18-21/31 — the single authoritative boundary for the
+ * recording pipeline: eligibility (via RecordingEligibilityResolver),
  * provider capture/import, private storage (Media Library, 'local'
  * disk — never public), access authorization, and retention/expiry.
  * Neither BookingMeetingService, a provider, nor a Filament resource

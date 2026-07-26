@@ -10,8 +10,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 17 closure audit — InstructorEarning had a state-machine guard
- * on `status` transitions (TransitionInstructorEarningAction) but no
+ * InstructorEarning had a state-machine guard on `status` transitions
+ * (TransitionInstructorEarningAction) but no
  * model-level guard protecting its monetary identity
  * (earning_amount_minor/currency_id/currency_code), unlike Wallet and
  * InstructorRatingAggregate which both guard their financial columns

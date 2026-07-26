@@ -8,9 +8,7 @@ namespace App\Reviews\Enums;
  * Lifecycle of one review report. `canTransitionTo()` is the single
  * source of truth — TransitionReviewReportStatusAction guards every
  * write through this, mirroring StudentReviewStatus. `Withdrawn` is
- * reserved vocabulary (no submission/resolution path produces it in
- * this phase) — same precedent as Hidden/Rejected/Archived being
- * reserved on LessonReview in Phase 17I until 17J implemented them.
+ * reserved vocabulary — no submission/resolution path produces it yet.
  */
 enum ReviewReportStatus: string
 {

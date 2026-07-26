@@ -26,8 +26,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §10 — approval re-verifies every financial invariant on
- * locked rows and fails atomically on any breach. Nothing is silently
+ * Approval re-verifies every financial invariant on locked rows and
+ * fails atomically on any breach. Nothing is silently
  * repaired: each scenario below corrupts one invariant out-of-band and
  * proves approval refuses, leaving the request in its prior state.
  */

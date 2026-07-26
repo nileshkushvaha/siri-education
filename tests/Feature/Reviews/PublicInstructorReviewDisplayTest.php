@@ -30,7 +30,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17L — public review display: inclusion/exclusion on the
+ * Public review display: inclusion/exclusion on the
  * existing instructor profile page, student-identity masking, the
  * derived (never client-controlled) Verified Lesson badge, aggregate
  * reuse, pagination/ordering, and the guarantee that no moderation
@@ -238,8 +238,8 @@ class PublicInstructorReviewDisplayTest extends TestCase
 
         $response = $this->get(route('instructors.show', $instructor))->assertOk();
         $response->assertDontSee('nilesh-private@example.com');
-        // Phase 18A: the review's own primary key now legitimately
-        // reaches the page via the embedded `reviews.report-review`
+        // The review's own primary key legitimately reaches the page
+        // via the embedded `reviews.report-review`
         // Livewire component (needed so the "Report Review" action
         // targets the right review server-side) — it carries no
         // student/booking/moderation data itself, and every write path
@@ -386,8 +386,8 @@ class PublicInstructorReviewDisplayTest extends TestCase
         $review = $page->items()[0];
 
         $this->assertInstanceOf(PublicInstructorReviewData::class, $review);
-        // Phase 18A: the review's own primary key is now intentionally
-        // present — needed to target the "Report Review" action — but
+        // The review's own primary key is intentionally present —
+        // needed to target the "Report Review" action — but
         // nothing else that could identify the student, booking, or an
         // internal moderation/quality decision.
         $this->assertSame($submitted->id, $review->id);

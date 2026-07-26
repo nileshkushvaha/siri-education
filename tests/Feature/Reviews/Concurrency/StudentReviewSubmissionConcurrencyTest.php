@@ -17,9 +17,8 @@ use App\Reviews\Enums\LessonReviewEligibilityStatus;
 use App\Settings\ReviewSettings;
 
 /**
- * Phase 17V closure re-audit (Section 11) — review-eligibility
- * consumption was previously only proven via sequential stale-copy
- * simulation (StudentReviewSubmissionTest::
+ * Review-eligibility consumption is otherwise only proven via
+ * sequential stale-copy simulation (StudentReviewSubmissionTest::
  * test_concurrent_submissions_create_one_review). This is a TRUE
  * cross-process race: two independent worker processes call
  * StudentReviewService::submit() for the same eligibility at the same

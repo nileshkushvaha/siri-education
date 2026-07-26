@@ -34,7 +34,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17K — instructor rating aggregate foundation: event-driven
+ * Instructor rating aggregate foundation: event-driven
  * reconciliation (add/remove/restore, idempotency, out-of-order
  * convergence), average/distribution/dimension calculation, paid vs
  * demo separation, the read-only summary DTO, the rebuild repair
@@ -455,7 +455,7 @@ class InstructorRatingAggregateTest extends TestCase
         $this->submitPublicReview()->fresh();
 
         foreach (['instructor_review_listings', 'public_reviews', 'review_feed'] as $table) {
-            $this->assertFalse(Schema::hasTable($table), "Phase 17K must not create a {$table} table.");
+            $this->assertFalse(Schema::hasTable($table), "The rating aggregate must not create a {$table} table.");
         }
     }
 
@@ -468,9 +468,9 @@ class InstructorRatingAggregateTest extends TestCase
 
         // Faked only around the moderation action itself — lesson
         // finalization upstream legitimately fires the pre-existing
-        // booking-completion notification, unrelated to this phase.
-        // Phase 17S later attaches ReviewHiddenNotification to the
-        // student for a hidden review — that is the one expected
+        // booking-completion notification, unrelated here.
+        // ReviewHiddenNotification is attached to the student for a
+        // hidden review — that is the one expected
         // exception to "no notification" here; the point of this test
         // is that hiding never touches marketplace ranking.
         Notification::fake();
@@ -499,7 +499,7 @@ class InstructorRatingAggregateTest extends TestCase
         $this->assertSame(0, DB::table('lesson_financial_dispositions')->count());
     }
 
-    // ── 27. Phase 17H–17J regression ──────────────────────────────────────
+    // ── 27. Eligibility/moderation regression ──────────────────────────────
 
     public function test_review_moderation_transitions_still_work_unaffected(): void
     {

@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 /**
  * A review-eligibility window opened (first creation, or restored
  * after an outcome correction back to Completed). After-commit only.
- * No notification or review-form listeners attached in Phase 17H.
+ * Listened to by SendReviewRequestedNotification.
  */
 final class LessonReviewEligibilityOpened implements ShouldDispatchAfterCommit
 {

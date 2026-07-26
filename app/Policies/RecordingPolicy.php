@@ -9,9 +9,9 @@ use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
- * GAP-028 requirement #6 — only the lesson's own student/instructor, or
- * an admin explicitly holding View:Recording, may access a recording.
- * Gate::before still grants super_admin regardless of this policy.
+ * Only the lesson's own student/instructor, or an admin explicitly
+ * holding View:Recording, may access a recording. Gate::before still
+ * grants super_admin regardless of this policy.
  */
 class RecordingPolicy
 {

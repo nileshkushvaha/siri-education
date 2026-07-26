@@ -17,7 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\PromotionalCredits\Concerns\CreatesPromotionalCreditFixtures;
 use Tests\TestCase;
 
-/** GAP-041 / SRS §16.17-§16.19: campaign creation, rule edits, and lifecycle transitions. */
+/** SRS §16.17-§16.19: campaign creation, rule edits, and lifecycle transitions. */
 class PromotionalCreditCampaignTest extends TestCase
 {
     use CreatesPromotionalCreditFixtures, RefreshDatabase;

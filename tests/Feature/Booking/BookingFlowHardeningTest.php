@@ -333,9 +333,9 @@ class BookingFlowHardeningTest extends TestCase
             ->set('lockedInstructorId', $otherTeacher->id);
     }
 
-    // ── Guest visitor cannot book (Phase 17U.3: no unauthenticated
-    // booking capability exists anywhere — the entire /api/v1/guest
-    // surface was removed, not just gated) ────────────────────────────
+    // ── Guest visitor cannot book (no unauthenticated booking
+    // capability exists anywhere — the entire /api/v1/guest surface
+    // was removed, not just gated) ──────────────────────────────────
 
     public function test_unauthenticated_visitor_is_redirected_to_login_from_the_wizard(): void
     {
@@ -467,9 +467,9 @@ class BookingFlowHardeningTest extends TestCase
     }
 
     /**
-     * Phase 17U.1 — bookings are never deleted; the "delete" action
-     * itself no longer exists on this page (replaced by "archive",
-     * which soft-deletes through BookingArchivalService).
+     * Bookings are never deleted; the "delete" action itself does not
+     * exist on this page (replaced by "archive", which soft-deletes
+     * through BookingArchivalService).
      */
     public function test_direct_archive_of_active_booking_is_blocked(): void
     {

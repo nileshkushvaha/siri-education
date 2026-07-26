@@ -11,13 +11,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 17 closure audit — InstructorRatingAggregate already guarded
- * its sum/count columns against any write outside
- * InstructorRatingAggregateService, but its sibling ledger table
- * ReviewRatingContribution had no equivalent guard: a stray
- * ReviewRatingContribution::find($id)->update([...]) would silently
- * desync the ledger from the aggregate it feeds, with no exception and
- * no audit trail. Both models now share the same
+ * InstructorRatingAggregate guards its sum/count columns against any
+ * write outside InstructorRatingAggregateService. Its sibling ledger
+ * table ReviewRatingContribution must carry an equivalent guard: a
+ * stray ReviewRatingContribution::find($id)->update([...]) would
+ * silently desync the ledger from the aggregate it feeds, with no
+ * exception and no audit trail. Both models share the same
  * GUARDED_COLUMNS + withAuthorizedMutation() pattern.
  */
 class RatingAggregateMutationGuardTest extends TestCase

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Enums;
 
-/** The exact 12 issue types Phase 16C specifies — own enum, never shared with the payout domain's PayoutReconciliationIssueType. */
+/** The exact 12 issue types this domain specifies — own enum, never shared with the payout domain's PayoutReconciliationIssueType. */
 enum BookingPaymentReconciliationIssueType: string
 {
     case UnknownPaymentOutcome = 'unknown_payment_outcome';

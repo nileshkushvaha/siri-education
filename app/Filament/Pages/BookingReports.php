@@ -69,7 +69,7 @@ class BookingReports extends Page
         ];
     }
 
-    /** Phase 18I hardening: the legacy KPI CSV now requires the shared export permission. */
+    /** The legacy KPI CSV requires the shared export permission. */
     public static function canExportKpis(): bool
     {
         $user = auth()->user();
@@ -93,7 +93,7 @@ class BookingReports extends Page
     {
         abort_unless(self::canExportKpis(), 403);
 
-        // Phase 18I: the legacy export is audited through the shared lifecycle,
+        // The legacy export is audited through the shared lifecycle,
         // keeping its CSV columns and filename fully compatible.
         $auditor = app(ReportExportAuditor::class);
         $context = ExportRequestContext::forExport(

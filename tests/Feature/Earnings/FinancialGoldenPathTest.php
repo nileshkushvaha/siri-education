@@ -34,8 +34,8 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 14.4 — the complete lesson-to-withdrawal integration in ONE
- * test, exercising every domain boundary in sequence through the real
+ * The complete lesson-to-withdrawal integration in ONE test, exercising
+ * every domain boundary in sequence through the real
  * services: agreement (admin decision) → preflight → enable → paid
  * lesson completion → agreement resolution → earning → hold → release →
  * available balance → withdrawal reservation. No external money moves

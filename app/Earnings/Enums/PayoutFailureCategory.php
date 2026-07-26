@@ -27,7 +27,7 @@ enum PayoutFailureCategory: string
     case InsufficientProviderBalance = 'insufficient_provider_balance';
     case ConfigurationError = 'configuration_error';
 
-    /** RazorpayX-specific (Phase 16B) — IP allowlisting/auth/config problems are never the instructor's fault and never auto-retried. */
+    /** RazorpayX-specific — IP allowlisting/auth/config problems are never the instructor's fault and never auto-retried. */
     case ProviderIpNotAllowlisted = 'provider_ip_not_allowlisted';
 
     /** RazorpayX-specific — the provisioned Contact was rejected or no longer resolves; requires provisioning to be redone, not a retry. */

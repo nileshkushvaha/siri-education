@@ -49,10 +49,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17U.1 — booking soft-delete/archival remediation of Phase 17T
- * Finding S-2: archive/restore workflow, idempotency, authorization,
- * permanent preservation of the entire historical dependency tree, and
- * that restoration replays no side effect.
+ * Booking soft-delete/archival: archive/restore workflow, idempotency,
+ * authorization, permanent preservation of the entire historical
+ * dependency tree, and that restoration replays no side effect.
  */
 class BookingArchivalTest extends TestCase
 {
@@ -299,7 +298,7 @@ class BookingArchivalTest extends TestCase
     public function test_foreign_key_metadata_reports_non_cascade_rules_for_historical_relations(): void
     {
         $db = DB::getDatabaseName();
-        // Only the historical-record FKs Phase 17U.1 remediated —
+        // Only the historical-record FKs are covered here —
         // booking_guests/booking_meetings are deliberately excluded
         // (booking configuration/connection metadata, not themselves
         // historical educational/financial/audit records).
@@ -333,12 +332,11 @@ class BookingArchivalTest extends TestCase
     }
 
     /**
-     * `User` has no `SoftDeletes` in this codebase (out of this
-     * phase's scope to add), so `$user->delete()` is a physical
-     * deletion attempt. Phase 17U.1 §11 requires that attempt be
-     * restricted when historical records reference the account —
-     * `bookings.student_id`/`instructor_id` are now RESTRICT, so the
-     * database itself rejects it and every dependent row survives.
+     * `User` has no `SoftDeletes` in this codebase, so
+     * `$user->delete()` is a physical deletion attempt. That attempt
+     * must be restricted when historical records reference the
+     * account — `bookings.student_id`/`instructor_id` are RESTRICT, so
+     * the database itself rejects it and every dependent row survives.
      */
     public function test_user_physical_deletion_is_restricted_and_booking_history_survives(): void
     {

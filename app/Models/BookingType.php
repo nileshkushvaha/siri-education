@@ -19,10 +19,9 @@ use Spatie\Activitylog\Support\LogOptions;
  * code driver (BookingTypeInterface) in BookingTypeRegistry — the row
  * holds tunable values (duration), the driver holds behavior.
  *
- * Phase 10.2D-Cleanup: this model defines booking *behavior* only — it
- * does not own the student-facing price, and never did after Phase
- * 10.2D. `is_paid` is the only pricing-adjacent field left here (paid
- * or not); the amount itself lives exclusively in
+ * This model defines booking *behavior* only — it does not own the
+ * student-facing price. `is_paid` is the only pricing-adjacent field
+ * left here (paid or not); the amount itself lives exclusively in
  * `StudentLessonPrice` (see BookingPriceCalculator).
  */
 class BookingType extends Model

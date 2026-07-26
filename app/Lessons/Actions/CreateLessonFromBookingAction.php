@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Persists the lesson row for a confirmed booking, snapshotting the
- * academic context (subject/topic) from the booking's Phase 12.5 meta.
+ * academic context (subject/topic) from the booking's meta.
  * Eligibility and idempotency are LessonLifecycleService's job — this
  * action only resolves the snapshot and writes.
  *
- * SRS §6.17.5 / §6.17.10 (GAP-023): also resolves an optional learning-
+ * SRS §6.17.5 / §6.17.10: also resolves an optional learning-
  * plan association through LessonLearningPlanResolver — server-side
  * only, never a client-supplied plan id. Demo (unpaid) bookings are
  * never candidates for association: no SRS rule or existing workflow

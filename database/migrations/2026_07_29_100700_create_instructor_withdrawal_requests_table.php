@@ -7,15 +7,16 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Instructor withdrawal requests (Phase 15 — no money moves).
- * One request = one currency; the payment destination is captured once
- * at creation into `encrypted_payout_method_snapshot` and never
- * regenerated from the (mutable/disable-able) payout method. Money is
- * integer minor units only. `processing`/`paid`/`failed` columns exist
- * for the future payout-execution phase but are unreachable from any
- * Phase 15 UI. No settlement_batch_id: Phase 14 batches settle earnings
- * directly and are semantically parallel to withdrawals — linking them
- * is deferred to the execution phase. Never hard-deleted.
+ * Instructor withdrawal requests — creating one only reserves earnings;
+ * it never moves money on its own. One request = one currency; the
+ * payment destination is captured once at creation into
+ * `encrypted_payout_method_snapshot` and never regenerated from the
+ * (mutable/disable-able) payout method. Money is integer minor units
+ * only. `processing`/`paid`/`failed` columns are written by
+ * InstructorPayoutExecutionService once a request is approved and
+ * queued for execution. No settlement_batch_id: settlement batches
+ * settle earnings directly and are semantically parallel to
+ * withdrawals — the two mechanisms remain unlinked. Never hard-deleted.
  */
 return new class extends Migration
 {

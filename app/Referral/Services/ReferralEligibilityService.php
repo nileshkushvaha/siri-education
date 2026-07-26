@@ -117,7 +117,7 @@ final class ReferralEligibilityService implements ReferralEligibilityServiceInte
             $reward = DB::transaction(function () use ($lesson, $attribution, $campaign, $payment, $calculation, $referred): ?ReferralReward {
                 // Canonical lock: the attribution row serializes every
                 // reward decision for this referred student — including
-                // Phase 19E attribution corrections. The referrer is
+                // attribution corrections. The referrer is
                 // re-derived from the LOCKED row so a correction that
                 // committed after the pre-checks can never leave a reward
                 // pointing at the stale referrer.
@@ -216,11 +216,11 @@ final class ReferralEligibilityService implements ReferralEligibilityServiceInte
             return false;
         }
 
-        // Phase 24H.2 — GAP-013: aligned with the strict lifecycle rule
-        // — the referrer must be exactly Active (Registered/null no
-        // longer qualify), matching ReferralAttributionService. This
-        // gates EARNING NEW rewards only; already-earned/held rewards
-        // remain creditable (see ReferralRewardService, Phase 24H fix).
+        // Aligned with the strict lifecycle rule — the referrer must be
+        // exactly Active (Registered/null do not qualify), matching
+        // ReferralAttributionService. This gates EARNING NEW rewards
+        // only; already-earned/held rewards remain creditable (see
+        // ReferralRewardService).
         return $referrer->profile?->student_status === StudentStatus::Active;
     }
 

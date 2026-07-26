@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Reviews\Enums;
 
 /**
- * Lifecycle of one submitted student review. Phase 17I produces
- * Submitted, Private, or Flagged; Phase 17J adds Published plus the
- * moderation transitions (Hidden/Rejected/Archived were reserved
- * vocabulary in 17I, unused until now). `canTransitionTo()` is the
- * single source of truth — TransitionReviewStatusAction guards every
- * write, mirroring LessonStatus/InstructorEarningStatus.
+ * Lifecycle of one submitted student review. A new review starts
+ * Submitted, Private, or Flagged; Published plus the moderation
+ * transitions (Hidden/Rejected/Archived) follow from there.
+ * `canTransitionTo()` is the single source of truth —
+ * TransitionReviewStatusAction guards every write, mirroring
+ * LessonStatus/InstructorEarningStatus.
  */
 enum StudentReviewStatus: string
 {
@@ -58,7 +58,7 @@ enum StudentReviewStatus: string
         };
     }
 
-    /** The only status a public profile/aggregate (a future phase) may ever surface. */
+    /** The only status a public profile/aggregate may ever surface. */
     public function isPubliclyVisible(): bool
     {
         return $this === self::Published;
@@ -84,14 +84,14 @@ enum StudentReviewStatus: string
     /**
      * @return list<self>
      *
-     * Phase 17R adds the student-edit re-moderation paths: an edited
-     * Published review immediately leaves public visibility (→
-     * Submitted when the edit is clean, → Flagged when it tripped the
-     * sanitizer); an edited Flagged review with clean content re-enters
-     * the automatic pipeline (→ Submitted); an edited Private feedback
-     * that trips the sanitizer is held (→ Flagged) — its review_mode
-     * stays private, so an admin approval returns it to Private, never
-     * public (the mode-derived approve target Phase 17J established).
+     * Student-edit re-moderation paths: an edited Published review
+     * immediately leaves public visibility (→ Submitted when the edit
+     * is clean, → Flagged when it tripped the sanitizer); an edited
+     * Flagged review with clean content re-enters the automatic
+     * pipeline (→ Submitted); an edited Private feedback that trips the
+     * sanitizer is held (→ Flagged) — its review_mode stays private, so
+     * an admin approval returns it to Private, never public (the
+     * mode-derived approve target).
      */
     public function allowedTransitions(): array
     {

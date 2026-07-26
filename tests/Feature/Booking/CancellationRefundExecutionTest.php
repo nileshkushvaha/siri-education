@@ -35,7 +35,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24C — integration tests exercising the full runtime path:
+ * Integration tests exercising the full runtime path:
  * BookingService::cancel() → frozen CancellationRefundDecision →
  * BookingCancelled(after-commit) → SyncPaymentOnCancellation →
  * BookingPaymentService::refundToWallet()/recordIneligibleCancellation().
@@ -459,9 +459,9 @@ class CancellationRefundExecutionTest extends TestCase
         $this->assertTrue($auditEntry, 'Ineligible cancellation must also be traceable in the unified audit log.');
     }
 
-    // ── Phase 25B (GAP-002) — a wallet-paid booking refunds through the ────
-    // same unmodified pipeline as a gateway-paid booking: SyncPaymentOnCancellation
-    // only ever looks for a Captured BookingPayment row regardless of provider.
+    // ── A wallet-paid booking refunds through the same unmodified ──────────
+    // pipeline as a gateway-paid booking: SyncPaymentOnCancellation only
+    // ever looks for a Captured BookingPayment row regardless of provider.
 
     public function test_wallet_paid_booking_cancellation_credits_the_wallet_through_the_unmodified_refund_pipeline(): void
     {

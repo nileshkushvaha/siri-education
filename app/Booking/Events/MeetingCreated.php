@@ -20,7 +20,7 @@ use Illuminate\Queue\SerializesModels;
  * caller's own outer transaction (e.g. CreateMeetingOnBookingConfirmed
  * listening to the also-after-commit BookingConfirmed), and a queued
  * listener must never observe a meeting that isn't durably committed
- * yet (Phase 17U.4).
+ * yet.
  */
 final class MeetingCreated implements ShouldDispatchAfterCommit
 {

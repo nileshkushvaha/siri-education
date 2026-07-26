@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 24C — pure boundary tests for CancellationRefundPolicy::decide().
+ * Pure boundary tests for CancellationRefundPolicy::decide().
  * No queue/event/wallet involved: every input (booking starts_at,
  * actor, cancelledAt) is supplied explicitly, so these run without
  * sleep()/real-time waiting and without touching the clock at all.

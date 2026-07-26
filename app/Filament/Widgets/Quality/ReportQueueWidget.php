@@ -27,8 +27,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Review-report queue (Phase 17U.2 §9 — the previously-missing
- * mutation actions). Reporter identity is never a column here — the
+ * Review-report queue. Reporter identity is never a column here — the
  * reason, review, and instructor are enough to triage. Every row
  * action delegates exclusively to ReviewReportService, which itself
  * delegates any review-visibility change to ReviewModerationService —

@@ -32,8 +32,8 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 14.3 — pre-enable operational hardening: agreement resolution
- * pinned to the lesson's SCHEDULED start, the blocked-lesson exception
+ * Pre-enable operational hardening: agreement resolution pinned to the
+ * lesson's SCHEDULED start, the blocked-lesson exception
  * queue and idempotent retry sweep, the earnings activation preflight,
  * and the periodic-compensation rollout gate.
  */
@@ -176,8 +176,8 @@ class InstructorCompensationHardeningTest extends TestCase
             'effective_until' => now()->subDay(),
         ]);
 
-        // Attempt 2 sits behind the +2h backoff window (Phase 14.5) —
-        // travel past it so the sweep picks the exception up again.
+        // Attempt 2 sits behind the +2h backoff window — travel past it
+        // so the sweep picks the exception up again.
         Carbon::setTestNow(now()->addHours(3));
 
         $this->artisan('instructor-earnings:retry-blocked-lessons')

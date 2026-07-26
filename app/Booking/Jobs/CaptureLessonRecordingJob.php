@@ -14,8 +14,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * GAP-028 requirement #5 — queued, dispatched afterCommit (never from
- * inside the meeting-creation transaction), delayed until
+ * Queued, dispatched afterCommit (never from inside the
+ * meeting-creation transaction), delayed until
  * meeting.recording_capture_delay_minutes after the booking ends.
  * Idempotent: RecordingService::capture() re-checks the row's status
  * under a row lock before doing anything, so a duplicate dispatch (or

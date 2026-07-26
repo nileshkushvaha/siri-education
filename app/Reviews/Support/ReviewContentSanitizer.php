@@ -18,8 +18,8 @@ use App\Reviews\Enums\ReviewContentFlag;
  * missed leaks): HTML/scripts are always stripped outright; emails,
  * phone-shaped digit runs, links, and @handles are redacted and
  * flagged; payment-solicitation and promotional-spam phrases are
- * flagged via keyword matching. Flagging never blocks submission in
- * Phase 17I — the caller marks the review Flagged for later moderation.
+ * flagged via keyword matching. Flagging never blocks submission — the
+ * caller marks the review Flagged for later moderation.
  */
 final class ReviewContentSanitizer
 {

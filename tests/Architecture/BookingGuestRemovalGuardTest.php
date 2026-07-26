@@ -17,13 +17,11 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Phase 17U.3 §18 — a permanent guard against guest-booking concepts
- * being reintroduced. Prefers structural checks (class/table/column/
- * route existence) over free-text grepping, since a blind repo-wide
- * string search would also flag this file's own documentation and the
- * historical "Phase 17U.3 — renamed from GuestBookingService"-style
- * comments left throughout the Booking domain as evidence of the
- * removal itself. Legitimate "guest" usage — Laravel's `guest`
+ * A permanent guard against guest-booking concepts being
+ * reintroduced. Prefers structural checks (class/table/column/route
+ * existence) over free-text grepping, since a blind repo-wide string
+ * search would also flag this file's own documentation. Legitimate
+ * "guest" usage — Laravel's `guest`
  * middleware, Blade `@guest`, the public-visitor persona, and the
  * generic Activity Log actor-type system (Activity::$guest_name/
  * guest_email/guest_phone, AuditTrailService::logGuest(), used by
@@ -84,7 +82,7 @@ class BookingGuestRemovalGuardTest extends TestCase
             'database/factories/BookingGuestFactory.php',
             'app/Filament/Resources/Bookings/RelationManagers/GuestsRelationManager.php',
         ] as $path) {
-            $this->assertFileDoesNotExist(base_path($path), "{$path} must not exist — guest booking was removed in Phase 17U.3.");
+            $this->assertFileDoesNotExist(base_path($path), "{$path} must not exist — guest booking was removed.");
         }
     }
 
@@ -163,7 +161,7 @@ class BookingGuestRemovalGuardTest extends TestCase
                 $this->assertStringNotContainsString(
                     $needle,
                     $contents,
-                    sprintf('%s still contains the pre-Phase-17U.3 identifier "%s".', $file, $needle),
+                    sprintf('%s still contains the pre-removal identifier "%s".', $file, $needle),
                 );
             }
         }

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * No delete/force-delete action anywhere — ReviewTag has no
- * `deleted_at` column at all (Phase 17U.2 §7); retirement is
+ * `deleted_at` column at all; retirement is
  * `is_active` only, via EditAction or the activate/deactivate bulk
  * actions below (mirrors BookingTypesTable's is_active pattern).
  */

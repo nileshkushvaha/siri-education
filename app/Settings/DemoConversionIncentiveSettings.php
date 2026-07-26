@@ -7,9 +7,8 @@ namespace App\Settings;
 use Spatie\LaravelSettings\Settings;
 
 /**
- * GAP-008 (SRS §15.18) — Version 1 demo-to-paid conversion incentive
- * rules. A single global rule, not a multi-row campaign framework
- * (explicitly excluded by the phase prompt) — mirrors
+ * SRS §15.18 — Version 1 demo-to-paid conversion incentive rules. A
+ * single global rule, not a multi-row campaign framework — mirrors
  * ReferralCampaign's "empty list = applies to all" convention for the
  * two optional applicability lists, using simple ID allowlists rather
  * than a new pivot table since this is a singleton rule, not a

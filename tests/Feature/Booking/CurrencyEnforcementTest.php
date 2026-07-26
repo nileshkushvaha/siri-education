@@ -27,8 +27,8 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 24M — GAP-031 (SRS-21-4, SRS §21.38/§21.40): new financial
- * activity requires an Active currency, re-checked at the final
+ * SRS-21-4, SRS §21.38/§21.40: new financial activity requires an
+ * Active currency, re-checked at the final
  * internal boundary; existing obligations (a payment attempt already
  * created) remain settleable regardless of a later currency change.
  */

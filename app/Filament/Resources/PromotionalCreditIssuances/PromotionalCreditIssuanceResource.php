@@ -19,8 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-041 issuance history + the single "issue a credit" entry point
- * (requirement #7). Issuances are created only through
+ * Issuance history + the single "issue a credit" entry point.
+ * Issuances are created only through
  * PromotionalCreditService (via the header action on the List page) —
  * there is intentionally no Create/Edit page and no delete action of
  * any kind (immutable history).

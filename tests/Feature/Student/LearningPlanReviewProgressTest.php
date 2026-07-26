@@ -31,7 +31,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * SRS §6.17.5 / §6.17.10 (GAP-023 — final blocker): a learning-plan
+ * SRS §6.17.5 / §6.17.10: a learning-plan
  * review may carry a structured, instructor-entered overall progress
  * percentage. Only the latest eligible finalized review (reviewed_at
  * set, progress_percent non-null) supplies the review-domain

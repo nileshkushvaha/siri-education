@@ -3,12 +3,11 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 16A.1 — rollout POLICY, not a kill switch.
- * `payout_execution_enabled` (Phase 16A) remains the sole authoritative
- * switch and stays false; this setting only narrows which routes would
- * even be considered once execution is eventually turned on. Defaults
- * to `india_inr_only` per the approved routing policy for the upcoming
- * RazorpayX (Phase 16B) integration.
+ * Rollout POLICY, not a kill switch. `payout_execution_enabled`
+ * remains the sole authoritative switch; this setting only narrows
+ * which routes would even be considered once execution is turned on.
+ * Defaults to `india_inr_only` per the approved routing policy for the
+ * RazorpayX integration.
  */
 return new class extends SettingsMigration
 {

@@ -17,7 +17,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorImpl;
 
 /**
- * The only public-facing read path onto reviews. Reuses Phase 17K's
+ * The only public-facing read path onto reviews. Reuses
  * `InstructorRatingAggregateService` for the summary (never
  * recalculates an average/distribution from review rows) and maps
  * every review row through `PublicInstructorReviewData::fromReview()`

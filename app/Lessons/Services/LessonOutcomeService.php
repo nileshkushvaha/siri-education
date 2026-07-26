@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\DB;
  * outcome actions; the operational LessonStatus and the parent booking
  * are then synchronized through the existing lifecycle engine, so its
  * guards, audit, events (LessonCompleted → earnings), and booking
- * notifications keep firing exactly as before Phase 17A.
+ * notifications keep firing unchanged.
  */
 final class LessonOutcomeService implements LessonOutcomeServiceInterface
 {

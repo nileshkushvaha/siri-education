@@ -336,14 +336,13 @@ class ZoomMeetingProviderTest extends TestCase
     }
 
     /**
-     * GAP-028 — auto_recording is now driven by RecordingEligibilityResolver
-     * rather than a hardcoded string, but Zoom deliberately never implements
-     * MeetingRecordingProviderInterface, so the capability gate always fails
-     * and the payload stays 'none' even with every recording flag enabled.
-     * requirement #2 ("preserve current auto_recording => none behavior")
-     * holds for Zoom specifically; RecordingEligibilityResolverTest proves
-     * the same chain flips to eligible for a provider that DOES implement
-     * the capability interface (FakeMeetingProvider).
+     * auto_recording is driven by RecordingEligibilityResolver rather
+     * than a hardcoded string, but Zoom deliberately never implements
+     * MeetingRecordingProviderInterface, so the capability gate always
+     * fails and the payload stays 'none' even with every recording flag
+     * enabled. RecordingEligibilityResolverTest proves the same chain
+     * flips to eligible for a provider that DOES implement the
+     * capability interface (FakeMeetingProvider).
      */
     public function test_auto_recording_stays_none_for_zoom_even_with_every_recording_flag_enabled(): void
     {
@@ -545,14 +544,14 @@ class ZoomMeetingProviderTest extends TestCase
             'provider_meeting_id' => '987654321',
             'host_url' => 'https://zoom.us/s/987654321?zak=host-start-token',
             'password' => 'p4ss',
-            // Phase 24H.2B: the resource releases the URL only inside the visibility window.
+            // The resource releases the URL only inside the visibility window.
             'starts_at' => now()->addMinutes(10),
             'ends_at' => now()->addMinutes(40),
             'metadata' => ['zoom_status' => 'waiting'],
         ]);
 
-        // Phase 24H.2A: the resource releases the URL only to the
-        // booking's own Active student as the request viewer.
+        // The resource releases the URL only to the booking's own
+        // Active student as the request viewer.
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $viewer = $booking->student;
         $viewer->assignRole('student');

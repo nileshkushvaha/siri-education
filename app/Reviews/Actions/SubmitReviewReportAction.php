@@ -50,8 +50,8 @@ final class SubmitReviewReportAction
         return DB::transaction(function () use ($review, $reporter, $data): ReviewReport {
             $review = $this->reviews->lock($review);
 
-            // Master switch (Phase 17U.2 §3), checked alongside the
-            // dedicated reporting toggle — disabling reviews platform-wide
+            // Master switch, checked alongside the dedicated reporting
+            // toggle — disabling reviews platform-wide
             // must also stop new reports, not just new eligibility/
             // submissions. Existing reports and their resolution are
             // untouched.

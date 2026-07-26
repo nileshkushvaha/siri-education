@@ -10,8 +10,8 @@ use Carbon\CarbonImmutable;
  * The result of resolving a payout ROUTE (instructor country +
  * destination country + withdrawal currency + destination type)
  * against provider capabilities and routing configuration. Distinct
- * from `App\Earnings\Support\InstructorPayoutEligibility` (Phase 15),
- * which answers a different question — "is this user's ACCOUNT allowed
+ * from `App\Earnings\Support\InstructorPayoutEligibility`, which
+ * answers a different question — "is this user's ACCOUNT allowed
  * to hold payout methods / request withdrawals at all" (role, active
  * status, instructor application status). This DTO never touches
  * account state; it is purely about whether a provider can service a

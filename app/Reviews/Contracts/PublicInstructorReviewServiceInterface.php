@@ -11,7 +11,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * Public-profile read boundary for reviews: a privacy-safe rating
- * summary (delegated straight to the Phase 17K aggregate — never
+ * summary (delegated straight to the aggregate — never
  * recalculated here) plus a paginated collection of masked review
  * cards. Never returns an Eloquent model to a caller.
  */

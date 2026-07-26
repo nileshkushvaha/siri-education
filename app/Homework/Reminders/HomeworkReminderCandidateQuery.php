@@ -10,13 +10,12 @@ use App\Models\HomeworkAssignment;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Phase 24K — GAP-020 Step 6: bounded, indexable candidate query for a
- * single configured offset. All comparisons are against the absolute
- * UTC due_at instant, never a student's local wall-clock time. A
- * scheduler running late still finds candidates whose threshold has
- * passed but whose due_at has not (Step 7 catch-up); one already
- * overdue is excluded (no post-due reminder is sent for a pre-due
- * offset).
+ * Bounded, indexable candidate query for a single configured offset.
+ * All comparisons are against the absolute UTC due_at instant, never a
+ * student's local wall-clock time. A scheduler running late still
+ * finds candidates whose threshold has passed but whose due_at has not
+ * (a catch-up case); one already overdue is excluded (no post-due
+ * reminder is sent for a pre-due offset).
  */
 final class HomeworkReminderCandidateQuery
 {

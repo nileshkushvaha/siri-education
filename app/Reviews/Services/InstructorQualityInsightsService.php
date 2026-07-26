@@ -17,7 +17,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Composes existing Phase 17K/17L read paths into the instructor-
+ * Composes existing read paths into the instructor-
  * facing "Reviews & Quality" dashboard section — no new aggregate, no
  * new review projection, no recalculated average. `ratingSummary`
  * comes straight from `InstructorRatingAggregateService::summaryFor()`
@@ -33,7 +33,7 @@ final class InstructorQualityInsightsService implements InstructorQualityInsight
      * A dimension needs at least this many ratings before it's
      * confident enough to call out as a highlight or improvement
      * area — the same "don't draw a conclusion from one review"
-     * principle Phase 17O's dashboard thresholds already use.
+     * principle the admin dashboard thresholds already use.
      */
     private const int MIN_DIMENSION_SAMPLE = 3;
 

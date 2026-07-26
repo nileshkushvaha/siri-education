@@ -28,7 +28,7 @@ use Illuminate\Support\Str;
 
 /**
  * The single authoritative writer of promotional-credit campaigns and
- * issuances (GAP-041, SRS §13.20/§16.17-§16.19). Every wallet mutation
+ * issuances (SRS §13.20/§16.17-§16.19). Every wallet mutation
  * routes through the existing WalletLedgerService/WalletService —
  * this class never touches a *_minor column or writes a ledger row
  * itself. Mirrors ReferralCampaignService's campaign-lifecycle shape
@@ -494,8 +494,8 @@ final class PromotionalCreditService
     }
 
     /**
-     * Phase 33 (mirrors ReferralCampaignService's identical rule): once
-     * any issuance references this campaign, its money-affecting rules
+     * Mirrors ReferralCampaignService's identical rule: once any
+     * issuance references this campaign, its money-affecting rules
      * are frozen forever — issuances snapshot the rules they were
      * issued under. Name, description, and terms remain editable.
      */

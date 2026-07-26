@@ -22,7 +22,7 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * SRS §9.14 / §9.21-5 (GAP-024): the marketplace preview must always
+ * SRS §9.14 / §9.21-5: the marketplace preview must always
  * agree with the real checkout price for identical inputs — proven
  * here by resolving both through the same fixtures and asserting
  * identical amounts, for both the single-instructor path (which calls

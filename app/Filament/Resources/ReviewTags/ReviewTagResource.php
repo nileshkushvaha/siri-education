@@ -18,7 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 /**
- * Admin-curated review tags (Phase 17U.2 §7). Never hard-deleted — no
+ * Admin-curated review tags. Never hard-deleted — no
  * `deleted_at` column exists at all; a tag is retired via `is_active`
  * only, so historical review snapshots (each review stores its own
  * key/label snapshot at submission time, see ReviewTag::snapshot())

@@ -205,7 +205,7 @@ class AlertQueueWidget extends TableWidget
     }
 
     /**
-     * Phase 24T: extracted from the inline Select options closure so it's
+     * Extracted from the inline Select options closure so it's
      * directly testable. A temporarily-missing 'manager' role must yield
      * an empty option list, never a 500 on this widget's assign action.
      *

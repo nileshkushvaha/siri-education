@@ -11,9 +11,9 @@ use App\Settings\BookingSettings;
 use Carbon\CarbonImmutable;
 
 /**
- * Phase 24C — SRS 11.24 ("Refund amount depends on cancellation window
- * and policy") / SRS 6.8 ("Cancellation windows are configurable").
- * The single place a cancellation's refund eligibility is decided,
+ * SRS 11.24 ("Refund amount depends on cancellation window and
+ * policy") / SRS 6.8 ("Cancellation windows are configurable"). The
+ * single place a cancellation's refund eligibility is decided,
  * reused from both the UI preview and the authoritative execution path
  * (BookingService::cancel()) so neither can drift from the other.
  *

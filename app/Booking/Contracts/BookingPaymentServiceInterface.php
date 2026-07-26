@@ -19,8 +19,8 @@ use App\Models\User;
  * bookings, cancellation of a paid booking triggers a refund
  * (SyncPaymentOnCancellation).
  *
- * Refund policy (Phase 16A.1, "Version 1"): the normal path never
- * touches the gateway — `refundToWallet()` credits the student's
+ * Refund policy: the normal path never touches the gateway —
+ * `refundToWallet()` credits the student's
  * wallet and is what SyncPaymentOnCancellation always calls. A direct
  * gateway refund (`refundViaProvider()`) is a separately-permissioned
  * exception action, never the default, and the two are mutually
@@ -67,8 +67,8 @@ interface BookingPaymentServiceInterface
      * by every automatic cancellation flow. Idempotent — a duplicate
      * call (e.g. a retried queued listener) has no additional effect.
      *
-     * $decision (Phase 24C), when supplied, is recorded as safe
-     * metadata on the payment for audit-traceability — it never
+     * $decision, when supplied, is recorded as safe metadata on the
+     * payment for audit-traceability — it never
      * changes whether this method credits the wallet; the caller
      * (SyncPaymentOnCancellation) only invokes this method at all when
      * the decision was already eligible.
@@ -78,8 +78,8 @@ interface BookingPaymentServiceInterface
     public function refundToWallet(Booking $booking, ?string $reason = null, ?CancellationRefundDecision $decision = null): Booking;
 
     /**
-     * Phase 24C — a paid booking was cancelled but CancellationRefundPolicy
-     * decided the cancellation is not refund-eligible (a late student
+     * A paid booking was cancelled but CancellationRefundPolicy decided
+     * the cancellation is not refund-eligible (a late student
      * cancellation). Records the frozen decision as an auditable
      * no-refund disposition on the payment — no wallet ledger entry,
      * no payment_status change (it stays Paid: the platform retains

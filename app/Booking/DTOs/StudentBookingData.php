@@ -21,7 +21,7 @@ final readonly class StudentBookingData
         public ?string $subject = null,
         public ?int $grade = null,
         public ?string $notes = null,
-        /** Optional SubjectTopic slug under $subject (Phase 12.5); requires explicit instructor topic coverage. */
+        /** Optional SubjectTopic slug under $subject; requires explicit instructor topic coverage. */
         public ?string $topic = null,
     ) {}
 }

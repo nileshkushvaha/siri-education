@@ -124,8 +124,8 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
     }
 
     /**
-     * GAP-028 — registration only creates the Recording row (idempotent,
-     * cheap); the actual capture is a SEPARATE queued job dispatched
+     * Registration only creates the Recording row (idempotent, cheap);
+     * the actual capture is a SEPARATE queued job dispatched
      * afterCommit so a slow/failed provider fetch can never block or
      * fail meeting creation itself. Delayed until
      * recording_capture_delay_minutes after the LESSON ends (not after
@@ -303,8 +303,8 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
     }
 
     /**
-     * Phase 24H.2A/24H.2B — GAP-013: THE complete authoritative student
-     * meeting-URL disclosure decision. A meeting URL is a sensitive
+     * THE complete authoritative student meeting-URL disclosure
+     * decision. A meeting URL is a sensitive
      * access credential; every student-facing surface (BookingHistory,
      * the student dashboard, StudentBookingResource, and the meeting
      * notifications at send time) must obtain it through here, never by

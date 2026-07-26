@@ -36,8 +36,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 25B (GAP-002, SRS §13.13) — a student paying for their own
- * pending lesson booking directly from wallet balance, as a
+ * SRS §13.13 — a student paying for their own pending lesson booking
+ * directly from wallet balance, as a
  * synchronous alternative to gateway checkout. Reuses
  * WalletLedgerService::debit() and the same successful-payment
  * finalization (BookingPaymentService::finalizeSuccessfulPayment())

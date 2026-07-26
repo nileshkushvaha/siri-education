@@ -8,7 +8,7 @@ use App\Earnings\Contracts\InstructorPayoutProviderInterface;
 use App\Earnings\Contracts\InstructorPayoutProviderRegistryInterface;
 use App\Earnings\Exceptions\PayoutProviderException;
 
-/** Registered payout providers, keyed for settings + resolution. Fake-only in Phase 16A. */
+/** Registered payout providers, keyed for settings + resolution. */
 final class InstructorPayoutProviderRegistry implements InstructorPayoutProviderRegistryInterface
 {
     /** @var array<string, InstructorPayoutProviderInterface> */

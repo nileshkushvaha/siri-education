@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Automatic moderation, run once per newly submitted review (triggered
  * by StudentReviewSubmitted). Never reprocesses or resanitizes the
- * original text — it only reads what Phase 17I already computed and
+ * original text — it only reads what submission already computed and
  * stored (`review_mode`, `sanitization_metadata.had_unsafe_content`)
  * against the CURRENT moderation settings, and snapshots those
  * settings onto the review so a later settings change never
@@ -55,7 +55,7 @@ final class ModerateSubmittedReviewAction
             ];
 
             // A Submitted review is by construction the "safe" branch of
-            // Phase 17I's own risk split (unsafe content is Flagged at
+            // submission's own risk split (unsafe content is Flagged at
             // submission, never Submitted) — every model here only
             // decides WHETHER to auto-publish that already-safe content.
             $shouldPublish = $this->settings->auto_publish_clean_reviews

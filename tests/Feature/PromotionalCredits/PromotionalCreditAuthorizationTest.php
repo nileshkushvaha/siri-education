@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 use Tests\Feature\PromotionalCredits\Concerns\CreatesPromotionalCreditFixtures;
 use Tests\TestCase;
 
-/** GAP-041: admin surfaces are permission-controlled; no create/edit/delete anywhere for issuances. */
+/** Admin surfaces are permission-controlled; no create/edit/delete anywhere for issuances. */
 class PromotionalCreditAuthorizationTest extends TestCase
 {
     use CreatesPromotionalCreditFixtures, RefreshDatabase;

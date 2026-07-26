@@ -14,13 +14,12 @@ use App\Models\User;
 use App\Models\Wallet;
 
 /**
- * Real multi-process race for the Phase 16A.1 refund policy: two
- * genuinely separate processes attempt to resolve the SAME paid
- * booking's refund simultaneously — one via the normal wallet path, one
- * via the exception provider path. Reuses the tests/Concurrency/run-op.php
- * harness proven throughout the financial domain (Phase 15.1/14.4/16A).
- * Exactly one must win; the same amount must never be refunded twice
- * (invariant #14 of the Phase 16A.1 routing audit).
+ * Real multi-process race for the refund policy: two genuinely
+ * separate processes attempt to resolve the SAME paid booking's refund
+ * simultaneously — one via the normal wallet path, one via the
+ * exception provider path. Reuses the tests/Concurrency/run-op.php
+ * harness used throughout the financial domain. Exactly one must win;
+ * the same amount must never be refunded twice.
  */
 class BookingRefundConcurrencyTest extends ConcurrencyTestCase
 {

@@ -46,12 +46,10 @@ use Illuminate\Support\Facades\Auth;
  *    checkoutPayload() re-fetches it from Stripe's retrieve-intent
  *    endpoint rather than ever writing it to booking_payments.metadata.
  *
- * Frontend Stripe.js/Elements integration is not built in this phase
- * (see docs/architecture/phase-10-razorpay-checkout-payment-capture.md,
- * "Phase 10.2" — Stripe is India-adjacent/non-INR routing, and no real
- * Stripe credentials exist yet). This class is the complete, tested
- * backend half; wiring a Stripe Elements UI is future work once real
- * sandbox credentials are available.
+ * Frontend Stripe.js/Elements integration lives in
+ * resources/views/livewire/frontend/booking/partials/stripe-checkout-script.blade.php.
+ * Real Stripe credentials are configured per-environment through
+ * Payment Gateway settings, the same as every other provider here.
  */
 final class StripePaymentProvider implements PaymentProviderInterface
 {

@@ -25,8 +25,8 @@ use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * GAP-008 requirement #3 — every eligibility gate individually, so a
- * future regression can never silently widen the incentive boundary.
+ * Every eligibility gate individually, so a future regression can
+ * never silently widen the incentive boundary.
  * LessonCompleted is faked here so completing a fixture lesson never
  * triggers the real listener (CheckDemoConversionIncentiveOnLessonCompleted)
  * — this file tests the resolver in isolation; the end-to-end listener/

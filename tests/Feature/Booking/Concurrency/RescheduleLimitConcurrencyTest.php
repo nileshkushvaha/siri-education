@@ -19,8 +19,8 @@ use Carbon\CarbonImmutable;
 use Spatie\Permission\Models\Role;
 
 /**
- * Phase 24D — real multi-process race proving that when only one
- * reschedule allowance remains, exactly one of two concurrent
+ * Real multi-process race proving that when only one reschedule
+ * allowance remains, exactly one of two concurrent
  * reschedule requests for the SAME booking succeeds and exactly one
  * new Rescheduled activity row is ever written — never two, even
  * though both requests read the "allowed" decision from the same

@@ -3,8 +3,8 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 16B — RazorpayX payout settings baseline. Everything defaults
- * to off/empty; enabling the provider requires deliberate admin
+ * RazorpayX payout settings baseline. Everything defaults to
+ * off/empty; enabling the provider requires deliberate admin
  * configuration through RazorpayXPayoutSettingsPage, and even a fully
  * configured provider cannot execute a payout while
  * `instructor_earnings.payout_execution_enabled` stays false.

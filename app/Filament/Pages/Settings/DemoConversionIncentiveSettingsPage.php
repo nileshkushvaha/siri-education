@@ -26,7 +26,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 
 /**
- * GAP-008 (SRS §15.18) — the sole runtime-configuration surface for
+ * SRS §15.18 — the sole runtime-configuration surface for
  * DemoConversionIncentiveSettings. A single global rule (not a
  * multi-row campaign framework, deliberately excluded) — country/
  * subject applicability are simple "empty = applies to all" ID

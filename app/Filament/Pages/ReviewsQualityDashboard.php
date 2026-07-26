@@ -20,8 +20,8 @@ use Illuminate\Contracts\Support\Htmlable;
 /**
  * Administrator dashboard for review moderation workload, review
  * reports, instructor quality alerts, and instructor rating health.
- * As of Phase 17U.2 §§8-9, ModerationQueueWidget and ReportQueueWidget
- * carry real mutation actions (approve/reject/hide/restore/archive;
+ * ModerationQueueWidget and ReportQueueWidget carry real mutation
+ * actions (approve/reject/hide/restore/archive;
  * start-review/uphold/dismiss/mark-duplicate) — every one of them
  * delegates exclusively to ReviewModerationService/ReviewReportService;
  * this page and its widgets never write to a review/report/alert row

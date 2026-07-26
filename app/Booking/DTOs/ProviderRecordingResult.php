@@ -7,8 +7,8 @@ namespace App\Booking\DTOs;
 use Carbon\CarbonImmutable;
 
 /**
- * GAP-028 — what a MeetingRecordingProviderInterface::fetchRecording()
- * call returns once the provider's recording is actually ready. $content
+ * What a MeetingRecordingProviderInterface::fetchRecording() call
+ * returns once the provider's recording is actually ready. $content
  * is the raw file content (already fetched into memory/temp storage by
  * the provider adapter) — RecordingService only ever writes bytes it
  * already has into our own private Media Library disk; it never streams

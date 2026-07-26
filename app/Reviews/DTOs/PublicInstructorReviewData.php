@@ -17,7 +17,7 @@ use Carbon\CarbonImmutable;
  * view directly, so there is no path by which a moderation reason,
  * student id, or booking/lesson reference can leak through.
  *
- * `id` (Phase 18A) is the review's own primary key only — needed so the
+ * `id` is the review's own primary key only — needed so the
  * user-facing "Report Review" action can target the exact review server-
  * side; it carries no student/booking/moderation information itself and
  * every write path re-validates reportability from the database, never

@@ -7,8 +7,8 @@ namespace App\Booking\DTOs;
 use Carbon\CarbonImmutable;
 
 /**
- * An authenticated student's wizard booking request (Phase 17U.3 —
- * renamed from the pre-authenticated-only "guest booking" DTO). The
+ * An authenticated student's wizard booking request (renamed from the
+ * pre-authenticated-only "guest booking" DTO). The
  * student identity always comes from the authenticated session, never
  * from this payload. Most wizard bookings have no teacher and the
  * assignment engine picks one; profile-launched bookings may lock a

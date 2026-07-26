@@ -17,9 +17,8 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  * any policy path. Status moderation (approve/reject/restore/archive
  * vs. hide) is staff-only via two explicit permissions; students
  * cannot publish, reject, hide, or restore their own review, and the
- * instructor being reviewed has no ability here at all. `report`
- * (Phase 17M) is the one ability here open to any active authenticated
- * user, not staff-only.
+ * instructor being reviewed has no ability here at all. `report` is the
+ * one ability here open to any active authenticated user, not staff-only.
  */
 class LessonReviewPolicy
 {
@@ -40,9 +39,9 @@ class LessonReviewPolicy
      * Approve, reject, restore, or archive — staff only, no student
      * bypass. Students never hold `Moderate:LessonReview` at all, so
      * they're denied structurally; the instructor-identity exclusion
-     * (Phase 17U.2 §10) is defense-in-depth for a future role change
-     * that might otherwise let an instructor moderate a review about
-     * their own teaching, mirroring ReviewReportPolicy::resolve().
+     * is defense-in-depth for a future role change that might otherwise
+     * let an instructor moderate a review about their own teaching,
+     * mirroring ReviewReportPolicy::resolve().
      */
     public function moderate(User $user, LessonReview $review): bool
     {

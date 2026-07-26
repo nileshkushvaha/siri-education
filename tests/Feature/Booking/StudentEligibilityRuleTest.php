@@ -20,8 +20,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 10.2C-Fix — VerifiedActiveStudentRule / AuthenticatedAttendeeRule:
- * booking creation requires an authenticated, active, (optionally)
+ * VerifiedActiveStudentRule: booking creation requires an
+ * authenticated, active, (optionally)
  * email-verified student. Billing-profile completeness is deliberately
  * NOT enforced here (see BookingService::GLOBAL_RULES comment) — it's
  * checked at payment-initiation UI time instead (see

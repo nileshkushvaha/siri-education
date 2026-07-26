@@ -21,8 +21,8 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Tests\TestCase;
 
 /**
- * Phase 17U.4 — every Booking domain event now implements
- * ShouldDispatchAfterCommit. BookingConfirmed/BookingCancelled/
+ * Every Booking domain event implements ShouldDispatchAfterCommit.
+ * BookingConfirmed/BookingCancelled/
  * BookingCompleted are provably dispatched from inside a caller's own
  * outer transaction on live paths (BookingPaymentService::markPaid()/
  * finalizeRefundedBooking(), LessonOutcomeService::finalize()/

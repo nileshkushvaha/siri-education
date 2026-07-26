@@ -27,8 +27,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 14.2 §11 — hourly lesson compensation: rate × eligible minutes
- * / 60, integer half-up rounding, override resolution by specificity,
+ * Hourly lesson compensation: rate × eligible minutes / 60, integer
+ * half-up rounding, override resolution by specificity,
  * and total independence from student pricing.
  */
 class InstructorHourlyCompensationTest extends TestCase

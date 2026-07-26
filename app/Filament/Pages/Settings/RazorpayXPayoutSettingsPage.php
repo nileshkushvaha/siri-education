@@ -332,8 +332,8 @@ class RazorpayXPayoutSettingsPage extends Page
     {
         // The external probe's result is the data being persisted, so it
         // necessarily happens before the atomic save — never inside the
-        // settings transaction itself (Phase 24S: no provider call is
-        // ever wrapped in the audited DB transaction).
+        // settings transaction itself (no provider call is ever wrapped
+        // in the audited DB transaction).
         $health = app(RazorpayXInstructorPayoutProvider::class)->healthCheck();
 
         $saved = $this->saveSettingsWithAudit(RazorpayXPayoutSettings::class, 'razorpayx_payout', function (RazorpayXPayoutSettings $settings) use ($health): void {

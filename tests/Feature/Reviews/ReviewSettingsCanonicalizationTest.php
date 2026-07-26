@@ -41,9 +41,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17U.2 §§2-3 — reviews.reviews_enabled is the ONE canonical
- * switch. features.reviews_enabled (Finding S-1's decoy) is retired.
- * Disabling the canonical switch blocks every new write (eligibility,
+ * reviews.reviews_enabled is the ONE canonical switch.
+ * features.reviews_enabled (a decoy) is retired. Disabling the
+ * canonical switch blocks every new write (eligibility,
  * submission, editing, reporting, the "ready to review" notification)
  * while every historical review, moderation record, and aggregate
  * stays fully intact and visible.
@@ -63,7 +63,7 @@ class ReviewSettingsCanonicalizationTest extends TestCase
         $this->lifecycle = app(LessonLifecycleServiceInterface::class);
         $this->outcomes = app(LessonOutcomeServiceInterface::class);
 
-        // activeStudent() (Phase 24H.1A) requires the role to exist first.
+        // activeStudent() requires the role to exist first.
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
     }
 
@@ -200,7 +200,7 @@ class ReviewSettingsCanonicalizationTest extends TestCase
         NotificationFacade::assertNotSentTo($lesson->student, ReviewRequestedNotification::class);
     }
 
-    // ── Phase 24S.1: fixing the review-eligible-student fixture must not weaken lifecycle enforcement ──
+    // ── The review-eligible-student fixture must not weaken lifecycle enforcement ──
 
     public function test_a_non_active_student_is_still_rejected_by_the_lifecycle_guard_not_review_eligibility(): void
     {
@@ -258,16 +258,15 @@ class ReviewSettingsCanonicalizationTest extends TestCase
     // ── Helpers ────────────────────────────────────────────────────────
 
     /**
-     * Phase 24S.1 — GAP: the booking's default factory student is a bare
+     * The booking's default factory student must not be a bare
      * User::factory() with no 'student' role and no Active lifecycle
-     * status. That was fine when this file was written, but
-     * StudentReviewService::submit() now enforces
-     * StudentLifecycleService::assertEligibleForStudentAction() (Phase
-     * 24H.2) — a bare-factory student is rejected before review-eligibility
-     * logic is ever reached. These tests exercise review/settings
-     * canonicalization, not lifecycle rejection, so the student must be a
-     * real activeStudent() — the same pattern used everywhere else in the
-     * suite since Phase 24H.1A/24H.2.
+     * status: StudentReviewService::submit() enforces
+     * StudentLifecycleService::assertEligibleForStudentAction() — a
+     * bare-factory student is rejected before review-eligibility logic
+     * is ever reached. These tests exercise review/settings
+     * canonicalization, not lifecycle rejection, so the student must be
+     * a real activeStudent() — the same pattern used everywhere else in
+     * the suite.
      */
     private function paidLesson(?User $instructor = null): Lesson
     {

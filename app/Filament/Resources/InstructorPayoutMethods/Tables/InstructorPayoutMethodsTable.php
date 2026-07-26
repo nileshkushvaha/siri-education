@@ -187,8 +187,8 @@ class InstructorPayoutMethodsTable
                         'Payout method disabled',
                     )),
 
-                // Phase 16B — RazorpayX Contact/Fund Account provisioning.
-                // Deliberately separate from the payout-method lifecycle
+                // RazorpayX Contact/Fund Account provisioning. Deliberately
+                // separate from the payout-method lifecycle
                 // actions above: provisioning failure never blocks
                 // verification, and verification never auto-provisions.
                 Action::make('razorpayx_provision')

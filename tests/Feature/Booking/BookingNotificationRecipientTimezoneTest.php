@@ -20,8 +20,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24L — GAP-030 (SRS-21-6, SRS §21.13/§21.16): every booking/
- * meeting notification must display the scheduled time in the ACTUAL
+ * SRS-21-6, SRS §21.13/§21.16: every booking/meeting notification must
+ * display the scheduled time in the ACTUAL
  * recipient's own timezone, resolved at render time via
  * RecipientTimezoneResolver — never the booking's captured (student's)
  * timezone reused for the instructor's copy.
@@ -234,7 +234,7 @@ final class BookingNotificationRecipientTimezoneTest extends TestCase
     public function test_frozen_refund_decision_text_is_not_recomputed_by_timezone_changes(): void
     {
         // BookingCancelledNotification's refund line states the FROZEN
-        // Phase 24C outcome only (eligible/not) — no raw cutoff
+        // outcome only (eligible/not) — no raw cutoff
         // timestamp is displayed, so there is nothing for a timezone
         // conversion to alter; this proves the refund line is untouched
         // regardless of which recipient's timezone is used to render it.
@@ -284,8 +284,8 @@ final class BookingNotificationRecipientTimezoneTest extends TestCase
 
     public function test_url_withholding_is_unaffected_by_timezone_resolution(): void
     {
-        // Phase 24H.2B: includeJoinUrl=false must still omit the URL
-        // regardless of which recipient's timezone the schedule renders in.
+        // includeJoinUrl=false must still omit the URL regardless of
+        // which recipient's timezone the schedule renders in.
         $booking = $this->confirmedBooking(startsAtUtc: '2026-01-15 03:00:00');
         $meeting = BookingMeeting::query()->create([
             'booking_id' => $booking->id,

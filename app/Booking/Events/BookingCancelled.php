@@ -16,10 +16,10 @@ use Illuminate\Queue\SerializesModels;
  * calls BookingService::cancel() from inside its own outer DB::transaction
  * (three call sites: refundViaProvider(), recordRefund(), the wallet-credit
  * path) — queued listeners must never observe a cancellation that isn't
- * durably committed yet (Phase 17U.4).
+ * durably committed yet.
  *
- * Phase 24C: $refundDecision is the frozen CancellationRefundPolicy
- * outcome, computed synchronously inside BookingService::cancel()
+ * $refundDecision is the frozen CancellationRefundPolicy outcome,
+ * computed synchronously inside BookingService::cancel()
  * before this event ever dispatches — null whenever the booking had no
  * captured payment to decide about (free demo, unpaid/failed, already
  * refunded). Both SyncPaymentOnCancellation (execution) and

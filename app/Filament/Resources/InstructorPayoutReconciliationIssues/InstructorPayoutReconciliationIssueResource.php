@@ -15,8 +15,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Finance-visible reconciliation queue (Phase 16A). Rows are written
- * exclusively by InstructorPayoutReconciliationService — no Create or
+ * Finance-visible reconciliation queue. Rows are written exclusively
+ * by InstructorPayoutReconciliationService — no Create or
  * Edit page exists. Resolution closes the issue only; it never marks a
  * withdrawal paid or otherwise mutates payout state.
  */

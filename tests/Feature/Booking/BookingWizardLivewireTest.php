@@ -17,8 +17,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17U.3: the `/book` wizard is authenticated-only end to end —
- * no unauthenticated guest booking concept exists anywhere in this
+ * The `/book` wizard is authenticated-only end to end — no
+ * unauthenticated guest booking concept exists anywhere in this
  * domain. The wizard always attributes the resulting booking to the
  * logged-in student (WizardBookingService::book() uses auth()->id()
  * directly; there is no name/email/phone form step to bypass).
@@ -61,7 +61,7 @@ class BookingWizardLivewireTest extends TestCase
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
     }
 
-    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
+    /** An Active student_status is required for booking eligibility — bare role assignment leaves student_status null, which is always denied. */
     private function student(): User
     {
         return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);

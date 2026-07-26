@@ -62,9 +62,9 @@ class RazorpayCheckoutLivewireTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — createPaidBookingTypeWithPrice() also
-        // seeds the matching StudentLessonPrice (INR, all levels, 60min).
+        // BookingType::factory()->paid() does not carry a price —
+        // createPaidBookingTypeWithPrice() also seeds the matching
+        // StudentLessonPrice (INR, all levels, 60min).
         // withBillingCountry() below points every student at this same
         // country so the wizard's own selectSubject('maths')/selectGrade(5)
         // input resolves against it.
@@ -92,12 +92,12 @@ class RazorpayCheckoutLivewireTest extends TestCase
         return hash_hmac('sha256', "{$orderId}|{$paymentId}", self::KEY_SECRET);
     }
 
-    // A resolvable billing country is required before checkout (Phase
-    // 10.2C-Fix's UI-layer profile-completeness gate) — set it here so
-    // these tests exercise payment behavior, not the gate itself. Uses
+    // A resolvable billing country is required before checkout (the
+    // UI-layer profile-completeness gate) — set it here so these tests
+    // exercise payment behavior, not the gate itself. Uses
     // $this->pricedCountry (not a fresh random one) so the booking's
     // subject/grade + this country actually resolves against the
-    // StudentLessonPrice seeded in setUp() (Phase 10.2D-Cleanup-Fix).
+    // StudentLessonPrice seeded in setUp().
     private function withBillingCountry(User $user): void
     {
         $this->assignBillingCountry($user, $this->pricedCountry);
@@ -139,9 +139,9 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     public function test_booking_wizard_shows_safe_error_when_no_matrix_price_configured(): void
     {
-        // Phase 10.2E: drives the actual wizard submit() flow (not the
-        // service layer directly) so the UI-facing error path itself is
-        // proven, not just BookingPriceCalculator's exception.
+        // Drives the actual wizard submit() flow (not the service layer
+        // directly) so the UI-facing error path itself is proven, not
+        // just BookingPriceCalculator's exception.
         StudentLessonPrice::query()->delete();
 
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
@@ -166,8 +166,8 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     public function test_razorpay_checkout_event_payload_has_only_public_fields(): void
     {
-        // Phase 10.2E: proves the exact composition of the dispatched
-        // browser event — order id, amount, currency, public key,
+        // Proves the exact composition of the dispatched browser event
+        // — order id, amount, currency, public key,
         // student name/email — and nothing else (no key_secret, no
         // webhook_secret, no raw gateway/admin metadata).
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
@@ -199,8 +199,8 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     public function test_forged_signature_via_livewire_leaves_booking_unpaid(): void
     {
-        // Phase 10.2E: "frontend success alone cannot mark booking paid" —
-        // drives verifyPayment() with a bad signature through the actual
+        // "Frontend success alone cannot mark booking paid" — drives
+        // verifyPayment() with a bad signature through the actual
         // Livewire component a browser would call, not the provider class
         // directly (RazorpayCheckoutTest already covers that layer).
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);

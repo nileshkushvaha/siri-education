@@ -30,11 +30,11 @@ final class BookingWizardService
 
     /**
      * Free Demo is omitted entirely while it isn't effectively available
-     * (Phase 24B/24B.2, GAP-026 — DemoAvailabilityResolver: global
-     * toggle + booking-type active status) — mount()'s query-param
-     * preselection and selectMode() both already refuse any key absent
-     * from this list, so hiding it here is sufficient to keep a stale
-     * `?type=free_demo` link from reaching step 2.
+     * (DemoAvailabilityResolver: global toggle + booking-type active
+     * status) — mount()'s query-param preselection and selectMode()
+     * both already refuse any key absent from this list, so hiding it
+     * here is sufficient to keep a stale `?type=free_demo` link from
+     * reaching step 2.
      *
      * @return Collection<int, array<string, mixed>>
      */

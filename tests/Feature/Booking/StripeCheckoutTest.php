@@ -72,9 +72,9 @@ class StripeCheckoutTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — createPaidBookingTypeWithPrice() also
-        // seeds the matching StudentLessonPrice (USD, all levels, 60min).
+        // BookingType::factory()->paid() does not carry a price —
+        // createPaidBookingTypeWithPrice() also seeds the matching
+        // StudentLessonPrice (USD, all levels, 60min).
         $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 49.00, 'USD');
         $this->assignBillingCountry($this->student, $priced['country']);
     }
@@ -402,7 +402,7 @@ class StripeCheckoutTest extends TestCase
         $this->assertSame(1, BookingPayment::query()->where('booking_id', $booking->id)->count());
     }
 
-    // ── Phase 10.2B: Option B — late success on a terminal booking ──────
+    // ── Option B: late success on a terminal booking ────────────────────
 
     public function test_cancelled_booking_late_stripe_success_credits_wallet_and_does_not_confirm(): void
     {
@@ -509,9 +509,9 @@ class StripeCheckoutTest extends TestCase
         $intent = app(BookingPaymentServiceInterface::class)->initiate($booking);
 
         $this->assertSame('pending', $intent->status);
-        // Phase 16A.1: the fake provider now creates its own (Pending,
-        // then Captured on webhook success) BookingPayment row too,
-        // matching every real adapter.
+        // The fake provider creates its own (Pending, then Captured on
+        // webhook success) BookingPayment row too, matching every real
+        // adapter.
         $this->assertSame(1, BookingPayment::query()->count());
         $this->assertSame('pending', BookingPayment::sole()->status->value);
     }

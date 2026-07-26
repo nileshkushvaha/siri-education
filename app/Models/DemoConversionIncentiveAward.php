@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * GAP-008 — one immutable row per converting paid lesson (SRS §15.18).
- * Written exclusively by DemoConversionIncentiveService; nothing ever
+ * SRS §15.18 — one immutable row per converting paid lesson. Written
+ * exclusively by DemoConversionIncentiveService; nothing ever
  * updates a row after creation (no status lifecycle, unlike
  * InstructorEarning) — a mistaken award is reversed via the
  * InstructorEarning it created (InstructorEarningService::reverse()),

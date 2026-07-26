@@ -12,7 +12,7 @@ use Illuminate\Http\UploadedFile;
 
 final class SubmitHomeworkAction
 {
-    /** GAP-022: $attachment is stored atomically with the text submission — see HomeworkServiceInterface::submit(). */
+    /** $attachment is stored atomically with the text submission — see HomeworkServiceInterface::submit(). */
     public function execute(HomeworkAssignment $assignment, string $submissionText, ?UploadedFile $attachment = null): HomeworkAssignment
     {
         if ($assignment->status !== HomeworkStatus::Pending) {

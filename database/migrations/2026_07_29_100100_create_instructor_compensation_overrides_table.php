@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 14.5 consolidated baseline (originally Phase 14.2) — optional hourly-rate overrides scoped to one agreement
+ * Optional hourly-rate overrides scoped to one agreement
  * (instructor + subject / education level / lesson duration). Overrides
  * inherit the agreement's effective window and currency, so no separate
  * effective dating can drift; `combo_key` is the NULL-safe normalized

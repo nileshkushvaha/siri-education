@@ -49,7 +49,7 @@ class HomeworkAssignment extends Model implements HasMedia
     }
 
     /**
-     * GAP-022: instructor-provided learning resources and the student's
+     * Instructor-provided learning resources and the student's
      * own submission attachment, both private (local disk, never the
      * public disk) and served only through the policy-rechecked
      * download route — never a public URL.
@@ -63,7 +63,7 @@ class HomeworkAssignment extends Model implements HasMedia
         }
     }
 
-    /** GAP-037 — small private preview for image resources/submissions; PDFs are never converted (mime-guarded), stay download-only. */
+    /** Small private preview for image resources/submissions; PDFs are never converted (mime-guarded), stay download-only. */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {
@@ -79,7 +79,7 @@ class HomeworkAssignment extends Model implements HasMedia
     }
 
     /**
-     * Phase 24J — GAP-021: resolves soft-deleted plans so historical
+     * Resolves soft-deleted plans so historical
      * homework context stays visible after a plan is archived/removed.
      */
     public function learningPlan(): BelongsTo
@@ -97,13 +97,13 @@ class HomeworkAssignment extends Model implements HasMedia
         return $this->belongsTo(User::class, 'student_id');
     }
 
-    /** Phase 24K — GAP-020: claimed/dispatched due-date reminder history. */
+    /** Claimed/dispatched due-date reminder history. */
     public function dueReminders(): HasMany
     {
         return $this->hasMany(HomeworkDueReminder::class, 'homework_assignment_id');
     }
 
-    /** GAP-022 (37A): reusable library resource versions attached to this assignment. */
+    /** Reusable library resource versions attached to this assignment. */
     public function resourceVersions(): BelongsToMany
     {
         return $this->belongsToMany(HomeworkResourceVersion::class, 'homework_assignment_resources')

@@ -229,7 +229,7 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
             return 0;
         }
 
-        // Phase 17B: while the evidence-driven finalizer owns automation
+        // While the evidence-driven finalizer owns automation
         // (lessons:finalize-due), the lenient sweep defers — exactly one
         // automated finalization policy runs at a time.
         if ($this->settings->automated_finalization_enabled) {
@@ -381,7 +381,7 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
 
     /**
      * Record the equivalent finalized outcome for a lifecycle-driven
-     * finalization (Phase 17A). Idempotent through the action; a
+     * finalization. Idempotent through the action; a
      * dispute resolution moving the status away from an already-terminal
      * outcome is tolerated — correcting the outcome itself requires the
      * explicit LessonOutcomeServiceInterface::override() API.

@@ -14,14 +14,14 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24S — GAP: InstructorEarningSettingsPage previously wrote its
- * audit record as a second, separate step after ->save() (not atomic
- * with it). The three financial feature switches (earnings/periodic
- * compensation/withdrawals) are deliberately untouched here — they flow
- * through FinancialFeatureConfigurationService, a distinct, already
- * audited/preflighted path (Phase 14.5), out of this phase's scope.
- * These tests exercise only the plain fields InstructorEarningSettingsPage
- * itself persists via saveSettingsWithAudit().
+ * InstructorEarningSettingsPage previously wrote its audit record as a
+ * second, separate step after ->save() (not atomic with it). The three
+ * financial feature switches (earnings/periodic compensation/withdrawals)
+ * are deliberately untouched here — they flow through
+ * FinancialFeatureConfigurationService, a distinct, already
+ * audited/preflighted path, out of scope for these tests. These tests
+ * exercise only the plain fields InstructorEarningSettingsPage itself
+ * persists via saveSettingsWithAudit().
  */
 class InstructorEarningSettingsAuditTest extends TestCase
 {

@@ -34,8 +34,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H.2A — GAP-013: BookingMeetingService::studentJoinUrlFor() is
- * THE authoritative student meeting-URL accessor. A meeting URL is a
+ * BookingMeetingService::studentJoinUrlFor() is THE authoritative
+ * student meeting-URL accessor. A meeting URL is a
  * sensitive access credential — no first-party service/UI/API path may
  * return it to a student actor unless the viewer owns the booking as
  * its student AND passes the strict Active lifecycle guard AND the

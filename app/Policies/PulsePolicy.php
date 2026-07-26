@@ -9,8 +9,8 @@ use Illuminate\Foundation\Auth\User as AuthUser;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Phase 24O — GAP-033: authorization for Laravel Pulse's dashboard.
- * `view()` backs the package's own fixed `viewPulse` Gate ability (see
+ * Authorization for Laravel Pulse's dashboard. `view()` backs the
+ * package's own fixed `viewPulse` Gate ability (see
  * AppServiceProvider::boot()) — mirrors QueueMonitorPolicy/SchedulerMonitorPolicy's
  * shape exactly, so Pulse gets the same operational-admin-only access
  * model as every other system-health surface.

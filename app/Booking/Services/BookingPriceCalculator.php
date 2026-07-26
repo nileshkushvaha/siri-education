@@ -22,20 +22,16 @@ use App\Support\Financial\FinancialOperation;
  * so those are always zero — modeled now so a future discount/tax
  * engine is additive, not a breaking change to every caller.
  *
- * Phase 10.2D: the student-facing price for a paid lesson is resolved
- * exclusively through {@see StudentLessonPriceResolver} (the
- * admin-managed pricing matrix — subject + academic level + country +
- * duration). `BookingType` defines booking *behavior* only (duration,
- * capacity, approval, paid-or-not) — it has never owned the
- * student-facing price since this phase.
+ * The student-facing price for a paid lesson is resolved exclusively
+ * through {@see StudentLessonPriceResolver} (the admin-managed pricing
+ * matrix — subject + academic level + country + duration).
+ * `BookingType` defines booking *behavior* only (duration, capacity,
+ * approval, paid-or-not) — it never owns the student-facing price.
  *
- * Phase 10.2D-Cleanup: the earlier `booking_types.price`/`currency`
- * fallback is removed — those columns no longer exist on the table.
- * A paid booking with no matching active `StudentLessonPrice` row is a
- * configuration error, never a free booking, exactly like Phase
- * 10.2C-Fix's original guard, now enforced by the matrix being the
- * only source instead of by a decimal column that could be silently
- * left null.
+ * There is no `booking_types.price`/`currency` fallback — those
+ * columns do not exist on the table. A paid booking with no matching
+ * active `StudentLessonPrice` row is a configuration error, never a
+ * free booking; the matrix is the only price source.
  */
 final class BookingPriceCalculator
 {
@@ -52,11 +48,10 @@ final class BookingPriceCalculator
      *                                    every booking to have a linked Subject
      * @param  int|null  $grade  raw grade (1-12), matched against AcademicLevel::coversGrade()
      * @param  int|null  $instructorId  the booking's host/teacher — when a
-     *                                  StudentLessonPrice row exists for this
-     *                                  exact instructor (Phase 10.2F), it
-     *                                  overrides the base price; otherwise
-     *                                  the base (instructor-less) price is
-     *                                  used, unchanged from before
+     *                                  StudentLessonPrice row exists for
+     *                                  this exact instructor, it overrides
+     *                                  the base price; otherwise the base
+     *                                  (instructor-less) price is used
      *
      * @throws BookingException when a paid type has no active matrix price configured
      */
@@ -77,10 +72,10 @@ final class BookingPriceCalculator
         $matrixPrice = $this->resolveFromMatrix($type, $student, $subjectSlug, $grade, $instructorId);
         $baseAmount = $matrixPrice->amountDecimal();
 
-        // Phase 24M — GAP-031: a paid booking must never be created in a
-        // currency that can no longer collect new payment — it could
-        // never be paid. Re-checked again at BookingPaymentService::initiate()
-        // for the stale-page/currency-disabled-after-booking-creation case.
+        // A paid booking must never be created in a currency that can no
+        // longer collect new payment — it could never be paid. Re-checked
+        // again at BookingPaymentService::initiate() for the
+        // stale-page/currency-disabled-after-booking-creation case.
         try {
             $this->currencyEligibility->assertUsable($matrixPrice->currency_code, FinancialOperation::NewInitiation);
         } catch (CurrencyNotUsableException $e) {

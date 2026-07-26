@@ -7,7 +7,7 @@ namespace App\Earnings\Enums;
 /** What happens to the instructor's compensation for a finalized lesson. Classification only — never execution. */
 enum LessonInstructorDisposition: string
 {
-    /** The Phase 14 LessonCompleted → earning pipeline owns this — never duplicated here. */
+    /** The LessonCompleted → earning pipeline owns this — never duplicated here. */
     case ExistingCompletionEarning = 'existing_completion_earning';
 
     case CompensationReviewRequired = 'compensation_review_required';

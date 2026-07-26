@@ -76,6 +76,6 @@ interface AdminQualityDashboardRepositoryInterface
     /** @return array<string, int> */
     public function instructorAttributedCancellationsTrend(TrendDateRange $range): array;
 
-    /** Most recent $limit contributing overall ratings for this instructor, newest first — from the Phase 17K contribution ledger, the same authoritative source the aggregate itself is built from. @return list<int> */
+    /** Most recent $limit contributing overall ratings for this instructor, newest first — from the contribution ledger, the same authoritative source the aggregate itself is built from. @return list<int> */
     public function recentContributionRatings(int $instructorId, int $limit): array;
 }

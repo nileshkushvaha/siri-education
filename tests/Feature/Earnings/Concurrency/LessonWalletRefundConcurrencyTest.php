@@ -19,9 +19,8 @@ use App\Wallet\Enums\WalletLedgerEntryType;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Phase 17V closure re-audit (Section 11) — the wallet-refund
- * exactly-once guarantee was previously only proven via sequential
- * stale-copy simulation (LessonWalletRefundTest::
+ * The wallet-refund exactly-once guarantee was previously only proven
+ * via sequential stale-copy simulation (LessonWalletRefundTest::
  * test_duplicate_and_concurrent_execution_create_one_ledger_credit).
  * This is a TRUE cross-process race: two independent worker processes
  * call ExecuteLessonWalletRefundAction::execute() for the same

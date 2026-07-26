@@ -19,8 +19,8 @@ use Throwable;
 /**
  * Pull-based attendance reconciliation. Complements webhooks: a sync
  * pull that overlaps webhook evidence never double-counts, because the
- * attendance aggregates merge intervals as a union (Phase 17A).
- * Providers without attendance-sync support are marked and skipped;
+ * attendance aggregates merge intervals as a union. Providers without
+ * attendance-sync support are marked and skipped;
  * transient provider failures retry within the configured window and
  * attempt budget, then settle as permanent. One meeting's failure
  * never stops the batch. Logs carry ids and reasons only.

@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17U.2 §§4-6 — the sole runtime-configuration surface for
+ * The sole runtime-configuration surface for
  * ReviewSettings: field persistence across every whitelisted section,
  * business-rule validation with no partial persistence on failure,
  * separate view/update permissions re-checked at execution time, and
@@ -408,7 +408,7 @@ class ReviewQualitySettingsPageTest extends TestCase
         $this->assertSame($before, app(ReviewSettings::class)->refresh()->review_window_days);
     }
 
-    // ── Phase 24S: no-op save creates no audit event ─────────────────────
+    // ── No-op save creates no audit event ─────────────────────────────────
 
     public function test_saving_with_no_changes_creates_no_audit_event(): void
     {

@@ -13,7 +13,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * One reservation of (part of) a Phase 14 earning against a withdrawal
+ * One reservation of (part of) an earning against a withdrawal
  * request. Written exclusively by InstructorWithdrawalService inside
  * the same transaction as the withdrawal itself; never hard-deleted —
  * released rows stay as financial history.

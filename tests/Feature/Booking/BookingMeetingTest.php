@@ -420,14 +420,14 @@ class BookingMeetingTest extends TestCase
         $booking = Booking::factory()->confirmed()->paid()->create([
             'instructor_id' => $this->teacher->id,
             'student_id' => $this->student->id,
-            // Phase 24H.2B: the resource releases the URL only inside the visibility window.
+            // The resource releases the URL only inside the visibility window.
             'starts_at' => now()->addMinutes(10),
             'ends_at' => now()->addMinutes(40),
         ]);
         app(BookingMeetingServiceInterface::class)->saveManualMeeting($booking, new MeetingUpdateContext(joinUrl: 'https://meet.example.test/abc'));
 
-        // Phase 24H.2A: the resource releases the URL only to the
-        // booking's own Active student as the request viewer.
+        // The resource releases the URL only to the booking's own
+        // Active student as the request viewer.
         $viewerRequest = Request::create('/api/test');
         $viewerRequest->setUserResolver(fn () => $this->student);
         $resource = (new StudentBookingResource($booking->fresh()->load('meeting')))
@@ -614,10 +614,9 @@ class BookingMeetingTest extends TestCase
 
     public function test_fake_meeting_provider_is_testing_environment_only(): void
     {
-        // Phase 17C narrowed the original "no fake meeting provider"
-        // decision: FakeMeetingProvider exists for attendance simulation,
-        // but its registration is wrapped in an environment('testing')
-        // guard, and no production settings path can select it
+        // FakeMeetingProvider exists for attendance simulation, but its
+        // registration is wrapped in an environment('testing') guard,
+        // and no production settings path can select it
         // (MeetingSettings::default_provider documents manual|google_meet).
         $registration = file_get_contents(app_path('Providers/BookingServiceProvider.php'));
 

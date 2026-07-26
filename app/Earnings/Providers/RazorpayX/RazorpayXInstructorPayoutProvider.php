@@ -26,8 +26,8 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * The RazorpayX India/INR instructor payout provider (Phase 16B).
- * Registered alongside the fake provider — never replaces it — and
+ * The RazorpayX India/INR instructor payout provider. Registered
+ * alongside the fake provider — never replaces it — and
  * selected only when routing/eligibility (InstructorPayoutEligibilityService)
  * resolves to `razorpayx`, itself gated by
  * InstructorEarningSettings::payout_execution_enabled AND

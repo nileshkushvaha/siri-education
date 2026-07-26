@@ -36,9 +36,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Orchestrates instructor earnings: creation from eligible completed
  * lessons, the hold → release → settle lifecycle, dispute holds,
- * reversals, and settlement batches. Phase 14.2: instructor
- * compensation comes exclusively from the instructor's effective-dated
- * compensation agreement (InstructorCompensationResolver) — it is never
+ * reversals, and settlement batches. Instructor compensation comes
+ * exclusively from the instructor's effective-dated compensation
+ * agreement (InstructorCompensationResolver) — it is never
  * calculated from the student-facing price, which does not enter this
  * service's compensation path at all. All money is integer minor units;
  * no floats are ever stored. No student wallet is touched and no
@@ -89,9 +89,9 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
             return null;
         }
 
-        // Phase 14.2/14.3: compensation comes exclusively from the
-        // agreement in force at the lesson's SCHEDULED start — the
-        // resolver has no student-price input. Categorized blocks land in
+        // Compensation comes exclusively from the agreement in force at
+        // the lesson's SCHEDULED start — the resolver has no
+        // student-price input. Categorized blocks land in
         // the compensation-exception queue for the retry sweep; benign
         // skips (periodic basis, demo policy none) return null.
         try {
@@ -340,8 +340,8 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
         ?User $actor = null,
         ?string $notes = null,
     ): InstructorSettlementBatch {
-        // Canonical financial lock order (Phase 15.1): the instructor's
-        // user row is the owner lock every financial writer for this
+        // Canonical financial lock order: the instructor's user row is
+        // the owner lock every financial writer for this
         // instructor takes first — settlement drafting and withdrawal
         // reservation serialize here, so the settleable set can never
         // change between the eligibility decision and the assignment.

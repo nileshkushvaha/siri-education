@@ -51,9 +51,9 @@ class PaymentWorkflowTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — createPaidBookingTypeWithPrice() also
-        // seeds the matching StudentLessonPrice (USD, all levels, 60min).
+        // BookingType::factory()->paid() does not carry a price —
+        // createPaidBookingTypeWithPrice() also seeds the matching
+        // StudentLessonPrice (USD, all levels, 60min).
         $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 49.99, 'USD');
         $this->assignBillingCountry($this->student, $priced['country']);
     }

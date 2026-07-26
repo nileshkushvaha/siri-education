@@ -6,7 +6,7 @@ namespace App\Earnings\Contracts;
 
 use App\Earnings\Exceptions\PayoutProviderException;
 
-/** Registered payout providers, keyed for settings + resolution. Fake-only in Phase 16A. */
+/** Registered payout providers, keyed for settings + resolution. */
 interface InstructorPayoutProviderRegistryInterface
 {
     public function register(InstructorPayoutProviderInterface $provider): void;

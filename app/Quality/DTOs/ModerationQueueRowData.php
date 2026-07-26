@@ -11,11 +11,11 @@ use Carbon\CarbonImmutable;
 /**
  * One row in the admin review-moderation queue. Student identity is
  * masked through the exact same `PublicReviewerIdentity` the public
- * profile page (Phase 17L) uses — staff browsing the queue see no
- * more of a student's identity than a public visitor would, unless a
- * future phase explicitly decides otherwise. Never carries booking/
- * payment data or the review's own moderation-reason text (that stays
- * behind the existing moderation action link, not duplicated here).
+ * profile page uses — staff browsing the queue see no more of a
+ * student's identity than a public visitor would. Never carries
+ * booking/payment data or the review's own moderation-reason text (that
+ * stays behind the existing moderation action link, not duplicated
+ * here).
  */
 final readonly class ModerationQueueRowData
 {

@@ -28,8 +28,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 10.2D / 10.2D-Cleanup — the admin-managed student pricing
- * matrix (`student_lesson_prices`) is the *only* source of a paid
+ * The admin-managed student pricing matrix (`student_lesson_prices`)
+ * is the *only* source of a paid
  * lesson's student-facing price. `booking_types.price`/`currency` no
  * longer exist (see BookingPriceCalculator) — a paid booking with no
  * matching active `StudentLessonPrice` row is always rejected.
@@ -182,7 +182,7 @@ class StudentLessonPriceResolverTest extends TestCase
         $this->assertSame('900.00', $booking->price);
     }
 
-    // ── Phase 10.2F: instructor-specific price override ────────────────
+    // ── Instructor-specific price override ──────────────────────────────
 
     public function test_instructor_specific_exact_level_price_overrides_base_exact_level_price(): void
     {
@@ -441,7 +441,7 @@ class StudentLessonPriceResolverTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['instructor_id' => $this->teacher->id]);
     }
 
-    // ── Phase 10.2D-Cleanup: legacy booking_types.price/currency fallback is gone ──
+    // ── Legacy booking_types.price/currency fallback is gone ────────────
 
     public function test_booking_type_no_longer_has_price_or_currency_columns(): void
     {
@@ -560,8 +560,8 @@ class StudentLessonPriceResolverTest extends TestCase
 
     public function test_no_instructor_payout_wallet_debit_meeting_or_duplicate_tables_were_introduced(): void
     {
-        // instructor_earnings exists since Phase 14 — a separate liability
-        // ledger, not a payout executor and not part of the pricing matrix.
+        // instructor_earnings is a separate liability ledger, not a
+        // payout executor and not part of the pricing matrix.
         foreach (['instructor_payouts', 'wallet_debits', 'meetings', 'payments'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
         }

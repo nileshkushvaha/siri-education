@@ -19,7 +19,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Phase 17U.2 §7 — review tag administration via `is_active` only,
+ * Review tag administration via `is_active` only,
  * never hard-deleted (no `deleted_at` column exists at all), and no
  * invented positive/improvement classification (ReviewTag has no
  * sentiment field, and this suite never assumes one).

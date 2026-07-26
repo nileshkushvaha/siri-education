@@ -15,8 +15,8 @@ use Illuminate\Support\Collection;
 
 /**
  * The authenticated-student booking-creation flow behind the `/book`
- * wizard (Phase 17U.3 — renamed from the pre-authenticated-only
- * "guest booking" concept; every caller is a logged-in, verified
+ * wizard (renamed from the pre-authenticated-only "guest booking"
+ * concept; every caller is a logged-in, verified
  * student). Unlike the teacher-choice flow under `/dashboard/bookings`
  * (StudentBookingServiceInterface), the wizard never requires the
  * student to pick a teacher — availability is aggregated across

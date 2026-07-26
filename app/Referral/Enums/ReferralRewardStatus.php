@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Referral\Enums;
 
 /**
- * The reward lifecycle (SRS 16.15, trimmed to what Phase 19D actually
- * operates). A row is only created once eligibility is decided, so
- * there is no separate "pending" state:
+ * The reward lifecycle (SRS 16.15). A row is only created once
+ * eligibility is decided, so there is no separate "pending" state:
  *
  *   Eligible      awaiting credit_ready_at, then credited by the one
  *                 creditReward() path
  *   Held          fraud review (campaign flag) or currency mismatch —
- *                 never auto-credited; Phase 19E resolves
+ *                 never auto-credited; an admin decision resolves
  *   Credited      wallet ledger entry posted (CHECK-enforced linkage)
  *   CreditFailed  wallet unusable at credit time; retryable
  *   Rejected      terminal, never creditable (ineligible before credit,

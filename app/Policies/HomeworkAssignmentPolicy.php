@@ -13,9 +13,9 @@ class HomeworkAssignmentPolicy
     use HandlesAuthorization;
 
     /**
-     * Phase 24J — GAP-021: only instructors create assignments; the
-     * lesson/plan ownership itself is enforced by HomeworkContextValidator
-     * inside HomeworkService::assign().
+     * Only instructors create assignments; the lesson/plan ownership
+     * itself is enforced by HomeworkContextValidator inside
+     * HomeworkService::assign().
      */
     public function create(User $user): bool
     {
@@ -37,7 +37,7 @@ class HomeworkAssignmentPolicy
         return $user->id === $assignment->teacher_id;
     }
 
-    /** GAP-022: only the assigning instructor manages instructor-provided resources. */
+    /** Only the assigning instructor manages instructor-provided resources. */
     public function manageResources(User $user, HomeworkAssignment $assignment): bool
     {
         return $user->id === $assignment->teacher_id;

@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16A — finance-visible reconciliation queue. `open_dedupe_key`
- * is a STORED generated column (NULL unless status = 'open'), unique-
+ * Finance-visible reconciliation queue. `open_dedupe_key` is a STORED
+ * generated column (NULL unless status = 'open'), unique-
  * indexed so a concurrent reconciliation run can never create two open
  * issues of the same type for the same withdrawal — the same pattern
  * already used for "single active row" invariants elsewhere in this

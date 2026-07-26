@@ -10,10 +10,10 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * Phase 17G — instructor-side earning reconciliation for approved
- * dispositions: create a missing earning, restore/release, hold, or
- * reverse — all through the existing earning service. Never touches
- * student wallets, payments, or settled money.
+ * Instructor-side earning reconciliation for approved dispositions:
+ * create a missing earning, restore/release, hold, or reverse — all
+ * through the existing earning service. Never touches student wallets,
+ * payments, or settled money.
  */
 interface LessonEarningReconciliationServiceInterface
 {

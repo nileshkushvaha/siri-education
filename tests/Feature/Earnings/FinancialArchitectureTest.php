@@ -50,8 +50,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 14.4 — architecture-level regression tests that prevent the
- * commission-era design (and other retired shapes) from returning.
+ * Architecture-level regression tests that prevent the commission-era
+ * design (and other retired shapes) from returning.
  * These inspect executable application code and the container, never
  * documentation.
  */
@@ -152,7 +152,7 @@ class FinancialArchitectureTest extends TestCase
         }
     }
 
-    // ── Phase 16A: provider-neutral payout execution ─────────────────
+    // ── Provider-neutral payout execution ────────────────────────────
 
     public function test_only_fake_and_razorpayx_payout_providers_are_registered(): void
     {
@@ -161,8 +161,8 @@ class FinancialArchitectureTest extends TestCase
         $this->assertTrue($registry->has('fake'));
         $this->assertInstanceOf(FakeInstructorPayoutProvider::class, $registry->get('fake'));
 
-        // Phase 16B — RazorpayX is registered (an adapter exists) but
-        // never enabled/credentialed by a test; disabled/unhealthy by
+        // RazorpayX is registered (an adapter exists) but never
+        // enabled/credentialed by a test; disabled/unhealthy by
         // default, exactly like every other financial switch.
         $this->assertTrue($registry->has('razorpayx'));
         $this->assertInstanceOf(RazorpayXInstructorPayoutProvider::class, $registry->get('razorpayx'));
@@ -173,8 +173,8 @@ class FinancialArchitectureTest extends TestCase
     }
 
     /**
-     * Phase 16B: RazorpayX is a legitimate external provider now, so
-     * this test's job narrows to "only the RazorpayX client boundary
+     * RazorpayX is a legitimate external provider, so this test's job
+     * narrows to "only the RazorpayX client boundary
      * ever touches Http::/curl_/etc, and no OTHER external provider
      * (Wise, PayPal, Stripe Connect) has crept in".
      */
@@ -291,8 +291,8 @@ class FinancialArchitectureTest extends TestCase
 
     public function test_no_public_financial_mutation_or_payout_execution_route_exists(): void
     {
-        // Phase 16B's one deliberate exception: the RazorpayX payout
-        // webhook is a public, unauthenticated, signature-verified POST
+        // One deliberate exception: the RazorpayX payout webhook is a
+        // public, unauthenticated, signature-verified POST
         // endpoint (see RazorpayXPayoutWebhookController) — it never
         // touches a Filament/Livewire session and never mutates
         // financial state outside the verified-and-normalized-event

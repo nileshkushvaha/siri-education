@@ -44,13 +44,13 @@ class BookingPaymentPolicy
         return false;
     }
 
-    /** The separately-permissioned exception action (Phase 16A.1) — never the default refund path. */
+    /** The separately-permissioned exception action — never the default refund path. */
     public function refundViaProvider(User $user, BookingPayment $bookingPayment): bool
     {
         return $this->hasPermission($user, 'RefundViaProvider:BookingPayment');
     }
 
-    /** Re-runs an authenticated provider status fetch on demand (Phase 16C) — never a status edit, never a mark-paid action. */
+    /** Re-runs an authenticated provider status fetch on demand — never a status edit, never a mark-paid action. */
     public function retryVerification(User $user, BookingPayment $bookingPayment): bool
     {
         return $this->hasPermission($user, 'RetryVerification:BookingPayment');

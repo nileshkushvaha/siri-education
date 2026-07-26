@@ -25,10 +25,10 @@ trait CreatesPromotionalCreditFixtures
 
         $features = app(FeatureSettings::class);
         $features->promotional_credit_enabled = true;
-        // Phase 34 (GAP-029): promotional credits now compose with the
-        // Wallet feature as a dependency (CountryFeature::PromotionalCredits
-        // ->dependencies() === [Wallet]) — wallet_enabled defaults false,
-        // so every fixture built from this trait must also enable it.
+        // Promotional credits compose with the Wallet feature as a
+        // dependency (CountryFeature::PromotionalCredits->dependencies()
+        // === [Wallet]) — wallet_enabled defaults false, so every
+        // fixture built from this trait must also enable it.
         $features->wallet_enabled = true;
         $features->save();
     }

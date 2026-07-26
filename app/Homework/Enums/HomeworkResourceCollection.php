@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Homework\Enums;
 
 /**
- * Media collections supported on HomeworkAssignment (GAP-022). Mirrors
+ * Media collections supported on HomeworkAssignment. Mirrors
  * InstructorEvidenceCollection's role as a download-route whitelist — a
  * media id belonging to any other collection/model must never resolve
  * through the homework download route, even for an authorized viewer.

@@ -32,12 +32,11 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17U.2 §9 — the previously-missing report-resolution mutation
- * actions on ReportQueueWidget (start-review/uphold/dismiss/mark-
- * duplicate/mark-remaining-duplicate), every one delegating
- * exclusively to ReviewReportService, plus §10 authorization
- * hardening: the reviewed instructor cannot resolve a report about
- * their own review.
+ * The report-resolution mutation actions on ReportQueueWidget
+ * (start-review/uphold/dismiss/mark-duplicate/mark-remaining-duplicate),
+ * every one delegating exclusively to ReviewReportService, plus
+ * authorization hardening: the reviewed instructor cannot resolve a
+ * report about their own review.
  */
 class ReviewReportWidgetActionsTest extends TestCase
 {

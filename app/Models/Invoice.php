@@ -16,7 +16,7 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * One immutable invoice/receipt per successful booking payment or
- * wallet recharge (SRS §14.21-14.24, GAP-007). Every field here is a
+ * wallet recharge (SRS §14.21-14.24). Every field here is a
  * snapshot taken at issuance by InvoiceService — never re-derived
  * from the current state of the user, country, source payment, or
  * GeneralSettings. `source_type` is a literal FQCN string (matching

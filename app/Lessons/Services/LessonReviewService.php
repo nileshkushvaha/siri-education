@@ -26,7 +26,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Administrative review desk for Phase 17D. Decisions are row-locked
+ * Administrative review desk. Decisions are row-locked
  * (two admins can never resolve the same submission differently — the
  * second sees a settled row and gets a conflict; repeating the same
  * decision is an idempotent no-op), reasoned, and audited with the

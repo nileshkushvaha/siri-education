@@ -9,8 +9,8 @@ namespace App\Earnings\Enums;
  * under_review → approved/rejected/cancelled) is owned by
  * InstructorWithdrawalService; the execution segment (approved →
  * processing → paid/failed/reversed) is owned exclusively by
- * InstructorPayoutExecutionService (Phase 16A) — no other caller may
- * perform those transitions. `failed → approved` exists only for an
+ * InstructorPayoutExecutionService — no other caller may perform those
+ * transitions. `failed → approved` exists only for an
  * explicit, authorized recovery of a pre-acceptance failure (the
  * provider never confirmed receipt), never an automatic retry.
  */

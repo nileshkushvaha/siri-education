@@ -12,11 +12,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * activeCampaignFor() is the read-only contract Phase 19D reward
- * evaluation will call. Campaign selection happens at reward-evaluation
- * time (SRS 16.11: "Referral campaign must be active at the time
- * eligibility is evaluated") — attribution rows deliberately carry no
- * campaign_id (Phase 19C linkage decision, Option B).
+ * activeCampaignFor() is the read-only contract reward evaluation
+ * calls. Campaign selection happens at reward-evaluation time (SRS
+ * 16.11: "Referral campaign must be active at the time eligibility is
+ * evaluated") — attribution rows deliberately carry no campaign_id
+ * (Option B).
  */
 class ReferralCampaignResolverTest extends TestCase
 {

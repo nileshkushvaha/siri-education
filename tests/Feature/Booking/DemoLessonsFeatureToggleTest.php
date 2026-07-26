@@ -38,8 +38,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24B — SRS-20-5/GAP-026: the platform-wide
- * FeatureSettings::demo_lessons_enabled toggle must be authoritative for
+ * SRS-20-5: the platform-wide FeatureSettings::demo_lessons_enabled
+ * toggle must be authoritative for
  * NEW free-demo bookings, without affecting the lifecycle of bookings
  * that already exist, and without being confused with (or synchronized
  * with) BookingType::is_active.
@@ -93,7 +93,7 @@ class DemoLessonsFeatureToggleTest extends TestCase
         return $teacher;
     }
 
-    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
+    /** An Active student_status is required for booking eligibility — bare role assignment leaves student_status null, which is always denied. */
     private function makeStudent(): User
     {
         return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
@@ -341,7 +341,7 @@ class DemoLessonsFeatureToggleTest extends TestCase
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => BookingStatus::Confirmed->value]);
     }
 
-    // ── 11. Phase 24A rule still applies while enabled ──────────────────────
+    // ── 11. One-demo-per-instructor rule still applies while enabled ───────
 
     public function test_one_demo_per_instructor_rule_still_applies_while_demos_are_enabled(): void
     {

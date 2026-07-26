@@ -21,8 +21,8 @@ use App\Services\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single executor of approved instructor-earning reconciliations
- * (Phase 17G). Every money-adjacent step goes through the existing
+ * The single executor of approved instructor-earning reconciliations.
+ * Every money-adjacent step goes through the existing
  * earning mechanisms — createForReconciliation (agreement-resolved,
  * snapshot-preserving), holdForDispute, release, reverse — never a
  * second calculator or settlement path. Instructor pay is never

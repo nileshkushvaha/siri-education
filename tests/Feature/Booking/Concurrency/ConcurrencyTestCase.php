@@ -13,30 +13,23 @@ use Tests\TestCase;
  * Base for the Booking domain's real-MySQL concurrency tests — mirrors
  * Tests\Feature\Earnings\Concurrency\ConcurrencyTestCase's shape.
  *
- * Phase 16C.1 root-cause fix: two order-dependent failures were
- * observed across full-suite runs (PaymentProviderResolverTest hitting
- * Spatie's MissingSettings, InstructorPayoutAdminPanelTest hitting a
- * missing table) — both symptoms of a later test class inheriting a
- * database left in an unknown state. The prior `tearDownAfterClass()`
- * pattern (duplicated across every concurrency test class) ran
- * `migrate:fresh` in a subprocess via bare `exec()` without ever
- * checking its exit code — a transient migration failure (the
- * just-finished race's child processes each hold their own MySQL
- * connection; a connection's locks are not always guaranteed released
- * the instant the client process exits, and migrate:fresh's DROP
- * TABLE/metadata-lock acquisition can transiently collide with that)
- * was completely invisible, silently leaving the next test class to
- * inherit a partially-rebuilt database. Fixed: the exit code is
- * checked, a genuine failure now fails loudly instead of silently, and
- * a bounded retry absorbs the transient case.
+ * `tearDownAfterClass()` runs `migrate:fresh` in a subprocess to rebuild
+ * the database for the next test class. Its exit code must be checked:
+ * a just-finished race's child processes each hold their own MySQL
+ * connection, and a connection's locks are not always guaranteed
+ * released the instant the client process exits, so migrate:fresh's
+ * DROP TABLE/metadata-lock acquisition can transiently collide with
+ * that. An unchecked failure here is invisible and silently leaves the
+ * next test class to inherit a partially-rebuilt database — checking
+ * the exit code makes a genuine failure fail loudly, and a bounded
+ * retry absorbs the transient case.
  *
- * (An earlier version of this fix also called `DB::purge()` afterward
- * on the theory that this process's own connection needed refreshing —
- * that was wrong and made things worse: `tearDownAfterClass()` runs
- * after Laravel's per-test application container has already been torn
- * down, so any Facade call here throws `Target class [config] does not
+ * Do not call `DB::purge()` here on the theory that this process's own
+ * connection needs refreshing: `tearDownAfterClass()` runs after
+ * Laravel's per-test application container has already been torn down,
+ * so any Facade call here throws `Target class [config] does not
  * exist`. Each test class gets its own fresh application/connection via
- * Laravel's normal testing bootstrap regardless, so no purge is needed.)
+ * Laravel's normal testing bootstrap regardless, so no purge is needed.
  */
 abstract class ConcurrencyTestCase extends TestCase
 {

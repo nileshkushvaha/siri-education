@@ -43,7 +43,7 @@ final class RecordAttendanceAction
             // lesson left its open state) is late: stored for audit,
             // flagged for administrative inspection, and never merged into
             // the aggregates — it must not silently rewrite a finalized
-            // lesson outcome (Phase 17B).
+            // lesson outcome.
             $late = $record->isFinalized()
                 || ! $lesson->status->isOpen()
                 || $lesson->booking?->status !== BookingStatus::Confirmed;

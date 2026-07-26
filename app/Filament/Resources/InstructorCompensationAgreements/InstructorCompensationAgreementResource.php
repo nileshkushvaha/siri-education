@@ -16,8 +16,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Instructor-specific compensation agreements (Phase 14.2). Amounts are
- * internal administrator decisions, independent of student pricing —
+ * Instructor-specific compensation agreements. Amounts are internal
+ * administrator decisions, independent of student pricing —
  * experience/qualifications context is shown to inform the admin, never
  * to compute the amount. Active financial terms are immutable (replace,
  * don't edit); no delete exists; every mutation routes through

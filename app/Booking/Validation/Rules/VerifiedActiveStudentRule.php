@@ -13,8 +13,8 @@ use App\Services\Student\StudentLifecycleService;
 use App\Settings\AuthenticationSettings;
 
 /**
- * Phase 10.2C-Fix: business-critical account checks belong in the
- * service layer, not only the HTTP middleware stack that already
+ * Business-critical account checks belong in the service layer, not
+ * only the HTTP middleware stack that already
  * enforces most of this on the dashboard route group
  * (auth/email.verify.if.required/EnsureAccountIsActive) — a booking
  * created through a different entry point (a future API client, an
@@ -45,9 +45,9 @@ final class VerifiedActiveStudentRule implements BookingRuleInterface
             throw new BookingException('Please verify your email address before booking a lesson.');
         }
 
-        // Phase 24H.1 — GAP-013 correction: Active is now the
-        // authoritative requirement (Registered is rejected too), not
-        // merely "not Suspended/Archived". The legacy-backfill concern
+        // Active is now the authoritative requirement (Registered is
+        // rejected too), not merely "not Suspended/Archived". The
+        // legacy-backfill concern
         // that originally motivated the weaker check is addressed
         // separately by the students:reconcile-lifecycle-status command
         // — see StudentLifecycleService::isEligibleForStudentActions().

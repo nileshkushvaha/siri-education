@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Booking\Enums;
 
 /**
- * GAP-028: Pending (requested at meeting-creation time, awaiting
- * provider capture) -> Available (imported into private storage) or
+ * Pending (requested at meeting-creation time, awaiting provider
+ * capture) -> Available (imported into private storage) or
  * Failed (permanently, after exhausting retries) -> Expired (retention
  * elapsed, media deleted, this row kept for historical evidence).
  */

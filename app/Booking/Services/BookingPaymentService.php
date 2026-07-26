@@ -95,22 +95,21 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
         // Locked claim: two concurrent initiate() calls for the same
         // booking (double-click, retried request) must agree on one
-        // reference. Reading payment_reference unlocked (the previous
-        // behavior) let both racers see null, mint their own random
-        // reference, and each successfully create its own BookingPayment
-        // row — a real duplicate-attempt bug a genuine MySQL race
-        // surfaces (Phase 16C concurrency tests). Locking the row before
-        // reading forces the loser to observe the winner's committed
-        // reference and reuse it instead.
+        // reference. Reading payment_reference unlocked would let both
+        // racers see null, mint their own random reference, and each
+        // successfully create its own BookingPayment row — a real
+        // duplicate-attempt bug a genuine MySQL race can surface. Locking
+        // the row before reading forces the loser to observe the
+        // winner's committed reference and reuse it instead.
         //
-        // Phase 24M — GAP-031 Step 9: the Currency row is ALSO locked
-        // here (inside the same transaction), so a concurrent admin
-        // disable is serialized against this decision — whichever
-        // commits first wins; the loser observes the other's
-        // already-committed state. A stale browser page cannot initiate
-        // payment after an admin disables the currency: this re-checks
-        // Active status at the final internal boundary, never relying
-        // on the booking's earlier price-resolution check alone.
+        // The Currency row is ALSO locked here (inside the same
+        // transaction), so a concurrent admin disable is serialized
+        // against this decision — whichever commits first wins; the
+        // loser observes the other's already-committed state. A stale
+        // browser page cannot initiate payment after an admin disables
+        // the currency: this re-checks Active status at the final
+        // internal boundary, never relying on the booking's earlier
+        // price-resolution check alone.
         $booking = DB::transaction(function () use ($booking): Booking {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
 
@@ -149,9 +148,9 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             // never touches payment_status, so a genuinely authentic,
             // signature-verified gateway success can still arrive here after
             // the booking itself no longer represents a lesson anyone can
-            // attend. Option B (Phase 10.2B): the charge is real, so it is
-            // preserved and redirected to the student's wallet rather than
-            // rejected outright or silently confirming a dead booking.
+            // attend. The charge is real, so it is preserved and redirected
+            // to the student's wallet rather than rejected outright or
+            // silently confirming a dead booking.
             if ($locked->status->isTerminal()) {
                 return ['late_terminal', $this->handleLateTerminalPayment($locked, $reference)];
             }
@@ -273,10 +272,10 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
         $this->studentLifecycle->assertEligibleForStudentAction($student);
 
-        // GAP-029: wallet lesson payment requires both Wallet and Paid
-        // Bookings to be effectively enabled for the student's country —
-        // composed here rather than as its own registry feature, since
-        // no distinct global switch for "wallet lesson payment" exists.
+        // Wallet lesson payment requires both Wallet and Paid Bookings to
+        // be effectively enabled for the student's country — composed
+        // here rather than as its own registry feature, since no distinct
+        // global switch for "wallet lesson payment" exists.
         $country = $this->countryResolver->forStudent($student);
 
         if (! $this->countryFeatures->isEnabled(CountryFeature::Wallet, $country)
@@ -441,14 +440,14 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
     }
 
     /**
-     * Version 1 refund policy (Phase 16A.1): the default, normal-path
-     * refund never touches the gateway. It locks the booking (the
-     * serialization point shared with refundViaProvider — whichever
-     * path's transaction commits first wins; the loser sees
-     * payment_status no longer Paid or the resolution already tagged),
-     * credits the student's wallet in the payment's original currency,
-     * and finalizes in the same transaction — there is no external
-     * call here to hold the lock open for.
+     * The default, normal-path refund never touches the gateway. It
+     * locks the booking (the serialization point shared with
+     * refundViaProvider — whichever path's transaction commits first
+     * wins; the loser sees payment_status no longer Paid or the
+     * resolution already tagged), credits the student's wallet in the
+     * payment's original currency, and finalizes in the same
+     * transaction — there is no external call here to hold the lock
+     * open for.
      */
     public function refundToWallet(Booking $booking, ?string $reason = null, ?CancellationRefundDecision $decision = null): Booking
     {
@@ -483,8 +482,8 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
     }
 
     /**
-     * Phase 24C — SRS 11.24/6.8: a late student cancellation is not
-     * refund-eligible. The booking is already Cancelled by the time
+     * SRS 11.24/6.8: a late student cancellation is not refund-eligible.
+     * The booking is already Cancelled by the time
      * this runs (BookingService::cancel() already committed); this
      * only records the frozen decision on the payment for
      * traceability. payment_status deliberately stays Paid — the
@@ -545,10 +544,9 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
     /**
      * Exception-path refund. The gateway call happens with no database
-     * lock held (§16 of the Phase 16A.1 routing audit — the same rule
-     * as instructor payout execution): a short transaction claims the
-     * payment first, the network call happens outside it, then a
-     * second short transaction finalizes.
+     * lock held (the same rule as instructor payout execution): a short
+     * transaction claims the payment first, the network call happens
+     * outside it, then a second short transaction finalizes.
      */
     public function refundViaProvider(Booking $booking, User $actor, string $reason): Booking
     {
@@ -701,12 +699,12 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
     }
 
     /**
-     * Country-aware provider selection (Phase 10.2B): resolves the
-     * payer's country from the student's profile when one exists and
-     * lets PaymentProviderResolver apply its routing order
+     * Country-aware provider selection: resolves the payer's country
+     * from the student's profile when one exists and lets
+     * PaymentProviderResolver apply its routing order
      * (Country::payment_routing → default_provider → legacy
      * BookingSettings::payment_provider). Passing null (the $booking-less
-     * call form) preserves the exact pre-10.2B behavior.
+     * call form) skips country resolution entirely.
      */
     private function provider(?Booking $booking = null): PaymentProviderInterface
     {
@@ -719,11 +717,11 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
     }
 
     /**
-     * Option B (Phase 10.2B, replacing Phase 10.2's outright rejection):
-     * the payment is authentic (signature, amount, and currency were
-     * already verified by the provider before markPaid() was ever
-     * called) but the booking can no longer be confirmed for it. The
-     * charge is preserved, never silently discarded or left ambiguous:
+     * Option B: the payment is authentic (signature, amount, and
+     * currency were already verified by the provider before markPaid()
+     * was ever called) but the booking can no longer be confirmed for
+     * it. The charge is preserved, never silently discarded or left
+     * ambiguous:
      *
      *   - every booking has an authenticated student → credited to
      *     their wallet, exactly once (WalletLedgerService::credit()'s

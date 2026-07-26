@@ -29,11 +29,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
- * Authenticated-student wizard booking flow (Phase 17U.3 — renamed
- * from GuestBookingService; every caller is logged in). The auto-
- * assignment capability (pick any eligible teacher, or lock a specific
- * one) is what distinguishes this from StudentBookingServiceInterface,
- * which always requires an explicit teacher choice.
+ * Authenticated-student wizard booking flow — every caller is logged
+ * in. The auto-assignment capability (pick any eligible teacher, or
+ * lock a specific one) is what distinguishes this from
+ * StudentBookingServiceInterface, which always requires an explicit
+ * teacher choice.
  */
 final class WizardBookingService implements WizardBookingServiceInterface
 {
@@ -217,8 +217,8 @@ final class WizardBookingService implements WizardBookingServiceInterface
     }
 
     /**
-     * Phase 24B.2 — the one place both availableDates() and
-     * availableSlots() (via slotsAcrossTeachers()) funnel through
+     * The one place both availableDates() and availableSlots() (via
+     * slotsAcrossTeachers()) funnel through
      * before any teacher-eligibility query or availability expansion.
      * An explicit free-demo scheduling request must never return
      * teachers/dates/slots implying a new demo can be created while the

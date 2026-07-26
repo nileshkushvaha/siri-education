@@ -16,8 +16,8 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * GAP-008 requirement #4 — the ONE authoritative service for the demo-
- * to-paid conversion incentive: resolves the qualifying demo,
+ * The ONE authoritative service for the demo-to-paid conversion
+ * incentive: resolves the qualifying demo,
  * validates the full conversion eligibility chain, creates the award +
  * its earning (through InstructorEarningService, never a direct
  * ledger write), guarantees database-backed idempotency and

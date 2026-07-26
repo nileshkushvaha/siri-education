@@ -11,8 +11,8 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * GAP-008 requirement #9 — informs the instructor a demo-to-paid
- * conversion bonus was earned. Carries only the formatted amount and
+ * Informs the instructor a demo-to-paid conversion bonus was earned.
+ * Carries only the formatted amount and
  * award id — never the student's identity, the demo/paid lesson
  * internals, or the rule snapshot. Mirrors
  * InstructorWithdrawalStatusNotification's plain (non-templated)

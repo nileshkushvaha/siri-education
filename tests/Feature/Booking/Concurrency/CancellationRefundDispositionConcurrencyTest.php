@@ -16,8 +16,8 @@ use App\Models\WalletLedgerEntry;
 use Carbon\CarbonImmutable;
 
 /**
- * Phase 24C — real multi-process race proving the frozen ineligible-
- * cancellation disposition can only ever be recorded once, even under a
+ * Real multi-process race proving the frozen ineligible-cancellation
+ * disposition can only ever be recorded once, even under a
  * genuine duplicate delivery of the SAME cancellation event (e.g. two
  * queue workers picking up the same job, or a webhook/listener retry
  * that overlaps the original execution). Mirrors the harness pattern

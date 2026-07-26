@@ -88,8 +88,8 @@ interface PaymentProviderInterface
     public function fetchStatus(string $providerReference): PaymentStatusResult;
 
     /**
-     * The provider's static, declared shape (Phase 16A.1 routing
-     * audit). The generic booking domain reads this instead of ever
+     * The provider's static, declared shape. The generic booking
+     * domain reads this instead of ever
      * branching on a provider name — see
      * `PaymentCollectionEligibilityService`, which is the only caller
      * that should need it. Never a network call.

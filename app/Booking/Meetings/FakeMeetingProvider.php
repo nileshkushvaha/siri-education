@@ -33,10 +33,10 @@ use Throwable;
  * environment (BookingServiceProvider) — production keeps the original
  * "no fake meeting provider" decision. Moves no data anywhere.
  *
- * GAP-028: also the only provider implementing
+ * Also the only provider implementing
  * MeetingRecordingProviderInterface — real providers (Zoom/Google Meet/
- * Manual) all decline recording support until a future phase adds it
- * for real (SRS §12.31 "where the active provider supports it").
+ * Manual) all decline recording support unless one adds it for real
+ * (SRS §12.31 "where the active provider supports it").
  */
 final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, MeetingProviderInterface, MeetingRecordingProviderInterface
 {

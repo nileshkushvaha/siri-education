@@ -28,8 +28,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17 closure audit — Gate::before grants super_admin a global
- * permission bypass, and Spatie roles are not mutually exclusive.
+ * Gate::before grants super_admin a global permission bypass, and
+ * Spatie roles are not mutually exclusive.
  * LessonReviewPolicy::moderate()/ReviewReportPolicy::resolve() both
  * independently exclude the reviewed instructor from moderating their
  * own review, but that policy-layer check alone is bypassable by an

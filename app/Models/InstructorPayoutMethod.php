@@ -108,7 +108,7 @@ class InstructorPayoutMethod extends Model
         return $this->hasMany(InstructorWithdrawalRequest::class, 'payout_method_id');
     }
 
-    /** Phase 16B — RazorpayX Contact/Fund Account provisioning state. Null until provisioning has been attempted at least once. */
+    /** RazorpayX Contact/Fund Account provisioning state. Null until provisioning has been attempted at least once. */
     public function razorpayXProviderLink(): HasOne
     {
         return $this->hasOne(InstructorPayoutDestinationProviderLink::class, 'payout_method_id')

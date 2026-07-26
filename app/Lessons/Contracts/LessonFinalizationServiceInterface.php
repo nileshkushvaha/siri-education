@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Lessons\Contracts;
 
 /**
- * Phase 17B automated post-lesson processing: seals due attendance
+ * Automated post-lesson processing: seals due attendance
  * records, determines outcomes from the evidence, and finalizes them —
  * everything flows through the existing attendance/outcome services and
  * FinalizeLessonOutcomeAction; this layer only decides *when*.

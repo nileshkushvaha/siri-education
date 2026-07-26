@@ -9,7 +9,7 @@ use Filament\Resources\Pages\EditRecord;
 
 /**
  * No DeleteAction/ForceDeleteAction here — ReviewTag has no
- * `deleted_at` column at all (Phase 17U.2 §7); retirement is the
+ * `deleted_at` column at all; retirement is the
  * `is_active` toggle on the edit form only.
  */
 class EditReviewTag extends EditRecord

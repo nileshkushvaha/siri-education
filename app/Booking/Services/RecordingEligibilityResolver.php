@@ -12,21 +12,20 @@ use App\Country\Services\CountryResolver;
 use App\Models\Booking;
 
 /**
- * GAP-028 requirement #1 — the COMPLETE eligibility chain for a
- * specific booking, wrapping RecordingAvailabilityResolver (global +
- * country + meeting-level flags — GAP-027/GAP-029, unchanged) and
- * adding every remaining AND-term: confirmed booking, provider
- * capability, both participants' account standing, both participants'
- * explicit consent. Every branch returns a stable machine-readable
- * reason code so callers/tests can assert exactly which gate failed —
- * never a boolean alone.
+ * The COMPLETE eligibility chain for a specific booking, wrapping
+ * RecordingAvailabilityResolver (global + country + meeting-level
+ * flags) and adding every remaining AND-term: confirmed booking,
+ * provider capability, both participants' account standing, both
+ * participants' explicit consent. Every branch returns a stable
+ * machine-readable reason code so callers/tests can assert exactly
+ * which gate failed — never a boolean alone.
  *
  * The governing country is the STUDENT's (not the instructor's):
  * recording availability is a data-residency/consent-law concern,
  * which follows the student the same way MarketplaceCountryResolver's
  * pricing/localization already does — distinct from Homework's
- * GAP-029 gate, which is an instructor action and correctly resolves
- * against the instructor instead.
+ * equivalent gate, which is an instructor action and correctly
+ * resolves against the instructor instead.
  */
 final class RecordingEligibilityResolver
 {

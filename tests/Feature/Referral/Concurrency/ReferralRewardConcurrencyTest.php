@@ -16,8 +16,8 @@ use Spatie\Permission\Models\Role;
 use Tests\Feature\Referral\Concerns\BuildsReferralRewardFixtures;
 
 /**
- * Real multi-process races for the Phase 19D money invariants:
- * unique(lesson_id) makes evaluation single-winner, the locked cap
+ * Real multi-process races for the money invariants: unique(lesson_id)
+ * makes evaluation single-winner, the locked cap
  * check + unique(attribution_id, class_sequence) bound the class cap,
  * the reward row lock + ledger idempotency key make crediting
  * exactly-once, and the ledger's Posted→Reversed transition makes

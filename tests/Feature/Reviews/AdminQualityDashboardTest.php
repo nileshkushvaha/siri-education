@@ -49,8 +49,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Phase 17O — admin review & quality-assurance dashboard: read-only
- * aggregation over Phase 17H–17N's authoritative tables, permission-
+ * Admin review & quality-assurance dashboard: read-only
+ * aggregation over the authoritative Reviews/Quality tables, permission-
  * gated access, correct summary/queue/rating-health/trend
  * calculations, UTC-safe bounded date ranges, action delegation to
  * the existing moderation/report/alert services, and the guarantee
@@ -262,7 +262,7 @@ class AdminQualityDashboardTest extends TestCase
         $this->assertCount(0, $this->dashboard->lowRatedInstructors());
     }
 
-    // ── Phase 24U: proves the fixture fix did not weaken lifecycle enforcement ──
+    // ── Proves the fixture fix did not weaken lifecycle enforcement ──────
 
     /**
      * Direct evidence that switching this file's implicit student
@@ -592,15 +592,15 @@ class AdminQualityDashboardTest extends TestCase
     }
 
     /**
-     * Phase 24U — GAP: confirmedBooking()/paidLesson()/demoLesson() used
-     * to default their student to a bare User::factory() — no 'student'
-     * role, no Active StudentStatus. StudentReviewService::submit() and
-     * BookingService::assertStudentInitiatorNotRestricted() (Phase
-     * 24H.1/24H.2) now enforce StudentLifecycleService on any
-     * student-initiated action, rejecting that bare fixture before this
-     * file's own review/dashboard logic is ever reached. These tests
-     * exercise dashboard/review/quality behavior, not lifecycle
-     * rejection, so the implicit student is now a real activeStudent().
+     * confirmedBooking()/paidLesson()/demoLesson() must not default
+     * their student to a bare User::factory() — no 'student' role, no
+     * Active StudentStatus. StudentReviewService::submit() and
+     * BookingService::assertStudentInitiatorNotRestricted() enforce
+     * StudentLifecycleService on any student-initiated action, rejecting
+     * that bare fixture before this file's own review/dashboard logic is
+     * ever reached. These tests exercise dashboard/review/quality
+     * behavior, not lifecycle rejection, so the implicit student is a
+     * real activeStudent().
      */
     private function activeStudent(): User
     {

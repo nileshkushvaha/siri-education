@@ -13,8 +13,7 @@ use Illuminate\Queue\SerializesModels;
  * ShouldDispatchAfterCommit: BookingPaymentService::markPaid() calls
  * BookingService::confirm() from inside its own outer DB::transaction —
  * queued listeners (meeting creation, lesson creation, notifications)
- * must never observe a confirmation that isn't durably committed yet
- * (Phase 17U.4).
+ * must never observe a confirmation that isn't durably committed yet.
  */
 final class BookingConfirmed implements ShouldDispatchAfterCommit
 {

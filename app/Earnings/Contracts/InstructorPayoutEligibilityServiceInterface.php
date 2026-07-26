@@ -12,8 +12,8 @@ use App\Earnings\Enums\PayoutMethodType;
  * country + withdrawal currency + destination type) can be serviced by
  * a provider — combining provider capabilities with routing
  * configuration (`payout_rollout_scope`, `Country.payout_routing`).
- * Never confuse with `App\Earnings\Support\InstructorPayoutEligibility`
- * (Phase 15), which is an account-level check (role, active status,
+ * Never confuse with `App\Earnings\Support\InstructorPayoutEligibility`,
+ * which is an account-level check (role, active status,
  * instructor application status) with no notion of provider/geography
  * at all — a user can be perfectly eligible per that class and still
  * have no eligible payout ROUTE per this one, and vice versa is

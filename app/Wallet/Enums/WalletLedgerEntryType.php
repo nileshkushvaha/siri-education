@@ -18,8 +18,8 @@ enum WalletLedgerEntryType: string
     case Expiry = 'expiry';
 
     /**
-     * Phase 10.2B — Option B: a gateway payment that settled successfully
-     * after its booking had already gone terminal (cancelled/expired/
+     * Option B: a gateway payment that settled successfully after its
+     * booking had already gone terminal (cancelled/expired/
      * completed/no_show). The charge is real and captured at the
      * gateway, but the booking can no longer be confirmed for it, so
      * the amount is credited to the student's wallet instead of being

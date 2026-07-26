@@ -16,11 +16,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Phase 16C — proves StripePaymentProvider::fetchStatus() normalizes
- * every Stripe PaymentIntent status this phase's lifecycle enum needs
- * to represent (processing, unknown, requires_* -> pending, canceled),
- * never silently mapping an unrecognized/ambiguous provider status to
- * a false "captured" or "failed".
+ * Proves StripePaymentProvider::fetchStatus() normalizes every Stripe
+ * PaymentIntent status the lifecycle enum needs to represent
+ * (processing, unknown, requires_* -> pending, canceled), never
+ * silently mapping an unrecognized/ambiguous provider status to a
+ * false "captured" or "failed".
  */
 class StripePaymentStatusMappingTest extends TestCase
 {

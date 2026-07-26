@@ -46,8 +46,8 @@ final class InstructorCompensationAgreementService implements InstructorCompensa
     ) {}
 
     /**
-     * Phase 14.3: daily/weekly/monthly pay fixed contractual amounts per
-     * period regardless of taught lessons — that rollout is gated behind
+     * Daily/weekly/monthly pay fixed contractual amounts per period
+     * regardless of taught lessons — that rollout is gated behind
      * periodic_compensation_enabled until its attendance/leave rules are
      * defined. Drafting stays possible (preparation), activation does not.
      */

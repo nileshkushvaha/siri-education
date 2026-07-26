@@ -12,8 +12,8 @@ use App\Services\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The single writer of booking archival (Phase 17U.1). Lock → verify
- * terminal → verify not already archived → require a reason →
+ * The single writer of booking archival. Lock → verify terminal →
+ * verify not already archived → require a reason →
  * soft-delete → audit, all in one transaction. Never called directly
  * from a Filament callback — BookingArchivalService is the boundary.
  * Archiving changes only `deleted_at`; status, payment status, refund

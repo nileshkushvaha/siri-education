@@ -22,12 +22,12 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * GAP-028 requirement #5 — the queued job and the reconciliation sweep
- * command both funnel through RecordingService::capture(), so a
- * duplicate job dispatch or a sweep re-processing an already-settled
- * row can never import twice. Also proves the sweep's query stays
- * bounded as the recordings table grows (mirrors the flat-query-count
- * pattern from Phase 39's RecommendationServiceTest).
+ * The queued job and the reconciliation sweep command both funnel
+ * through RecordingService::capture(), so a duplicate job dispatch or
+ * a sweep re-processing an already-settled row can never import twice.
+ * Also proves the sweep's query stays bounded as the recordings table
+ * grows (mirrors the flat-query-count pattern from
+ * RecommendationServiceTest).
  */
 final class RecordingCaptureJobAndSweepTest extends TestCase
 {

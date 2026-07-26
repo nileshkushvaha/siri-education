@@ -46,7 +46,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 17M — review reporting & administrative resolution: reporting
+ * Review reporting & administrative resolution: reporting
  * eligibility, duplicate/contact-leakage protection, the admin
  * start/uphold/dismiss/duplicate lifecycle delegating every review-
  * status change to the existing ReviewModerationService, idempotency/
@@ -197,9 +197,8 @@ class ReviewReportingTest extends TestCase
     }
 
     /**
-     * Phase 17V closure re-audit — root-caused a full-suite-only flake
-     * here: the previous assertion did a blind `str_contains($raw,
-     * '555')` across the ENTIRE encoded properties blob, which also
+     * A blind `str_contains($raw, '555')` across the ENTIRE encoded
+     * properties blob is unsafe: the blob also
      * legitimately contains the report's randomly-generated UUIDv7
      * `review_id` (logged by design, for traceability). UUIDv7 values
      * contain any given 3-hex-digit substring ~0.14% of the time by
@@ -514,10 +513,10 @@ class ReviewReportingTest extends TestCase
         $report = $this->reports->submit($review, $this->reporterUser(), new SubmitReviewReportData(reason: ReviewReportReason::AbusiveLanguage));
         $admin = $this->admin();
 
-        // Phase 17S later attaches ReviewHiddenNotification to the
-        // student when a report-driven hide takes effect — the one
-        // expected exception; the point of this test is that report
-        // resolution creates no *quality alert*.
+        // ReviewHiddenNotification is attached to the student when a
+        // report-driven hide takes effect — the one expected exception;
+        // the point of this test is that report resolution creates no
+        // *quality alert*.
         Notification::fake();
         $this->reports->uphold($report, $admin, 'Confirmed.', ReviewReportResolutionAction::HideReview);
 
@@ -540,7 +539,7 @@ class ReviewReportingTest extends TestCase
         $this->assertSame(0, DB::table('instructor_earnings')->count());
     }
 
-    // ── 28. Phase 17J–17L regression ──────────────────────────────────────
+    // ── 28. Moderation/display regression ───────────────────────────────────
 
     public function test_phase_17j_to_17l_regression_unaffected(): void
     {
@@ -595,8 +594,8 @@ class ReviewReportingTest extends TestCase
 
     private function openEligibility(Lesson $lesson): LessonReviewEligibility
     {
-        // Phase 24H.2: review submission requires an Active student —
-        // booking-factory students start role-less with a null status.
+        // Review submission requires an Active student — booking-factory
+        // students start role-less with a null status.
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $lesson->student->assignRole('student');
         $lesson->student->profile()->update(['student_status' => StudentStatus::Active]);
@@ -672,7 +671,7 @@ class ReviewReportingTest extends TestCase
     {
         $reporter = User::factory()->create(array_merge(['status' => 'active'], $overrides));
         $reporter->assignRole('student');
-        // Phase 24H.2: student-authenticated reporting requires an Active student.
+        // Student-authenticated reporting requires an Active student.
         $reporter->profile()->update(['student_status' => StudentStatus::Active]);
 
         return $reporter;

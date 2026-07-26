@@ -20,8 +20,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-028 requirement #1 — every AND-term in the eligibility chain,
- * tested independently so a future regression can never silently widen
+ * Every AND-term in the eligibility chain, tested independently so a
+ * future regression can never silently widen
  * the gate. Recording stays OFF unless every single one passes.
  */
 final class RecordingEligibilityResolverTest extends TestCase

@@ -8,9 +8,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Reservation ledger between withdrawal requests and Phase 14 earnings.
- * Phase 14 has no reservation concept (settlement_batch_id is a whole-
- * row assignment), so this table is the canonical reservation record:
+ * Reservation ledger between withdrawal requests and earnings.
+ * Earnings themselves have no reservation concept (settlement_batch_id
+ * is a whole-row assignment), so this table is the canonical
+ * reservation record:
  * an earning's withdrawable remainder = earning_amount_minor − SUM of
  * its non-released allocations. Partial amounts are supported (FIFO
  * allocation may split the last earning). Rows are never hard-deleted;

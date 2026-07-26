@@ -44,7 +44,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17R — limited student review editing: editable statuses and
+ * Limited student review editing: editable statuses and
  * the edit window, report/dispute locks, snapshot-governed validation,
  * append-only sanitized revision history, re-moderation targets
  * (public → Submitted/Flagged, private stays private), exactly-once
@@ -470,12 +470,12 @@ class StudentReviewEditingTest extends TestCase
 
     public function test_no_notification_is_sent(): void
     {
-        // Confirms Phase 17R's own stated exclusion — StudentReviewEdited
-        // itself has no notification listener attached in any phase.
-        // Phase 17S DOES attach listeners to the downstream re-moderation
-        // events a clean edit triggers (Submitted → auto-published again)
-        // — that legitimate republish notification is the expected
-        // exception asserted below.
+        // Confirms StudentReviewEdited's own stated exclusion — it has
+        // no notification listener attached itself. Listeners ARE
+        // attached to the downstream re-moderation events a clean edit
+        // triggers (Submitted → auto-published again) — that legitimate
+        // republish notification is the expected exception asserted
+        // below.
         $review = $this->submitPublicReview()->fresh();
 
         Notification::fake();

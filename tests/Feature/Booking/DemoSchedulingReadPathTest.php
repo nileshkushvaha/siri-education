@@ -33,12 +33,11 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24B.2 — every scheduling read path used to prepare a NEW
- * free-demo booking (dates, slots, teacher lookups) must respect
- * DemoAvailabilityResolver, matching the Phase 24B authoritative
- * booking-creation rejection and the Phase 24B.1 card/teacher-lookup
- * fixes. Paid scheduling and all already-created demo operations must
- * be completely unaffected.
+ * Every scheduling read path used to prepare a NEW free-demo booking
+ * (dates, slots, teacher lookups) must respect DemoAvailabilityResolver,
+ * matching the authoritative booking-creation rejection and the
+ * card/teacher-lookup behavior. Paid scheduling and all already-created
+ * demo operations must be completely unaffected.
  */
 class DemoSchedulingReadPathTest extends TestCase
 {
@@ -294,7 +293,7 @@ class DemoSchedulingReadPathTest extends TestCase
         $this->assertCount(0, app(StudentBookingServiceInterface::class)->availableTeachers('free_demo', 'maths', 5));
     }
 
-    // ── 13. The Phase 24B authoritative booking rejection still works ──────
+    // ── 13. The authoritative booking rejection still works ────────────────
 
     public function test_authoritative_booking_creation_rejection_is_unaffected(): void
     {

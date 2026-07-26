@@ -16,7 +16,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * GAP-022 / SRS-7-8: one immutable, published version of a
+ * SRS-7-8: one immutable, published version of a
  * HomeworkResource. The file never changes after publish — a "file
  * update" always creates a new HomeworkResourceVersion row (and a new
  * media attachment) instead, so assignments already linked to an

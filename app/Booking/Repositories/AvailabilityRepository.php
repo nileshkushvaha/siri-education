@@ -65,8 +65,8 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
     }
 
     /**
-     * Phase 24I — GAP-019: the coverage calculation itself, extracted so
-     * a HYPOTHETICAL window set (an availability mutation's proposed
+     * The coverage calculation itself, extracted so a HYPOTHETICAL
+     * window set (an availability mutation's proposed
      * after-state, built from unsaved model clones) can be evaluated
      * with the exact same timezone/day-of-week/effective-range/midnight
      * semantics as the live windowCovers() check — never a second

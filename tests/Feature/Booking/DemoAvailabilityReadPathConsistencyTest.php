@@ -24,11 +24,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24B.1 — corrective closure of the two read-path inconsistencies
- * documented in the Phase 24B final report: InstructorService::card()
- * and StudentBookingService::availableTeachers() must both respect the
- * same effective rule (booking type active AND demo_lessons_enabled) as
- * the authoritative Phase 24B booking-creation rejection.
+ * InstructorService::card() and StudentBookingService::availableTeachers()
+ * must both respect the same effective rule (booking type active AND
+ * demo_lessons_enabled) as the authoritative booking-creation rejection.
  */
 class DemoAvailabilityReadPathConsistencyTest extends TestCase
 {
@@ -204,20 +202,20 @@ class DemoAvailabilityReadPathConsistencyTest extends TestCase
         $this->demoType->update(['is_active' => false]);
 
         // Unchanged pre-existing behavior: requireActiveByKey() throws
-        // before this phase's new check is ever reached.
+        // before the demo-availability check is ever reached.
         $this->expectException(BookingException::class);
         $this->expectExceptionMessage('Booking type "free_demo" is not currently accepting bookings.');
 
         app(StudentBookingServiceInterface::class)->availableTeachers('free_demo', 'maths', 5);
     }
 
-    // ── 10. The Phase 24B authoritative rejection is unaffected ────────────
+    // ── 10. The authoritative rejection is unaffected ──────────────────────
 
     public function test_authoritative_booking_service_still_rejects_demo_creation_when_disabled(): void
     {
         $teacher = $this->makeTeacher();
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
-        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]); // Phase 24H.1A: booking requires an Active student
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]); // booking requires an Active student
         $this->disableDemos();
 
         $this->expectException(FreeDemoUnavailableException::class);

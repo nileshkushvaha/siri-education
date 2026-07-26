@@ -10,8 +10,8 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Two word-style permissions, matching the Phase 19B referral set
- * (ViewReferralAttributions / DisableReferralCodes): read access via
+ * Two word-style permissions, matching the referral module's permission
+ * set (ViewReferralAttributions / DisableReferralCodes): read access via
  * ViewReferralCampaigns, every mutation via ManageReferralCampaigns.
  * Deletion is denied outright — campaigns are archived, never deleted
  * (the model's PreventsHardDeletion is the second lock on that door).

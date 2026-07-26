@@ -23,8 +23,8 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 14.2 — earnings come exclusively from agreement-based
- * compensation: hourly rate × eligible minutes for lesson earnings,
+ * Earnings come exclusively from agreement-based compensation: hourly
+ * rate × eligible minutes for lesson earnings,
  * never a percentage of the student price, which no longer enters the
  * calculation path at all.
  */
@@ -49,7 +49,7 @@ class InstructorEarningTest extends TestCase
             'minor_units' => 2, 'status' => 'active', 'sort_order' => 1,
         ]);
 
-        // Phase 14.2: earnings ship DISABLED — tests exercising creation
+        // Earnings ship DISABLED by default — tests exercising creation
         // enable the switch explicitly.
         $this->settings(['earnings_enabled' => true]);
     }
@@ -191,7 +191,7 @@ class InstructorEarningTest extends TestCase
         $this->assertSame(15000, $earning->earning_amount_minor);
     }
 
-    // ── Eligibility / idempotency (unchanged Phase 14 rules) ─────────
+    // ── Eligibility / idempotency ─────────────────────────────────────
 
     public function test_ineligible_lessons_never_create_earnings(): void
     {
@@ -268,7 +268,7 @@ class InstructorEarningTest extends TestCase
         $this->assertSame(InstructorEarningStatus::PendingHold, $earning->refresh()->status);
     }
 
-    // ── Commission removal (Phase 14.4: gone entirely) ───────────────
+    // ── Commission removal (gone entirely) ────────────────────────────
 
     public function test_commission_calculation_types_no_longer_exist(): void
     {

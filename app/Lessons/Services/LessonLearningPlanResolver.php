@@ -9,7 +9,7 @@ use App\Models\StudentLearningPlan;
 
 /**
  * The single authority on whether a newly created lesson may be
- * associated with a learning plan (SRS §6.17.5 / §6.17.10, GAP-023).
+ * associated with a learning plan (SRS §6.17.5 / §6.17.10).
  *
  * A candidate must match on student, subject, and primary instructor —
  * all server-resolved from the booking/lesson, never a client-supplied

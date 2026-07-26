@@ -11,8 +11,8 @@ use App\Settings\MeetingSettings;
 
 /**
  * The single "is recording currently available" answer (SRS §20.8,
- * GAP-027, extended by GAP-029 for country-level availability).
- * `CountryFeatureResolver` folds in the platform-wide
+ * extended for country-level availability). `CountryFeatureResolver`
+ * folds in the platform-wide
  * `FeatureSettings::recording_enabled` outer switch (always evaluated
  * first, including any country-level override) — the meeting-level
  * `MeetingSettings::recording_enabled` default can never turn recording

@@ -12,8 +12,8 @@ use App\Reviews\Exceptions\ReviewEligibilityException;
 use App\Reviews\Exceptions\ReviewValidationException;
 
 /**
- * Single entry point for limited student review editing (Phase 17R).
- * The caller passes auth()->user(), never a request-supplied id;
+ * Single entry point for limited student review editing. The caller
+ * passes auth()->user(), never a request-supplied id;
  * ownership, window, status, and report locks are all revalidated
  * under lock inside EditStudentReviewAction regardless of what the
  * rendering page believed.

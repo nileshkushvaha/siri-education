@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 24D — pure boundary tests for RescheduleLimitPolicy::decide().
+ * Pure boundary tests for RescheduleLimitPolicy::decide().
  * Prior successful reschedules are seeded directly as
  * BookingActivityAction::Rescheduled rows (the durable source of
  * truth), never inferred from updated_at or a separate counter.

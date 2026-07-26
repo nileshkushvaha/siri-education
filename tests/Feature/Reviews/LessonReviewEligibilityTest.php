@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Phase 17H — verified student review eligibility: the SRS
+ * Verified student review eligibility: the SRS
  * creation matrix (paid/demo × policy), idempotency, outcome-override
  * revoke/manual-review/restore, expiration, authorization, and the
  * guarantee that nothing outside the eligibility table ever changes.
@@ -244,9 +244,9 @@ class LessonReviewEligibilityTest extends TestCase
         $this->outcomes->finalize($lesson, LessonOutcome::Completed);
         $record = $this->eligibilityFor($lesson);
 
-        // Simulate a review having already been submitted (Phase 17H
-        // does not implement submission — this proves the safety rule
-        // regardless of how the record reached Used).
+        // Simulate a review having already been submitted directly on
+        // the eligibility record — this proves the safety rule
+        // regardless of how the record reached Used.
         $record->forceFill(['status' => LessonReviewEligibilityStatus::Used, 'used_at' => now()])->save();
 
         $this->outcomes->override($lesson->refresh(), $admin, LessonOutcome::StudentNoShow, 'Attendance evidence corrected.');
@@ -386,7 +386,7 @@ class LessonReviewEligibilityTest extends TestCase
         $this->outcomes->finalize($lesson, LessonOutcome::Completed);
 
         foreach (['reviews', 'ratings', 'instructor_review_aggregates'] as $table) {
-            $this->assertFalse(Schema::hasTable($table), "Phase 17H must not create a {$table} table.");
+            $this->assertFalse(Schema::hasTable($table), "Review eligibility must not create a {$table} table.");
         }
 
         $this->assertDatabaseCount('lesson_review_eligibilities', 1);
@@ -399,9 +399,9 @@ class LessonReviewEligibilityTest extends TestCase
         // Exercised directly against the eligibility service (open,
         // revoke-on-override, expire) — isolating the Reviews domain
         // from the pre-existing lesson/booking-completion notification
-        // pipeline, which is unrelated to this phase. Phase 17S later
-        // attaches ReviewRequestedNotification to the eligibility-opened
-        // event specifically — that is the one expected exception here.
+        // pipeline, which is unrelated here. ReviewRequestedNotification
+        // is attached to the eligibility-opened event specifically —
+        // that is the one expected exception here.
         $lesson = $this->paidLesson()->refresh();
         $this->eligibility->handleOutcomeFinalized($lesson, LessonOutcome::Completed);
         $this->eligibility->handleOutcomeOverridden($lesson->refresh(), LessonOutcome::Completed, LessonOutcome::Cancelled, 'Corrected.');

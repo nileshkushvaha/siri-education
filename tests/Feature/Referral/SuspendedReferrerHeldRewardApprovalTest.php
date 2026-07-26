@@ -16,12 +16,11 @@ use Tests\Feature\Referral\Concerns\BuildsReferralRewardFixtures;
 use Tests\TestCase;
 
 /**
- * Phase 24H — GAP-013 Step 10: a suspended/archived student_status must
- * not forfeit money already owed. This held reward was already
- * calculated as owed before the referrer was suspended — approving it
- * for credit must not be rejected merely because of that later status
- * change (ReferralRewardService::assertStillCreditable() previously
- * did reject it; fixed as part of this phase).
+ * A suspended/archived student_status must not forfeit money already
+ * owed. This held reward was already calculated as owed before the
+ * referrer was suspended — approving it for credit must not be
+ * rejected merely because of that later status change (see
+ * ReferralRewardService::assertStillCreditable()).
  */
 class SuspendedReferrerHeldRewardApprovalTest extends TestCase
 {

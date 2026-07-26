@@ -19,8 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
  * Withdrawal requests are created only by instructors through the
  * frontend — no Create or Edit pages exist, amounts/destination/status
  * are immutable, and every lifecycle action delegates to
- * InstructorWithdrawalServiceInterface. Phase 15 ends at approval: no
- * mark-paid action exists anywhere.
+ * InstructorWithdrawalServiceInterface. This resource's lifecycle ends
+ * at approval: no mark-paid action exists anywhere.
  */
 class InstructorWithdrawalRequestResource extends Resource
 {

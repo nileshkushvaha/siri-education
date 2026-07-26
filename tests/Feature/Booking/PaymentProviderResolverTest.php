@@ -20,7 +20,7 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * Phase 10.2 — the safety seam between "which provider is selected"
+ * The safety seam between "which provider is selected"
  * (BookingSettings::payment_provider) and "may it actually be used
  * right now" (PaymentProviderResolver). See
  * app/Booking/Services/PaymentProviderResolver.php for the two things
@@ -159,7 +159,7 @@ class PaymentProviderResolverTest extends TestCase
         $this->assertInstanceOf(FakePaymentProvider::class, $resolver->resolve('fake'));
     }
 
-    // ── Phase 10.2A: platform kill switch / allow-list / routing order ──
+    // ── Platform kill switch / allow-list / routing order ───────────────
 
     public function test_payments_enabled_false_blocks_every_provider_including_fake(): void
     {

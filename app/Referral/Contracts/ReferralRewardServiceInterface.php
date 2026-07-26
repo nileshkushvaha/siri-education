@@ -38,8 +38,8 @@ interface ReferralRewardServiceInterface
      * Before credit → Rejected (no wallet movement). After credit →
      * WalletLedgerService::reverse() when $actor may manage wallets;
      * otherwise the reward keeps status Credited with the visible
-     * `reversal_required` reconciliation reason for Phase 19E — it is
-     * never falsely marked Reversed. Idempotent under repeated events.
+     * `reversal_required` reconciliation reason — it is never falsely
+     * marked Reversed. Idempotent under repeated events.
      */
     public function reevaluateLesson(Lesson $lesson, ?User $actor, string $reasonCode): ?ReferralReward;
 
@@ -55,7 +55,7 @@ interface ReferralRewardServiceInterface
     public function processReadyRewards(int $limit = 100): int;
 
     /**
-     * Phase 19E admin decisions. Each requires its named permission, a
+     * Admin decisions. Each requires its named permission, a
      * non-empty reason, forbids self-decision, locks the reward, and
      * re-checks state — duplicate decisions return the terminal result,
      * never a second ledger entry.

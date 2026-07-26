@@ -10,7 +10,7 @@ use App\Notifications\Channels\WhatsAppChannel;
 use App\Settings\HomeworkSettings;
 
 /**
- * Phase 24K — GAP-020: single decision point for homework reminder
+ * Single decision point for homework reminder
  * notification channels, mirroring Booking's NotificationChannelResolver.
  * Admin toggles channels in HomeworkSettings; an empty result (every
  * channel off) is a legitimate "suppressed" outcome, not an error.

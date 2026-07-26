@@ -7,8 +7,8 @@ namespace App\Booking\DTOs;
 use Carbon\CarbonImmutable;
 
 /**
- * Phase 24I — GAP-019/SRS §10.24: the result of analyzing a proposed
- * availability-reducing mutation against the instructor's future
+ * SRS §10.24: the result of analyzing a proposed availability-reducing
+ * mutation against the instructor's future
  * confirmed bookings. Produced by AvailabilityChangeImpactService and
  * never mutates anything itself.
  *

@@ -7,8 +7,8 @@ namespace App\Booking\DTOs;
 use Carbon\CarbonImmutable;
 
 /**
- * Phase 24C — the frozen outcome of CancellationRefundPolicy::decide(),
- * computed once at cancellation time and threaded through
+ * The frozen outcome of CancellationRefundPolicy::decide(), computed
+ * once at cancellation time and threaded through
  * BookingCancelled so every downstream consumer (async wallet-refund
  * execution, notifications, dashboards) reads the SAME answer instead
  * of recomputing eligibility against a setting/clock that may have

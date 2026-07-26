@@ -95,7 +95,7 @@ class LessonPolicy
         return $this->hasPermission($user, 'ReviewAttendance:Lesson');
     }
 
-    /** Resolve the lesson's financial disposition (Phase 17E) — staff only, never participants. */
+    /** Resolve the lesson's financial disposition — staff only, never participants. */
     public function resolveFinancialDisposition(User $user, Lesson $lesson): bool
     {
         return $this->hasPermission($user, 'ResolveFinancialDisposition:Lesson');

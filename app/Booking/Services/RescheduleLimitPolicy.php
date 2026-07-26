@@ -12,8 +12,8 @@ use App\Models\BookingActivity;
 use App\Settings\BookingSettings;
 
 /**
- * Phase 24D — SRS §11.26/GAP-006: at most BookingSettings::reschedule_limit
- * successful student-initiated reschedules per booking (or per recurring
+ * SRS §11.26: at most BookingSettings::reschedule_limit successful
+ * student-initiated reschedules per booking (or per recurring
  * occurrence, since each occurrence is its own Booking row). Instructor/
  * admin/system reschedules are not governed by this limit, mirroring
  * CancellationRefundPolicy's actor split for the same reason: there is

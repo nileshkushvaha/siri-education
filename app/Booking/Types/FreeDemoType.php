@@ -41,7 +41,7 @@ final class FreeDemoType implements BookingTypeInterface
     {
         return [
             // Order matters: the global toggle must reject before the
-            // per-instructor eligibility check ever runs (Phase 24B).
+            // per-instructor eligibility check ever runs.
             DemoLessonsEnabledRule::class,
             OneFreeDemoPerInstructorRule::class,
         ];

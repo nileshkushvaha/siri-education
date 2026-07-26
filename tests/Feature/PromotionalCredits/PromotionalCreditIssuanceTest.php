@@ -26,7 +26,7 @@ use Tests\Feature\PromotionalCredits\Concerns\CreatesPromotionalCreditFixtures;
 use Tests\TestCase;
 
 /**
- * GAP-041 / SRS §16.17-§16.19: campaign and manual issuance success,
+ * SRS §16.17-§16.19: campaign and manual issuance success,
  * eligibility/limits/budget enforcement, duplicate/concurrent
  * protection, and ledger integration.
  */

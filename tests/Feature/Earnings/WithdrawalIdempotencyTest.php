@@ -21,8 +21,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 15.1 §9 — the idempotency-key lifecycle: instructor-bound,
- * payload-bound (a replay with altered input is a conflict, never a
+ * The idempotency-key lifecycle: instructor-bound, payload-bound (a
+ * replay with altered input is a conflict, never a
  * silent success), invisible in serialization and audit metadata, and
  * reusable after a rolled-back attempt.
  */

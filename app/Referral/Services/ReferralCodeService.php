@@ -48,11 +48,10 @@ final class ReferralCodeService implements ReferralCodeServiceInterface
             throw new ReferralException('Referral codes are issued to students only.');
         }
 
-        // Phase 24H.2 — GAP-013: initiating referral participation
-        // (including this lazy create-on-first-visit) is an interactive
-        // student action requiring an Active student. Already-earned/
-        // held rewards remain governed separately (ReferralRewardService
-        // — the Phase 24H owed-money fix is untouched).
+        // Initiating referral participation (including this lazy
+        // create-on-first-visit) is an interactive student action
+        // requiring an Active student. Already-earned/held rewards
+        // remain governed separately (ReferralRewardService).
         $this->lifecycle->assertEligibleForStudentAction($user);
 
         $existing = ReferralCode::query()->where('user_id', $user->id)->first();

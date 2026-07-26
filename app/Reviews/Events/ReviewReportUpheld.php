@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** An admin upheld a report as valid. After-commit only. No listener attached in Phase 17M. */
+/** An admin upheld a report as valid. After-commit only. Listened to by DetectSeriousReviewReportQualityRiskOnReviewReportUpheld. */
 final class ReviewReportUpheld implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

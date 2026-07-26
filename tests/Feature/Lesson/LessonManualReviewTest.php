@@ -31,8 +31,8 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Phase 17D — participant attendance confirmations, technical-issue
- * reports, outcome holds, and the administrative review workflow.
+ * Participant attendance confirmations, technical-issue reports,
+ * outcome holds, and the administrative review workflow.
  */
 class LessonManualReviewTest extends TestCase
 {

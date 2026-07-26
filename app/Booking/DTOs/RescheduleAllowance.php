@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Booking\DTOs;
 
 /**
- * Phase 24D — the outcome of RescheduleLimitPolicy::decide(), computed
- * fresh from the durable booking_activities timeline every time (never
+ * The outcome of RescheduleLimitPolicy::decide(), computed fresh from
+ * the durable booking_activities timeline every time (never
  * cached/frozen the way CancellationRefundDecision is), since a
  * reschedule request must always be judged against the current
  * configured limit and the current successful count at the moment it

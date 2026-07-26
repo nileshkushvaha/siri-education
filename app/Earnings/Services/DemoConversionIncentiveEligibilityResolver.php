@@ -15,8 +15,8 @@ use App\Models\Lesson;
 use App\Settings\DemoConversionIncentiveSettings;
 
 /**
- * GAP-008 requirement #3 — the complete eligibility chain for a single
- * completed paid lesson, evaluated against the currently configured
+ * The complete eligibility chain for a single completed paid lesson,
+ * evaluated against the currently configured
  * rule (rules are a singleton, not effective-dated, so "rule active at
  * the relevant time" means "enabled right now, at evaluation time").
  * Every branch returns a stable reason code; nothing here writes

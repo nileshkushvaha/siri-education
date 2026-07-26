@@ -184,7 +184,7 @@ class InstructorWithdrawalRequestsTable
                         'Withdrawal cancelled — reservations released',
                     )),
 
-                // ── Phase 16A execution segment ──────────────────────────
+                // ── Execution segment ─────────────────────────────────────
                 Action::make('queue_for_execution')
                     ->label('Queue for Execution')
                     ->icon('heroicon-m-paper-airplane')

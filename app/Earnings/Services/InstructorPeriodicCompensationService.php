@@ -30,10 +30,10 @@ use Illuminate\Support\Facades\DB;
  * command retries can never duplicate money. Gated by earnings_enabled;
  * future incomplete periods are never accrued; ineligible (suspended /
  * archived / role-stripped) instructors are skipped with an audit
- * entry. The resulting earnings enter the normal Phase 14 hold →
- * release lifecycle and are reservable by Phase 15 withdrawals like any
- * other earning. Amounts come from the agreement alone — no student
- * pricing input exists on this path at all.
+ * entry. The resulting earnings enter the normal hold → release
+ * lifecycle and are reservable by withdrawals like any other earning.
+ * Amounts come from the agreement alone — no student pricing input
+ * exists on this path at all.
  */
 final class InstructorPeriodicCompensationService implements InstructorPeriodicCompensationServiceInterface
 {
@@ -57,8 +57,8 @@ final class InstructorPeriodicCompensationService implements InstructorPeriodicC
             return 0;
         }
 
-        // Phase 14.3: periodic compensation has its own rollout gate —
-        // while off, accrual creates nothing even with earnings enabled.
+        // Periodic compensation has its own rollout gate — while off,
+        // accrual creates nothing even with earnings enabled.
         if (! $this->settings->periodic_compensation_enabled) {
             $this->audit->logSystem(self::LOG_NAME, 'accrual_skipped_disabled', 'Periodic compensation accrual skipped: periodic compensation is not enabled.');
 

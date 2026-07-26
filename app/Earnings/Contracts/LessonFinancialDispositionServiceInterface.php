@@ -13,11 +13,12 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * The Phase 17E financial-decision bridge: classifies what the wallet,
- * earning, and cancellation pipelines must do for a finalized lesson —
- * and holds disputed earnings via the existing DisputedHold mechanism.
- * It NEVER credits refunds, reverses ledger entries, creates earnings,
- * or alters amounts; execution belongs to a later phase.
+ * The financial-decision bridge: classifies what the wallet, earning,
+ * and cancellation pipelines must do for a finalized lesson — and holds
+ * disputed earnings via the existing DisputedHold mechanism. It NEVER
+ * credits refunds, reverses ledger entries, creates earnings, or alters
+ * amounts; execution is the responsibility of the services these
+ * dispositions route to (earning reconciliation, refund).
  */
 interface LessonFinancialDispositionServiceInterface
 {

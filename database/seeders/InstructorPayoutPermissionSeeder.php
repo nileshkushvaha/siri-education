@@ -11,12 +11,13 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 15 payout-method / withdrawal permissions (Filament Shield
- * naming). Idempotent — required after deploy: policies fall back to
+ * Payout-method / withdrawal permissions (Filament Shield naming).
+ * Idempotent — required after deploy: policies fall back to
  * "deny" for permissions that do not exist, so without this only
  * super_admin can reach the payout admin. Instructor self-service is
- * ownership-scoped in the policies and needs no permission here. No
- * payout-execution (mark-paid) permission exists in this phase.
+ * ownership-scoped in the policies and needs no permission here.
+ * Payout-execution (mark-paid) permissions are granted separately by
+ * InstructorPayoutExecutionPermissionSeeder, not here.
  */
 class InstructorPayoutPermissionSeeder extends Seeder
 {

@@ -18,8 +18,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 14.2 §7 — the agreement lifecycle: admin-only, effective-dated,
- * one active per instructor, no overlap, immutable once active,
+ * The agreement lifecycle: admin-only, effective-dated, one active per
+ * instructor, no overlap, immutable once active,
  * replacement preserves history, never deleted.
  */
 class InstructorCompensationAgreementTest extends TestCase

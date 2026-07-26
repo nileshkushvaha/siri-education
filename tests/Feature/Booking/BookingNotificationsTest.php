@@ -180,7 +180,7 @@ class BookingNotificationsTest extends TestCase
         }
     }
 
-    // ── Idempotency (Phase 17V closure) ─────────────────────────────
+    // ── Idempotency ──────────────────────────────────────────────────
 
     public function test_redelivered_confirmed_event_does_not_duplicate_notifications(): void
     {

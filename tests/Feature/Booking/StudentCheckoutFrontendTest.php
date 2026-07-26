@@ -40,13 +40,11 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 10.2C — authenticated student checkout frontend. The Razorpay
- * checkout flow itself (button → order → Checkout.js → verify) already
- * existed from Phase 10; this phase makes it provider-neutral (it
- * previously hardcoded Razorpay-shaped event keys regardless of which
- * provider was actually configured) and adds the missing safety guard:
- * BookingPaymentService::initiate() never checked booking terminal
- * status, only payment_status.
+ * Authenticated student checkout frontend. The Razorpay checkout flow
+ * (button → order → Checkout.js → verify) is provider-neutral — event
+ * keys are never hardcoded to a specific provider's shape — and
+ * BookingPaymentService::initiate() checks booking terminal status, not
+ * only payment_status.
  */
 class StudentCheckoutFrontendTest extends TestCase
 {
@@ -77,9 +75,9 @@ class StudentCheckoutFrontendTest extends TestCase
     private function student(): User
     {
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
-        // A resolvable billing country is required before checkout
-        // (Phase 10.2C-Fix) — most tests in this file exercise payment
-        // behavior, not the profile-completeness gate itself, so it's
+        // A resolvable billing country is required before checkout —
+        // most tests in this file exercise payment behavior, not the
+        // profile-completeness gate itself, so it's
         // satisfied by default here; see
         // test_incomplete_profile_blocks_pay_now for the dedicated case.
         UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => Country::factory()->create()->id]);
@@ -114,9 +112,9 @@ class StudentCheckoutFrontendTest extends TestCase
             'duration_minutes' => 60,
         ]);
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — seed a matching StudentLessonPrice for
-        // this exact student's own billing country (set by student()).
+        // BookingType::factory()->paid() does not carry a price — seed a
+        // matching StudentLessonPrice for this exact student's own
+        // billing country (set by student()).
         $currencyModel = Currency::query()->firstOrCreate(
             ['code' => $currency],
             ['name' => $currency, 'symbol' => $currency, 'numeric_code' => '000', 'minor_units' => 2, 'status' => 'active'],
@@ -287,8 +285,8 @@ class StudentCheckoutFrontendTest extends TestCase
 
     public function test_no_provider_or_gateway_metadata_is_rendered_to_the_student(): void
     {
-        // Phase 10.2E: the wallet-credit banner is the only place
-        // BookingPayment is ever queried from student-facing UI, and only
+        // The wallet-credit banner is the only place BookingPayment is
+        // ever queried from student-facing UI, and only
         // as a boolean existence check — confirms no raw provider_order_id/
         // provider_payment_id/metadata ever reaches the rendered HTML.
         $this->configureRazorpay();
@@ -330,8 +328,8 @@ class StudentCheckoutFrontendTest extends TestCase
         // A student with no country on their profile — the
         // billing-profile gate this file's student() helper normally
         // satisfies for every other test. Booking *creation* itself
-        // still needs a resolvable country (Phase 10.2D's pricing
-        // matrix is keyed by billing country), so the country is
+        // still needs a resolvable country (the pricing matrix is keyed
+        // by billing country), so the country is
         // cleared only after the booking exists — initiatePayment()'s
         // profile-completeness gate is what this test actually proves,
         // not whether booking creation needs a country (it does, and
@@ -497,8 +495,8 @@ class StudentCheckoutFrontendTest extends TestCase
         $this->assertStringNotContainsString('whsec_abc123', $html);
         $this->assertStringNotContainsString('pi_UI1_secret_xyz', $html);
 
-        // Phase 10.2E: assertDontSee on rendered HTML only proves the
-        // Blade template never echoes it — Livewire hydrates every public
+        // assertDontSee on rendered HTML only proves the Blade template
+        // never echoes it — Livewire hydrates every public
         // property (including $paymentOrder) into the page's snapshot for
         // a real browser, which Livewire::test()->html() does not
         // reproduce. checkoutPayload() for Stripe legitimately returns a

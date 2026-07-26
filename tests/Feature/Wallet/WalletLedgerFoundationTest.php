@@ -410,9 +410,8 @@ class WalletLedgerFoundationTest extends TestCase
     {
         $response = $this->actingAs($this->student)->get(route('dashboard.wallet'))->assertOk();
 
-        // Wallet recharge (Phase 25D) is real now — the page shows a live
-        // amount input, never the old disabled placeholder — but merely
-        // viewing it must still create nothing: no wallet, no attempt, no
+        // The recharge page shows a live amount input — merely viewing
+        // it must still create nothing: no wallet, no attempt, no
         // provider order.
         $response->assertSee('Recharge wallet');
         $this->assertFalse(Schema::hasTable('razorpay_orders'));

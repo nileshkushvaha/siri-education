@@ -15,8 +15,8 @@ use App\Country\Services\CountryResolver;
 use App\Models\User;
 
 /**
- * GAP-029 (SRS §20.36/§21.36 "Country-Level Feature Flags") — a
- * country may disable new paid bookings even while
+ * SRS §20.36/§21.36 ("Country-Level Feature Flags") — a country may
+ * disable new paid bookings even while
  * `PaymentGatewaySettings::payments_enabled` stays on platform-wide.
  * This is independent of (and composes with, never replaces) the
  * existing payment-provider country routing in

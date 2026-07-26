@@ -35,12 +35,11 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 10.2B — Option B: a payment that settles successfully after its
- * booking has already gone terminal (cancelled/expired reservation) is
- * never silently confirmed and never silently discarded. The charge is
+ * Option B: a payment that settles successfully after its booking has
+ * already gone terminal (cancelled/expired reservation) is never
+ * silently confirmed and never silently discarded. The charge is
  * preserved and redirected to the student's wallet; if the wallet
  * credit itself fails, the payment is flagged for manual resolution.
- * Replaces Phase 10.2's outright rejection of this scenario.
  */
 class PaymentTerminalStateTest extends TestCase
 {
@@ -72,9 +71,9 @@ class PaymentTerminalStateTest extends TestCase
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        // Phase 10.2D-Cleanup-Fix: BookingType::factory()->paid() no
-        // longer carries a price — createPaidBookingTypeWithPrice() also
-        // seeds the matching StudentLessonPrice (INR, all levels, 60min).
+        // BookingType::factory()->paid() does not carry a price —
+        // createPaidBookingTypeWithPrice() also seeds the matching
+        // StudentLessonPrice (INR, all levels, 60min).
         $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 499.00, 'INR');
         $this->assignBillingCountry($this->student, $priced['country']);
     }

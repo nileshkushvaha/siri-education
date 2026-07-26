@@ -12,8 +12,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-028 requirement #6 — private storage with authorization
- * re-checked on every request. Mirrors HomeworkResourceDownloadController's
+ * Private storage with authorization re-checked on every request.
+ * Mirrors HomeworkResourceDownloadController's
  * own test conventions exactly (route parameter is the Media model).
  */
 final class RecordingDownloadTest extends TestCase

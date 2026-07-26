@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Orchestrates Phase 17G: the kill switch, admin authorization for
- * direct execution, and the batched processor behind
+ * Orchestrates the kill switch, admin authorization for direct
+ * execution, and the batched processor behind
  * lessons:process-earning-reconciliation. All financial logic lives in
  * ExecuteLessonEarningReconciliationAction; unresolved manual-review
  * cases are never selected.

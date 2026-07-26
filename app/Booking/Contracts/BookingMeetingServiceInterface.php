@@ -59,8 +59,8 @@ interface BookingMeetingServiceInterface
     public function joinUrlFor(Booking $booking, bool $roleVisible, ?LessonStatus $lessonStatus = null): ?string;
 
     /**
-     * Phase 24H.2A/24H.2B — the complete authoritative STUDENT
-     * meeting-URL disclosure decision: null unless the viewer is the
+     * The complete authoritative STUDENT meeting-URL disclosure
+     * decision: null unless the viewer is the
      * booking's student, passes the strict Active-lifecycle guard, and
      * joinAvailabilityFor() resolves Available under the student
      * visibility setting (Confirmed/Created, non-blank URL, and the

@@ -38,7 +38,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17I — student review submission: public/private submission
+ * Student review submission: public/private submission
  * behavior, eligibility revalidation, rating/text/tag validation,
  * contact-leakage sanitization, atomicity, authorization, and the
  * guarantee that nothing publishes, aggregates, or side-affects
@@ -373,7 +373,7 @@ class StudentReviewSubmissionTest extends TestCase
 
         $result = $this->reviews->submit($eligibility, $eligibility->student, $this->data());
 
-        // Submitted is the terminal state Phase 17I ever produces for a
+        // Submitted is the terminal state submission ever produces for a
         // clean public candidate — nothing promotes it further.
         $this->assertSame(StudentReviewStatus::Submitted, $result->review->status);
         $this->assertFalse($result->review->status->isPubliclyVisible());
@@ -400,7 +400,7 @@ class StudentReviewSubmissionTest extends TestCase
         $this->reviews->submit($eligibility, $eligibility->student, $this->data());
 
         foreach (['instructor_review_aggregates', 'instructor_ratings', 'review_aggregates'] as $table) {
-            $this->assertFalse(Schema::hasTable($table), "Phase 17I must not create a {$table} table.");
+            $this->assertFalse(Schema::hasTable($table), "Review submission must not create a {$table} table.");
         }
 
         $this->assertDatabaseCount('lesson_reviews', 1);
@@ -410,11 +410,11 @@ class StudentReviewSubmissionTest extends TestCase
     {
         // Faked only around the submission itself — lesson finalization
         // upstream legitimately fires the pre-existing booking-completion
-        // notification, which is unrelated to this phase. Phase 17S later
-        // attaches submission/publication notifications to this exact
-        // flow — those are the expected exceptions asserted below; the
-        // point of this test (at the time it was written) was that
-        // Phase 17I itself introduces no *other* notification pipeline.
+        // notification, which is unrelated here. Submission/publication
+        // notifications are attached to this exact flow — those are the
+        // expected exceptions asserted below; the point of this test is
+        // that submission itself introduces no *other* notification
+        // pipeline.
         $eligibility = $this->openEligibility($this->paidLesson());
         Notification::fake();
 
@@ -444,7 +444,7 @@ class StudentReviewSubmissionTest extends TestCase
 
     // ── Helpers ──────────────────────────────────────────────────────
 
-    /** Phase 24H.2: review submission requires an Active student — booking-factory students start role-less with a null status. */
+    /** Review submission requires an Active student — booking-factory students start role-less with a null status. */
     private function promoteToActiveStudent(User $student): void
     {
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);

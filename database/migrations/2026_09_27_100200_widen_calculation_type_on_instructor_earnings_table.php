@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-008 — `calculation_type` was `string(16)`, wide enough for every
+ * `calculation_type` was `string(16)`, wide enough for every
  * pre-existing value ('hourly', 'periodic', 'demo_fixed', 'manual') but
  * too narrow for the new 'demo_conversion_incentive' case (25 chars).
  * Widened to match `source_type`'s existing width (32) rather than an

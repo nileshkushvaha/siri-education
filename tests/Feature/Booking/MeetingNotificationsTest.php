@@ -39,7 +39,7 @@ class MeetingNotificationsTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
-        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]); // Phase 24H.2A: the student's URL copy requires an Active student at send time
+        $this->student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]); // the student's URL copy requires an Active student at send time
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
 
         $settings = app(MeetingSettings::class);
@@ -56,8 +56,8 @@ class MeetingNotificationsTest extends TestCase
         return Booking::factory()->confirmed()->paid()->create([
             'instructor_id' => $this->teacher->id,
             'student_id' => $this->student->id,
-            // Phase 24H.2B: the student's notification copy includes the URL
-            // only when delivery falls inside the visibility window.
+            // The student's notification copy includes the URL only when
+            // delivery falls inside the visibility window.
             'starts_at' => now()->addMinutes(10),
             'ends_at' => now()->addMinutes(40),
         ]);
@@ -227,7 +227,7 @@ class MeetingNotificationsTest extends TestCase
         $this->assertSame('notifications', $notification->queue);
     }
 
-    // ── Idempotency (Phase 17V closure) ─────────────────────────────
+    // ── Idempotency ──────────────────────────────────────────────────
 
     public function test_redelivered_meeting_created_event_does_not_duplicate_notifications(): void
     {

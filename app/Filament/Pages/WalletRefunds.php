@@ -20,7 +20,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
-/** Phase 18E — Wallet & Refunds report (§12/§15). Requires `ViewWalletReports`. */
+/** Wallet & Refunds report (§12/§15). Requires `ViewWalletReports`. */
 class WalletRefunds extends Page
 {
     use ExportsReportCsv;

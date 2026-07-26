@@ -5,10 +5,10 @@ declare(strict_types=1);
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 19C — referral_campaigns is now the single authoritative source
- * of reward rules. The float-based `referral.*` settings (never read by
- * any workflow — Phase 19A/19B audits confirmed configuration-only)
- * are retired so no competing reward configuration survives. No legacy
+ * referral_campaigns is the single authoritative source of reward
+ * rules. The float-based `referral.*` settings (never read by any
+ * workflow — configuration-only) are retired so no competing reward
+ * configuration survives. No legacy
  * value is mapped into campaign money and no default campaign is
  * fabricated — campaigns are created deliberately by administrators.
  * The module switch stays features.referral_enabled, untouched.

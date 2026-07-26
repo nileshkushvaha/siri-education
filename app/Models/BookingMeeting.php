@@ -16,9 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One meeting per booking (unique booking_id). Never stores raw
  * provider payloads — only a sanitized `metadata` snapshot.
  *
- * Meeting history is booking history (Phase 17U.2 §1) — never
- * hard-deleted; cancellation transitions `status` instead. See
- * PreventsHardDeletion.
+ * Meeting history is booking history — never hard-deleted;
+ * cancellation transitions `status` instead. See PreventsHardDeletion.
  */
 class BookingMeeting extends Model
 {

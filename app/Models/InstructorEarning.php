@@ -104,7 +104,7 @@ class InstructorEarning extends Model
         return $this->belongsTo(Lesson::class);
     }
 
-    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion. */
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class)->withTrashed();
@@ -156,9 +156,9 @@ class InstructorEarning extends Model
      * withdrawal allocation are excluded entirely: settlement batches
      * settle a whole earning at once (no partial-remainder batching),
      * so the same money must never be batch-settled while any portion
-     * of it is withdrawal-reserved (Phase 15) or already paid out via a
-     * withdrawal (Phase 16A `consumed` — invariant #17: settlement and
-     * payout execution must never consume the same earning amount).
+     * of it is withdrawal-reserved or already paid out via a withdrawal
+     * (`consumed` — invariant #17: settlement and payout execution must
+     * never consume the same earning amount).
      */
     public function scopeSettleable(Builder $query): Builder
     {

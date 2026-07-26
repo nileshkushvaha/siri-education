@@ -28,12 +28,12 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17U.2 §8 — the previously-missing moderation mutation actions
- * on ModerationQueueWidget (approve/reject/hide/restore/archive),
- * every one delegating exclusively to ReviewModerationService, plus
- * §10 authorization hardening: instructors cannot moderate their own
- * profile's reviews even if hypothetically permissioned, and a
- * super-admin bypass never defeats the underlying state machine.
+ * The moderation mutation actions on ModerationQueueWidget
+ * (approve/reject/hide/restore/archive), every one delegating
+ * exclusively to ReviewModerationService, plus authorization
+ * hardening: instructors cannot moderate their own profile's reviews
+ * even if hypothetically permissioned, and a super-admin bypass never
+ * defeats the underlying state machine.
  */
 class ReviewModerationWidgetActionsTest extends TestCase
 {

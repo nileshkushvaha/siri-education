@@ -7,8 +7,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 14.5 consolidated baseline (originally Phase 14.3) — the admin queue of unresolved compensation exceptions:
- * completed lessons whose earning creation was blocked (missing/invalid
+ * The admin queue of unresolved compensation exceptions: completed
+ * lessons whose earning creation was blocked (missing/invalid
  * agreement, invalid currency, unsupported duration, transient failure,
  * or permanently ineligible). One open row per lesson (unique), updated
  * in place on every attempt, marked resolved when the earning finally

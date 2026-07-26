@@ -34,7 +34,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24D — integration tests exercising the full runtime path:
+ * Integration tests exercising the full runtime path:
  * BookingService::reschedule() → RescheduleLimitPolicy::decide() →
  * (allowed) AvailabilityService::ensureAvailable() → RescheduleBookingAction
  * → booking_activities. Every test uses a real approved teacher with a
@@ -485,7 +485,7 @@ class RescheduleLimitExecutionTest extends TestCase
         $this->reschedule($booking, CarbonImmutable::now()->addDays(2)->setTime(10, 0));
     }
 
-    // ── 24. Reschedule followed by Phase 24C cancellation uses the final scheduled start ─
+    // ── 24. Reschedule followed by cancellation uses the final scheduled start ─
 
     public function test_reschedule_followed_by_cancellation_uses_the_final_scheduled_start(): void
     {

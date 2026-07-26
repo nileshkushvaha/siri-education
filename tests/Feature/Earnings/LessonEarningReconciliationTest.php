@@ -30,7 +30,7 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 17G — instructor earning reconciliation: creation for approved
+ * Instructor earning reconciliation: creation for approved
  * compensation, hold/restore-release/reverse corrections, settled-money
  * protection, idempotency/concurrency, and the guarantee that no
  * student-side records change.

@@ -30,9 +30,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17P — instructor-facing quality insights: own-data-only
- * authorization, exact reuse of the Phase 17K aggregate and Phase 17L
- * public-review projection (never recalculated), deterministic
+ * Instructor-facing quality insights: own-data-only authorization,
+ * exact reuse of the rating aggregate and public-review projection
+ * (never recalculated), deterministic
  * highlight/improvement-area selection with a minimum-sample gate, tag
  * aggregation, and the guarantee that nothing here exposes student
  * contact details, private feedback, moderation data, quality-alert

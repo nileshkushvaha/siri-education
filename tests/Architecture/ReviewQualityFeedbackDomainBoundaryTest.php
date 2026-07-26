@@ -7,8 +7,7 @@ namespace Tests\Architecture;
 use Tests\TestCase;
 
 /**
- * Phase 17 closure audit §15 — permanent guards for the domain
- * boundaries verified manually during the audit: Reviews must never
+ * Permanent guards for the domain boundaries: Reviews must never
  * directly mutate Booking/Wallet/Payments/Earnings/Settlements;
  * Quality must never directly suspend instructors, change marketplace
  * ranking, move money, or modify review text; Feedback must never
@@ -117,7 +116,7 @@ class ReviewQualityFeedbackDomainBoundaryTest extends TestCase
         }
     }
 
-    // ── Phase 18A — user-facing review-report Livewire UI boundaries ─────
+    // ── User-facing review-report Livewire UI boundaries ──────────────────
 
     public function test_review_report_livewire_ui_does_not_import_mutating_wallet_earning_or_quality_classes(): void
     {

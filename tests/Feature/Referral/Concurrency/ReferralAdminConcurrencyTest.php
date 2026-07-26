@@ -22,8 +22,8 @@ use Spatie\Permission\Models\Role;
 use Tests\Feature\Referral\Concerns\BuildsReferralRewardFixtures;
 
 /**
- * Real multi-process races for the Phase 19E admin invariants: every
- * decision funnels through the same locked service methods the
+ * Real multi-process races for the admin invariants: every decision
+ * funnels through the same locked service methods the
  * automation uses, so racing administrators produce one terminal
  * result, one ledger entry, one reversal, and no attribution
  * corruption — losers receive a clean refusal, never a duplicate.

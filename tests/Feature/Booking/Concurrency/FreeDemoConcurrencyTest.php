@@ -14,8 +14,8 @@ use Carbon\CarbonImmutable;
 use Spatie\Permission\Models\Role;
 
 /**
- * Phase 24A — real multi-process race for SRS 11.13/11.39 ("one free
- * demo per instructor"): two genuinely separate processes attempt to
+ * Real multi-process race for SRS 11.13/11.39 ("one free demo per
+ * instructor"): two genuinely separate processes attempt to
  * create a free-demo booking for the SAME student+instructor pair at
  * the same instant, at two different time slots (so the pre-existing
  * duplicate-slot guard is never what decides the outcome — only the

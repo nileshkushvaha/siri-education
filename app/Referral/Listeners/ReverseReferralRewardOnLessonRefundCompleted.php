@@ -14,8 +14,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * refunded"). The disposition's resolver (an admin, when the refund
  * required a human decision) doubles as the reversal actor; automated
  * refunds without one park a credited reward in reversal_required for
- * Phase 19E. Idempotent under the duplicate delivery this event's own
- * ledger idempotency already makes rare.
+ * an admin decision. Idempotent under the duplicate delivery this
+ * event's own ledger idempotency already makes rare.
  */
 final class ReverseReferralRewardOnLessonRefundCompleted implements ShouldQueue
 {

@@ -18,7 +18,7 @@ use Filament\Widgets\TableWidget;
  * minimum eligible review count (avoiding a misleading conclusion
  * from a single review). No numeric internal quality score is
  * computed or displayed anywhere here — only the same average/count
- * already public on the instructor's own profile (Phase 17L).
+ * already public on the instructor's own profile.
  */
 class LowRatedInstructorsWidget extends TableWidget
 {

@@ -143,8 +143,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
     public function test_paid_type_with_no_matrix_price_is_rejected_not_treated_as_free(): void
     {
-        // Phase 10.2C-Fix / 10.2D-Cleanup: a paid type can no longer
-        // silently resolve to a free booking because pricing was left
+        // A paid type can no longer silently resolve to a free booking
+        // because pricing was left
         // unconfigured — it must be rejected so the gap is caught and
         // fixed by an admin instead of reaching students as an
         // unintended free lesson. There is no `booking_types.price`
@@ -253,8 +253,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
         $this->assertSame('fake', app(BookingSettings::class)->payment_provider);
 
-        // wallets/wallet_ledger_entries are the approved Phase 9 foundation —
-        // booking creation must still never write to them.
+        // wallets/wallet_ledger_entries are the existing Wallet domain
+        // tables — booking creation must still never write to them.
         $this->assertSame(0, Wallet::count());
         $this->assertSame(0, WalletLedgerEntry::count());
 
@@ -282,8 +282,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
 
     public function test_no_duplicate_payment_wallet_or_pricing_tables_exist(): void
     {
-        // wallets/wallet_ledger_entries are the approved Phase 9 foundation —
-        // everything else pricing/payment-adjacent remains absent.
+        // wallets/wallet_ledger_entries are the existing Wallet domain
+        // tables — everything else pricing/payment-adjacent remains absent.
         foreach ([
             'wallet_transactions', 'wallet_settings',
             'payments', 'payment_transactions', 'razorpay_orders',
@@ -295,10 +295,10 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         $this->assertTrue(Schema::hasTable('wallets'));
         $this->assertTrue(Schema::hasTable('wallet_ledger_entries'));
 
-        // Phase 10.2D-Cleanup: booking_types no longer owns a price at
-        // all — student_lesson_prices is the only pricing table.
-        // bookings.price/currency remain — the point-in-time snapshot
-        // taken at booking-creation time, not a duplicate pricing source.
+        // booking_types does not own a price at all — student_lesson_prices
+        // is the only pricing table. bookings.price/currency remain — the
+        // point-in-time snapshot taken at booking-creation time, not a
+        // duplicate pricing source.
         $this->assertFalse(Schema::hasColumn('booking_types', 'price'));
         $this->assertFalse(Schema::hasColumn('booking_types', 'currency'));
         $this->assertTrue(Schema::hasTable('student_lesson_prices'));
@@ -360,8 +360,8 @@ class BookingPricingCheckoutReadinessTest extends TestCase
     // ── Admin cannot bypass payment status ───────────────────────────────
 
     /**
-     * Phase 11 note: the Meeting section on EditBooking is now a
-     * read-only summary of the booking_meetings relationship — mutating
+     * The Meeting section on EditBooking is a read-only summary of the
+     * booking_meetings relationship — mutating
      * it goes exclusively through BookingsTable's "Create/Update
      * Meeting" action (BookingMeetingService), not editable form
      * fields. Payment-status gating is therefore enforced by

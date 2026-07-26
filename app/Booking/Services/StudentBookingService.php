@@ -45,9 +45,9 @@ final class StudentBookingService implements StudentBookingServiceInterface
     ) {}
 
     /**
-     * Phase 24B.1 — an explicit free-demo lookup while the platform-wide
-     * feature is unavailable must never imply teachers are bookable for
-     * one: return an empty list rather than a misleading candidate set.
+     * An explicit free-demo lookup while the platform-wide feature is
+     * unavailable must never imply teachers are bookable for one: return
+     * an empty list rather than a misleading candidate set.
      * Paid (and any other) type lookups are unaffected. The booking type
      * itself being inactive is already rejected above by
      * requireActiveByKey() before this check is even reached.
@@ -178,12 +178,11 @@ final class StudentBookingService implements StudentBookingServiceInterface
     }
 
     /**
-     * Resolves and validates the optional topic selection (Phase 12.5):
-     * the topic must be an active topic of the selected subject, and
-     * the chosen teacher must hold active, admin-approved coverage for
-     * it at the requested grade. Whole-subject rows never imply topic
-     * coverage. No topic selected → subject-level rules alone apply,
-     * exactly as before this phase.
+     * Resolves and validates the optional topic selection: the topic
+     * must be an active topic of the selected subject, and the chosen
+     * teacher must hold active, admin-approved coverage for it at the
+     * requested grade. Whole-subject rows never imply topic coverage.
+     * No topic selected → subject-level rules alone apply.
      *
      * @throws BookingException
      */

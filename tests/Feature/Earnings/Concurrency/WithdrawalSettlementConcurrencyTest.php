@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * The Phase 14 / Phase 15 boundary under real multi-process contention:
- * settlement drafting and withdrawal reservation compete for the same
- * earnings on separate MySQL connections. Both paths take the
+ * The settlement / withdrawal boundary under real multi-process
+ * contention: settlement drafting and withdrawal reservation compete
+ * for the same earnings on separate MySQL connections. Both paths take the
  * instructor-row lock first and re-derive eligibility on locked rows,
  * so an earning can only ever leave the pool down ONE path.
  */

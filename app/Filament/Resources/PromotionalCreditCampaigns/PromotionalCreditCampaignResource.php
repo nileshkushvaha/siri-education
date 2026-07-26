@@ -21,7 +21,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 /**
- * Campaign administration (GAP-041, SRS §16.17-§16.19). Creation and
+ * Campaign administration (SRS §16.17-§16.19). Creation and
  * rule edits flow through PromotionalCreditService via the Create/Edit
  * pages; status changes are dedicated service-backed table actions.
  * There is deliberately no delete action anywhere — campaigns archive,

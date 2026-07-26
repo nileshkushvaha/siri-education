@@ -11,7 +11,7 @@ use App\Models\StudentLearningPlan;
 use App\Models\User;
 
 /**
- * Phase 24J — GAP-021 (SRS §7.19): the single authority on homework
+ * SRS §7.19: the single authority on homework
  * educational context. Every homework mutation that sets or changes
  * booking_id / learning_plan_id must pass through validate(), which
  * enforces:

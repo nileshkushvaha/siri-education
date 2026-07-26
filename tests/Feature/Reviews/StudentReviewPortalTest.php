@@ -28,10 +28,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17R — student review portal: the placeholder page is replaced,
- * eligibility/review data is strictly own-student scoped, submission
- * goes through the existing Phase 17I service, and closed windows
- * never show an active action.
+ * Student review portal: eligibility/review data is strictly
+ * own-student scoped, submission goes through the existing review
+ * submission service, and closed windows never show an active action.
  */
 class StudentReviewPortalTest extends TestCase
 {

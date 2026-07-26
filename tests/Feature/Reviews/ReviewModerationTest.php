@@ -35,7 +35,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17J — review moderation & publication: automatic moderation
+ * Review moderation & publication: automatic moderation
  * under each model, the full status transition matrix, admin actions
  * (approve/reject/hide/restore/archive), idempotency/concurrency,
  * authorization, audit, and the guarantee that content is never
@@ -325,7 +325,7 @@ class ReviewModerationTest extends TestCase
         $this->moderation->approve($review, $this->admin());
 
         foreach (['instructor_review_aggregates', 'instructor_ratings', 'review_aggregates'] as $table) {
-            $this->assertFalse(Schema::hasTable($table), "Phase 17J must not create a {$table} table.");
+            $this->assertFalse(Schema::hasTable($table), "Review moderation must not create a {$table} table.");
         }
     }
 
@@ -336,10 +336,10 @@ class ReviewModerationTest extends TestCase
 
         // Faked only around the moderation actions themselves — lesson
         // finalization upstream legitimately fires the pre-existing
-        // booking-completion notification, unrelated to this phase.
-        // Phase 17S later attaches ReviewHiddenNotification to a hidden
-        // review's student — that is the one expected exception here;
-        // restore has no notification listener attached in any phase.
+        // booking-completion notification, unrelated here.
+        // ReviewHiddenNotification is attached to a hidden review's
+        // student — that is the one expected exception here; restore
+        // has no notification listener attached.
         Notification::fake();
         $hidden = $this->moderation->hide($review, $admin, 'Routine check.');
         $this->moderation->restore($hidden->fresh(), $admin, 'Cleared.');

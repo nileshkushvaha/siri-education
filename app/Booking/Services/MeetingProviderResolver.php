@@ -14,9 +14,9 @@ use App\Settings\MeetingSettings;
  * The single safe seam between "which meeting provider is selected" and
  * "may it actually be used right now" — mirrors PaymentProviderResolver.
  *
- * Unlike Phase 11's first draft, `manual` is a real, working provider
- * here (ManualMeetingProvider), not an off switch — the platform-wide
- * off switch is `MeetingSettings::meetings_enabled`.
+ * `manual` is a real, working provider (ManualMeetingProvider), not an
+ * off switch — the platform-wide off switch is
+ * `MeetingSettings::meetings_enabled`.
  */
 final class MeetingProviderResolver
 {

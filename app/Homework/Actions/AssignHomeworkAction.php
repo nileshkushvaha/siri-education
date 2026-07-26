@@ -8,7 +8,7 @@ use App\Homework\Enums\HomeworkStatus;
 use App\Models\HomeworkAssignment;
 
 /**
- * Phase 24J — GAP-021: persists a new homework assignment. Context
+ * Persists a new homework assignment. Context
  * validation and authorization happen in HomeworkService::assign();
  * this action only writes the already-validated state.
  */

@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** An admin dismissed a report as invalid. After-commit only. No listener attached in Phase 17M. */
+/** An admin dismissed a report as invalid. After-commit only. No listener is attached to this event. */
 final class ReviewReportDismissed implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

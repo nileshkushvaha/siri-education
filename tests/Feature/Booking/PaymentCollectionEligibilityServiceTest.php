@@ -11,8 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Country routing / rollout-scope coverage the Phase 16C testing
- * checklist asks for. Confirms the platform's actual, current safe
+ * Country routing / rollout-scope coverage. Confirms the platform's
+ * actual, current safe
  * state (india_razorpay_only, Stripe unroutable outside isolated tests)
  * is enforced by this read-only preview, not just documented.
  */

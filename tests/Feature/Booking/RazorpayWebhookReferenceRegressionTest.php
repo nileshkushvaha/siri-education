@@ -35,19 +35,20 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 16C.1 — regression coverage for the real bug found and fixed
- * this phase: RazorpayPaymentProvider::createPayment() sent
- * $booking->reference (the human "BK-…" reference) in the order's
- * `notes.booking_reference`, but parseWebhook() hands that value
- * straight to BookingRepository::findByPaymentReference(), which
- * queries the `payment_reference` column ("PAY-…"). A webhook arriving
+ * Regression coverage: parseWebhook() hands the order's
+ * `notes.booking_reference` straight to
+ * BookingRepository::findByPaymentReference(), which queries the
+ * `payment_reference` column ("PAY-…") — so
+ * RazorpayPaymentProvider::createPayment() must send the payment
+ * reference there, never $booking->reference (the human "BK-…"
+ * reference). Sending the wrong one would make a webhook arriving
  * without a prior verifyCheckout() (the client tab closed before
- * checkout.js's success callback fired) would report "unknown
- * reference" and never settle. Unlike RazorpayCheckoutTest.php's
- * webhook tests (which hand-build a "correct" payload using the
- * payment reference directly, sidestepping the bug), these tests
- * capture the REAL metadata createOrder() is called with and build the
- * webhook from that captured value — proving the actual round trip.
+ * checkout.js's success callback fired) report "unknown reference" and
+ * never settle. Unlike RazorpayCheckoutTest.php's webhook tests (which
+ * hand-build a "correct" payload using the payment reference directly,
+ * sidestepping this), these tests capture the REAL metadata
+ * createOrder() is called with and build the webhook from that
+ * captured value — proving the actual round trip.
  */
 class RazorpayWebhookReferenceRegressionTest extends TestCase
 {

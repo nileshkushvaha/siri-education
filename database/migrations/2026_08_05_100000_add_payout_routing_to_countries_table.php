@@ -7,8 +7,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16A.1 — a country's INSTRUCTOR PAYOUT provider route, stored
- * separately from `payment_routing` (the STUDENT COLLECTION route on
+ * A country's INSTRUCTOR PAYOUT provider route, stored separately from
+ * `payment_routing` (the STUDENT COLLECTION route on
  * the same table). Deliberately a distinct column, not a shared one:
  * these are two independent routing decisions that must never be
  * coupled just because they happen to key off the same Country row —

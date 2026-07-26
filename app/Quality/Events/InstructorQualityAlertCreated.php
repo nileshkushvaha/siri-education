@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/** A new quality alert was recorded. After-commit only. No notification/instructor-status listener attached in Phase 17N. */
+/** A new quality alert was recorded. After-commit only. Listened to by SendInstructorQualityAlertCreatedNotification. */
 final class InstructorQualityAlertCreated implements ShouldDispatchAfterCommit
 {
     use Dispatchable;

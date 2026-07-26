@@ -9,7 +9,7 @@ use App\Models\InstructorPayoutDestinationProviderLink;
 use App\Models\User;
 
 /**
- * Real multi-process race for Phase 16B destination provisioning: two
+ * Real multi-process race for RazorpayX destination provisioning: two
  * processes calling provision() on the SAME payout method at (as near
  * as a shared time barrier allows) the same instant. The unique
  * constraint `ipdpl_method_provider_unique` plus findOrCreateLink()'s

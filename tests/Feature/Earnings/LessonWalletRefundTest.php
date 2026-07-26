@@ -40,7 +40,7 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 17F — wallet-only refund execution: eligibility, original-charge
+ * Wallet-only refund execution: eligibility, original-charge
  * resolution, ledger linkage, idempotency/concurrency, cancellation
  * dedup, failure safety, and override-after-refund reconciliation.
  */

@@ -24,8 +24,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 14.2 §10 — periodic (daily/weekly/monthly) accrual: one earning
- * per closed period in the agreement timezone, idempotent across
+ * Periodic (daily/weekly/monthly) accrual: one earning per closed
+ * period in the agreement timezone, idempotent across
  * retries, kill-switch gated, and fully independent of lessons and
  * student pricing.
  */
@@ -49,8 +49,8 @@ class InstructorPeriodicCompensationTest extends TestCase
 
         $settings = app(InstructorEarningSettings::class);
         $settings->earnings_enabled = true;
-        // Phase 14.3: periodic accrual has its own rollout gate — these
-        // tests exercise the accrual mechanics, so both switches are on.
+        // Periodic accrual has its own rollout gate — these tests
+        // exercise the accrual mechanics, so both switches are on.
         $settings->periodic_compensation_enabled = true;
         FinancialFeatureToggle::unguarded(fn () => $settings->save());
     }
@@ -188,7 +188,7 @@ class InstructorPeriodicCompensationTest extends TestCase
         $this->artisan('instructor-earnings:release')->assertSuccessful();
         $this->assertSame(InstructorEarningStatus::Releasable, $earning->fresh()->status);
 
-        // …and Phase 15 can reserve it like any other earning.
+        // …and a withdrawal can reserve it like any other earning.
         $settings = app(InstructorEarningSettings::class);
         $settings->withdrawals_enabled = true;
         $settings->minimum_withdrawal_minor = 10000;

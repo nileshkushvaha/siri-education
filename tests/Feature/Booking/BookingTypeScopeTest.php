@@ -26,8 +26,8 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 17U.3A — booking-type scope alignment (Version 1 = Free Demo,
- * Paid Lesson single/recurring only) and explicit wizard selection.
+ * Booking-type scope alignment (Version 1 = Free Demo, Paid Lesson
+ * single/recurring only) and explicit wizard selection.
  * Structural non-existence of Counselling/Parent-Meeting/Webinar and
  * of the shared-slot mechanism is covered in
  * tests/Architecture/BookingTypeScopeGuardTest.php — this file covers
@@ -65,7 +65,7 @@ class BookingTypeScopeTest extends TestCase
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
     }
 
-    /** Phase 24H.1A: an Active student_status is required for booking eligibility now — bare role assignment left student_status null, which is always denied. */
+    /** An Active student_status is required for booking eligibility — bare role assignment leaves student_status null, which is always denied. */
     private function student(): User
     {
         return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);

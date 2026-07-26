@@ -29,8 +29,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Review moderation queue (Phase 17U.2 §8 — the previously-missing
- * mutation actions). Every row action delegates exclusively to
+ * Review moderation queue. Every row action delegates exclusively to
  * ReviewModerationService — this widget never writes `status` itself.
  * Visibility per action is a UX convenience based on the review's
  * current status; the service's own state-machine guard

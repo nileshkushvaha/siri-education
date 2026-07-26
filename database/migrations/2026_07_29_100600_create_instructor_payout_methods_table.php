@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Instructor payout destinations (Phase 15 — bank transfer only).
+ * Instructor payout destinations (bank transfer only today).
  * Sensitive bank details live exclusively in `encrypted_details`
  * (Laravel encrypted cast); everything else stored here is safe to
  * display. `fingerprint` is a keyed HMAC of the normalized identifying

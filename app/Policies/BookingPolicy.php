@@ -42,7 +42,7 @@ class BookingPolicy
         return $this->hasPermission($user, 'Update:Booking');
     }
 
-    /** Phase 17U.1 — soft-delete only, through BookingArchivalService; never physical deletion. */
+    /** Soft-delete only, through BookingArchivalService; never physical deletion. */
     public function archive(User $user, Booking $booking): bool
     {
         return $this->hasPermission($user, 'Archive:Booking');
@@ -54,11 +54,11 @@ class BookingPolicy
     }
 
     /**
-     * Phase 17U.1 — historical booking records (and every dependent
-     * lesson/attendance/financial/review/feedback record) may never
-     * be physically deleted through the application, by anyone,
-     * regardless of permission. Bookings\PreventsHardDeletion enforces
-     * the same rule at the model layer as defense in depth.
+     * Historical booking records (and every dependent lesson/attendance/
+     * financial/review/feedback record) may never be physically deleted
+     * through the application, by anyone, regardless of permission.
+     * Bookings\PreventsHardDeletion enforces the same rule at the model
+     * layer as defense in depth.
      */
     public function forceDelete(User $user, Booking $booking): bool
     {

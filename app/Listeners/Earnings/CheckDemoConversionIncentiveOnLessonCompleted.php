@@ -9,8 +9,8 @@ use App\Lessons\Events\LessonCompleted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
- * GAP-008 requirement #7 — the only automatic evaluation trigger,
- * mirroring CreateEarningOnLessonCompleted exactly (same event, same
+ * The only automatic evaluation trigger, mirroring
+ * CreateEarningOnLessonCompleted exactly (same event, same
  * queue, same retry shape): LessonCompleted fires from
  * LessonLifecycleService after every completion (manual, admin, auto).
  * DemoConversionIncentiveService re-checks eligibility and idempotency

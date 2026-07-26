@@ -46,8 +46,8 @@ interface ReferralCampaignServiceInterface
     public function archive(ReferralCampaign $campaign, User $admin, string $reason): ReferralCampaign;
 
     /**
-     * Read-only resolution for Phase 19D reward evaluation: the single
-     * Active campaign whose half-open UTC window [starts_at, ends_at)
+     * Read-only resolution for reward evaluation: the single Active
+     * campaign whose half-open UTC window [starts_at, ends_at)
      * covers the instant and whose country scope admits $countryId
      * (campaigns with no country rows admit every country; a null
      * $countryId only matches all-country campaigns). Overlap is

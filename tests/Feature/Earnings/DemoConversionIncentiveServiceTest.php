@@ -28,8 +28,8 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * GAP-008 requirement #4/#7 — end-to-end: the real LessonCompleted
- * event drives CheckDemoConversionIncentiveOnLessonCompleted, which
+ * End-to-end: the real LessonCompleted event drives
+ * CheckDemoConversionIncentiveOnLessonCompleted, which
  * delegates entirely to DemoConversionIncentiveService. Covers
  * idempotency, concurrency-safety, immutable snapshots, earning
  * creation via the existing InstructorEarningService, audit,

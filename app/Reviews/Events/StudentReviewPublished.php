@@ -11,8 +11,10 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * A public-review candidate became Published (automatically or by
- * admin approval). After-commit only. No public-display, aggregate,
- * or notification listeners are attached in Phase 17J.
+ * admin approval). After-commit only. Listened to by
+ * ReconcileRatingContributionOnStudentReviewPublished,
+ * DetectLowRatingQualityRiskOnStudentReviewPublished, and
+ * SendReviewPublishedNotifications.
  */
 final class StudentReviewPublished implements ShouldDispatchAfterCommit
 {

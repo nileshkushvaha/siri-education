@@ -17,8 +17,8 @@ use Spatie\Permission\Models\Role;
 use Tests\Support\CreatesStudentLessonPrices;
 
 /**
- * Phase 24M — GAP-031 Step 9: a real cross-process race between an
- * admin disabling a currency and a student initiating a new payment
+ * A real cross-process race between an admin disabling a currency and
+ * a student initiating a new payment
  * attempt in that same currency. Both sides lock the same Currency row
  * inside a DB transaction, so exactly one valid serial outcome occurs:
  * never both succeeding, never a new payment attempt created after (or

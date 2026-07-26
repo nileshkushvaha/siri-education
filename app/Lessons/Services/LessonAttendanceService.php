@@ -40,7 +40,7 @@ final class LessonAttendanceService implements LessonAttendanceServiceInterface
         // Manual evidence is a human assertion — the actor must hold
         // MarkAttendance:Lesson (or be the instructor, via the policy),
         // or be the lesson participant recording their OWN
-        // confirmation-source evidence (Phase 17D student/instructor
+        // confirmation-source evidence (student/instructor
         // self-claims). System sources (webhook/sync/fallback) carry no
         // actor by design.
         if ($evidence->source->isManual()) {

@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Orchestrates Phase 17F wallet refunds: the kill switch, admin
- * authorization for direct execution, and the batched processor behind
+ * Orchestrates wallet refunds: the kill switch, admin authorization
+ * for direct execution, and the batched processor behind
  * lessons:process-refunds. All financial writes live in
  * ExecuteLessonWalletRefundAction; unresolved policy-review cases are
  * never auto-refunded — the query only ever selects approved Ready

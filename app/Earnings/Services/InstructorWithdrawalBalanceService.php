@@ -19,7 +19,7 @@ use Carbon\CarbonImmutable;
 
 /**
  * Available-withdrawal balance, always derived from canonical records:
- * releasable, batch-unassigned Phase 14 earnings minus live (reserved /
+ * releasable, batch-unassigned earnings minus live (reserved /
  * consumed) allocation amounts, per currency. There is no stored
  * balance column anywhere — this aggregate IS the balance, and request
  * submission recomputes it under row locks.

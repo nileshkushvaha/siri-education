@@ -47,8 +47,8 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 16A — provider-neutral payout execution. Covers §33: provider
- * contract, maker-checker, execution integrity, success/failure/
+ * Provider-neutral payout execution. Covers §33: provider contract,
+ * maker-checker, execution integrity, success/failure/
  * reversal finalization, partial allocations, event processing,
  * reconciliation, and policies. Real multi-process races live in
  * tests/Feature/Earnings/Concurrency/PayoutExecutionConcurrencyTest.
@@ -87,8 +87,8 @@ class PayoutExecutionTest extends TestCase
     {
         $registry = app(InstructorPayoutProviderRegistryInterface::class);
         $this->assertTrue($registry->has('fake'));
-        // Phase 16B — an adapter exists, but it is disabled/uncredentialed
-        // by default, so resolving it still fails (see the unhealthy-
+        // An adapter exists, but it is disabled/uncredentialed by
+        // default, so resolving it still fails (see the unhealthy-
         // provider test below).
         $this->assertTrue($registry->has('razorpayx'));
 

@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Orchestrates Phase 17H: opening eligibility on completion, reacting
- * to outcome corrections, and the batched expiration sweep. All
+ * Orchestrates review eligibility: opening eligibility on completion,
+ * reacting to outcome corrections, and the batched expiration sweep. All
  * per-record logic lives in the three actions — this class only routes
  * and batches.
  */

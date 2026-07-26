@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
  * at least one prior *terminal* (resolved/dismissed/duplicate) alert
  * of the same type — the same quality problem recurring after a past
  * resolution. Dispatched alongside InstructorQualityAlertCreated, not
- * instead of it. After-commit only. No listener attached in Phase 17N.
+ * instead of it. After-commit only. No listener is attached to this event.
  */
 final class InstructorQualityAlertEscalated implements ShouldDispatchAfterCommit
 {

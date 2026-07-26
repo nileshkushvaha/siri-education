@@ -21,9 +21,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 19D: once any reward references a campaign, every reward-
- * affecting rule is frozen — enforced in ReferralCampaignService, not
- * only Filament.
+ * Once any reward references a campaign, every reward-affecting rule
+ * is frozen — enforced in ReferralCampaignService, not only Filament.
  */
 class ReferralCampaignImmutabilityTest extends TestCase
 {

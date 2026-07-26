@@ -11,8 +11,8 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * A student submitted a review (public candidate or private feedback).
- * After-commit only. No moderation, publication, aggregate, or
- * notification listeners are attached in Phase 17I.
+ * After-commit only. Listened to by ModerateReviewOnStudentReviewSubmitted
+ * (automatic moderation) and SendReviewSubmittedNotification.
  */
 final class StudentReviewSubmitted implements ShouldDispatchAfterCommit
 {

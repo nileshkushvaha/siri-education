@@ -22,9 +22,9 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Phase 17U.3A — a permanent guard against the removed Counselling/
- * Parent-Meeting/Webinar booking types and the shared-slot group-
- * capacity mechanism being reintroduced. Prefers structural checks
+ * A permanent guard against the removed Counselling/Parent-Meeting/
+ * Webinar booking types and the shared-slot group-capacity mechanism
+ * being reintroduced. Prefers structural checks
  * (class/column/method existence, registry contents) over free-text
  * grepping — CMS/content copy is free to use words like "counselling"
  * as long as it never becomes a bookable type key.
@@ -57,7 +57,7 @@ class BookingTypeScopeGuardTest extends TestCase
             'app/Booking/Types/ParentMeetingType.php',
             'app/Booking/Types/WebinarType.php',
         ] as $path) {
-            $this->assertFileDoesNotExist(base_path($path), "{$path} must not exist — removed in Phase 17U.3A.");
+            $this->assertFileDoesNotExist(base_path($path), "{$path} must not exist — removed.");
         }
     }
 

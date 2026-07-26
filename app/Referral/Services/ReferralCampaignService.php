@@ -26,16 +26,15 @@ use Illuminate\Support\Facades\DB;
  * row lock, and audits through AuditTrailService with safe
  * before/after values — never the raw admin payload or full terms.
  *
- * Overlap policy (Phase 19C decision): the SRS defines no campaign
- * priority, so overlapping ACTIVE windows with an intersecting country
- * scope are prevented at activation — the safety rule the Phase 19A/C
- * audits preferred. activeCampaignFor() therefore normally finds at
+ * Overlap policy: the SRS defines no campaign priority, so overlapping
+ * ACTIVE windows with an intersecting country scope are prevented at
+ * activation. activeCampaignFor() therefore normally finds at
  * most one match, but still orders deterministically (earliest
  * starts_at, then lowest id) so bad data can never make reward
  * evaluation ambiguous.
  *
  * This service never touches wallets, rewards, lessons or listeners —
- * reward processing is Phase 19D.
+ * reward processing lives in ReferralRewardService.
  */
 final class ReferralCampaignService implements ReferralCampaignServiceInterface
 {
@@ -287,8 +286,8 @@ final class ReferralCampaignService implements ReferralCampaignServiceInterface
     }
 
     /**
-     * Phase 19D — once ANY reward row references this campaign, its
-     * reward-affecting rules are frozen forever: rewards snapshot the
+     * Once ANY reward row references this campaign, its reward-affecting
+     * rules are frozen forever: rewards snapshot the
      * rules they were calculated under, and history must stay
      * explainable by the campaign row it points at. Name, description
      * and terms remain editable; lifecycle transitions (pause/complete/

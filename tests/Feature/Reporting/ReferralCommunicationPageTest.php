@@ -16,7 +16,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18G — Referrals, Quality & Communications page: independent
+ * Referrals, Quality & Communications page: independent
  * section gating, honest structural-absence messaging, no mutation
  * actions, Livewire hydration safety and registry/hub integration.
  */
@@ -90,10 +90,9 @@ class ReferralCommunicationPageTest extends TestCase
 
     public function test_structural_absences_are_stated_never_fabricated(): void
     {
-        // Phase 19D: the referral domain now exists, so the page reports
-        // real attribution/reward figures — but conversion rate is still
-        // honestly absent (its §4A definition gate was never re-opened)
-        // and referred booking value is never labeled revenue.
+        // The page reports real attribution/reward figures — but
+        // conversion rate is honestly absent (its §4A definition gate
+        // is closed) and referred booking value is never labeled revenue.
         $this->actingAs($this->manager())->get(ReferralCommunicationReports::getUrl())
             ->assertOk()
             ->assertSee('conversion rate remains')

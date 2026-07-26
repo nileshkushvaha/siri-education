@@ -37,8 +37,8 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 16C — the collection-side mirror of the payout domain's
- * reconciliation guarantees: DB-deduplicated open issues (never a
+ * The collection-side mirror of the payout domain's reconciliation
+ * guarantees: DB-deduplicated open issues (never a
  * duplicate for the same payment+type), idempotent finalization funneled
  * exclusively through BookingPaymentService::applyProviderStatus(), and
  * a mandatory-evidence resolve() that only ever closes the issue row.

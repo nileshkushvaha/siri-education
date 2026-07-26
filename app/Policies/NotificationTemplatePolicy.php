@@ -10,10 +10,9 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * GAP-039 requirement #6 — permission-controlled admin access. No
- * create()/delete() ability exists at all: template keys/channels are
- * a fixed, code-owned set (NotificationTemplateRegistry), never
- * administrator-created rows.
+ * Permission-controlled admin access. No create()/delete() ability
+ * exists at all: template keys/channels are a fixed, code-owned set
+ * (NotificationTemplateRegistry), never administrator-created rows.
  */
 class NotificationTemplatePolicy
 {

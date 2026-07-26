@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Homework\Enums;
 
 /**
- * Phase 24K.1 — GAP-020 partial-channel idempotency: bounded lifecycle
+ * Partial-channel idempotency: bounded lifecycle
  * for one (reminder, channel) delivery. Sending is a short-lived lease
  * state, not a terminal one — a crashed worker leaves a channel here,
  * and it is reclaimed once the lease (HomeworkReminderChannelSender::LEASE_SECONDS)

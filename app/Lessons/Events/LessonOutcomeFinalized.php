@@ -15,8 +15,11 @@ use Illuminate\Queue\SerializesModels;
  * Pending to a finalized value — FinalizeLessonOutcomeAction dispatches
  * it inside the finalizing transaction (released only on commit), so
  * concurrent finalizers and repeated commands can never double-fire it.
- * Later phases (earnings, refunds, homework, reviews, notifications)
- * will subscribe here; Phase 17A attaches no listeners.
+ * Listened to by ClassifyLessonFinancialDisposition,
+ * OpenReviewEligibilityOnLessonOutcomeFinalized,
+ * DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized,
+ * EvaluateReferralRewardOnLessonOutcomeFinalized, and
+ * RecalculateLearningPlanProgressOnLessonOutcomeFinalized.
  */
 final class LessonOutcomeFinalized implements ShouldDispatchAfterCommit
 {

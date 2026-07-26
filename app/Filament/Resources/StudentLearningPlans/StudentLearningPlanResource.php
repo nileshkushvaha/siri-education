@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentLearningPlans;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\StudentLearningPlans\Pages\EditStudentLearningPlan;
 use App\Filament\Resources\StudentLearningPlans\Pages\ListStudentLearningPlans;
 use App\Filament\Resources\StudentLearningPlans\Schemas\StudentLearningPlanForm;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class StudentLearningPlanResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = StudentLearningPlan::class;
 
     protected static ?string $slug = 'student-learning-plans';

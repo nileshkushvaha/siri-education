@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PostCategories;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\PostCategories\Pages\CreatePostCategory;
 use App\Filament\Resources\PostCategories\Pages\EditPostCategory;
 use App\Filament\Resources\PostCategories\Pages\ListPostCategories;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PostCategoryResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = PostCategory::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderOpen;

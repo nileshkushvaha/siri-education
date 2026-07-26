@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PageBlocks;
 
 use App\Content\Models\ContentBlock;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\PageBlocks\Pages\CreatePageBlock;
 use App\Filament\Resources\PageBlocks\Pages\EditPageBlock;
 use App\Filament\Resources\PageBlocks\Pages\ListPageBlocks;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PageBlockResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = ContentBlock::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

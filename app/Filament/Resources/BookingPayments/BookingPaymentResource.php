@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BookingPayments;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\BookingPayments\Pages\ListBookingPayments;
 use App\Filament\Resources\BookingPayments\Pages\ViewBookingPayment;
 use App\Filament\Resources\BookingPayments\Schemas\BookingPaymentInfolist;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class BookingPaymentResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = BookingPayment::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;

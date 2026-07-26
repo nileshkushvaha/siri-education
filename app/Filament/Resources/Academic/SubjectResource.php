@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Academic\Pages\CreateSubject;
 use App\Filament\Resources\Academic\Pages\EditSubject;
 use App\Filament\Resources\Academic\Pages\ListSubjects;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class SubjectResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Subject::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;

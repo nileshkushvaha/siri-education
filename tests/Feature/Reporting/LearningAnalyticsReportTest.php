@@ -10,6 +10,7 @@ use App\Enums\LearningPlanStatus;
 use App\Enums\StudentStatus;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\AcademicCategory;
+use App\Models\Booking;
 use App\Models\HomeworkAssignment;
 use App\Models\LearningPlanMilestone;
 use App\Models\LearningPlanReview;
@@ -137,9 +138,22 @@ class LearningAnalyticsReportTest extends TestCase
         return $plan;
     }
 
-    /** @param array<string, mixed> $overrides */
+    /**
+     * Phase 24J — GAP-021: every homework assignment must reference a
+     * completed lesson (booking) or a learning plan. This reporting suite
+     * only exercises homework status/date semantics and never asserts on
+     * booking identity, so an independent completed booking is created for
+     * context by default — mirroring HomeworkAssignmentFactory's own
+     * default state — unless the caller already supplies one via overrides.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
     private function homework(User $student, User $teacher, array $overrides = []): HomeworkAssignment
     {
+        if (! array_key_exists('booking_id', $overrides) && ! array_key_exists('learning_plan_id', $overrides)) {
+            $overrides['booking_id'] = Booking::factory()->completed()->create()->id;
+        }
+
         return HomeworkAssignment::query()->create(array_merge([
             'teacher_id' => $teacher->id,
             'student_id' => $student->id,

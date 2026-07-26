@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReviewTags;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\ReviewTags\Pages\CreateReviewTag;
 use App\Filament\Resources\ReviewTags\Pages\EditReviewTag;
 use App\Filament\Resources\ReviewTags\Pages\ListReviewTags;
@@ -27,6 +28,8 @@ use Filament\Tables\Table;
  */
 class ReviewTagResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = ReviewTag::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;

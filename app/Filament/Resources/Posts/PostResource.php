@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Posts;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Posts\Pages\CreatePost;
 use App\Filament\Resources\Posts\Pages\EditPost;
 use App\Filament\Resources\Posts\Pages\ListPosts;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PostResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Post::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedNewspaper;

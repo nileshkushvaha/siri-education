@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\HasFinancialReportFilters;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\ReportAccessContextInterface;
@@ -26,6 +27,7 @@ use Illuminate\Support\Collection;
  */
 class RechargeMonitoring extends Page
 {
+    use HasCentralizedNavigation;
     use HasFinancialReportFilters;
 
     protected string $view = 'filament.pages.recharge-monitoring';

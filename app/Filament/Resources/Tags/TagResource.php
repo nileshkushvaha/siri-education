@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tags;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Tags\Pages\CreateTag;
 use App\Filament\Resources\Tags\Pages\EditTag;
 use App\Filament\Resources\Tags\Pages\ListTags;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class TagResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Tag::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;

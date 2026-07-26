@@ -6,6 +6,7 @@ namespace App\Filament\Pages\Settings;
 
 use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutConfigurationValidator;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Settings\RazorpayXPayoutSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -42,6 +43,7 @@ use Illuminate\Support\HtmlString;
  */
 class RazorpayXPayoutSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

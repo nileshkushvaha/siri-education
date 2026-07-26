@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Faq;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Faq\Pages\CreateFaqCategory;
 use App\Filament\Resources\Faq\Pages\EditFaqCategory;
 use App\Filament\Resources\Faq\Pages\ListFaqCategories;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FaqCategoryResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = FaqCategory::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderOpen;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\EmailLogs;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\EmailLogs\Pages\ListEmailLogs;
 use App\Filament\Resources\EmailLogs\Pages\ViewEmailLog;
 use App\Models\EmailLog;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmailLogResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = EmailLog::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;

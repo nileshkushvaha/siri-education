@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Academic\Pages\CreateSkillLevel;
 use App\Filament\Resources\Academic\Pages\EditSkillLevel;
 use App\Filament\Resources\Academic\Pages\ListSkillLevels;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class SkillLevelResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = SkillLevel::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;

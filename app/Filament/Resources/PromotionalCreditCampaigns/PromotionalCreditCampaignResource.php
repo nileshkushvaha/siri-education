@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PromotionalCreditCampaigns;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\PromotionalCreditCampaigns\Pages\CreatePromotionalCreditCampaign;
 use App\Filament\Resources\PromotionalCreditCampaigns\Pages\EditPromotionalCreditCampaign;
 use App\Filament\Resources\PromotionalCreditCampaigns\Pages\ListPromotionalCreditCampaigns;
@@ -28,6 +29,8 @@ use Filament\Tables\Table;
  */
 class PromotionalCreditCampaignResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = PromotionalCreditCampaign::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGift;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SuspiciousActivityFlags;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\SuspiciousActivityFlags\Pages\ListSuspiciousActivityFlags;
 use App\Filament\Resources\SuspiciousActivityFlags\Pages\ViewSuspiciousActivityFlag;
 use App\Filament\Resources\SuspiciousActivityFlags\Schemas\SuspiciousActivityFlagInfolist;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SuspiciousActivityFlagResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = SuspiciousActivityFlag::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;

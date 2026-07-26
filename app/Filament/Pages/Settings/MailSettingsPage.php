@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Notifications\Support\TestMailConfigurationNotification;
 use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Crypt;
 
 class MailSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Models\User;
 use App\Settings\ReviewSettings;
 use BackedEnum;
@@ -50,6 +51,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  */
 class ReviewQualitySettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;

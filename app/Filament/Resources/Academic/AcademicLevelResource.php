@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Academic\Pages\CreateAcademicLevel;
 use App\Filament\Resources\Academic\Pages\EditAcademicLevel;
 use App\Filament\Resources\Academic\Pages\ListAcademicLevels;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AcademicLevelResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = AcademicLevel::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;

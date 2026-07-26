@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Bookings;
 
 use App\Booking\Enums\BookingStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Bookings\Pages\EditBooking;
 use App\Filament\Resources\Bookings\Pages\ListBookings;
 use App\Filament\Resources\Bookings\RelationManagers\ActivitiesRelationManager;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
  */
 class BookingResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Booking::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\TeacherAvailability;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\TeacherAvailability\Pages\CreateTeacherAvailability;
 use App\Filament\Resources\TeacherAvailability\Pages\EditTeacherAvailability;
 use App\Filament\Resources\TeacherAvailability\Pages\ListTeacherAvailability;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class TeacherAvailabilityResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = TeacherAvailability::class;
 
     protected static ?string $slug = 'teacher-availability';

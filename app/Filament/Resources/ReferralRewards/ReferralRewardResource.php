@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralRewards;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\ReferralRewards\Pages\ListReferralRewards;
 use App\Filament\Resources\ReferralRewards\Tables\ReferralRewardsTable;
 use App\Models\ReferralReward;
@@ -21,6 +22,8 @@ use Filament\Tables\Table;
  */
 class ReferralRewardResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = ReferralReward::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

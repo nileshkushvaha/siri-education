@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\TeacherLeave;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\TeacherLeave\Pages\CreateTeacherLeave;
 use App\Filament\Resources\TeacherLeave\Pages\EditTeacherLeave;
 use App\Filament\Resources\TeacherLeave\Pages\ListTeacherLeave;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class TeacherLeaveResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = TeacherUnavailability::class;
 
     protected static ?string $slug = 'teacher-leave';

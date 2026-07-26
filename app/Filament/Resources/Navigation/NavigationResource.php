@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Navigation;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Navigation\Pages\CreateNavigation;
 use App\Filament\Resources\Navigation\Pages\EditNavigation;
 use App\Filament\Resources\Navigation\Pages\ListNavigations;
@@ -20,6 +21,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class NavigationResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = NavigationMenu::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBars3;

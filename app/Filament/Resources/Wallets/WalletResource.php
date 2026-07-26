@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Wallets;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Wallets\Pages\ListWallets;
 use App\Filament\Resources\Wallets\Pages\ViewWallet;
 use App\Filament\Resources\Wallets\RelationManagers\LedgerEntriesRelationManager;
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class WalletResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Wallet::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWallet;

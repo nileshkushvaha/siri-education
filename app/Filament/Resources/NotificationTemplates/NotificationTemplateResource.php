@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\NotificationTemplates;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\NotificationTemplates\Pages\EditNotificationTemplate;
 use App\Filament\Resources\NotificationTemplates\Pages\ListNotificationTemplates;
 use App\Filament\Resources\NotificationTemplates\Schemas\NotificationTemplateForm;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class NotificationTemplateResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = NotificationTemplate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;

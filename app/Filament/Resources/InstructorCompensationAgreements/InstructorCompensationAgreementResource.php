@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorCompensationAgreements;
 
 use App\Earnings\Enums\CompensationAgreementStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorCompensationAgreements\Pages\ListInstructorCompensationAgreements;
 use App\Filament\Resources\InstructorCompensationAgreements\Tables\InstructorCompensationAgreementsTable;
 use App\Models\InstructorCompensationAgreement;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorCompensationAgreementResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorCompensationAgreement::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;

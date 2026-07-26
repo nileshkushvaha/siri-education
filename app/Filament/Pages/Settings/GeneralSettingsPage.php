@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Models\Page as PageModel;
 use App\Settings\GeneralSettings;
 use BackedEnum;
@@ -27,6 +28,7 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class GeneralSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

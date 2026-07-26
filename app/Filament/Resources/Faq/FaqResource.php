@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Faq;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Faq\Pages\CreateFaq;
 use App\Filament\Resources\Faq\Pages\EditFaq;
 use App\Filament\Resources\Faq\Pages\ListFaqs;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FaqResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Faq::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQuestionMarkCircle;

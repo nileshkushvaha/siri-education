@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorWithdrawalRequests;
 
 use App\Earnings\Enums\InstructorWithdrawalStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorWithdrawalRequests\Pages\ListInstructorWithdrawalRequests;
 use App\Filament\Resources\InstructorWithdrawalRequests\Tables\InstructorWithdrawalRequestsTable;
 use App\Models\InstructorWithdrawalRequest;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorWithdrawalRequestResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorWithdrawalRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

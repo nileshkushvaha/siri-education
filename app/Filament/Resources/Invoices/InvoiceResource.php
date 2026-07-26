@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Invoices;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Resources\Invoices\Pages\ViewInvoice;
 use App\Filament\Resources\Invoices\Schemas\InvoiceInfolist;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class InvoiceResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Invoice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

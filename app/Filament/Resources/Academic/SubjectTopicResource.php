@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Academic\Pages\CreateSubjectTopic;
 use App\Filament\Resources\Academic\Pages\EditSubjectTopic;
 use App\Filament\Resources\Academic\Pages\ListSubjectTopics;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class SubjectTopicResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = SubjectTopic::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedListBullet;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Services\CacheManagerService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -16,6 +17,8 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class CacheManagerPage extends Page
 {
+    use HasCentralizedNavigation;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCircleStack;
 
     protected static ?string $navigationLabel = 'Cache Manager';

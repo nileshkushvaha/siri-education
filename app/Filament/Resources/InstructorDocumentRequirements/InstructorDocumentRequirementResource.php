@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorDocumentRequirements;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorDocumentRequirements\Pages\CreateInstructorDocumentRequirement;
 use App\Filament\Resources\InstructorDocumentRequirements\Pages\EditInstructorDocumentRequirement;
 use App\Filament\Resources\InstructorDocumentRequirements\Pages\ListInstructorDocumentRequirements;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class InstructorDocumentRequirementResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorDocumentRequirement::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCheck;

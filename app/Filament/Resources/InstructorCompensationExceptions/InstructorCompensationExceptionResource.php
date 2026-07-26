@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorCompensationExceptions;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorCompensationExceptions\Pages\ListInstructorCompensationExceptions;
 use App\Filament\Resources\InstructorCompensationExceptions\Tables\InstructorCompensationExceptionsTable;
 use App\Models\InstructorCompensationException;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorCompensationExceptionResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorCompensationException::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedExclamationTriangle;

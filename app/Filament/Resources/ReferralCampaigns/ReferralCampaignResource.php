@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralCampaigns;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\ReferralCampaigns\Pages\CreateReferralCampaign;
 use App\Filament\Resources\ReferralCampaigns\Pages\EditReferralCampaign;
 use App\Filament\Resources\ReferralCampaigns\Pages\ListReferralCampaigns;
@@ -25,6 +26,8 @@ use Filament\Tables\Table;
  */
 class ReferralCampaignResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = ReferralCampaign::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGift;

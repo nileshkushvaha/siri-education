@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Roles;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Roles\Pages\CreateRole;
 use App\Filament\Resources\Roles\Pages\EditRole;
 use App\Filament\Resources\Roles\Pages\ListRoles;
@@ -20,6 +21,8 @@ use Spatie\Permission\Models\Role;
 
 class RoleResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Role::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;

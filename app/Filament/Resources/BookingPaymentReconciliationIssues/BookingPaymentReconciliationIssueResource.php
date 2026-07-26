@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BookingPaymentReconciliationIssues;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\BookingPaymentReconciliationIssues\Pages\ListBookingPaymentReconciliationIssues;
 use App\Filament\Resources\BookingPaymentReconciliationIssues\Tables\BookingPaymentReconciliationIssuesTable;
 use App\Models\BookingPaymentReconciliationIssue;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class BookingPaymentReconciliationIssueResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = BookingPaymentReconciliationIssue::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;

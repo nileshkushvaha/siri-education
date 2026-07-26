@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Models\FailedJob;
 use App\Queue\DTOs\FailedJobRetryResult;
 use App\Queue\Enums\FailedJobRetryOutcome;
@@ -28,6 +29,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class QueueMonitorPage extends Page implements HasTable
 {
+    use HasCentralizedNavigation;
     use InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;

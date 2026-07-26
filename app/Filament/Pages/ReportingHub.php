@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Reporting\Contracts\ReportAccessContextInterface;
 use App\Reporting\Contracts\ReportRegistryInterface;
 use App\Reporting\DTOs\ReportDefinition;
@@ -26,6 +27,8 @@ use Illuminate\Support\Collection;
  */
 class ReportingHub extends Page
 {
+    use HasCentralizedNavigation;
+
     protected string $view = 'filament.pages.reporting-hub';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;

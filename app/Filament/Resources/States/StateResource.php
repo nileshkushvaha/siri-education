@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\States;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\States\Pages\CreateState;
 use App\Filament\Resources\States\Pages\EditState;
 use App\Filament\Resources\States\Pages\ListStates;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class StateResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = State::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMapPin;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralAttributions;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\ReferralAttributions\Pages\ListReferralAttributions;
 use App\Filament\Resources\ReferralAttributions\Tables\ReferralAttributionsTable;
 use App\Models\ReferralAttribution;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
  */
 class ReferralAttributionResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = ReferralAttribution::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;

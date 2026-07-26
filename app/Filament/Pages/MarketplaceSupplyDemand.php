@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Models\AcademicLevel;
 use App\Models\Country;
 use App\Models\Subject;
@@ -30,6 +31,8 @@ use Illuminate\Support\Collection;
  */
 class MarketplaceSupplyDemand extends Page
 {
+    use HasCentralizedNavigation;
+
     protected string $view = 'filament.pages.marketplace-supply-demand';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedScale;

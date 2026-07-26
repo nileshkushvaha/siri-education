@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Academic\Pages\CreateInstructorSubjectTopic;
 use App\Filament\Resources\Academic\Pages\EditInstructorSubjectTopic;
 use App\Filament\Resources\Academic\Pages\ListInstructorSubjectTopics;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class InstructorSubjectTopicResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorSubjectTopic::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;

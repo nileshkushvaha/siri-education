@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SupportCases;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\SupportCases\Pages\CreateSupportCase;
 use App\Filament\Resources\SupportCases\Pages\ListSupportCases;
 use App\Filament\Resources\SupportCases\Pages\ViewSupportCase;
@@ -31,6 +32,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SupportCaseResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = SupportCase::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLifebuoy;

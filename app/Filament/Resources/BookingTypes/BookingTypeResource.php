@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BookingTypes;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\BookingTypes\Pages\CreateBookingType;
 use App\Filament\Resources\BookingTypes\Pages\EditBookingType;
 use App\Filament\Resources\BookingTypes\Pages\ListBookingTypes;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class BookingTypeResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = BookingType::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;

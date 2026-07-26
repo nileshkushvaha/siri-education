@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentLessonPrices;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\StudentLessonPrices\Pages\CreateStudentLessonPrice;
 use App\Filament\Resources\StudentLessonPrices\Pages\EditStudentLessonPrice;
 use App\Filament\Resources\StudentLessonPrices\Pages\ListStudentLessonPrices;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
  */
 class StudentLessonPriceResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = StudentLessonPrice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

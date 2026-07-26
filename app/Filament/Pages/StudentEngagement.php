@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\StudentStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Models\AcademicLevel;
 use App\Models\Country;
@@ -34,6 +35,7 @@ use Illuminate\Support\Collection;
 class StudentEngagement extends Page
 {
     use ExportsReportCsv;
+    use HasCentralizedNavigation;
 
     protected string $view = 'filament.pages.student-engagement';
 

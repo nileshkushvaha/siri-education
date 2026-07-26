@@ -7,6 +7,7 @@ namespace App\Filament\Pages\Settings;
 use App\Booking\Services\GoogleCalendarConfigurationService;
 use App\Booking\Services\RecordingAvailabilityResolver;
 use App\Booking\Services\ZoomConfigurationService;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Settings\MeetingSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -39,6 +40,7 @@ use JsonException;
  */
 class MeetingSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

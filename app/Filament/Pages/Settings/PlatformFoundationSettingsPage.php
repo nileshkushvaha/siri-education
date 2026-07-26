@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
@@ -27,6 +28,7 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class PlatformFoundationSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

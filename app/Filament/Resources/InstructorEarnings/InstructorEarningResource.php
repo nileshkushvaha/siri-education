@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorEarnings;
 
 use App\Earnings\Enums\InstructorEarningStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorEarnings\Pages\ListInstructorEarnings;
 use App\Filament\Resources\InstructorEarnings\Tables\InstructorEarningsTable;
 use App\Models\InstructorEarning;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorEarningResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorEarning::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

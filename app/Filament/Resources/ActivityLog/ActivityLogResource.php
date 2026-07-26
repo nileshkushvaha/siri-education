@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ActivityLog;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\ActivityLog\Pages\ListActivityLogs;
 use App\Filament\Resources\ActivityLog\Pages\ViewActivityLog;
 use App\Filament\Resources\ActivityLog\Schemas\ActivityLogInfolist;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ActivityLogResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Activity::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;

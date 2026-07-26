@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Widgets\QuickActionsWidget;
 use App\Filament\Widgets\RecentAuditTrailWidget;
 use App\Filament\Widgets\RecentLoginsWidget;
@@ -17,6 +18,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class Dashboard extends BaseDashboard
 {
+    use HasCentralizedNavigation;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHome;
 
     protected static ?string $navigationLabel = 'Dashboard';

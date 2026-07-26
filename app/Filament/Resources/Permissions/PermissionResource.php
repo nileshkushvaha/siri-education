@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Permissions;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Permissions\Pages\CreatePermission;
 use App\Filament\Resources\Permissions\Pages\EditPermission;
 use App\Filament\Resources\Permissions\Pages\ListPermissions;
@@ -16,6 +17,8 @@ use Spatie\Permission\Models\Permission;
 
 class PermissionResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Permission::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedKey;

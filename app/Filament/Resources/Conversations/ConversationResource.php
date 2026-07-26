@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Conversations;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Conversations\Pages\ListConversations;
 use App\Filament\Resources\Conversations\Pages\ViewConversation;
 use App\Filament\Resources\Conversations\RelationManagers\MessageReportsRelationManager;
@@ -29,6 +30,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ConversationResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Conversation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;

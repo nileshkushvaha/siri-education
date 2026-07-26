@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Filament\Pages\Concerns\HasFinancialReportFilters;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
@@ -20,6 +21,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 class PaymentsReconciliation extends Page
 {
     use ExportsReportCsv;
+    use HasCentralizedNavigation;
     use HasFinancialReportFilters;
 
     protected string $view = 'filament.pages.payments-reconciliation';

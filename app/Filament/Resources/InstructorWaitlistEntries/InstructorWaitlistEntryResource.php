@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorWaitlistEntries;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorWaitlistEntries\Pages\ListInstructorWaitlistEntries;
 use App\Filament\Resources\InstructorWaitlistEntries\Pages\ViewInstructorWaitlistEntry;
 use App\Filament\Resources\InstructorWaitlistEntries\Schemas\InstructorWaitlistEntryInfolist;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class InstructorWaitlistEntryResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorWaitlistEntry::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;

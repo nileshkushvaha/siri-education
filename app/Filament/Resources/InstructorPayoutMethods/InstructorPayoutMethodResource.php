@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorPayoutMethods;
 
 use App\Earnings\Enums\PayoutMethodStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorPayoutMethods\Pages\ListInstructorPayoutMethods;
 use App\Filament\Resources\InstructorPayoutMethods\Tables\InstructorPayoutMethodsTable;
 use App\Models\InstructorPayoutMethod;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorPayoutMethodResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorPayoutMethod::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;

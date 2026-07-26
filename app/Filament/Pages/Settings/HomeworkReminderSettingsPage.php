@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Settings\HomeworkSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -29,6 +30,7 @@ use Illuminate\Contracts\Support\Htmlable;
  */
 class HomeworkReminderSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

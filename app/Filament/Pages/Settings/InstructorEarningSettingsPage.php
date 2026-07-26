@@ -8,6 +8,7 @@ use App\Earnings\Contracts\FinancialFeatureConfigurationServiceInterface;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\CompensationException;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutAttempt;
@@ -40,6 +41,7 @@ use Illuminate\Support\HtmlString;
  */
 class InstructorEarningSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

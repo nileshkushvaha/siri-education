@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentLearningGoals;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\StudentLearningGoals\Pages\CreateStudentLearningGoal;
 use App\Filament\Resources\StudentLearningGoals\Pages\EditStudentLearningGoal;
 use App\Filament\Resources\StudentLearningGoals\Pages\ListStudentLearningGoals;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class StudentLearningGoalResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = StudentLearningGoal::class;
 
     protected static ?string $slug = 'student-learning-goals';

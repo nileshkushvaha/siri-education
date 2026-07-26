@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Lessons;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Lessons\Pages\ListLessons;
 use App\Filament\Resources\Lessons\Tables\LessonsTable;
 use App\Lessons\Enums\LessonStatus;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class LessonResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Lesson::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Recordings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Recordings\Pages\ListRecordings;
 use App\Filament\Resources\Recordings\Pages\ViewRecording;
 use App\Filament\Resources\Recordings\Schemas\RecordingInfolist;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RecordingResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Recording::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedVideoCamera;

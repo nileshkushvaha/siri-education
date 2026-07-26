@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Widgets\Quality\AlertQueueWidget;
 use App\Filament\Widgets\Quality\HighlyRatedInstructorsWidget;
 use App\Filament\Widgets\Quality\LowRatedInstructorsWidget;
@@ -28,6 +29,8 @@ use Illuminate\Contracts\Support\Htmlable;
  */
 class ReviewsQualityDashboard extends Page
 {
+    use HasCentralizedNavigation;
+
     protected string $view = 'filament.pages.reviews-quality-dashboard';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;

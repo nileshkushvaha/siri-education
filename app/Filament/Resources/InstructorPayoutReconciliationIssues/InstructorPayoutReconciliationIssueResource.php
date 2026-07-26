@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorPayoutReconciliationIssues;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\Pages\ListInstructorPayoutReconciliationIssues;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\Tables\InstructorPayoutReconciliationIssuesTable;
 use App\Models\InstructorPayoutReconciliationIssue;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorPayoutReconciliationIssueResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorPayoutReconciliationIssue::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;

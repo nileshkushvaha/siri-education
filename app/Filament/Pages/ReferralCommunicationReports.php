@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Reporting\Contracts\ReferralCommunicationReportServiceInterface;
 use App\Reporting\DTOs\Communication\NotificationActivityData;
 use App\Reporting\DTOs\Communication\ReferralActivityData;
@@ -28,6 +29,8 @@ use Illuminate\Support\Collection;
  */
 class ReferralCommunicationReports extends Page
 {
+    use HasCentralizedNavigation;
+
     protected string $view = 'filament.pages.referral-communication-reports';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;

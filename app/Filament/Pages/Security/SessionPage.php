@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Security;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Services\Security\AdminSessionService;
 use App\Services\Security\SecuritySettingsService;
 use App\Settings\SessionSettings;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Gate;
 
 class SessionPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSecurityAccess;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;

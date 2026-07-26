@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\LearningGoalStatus;
 use App\Enums\LearningPlanStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\AcademicLevel;
@@ -40,6 +41,7 @@ use Illuminate\Support\Collection;
 class LearningAnalytics extends Page
 {
     use ExportsReportCsv;
+    use HasCentralizedNavigation;
 
     protected string $view = 'filament.pages.learning-analytics';
 

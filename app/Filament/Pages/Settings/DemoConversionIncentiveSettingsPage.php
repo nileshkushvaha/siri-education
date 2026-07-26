@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Models\Country;
 use App\Models\Subject;
 use App\Settings\DemoConversionIncentiveSettings;
@@ -34,6 +35,7 @@ use Illuminate\Contracts\Support\Htmlable;
  */
 class DemoConversionIncentiveSettingsPage extends Page
 {
+    use HasCentralizedNavigation;
     use HasSettingsAccess;
     use LogsSettingsUpdates;
 

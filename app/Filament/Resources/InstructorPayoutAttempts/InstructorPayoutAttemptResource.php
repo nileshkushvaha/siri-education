@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorPayoutAttempts;
 
 use App\Earnings\Enums\InstructorPayoutAttemptStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorPayoutAttempts\Pages\ListInstructorPayoutAttempts;
 use App\Filament\Resources\InstructorPayoutAttempts\Tables\InstructorPayoutAttemptsTable;
 use App\Models\InstructorPayoutAttempt;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorPayoutAttemptResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorPayoutAttempt::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPaperAirplane;

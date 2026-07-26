@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Redirects;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Redirects\Pages\CreateRedirect;
 use App\Filament\Resources\Redirects\Pages\EditRedirect;
 use App\Filament\Resources\Redirects\Pages\ListRedirects;
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RedirectResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Redirect::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;

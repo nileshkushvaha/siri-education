@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralCodes;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\ReferralCodes\Pages\ListReferralCodes;
 use App\Filament\Resources\ReferralCodes\Tables\ReferralCodesTable;
 use App\Models\ReferralCode;
@@ -21,6 +22,8 @@ use Filament\Tables\Table;
  */
 class ReferralCodeResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = ReferralCode::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTicket;

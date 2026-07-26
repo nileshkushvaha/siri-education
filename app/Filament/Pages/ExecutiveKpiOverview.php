@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Reporting\Contracts\MarketplaceExecutiveReportServiceInterface;
 use App\Reporting\DTOs\Marketplace\ExecutiveKpiOverviewData;
 use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
@@ -26,6 +27,8 @@ use Illuminate\Support\Collection;
  */
 class ExecutiveKpiOverview extends Page
 {
+    use HasCentralizedNavigation;
+
     protected string $view = 'filament.pages.executive-kpi-overview';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;

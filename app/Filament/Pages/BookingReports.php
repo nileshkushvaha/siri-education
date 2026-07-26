@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Booking\Contracts\BookingAnalyticsServiceInterface;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Support\CsvExport;
 use App\Filament\Widgets\Booking\BookingKpiWidget;
 use App\Filament\Widgets\Booking\BookingsPerDayChart;
@@ -25,6 +26,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingReports extends Page
 {
+    use HasCentralizedNavigation;
+
     protected string $view = 'filament.pages.booking-reports';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;

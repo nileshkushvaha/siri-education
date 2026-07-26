@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\OperationalAlerts;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\OperationalAlerts\Pages\ListOperationalAlerts;
 use App\Filament\Resources\OperationalAlerts\Pages\ViewOperationalAlert;
 use App\Filament\Resources\OperationalAlerts\Schemas\OperationalAlertInfolist;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class OperationalAlertResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = OperationalAlert::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBellAlert;

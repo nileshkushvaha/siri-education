@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
@@ -43,6 +44,7 @@ use Illuminate\Support\Collection;
 class BookingLessonMeetingOperations extends Page
 {
     use ExportsReportCsv;
+    use HasCentralizedNavigation;
 
     protected string $view = 'filament.pages.booking-lesson-meeting-operations';
 

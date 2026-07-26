@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\InstructorStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Models\Country;
 use App\Models\Subject;
@@ -36,6 +37,7 @@ use Illuminate\Support\Collection;
 class InstructorPerformance extends Page
 {
     use ExportsReportCsv;
+    use HasCentralizedNavigation;
 
     protected string $view = 'filament.pages.instructor-performance';
 

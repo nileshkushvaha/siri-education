@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Services\SchedulerService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -17,6 +18,8 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class SchedulerMonitorPage extends Page
 {
+    use HasCentralizedNavigation;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
     protected static ?string $navigationLabel = 'Scheduler';

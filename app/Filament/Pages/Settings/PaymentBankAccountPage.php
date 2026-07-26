@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -17,6 +18,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class PaymentBankAccountPage extends PaymentSettingsPage
 {
+    use HasCentralizedNavigation;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
 
     protected static ?string $navigationLabel = 'Bank Account';

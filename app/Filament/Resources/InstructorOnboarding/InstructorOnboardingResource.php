@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorOnboarding;
 
 use App\Enums\InstructorStatus;
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorOnboarding\Pages\EditInstructorOnboarding;
 use App\Filament\Resources\InstructorOnboarding\Pages\ListInstructorOnboarding;
 use App\Filament\Resources\InstructorOnboarding\Tables\InstructorOnboardingTable;
@@ -30,6 +31,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class InstructorOnboardingResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = User::class;
 
     protected static ?string $slug = 'instructor-onboarding';

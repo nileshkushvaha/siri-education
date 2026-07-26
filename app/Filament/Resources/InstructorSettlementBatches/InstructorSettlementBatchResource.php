@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorSettlementBatches;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorSettlementBatches\Pages\ListInstructorSettlementBatches;
 use App\Filament\Resources\InstructorSettlementBatches\Tables\InstructorSettlementBatchesTable;
 use App\Models\InstructorSettlementBatch;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class InstructorSettlementBatchResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = InstructorSettlementBatch::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

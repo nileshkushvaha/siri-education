@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Academic\Pages\CreateAcademicCategory;
 use App\Filament\Resources\Academic\Pages\EditAcademicCategory;
 use App\Filament\Resources\Academic\Pages\ListAcademicCategories;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AcademicCategoryResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = AcademicCategory::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderOpen;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PromotionalCreditIssuances;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\PromotionalCreditIssuances\Pages\ListPromotionalCreditIssuances;
 use App\Filament\Resources\PromotionalCreditIssuances\Pages\ViewPromotionalCreditIssuance;
 use App\Filament\Resources\PromotionalCreditIssuances\Schemas\PromotionalCreditIssuanceInfolist;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class PromotionalCreditIssuanceResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = PromotionalCreditIssuance::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

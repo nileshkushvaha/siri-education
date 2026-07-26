@@ -80,18 +80,23 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\Filament\Clusters')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            // Phase 1 of the navigation IA redesign — see
+            // App\Filament\Navigation\NavigationRegistry for the
+            // per-destination group/label/sort source of truth and
+            // docs/audits/phase-navigation-*.md for the full inventory
+            // this order was derived from. Ten primary sections (plus
+            // the ungrouped Dashboard/Home link); order here is the
+            // sidebar's group display order.
             ->navigationGroups([
-                'Platform',
-                'Users & Access',
-                'Academic',
-                'Marketplace',
-                'Scheduling',
-                'Booking',
+                'People',
+                'Academics',
+                'Operations',
                 'Finance',
-                'Content',
-                'Communication',
-                'Reports',
-                'System',
+                'Growth',
+                'Content & Communication',
+                'Quality & Compliance',
+                'Analytics',
+                'Settings',
             ])
             ->pages([
                 Dashboard::class,
@@ -108,8 +113,8 @@ class AdminPanelProvider extends PanelProvider
             ->navigationItems([
                 NavigationItem::make('Application Performance')
                     ->icon(Heroicon::OutlinedChartBar)
-                    ->group('System')
-                    ->sort(4)
+                    ->group('Settings')
+                    ->sort(21)
                     ->url(fn (): string => '/'.config('pulse.path', 'pulse'))
                     ->openUrlInNewTab()
                     ->visible(fn (): bool => auth()->user()?->can('viewPulse') ?? false),

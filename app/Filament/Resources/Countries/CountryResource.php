@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Countries;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\Countries\Pages\CreateCountry;
 use App\Filament\Resources\Countries\Pages\EditCountry;
 use App\Filament\Resources\Countries\Pages\ListCountries;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class CountryResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = Country::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGlobeAlt;

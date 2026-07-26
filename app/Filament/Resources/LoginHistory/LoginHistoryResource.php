@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\LoginHistory;
 
+use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\LoginHistory\Pages\ListLoginHistories;
 use App\Filament\Resources\LoginHistory\Pages\ViewLoginHistory;
 use App\Filament\Resources\LoginHistory\Schemas\LoginHistoryInfolist;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class LoginHistoryResource extends Resource
 {
+    use HasCentralizedNavigation;
+
     protected static ?string $model = LoginHistory::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;

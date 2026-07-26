@@ -21,6 +21,14 @@ final class InstructorEarningRepository implements InstructorEarningRepositoryIn
         return InstructorEarning::query()->where('lesson_id', $lesson->id)->first();
     }
 
+    public function findBySource(string $sourceType, string $sourceId): ?InstructorEarning
+    {
+        return InstructorEarning::query()
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->first();
+    }
+
     public function create(array $attributes): InstructorEarning
     {
         return InstructorEarning::query()->create($attributes);

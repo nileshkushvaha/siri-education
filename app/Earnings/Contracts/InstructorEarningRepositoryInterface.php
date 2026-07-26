@@ -17,6 +17,9 @@ interface InstructorEarningRepositoryInterface
 {
     public function findForLesson(Lesson $lesson): ?InstructorEarning;
 
+    /** GAP-008 — the lookup for any non-lesson-keyed earning (e.g. demo-conversion incentives), which always carry a null lesson_id. */
+    public function findBySource(string $sourceType, string $sourceId): ?InstructorEarning;
+
     /** @param array<string, mixed> $attributes */
     public function create(array $attributes): InstructorEarning;
 

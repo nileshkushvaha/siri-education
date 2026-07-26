@@ -6,6 +6,7 @@ namespace App\Earnings\Services;
 
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Earnings\Actions\CreateDemoConversionIncentiveEarningAction;
 use App\Earnings\Actions\CreateInstructorEarningFromLessonAction;
 use App\Earnings\Actions\TransitionInstructorEarningAction;
 use App\Earnings\Contracts\InstructorCompensationResolverInterface;
@@ -21,6 +22,7 @@ use App\Earnings\Exceptions\CompensationBlockedException;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Exceptions\InvalidEarningTransitionException;
 use App\Lessons\Enums\LessonStatus;
+use App\Models\DemoConversionIncentiveAward;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
 use App\Models\Lesson;
@@ -49,6 +51,7 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
     public function __construct(
         private readonly InstructorEarningRepositoryInterface $earnings,
         private readonly CreateInstructorEarningFromLessonAction $createAction,
+        private readonly CreateDemoConversionIncentiveEarningAction $createIncentiveAction,
         private readonly TransitionInstructorEarningAction $transition,
         private readonly InstructorCompensationResolverInterface $resolver,
         private readonly CompensationExceptionService $exceptions,
@@ -199,6 +202,43 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
             sprintf('Reconciliation earning of %d %s (minor units) created for lesson %s.', $earning->earning_amount_minor, $earning->currency_code, $lesson->id),
             $earning,
             array_filter(['reconciliation_reason' => $reasonCode]),
+        );
+
+        InstructorEarningCreated::dispatch($earning);
+
+        return $earning;
+    }
+
+    public function createDemoConversionIncentive(DemoConversionIncentiveAward $award, Lesson $paidLesson, Lesson $demoLesson): ?InstructorEarning
+    {
+        if (! $this->settings->earnings_enabled) {
+            return null;
+        }
+
+        $existing = $this->earnings->findBySource(CreateDemoConversionIncentiveEarningAction::sourceType(), $award->id);
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        try {
+            $earning = $this->createIncentiveAction->execute(
+                $award,
+                $paidLesson,
+                $demoLesson,
+                $paidLesson->completed_at?->addDays($this->settings->hold_days),
+            );
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent worker created this award's earning between
+            // our idempotency check and the insert — idempotent replay.
+            return $this->earnings->findBySource(CreateDemoConversionIncentiveEarningAction::sourceType(), $award->id);
+        }
+
+        $this->audit->logSystem(
+            self::LOG_NAME,
+            'demo_conversion_incentive_earning_created',
+            sprintf('Demo-conversion incentive earning of %d %s (minor units) created for award %s.', $earning->earning_amount_minor, $earning->currency_code, $award->id),
+            $earning,
         );
 
         InstructorEarningCreated::dispatch($earning);

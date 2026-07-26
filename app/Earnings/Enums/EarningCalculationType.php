@@ -17,6 +17,9 @@ enum EarningCalculationType: string
     case Periodic = 'periodic';
     case DemoFixed = 'demo_fixed';
 
+    /** GAP-008 (SRS §15.18) — a fixed bonus for converting a demo to a paid lesson, never derived from the compensation agreement. */
+    case DemoConversionIncentive = 'demo_conversion_incentive';
+
     /** Reserved for a future audited manual-adjustment flow — no code path produces it yet. */
     case Manual = 'manual';
 
@@ -26,6 +29,7 @@ enum EarningCalculationType: string
             self::Hourly => 'Hourly agreement rate',
             self::Periodic => 'Periodic agreement (daily/weekly/monthly)',
             self::DemoFixed => 'Demo lesson fixed compensation',
+            self::DemoConversionIncentive => 'Demo-to-paid conversion incentive',
             self::Manual => 'Manual (admin-entered)',
         };
     }

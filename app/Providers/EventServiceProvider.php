@@ -44,6 +44,7 @@ use App\Listeners\Compliance\EvaluateRepeatedFailedLoginsOnLoginFailed;
 use App\Listeners\Compliance\EvaluateRepeatedMessageReportsOnMessageReported;
 use App\Listeners\Compliance\EvaluateRepeatedReferralFraudHoldsOnReferralRewardHeld;
 use App\Listeners\Compliance\SendSuspiciousActivityFlagRecordedNotification;
+use App\Listeners\Earnings\CheckDemoConversionIncentiveOnLessonCompleted;
 use App\Listeners\Earnings\ClassifyLessonFinancialDisposition;
 use App\Listeners\Earnings\CreateEarningOnLessonCompleted;
 use App\Listeners\Earnings\ReevaluateLessonFinancialDisposition;
@@ -264,6 +265,10 @@ class EventServiceProvider extends ServiceProvider
         ],
         LessonCompleted::class => [
             CreateEarningOnLessonCompleted::class,
+            // GAP-008 — the only automatic demo-conversion-incentive
+            // evaluation trigger; a sibling of CreateEarningOnLessonCompleted,
+            // never a replacement for it.
+            CheckDemoConversionIncentiveOnLessonCompleted::class,
         ],
         LessonDisputed::class => [
             SyncEarningOnLessonDisputed::class,

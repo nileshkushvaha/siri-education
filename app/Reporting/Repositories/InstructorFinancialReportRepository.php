@@ -33,6 +33,19 @@ final class InstructorFinancialReportRepository
             ->groupBy('currency_code')
             ->get();
 
+        // GAP-008 — awards created in the period, by currency; the
+        // resulting earning is already counted above as a regular
+        // demo_conversion_incentive-calculation-type earning, this is
+        // purely the incentive-specific award-count breakdown.
+        $demoConversionIncentiveByCurrency = DB::table('demo_conversion_incentive_awards')
+            ->where('created_at', '>=', $period->startUtc)
+            ->where('created_at', '<', $period->endUtcExclusive)
+            ->when($filters->instructorId !== null, fn ($q) => $q->where('instructor_id', $filters->instructorId))
+            ->when($filters->currencyCode !== null, fn ($q) => $q->where('currency_code', $filters->currencyCode))
+            ->selectRaw('currency_code, count(*) as aggregate, COALESCE(SUM(amount_minor), 0) as amount')
+            ->groupBy('currency_code')
+            ->get();
+
         return new InstructorFinancialSummaryData(
             earningsCreatedCount: (int) $createdByCurrency->sum('aggregate'),
             earningsCreatedAmountByCurrency: $createdByCurrency->pluck('amount', 'currency_code')->map(fn ($v) => (int) $v)->all(),
@@ -84,6 +97,8 @@ final class InstructorFinancialReportRepository
                 ->map(fn ($v) => (int) $v)
                 ->all(),
             openPayoutReconciliationIssues: (int) DB::table('instructor_payout_reconciliation_issues')->where('status', 'open')->count(),
+            demoConversionIncentiveAwardsCount: (int) $demoConversionIncentiveByCurrency->sum('aggregate'),
+            demoConversionIncentiveAmountByCurrency: $demoConversionIncentiveByCurrency->pluck('amount', 'currency_code')->map(fn ($v) => (int) $v)->all(),
         );
     }
 

@@ -33,6 +33,7 @@ namespace App\Reporting\DTOs\Finance;
  * @param  array<string, int>  $withdrawalRequestedAmountByCurrency
  * @param  array<string, int>  $withdrawalPaidAmountByCurrency
  * @param  array<string, int>  $payoutAttemptsByStatus  status => count
+ * @param  array<string, int>  $demoConversionIncentiveAmountByCurrency  GAP-008 — awards created in the period, by currency
  */
 final readonly class InstructorFinancialSummaryData
 {
@@ -49,5 +50,7 @@ final readonly class InstructorFinancialSummaryData
         public array $withdrawalPaidAmountByCurrency,
         public array $payoutAttemptsByStatus,
         public int $openPayoutReconciliationIssues,
+        public int $demoConversionIncentiveAwardsCount = 0,
+        public array $demoConversionIncentiveAmountByCurrency = [],
     ) {}
 }

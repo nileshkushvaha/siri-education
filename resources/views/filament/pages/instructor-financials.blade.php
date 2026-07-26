@@ -27,6 +27,23 @@
                 </div>
             </div>
 
+            {{-- GAP-008 — demo-to-paid conversion incentive awards created in period --}}
+            <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="fi-section-header px-6 py-4 border-b border-gray-200 dark:border-white/10">
+                    <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Demo conversion incentive awards in period — {{ $summary->demoConversionIncentiveAwardsCount }}</h3>
+                </div>
+                <div class="divide-y divide-gray-100 dark:divide-white/5">
+                    @forelse($summary->demoConversionIncentiveAmountByCurrency as $currency => $minor)
+                        <div class="flex items-center justify-between px-6 py-2 text-sm">
+                            <span class="text-gray-700 dark:text-gray-300">{{ $currency }}</span>
+                            <span class="font-semibold text-gray-950 dark:text-white">{{ \App\Support\MoneyFormatter::format($minor, $currency) }}</span>
+                        </div>
+                    @empty
+                        <p class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">No demo-conversion incentive awards match this period.</p>
+                    @endforelse
+                </div>
+            </div>
+
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
                 <div class="fi-section-header px-6 py-4 border-b border-gray-200 dark:border-white/10">
                     <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Current earning liability by status (as of now)</h3>

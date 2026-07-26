@@ -279,7 +279,7 @@ class InstructorEarningTest extends TestCase
 
         $this->assertNotContains('percentage', $values);
         $this->assertNotContains('fixed', $values);
-        $this->assertEqualsCanonicalizing(['hourly', 'periodic', 'demo_fixed', 'manual'], $values);
+        $this->assertEqualsCanonicalizing(['hourly', 'periodic', 'demo_fixed', 'demo_conversion_incentive', 'manual'], $values);
     }
 
     public function test_earnings_schema_carries_no_student_pricing_columns(): void

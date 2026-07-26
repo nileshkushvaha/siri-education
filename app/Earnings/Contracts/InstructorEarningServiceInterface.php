@@ -6,6 +6,7 @@ namespace App\Earnings\Contracts;
 
 use App\Earnings\Exceptions\CompensationBlockedException;
 use App\Earnings\Exceptions\EarningException;
+use App\Models\DemoConversionIncentiveAward;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
 use App\Models\Lesson;
@@ -44,6 +45,17 @@ interface InstructorEarningServiceInterface
      * @throws CompensationBlockedException when no agreement covers the lesson
      */
     public function createForReconciliation(Lesson $lesson, ?User $actor = null, ?string $reasonCode = null): ?InstructorEarning;
+
+    /**
+     * GAP-008 — create the earning for an already-awarded demo-to-paid
+     * conversion incentive. The award itself (idempotency, eligibility,
+     * concurrency) is DemoConversionIncentiveService's responsibility —
+     * this only writes the earning, exactly once per award, reusing
+     * the same settings-gated (earnings_enabled) and hold_days
+     * conventions as createFromLesson(). Idempotent: returns the
+     * existing earning if this award already has one.
+     */
+    public function createDemoConversionIncentive(DemoConversionIncentiveAward $award, Lesson $paidLesson, Lesson $demoLesson): ?InstructorEarning;
 
     /**
      * Promote pending_hold → releasable. Without $override the hold

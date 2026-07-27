@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23G boundary: KYC requirements are database-backed
+ * Guards the KYC-requirements-configuration boundary: KYC requirements are database-backed
  * (not a hardcoded constant), and `user_profiles.designation` is gone
  * from every write path, not just deprecated.
  */

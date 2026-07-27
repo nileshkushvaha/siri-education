@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23E boundary: KYC documents stay on the local disk,
+ * Guards the KYC-document-storage boundary: KYC documents stay on the local disk,
  * the Filament section is policy-gated (not raw upload fields), and no
  * frontend instructor surface ever exposes a document URL.
  */
@@ -32,7 +32,7 @@ final class Phase23EArchitectureTest extends TestCase
             $model,
         );
 
-        // Public collections must be explicit too (Phase 23E), not left
+        // Public collections must be explicit too, not left
         // dependent on the package's disk_name default.
         $this->assertStringContainsString("addMediaCollection('avatar')\n            ->useDisk('public')", $model);
         $this->assertStringContainsString("addMediaCollection('cover')\n            ->useDisk('public')", $model);

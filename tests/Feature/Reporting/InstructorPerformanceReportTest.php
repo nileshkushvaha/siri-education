@@ -29,7 +29,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18D — Instructor Performance report: lifecycle sources,
+ * Instructor Performance report: lifecycle sources,
  * teaching activity, availability boundary (§6.5 Outcome C), demo
  * conversion reuse (§6.6 Outcome A), quality permission separation,
  * and performance bounds.

@@ -10,7 +10,7 @@ use DateTimeZone;
 use Exception;
 
 /**
- * The single authoritative reporting-timezone resolver (Phase 18B §7).
+ * The single authoritative reporting-timezone resolver (SRS §7).
  * Resolution order: an explicit report-filter timezone, then the
  * configured platform default (`GeneralSettings::$default_timezone`),
  * then the absolute platform fallback (`UTC`). An explicitly-supplied

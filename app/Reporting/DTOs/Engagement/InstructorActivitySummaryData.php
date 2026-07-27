@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Engagement;
 
 /**
- * Phase 18D — instructor teaching-activity summary. Booking counts
- * reuse the Phase 18C operations definitions (date basis
- * `bookings.created_at`); lesson-outcome counts reuse the Phase 18C
+ * Instructor teaching-activity summary. Booking counts
+ * reuse the Booking Operations report definitions (date basis
+ * `bookings.created_at`); lesson-outcome counts reuse its
  * finalized-outcome definitions (`outcome_finalized_at`).
  *
  * Utilization decision (§6.5 — Outcome C): historical availability is

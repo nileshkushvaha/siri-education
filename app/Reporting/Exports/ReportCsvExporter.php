@@ -23,7 +23,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Phase 18I — the single permission-controlled CSV export path. Every
+ * The single permission-controlled CSV export path. Every
  * dataset is code-defined ({@see self::definitions}); every row comes
  * from an EXISTING report-service contract called with the acting user
  * so the source report's own authorization, filter restriction,

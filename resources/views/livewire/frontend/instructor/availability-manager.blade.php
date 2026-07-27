@@ -1,5 +1,5 @@
 <div class="space-y-6">
-    {{-- Phase 24I — GAP-019: availability-change impact warning. Shown when a proposed reduction affects confirmed upcoming lessons; nothing has been changed yet. --}}
+    {{-- Availability-change impact warning. Shown when a proposed reduction affects confirmed upcoming lessons; nothing has been changed yet. --}}
     @if($pendingImpact !== null)
         <div role="alert" aria-live="assertive" class="rounded-2xl border border-red-400/40 bg-red-500/10 p-5 text-sm text-red-100">
             <p class="font-bold text-red-200">

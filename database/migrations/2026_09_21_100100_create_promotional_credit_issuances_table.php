@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-041 / SRS §16.17-§16.19: one immutable row per issued
+ * SRS §16.17-§16.19: one immutable row per issued
  * promotional credit, whether campaign-attributed or ad-hoc manual —
  * never updated, never deleted (PreventsHardDeletion + PreventsUpdates
  * on the model, mirroring support_case_replies' immutability

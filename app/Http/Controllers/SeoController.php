@@ -38,7 +38,7 @@ class SeoController extends Controller
                     'forms.inquiry',
                 ];
 
-                // Phase 23F — same eligibility as the public listing/detail
+                // Same eligibility as the public listing/detail
                 // pages (InstructorService::sitemapEntries() reuses baseQuery()).
                 $instructors = $instructorService->sitemapEntries();
 

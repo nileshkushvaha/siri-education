@@ -9,7 +9,7 @@ use App\Lessons\Events\LessonOutcomeOverridden;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
- * Phase 17E: an admin outcome override re-opens the financial decision.
+ * An admin outcome override re-opens the financial decision.
  * The service preserves the previous disposition in history, holds any
  * unsettled earning affected by the correction, and routes settled or
  * already-refunded conflicts to manual review — never moving money.

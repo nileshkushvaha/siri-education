@@ -3,7 +3,7 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 17U.2 §3 — retires the Finding S-1 decoy. `features.reviews_enabled`
+ * Retires a decoy setting. `features.reviews_enabled`
  * was a same-named duplicate of the real canonical switch,
  * `reviews.reviews_enabled` (added first, in
  * 2026_08_21_100100_add_review_settings.php), and no review-domain code

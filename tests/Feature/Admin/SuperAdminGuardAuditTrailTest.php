@@ -13,12 +13,12 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: a successful, GOVERNED role mutation
+ * SRS-23-7: a successful, GOVERNED role mutation
  * (another active Super Admin remains) is still audit-logged exactly
  * as before via the existing AuditTrailService/EditUser::afterSave()
- * pipeline — this phase adds no new audit mechanism. A BLOCKED attempt
+ * pipeline — no new audit mechanism is added. A BLOCKED attempt
  * follows the project's existing convention for rejected business-rule
- * mutations elsewhere (e.g. Phase 24C/24D rejected cancellation/
+ * mutations elsewhere (e.g. rejected cancellation/
  * reschedule attempts): no dedicated audit row, since nothing was
  * actually applied.
  */

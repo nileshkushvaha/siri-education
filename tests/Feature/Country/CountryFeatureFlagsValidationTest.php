@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
- * Phase 34 (GAP-029, SRS §21.38 "must reference a valid feature",
+ * SRS §21.38 "must reference a valid feature",
  * §21.40 "Country Feature Dependency Missing") — enforced once, from
  * `Country::booted()`, so every write path is covered.
  */

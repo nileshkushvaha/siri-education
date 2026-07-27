@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\DTOs\Instructor;
 
 /**
- * Student engagement indicators (Phase 23P) — deliberately limited to
+ * Student engagement indicators — deliberately limited to
  * two SRS-safe facts. No "at risk" scoring, no invented retention
  * definition: a student either had a lesson in the selected period, or
  * has no lesson currently scheduled in the future. Never carries a

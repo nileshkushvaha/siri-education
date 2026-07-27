@@ -12,7 +12,7 @@ use App\Reporting\Support\UniqueDefinitionKeys;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-/** Phase 18B §11 — the code-defined metric catalogue. */
+/** The code-defined metric catalogue. */
 class MetricRegistryTest extends TestCase
 {
     public function test_metric_keys_are_unique(): void
@@ -78,8 +78,7 @@ class MetricRegistryTest extends TestCase
 
     public function test_reschedule_metric_uses_the_structured_activity_source_resolved_in_phase_18c(): void
     {
-        // Phase 18B found no source and registered nothing; Phase 18C's
-        // provenance audit (Outcome A, §6.2) identified `booking_activities.action`
+        // The data-provenance audit (Outcome A, §6.2) identified `booking_activities.action`
         // — a structured, enum-typed column — as authoritative. The metric
         // now exists under `bookings_rescheduled`; the never-registered
         // speculative key stays absent.
@@ -94,7 +93,7 @@ class MetricRegistryTest extends TestCase
 
     public function test_no_metric_remains_registered_with_a_gap_calculation_owner(): void
     {
-        // Phase 18C §15 — a metric may not sit in the catalogue claiming
+        // A metric may not sit in the catalogue claiming
         // to be live while its own calculation owner admits it cannot be
         // calculated. Every remaining GAP was either resolved (recurrence,
         // reschedule) or removed.
@@ -111,7 +110,7 @@ class MetricRegistryTest extends TestCase
         foreach (['single_paid_bookings', 'daily_recurring_bookings', 'weekly_recurring_bookings'] as $key) {
             $metric = $registry->find($key);
             $this->assertNotNull($metric);
-            $this->assertStringContainsString('byRecurrence', $metric->calculationOwner, "Metric '{$key}' must be owned by the Phase 18C recurrence classification.");
+            $this->assertStringContainsString('byRecurrence', $metric->calculationOwner, "Metric '{$key}' must be owned by the recurrence classification.");
         }
     }
 
@@ -147,12 +146,11 @@ class MetricRegistryTest extends TestCase
 
     public function test_financial_metric_requires_a_financial_permission(): void
     {
-        // Phase 18E introduced the financial metric set — every one of them
-        // must be gated by one of the Phase 18B financial permissions, and
-        // no non-financial permission may guard a financial metric.
-        // Phase 18G adds ViewReferralReports: referral wallet credits are
-        // money and stay financial-flagged, gated by the referral permission
-        // the SRS assigns to referral reporting.
+        // Every financial metric must be gated by one of the financial
+        // permissions, and no non-financial permission may guard a
+        // financial metric. ViewReferralReports is included: referral
+        // wallet credits are money and stay financial-flagged, gated by
+        // the referral permission the SRS assigns to referral reporting.
         $financialPermissions = ['ViewFinanceReports', 'ViewWalletReports', 'ViewPaymentReports', 'ViewInstructorCompensationReports', 'ViewReferralReports'];
         $financial = array_filter(app(MetricRegistryInterface::class)->all(), fn (MetricDefinition $d) => $d->financial);
 

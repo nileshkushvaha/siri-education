@@ -8,7 +8,7 @@ use App\Booking\Contracts\MeetingAttendanceSyncServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17C attendance reconciliation: pulls participant sessions for
+ * Attendance reconciliation: pulls participant sessions for
  * eligible recently ended meetings from attendance-capable providers
  * and feeds them through the evidence pipeline. Idempotent — settled
  * meetings are skipped unless --force. A no-op while

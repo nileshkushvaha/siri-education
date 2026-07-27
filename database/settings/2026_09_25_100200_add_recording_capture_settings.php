@@ -3,11 +3,11 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * GAP-028 — recording capture retry/reconciliation windows, mirroring
- * the existing attendance_sync_* settings exactly (Phase 17C
- * precedent). Recording itself stays gated by the existing
+ * Recording capture retry/reconciliation windows, mirroring
+ * the existing attendance_sync_* settings exactly. Recording itself
+ * stays gated by the existing
  * meeting.recording_enabled + meeting.recording_retention_days
- * (already present since Phase 20's foundation-only settings) — this
+ * (already present as foundation-only settings) — this
  * migration only adds the NEW timing/retry knobs the capture pipeline
  * needs.
  */

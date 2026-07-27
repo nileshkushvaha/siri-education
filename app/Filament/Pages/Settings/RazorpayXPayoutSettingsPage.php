@@ -30,8 +30,8 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\HtmlString;
 
 /**
- * RazorpayX India/INR instructor payout provider configuration (Phase
- * 16B). Deliberately separate from InstructorEarningSettingsPage
+ * RazorpayX India/INR instructor payout provider configuration.
+ * Deliberately separate from InstructorEarningSettingsPage
  * (payout policy) and PaymentSettingsPage (student collection
  * gateways) — this page owns provider credentials and provisioning
  * controls only. Enabling `razorpayx_enabled` here does NOT enable

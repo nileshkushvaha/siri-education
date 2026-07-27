@@ -10,7 +10,7 @@ use App\Services\Notifications\NotificationIdempotencyGuard;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
- * Participant notification for GAP-017 messaging (SRS §17.42
+ * Participant notification for messaging (SRS §17.42
  * "Controlled Student-Instructor Message" workflow). Requirement #8:
  * "sent only for new unread messages" — re-checks read_at at
  * dispatch time (a queued job can run seconds after commit; if the

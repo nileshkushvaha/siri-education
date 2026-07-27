@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * The single authoritative writer of `invoices` (SRS §14.21-14.24,
- * GAP-007). Controllers, Livewire components, Filament resources, and
+ * The single authoritative writer of `invoices` (SRS §14.21-14.24).
+ * Controllers, Livewire components, Filament resources, and
  * jobs must never create an invoice directly — only the two
  * generation listeners call this service, and only in reaction to the
  * two authoritative success events.

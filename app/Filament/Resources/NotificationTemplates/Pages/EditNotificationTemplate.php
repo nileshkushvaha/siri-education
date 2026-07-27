@@ -11,7 +11,7 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-039 — routes every save through NotificationTemplateService so
+ * Routes every save through NotificationTemplateService so
  * content edits are versioned, audited, and cache-busted; never a bare
  * Eloquent ->save() that would bypass all three.
  */

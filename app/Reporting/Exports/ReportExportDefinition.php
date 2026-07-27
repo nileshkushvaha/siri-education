@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\Exports;
 
 /**
- * One code-defined CSV export dataset (Phase 18I §5). Data-only: the
+ * One code-defined CSV export dataset (SRS §5). Data-only: the
  * row provider is resolved by ReportCsvExporter from the stable
  * `key` via an exhaustive match over the EXISTING report-service
  * contracts — never a user-supplied column, closure or query. Columns

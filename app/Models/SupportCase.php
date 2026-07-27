@@ -22,7 +22,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * GAP-016 / SRS Chapter 25 — one support/dispute case. Written
+ * SRS Chapter 25 — one support/dispute case. Written
  * exclusively by SupportCaseService; status is written exclusively
  * through TransitionSupportCaseStatusAction. Never hard-deleted
  * (§25.32, "Preserve historical records"). `student_id`/
@@ -71,7 +71,7 @@ class SupportCase extends Model implements HasMedia
         ];
     }
 
-    /** Phase 41A — private (GAP-037/41A audit): support-case evidence may contain personal/sensitive content and must never sit on the public disk. */
+    /** Private: support-case evidence may contain personal/sensitive content and must never sit on the public disk. */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('evidence')

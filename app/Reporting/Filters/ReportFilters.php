@@ -28,7 +28,7 @@ use App\Wallet\Enums\WalletLedgerEntryType;
 use App\Wallet\Enums\WalletLedgerStatus;
 
 /**
- * Shared, immutable, typed report filter set (Phase 18B §8). Carries
+ * Shared, immutable, typed report filter set (SRS §8). Carries
  * only safe scalars/enums/ids — never a hydrated Eloquent model — so it
  * can be logged, serialized to a query string, or round-tripped through
  * a Livewire component without any risk of leaking a full record.
@@ -75,7 +75,7 @@ final readonly class ReportFilters
         public ?int $countryId = null,
         public ?string $currencyCode = null,
         // Subjects/academic levels use UUID primary keys — these are id
-        // strings, never auto-increment ints (Phase 18D type correction).
+        // strings, never auto-increment ints.
         public ?string $subjectId = null,
         public ?string $educationLevelId = null,
         public ?int $studentId = null,

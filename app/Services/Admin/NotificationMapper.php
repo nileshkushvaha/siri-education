@@ -182,7 +182,7 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
-            // ── Referral rewards (Phase 19D) — failure/review states only ──
+            // ── Referral rewards — failure/review states only ──
             $log === 'referral_rewards' && $event === 'reward_credit_failed' => [
                 'title' => 'Referral Reward Credit Failed',
                 'actor_label' => null,
@@ -333,7 +333,7 @@ final class NotificationMapper
                 'priority' => 1,
             ],
 
-            // ── Meetings (Phase 12) — audit entries written by
+            // ── Meetings — audit entries written by
             //     BookingMeetingService; failure reasons are pre-sanitized ──
             $log === 'bookings' && $event === 'meeting_creation_failed' => [
                 'title' => 'Meeting Creation Failed',
@@ -354,7 +354,7 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
-            // ── Lessons (Phase 13) — only the outcomes needing admin
+            // ── Lessons — only the outcomes needing admin
             //     attention map here. lesson_completed stays silent: the
             //     booking sync already raises "Booking Completed" for the
             //     same event, and mapping both would double-notify. ──────
@@ -384,7 +384,7 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
-            // ── Instructor payouts (Phase 15) — only the two entry points
+            // ── Instructor payouts — only the two entry points
             //     needing staff action map here; the audit descriptions are
             //     pre-sanitized (reference + masked label only, no bank
             //     details ever) ─────────────────────────────────────────────
@@ -404,7 +404,7 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
-            // ── Instructor compensation (Phase 14.2) — a completed lesson
+            // ── Instructor compensation — a completed lesson
             //     with no applicable agreement needs an admin to configure
             //     compensation, then the lesson can be retried ─────────────
             $log === 'instructor_compensation' && $event === 'earning_blocked_no_agreement' => [
@@ -415,7 +415,7 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
-            // ── Payout execution (Phase 16A) — finance-facing outcomes.
+            // ── Payout execution — finance-facing outcomes.
             //     "processing_started" and successful payment stay
             //     silent here (routine; the instructor is notified
             //     separately) — only what needs finance attention maps. ──
@@ -459,7 +459,7 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
-            // ── Support cases (Phase 31, GAP-016) — participant
+            // ── Support cases — participant
             //     notifications (created/assigned/reply/status) flow via
             //     SendSupportCaseNotifications; only the events needing
             //     broader staff attention map here. ────────────────────
@@ -487,7 +487,7 @@ final class NotificationMapper
                 'priority' => 2,
             ],
 
-            // ── Messaging (Phase 32, GAP-017) — participant notifications
+            // ── Messaging — participant notifications
             //     (new message) flow via SendMessagingNotifications; only
             //     reported messages need broader staff attention here. ──
             $log === 'messaging' && $event === 'message_reported' => [

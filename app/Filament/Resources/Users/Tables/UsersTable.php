@@ -171,7 +171,7 @@ class UsersTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                // Phase 14.2 — jump to the instructor's compensation
+                // Jump to the instructor's compensation
                 // agreements (amounts are managed there, never here).
                 Action::make('manage_compensation')
                     ->label('Manage Compensation')
@@ -203,12 +203,11 @@ class UsersTable
                         ->action(function (DeleteBulkAction $action, Collection $records): void {
                             // Self-deletion (of the acting admin's own account)
                             // is excluded regardless of Super Admin status —
-                            // a pre-existing, unrelated safety net, not this
-                            // phase's invariant.
+                            // a separate, unrelated safety net.
                             $targets = $records->reject(fn ($record) => $record->id === auth()->id());
 
                             try {
-                                // Phase 24E — GAP-010/SRS-23-7: the whole
+                                // SRS-23-7: the whole
                                 // selection is evaluated as ONE proposed
                                 // mutation set. If deleting everyone in it
                                 // would leave zero active Super Admins, the

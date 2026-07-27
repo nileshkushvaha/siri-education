@@ -189,7 +189,7 @@ try {
             return ['method_id' => $method->id];
         })(),
 
-        // Phase 16A — payout execution races.
+        // payout execution races.
         'queue-execution' => (function () use ($args) {
             $withdrawal = InstructorWithdrawalRequest::query()->findOrFail($args['withdrawal_id']);
             $actor = User::query()->findOrFail($args['actor_id']);
@@ -229,7 +229,7 @@ try {
             return ['handled' => true];
         })(),
 
-        // Phase 16A.1 — booking refund races.
+        // booking refund races.
         'refund-to-wallet' => (function () use ($args) {
             $booking = Booking::query()->findOrFail($args['booking_id']);
 
@@ -247,7 +247,7 @@ try {
             return ['payment_status' => $booking->payment_status->value];
         })(),
 
-        // Phase 24A — two workers race a free-demo booking for the SAME
+        // two workers race a free-demo booking for the SAME
         // student+instructor pair (at different slots, so this never
         // collides with the pre-existing duplicate-slot/overlap guards).
         // The instructor-scoped GET_LOCK in BookingRepository::withInstructorLock()
@@ -266,7 +266,7 @@ try {
             return ['booking_id' => $booking->id, 'status' => $booking->status->value];
         })(),
 
-        // Phase 16B — RazorpayX destination provisioning race. Binds a
+        // RazorpayX destination provisioning race. Binds a
         // network-free fake client (Mockery cannot cross a process
         // boundary) — the property under test is the database layer's
         // uniqueness/locking, never this client's behavior.
@@ -286,7 +286,7 @@ try {
             return ['link_id' => $link->id, 'status' => $link->status->value, 'contact_id' => $link->provider_contact_id, 'fund_account_id' => $link->provider_fund_account_id];
         })(),
 
-        // Phase 16C — Stripe collection concurrency races. Binds a
+        // Stripe collection concurrency races. Binds a
         // network-free fake client (Mockery cannot cross a process
         // boundary) — the property under test is the database/service
         // layer's uniqueness/locking/idempotency, never this client's
@@ -364,7 +364,7 @@ try {
             return ['ran' => true];
         })(),
 
-        // Phase 17U.4 — two concurrent finalizers racing the same
+        // two concurrent finalizers racing the same
         // lesson's outcome. Proves FinalizeLessonOutcomeAction's row
         // lock + idempotent-replay guard serializes real concurrent
         // access rather than merely a sequential simulation: exactly
@@ -381,7 +381,7 @@ try {
             return ['applied' => $result->applied, 'lesson_status' => $result->lesson->status->value];
         })(),
 
-        // Phase 17V closure — two concurrent wallet-refund executors
+        // two concurrent wallet-refund executors
         // racing the same disposition. Proves ExecuteLessonWalletRefundAction's
         // row lock + WalletLedgerService's idempotency-key-guarded credit
         // converge to exactly one Refund ledger entry under genuine
@@ -395,7 +395,7 @@ try {
             return ['credited' => $result->credited];
         })(),
 
-        // Phase 17V closure — two concurrent student review submissions
+        // two concurrent student review submissions
         // racing the same eligibility. Proves the eligibility row lock +
         // idempotent-if-already-Used guard in SubmitLessonReviewAction
         // converge to exactly one LessonReview under genuine
@@ -413,7 +413,7 @@ try {
             return ['applied' => $result->applied, 'review_id' => $result->review->id];
         })(),
 
-        // Phase 24C — two workers race the SAME frozen ineligible-refund
+        // two workers race the SAME frozen ineligible-refund
         // disposition against the SAME captured payment (a duplicate
         // job/event delivery of one cancellation decision). The captured
         // payment's row lock inside lockedUnresolvedCapturedPayment()
@@ -437,7 +437,7 @@ try {
             return ['payment_status' => $booking->payment_status->value];
         })(),
 
-        // Phase 24D — two workers race a reschedule of the SAME booking
+        // two workers race a reschedule of the SAME booking
         // when only one allowance remains. The existing instructor-scoped
         // GET_LOCK in BookingRepository::withInstructorLock() (already
         // wrapping BookingService::reschedule()) must serialize the two
@@ -468,7 +468,7 @@ try {
             return ['cancelled' => true];
         })(),
 
-        // Phase 19B — two workers race getOrCreateForStudent for the SAME
+        // two workers race getOrCreateForStudent for the SAME
         // student; the user_id unique index must leave exactly one code
         // and both callers must receive it.
         'referral-generate-code' => (function () use ($args) {
@@ -479,7 +479,7 @@ try {
             return ['code_id' => $code->id, 'code' => $code->code];
         })(),
 
-        // Phase 19B — two workers race attribution for the SAME referred
+        // two workers race attribution for the SAME referred
         // student with different codes; the referred_student_id unique
         // index must leave exactly one attribution (loser returns null).
         'referral-attribute' => (function () use ($args) {
@@ -491,7 +491,7 @@ try {
             return ['attribution_id' => $attribution?->id, 'referrer_id' => $attribution?->referrer_id];
         })(),
 
-        // Phase 19D — two workers evaluate lesson(s); unique(lesson_id)
+        // two workers evaluate lesson(s); unique(lesson_id)
         // and the locked class-cap check must keep rewards exactly-once.
         'referral-evaluate-lesson' => (function () use ($args) {
             $lesson = Lesson::query()->findOrFail($args['lesson_id']);
@@ -502,7 +502,7 @@ try {
             return ['reward_id' => $reward?->id, 'status' => $reward?->status?->value];
         })(),
 
-        // Phase 19D — two workers credit the SAME reward; the row lock +
+        // two workers credit the SAME reward; the row lock +
         // ledger idempotency key must post exactly one credit.
         'referral-credit-reward' => (function () use ($args) {
             $reward = ReferralReward::query()->findOrFail($args['reward_id']);
@@ -512,7 +512,7 @@ try {
             return ['status' => $result->status->value, 'ledger_entry_id' => $result->wallet_ledger_entry_id];
         })(),
 
-        // Phase 19D — two workers invalidate the SAME credited reward;
+        // two workers invalidate the SAME credited reward;
         // exactly one reversal ledger entry may ever exist.
         'referral-reverse-lesson' => (function () use ($args) {
             $lesson = Lesson::query()->findOrFail($args['lesson_id']);
@@ -524,7 +524,7 @@ try {
             return ['status' => $result?->status?->value, 'reversal_ledger_entry_id' => $result?->reversal_ledger_entry_id];
         })(),
 
-        // Phase 19E — racing admin decisions on the same reward. Losers
+        // racing admin decisions on the same reward. Losers
         // throw ReferralException (ok:false), which IS the correct
         // outcome; the assertions live in the test class.
         'referral-approve-reward' => (function () use ($args) {
@@ -588,7 +588,7 @@ try {
             return ['status' => $result->status->value];
         })(),
 
-        // Phase 24E — two workers race deactivating a DIFFERENT one of
+        // two workers race deactivating a DIFFERENT one of
         // the last two active Super Admins. SuperAdminGuardService's
         // named lifecycle lock must serialize the two, so whichever
         // commits second re-reads the other's already-committed change
@@ -601,7 +601,7 @@ try {
             return ['user_id' => $user->id, 'status' => $user->fresh()->status];
         })(),
 
-        // Phase 24F — two workers race the idle-expiry check for the SAME
+        // two workers race the idle-expiry check for the SAME
         // tracked session at (or just past) its expiry boundary.
         // TrackUserSession::expireIfIdle()'s row lock must serialize the
         // two, so the session is deleted (expired) exactly once — never
@@ -629,7 +629,7 @@ try {
             return ['instructor_status' => $profile->instructor_status->value];
         })(),
 
-        // Phase 24H — two workers race suspend() vs. archive() for the
+        // two workers race suspend() vs. archive() for the
         // SAME student. StudentLifecycleService::transitionStatus()'s
         // row lock must serialize the two, so exactly one commits and
         // the other observes a rejected (stale-current-state) transition.
@@ -651,7 +651,7 @@ try {
             return ['student_status' => $profile->student_status->value];
         })(),
 
-        // Phase 24H.1 — a delayed verification/legacy-reconciliation
+        // a delayed verification/legacy-reconciliation
         // activation racing an admin suspension for the SAME Registered
         // student. Whichever commits first, the row lock in
         // systemActivateFromRegistered()/transitionStatus() means the
@@ -669,7 +669,7 @@ try {
             return ['applied' => $applied, 'student_status' => $student->fresh()->profile->student_status->value];
         })(),
 
-        // Phase 24I — an availability reduction (deactivate window,
+        // an availability reduction (deactivate window,
         // unconfirmed) racing a free-demo booking for the same
         // instructor. Both paths take the same booking:host:%d GET_LOCK,
         // so exactly one order occurs: booking-first → the deactivation
@@ -687,7 +687,7 @@ try {
             return ['is_active' => (bool) $updated->is_active];
         })(),
 
-        // Phase 24H.2 — an interactive student action (favorite) racing
+        // an interactive student action (favorite) racing
         // an admin suspension of the SAME student. The favorite's
         // in-transaction assertEligibleForStudentAction() takes a
         // lockForUpdate() read on the same profile row suspend locks, so
@@ -706,7 +706,7 @@ try {
             return ['favorite_id' => $favorite->id];
         })(),
 
-        // Phase 24K — two workers race claiming the SAME homework
+        // two workers race claiming the SAME homework
         // reminder identity (same assignment/recipient/due-date/offset).
         // The homework_due_reminders composite unique index must let
         // exactly one caller claim (and queue the send); the loser must
@@ -720,7 +720,7 @@ try {
             return ['outcome' => $outcome];
         })(),
 
-        // Phase 24N — two workers race retrying the SAME failed job by
+        // two workers race retrying the SAME failed job by
         // UUID. FailedJobRetryService's row lock on failed_jobs must let
         // exactly one worker requeue+forget it; the loser's fresh
         // re-read (under the lock) finds the row already gone and
@@ -733,7 +733,7 @@ try {
             return ['outcome' => $result->outcome->value];
         })(),
 
-        // Phase 24M — two workers race a currency-status disable versus
+        // two workers race a currency-status disable versus
         // a NEW payment-attempt initiation for a booking in that same
         // currency. Both sides lock the same Currency row (initiate()
         // via CurrencyEligibilityPolicy::assertUsable(..., lock: true),
@@ -758,7 +758,7 @@ try {
             return ['booking_id' => $booking->id, 'status' => $intent->status, 'reference' => $intent->reference];
         })(),
 
-        // Phase 24K.1 — two workers run the FULL reminder job for the
+        // two workers run the FULL reminder job for the
         // SAME already-claimed reminder at the same instant. Each
         // channel's claim transaction (lockForUpdate + Sending lease)
         // must let exactly one worker actually invoke Notification::sendNow()

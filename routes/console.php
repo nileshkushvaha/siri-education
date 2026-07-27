@@ -71,7 +71,7 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/lessons-auto-complete.log'));
 
-// Phase 35 (GAP-035) — SRS §26.36 "Missing Meeting Link Alert". Runs
+// SRS §26.36 "Missing Meeting Link Alert". Runs
 // often enough that a meeting created shortly before the threshold
 // still gets caught while the alert stays open.
 app(Schedule::class)
@@ -219,7 +219,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/meetings-attendance-sync.log'));
 
-// GAP-028 recording capture reconciliation: complements the queued
+// Recording capture reconciliation: complements the queued
 // CaptureLessonRecordingJob dispatched at meeting-creation time — picks
 // up anything the delayed job missed and retries transient provider
 // failures within the configured window. Idempotent (capture()
@@ -232,7 +232,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/recordings-capture.log'));
 
-// GAP-028 retention cleanup: deletes the media file for recordings
+// Retention cleanup: deletes the media file for recordings
 // past their configured retention window, keeping metadata for
 // historical/audit evidence. Bounded per run (recording_expiry_batch_size).
 app(Schedule::class)
@@ -242,7 +242,7 @@ app(Schedule::class)
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/recordings-expire.log'));
 
-// Homework due-date reminders (GAP-020): claims and dispatches
+// Homework due-date reminders: claims and dispatches
 // reminders for each admin-configured offset. Idempotent — the
 // homework_due_reminders unique index is the actual concurrency
 // guarantee, so an overlapping/rerun is merely wasted work, never a

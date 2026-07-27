@@ -14,18 +14,18 @@ use App\Reporting\Services\BookingLessonMeetingOperationsReportService;
 use App\Reporting\Support\UniqueDefinitionKeys;
 
 /**
- * The Version 1 metric catalogue (Phase 18B §11 / Phase 18C §15) —
+ * The Version 1 metric catalogue (SRS §11/§15) —
  * metadata only, so two dashboards can never define the same named
- * KPI two different ways. Every metric here is now backed by a real
+ * KPI two different ways. Every metric here is backed by a real
  * query in {@see BookingLessonMeetingOperationsReportService}
- * (`calculationOwner` names it) except `single_paid_bookings`/
- * `daily_recurring_bookings`/`weekly_recurring_bookings`, which became
- * calculable this phase via the new `bookings.recurrence_frequency`
- * column (Phase 18C data-provenance decision, Outcome B) — no metric
+ * (`calculationOwner` names it), including `single_paid_bookings`/
+ * `daily_recurring_bookings`/`weekly_recurring_bookings`, which are
+ * calculable via the `bookings.recurrence_frequency`
+ * column (data-provenance decision, Outcome B) — no metric
  * here is left `available`-adjacent while its calculation owner still
  * says GAP.
  *
- * `bookings_rescheduled` is new this phase (Outcome A, §6.2):
+ * `bookings_rescheduled` (Outcome A, §6.2):
  * `booking_activities.action` is a structured, enum-typed column
  * (never free-text audit parsing) that already records every
  * `rescheduled` lifecycle event — no migration was needed for the
@@ -81,7 +81,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->total (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->total.',
             ),
             new MetricDefinition(
                 key: 'demo_bookings',
@@ -99,7 +99,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byType[free_demo] (Phase 18C). BookingAnalyticsService\'s "demo requests/bookers" remains a separate, distinct KPI (conversion-funnel framing) — not duplicated, not replaced.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byType[free_demo]. BookingAnalyticsService\'s "demo requests/bookers" remains a separate, distinct KPI (conversion-funnel framing) — not duplicated, not replaced.',
             ),
             new MetricDefinition(
                 key: 'paid_bookings',
@@ -117,7 +117,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byType[paid_one_to_one] (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byType[paid_one_to_one].',
             ),
             new MetricDefinition(
                 key: 'single_paid_bookings',
@@ -135,7 +135,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[single] (Phase 18C). Resolved via the new `bookings.recurrence_frequency` column (data-provenance Outcome B) — see RecurrenceClassifier. A booking created before this column existed that WAS part of a recurring series (detected via the pre-existing `meta->recurring_group` JSON key) is bucketed `unknown_historical`, never folded into this count.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[single]. Resolved via the new `bookings.recurrence_frequency` column (data-provenance Outcome B) — see RecurrenceClassifier. A booking created before this column existed that WAS part of a recurring series (detected via the pre-existing `meta->recurring_group` JSON key) is bucketed `unknown_historical`, never folded into this count.',
             ),
             new MetricDefinition(
                 key: 'daily_recurring_bookings',
@@ -153,7 +153,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[daily] (Phase 18C). Only bookings created after the recurrence_frequency column existed can be classified daily/weekly — historical rows fall into `unknown_historical` (see single_paid_bookings).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[daily]. Only bookings created after the recurrence_frequency column existed can be classified daily/weekly — historical rows fall into `unknown_historical` (see single_paid_bookings).',
             ),
             new MetricDefinition(
                 key: 'weekly_recurring_bookings',
@@ -171,7 +171,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[weekly] (Phase 18C). Same historical caveat as daily_recurring_bookings.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byRecurrence[weekly]. Same historical caveat as daily_recurring_bookings.',
             ),
             new MetricDefinition(
                 key: 'bookings_rescheduled',
@@ -189,7 +189,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->rescheduled (Phase 18C). Data-provenance Outcome A (§6.2) — `booking_activities.action = \'rescheduled\'` is a structured, enum-typed, pre-existing column; no audit-message text parsing, no new schema concept, only a supporting index was added.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->rescheduled. Data-provenance Outcome A (§6.2) — `booking_activities.action = \'rescheduled\'` is a structured, enum-typed, pre-existing column; no audit-message text parsing, no new schema concept, only a supporting index was added.',
             ),
             new MetricDefinition(
                 key: 'lessons_completed',
@@ -207,7 +207,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[completed] (Phase 18C). Authoritative source: `LessonOutcome::Completed` — never `LessonStatus::Completed` alone, which precedes finalization.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[completed]. Authoritative source: `LessonOutcome::Completed` — never `LessonStatus::Completed` alone, which precedes finalization.',
             ),
             new MetricDefinition(
                 key: 'lessons_scheduled',
@@ -225,7 +225,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->scheduled (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->scheduled.',
             ),
             new MetricDefinition(
                 key: 'student_no_shows',
@@ -243,7 +243,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[student_no_show] (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[student_no_show].',
             ),
             new MetricDefinition(
                 key: 'instructor_no_shows',
@@ -261,7 +261,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[instructor_no_show] (Phase 18C). Also feeds `App\Quality`\'s existing InstructorNoShow/RepeatedInstructorNoShows detectors — reused, never recomputed independently.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[instructor_no_show]. Also feeds `App\Quality`\'s existing InstructorNoShow/RepeatedInstructorNoShows detectors — reused, never recomputed independently.',
             ),
             new MetricDefinition(
                 key: 'technical_issue_lessons',
@@ -279,7 +279,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[technical_issue] (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->byOutcome[technical_issue].',
             ),
             new MetricDefinition(
                 key: 'disputed_lessons',
@@ -297,7 +297,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped — always "as of now".',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->disputed (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->disputed.',
             ),
             new MetricDefinition(
                 key: 'unfinalized_past_due_lessons',
@@ -315,7 +315,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone for period scoping; 'past-due' itself compares against the server clock.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->unfinalizedPastDue (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::lessonOutcomeSummary()->unfinalizedPastDue.',
             ),
             new MetricDefinition(
                 key: 'cancelled_bookings',
@@ -333,7 +333,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byStatus[cancelled] (Phase 18C). BookingAnalyticsService\'s own "cancelled/cancellation rate" figure remains a separate, distinct KPI (conversion-funnel framing) — not duplicated, not replaced.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::bookingSummary()->byStatus[cancelled]. BookingAnalyticsService\'s own "cancelled/cancellation rate" figure remains a separate, distinct KPI (conversion-funnel framing) — not duplicated, not replaced.',
             ),
             new MetricDefinition(
                 key: 'meeting_creation_failures',
@@ -351,7 +351,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->failed (Phase 18C). Authoritative source corrected from the Phase 18B note: `bookings.meeting_status` no longer exists (dropped by migration 2026_07_19_100000) — the live authoritative column is `booking_meetings.status`, same `MeetingStatus::Failed` case.',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->failed. Authoritative source: `bookings.meeting_status` no longer exists (dropped by migration 2026_07_19_100000) — the live authoritative column is `booking_meetings.status`, same `MeetingStatus::Failed` case.',
             ),
             new MetricDefinition(
                 key: 'meetings_missing',
@@ -369,7 +369,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->missingMeeting (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->missingMeeting.',
             ),
             new MetricDefinition(
                 key: 'student_joined_meetings',
@@ -387,7 +387,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->studentJoined (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->studentJoined.',
             ),
             new MetricDefinition(
                 key: 'instructor_joined_meetings',
@@ -405,7 +405,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->instructorJoined (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->instructorJoined.',
             ),
             new MetricDefinition(
                 key: 'both_joined_meetings',
@@ -423,7 +423,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->bothJoined (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->bothJoined.',
             ),
             new MetricDefinition(
                 key: 'meeting_technical_issue_reports',
@@ -441,9 +441,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->technicalIssueReports (Phase 18C).',
+                calculationOwner: 'BookingLessonMeetingOperationsReportService::meetingSummary()->technicalIssueReports.',
             ),
-            // ── Phase 18D — Student Engagement ────────────────────────────
+            // ── Student Engagement ────────────────────────────
             new MetricDefinition(
                 key: 'total_students',
                 label: 'Total students',
@@ -460,7 +460,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->totalStudents (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->totalStudents.',
             ),
             new MetricDefinition(
                 key: 'new_students_in_period',
@@ -478,7 +478,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->newInPeriod (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->newInPeriod.',
             ),
             new MetricDefinition(
                 key: 'verified_students',
@@ -496,7 +496,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Total is current-state; 'verified in period' uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->verifiedTotal / verifiedInPeriod (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->verifiedTotal / verifiedInPeriod.',
             ),
             new MetricDefinition(
                 key: 'engaged_students_in_period',
@@ -514,7 +514,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->engagedInPeriod (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->engagedInPeriod.',
             ),
             new MetricDefinition(
                 key: 'students_without_recent_learning_activity',
@@ -532,7 +532,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->withoutRecentLearningActivity (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->withoutRecentLearningActivity.',
             ),
             new MetricDefinition(
                 key: 'students_with_active_learning_plans',
@@ -550,7 +550,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->withActiveLearningPlans (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->withActiveLearningPlans.',
             ),
             new MetricDefinition(
                 key: 'student_recurring_participation',
@@ -568,7 +568,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->recurringParticipation via RecurrenceClassifier (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->recurringParticipation via RecurrenceClassifier.',
             ),
             new MetricDefinition(
                 key: 'student_lifetime_booking_buckets',
@@ -586,9 +586,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'StudentEngagementReportService::summary()->lifetimeBookingBuckets (Phase 18D).',
+                calculationOwner: 'StudentEngagementReportService::summary()->lifetimeBookingBuckets.',
             ),
-            // ── Phase 18D — Instructor Performance ────────────────────────
+            // ── Instructor Performance ────────────────────────
             new MetricDefinition(
                 key: 'instructors_by_lifecycle_status',
                 label: 'Instructors by lifecycle status',
@@ -605,7 +605,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorPerformanceReportService::lifecycleSummary()->byStatus (Phase 18D).',
+                calculationOwner: 'InstructorPerformanceReportService::lifecycleSummary()->byStatus.',
             ),
             new MetricDefinition(
                 key: 'instructor_approvals_in_period',
@@ -623,7 +623,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorPerformanceRepository::approvalsInPeriod (Phase 18D).',
+                calculationOwner: 'InstructorPerformanceRepository::approvalsInPeriod.',
             ),
             new MetricDefinition(
                 key: 'unique_students_taught',
@@ -641,7 +641,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorPerformanceReportService::activitySummary()->uniqueStudents (Phase 18D).',
+                calculationOwner: 'InstructorPerformanceReportService::activitySummary()->uniqueStudents.',
             ),
             new MetricDefinition(
                 key: 'repeat_paid_students',
@@ -659,7 +659,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorPerformanceRepository::repeatPaidStudents (Phase 18D).',
+                calculationOwner: 'InstructorPerformanceRepository::repeatPaidStudents.',
             ),
             new MetricDefinition(
                 key: 'booked_teaching_hours',
@@ -677,7 +677,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorPerformanceRepository::bookedTeachingHours (Phase 18D). Integer minutes internally, hours for display.',
+                calculationOwner: 'InstructorPerformanceRepository::bookedTeachingHours. Integer minutes internally, hours for display.',
             ),
             new MetricDefinition(
                 key: 'published_weekly_availability_hours',
@@ -695,7 +695,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: 'Current-state configuration; not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorPerformanceRepository::publishedWeeklyAvailabilityHours (Phase 18D).',
+                calculationOwner: 'InstructorPerformanceRepository::publishedWeeklyAvailabilityHours.',
             ),
             new MetricDefinition(
                 key: 'demo_to_paid_conversion',
@@ -713,9 +713,9 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone for the demo leg.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'BookingAnalyticsRepository::conversion(), surfaced by InstructorPerformanceReportService::demoConversion (Phase 18D). Rate is null — never 0% — with zero demo bookers.',
+                calculationOwner: 'BookingAnalyticsRepository::conversion(), surfaced by InstructorPerformanceReportService::demoConversion. Rate is null — never 0% — with zero demo bookers.',
             ),
-            // ── Phase 18E — Financial reporting ───────────────────────────
+            // ── Financial reporting ───────────────────────────
             new MetricDefinition(
                 key: 'successful_payment_collections',
                 label: 'Successful external collections',
@@ -732,7 +732,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'FinancialReportsService::paymentSummary()->capturedAmountByCurrency (Phase 18E).',
+                calculationOwner: 'FinancialReportsService::paymentSummary()->capturedAmountByCurrency.',
             ),
             new MetricDefinition(
                 key: 'payment_success_rate',
@@ -750,7 +750,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'FinancialReportsService::paymentSummary()->successRate (Phase 18E). Null — never 0% — with no terminal attempts.',
+                calculationOwner: 'FinancialReportsService::paymentSummary()->successRate. Null — never 0% — with no terminal attempts.',
             ),
             new MetricDefinition(
                 key: 'gross_paid_booking_value',
@@ -768,7 +768,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'PaymentFinancialReportRepository::grossPaidBookingValueByCurrency (Phase 18E) — DECIMAL SQL sum converted per currency via MoneyFormatter::toMinor, never float.',
+                calculationOwner: 'PaymentFinancialReportRepository::grossPaidBookingValueByCurrency — DECIMAL SQL sum converted per currency via MoneyFormatter::toMinor, never float.',
             ),
             new MetricDefinition(
                 key: 'wallet_current_liability',
@@ -786,7 +786,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped; an as-of timestamp is displayed.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'WalletFinancialReportRepository::currentLiabilityByCurrency (Phase 18E).',
+                calculationOwner: 'WalletFinancialReportRepository::currentLiabilityByCurrency.',
             ),
             new MetricDefinition(
                 key: 'wallet_ledger_movements',
@@ -804,7 +804,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'WalletFinancialReportRepository::movements (Phase 18E).',
+                calculationOwner: 'WalletFinancialReportRepository::movements.',
             ),
             new MetricDefinition(
                 key: 'wallet_balance_ledger_mismatches',
@@ -822,7 +822,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'WalletFinancialReportRepository::balanceMismatchCount (Phase 18E).',
+                calculationOwner: 'WalletFinancialReportRepository::balanceMismatchCount.',
             ),
             new MetricDefinition(
                 key: 'wallet_refunds_executed',
@@ -840,7 +840,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'WalletFinancialReportRepository::refundSummary (Phase 18E). Idempotency: the ledger unique idempotency_key ("lesson-refund:{disposition}:v{version}") makes duplicate execution attempts structurally uncountable twice.',
+                calculationOwner: 'WalletFinancialReportRepository::refundSummary. Idempotency: the ledger unique idempotency_key ("lesson-refund:{disposition}:v{version}") makes duplicate execution attempts structurally uncountable twice.',
             ),
             new MetricDefinition(
                 key: 'instructor_earnings_created',
@@ -858,7 +858,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorFinancialReportRepository::summary (Phase 18E).',
+                calculationOwner: 'InstructorFinancialReportRepository::summary.',
             ),
             new MetricDefinition(
                 key: 'instructor_earning_liability_by_status',
@@ -876,7 +876,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorFinancialReportRepository::earningLiabilityByStatusCurrency (Phase 18E).',
+                calculationOwner: 'InstructorFinancialReportRepository::earningLiabilityByStatusCurrency.',
             ),
             new MetricDefinition(
                 key: 'settlement_allocation_integrity',
@@ -894,7 +894,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorFinancialReportRepository::settlementAllocationMismatchCount (Phase 18E).',
+                calculationOwner: 'InstructorFinancialReportRepository::settlementAllocationMismatchCount.',
             ),
             new MetricDefinition(
                 key: 'withdrawals_by_status',
@@ -912,7 +912,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorFinancialReportRepository::summary (Phase 18E).',
+                calculationOwner: 'InstructorFinancialReportRepository::summary.',
             ),
             new MetricDefinition(
                 key: 'payout_attempts_by_status',
@@ -930,10 +930,10 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'InstructorFinancialReportRepository::summary (Phase 18E).',
+                calculationOwner: 'InstructorFinancialReportRepository::summary.',
             ),
 
-            // ── Phase 18F — Learning Analytics ────────────────────────────
+            // ── Learning Analytics ────────────────────────────
             new MetricDefinition(
                 key: 'learning_goals_created',
                 label: 'Learning goals created',
@@ -950,7 +950,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::goalSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::goalSummary.',
             ),
             new MetricDefinition(
                 key: 'learning_goals_completed',
@@ -968,7 +968,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::goalSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::goalSummary.',
             ),
             new MetricDefinition(
                 key: 'goals_without_plans',
@@ -986,7 +986,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::goalSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::goalSummary.',
             ),
             new MetricDefinition(
                 key: 'learning_plans_created',
@@ -1004,7 +1004,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary.',
             ),
             new MetricDefinition(
                 key: 'learning_plans_activated',
@@ -1022,7 +1022,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary.',
             ),
             new MetricDefinition(
                 key: 'learning_plans_completed',
@@ -1040,7 +1040,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary.',
             ),
             new MetricDefinition(
                 key: 'current_learning_plans_by_status',
@@ -1058,7 +1058,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::planSummary.',
             ),
             new MetricDefinition(
                 key: 'average_active_plan_progress',
@@ -1076,7 +1076,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanProgressCalculator (source domain) surfaced by LearningPlanAnalyticsRepository::planSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanProgressCalculator (source domain) surfaced by LearningPlanAnalyticsRepository::planSummary.',
             ),
             new MetricDefinition(
                 key: 'milestones_achieved',
@@ -1094,7 +1094,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::milestoneReviewSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::milestoneReviewSummary.',
             ),
             new MetricDefinition(
                 key: 'progress_reviews_completed',
@@ -1112,7 +1112,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::milestoneReviewSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::milestoneReviewSummary.',
             ),
             new MetricDefinition(
                 key: 'plans_currently_review_due',
@@ -1130,7 +1130,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'LearningPlanAnalyticsRepository::milestoneReviewSummary (Phase 18F).',
+                calculationOwner: 'LearningPlanAnalyticsRepository::milestoneReviewSummary.',
             ),
             new MetricDefinition(
                 key: 'homework_assigned',
@@ -1148,7 +1148,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'HomeworkAnalyticsRepository::summary (Phase 18F).',
+                calculationOwner: 'HomeworkAnalyticsRepository::summary.',
             ),
             new MetricDefinition(
                 key: 'homework_submitted',
@@ -1166,7 +1166,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'HomeworkAnalyticsRepository::summary (Phase 18F).',
+                calculationOwner: 'HomeworkAnalyticsRepository::summary.',
             ),
             new MetricDefinition(
                 key: 'homework_currently_overdue',
@@ -1184,7 +1184,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'HomeworkAnalyticsRepository::summary (Phase 18F).',
+                calculationOwner: 'HomeworkAnalyticsRepository::summary.',
             ),
             new MetricDefinition(
                 key: 'homework_on_time_submission_rate',
@@ -1202,10 +1202,10 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'HomeworkAnalyticsRepository::summary (Phase 18F).',
+                calculationOwner: 'HomeworkAnalyticsRepository::summary.',
             ),
 
-            // ── Phase 18G — Referrals, Quality & Communications ───────────
+            // ── Referrals, Quality & Communications ───────────
             new MetricDefinition(
                 key: 'referral_wallet_credits',
                 label: 'Referral wallet credits',
@@ -1222,7 +1222,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::referralActivity (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::referralActivity.',
             ),
             new MetricDefinition(
                 key: 'referral_credit_reversals',
@@ -1240,7 +1240,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::referralActivity (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::referralActivity.',
             ),
             new MetricDefinition(
                 key: 'review_submission_rate',
@@ -1258,7 +1258,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::reviewQualityRates (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::reviewQualityRates.',
             ),
             new MetricDefinition(
                 key: 'demo_review_rate',
@@ -1276,7 +1276,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::reviewQualityRates (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::reviewQualityRates.',
             ),
             new MetricDefinition(
                 key: 'paid_lesson_review_rate',
@@ -1294,7 +1294,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::reviewQualityRates (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::reviewQualityRates.',
             ),
             new MetricDefinition(
                 key: 'in_app_notifications_created',
@@ -1312,7 +1312,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::notificationActivity (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::notificationActivity.',
             ),
             new MetricDefinition(
                 key: 'in_app_read_rate',
@@ -1330,7 +1330,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::notificationActivity (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::notificationActivity.',
             ),
             new MetricDefinition(
                 key: 'notification_dedup_claims',
@@ -1348,16 +1348,16 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'ReferralCommunicationReportsRepository::notificationActivity (Phase 18G).',
+                calculationOwner: 'ReferralCommunicationReportsRepository::notificationActivity.',
             ),
 
-            // ── Phase 18H — Marketplace supply & demand ───────────────────
+            // ── Marketplace supply & demand ───────────────────
             // The Executive KPI Overview adds NO metrics: it composes the
             // existing owners above without redefining anything.
             new MetricDefinition(
                 key: 'instructor_supply_by_status',
                 label: 'Instructor supply by lifecycle status',
-                description: 'CURRENT-STATE instructor counts over the full InstructorStatus lifecycle (identical predicate to Phase 18D: user holding the instructor role, current profile status). Never a historical supply reconstruction.',
+                description: 'CURRENT-STATE instructor counts over the full InstructorStatus lifecycle (identical predicate to the Instructor Performance report: user holding the instructor role, current profile status). Never a historical supply reconstruction.',
                 sourceDomain: 'Users (user_profiles.instructor_status)',
                 timestampField: 'n/a (current-state count)',
                 includedStatuses: ['draft', 'submitted', 'under_review', 'documents_pending', 'interview_required', 'approved', 'active', 'vacation', 'suspended', 'archived', 'rejected'],
@@ -1370,7 +1370,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'MarketplaceSupplyDemandRepository::supply (Phase 18H).',
+                calculationOwner: 'MarketplaceSupplyDemandRepository::supply.',
             ),
             new MetricDefinition(
                 key: 'active_instructors_by_subject',
@@ -1388,7 +1388,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'MarketplaceSupplyDemandRepository::supply (Phase 18H).',
+                calculationOwner: 'MarketplaceSupplyDemandRepository::supply.',
             ),
             new MetricDefinition(
                 key: 'active_instructors_without_availability',
@@ -1406,7 +1406,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: 'Not period-scoped.',
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'MarketplaceSupplyDemandRepository::supply (Phase 18H).',
+                calculationOwner: 'MarketplaceSupplyDemandRepository::supply.',
             ),
             new MetricDefinition(
                 key: 'booking_demand_per_active_instructor',
@@ -1424,12 +1424,12 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnNull,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'MarketplaceSupplyDemandRepository::comparison (Phase 18H).',
+                calculationOwner: 'MarketplaceSupplyDemandRepository::comparison.',
             ),
             new MetricDefinition(
                 key: 'subject_supply_demand_gaps',
                 label: 'Subject supply/demand gaps',
-                description: 'Subjects where period booking demand (Phase 18C basis: via lessons.subject_id) or current active-instructor assignment is zero — a bounded factual mismatch listing, never a score or ranking. Search events, profile views and waitlists do not exist and are never inferred.',
+                description: 'Subjects where period booking demand (basis: via lessons.subject_id) or current active-instructor assignment is zero — a bounded factual mismatch listing, never a score or ranking. Search events, profile views and waitlists do not exist and are never inferred.',
                 sourceDomain: 'Booking + Users + teacher_subjects',
                 timestampField: 'bookings.created_at (demand) / n/a (supply)',
                 includedStatuses: [],
@@ -1442,7 +1442,7 @@ final class MetricRegistry implements MetricRegistryInterface
                 zeroDenominatorPolicy: ZeroDenominatorPolicy::ReturnZero,
                 timezoneBehavior: "Uses the report's reporting timezone.",
                 freshness: ReportDataFreshness::Live,
-                calculationOwner: 'MarketplaceSupplyDemandRepository::comparison (Phase 18H).',
+                calculationOwner: 'MarketplaceSupplyDemandRepository::comparison.',
             ),
         ];
     }

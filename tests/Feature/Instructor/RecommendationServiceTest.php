@@ -25,7 +25,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-025 (SRS Chapter 8 §8.10/§8.19-FR#4/FR#10): RecommendationService
+ * SRS Chapter 8 §8.10/§8.19-FR#4/FR#10: RecommendationService
  * is the single entry point for every Version 1 recommendation section,
  * built entirely on InstructorService::baseQuery()/card() — no parallel
  * discovery engine, no independent pricing, no random ordering.

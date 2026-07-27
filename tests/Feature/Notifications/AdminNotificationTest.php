@@ -471,7 +471,7 @@ class AdminNotificationTest extends TestCase
         ]);
     }
 
-    // ── NotificationMapper: lesson lifecycle (Phase 13) ────────────────────
+    // ── NotificationMapper: lesson lifecycle ────────────────────────────────
 
     public function test_mapper_returns_payload_for_lesson_no_show_and_dispute(): void
     {

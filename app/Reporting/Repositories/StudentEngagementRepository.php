@@ -19,8 +19,8 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only aggregate queries for the Student Engagement report
- * (Phase 18D). "Student" = a user holding the `student` role — the one
+ * Read-only aggregate queries for the Student Engagement report.
+ * "Student" = a user holding the `student` role — the one
  * authoritative membership definition, applied identically everywhere.
  * Account status is the CURRENT `user_profiles.student_status`;
  * engagement is period-scoped booking/lesson events. Every count is a

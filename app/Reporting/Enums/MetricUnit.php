@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Reporting\Enums;
 
-/** The unit a metric's value is expressed in (Phase 18B §11). */
+/** The unit a metric's value is expressed in (SRS §11). */
 enum MetricUnit: string
 {
     case Count = 'count';

@@ -16,18 +16,18 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H — GAP-013/SRS-2-20: HasStudentLifecycleActions on
+ * SRS-2-20: HasStudentLifecycleActions on
  * UserResource's EditUser page.
  *
  * Livewire::test(EditUser::class, ...)->callAction(...) cannot be used
  * here: EditUser's Livewire::test() instance is null even for the
  * pre-existing, unmodified page (confirmed via git stash — a
  * ViewAction/DeleteAction ->callAction() call fails identically on the
- * untouched file), a genuine pre-existing test-infrastructure limitation
- * unrelated to this phase, not something introduced by it. Instead this
+ * untouched file), a genuine pre-existing test-infrastructure
+ * limitation, not something introduced here. Instead this
  * exercises the trait's action-producing methods directly via
- * reflection on a minimal host object — the same technique Phase 24G
- * used for Schema-embedded actions Livewire's callAction() couldn't
+ * reflection on a minimal host object — the same technique used
+ * elsewhere for Schema-embedded actions Livewire's callAction() couldn't
  * reach, applied here to a page whose Livewire test double never
  * resolves at all.
  */

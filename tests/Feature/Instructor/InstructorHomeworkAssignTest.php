@@ -25,7 +25,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24J — GAP-021 Step 9: instructor homework assignment UI.
+ * Instructor homework assignment UI.
  * Lesson/plan options are scoped to the instructor's own students;
  * at least one context is mandatory; selections survive validation
  * failure; unauthorized actors never reach the form.
@@ -208,9 +208,9 @@ final class InstructorHomeworkAssignTest extends TestCase
 
     public function test_admin_access_to_instructor_homework_remains_unchanged(): void
     {
-        // Phase 24J adds no admin surface: an admin-portal user is
-        // redirected away from the frontend instructor homework page by
-        // the portal middleware, exactly as before.
+        // Homework assignment has no admin surface: an admin-portal user
+        // is redirected away from the frontend instructor homework page
+        // by the portal middleware.
         $manager = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $manager->assignRole('manager');
 

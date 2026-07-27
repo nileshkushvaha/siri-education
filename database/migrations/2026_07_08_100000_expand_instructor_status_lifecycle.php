@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * The native DB enum(pending,approved,rejected,published) can only ever
- * hold those 4 values. The Phase 1 User Lifecycle Foundation needs an
+ * hold those 4 values. The instructor lifecycle needs an
  * 11-state lifecycle (see App\Enums\InstructorStatus), so this widens
  * the column to a plain string — matching the string-backed-enum
  * convention used elsewhere (AcademicStatus, PageStatus, FaqStatus) —

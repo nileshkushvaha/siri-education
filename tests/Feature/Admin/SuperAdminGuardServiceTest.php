@@ -13,7 +13,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: pure/integration tests for the central
+ * SRS-23-7: pure/integration tests for the central
  * SuperAdminGuardService, exercised directly (never through Filament),
  * proving the invariant is enforced at the service layer regardless of
  * caller — satisfies "direct supported service invocation cannot

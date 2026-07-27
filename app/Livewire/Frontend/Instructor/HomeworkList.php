@@ -44,7 +44,7 @@ final class HomeworkList extends Component
 
     public string $assignDueAt = '';
 
-    /** GAP-022: optional instructor resource attached at assignment-creation time. */
+    /** Optional instructor resource attached at assignment-creation time. */
     #[Validate('nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
     public ?TemporaryUploadedFile $assignResource = null;
 
@@ -54,7 +54,7 @@ final class HomeworkList extends Component
     #[Validate('nullable|string|max:20')]
     public string $grade = '';
 
-    /** GAP-022: resource attached from the Pending Review row (assignment already exists). */
+    /** Resource attached from the Pending Review row (assignment already exists). */
     public ?string $resourceAssignmentId = null;
 
     #[Validate('nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
@@ -176,7 +176,7 @@ final class HomeworkList extends Component
         $this->resetValidation();
     }
 
-    /** GAP-022: attach an instructor resource to an already-existing (Pending Review) assignment. */
+    /** Attach an instructor resource to an already-existing (Pending Review) assignment. */
     public function uploadResource(string $assignmentId): void
     {
         $assignment = $this->repository->findOrFail($assignmentId);
@@ -212,7 +212,7 @@ final class HomeworkList extends Component
         }
     }
 
-    /** GAP-022 (37A): detach a reusable library resource version — attaching happens from the Resource Library page. */
+    /** Detach a reusable library resource version — attaching happens from the Resource Library page. */
     public function detachLibraryVersion(string $assignmentId, string $versionId): void
     {
         $assignment = $this->repository->findOrFail($assignmentId);
@@ -281,7 +281,7 @@ final class HomeworkList extends Component
     }
 
     /**
-     * Phase 24J — GAP-021 Step 9: options are scoped to the authorized
+     * Options are scoped to the authorized
      * instructor's own relationships; another student's bookings/plans
      * are never listed. The service re-validates ownership regardless.
      *

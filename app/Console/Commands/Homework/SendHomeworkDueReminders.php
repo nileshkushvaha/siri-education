@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 use Throwable;
 
 /**
- * Phase 24K — GAP-020 Step 15: safe-to-rerun scheduler sweep. For each
+ * Safe-to-rerun scheduler sweep. For each
  * admin-configured offset, streams candidates in bounded chunks and
  * claims each one individually — one candidate's failure never aborts
  * the batch. Output is counts only, no personal data. Exit code is

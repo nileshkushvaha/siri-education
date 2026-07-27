@@ -7,11 +7,11 @@ namespace App\Support\Media;
 use Spatie\Image\Enums\Fit;
 
 /**
- * GAP-037 requirement #1 — the single place standard image-conversion
+ * The single place standard image-conversion
  * names and dimensions are defined, reused by every applicable Media
  * Library collection instead of duplicating conversion definitions
  * per model. Three sizes cover every evidence-backed use found in the
- * codebase (see Phase 41 final report):
+ * codebase:
  *
  *  - Thumb: fixed 150x150 square crop for avatar/card/logo icons,
  *    where visual consistency across a grid/list matters more than

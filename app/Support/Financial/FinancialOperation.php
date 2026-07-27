@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Financial;
 
 /**
- * Phase 24M — GAP-031 (SRS-21-4, SRS §21.38/§21.40): the caller's
+ * SRS-21-4, SRS §21.38/§21.40: the caller's
  * intent when asking CurrencyEligibilityPolicy whether a currency may
  * be used. Only NewInitiation is ever rejected for an inactive
  * currency — every other intent represents an obligation that already

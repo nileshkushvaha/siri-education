@@ -90,7 +90,7 @@ class Post extends Model implements HasContentBlocks, HasMedia
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
     }
 
-    /** GAP-037 — 800px display conversion for the public blog featured image. gallery is left unconverted (no confirmed display consumer). */
+    /** 800px display conversion for the public blog featured image. gallery is left unconverted (no confirmed display consumer). */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {
@@ -100,7 +100,7 @@ class Post extends Model implements HasContentBlocks, HasMedia
         $this->addDisplayConversion('featured-image');
     }
 
-    /** GAP-037 — safely falls back to the original until the queued conversion is generated. */
+    /** Safely falls back to the original until the queued conversion is generated. */
     public function featuredImageUrl(): Attribute
     {
         return Attribute::make(

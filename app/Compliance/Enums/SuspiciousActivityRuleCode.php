@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Compliance\Enums;
 
 /**
- * One case per deterministic rule (GAP-014/GAP-015). `category()` is
+ * One case per deterministic rule. `category()` is
  * the single source of truth linking a rule to its domain — the
  * flag's own `category` column is always derived from this, never set
  * independently, so a rule and its category can never drift apart.

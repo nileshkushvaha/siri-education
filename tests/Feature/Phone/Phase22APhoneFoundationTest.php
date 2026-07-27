@@ -87,7 +87,7 @@ final class Phase22APhoneFoundationTest extends TestCase
     }
 
     /**
-     * Phase 24R — GAP: revalidated against docs/SRS.md §2.5 ("Phone
+     * Validated against docs/SRS.md §2.5 ("Phone
      * Number (Optional for Version 1)") and §11.14 ("Student must be
      * registered and verified" — no phone/mobile requirement). Phone
      * verification (this file's other tests, above) remains a real,

@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Data migration — kept permanently, never deleted. Guarantees every user
- * has exactly one profile row, including users created before Phase 1 (the
+ * has exactly one profile row, including users created before the profile
+ * system existed (the
  * UserObserver that auto-creates a profile on user creation only covers
  * users created after this point). Uses the query builder rather than the
  * Eloquent models so this migration stays correct even if those models

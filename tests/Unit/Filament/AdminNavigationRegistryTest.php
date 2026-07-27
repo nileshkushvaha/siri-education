@@ -14,7 +14,7 @@ use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
 /**
- * Phase 1 of the admin navigation IA redesign — structural guarantees
+ * Structural guarantees
  * for the centralized registry that don't need a database:
  *
  *  - Every class that `use`s HasCentralizedNavigation has exactly one

@@ -41,7 +41,7 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 18C — Booking, Lesson & Meeting Operations reporting service.
+ * Booking, Lesson & Meeting Operations reporting service.
  * Covers authoritative booking/lesson/meeting metrics, recurrence
  * classification, historical accuracy, permission separation, masking,
  * and query-performance bounds.

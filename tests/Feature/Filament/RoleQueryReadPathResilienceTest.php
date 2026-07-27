@@ -20,9 +20,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24T — GAP: closes the class of RoleDoesNotExist crashes on
+ * Closes the class of RoleDoesNotExist crashes on
  * read-only role-filtered queries beyond InstructorOnboardingResource
- * (Phase 24S.1 fixed only the nav badge). Every site below used
+ * (which only had its nav badge fixed). Every site below used
  * Spatie's throwing `role()` scope on a read path; each is now proven
  * to behave identically when the role exists and to degrade to an
  * empty/no-op result — never an exception — when it doesn't.
@@ -161,7 +161,7 @@ class RoleQueryReadPathResilienceTest extends TestCase
 
     /**
      * SuperAdminGuardService's role() calls were deliberately left
-     * unchanged (see the Phase 24T report) — this is the platform's
+     * unchanged — this is the platform's
      * most safety-critical invariant, and the super_admin role is
      * protected from deletion/rename by this very service, so it is
      * always expected to exist. This test proves the invariant itself
@@ -255,10 +255,10 @@ class RoleQueryReadPathResilienceTest extends TestCase
     /**
      * Deliberately NOT governed — legitimate mutation/authorization/
      * bootstrap usage that must keep using Spatie's own role-resolving
-     * behavior (see the Phase 24T report for the reasoning behind each):
+     * behavior:
      * SuperAdminGuardService (safety-critical invariant, mutation-guard
      * path), InstructorOnboardingResource::pendingReviewQuery() already
-     * uses whereHasRoleNamed() (converted in 24S.1/24T, covered above by
+     * uses whereHasRoleNamed() (covered above by
      * the same file being asserted role()-free), and
      * ReconcileStudentLifecycleStatus (operator CLI tool whose read
      * report shares a query with a governed mutation). This test
@@ -269,6 +269,6 @@ class RoleQueryReadPathResilienceTest extends TestCase
     {
         $source = file_get_contents(base_path('app/Services/Admin/SuperAdminGuardService.php'));
 
-        $this->assertStringContainsString('User::role(', $source, 'SuperAdminGuardService is a deliberate Category D exception — see the Phase 24T report.');
+        $this->assertStringContainsString('User::role(', $source, 'SuperAdminGuardService is a deliberate Category D exception.');
     }
 }

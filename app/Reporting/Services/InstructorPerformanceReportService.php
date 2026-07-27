@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Phase 18D implementation. Ratings reuse the Phase 17K aggregate's
+ * Ratings reuse the instructor rating aggregate's
  * own accessors (`InstructorRatingAggregate::overallAverage()`) and
  * `AdminQualityDashboardRepositoryInterface::platformAverageRating()`
  * — the existing calculation owners, never recomputed here. Demo

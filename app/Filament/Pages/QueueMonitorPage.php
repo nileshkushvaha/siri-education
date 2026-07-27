@@ -99,7 +99,7 @@ class QueueMonitorPage extends Page implements HasTable
         ];
     }
 
-    // ── Failed-jobs table (Phase 24N — GAP-034) ─────────────────────────────
+    // ── Failed-jobs table ─────────────────────────────
 
     /**
      * Whether the `database-uuids`/`database` failed-job driver is

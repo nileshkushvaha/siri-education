@@ -13,10 +13,10 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Phase 24H.1/24H.1A — GAP-013 Step 5: aligns legacy accounts that were already
- * verified, whole-account-Active students under the pre-Phase-24H rules
+ * Aligns legacy accounts that were already
+ * verified, whole-account-Active students under earlier lifecycle rules
  * but never got promoted past Registered (no automatic trigger existed
- * before Phase 24H). Dry-run by default — never mutates without the
+ * at the time). Dry-run by default — never mutates without the
  * explicit --apply flag. Every alignment goes through the exact same
  * governed, row-locked, audited transition primitive
  * (StudentLifecycleService::alignLegacyVerifiedStudent()) as any other
@@ -160,7 +160,7 @@ class ReconcileStudentLifecycleStatus extends Command
     }
 
     /**
-     * Phase 24H.1A: a null student_status is invalid/ambiguous legacy or
+     * A null student_status is invalid/ambiguous legacy or
      * incomplete-initialization data — never inferred as Active, and
      * never included in eligibleCandidateIds() (the base query only ever
      * selects student_status = Registered, so null rows never match it).

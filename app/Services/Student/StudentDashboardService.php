@@ -93,7 +93,7 @@ final class StudentDashboardService
         $timezone = $student->profile?->timezone ?: config('app.timezone');
         $meeting = $booking->meeting;
 
-        // Phase 24H.2B — GAP-013: the URL comes exclusively from the
+        // The URL comes exclusively from the
         // authoritative service (ownership + strict Active lifecycle +
         // visibility setting + statuses + the ONE configured time-window
         // calculation, no longer duplicated here). join_window_open is

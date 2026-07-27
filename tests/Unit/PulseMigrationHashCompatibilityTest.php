@@ -12,7 +12,7 @@ use Laravel\Pulse\Storage\DatabaseStorage;
 use Tests\TestCase;
 
 /**
- * Phase 24O.1 — GAP-033 corrective: this MySQL install has no working
+ * This MySQL install has no working
  * MD5()/SHA1()/SHA() SQL builtins (confirmed via direct probing, not an
  * OpenSSL/config toggle — SHA2()/CRC32() still work). A full read of
  * vendor/laravel/pulse/src/Storage/DatabaseStorage.php confirmed `key_hash`

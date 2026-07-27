@@ -17,7 +17,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18H — the two pages: independent permission gates, honest
+ * The two pages: independent permission gates, honest
  * labelling, permission-degraded executive sections, hydration safety
  * and registry/hub integration.
  */

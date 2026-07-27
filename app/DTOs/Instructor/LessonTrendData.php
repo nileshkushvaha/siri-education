@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTOs\Instructor;
 
-/** Current-vs-previous-period lesson counts (Phase 23P). $hasComparison is false only for the AllTime period, which has no meaningful "previous" window. */
+/** Current-vs-previous-period lesson counts. $hasComparison is false only for the AllTime period, which has no meaningful "previous" window. */
 final readonly class LessonTrendData
 {
     public function __construct(

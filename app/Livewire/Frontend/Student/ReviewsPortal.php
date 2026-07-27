@@ -20,9 +20,9 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Student review portal (Phase 17R) — open opportunities, submitted
+ * Student review portal — open opportunities, submitted
  * reviews with statuses, and limited editing. Everything is scoped to
- * auth()->user(); submission goes through the existing Phase 17I
+ * auth()->user(); submission goes through the existing
  * StudentReviewService and editing through StudentReviewEditingService
  * — no validation, sanitization, eligibility, moderation, or aggregate
  * logic lives here. Forms are rendered from either current settings

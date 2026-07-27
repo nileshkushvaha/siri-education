@@ -7,7 +7,7 @@ namespace App\Notifications\Templates;
 use InvalidArgumentException;
 
 /**
- * GAP-039 requirement #1 — the single, code-owned source of truth for
+ * The single, code-owned source of truth for
  * every admin-editable template's default content and allowlisted
  * variables. Nothing here is ever written by an admin action; this is
  * what a "restore default" and an invalid-override fallback both read.

@@ -20,7 +20,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * duplicate-trigger exists — but the queue's at-least-once delivery
  * can still redeliver the SAME event instance (job retry after a crash
  * post-side-effect), so each send is still claimed through the
- * established NotificationIdempotencyGuard (Phase 17V closure), same
+ * established NotificationIdempotencyGuard, same
  * as SendBookingNotifications. MeetingUpdated can legitimately recur
  * for the same meeting (join URL changes again), so the join URL's
  * hash discriminates a genuinely new update from a replay of the same
@@ -42,7 +42,7 @@ final class SendMeetingNotifications implements ShouldQueue
 
     public function handleCreated(MeetingCreated $event): void
     {
-        // Phase 24H.2B — GAP-013: the join URL is included in the
+        // The join URL is included in the
         // STUDENT's copy only if the COMPLETE authoritative disclosure
         // decision (ownership + strict Active lifecycle + visibility
         // setting + booking/meeting status + the configured time

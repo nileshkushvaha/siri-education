@@ -30,15 +30,13 @@ use App\Reporting\Filters\ReportFilterKey;
 use App\Reporting\Support\UniqueDefinitionKeys;
 
 /**
- * The Version 1 report catalogue (Phase 18B §10). Three entries
- * describe report pages that exist and work today: `BookingReports`
- * and `ReviewsQualityDashboard` (both predate Phase 18B) and
- * `BookingLessonMeetingOperations` (Phase 18C — real operational
- * queries, replacing the Phase 18B `operational_queue` placeholder
- * under the same key rename). The remaining entries are explicit
+ * The Version 1 report catalogue (SRS §10). Three entries
+ * describe report pages that exist and work today: `BookingReports`,
+ * `ReviewsQualityDashboard`, and `BookingLessonMeetingOperations` (real
+ * operational queries). The remaining entries are explicit
  * placeholders (`available: false`, no route) for every other approved
- * Version 1 category, so a later Phase 18 slice has stable,
- * agreed-upon metadata to implement against rather than inventing its
+ * Version 1 category, so implementing one has stable,
+ * agreed-upon metadata to build against rather than inventing its
  * own report key/category/permission from scratch. No placeholder
  * exposes a route, and none is rendered with fabricated data — the
  * landing page (§18) renders them as "planned", not as a broken link.
@@ -88,7 +86,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'executive_summary',
                 label: 'Executive KPI Overview',
-                description: 'Cross-domain headline KPIs composed from the owning reports (Phase 18H) — every figure keeps its original owner, permission and definitions; no calculation happens here.',
+                description: 'Cross-domain headline KPIs composed from the owning reports — every figure keeps its original owner, permission and definitions; no calculation happens here.',
                 category: ReportCategory::Executive,
                 requiredViewPermission: 'ViewExecutiveReports',
                 requiredExportPermission: null,
@@ -96,7 +94,7 @@ final class ReportRegistry implements ReportRegistryInterface
                 financial: true,
                 supportedFilters: [],
                 defaultPeriodPreset: ReportingPeriodPreset::ThisMonth,
-                dataSourceDomain: 'Cross-domain composition (Phases 18C–18G report services)',
+                dataSourceDomain: 'Cross-domain composition (existing report services)',
                 freshness: ReportDataFreshness::Live,
                 routeName: ExecutiveKpiOverview::class,
                 exportAvailable: false,
@@ -160,7 +158,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'booking_lesson_kpis',
                 label: 'Booking Reports',
-                description: 'Booking KPIs, popular subjects/time slots, and teacher utilization. Its legacy KPI CSV is registered through the shared export contract (Phase 18I) with unchanged columns and filename.',
+                description: 'Booking KPIs, popular subjects/time slots, and teacher utilization. Its legacy KPI CSV is registered through the shared export contract with unchanged columns and filename.',
                 category: ReportCategory::BookingsLessons,
                 requiredViewPermission: 'ViewBookingLessonReports',
                 requiredExportPermission: 'ExportReports',
@@ -177,7 +175,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'meeting_reliability',
                 label: 'Meeting Reliability',
-                description: 'Formally unavailable (Phase 18J closure decision): Version 1 records meeting creation lifecycle only — no attendance callbacks, uptime or provider delivery outcomes exist, and reliability is never inferred from creation status alone. Creation outcomes are covered by the Operations report.',
+                description: 'Formally unavailable: Version 1 records meeting creation lifecycle only — no attendance callbacks, uptime or provider delivery outcomes exist, and reliability is never inferred from creation status alone. Creation outcomes are covered by the Operations report.',
                 category: ReportCategory::Meetings,
                 requiredViewPermission: 'ViewMeetingReports',
                 requiredExportPermission: null,
@@ -194,7 +192,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'learning_progress',
                 label: 'Learning Analytics',
-                description: 'Learning Dashboard: goals, plans, milestones, progress reviews and homework (Phase 18F).',
+                description: 'Learning Dashboard: goals, plans, milestones, progress reviews and homework.',
                 category: ReportCategory::Learning,
                 requiredViewPermission: 'ViewLearningReports',
                 requiredExportPermission: 'ExportReports',
@@ -358,7 +356,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'referral_activity',
                 label: 'Referral Activity',
-                description: 'Wallet-ledger-confirmed referral credits plus Phase 19D reward-lifecycle and attribution figures. Conversion rate remains unavailable (no agreed qualifying-event denominator).',
+                description: 'Wallet-ledger-confirmed referral credits plus reward-lifecycle and attribution figures. Conversion rate remains unavailable (no agreed qualifying-event denominator).',
                 category: ReportCategory::Referrals,
                 requiredViewPermission: 'ViewReferralReports',
                 requiredExportPermission: null,
@@ -375,7 +373,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'review_quality_analytics',
                 label: 'Review & Quality Analytics',
-                description: 'Review submission rates and quality overview — complementary to the Reviews & Quality Dashboard, which remains the moderation-queue owner (Phase 18G).',
+                description: 'Review submission rates and quality overview — complementary to the Reviews & Quality Dashboard, which remains the moderation-queue owner.',
                 category: ReportCategory::ReviewsQuality,
                 requiredViewPermission: 'ViewReviewQualityReports',
                 requiredExportPermission: null,
@@ -392,7 +390,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'marketplace_supply_demand',
                 label: 'Marketplace Supply & Demand',
-                description: 'Current-state instructor supply versus period-event booking demand, compared on compatible dimensions only — no score, no ranking (Phase 18H).',
+                description: 'Current-state instructor supply versus period-event booking demand, compared on compatible dimensions only — no score, no ranking.',
                 category: ReportCategory::Marketplace,
                 requiredViewPermission: 'ViewMarketplaceReports',
                 requiredExportPermission: null,
@@ -426,7 +424,7 @@ final class ReportRegistry implements ReportRegistryInterface
             new ReportDefinition(
                 key: 'notification_delivery',
                 label: 'Notification Activity',
-                description: 'In-app notification and dispatch-deduplication activity (Phase 18G). No delivery attempt/provider outcome is recorded in Version 1 — delivery-rate and provider metrics are unavailable.',
+                description: 'In-app notification and dispatch-deduplication activity. No delivery attempt/provider outcome is recorded in Version 1 — delivery-rate and provider metrics are unavailable.',
                 category: ReportCategory::Notifications,
                 requiredViewPermission: 'ViewNotificationReports',
                 requiredExportPermission: null,

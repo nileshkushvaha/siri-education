@@ -76,7 +76,7 @@ class InstructorOnboardingResource extends Resource
         // ordinary table columns instead of needing relation-query
         // gymnastics on every column and filter.
         //
-        // Phase 24T: whereHasRoleNamed() (not Spatie's role() scope) so a
+        // whereHasRoleNamed() (not Spatie's role() scope) so a
         // temporarily-missing 'instructor' role renders an empty list
         // instead of a 500 — this resource's own read path, reached only
         // when canViewAny() already passed.
@@ -94,13 +94,13 @@ class InstructorOnboardingResource extends Resource
     }
 
     /**
-     * Phase 24S.1 — GAP: Filament evaluates every registered resource's
+     * Filament evaluates every registered resource's
      * getNavigationBadge() on every admin page load, not just this
      * resource's own pages. The Spatie `role()` query scope pre-resolves
      * the role name via Role::findByName(), which throws RoleDoesNotExist
      * if that row doesn't exist yet (fresh install, partial deployment,
      * seeder not yet run) — crashing completely unrelated admin pages
-     * with a 500. whereHasRoleNamed() (Phase 24T) performs the identical
+     * with a 500. whereHasRoleNamed() performs the identical
      * join when the role exists, and simply matches zero rows (not an
      * exception) when it doesn't — a missing optional role record must
      * never crash navigation.

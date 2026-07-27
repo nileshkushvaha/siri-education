@@ -154,8 +154,8 @@ final class InstructorPerformanceInsightsTest extends TestCase
             ->test(AnalyticsOverview::class)
             ->call('setPeriod', InstructorAnalyticsPeriod::AllTime->value)
             ->assertViewHas('insights', function ($insights) use ($authoritative, $insightsService) {
-                // AllTime is the one period where the Phase 23P period
-                // slice and the Phase 17K all-time aggregate must agree
+                // AllTime is the one period where the period
+                // slice and the all-time aggregate must agree
                 // exactly — same reviews, same eligibility predicate.
                 return $insights->quality->reviewCountCurrent === $authoritative->eligible_review_count
                     && $insights->quality->reviewCountCurrent === $insightsService->ratingSummary->reviewCount

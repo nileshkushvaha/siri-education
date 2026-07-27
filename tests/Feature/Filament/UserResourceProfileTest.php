@@ -22,7 +22,7 @@ use Tests\TestCase;
 
 /**
  * Admin edits the SAME profile the frontend edits — one source of truth.
- * This is the highest-risk integration point in Phase 1: nested
+ * This is the highest-risk integration point: nested
  * Section::make()->relationship('profile') fields, plus
  * SpatieMediaLibraryFileUpload nested inside that same relationship
  * section, must save to the one UserProfile row without creating a

@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17R — append-only edit history for student reviews. One row
+ * Append-only edit history for student reviews. One row
  * per successful edit, freezing the review's PREVIOUS state (already
  * sanitized — raw prohibited text never reached the review row, so it
  * can never reach a revision either). `review_version` is the version

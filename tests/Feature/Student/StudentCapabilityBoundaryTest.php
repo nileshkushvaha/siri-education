@@ -48,7 +48,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H.2 — GAP-013: every interactive student capability requires
+ * Every interactive student capability requires
  * `student role AND student_status === Active`, enforced centrally by
  * StudentLifecycleService::assertEligibleForStudentAction() at the
  * service boundary of each domain (favorites, review submission and
@@ -415,7 +415,7 @@ class StudentCapabilityBoundaryTest extends TestCase
             'student_id' => $student->id,
             'instructor_id' => $instructor->id,
             'status' => BookingStatus::Confirmed,
-            // Phase 24H.2B: within the configured visibility window (15 min before by default).
+            // Within the configured visibility window (15 min before by default).
             'starts_at' => now()->addMinutes(10),
             'ends_at' => now()->addMinutes(40),
         ]);

@@ -11,12 +11,12 @@ use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 /**
- * Base for the Instructor domain's real-MySQL concurrency tests (Phase
- * 23D) — mirrors Tests\Feature\Reviews\Concurrency\ConcurrencyTestCase /
+ * Base for the Instructor domain's real-MySQL concurrency tests —
+ * mirrors Tests\Feature\Reviews\Concurrency\ConcurrencyTestCase /
  * Tests\Feature\Booking\Concurrency\ConcurrencyTestCase /
  * Tests\Feature\Earnings\Concurrency\ConcurrencyTestCase's shape,
- * including the exit-code-checked migrate:fresh restore (Phase 16C.1
- * root-cause fix) so a transient teardown failure fails loudly instead
+ * including the exit-code-checked migrate:fresh restore so a
+ * transient teardown failure fails loudly instead
  * of silently leaking a partially-rebuilt database into the next test
  * class.
  */

@@ -79,7 +79,7 @@ final class NotifyInstructorOnPayoutActivity implements ShouldQueue
             'withdrawal_approved' => InstructorWithdrawalStatus::Approved,
             'withdrawal_rejected' => InstructorWithdrawalStatus::Rejected,
             'withdrawal_cancelled' => InstructorWithdrawalStatus::Cancelled,
-            // Phase 16A execution segment — "processing_started" covers
+            // The execution segment — "processing_started" covers
             // both the initial queue and a pre-acceptance auto-return, so
             // it is intentionally silent (no separate instructor email
             // for an internal retry loop the instructor cannot act on).

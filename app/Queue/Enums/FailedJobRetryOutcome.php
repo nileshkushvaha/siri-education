@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Queue\Enums;
 
 /**
- * Phase 24N — GAP-034 (SRS-26-2): the bounded set of safe outcomes a
+ * SRS-26-2: the bounded set of safe outcomes a
  * retry attempt can report. Never carries payload/exception content —
  * only the category.
  */

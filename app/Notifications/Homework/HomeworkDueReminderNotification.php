@@ -17,7 +17,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Phase 24K — GAP-020 (SRS §7.11 / SRS-7-11): sent when a homework
+ * SRS §7.11 / SRS-7-11: sent when a homework
  * assignment approaches its due date. Content is safe and minimal —
  * title, due time in the recipient's timezone, accurate remaining-time
  * wording (computed at send time, never a hardcoded offset label), a
@@ -25,13 +25,13 @@ use Illuminate\Notifications\Notification;
  * homework response content, no instructor private data, no payment
  * data, no raw internal IDs.
  *
- * Phase 24K.1 — deliberately NOT ShouldQueue: the wrapping
+ * Deliberately NOT ShouldQueue: the wrapping
  * SendHomeworkDueReminderJob is already queued and is the sole retry
  * authority. Laravel's own NotificationSender::sendNow() restarts its
  * ENTIRE channel list and assigns a fresh random notification UUID on
  * every call — layering a second, independent ShouldQueue retry cycle
- * on top of the job's own retries would reintroduce exactly the
- * partial-channel duplication this phase closes.
+ * on top of the job's own retries would reintroduce partial-channel
+ * duplication.
  * HomeworkReminderChannelSender calls Notification::sendNow() with
  * exactly one channel per call, so each channel is fully isolated.
  */

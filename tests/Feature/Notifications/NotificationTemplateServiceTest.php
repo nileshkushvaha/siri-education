@@ -14,7 +14,7 @@ use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**
- * GAP-039 requirement #7 — every mutation is audited (never logging a
+ * Every mutation is audited (never logging a
  * rendered/private value, since template content is admin-authored
  * generic text) and busts the renderer's cache immediately.
  */

@@ -80,13 +80,10 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\Filament\Clusters')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
-            // Phase 1 of the navigation IA redesign — see
-            // App\Filament\Navigation\NavigationRegistry for the
-            // per-destination group/label/sort source of truth and
-            // docs/audits/phase-navigation-*.md for the full inventory
-            // this order was derived from. Ten primary sections (plus
-            // the ungrouped Dashboard/Home link); order here is the
-            // sidebar's group display order.
+            // See App\Filament\Navigation\NavigationRegistry for the
+            // per-destination group/label/sort source of truth. Ten
+            // primary sections (plus the ungrouped Dashboard/Home
+            // link); order here is the sidebar's group display order.
             ->navigationGroups([
                 'People',
                 'Academics',
@@ -104,7 +101,7 @@ class AdminPanelProvider extends PanelProvider
                 SchedulerMonitorPage::class,
                 QueueMonitorPage::class,
             ])
-            // Phase 24O — GAP-033: Pulse's dashboard is the package's
+            // Pulse's dashboard is the package's
             // own route (never rewritten as a Filament page) — this is
             // a plain link, gated by the SAME 'viewPulse' Gate ability
             // Pulse's own Authorize middleware enforces on the route
@@ -147,7 +144,7 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 EnsurePasswordChangeRequired::class,
-                // Phase 24F — GAP-012/SRS-1-23: the Filament panel defines
+                // SRS-1-23: the Filament panel defines
                 // its own isolated middleware stack (never the app's
                 // 'web' group), so idle-timeout enforcement must be
                 // added here explicitly too.

@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 /**
  * Single source of truth for the instructor headline/biography text
- * shown on the public profile (Phase 23G).
+ * shown on the public profile.
  *
  * Field audit findings:
  *  - headline vs. the former `designation` column: `designation` was

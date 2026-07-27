@@ -19,7 +19,7 @@ class InstructorEarningSettings extends Settings
     public bool $earnings_enabled;
 
     /**
-     * Phase 14.2: compensation is configured per instructor through
+     * Compensation is configured per instructor through
      * effective-dated agreements and is NEVER calculated from the
      * student-facing price. The former global commission settings
      * (default_calculation_type / default_percentage /
@@ -45,7 +45,7 @@ class InstructorEarningSettings extends Settings
     /** Automatic retry attempts per blocked lesson before the exception is marked exhausted. */
     public int $compensation_retry_max_attempts;
 
-    /** Phase 17E — gates the lesson financial-disposition bridge (classification only, never money movement). Ships OFF. */
+    /** Gates the lesson financial-disposition bridge (classification only, never money movement). Ships OFF. */
     public bool $financial_disposition_enabled;
 
     /** 'manual_review' | 'normal_earning' | 'no_earning' — instructor compensation when the student no-shows. */
@@ -54,20 +54,20 @@ class InstructorEarningSettings extends Settings
     /** 'manual_review' | 'refund' | 'forfeit' — student money when both parties are absent. */
     public string $both_absent_financial_policy;
 
-    /** Phase 17F — gates lessons:process-refunds wallet-refund execution. Ships OFF. */
+    /** Gates lessons:process-refunds wallet-refund execution. Ships OFF. */
     public bool $lesson_refund_execution_enabled;
 
-    /** Phase 17G — gates lessons:process-earning-reconciliation execution. Ships OFF. */
+    /** Gates lessons:process-earning-reconciliation execution. Ships OFF. */
     public bool $earning_reconciliation_execution_enabled;
 
     /**
-     * Phase 16A — platform-wide payout execution switch. False stops
+     * Platform-wide payout execution switch. False stops
      * InstructorPayoutExecutionService::queueExecution() and the
      * execution job from ever calling a provider.
      */
     public bool $payout_execution_enabled;
 
-    /** Registered InstructorPayoutProviderInterface key; 'fake' is the only adapter Phase 16A ships. */
+    /** Registered InstructorPayoutProviderInterface key; 'fake' is the only adapter currently shipped. */
     public string $payout_provider;
 
     /** True = the withdrawal approver and the payout executor must be different users. */
@@ -88,12 +88,11 @@ class InstructorEarningSettings extends Settings
     /** Lets the fake provider be selected in a non-local/testing (e.g. staging) environment. Never makes it a real provider. */
     public bool $payout_fake_provider_staging_enabled;
 
-    /** Phase 16A.1 — rollout policy (not a kill switch); see App\Earnings\Enums\PayoutRolloutScope. */
+    /** Rollout policy (not a kill switch); see App\Earnings\Enums\PayoutRolloutScope. */
     public string $payout_rollout_scope;
 
     /**
-     * Phase 14.5 write guard, extended in Phase 16A and again in this
-     * closure audit (Phase 17 §5): the seven financial feature switches
+     * Write guard: the seven financial feature switches
      * may only change through FinancialFeatureConfigurationService
      * (which runs the activation preflights). Every other save() that
      * flips one of them — Filament, commands, seeders, controllers,
@@ -134,10 +133,10 @@ class InstructorEarningSettings extends Settings
     /** Minimum batch total; null = no minimum. */
     public ?int $minimum_settlement_amount_minor;
 
-    /** 'manual' | 'weekly' | 'monthly' — informational this phase; batches are always admin-created. */
+    /** 'manual' | 'weekly' | 'monthly' — informational only; batches are always admin-created. */
     public string $settlement_frequency;
 
-    /** Platform-wide switch for the instructor withdrawal flow (Phase 15). */
+    /** Platform-wide switch for the instructor withdrawal flow. */
     public bool $withdrawals_enabled;
 
     /** Smallest allowed withdrawal request, integer minor units. */

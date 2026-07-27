@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 
 /**
  * The single authoritative writer of `operational_alerts` rows and the
- * only place their status moves (GAP-035, requirement #3). No
+ * only place their status moves. No
  * listener, job, controller, or Filament action may write an alert
  * directly — every source only ever builds an OperationalAlertSignal
  * and hands it to {@see createOrMerge()}.

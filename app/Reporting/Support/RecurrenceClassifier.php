@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Reporting\Support;
 
 /**
- * Phase 18C data-provenance decision, Outcome B (§6.1): classifies a
+ * Data-provenance decision, Outcome B (SRS §6.1): classifies a
  * booking's recurrence bucket from the authoritative `recurrence_frequency`
- * column added this phase. A booking created before this column existed
+ * column. A booking created before this column existed
  * but that WAS part of a recurring series (identifiable only via the
  * pre-existing `meta->recurring_group` JSON key) is bucketed as
  * `UNKNOWN_HISTORICAL` — never silently folded into `SINGLE`. Only a

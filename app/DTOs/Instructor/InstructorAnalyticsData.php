@@ -7,13 +7,13 @@ namespace App\DTOs\Instructor;
 use App\Enums\InstructorAnalyticsPeriod;
 
 /**
- * Instructor Analytics Foundation (Phase 23O) — every value is derived
+ * Instructor Analytics Foundation — every value is derived
  * from an existing authoritative domain (Lesson, HomeworkAssignment,
  * InstructorRatingAggregate via InstructorQualityInsightsService); none
  * of it is stored or recalculated here. Deliberately excludes earnings
- * (already fully covered by Phase 23L's dedicated Earnings/Settlements
+ * (already fully covered by the dedicated Earnings/Settlements
  * pages) and demo conversion (attribution exists only as platform-wide
- * admin analytics, not instructor-scoped — deferred to a later phase).
+ * admin analytics, not instructor-scoped).
  */
 final readonly class InstructorAnalyticsData
 {

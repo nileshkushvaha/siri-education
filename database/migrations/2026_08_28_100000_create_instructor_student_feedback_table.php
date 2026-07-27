@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17Q — private, lesson-linked instructor-to-student feedback.
+ * Private, lesson-linked instructor-to-student feedback.
  * One row per (lesson, instructor) — a lesson has exactly one assigned
  * instructor, so the composite unique index is the same defence as a
  * plain unique(lesson_id) while staying explicit about what "one

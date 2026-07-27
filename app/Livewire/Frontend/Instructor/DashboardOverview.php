@@ -12,7 +12,7 @@ final class DashboardOverview extends Component
 {
     public int $unreadCount = 0;
 
-    /** Phase 37B: pre-computed by PortalBadgeService/AccountPortalComposer — avoids a duplicate pendingReviewCountForTeacher() query. */
+    /** Pre-computed by PortalBadgeService/AccountPortalComposer — avoids a duplicate pendingReviewCountForTeacher() query. */
     public int $pendingHomeworkCount = 0;
 
     public int $upcomingCount = 0;

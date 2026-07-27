@@ -18,13 +18,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 17U.4 — stale-job safety. `booking:release-expired` and
- * `lessons:auto-complete` both queried a batch of candidates up front,
- * then acted on each candidate's in-memory (possibly by-then-stale)
- * copy with no reload or lock — a booking confirmed by a concurrent
+ * Stale-job safety. `booking:release-expired` and
+ * `lessons:auto-complete` both query a batch of candidates up front —
+ * acting on each candidate's in-memory (possibly by-then-stale) copy
+ * with no reload or lock would let a booking confirmed by a concurrent
  * payment, or a lesson disputed by a concurrent admin action, between
- * the candidate query and this command's per-row processing, could be
- * silently overwritten (a lost update). Both now re-fetch and lock the
+ * the candidate query and this command's per-row processing, be
+ * silently overwritten (a lost update). Both re-fetch and lock the
  * row immediately before mutating it, matching the reference pattern
  * already used by lessons:finalize-due / lessons:process-refunds.
  */

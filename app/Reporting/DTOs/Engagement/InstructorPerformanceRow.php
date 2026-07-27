@@ -6,7 +6,7 @@ namespace App\Reporting\DTOs\Engagement;
 
 /**
  * One row of the instructor performance table. Rating figures come
- * from the Phase 17K aggregate's own accessors (never recomputed).
+ * from the instructor rating aggregate's own accessors (never recomputed).
  * `activeQualityAlerts` is null — not zero — when the viewer lacks
  * `ViewReviewQualityReports`; the view renders nothing for null. No
  * earnings, compensation, settlement, withdrawal, KYC, or private

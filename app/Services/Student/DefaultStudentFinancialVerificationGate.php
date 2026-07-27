@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Settings\AuthenticationSettings;
 
 /**
- * Phase 24R — GAP: revalidated against docs/SRS.md §2.5 ("Phone Number
+ * Validated against docs/SRS.md §2.5 ("Phone Number
  * (Optional for Version 1)") and §11.14 ("Paid Booking Eligibility Rules"
  * — "Student must be registered and verified", with no phone/mobile
  * requirement anywhere in that list). "Verified" for a student means
@@ -21,16 +21,14 @@ use App\Settings\AuthenticationSettings;
  * phone. No phone-verification model/process is described in the SRS at
  * all.
  *
- * The previous implementation required `phone_e164` + `phone_verified_at`
- * — unsupported by the SRS, and additionally impossible to satisfy in
- * this deployment: the bound PhoneOtpSender is
- * App\Services\Phone\UnavailablePhoneOtpSender, which always throws
- * ("temporarily unavailable"), so `phone_verified_at` could never
- * legitimately become non-null. That combination blocked every paid
- * booking unconditionally — a production regression, not a test-fixture
- * problem.
+ * Requiring `phone_e164` + `phone_verified_at` would be unsupported by
+ * the SRS, and additionally impossible to satisfy in this deployment:
+ * the bound PhoneOtpSender is App\Services\Phone\UnavailablePhoneOtpSender,
+ * which always throws ("temporarily unavailable"), so `phone_verified_at`
+ * could never legitimately become non-null. That combination would
+ * block every paid booking unconditionally.
  *
- * This now checks the SRS-correct condition (email verification), using
+ * This checks the SRS-correct condition (email verification), using
  * the SAME AuthenticationSettings::email_verification_required toggle
  * App\Booking\Validation\Rules\VerifiedActiveStudentRule and the HTTP
  * middleware layer already respect, so this can never disagree with

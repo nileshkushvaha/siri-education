@@ -31,7 +31,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18F — Learning Analytics (SRS Chapter 19 Learning Dashboard,
+ * Learning Analytics (SRS Chapter 19 Learning Dashboard,
  * Learning Plan Report, Homework Report). Every figure is delegated to
  * {@see LearningAnalyticsReportServiceInterface}; this page holds only
  * filter state and never queries an academic domain directly. Requires
@@ -62,7 +62,7 @@ class LearningAnalytics extends Page
     public ?string $customEnd = null;
 
     // Livewire hydrates select values as strings — kept ?string, cast
-    // once in filters() (Phase 18C hydration-regression lesson).
+    // once in filters().
     public ?string $subjectId = null;
 
     public ?string $educationLevelId = null;

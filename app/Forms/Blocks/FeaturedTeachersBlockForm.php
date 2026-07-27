@@ -26,7 +26,7 @@ class FeaturedTeachersBlockForm
                         ])
                         ->default('featured')
                         ->required()
-                        ->helperText('GAP-025: which recommendation strategy this block displays. Eligibility, pricing, and ranking are identical across sections — only the selection changes.'),
+                        ->helperText('Which recommendation strategy this block displays. Eligibility, pricing, and ranking are identical across sections — only the selection changes.'),
                     TextInput::make('eyebrow')->label('Eyebrow')->maxLength(120),
                     TextInput::make('title')->label('Title')->maxLength(255),
                     Textarea::make('description')->label('Description')->rows(3)->maxLength(700),

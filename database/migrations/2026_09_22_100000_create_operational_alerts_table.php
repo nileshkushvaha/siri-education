@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 35 (GAP-035, SRS §26.27-§26.29) — durable operational alerts,
+ * SRS §26.27-§26.29 — durable operational alerts,
  * replacing the generic activity→notify pipeline's blanket, unrouted,
  * super-admin-only coverage for operational failures. A row is never
  * deleted (PreventsHardDeletion on the model); history accumulates

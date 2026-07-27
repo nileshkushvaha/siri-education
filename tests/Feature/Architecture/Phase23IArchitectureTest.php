@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23I boundary: onboarding-prompt visibility is a
+ * Guards the instructor-dashboard-onboarding boundary: onboarding-prompt visibility is a
  * service-owned rule (not computed in the Blade view), the dashboard
  * queries stay bounded, and no duplicate DTO/service was introduced.
  */
@@ -43,7 +43,7 @@ final class Phase23IArchitectureTest extends TestCase
 
     public function test_no_duplicate_instructor_dashboard_dto_or_service_was_created(): void
     {
-        // Phase 23I extends the existing App\DTOs\InstructorDashboard\InstructorDashboardData
+        // This extends the existing App\DTOs\InstructorDashboard\InstructorDashboardData
         // rather than introducing a second one at App\DTOs\Instructor\InstructorDashboardData
         // with the same class basename.
         $this->assertFileDoesNotExist(app_path('DTOs/Instructor/InstructorDashboardData.php'));

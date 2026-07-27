@@ -159,10 +159,9 @@ class UserProfile extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        // Explicit public disk (Phase 23E) — was previously implicit via
-        // the package's disk_name default, same effective disk, but no
-        // longer dependent on that default staying 'public' once KYC
-        // hardening tightens it elsewhere. See UserProfile/User docblocks.
+        // Explicit public disk — never dependent on the package's
+        // disk_name default staying 'public' once KYC hardening
+        // tightens it elsewhere. See UserProfile/User docblocks.
         $this->addMediaCollection('avatar')
             ->useDisk('public')
             ->singleFile()
@@ -187,10 +186,10 @@ class UserProfile extends Model implements HasMedia
     }
 
     /**
-     * GAP-037 — avatar gets a fixed 150x150 thumbnail (card/list/dropdown
+     * Avatar gets a fixed 150x150 thumbnail (card/list/dropdown
      * use); cover gets an 800px display conversion (profile banner use).
      * Both KYC document collections and introduction_video are
-     * deliberately left unconverted — see Phase 41 final report.
+     * deliberately left unconverted.
      */
     public function registerMediaConversions(?Media $media = null): void
     {
@@ -209,7 +208,7 @@ class UserProfile extends Model implements HasMedia
         );
     }
 
-    /** GAP-037 — 150x150 thumbnail for card/list/dropdown rendering, safely falling back to the original until the queued conversion is generated. */
+    /** 150x150 thumbnail for card/list/dropdown rendering, safely falling back to the original until the queued conversion is generated. */
     public function avatarThumbUrl(): Attribute
     {
         return Attribute::make(
@@ -224,7 +223,7 @@ class UserProfile extends Model implements HasMedia
         );
     }
 
-    /** GAP-037 — 800px display conversion for the public/account profile banner, safely falling back to the original until generated. */
+    /** 800px display conversion for the public/account profile banner, safely falling back to the original until generated. */
     public function coverDisplayUrl(): Attribute
     {
         return Attribute::make(

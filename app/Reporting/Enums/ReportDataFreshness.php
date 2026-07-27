@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\Enums;
 
 /**
- * How current a report's/metric's data is (Phase 18B §17). Every report
+ * How current a report's/metric's data is (SRS §17). Every report
  * and metric definition declares one of these — a live-query report may
  * use the request timestamp as its freshness marker; a cached/snapshot
  * report must show the last successful refresh time instead. No report

@@ -1,4 +1,4 @@
-{{-- Shared Phase 18E financial filter bar + freshness banner. Expects $freshness. --}}
+{{-- Shared financial filter bar + freshness banner. Expects $freshness. --}}
 <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 px-6 py-3">
     <p class="text-xs text-gray-500 dark:text-gray-400">
         Live query · Generated {{ $freshness->generatedAt->toDayDateTimeString() }} ·

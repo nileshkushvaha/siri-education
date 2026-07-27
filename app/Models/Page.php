@@ -86,7 +86,7 @@ class Page extends Model implements HasContentBlocks, HasMedia
             ->useFallbackUrl(url('/images/placeholder.png'));
     }
 
-    /** GAP-037 — 800px display conversion for the public CMS page featured image (SEO og:image, PagesTable admin thumbnail). */
+    /** 800px display conversion for the public CMS page featured image (SEO og:image, PagesTable admin thumbnail). */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {

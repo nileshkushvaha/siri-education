@@ -672,7 +672,7 @@ class InstructorAvailabilityHardeningTest extends TestCase
         $this->assertSame($homeworkBefore, HomeworkAssignment::count());
         $this->assertSame($reviewsBefore, LearningPlanReview::count());
 
-        // wallets/wallet_ledger_entries are the approved Phase 9 foundation;
+        // wallets/wallet_ledger_entries are the approved foundation;
         // no dedicated payment/meeting/reservation/slot table exists in this schema.
         foreach (['payments', 'meetings', 'reservations', 'slots', 'generated_slots', 'booking_slots'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found — availability hardening must not introduce out-of-scope structures.");
@@ -699,7 +699,7 @@ class InstructorAvailabilityHardeningTest extends TestCase
         $transition = collect($transitions)->first(fn (array $t): bool => $t['ts'] > $now->getTimestamp() && $t['isdst'] === true);
 
         if ($transition === null) {
-            $this->markTestSkipped('No DST transition falls inside the bookable window for the current date; non-blocking per Phase 6.3 docs.');
+            $this->markTestSkipped('No DST transition falls inside the bookable window for the current date; non-blocking per docs/architecture/phase-6-instructor-availability-foundation.md.');
         }
 
         $transitionInstant = CarbonImmutable::createFromTimestamp($transition['ts'], 'UTC')->timezone($timezone);

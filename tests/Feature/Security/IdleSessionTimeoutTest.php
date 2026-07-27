@@ -18,7 +18,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24F — GAP-012/SRS-1-23: authoritative idle-session-timeout
+ * SRS-1-23: authoritative idle-session-timeout
  * enforcement, extending the existing TrackUserSession middleware/
  * UserSession tracker rather than adding a second activity subsystem.
  *

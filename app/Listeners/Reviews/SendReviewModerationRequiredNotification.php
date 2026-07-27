@@ -11,7 +11,7 @@ use App\Services\Notifications\AdminRecipientResolver;
 use App\Services\Notifications\NotificationIdempotencyGuard;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-/** Recipients: administrators holding the same permission the Phase 17O moderation-queue widget gates on. */
+/** Recipients: administrators holding the same permission the moderation-queue widget gates on. */
 final class SendReviewModerationRequiredNotification implements ShouldQueue
 {
     private const string PERMISSION = 'ViewReviewModerationQueue';

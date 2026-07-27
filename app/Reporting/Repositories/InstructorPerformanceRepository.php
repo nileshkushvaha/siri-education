@@ -15,14 +15,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only aggregate queries for the Instructor Performance report
- * (Phase 18D). "Instructor" = a user holding the `instructor` role.
+ * Read-only aggregate queries for the Instructor Performance report.
+ * "Instructor" = a user holding the `instructor` role.
  * Lifecycle counts are the CURRENT `user_profiles.instructor_status`
  * (all 11 cases, none collapsed). Approvals-in-period use the
  * structured `activity_log` event `application_approved` (log name
  * `instructor`) — a typed event key, never message-text parsing.
- * Booking/lesson definitions match Phase 18C's operations report
- * exactly (same date bases, same enums).
+ * Booking/lesson definitions match the Booking, Lesson & Meeting
+ * Operations report exactly (same date bases, same enums).
  */
 final class InstructorPerformanceRepository
 {

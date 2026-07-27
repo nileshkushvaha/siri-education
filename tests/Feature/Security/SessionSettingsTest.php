@@ -144,7 +144,7 @@ class SessionSettingsTest extends TestCase
             ->assertNotified('All sessions terminated');
     }
 
-    // ── Phase 24S: settings-save audit coverage (distinct from forceLogoutAll's own event) ──
+    // ── Settings-save audit coverage (distinct from forceLogoutAll's own event) ──
 
     public function test_save_creates_a_settings_updated_audit_event_with_the_diff(): void
     {

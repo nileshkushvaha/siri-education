@@ -11,8 +11,8 @@ use Livewire\WithPagination;
 
 /**
  * Read-only roster of students the instructor has an actual teaching
- * relationship with, derived entirely from Lesson (Phase 23N). No
- * messaging, notes, grading, or analytics — those are later phases.
+ * relationship with, derived entirely from Lesson. No
+ * messaging, notes, grading, or analytics — those are out of scope here.
  */
 final class StudentList extends Component
 {

@@ -9,7 +9,7 @@ use Closure;
 use Filament\Notifications\Notification;
 
 /**
- * Phase 24I — GAP-019: admin-side (Filament) impact confirmation for
+ * Admin-side (Filament) impact confirmation for
  * availability reductions. The admin surfaces go through the same
  * authoritative services as the instructor UI, so a first attempt at an
  * affecting change throws (no mutation). This helper stores the impact

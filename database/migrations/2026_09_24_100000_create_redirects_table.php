@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-036 (SRS §22.25/26): managed 301/302 redirects.
+ * SRS §22.25/26: managed 301/302 redirects.
  *
  * `active_source_path` is a generated column equal to `source_path`
  * when `is_active` is true, else NULL. MySQL's unique index treats

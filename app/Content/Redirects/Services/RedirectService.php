@@ -13,7 +13,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * GAP-036 (SRS §22.25/26) — the single authoritative boundary for
+ * SRS §22.25/26 — the single authoritative boundary for
  * managed redirects: normalization, duplicate/loop/target-safety
  * validation, CRUD, and resolution. Filament and the public routing
  * boundary both call this service; neither writes to the `redirects`

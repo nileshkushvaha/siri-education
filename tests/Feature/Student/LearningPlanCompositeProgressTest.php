@@ -27,7 +27,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * SRS §6.17-5 / GAP-023: learning-plan progress must average every
+ * SRS §6.17-5: learning-plan progress must average every
  * SRS evidence domain the schema can reliably attribute to exactly
  * one plan — currently milestones and directly-linked homework.
  * Lessons and periodic reviews are documented, tested exclusions (see

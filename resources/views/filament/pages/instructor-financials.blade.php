@@ -27,7 +27,7 @@
                 </div>
             </div>
 
-            {{-- GAP-008 — demo-to-paid conversion incentive awards created in period --}}
+            {{-- Demo-to-paid conversion incentive awards created in period --}}
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
                 <div class="fi-section-header px-6 py-4 border-b border-gray-200 dark:border-white/10">
                     <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Demo conversion incentive awards in period — {{ $summary->demoConversionIncentiveAwardsCount }}</h3>

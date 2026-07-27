@@ -12,7 +12,7 @@ use App\Settings\PaymentGatewaySettings;
 use Tests\TestCase;
 
 /**
- * Phase 34 (GAP-029) — pure logic test of the effective-feature
+ * Pure logic test of the effective-feature
  * formula. No database is touched: `FeatureSettings`/
  * `PaymentGatewaySettings` are plain Spatie Settings DTOs constructed
  * directly (never `load()`ed/`save()`d), and `Country` is a bare model

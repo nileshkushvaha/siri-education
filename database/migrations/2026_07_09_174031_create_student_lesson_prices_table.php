@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Admin-managed student-facing pricing matrix (Phase 10.2D). Replaces
+ * Admin-managed student-facing pricing matrix. Replaces
  * `booking_types.price`/`currency` as the authoritative source for a
  * paid lesson's price — those columns remain only as a documented
  * legacy fallback (see BookingPriceCalculator). A booking's own

@@ -50,7 +50,7 @@ class EditUser extends EditRecord
     }
 
     /**
-     * Phase 24E — GAP-010/SRS-23-7: wraps Filament's ENTIRE save
+     * SRS-23-7: wraps Filament's ENTIRE save
      * lifecycle in the global Super Admin lifecycle lock, so a
      * concurrent save of a different Super Admin account can never
      * interleave with this one's check-then-write sequence. Always
@@ -99,7 +99,7 @@ class EditUser extends EditRecord
     }
 
     /**
-     * Phase 24E — GAP-010/SRS-23-7: this panel does not enable
+     * SRS-23-7: this panel does not enable
      * per-page database transactions (Filament\Pages\Concerns\
      * CanUseDatabaseTransactions::hasDatabaseTransactions() is false
      * here), so a role/status change already applied by Filament's own
@@ -160,7 +160,7 @@ class EditUser extends EditRecord
             ]);
         }
 
-        // Phase 24H.1A — GAP-013: this panel doesn't wrap the whole save
+        // This panel doesn't wrap the whole save
         // in one DB transaction (see the docblock on save() above), so
         // Filament's own role sync and this initialization aren't one
         // atomic unit. That's acceptable here specifically because the

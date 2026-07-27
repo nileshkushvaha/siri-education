@@ -24,7 +24,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24J — GAP-021 Steps 9–11: the student homework list shows the
+ * The student homework list shows the
  * educational context (lesson and/or learning plan) with safe labels,
  * including historical context for archived plans, and legacy
  * booking-only records remain fully usable.

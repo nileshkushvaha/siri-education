@@ -13,10 +13,9 @@ use Tests\TestCase;
  * Base for the Lesson domain's real-MySQL concurrency tests — mirrors
  * Tests\Feature\Booking\Concurrency\ConcurrencyTestCase and
  * Tests\Feature\Earnings\Concurrency\ConcurrencyTestCase's shape,
- * including the exit-code-checked migrate:fresh restore (Phase 16C.1
- * root-cause fix) so a transient teardown failure fails loudly instead
- * of silently leaking a partially-rebuilt database into the next test
- * class.
+ * including the exit-code-checked migrate:fresh restore so a transient
+ * teardown failure fails loudly instead of silently leaking a
+ * partially-rebuilt database into the next test class.
  */
 abstract class ConcurrencyTestCase extends TestCase
 {

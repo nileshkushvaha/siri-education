@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 24J — GAP-021 (SRS-7-1 / SRS-7-12, SRS §7.19): every homework
+ * SRS-7-1 / SRS-7-12, SRS §7.19: every homework
  * assignment must reference a Lesson (booking) or a Learning Plan.
  *
  * Additive only:

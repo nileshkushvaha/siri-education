@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * SRS §6.19/§10.28 (GAP-018): one row per waitlist join. The
+ * SRS §6.19/§10.28: one row per waitlist join. The
  * canonical, unique target is (student, instructor) — "Waitlists are
  * instructor-specific" (§6.19) — everything else the SRS says the
  * waitlist "may collect" (subject, preferred days/time, duration,

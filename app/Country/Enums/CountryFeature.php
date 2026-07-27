@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Country\Enums;
 
 /**
- * GAP-029 (SRS §20.23/§20.36, §21.25/§21.36) — the only feature keys a
+ * SRS §20.23/§20.36, §21.25/§21.36 — the only feature keys a
  * country's `feature_flags` override may reference. Each case maps to
  * one real, already-load-bearing global switch and one real
  * enforcement boundary (§21.38 "Country-level feature flag must

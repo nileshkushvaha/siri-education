@@ -10,7 +10,7 @@ use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only instructor-compensation aggregates (Phase 18E) — earnings,
+ * Read-only instructor-compensation aggregates — earnings,
  * settlements, withdrawals and payout attempts, each lifecycle stage
  * reported separately (approved ≠ paid ≠ payout success). Amounts are
  * `earning_amount_minor`/`amount_minor` integers grouped by currency —
@@ -33,7 +33,7 @@ final class InstructorFinancialReportRepository
             ->groupBy('currency_code')
             ->get();
 
-        // GAP-008 — awards created in the period, by currency; the
+        // Awards created in the period, by currency; the
         // resulting earning is already counted above as a regular
         // demo_conversion_incentive-calculation-type earning, this is
         // purely the incentive-specific award-count breakdown.

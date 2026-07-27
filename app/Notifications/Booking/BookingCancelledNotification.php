@@ -17,7 +17,7 @@ final class BookingCancelledNotification extends BookingNotification
 
     public function __construct(
         public readonly Booking $booking,
-        /** Phase 24C — the frozen outcome; null when the booking had nothing to refund (free demo, unpaid, non-student-initiated omits this entirely for the instructor copy). */
+        /** The frozen outcome; null when the booking had nothing to refund (free demo, unpaid, non-student-initiated omits this entirely for the instructor copy). */
         public readonly ?CancellationRefundDecision $refundDecision = null,
     ) {
         $this->onQueue('notifications');

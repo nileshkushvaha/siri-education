@@ -7,7 +7,7 @@ namespace App\Exceptions;
 use RuntimeException;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: thrown by SuperAdminGuardService when a
+ * SRS-23-7: thrown by SuperAdminGuardService when a
  * mutation would leave the platform with zero active, access-capable
  * Super Admins. No role IDs, permission details, or the current count
  * are exposed — callers (Filament pages/actions) render getMessage()

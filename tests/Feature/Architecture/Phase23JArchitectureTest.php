@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23J boundary: the instructor homework review workflow
+ * Guards the instructor-homework-review boundary: the instructor homework review workflow
  * is a strict extension of the existing app/Homework/* domain — no
  * parallel InstructorHomework/InstructorSubmission/HomeworkReview
  * entities, no direct DB writes from Livewire, ownership enforced by
@@ -27,17 +27,17 @@ final class Phase23JArchitectureTest extends TestCase
         // exists" — a proxy for the real invariant: no PARALLEL
         // assignment/submission/review tracker was created alongside
         // HomeworkAssignment. That proxy broke as soon as legitimate
-        // satellite models were added (Phase 24K reminders, Phase 37A
-        // library). Replaced with an explicit allow-list: any Homework-
+        // satellite models were added (reminders, library resources).
+        // Replaced with an explicit allow-list: any Homework-
         // named model not on this list is exactly the duplicate-domain
         // regression this test exists to catch, and must be justified
         // here before being added.
         $expectedHomeworkModels = [
             'HomeworkAssignment.php', // the single source of truth for assignment/submission/review state
-            'HomeworkDueReminder.php', // Phase 24K (GAP-020) — due-date reminder claim/dispatch history
-            'HomeworkReminderChannelDelivery.php', // Phase 24K (GAP-020) — per-channel reminder delivery record
-            'HomeworkResource.php', // Phase 37A (GAP-022) — reusable library resource metadata
-            'HomeworkResourceVersion.php', // Phase 37A (GAP-022) — immutable published resource version
+            'HomeworkDueReminder.php', // due-date reminder claim/dispatch history
+            'HomeworkReminderChannelDelivery.php', // per-channel reminder delivery record
+            'HomeworkResource.php', // reusable library resource metadata
+            'HomeworkResourceVersion.php', // immutable published resource version
         ];
 
         $matches = [];
@@ -140,7 +140,7 @@ final class Phase23JArchitectureTest extends TestCase
         $service = file_get_contents(app_path('Services/Instructor/InstructorDashboardService.php'));
         $this->assertIsString($service);
 
-        // Phase 37B: the widget accepts the count PortalBadgeService
+        // The widget accepts the count PortalBadgeService
         // already computed for the nav badge (same pattern as
         // $unreadNotifications) instead of always re-running its own
         // COUNT query — this closed a genuine duplicate-query regression

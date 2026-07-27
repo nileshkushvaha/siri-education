@@ -8,11 +8,11 @@ use App\Referral\Contracts\ReferralRewardServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 19D: credits delayed/retryable referral rewards through the
+ * Credits delayed/retryable referral rewards through the
  * single creditReward() path. Idempotent (ledger idempotency keys +
  * row locks), bounded batches, per-reward failure isolated. Held
- * (fraud/currency) rewards are never selected — Phase 19E releases
- * those explicitly.
+ * (fraud/currency) rewards are never selected — releasing a hold is a
+ * separate, explicit action.
  */
 class CreditEligibleReferralRewards extends Command
 {

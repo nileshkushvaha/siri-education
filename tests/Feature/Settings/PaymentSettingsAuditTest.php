@@ -21,7 +21,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24G — GAP-009/SRS-20-18: every first-party save on the four
+ * SRS-20-18: every first-party save on the four
  * payment settings pages (Bank Account, Payment Gateways, Payment
  * Configuration, Advanced) must produce a complete, safe audit record
  * via the existing LogsSettingsUpdates trait/AuditTrailService — the
@@ -103,7 +103,7 @@ class PaymentSettingsAuditTest extends TestCase
 
         $changed = $activity->properties['changed'];
 
-        // Phase 24G.1: account_holder_name is a personal name with no
+        // account_holder_name is a personal name with no
         // explicit PII-plaintext-in-audit policy, so it gets the same
         // presence-only redaction as a financial identifier — never the
         // actual name.

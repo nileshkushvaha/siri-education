@@ -9,7 +9,7 @@ use App\Lessons\Events\LessonOutcomeFinalized;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
- * Phase 17E: classifies the financial disposition exactly once per
+ * Classifies the financial disposition exactly once per
  * finalized lesson outcome. A thin trigger — the service is gated by
  * instructor_earnings.financial_disposition_enabled, idempotent, and
  * never moves money. Deliberately separate from

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Marketplace;
 
 /**
- * Phase 18H — supply/demand comparison on COMPATIBLE dimensions only
+ * Supply/demand comparison on COMPATIBLE dimensions only
  * (subject↔subject, country↔country). No composite score, no
  * instructor ranking, no unmet-demand inference from searches or
  * waitlists (neither domain exists). `demandPerActiveInstructor` is a

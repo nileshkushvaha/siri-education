@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 /**
- * Self-service vacation toggle (Phase 23M). The instructor always acts
+ * Self-service vacation toggle. The instructor always acts
  * on their own account — $instructor and $actor are both auth()->user(),
  * never a client-supplied id — so InstructorOnboardingService's
  * self-service authorization path is the entire authorization boundary
@@ -24,7 +24,7 @@ final class VacationModeManager extends Component
 {
     public bool $confirmingEnable = false;
 
-    /** Phase 24I — GAP-019 (informational): how many confirmed upcoming lessons the instructor still owes; shown in the enable-confirmation panel. Vacation never strands these — it only pauses NEW bookings. */
+    /** Informational: how many confirmed upcoming lessons the instructor still owes; shown in the enable-confirmation panel. Vacation never strands these — it only pauses NEW bookings. */
     public int $upcomingConfirmedLessons = 0;
 
     public bool $confirmingResume = false;

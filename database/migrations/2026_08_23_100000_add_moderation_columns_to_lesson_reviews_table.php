@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17J — moderation bookkeeping on the existing review row (no new
+ * Moderation bookkeeping on the existing review row (no new
  * table: history is preserved through the existing activity log /
  * AuditTrailService, exactly like every other domain in this
  * codebase). `moderation_snapshot` captures the moderation_model /

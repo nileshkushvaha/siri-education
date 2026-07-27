@@ -30,7 +30,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24K — GAP-020: last-moment revalidation, notification content,
+ * Last-moment revalidation, notification content,
  * channel/timezone behavior, and audit visibility inside the queued
  * job. This is where "claimed but no longer useful" races are caught —
  * distinct from the candidate-query tests, which cover claim-time

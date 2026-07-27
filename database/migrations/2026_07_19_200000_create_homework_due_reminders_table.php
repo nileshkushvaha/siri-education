@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 24K — GAP-020 (SRS-7-11, SRS §7.11): durable claim/operation
+ * SRS-7-11, SRS §7.11: durable claim/operation
  * ledger for homework due-date reminders. The composite unique index
  * IS the concurrency guarantee — a scheduler rerun or a second
  * concurrent process racing the same candidate hits a unique-violation

@@ -33,9 +33,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 37A — GAP-022 / SRS-7-8 (§7.15 "Resource Library"): categorized,
+ * SRS-7-8 (§7.15 "Resource Library"): categorized,
  * searchable, versioned, reusable-across-lessons instructor resources.
- * Distinct from Phase 37's direct HomeworkAssignment attachments, which
+ * Distinct from HomeworkAssignment's own direct attachments, which
  * this suite leaves untouched.
  */
 final class HomeworkResourceLibraryTest extends TestCase

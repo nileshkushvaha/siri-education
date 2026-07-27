@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Phase 30 (GAP-014/GAP-015) — read-only-by-design compliance-flag
+ * Read-only-by-design compliance-flag
  * queue. No Create or Edit page exists; a row is only ever written by
  * ComplianceMonitoringService. Review actions (begin-review, resolve,
  * dismiss) live on the table and call that service exclusively — this

@@ -107,8 +107,7 @@ class StudentBookingTest extends TestCase
 
     public function test_student_books_paid_session_with_chosen_teacher(): void
     {
-        // Phase 10.2C-Hotfix: store() no longer auto-initiates a gateway
-        // payment order (that was the profile-completeness bypass) — the
+        // store() does not auto-initiate a gateway payment order — the
         // response carries the reserved, still-unpaid booking only.
         $this->actingAs($this->student)
             ->postJson('/dashboard/bookings', [
@@ -127,10 +126,9 @@ class StudentBookingTest extends TestCase
 
     public function test_unsafe_pay_route_no_longer_exists(): void
     {
-        // Phase 10.2C-Hotfix: the endpoint that let a student mark their
-        // own booking paid from a client-submitted `payment_reference`,
-        // with no provider signature verification, is removed entirely —
-        // see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md.
+        // The endpoint that let a student mark their own booking paid
+        // from a client-submitted `payment_reference`, with no provider
+        // signature verification, is removed entirely.
         $store = $this->actingAs($this->student)->postJson('/dashboard/bookings', [
             'type' => 'paid_one_to_one',
             'teacher_id' => $this->teacher->id,

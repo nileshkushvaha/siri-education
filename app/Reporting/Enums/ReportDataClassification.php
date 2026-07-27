@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\Enums;
 
 /**
- * Reporting data-classification model (Phase 18B §14). Deliberately
+ * Reporting data-classification model (SRS §14). Deliberately
  * small — five fixed levels, not a generic configurable privacy engine.
  * Used to decide whether a field/value may appear in an aggregate
  * report, and to whom.

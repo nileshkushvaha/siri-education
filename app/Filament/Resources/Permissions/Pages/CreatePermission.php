@@ -16,7 +16,7 @@ class CreatePermission extends CreateRecord
     protected static string $resource = PermissionResource::class;
 
     /**
-     * Phase 24Q.1 — GAP-011: AppServiceProvider::registerPermissionObserver()
+     * AppServiceProvider::registerPermissionObserver()
      * already auto-grants every newly created Permission to super_admin via
      * a Permission::created listener, which fires synchronously during the
      * base create() call above this hook — by the time afterCreate() runs,

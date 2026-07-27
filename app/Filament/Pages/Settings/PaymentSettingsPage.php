@@ -116,7 +116,7 @@ abstract class PaymentSettingsPage extends Page
             'stripe_webhook_secret' => null,
             'stripe_success_url' => $gateways->stripe_success_url ?? url('/payments/stripe/success'),
             'stripe_failure_url' => $gateways->stripe_failure_url ?? url('/payments/stripe/failure'),
-            // Phase 16A.1 fix: this must be the real settlement route
+            // This must be the real settlement route
             // (api/webhooks/bookings/payments/{provider}) — the generic
             // api/webhooks/payments/generic/{gateway} path only logs/audits
             // and never settles a booking (see PaymentWebhookProcessor).
@@ -1149,7 +1149,7 @@ abstract class PaymentSettingsPage extends Page
     }
 
     /**
-     * Phase 10.2A: reflects PaymentGatewaySettings::{provider}_config_status
+     * Reflects PaymentGatewaySettings::{provider}_config_status
      * (set by PaymentGatewayConfigurationService, never hand-edited) —
      * distinct from the enabled/disabled toggle, since a gateway can be
      * enabled with credentials that are missing/random/incomplete.

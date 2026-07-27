@@ -109,7 +109,7 @@
     <div class="grid gap-6 lg:grid-cols-2">
         <x-account.card>
             <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Student progress</p><h2 class="mt-1 text-lg font-semibold text-white">Learning plans</h2></div><a href="{{ route('dashboard.instructor.learning-plans') }}" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200">Manage</a></div>
-            {{-- Phase 23I: review-due/assessment counts live only in the
+            {{-- Review-due/assessment counts live only in the
                  "Teaching queue" card above — this card no longer repeats them. --}}
             <div class="rounded-2xl bg-white/[0.035] p-4">
                 <p class="text-2xl font-bold text-white">{{ $assignedActiveLearningPlanCount }}</p>
@@ -117,7 +117,7 @@
             </div>
         </x-account.card>
 
-        {{-- Phase 23I: visibility is decided by InstructorDashboardService::onboardingPromptVisible()
+        {{-- Visibility is decided by InstructorDashboardService::onboardingPromptVisible()
              — Approved/Active/Vacation/Suspended/Archived never see this card again,
              even if a completeness percentage is stale (e.g. an admin Force Approve). --}}
         @if($onboarding['show_prompt'] && $onboarding['variant'] === 'rejected')

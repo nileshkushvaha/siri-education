@@ -29,15 +29,15 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24K.1 — GAP-020 partial-channel idempotency. Uses REAL channel
+ * Partial-channel idempotency. Uses REAL channel
  * invocation (never Notification::fake(), which would hide the exact
- * failure this phase closes) with controlled fake channel classes bound
+ * underlying failure) with controlled fake channel classes bound
  * in the container, so a genuine per-channel exception propagates
  * exactly as it would in production, and the database channel writes a
  * real row to the `notifications` table.
  *
- * Revalidation finding (Step 1): HomeworkDueReminderNotification is no
- * longer ShouldQueue (Phase 24K.1 change) — the job calls
+ * HomeworkDueReminderNotification is not
+ * ShouldQueue — the job calls
  * Notification::sendNow() once per channel via HomeworkReminderChannelSender,
  * so a channel 2 failure can never re-touch channel 1's already-written
  * database row, and retrying only re-attempts unresolved channels.

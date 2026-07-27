@@ -65,9 +65,8 @@ final class LoginService
                 return LoginResult::AccountInactive;
             }
 
-            // Phase 24H — GAP-013: a suspended/archived student_status
-            // blocks login only when the account has no other legitimate
-            // (bookable instructor) capability — see
+            // A suspended/archived student_status blocks login for the
+            // whole account, regardless of any other role — see
             // StudentLifecycleService::blocksLogin() for the exact rule.
             if ($this->studentLifecycle->blocksLogin($user)) {
                 LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::StudentAccountRestricted->value, $sessionId);

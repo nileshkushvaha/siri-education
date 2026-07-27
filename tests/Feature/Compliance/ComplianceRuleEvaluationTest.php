@@ -21,7 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * SRS §9.13/§9.14/§24.25/§24.26 (GAP-014/GAP-015): every rule fires
+ * SRS §9.13/§9.14/§24.25/§24.26: every rule fires
  * only at/above its threshold, never below, and never at all while
  * disabled. Each rule is exercised directly against the exact
  * pre-existing table it counts against — no new tracking table is

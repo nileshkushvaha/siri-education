@@ -16,7 +16,7 @@ use Livewire\WithPagination;
  * The student's Refer a Friend panel. Lazily generates the student's
  * code on first visit via ReferralCodeService (never in a migration)
  * and renders the shareable link from the named registration route.
- * Phase 19D adds source-backed reward totals and paginated history —
+ * Source-backed reward totals and paginated history —
  * referred students appear only through the ReferredStudentMask rule,
  * amounts stay currency-separated, and hold reasons are never shown.
  */
@@ -38,7 +38,7 @@ final class ReferFriend extends Component
 
         abort_unless($user?->hasRole('student'), 403);
 
-        // Phase 24H.2 — GAP-013: referral participation is an Active-only
+        // Referral participation is an Active-only
         // capability; a Registered (or otherwise non-Active) student gets
         // a plain 403 before the lazy code-create below can run. The
         // service enforces this too — this abort just keeps the failure

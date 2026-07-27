@@ -29,7 +29,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18I — CSV export: layered authorization, owner-equality of
+ * CSV export: layered authorization, owner-equality of
  * rows, formula-injection neutralization, sensitive-identity masking,
  * row limits with no partial output, and the shared-reference audit
  * lifecycle.

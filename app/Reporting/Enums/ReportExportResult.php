@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Reporting\Enums;
 
-/** The outcome of an export attempt, for audit purposes (Phase 18B §20). */
+/** The outcome of an export attempt, for audit purposes (SRS §20). */
 enum ReportExportResult: string
 {
     case Requested = 'requested';

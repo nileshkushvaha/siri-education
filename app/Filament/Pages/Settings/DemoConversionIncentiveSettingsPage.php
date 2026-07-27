@@ -64,7 +64,7 @@ class DemoConversionIncentiveSettingsPage extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'GAP-008 — SRS §15.18: instructor bonus rules for students who convert from a completed demo to a completed paid lesson.';
+        return 'SRS §15.18: instructor bonus rules for students who convert from a completed demo to a completed paid lesson.';
     }
 
     public function getBreadcrumbs(): array

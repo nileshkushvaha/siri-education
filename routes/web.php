@@ -291,7 +291,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
         // app/Homework/* domain; grading writes go through
         // HomeworkService::review(), never straight to the model).
         Route::get('/instructor/homework', [InstructorHomeworkController::class, 'index'])->name('instructor.homework');
-        // GAP-022 (37A) — instructor's own reusable resource library.
+        // Instructor's own reusable resource library.
         Route::get('/instructor/homework/resources', [InstructorHomeworkResourceController::class, 'index'])->name('instructor.homework.resources');
         // Instructor-facing quality insights — read-only; the instructor
         // never moderates, resolves reports, or touches an aggregate here.
@@ -323,15 +323,15 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/invoices/{invoice}/download', StudentInvoiceDownloadController::class)->name('invoices.download');
     Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
     Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
-    // GAP-022 — authorization is re-checked inside the controller on
+    // Authorization is re-checked inside the controller on
     // every request (HomeworkAssignmentPolicy::view()); shared by
     // student and instructor since either may be the authorized viewer.
     Route::get('/homework/resources/{media}/download', HomeworkResourceDownloadController::class)->name('homework.resources.download');
-    // GAP-028 — authorization re-checked inside the controller on every
+    // Authorization re-checked inside the controller on every
     // request (RecordingPolicy::view()); shared by student and
     // instructor since either may be the authorized viewer.
     Route::get('/recordings/{media}/download', RecordingDownloadController::class)->name('recordings.download');
-    // Phase 41A — the one reusable download boundary for every other
+    // The one reusable download boundary for every other
     // private collection (Message, SupportCase, LessonTechnicalIssueReport,
     // UserExperience::supporting_documents, UserEducation). Authorization
     // is re-checked inside the controller via Gate::authorize('view', ...)
@@ -339,7 +339,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/media/{media}/download', SecureMediaDownloadController::class)->name('media.download');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
 
-    // ── Support Cases (Phase 31, GAP-016) — shared by student and
+    // ── Support Cases — shared by student and
     //    instructor audiences; SupportCaseType is derived from the
     //    acting user's active workspace, not a separate route group.
     //    Authorization is re-checked inside the controller on every
@@ -351,7 +351,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/support-cases/{supportCase}/reply', [SupportCaseController::class, 'reply'])->name('support-cases.reply');
     Route::post('/support-cases/{supportCase}/reopen', [SupportCaseController::class, 'reopen'])->name('support-cases.reopen');
 
-    // ── Messaging (Phase 32, GAP-017) — shared by student and
+    // ── Messaging — shared by student and
     //    instructor audiences; eligibility (confirmed paid booking or
     //    active learning plan) is re-checked on every send, never just
     //    at conversation-open time. Authorization is re-checked inside
@@ -427,7 +427,7 @@ Route::prefix('admin')->name('admin.')->middleware([
     // inside the controller on every request; see InstructorDocumentPolicy.
     Route::get('/instructor-documents/{media}/download', InstructorDocumentDownloadController::class)
         ->name('instructor-documents.download');
-    // Phase 41A — the SAME SecureMediaDownloadController as the
+    // The SAME SecureMediaDownloadController as the
     // dashboard route below, registered here too since managers/staff
     // use the admin portal and cannot reach /dashboard/* at all
     // (EnsureSupportedFrontendPortalAudience). One controller, two

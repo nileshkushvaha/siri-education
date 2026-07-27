@@ -97,7 +97,7 @@ class UserEducation extends Model implements HasMedia
         return $query->where('status', 'active');
     }
 
-    /** Phase 41A — private (GAP-037/41A audit): education/KYC-adjacent documents must never sit on the public disk. */
+    /** Private: education/KYC-adjacent documents must never sit on the public disk. */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('certificate')

@@ -7,16 +7,14 @@ namespace App\SupportCases\Enums;
 /**
  * SRS §25.9-25.10 defines a longer lifecycle (Open, Assigned, In
  * Review, Waiting for User, Escalated, Resolved, Closed, Reopened,
- * Duplicate, Cancelled, On Hold). Phase 31 deliberately implements the
- * subset the phase brief specified — Open, InProgress (folding
- * "Assigned"/"In Review" into one working state), WaitingForUser,
- * Escalated (kept because §25.40 "Case Status Lifecycle" is an
- * explicit Critical-priority requirement and §25.18/§25.40 "Case
- * Escalation" is explicit High-priority), Resolved, and Closed.
- * Duplicate/Cancelled/On Hold and a distinct "Reopened" state are
- * deferred — reopening is supported as a transition back to Open
- * (§25.33/§25.40 "Case Reopen"), not as its own status. See the Phase
- * 31 final report for this scope note.
+ * Duplicate, Cancelled, On Hold). This deliberately implements a
+ * subset — Open, InProgress (folding "Assigned"/"In Review" into one
+ * working state), WaitingForUser, Escalated (kept because §25.40 "Case
+ * Status Lifecycle" is an explicit Critical-priority requirement and
+ * §25.18/§25.40 "Case Escalation" is explicit High-priority), Resolved,
+ * and Closed. Duplicate/Cancelled/On Hold and a distinct "Reopened"
+ * state are deferred — reopening is supported as a transition back to
+ * Open (§25.33/§25.40 "Case Reopen"), not as its own status.
  *
  * canTransitionTo()/allowedTransitions() is the single source of
  * truth state machine — TransitionSupportCaseStatusAction is the sole

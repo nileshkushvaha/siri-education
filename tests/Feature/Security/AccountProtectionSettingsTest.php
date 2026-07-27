@@ -135,7 +135,7 @@ class AccountProtectionSettingsTest extends TestCase
         $this->actingAs($this->superAdmin);
 
         // A save with no actual field change is correctly a no-op audit
-        // event (Phase 24S) — flip a real value so this proves a genuine
+        // event — flip a real value so this proves a genuine
         // change is recorded.
         Livewire::test(AccountProtectionPage::class)
             ->set('data.notify_admin', true)

@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Configured review tags (Phase 17I) — students select from this
+ * Configured review tags — students select from this
  * fixed set, never free text. `applicable_modes` restricts a tag to
  * public_review and/or private_feedback submissions.
  */

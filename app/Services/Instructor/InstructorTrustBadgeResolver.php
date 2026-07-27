@@ -9,7 +9,7 @@ use App\Models\User;
 
 /**
  * Single source of truth for "does this instructor show a Verified
- * badge publicly?" (Phase 23F). Deliberately returns a single boolean,
+ * badge publicly?" Deliberately returns a single boolean,
  * not a set of independent badges — "Identity Verified" /
  * "Qualification Verified" are explicitly out of scope per the SRS
  * until a real verification pipeline for each exists; adding separate

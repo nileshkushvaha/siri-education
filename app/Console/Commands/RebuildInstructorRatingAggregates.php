@@ -8,7 +8,7 @@ use App\Reviews\Contracts\InstructorRatingAggregateServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17K — repair/reconciliation tool, not the primary update path
+ * Repair/reconciliation tool, not the primary update path
  * (that's the event-driven ReconcileReviewContributionAction). Fully
  * recomputes instructor rating aggregates from current eligible
  * published reviews. Idempotent, deterministic, per-instructor failure

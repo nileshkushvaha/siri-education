@@ -53,7 +53,7 @@ final class ReportAccessContext implements ReportAccessContextInterface
     {
         // Deliberately independent of canViewFinancialValues() — instructor
         // compensation access must remain more restrictive than general
-        // financial reporting (Phase 18B §12), so it is never implied by
+        // financial reporting (SRS §12), so it is never implied by
         // ViewFinanceReports alone.
         return $this->hasPermission($user, 'ViewInstructorCompensationReports');
     }
@@ -70,7 +70,7 @@ final class ReportAccessContext implements ReportAccessContextInterface
 
     public function canAccessArchivedEntities(User $user): bool
     {
-        // Historical reporting principle (Phase 18B §15): archived/soft-
+        // Historical reporting principle (SRS §15): archived/soft-
         // deleted entities remain usable in historical reports by design
         // — this is a capability flag for report queries to consult, not
         // an additional permission gate on top of report-view access.

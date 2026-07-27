@@ -62,7 +62,7 @@ final class PaymentWebhookProcessor
         }
 
         // This is a dead end by design — see the class docblock. Domain-
-        // specific reconciliation lives in BookingPaymentReconciliationService
-        // (Phase 16C), which never reads from this generic/inert path.
+        // specific reconciliation lives in BookingPaymentReconciliationService,
+        // which never reads from this generic/inert path.
     }
 }

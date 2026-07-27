@@ -13,10 +13,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 18B §19-20 — the export authorization/audit metadata contract.
- * No export is actually executed in this phase; this proves the shape
- * a later Phase 18 export slice will build and audit is sound and
- * routes exclusively through the existing AuditTrailService.
+ * The export authorization/audit metadata contract (SRS §19-20) —
+ * proves the audit trail is sound and routes exclusively through the
+ * existing AuditTrailService.
  */
 class ReportExportAuditorTest extends TestCase
 {

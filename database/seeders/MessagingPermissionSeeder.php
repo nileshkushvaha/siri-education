@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Messaging permissions (GAP-017 / SRS §17.36, Filament Shield
+ * Messaging permissions (SRS §17.36, Filament Shield
  * naming). Idempotent. Every write goes through MessagingService —
  * these permissions gate which admin actions may be invoked, never a
  * direct model write.

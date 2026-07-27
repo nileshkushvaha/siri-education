@@ -9,7 +9,7 @@ use App\Models\UserProfile;
 
 /**
  * Builds the read-only KYC display rows for the admin "Verification
- * Documents" section (Phase 23E) — replaces the raw
+ * Documents" section — replaces the raw
  * SpatieMediaLibraryFileUpload fields that previously exposed uploaded
  * files directly. Never returns a storage/media-library URL: the
  * "download_url" it produces always points at the app's own

@@ -7,7 +7,7 @@ namespace App\Reporting\DTOs\Learning;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 
 /**
- * Phase 18F — Learning Plan analytics. A Learning Plan is a
+ * Learning Plan analytics. A Learning Plan is a
  * `student_learning_plans` row: a living academic contract created from
  * a learning goal, carrying its own lifecycle (`LearningPlanStatus`)
  * and its own authoritative timestamps (`started_at`, `completed_at`,

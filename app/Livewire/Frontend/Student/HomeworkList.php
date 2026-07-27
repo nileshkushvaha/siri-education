@@ -23,7 +23,7 @@ final class HomeworkList extends Component
     #[Validate('required|string|min:3|max:5000')]
     public string $submissionText = '';
 
-    /** GAP-022: optional submission attachment, uploaded atomically with the text response. */
+    /** Optional submission attachment, uploaded atomically with the text response. */
     #[Validate('nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120')]
     public ?TemporaryUploadedFile $submissionAttachment = null;
 

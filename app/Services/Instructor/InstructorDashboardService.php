@@ -47,7 +47,7 @@ final class InstructorDashboardService
         $timezone = $instructor->profile?->timezone ?: config('app.timezone');
         $now = CarbonImmutable::now($timezone);
 
-        // Phase 23I — three bounded queries (two COUNTs + one LIMIT 4) instead
+        // Three bounded queries (two COUNTs + one LIMIT 4) instead
         // of materializing every upcoming booking just to count/filter/take()
         // it in PHP. Day boundaries are computed in the instructor's own
         // timezone, then converted to the app timezone Booking::starts_at is
@@ -137,7 +137,7 @@ final class InstructorDashboardService
     }
 
     /**
-     * Phase 23I — the dashboard onboarding card must never resurface for an
+     * The dashboard onboarding card must never resurface for an
      * instructor who has already cleared review, regardless of a stale
      * completeness percentage (e.g. an admin Force Approve bypasses the
      * normal completeness gate, which could otherwise leave `percentage`

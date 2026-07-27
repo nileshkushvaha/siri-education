@@ -6,7 +6,7 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        // Zoom Server-to-Server OAuth (Phase 11B). Disabled by default —
+        // Zoom Server-to-Server OAuth. Disabled by default —
         // ZoomMeetingProvider::isConfigured() fails closed until an admin
         // enables it AND every credential field validates.
         $this->migrator->add('meeting.zoom_enabled', false);

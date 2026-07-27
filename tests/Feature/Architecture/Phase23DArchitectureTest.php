@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23D boundary: all six new lifecycle transitions
+ * Guards the instructor-lifecycle-transitions boundary: all six lifecycle transitions
  * (activate/vacation/resume/suspend/archive/interview-required) live
  * only inside InstructorOnboardingService, and the new Filament actions
  * call that service rather than writing to the model directly.
@@ -18,8 +18,8 @@ final class Phase23DArchitectureTest extends TestCase
     {
         $allowed = [
             app_path('Services/Instructor/InstructorOnboardingService.php'),
-            // Pre-existing Phase 2.4 admin "Force Approve" override — predates
-            // Phase 23D and is unrelated to the six new lifecycle transitions.
+            // Pre-existing admin "Force Approve" override — predates
+            // and is unrelated to the six lifecycle transitions.
             app_path('Filament/Resources/Users/Pages/EditUser.php'),
         ];
 

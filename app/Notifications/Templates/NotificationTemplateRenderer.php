@@ -11,7 +11,7 @@ use InvalidArgumentException;
 use Throwable;
 
 /**
- * GAP-039 requirement #3 — the ONE authoritative renderer. Loads an
+ * The ONE authoritative renderer. Loads an
  * active admin override if one exists, falls back to the code-owned
  * default otherwise, substitutes only allowlisted `{{variable}}`
  * placeholders (HTML-escaped, never Blade/PHP/JS/expression

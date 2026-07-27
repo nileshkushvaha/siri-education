@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Pulse\Support\PulseMigration;
 
 /**
- * Phase 24O.1 — GAP-033 corrective: customized copy of Pulse v1.7.4's stock
+ * Customized copy of Pulse v1.7.4's stock
  * migration. The ONLY change from stock is the mysql/mariadb `key_hash`
  * expression, everywhere it appears (`pulse_values`, `pulse_entries`,
  * `pulse_aggregates`) — `unhex(md5(`key`))` -> `unhex(left(sha2(`key`, 256), 32))`.

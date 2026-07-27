@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Read-only wallet-recharge operational health across Razorpay,
- * Stripe, and Fake/local providers (SRS §13.33, GAP-003 closure). No
+ * Stripe, and Fake/local providers (SRS §13.33). No
  * mutation action of any kind exists here — every state transition
  * stays owned by WalletRechargeService/WalletRechargeReconciliationService.
  * Requires `ViewWalletReports`.

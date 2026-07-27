@@ -162,7 +162,7 @@ final class InstructorService
     }
 
     /**
-     * GAP-025: deterministic — no random ordering. Prefers instructors
+     * Deterministic — no random ordering. Prefers instructors
      * who share at least one of this instructor's ACTIVE, subject-
      * master-linked subjects (SRS §8.21 "filters shall only present
      * active Academic Framework entities"), ranked by popularity; tops
@@ -224,7 +224,7 @@ final class InstructorService
      * section: more (eligible) reviews first, then higher average
      * rating, then name — never random, never per-row queries (a
      * single LEFT JOIN against the existing durable rating aggregate
-     * table, Phase 17K).
+     * table).
      */
     public function applyPopularityOrder(Builder $query): Builder
     {
@@ -246,7 +246,7 @@ final class InstructorService
     }
 
     /**
-     * Public instructor profile URLs for the sitemap (Phase 23F) — reuses
+     * Public instructor profile URLs for the sitemap — reuses
      * baseQuery(), so it's exactly the same eligibility as the public
      * listing/detail pages: active account, public visibility, bookable
      * instructor_status (Approved/Active only — Draft/Submitted/
@@ -292,7 +292,7 @@ final class InstructorService
         $isOwner = $viewer && $viewer->id === $instructor->id;
         $canManage = $isOwner || ($viewer && $viewer->can('Update:User'));
         $isBookable = in_array($profile->instructor_status, InstructorStatus::bookable(), true);
-        // Phase 23M: a Vacation instructor's profile stays visible
+        // A Vacation instructor's profile stays visible
         // ("temporarily unavailable", booking disabled) — only
         // unapproved/suspended/archived instructors are hidden entirely.
         $isPubliclyVisible = in_array($profile->instructor_status, InstructorStatus::publiclyVisible(), true);
@@ -336,8 +336,8 @@ final class InstructorService
         // Demo CTA never shows on a non-bookable preview (owner/admin viewing
         // their own draft/suspended/etc. profile) even if offers_demo is
         // set, and never shows at all while the free_demo booking type is
-        // inactive or the platform-wide feature toggle is off (Phase
-        // 24B/24B.1, GAP-026) — see DemoAvailabilityResolver.
+        // inactive or the platform-wide feature toggle is off — see
+        // DemoAvailabilityResolver.
         $offersDemo = $this->offersDemo($profile, $isBookable);
 
         return compact(
@@ -497,7 +497,7 @@ final class InstructorService
     }
 
     /**
-     * Phase 24B.1 — the one place `offers_demo` is computed, shared by
+     * The one place `offers_demo` is computed, shared by
      * publicProfile() and card() so neither can drift from the other.
      * Effective availability = instructor is currently bookable AND the
      * instructor has opted into demos AND the platform-wide feature is
@@ -588,7 +588,7 @@ final class InstructorService
             ->values();
     }
 
-    /** Delegates to Phase 17K's durable aggregate — never recalculated from review rows here. */
+    /** Delegates to the durable rating aggregate — never recalculated from review rows here. */
     public function ratingsFor(User $instructor): array
     {
         $summary = $this->ratings->summaryFor($instructor->id);
@@ -670,7 +670,7 @@ final class InstructorService
         $query->whereHas('teacherSubjects', fn (Builder $subjectQuery) => $subjectQuery->where('subject', $subject));
     }
 
-    /** Only instructors with active, admin-approved coverage for the topic (Phase 12.5). */
+    /** Only instructors with active, admin-approved coverage for the topic. */
     private function applyTopicFilter(Builder $query, string $topic): void
     {
         $topicMaster = SubjectTopic::query()
@@ -731,8 +731,8 @@ final class InstructorService
     /**
      * The single eligibility boundary for public marketplace exposure —
      * public visibility, active account, bookable instructor_status
-     * (approved, not suspended/archived/draft). GAP-025's
-     * RecommendationService builds every section on top of this SAME
+     * (approved, not suspended/archived/draft). RecommendationService
+     * builds every section on top of this SAME
      * query rather than re-deriving eligibility.
      */
     public function baseQuery(): Builder

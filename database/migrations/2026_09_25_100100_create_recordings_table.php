@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-028 (SRS §12.18-21/31): durable recording metadata, linked to
+ * SRS §12.18-21/31: durable recording metadata, linked to
  * the booking and its meeting. student_id/teacher_id are denormalized
  * from the booking (mirroring HomeworkAssignment's own convention) so
  * access-authorization checks never need to join through

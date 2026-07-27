@@ -9,7 +9,7 @@ use App\Settings\MeetingSettings;
 use Illuminate\Console\Command;
 
 /**
- * GAP-028 requirement #7 — bounded retention cleanup: deletes the
+ * Bounded retention cleanup: deletes the
  * media FILE for every Available recording past its expires_at, but
  * keeps the metadata row (status becomes Expired) for historical/audit
  * evidence. Bounded per run via meeting.recording_expiry_batch_size —

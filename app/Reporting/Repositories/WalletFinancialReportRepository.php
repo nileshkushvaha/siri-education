@@ -22,7 +22,7 @@ use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only wallet + refund aggregates (Phase 18E). All amounts are
+ * Read-only wallet + refund aggregates. All amounts are
  * integer minor units summed in SQL and always grouped by currency —
  * no float ever touches a monetary value, and no cross-currency total
  * exists anywhere. Never invokes the ledger writer or any mutation
@@ -388,7 +388,7 @@ final class WalletFinancialReportRepository
         return new Paginator($rows, $total, $perPage, $page, ['path' => Paginator::resolveCurrentPath()]);
     }
 
-    // ── Promotional credits (GAP-041, Phase 33) ─────────────────────────────
+    // ── Promotional credits ─────────────────────────────
 
     /**
      * Per-campaign issuance totals — a natural extension of this same

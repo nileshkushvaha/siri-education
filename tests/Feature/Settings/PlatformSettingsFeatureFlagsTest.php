@@ -55,7 +55,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
     {
         // WalletSettings never redeclares its own "enabled" —
         // FeatureSettings is the only on/off switch. ReferralSettings was
-        // retired entirely in Phase 19C: referral_campaigns is the single
+        // retired entirely: referral_campaigns is the single
         // source of reward rules, so no settings class may compete.
         $this->assertFalse(property_exists(app(WalletSettings::class), 'enabled'));
         $this->assertFalse(class_exists('App\Settings\ReferralSettings'));
@@ -145,7 +145,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
 
         $this->actingAs($admin);
 
-        // Phase 19C: campaign rules are the single reward source — the
+        // Campaign rules are the single reward source — the
         // page keeps the referral feature switch but none of the retired
         // float reward fields.
         Livewire::test(PlatformFoundationSettingsPage::class)
@@ -174,7 +174,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(45, $booking->maximum_advance_booking_days);
     }
 
-    // ── Phase 24S: audit coverage across the five underlying settings classes ──
+    // ── Audit coverage across the five underlying settings classes ──
 
     public function test_saving_changes_across_multiple_domains_writes_one_event_per_changed_settings_class(): void
     {

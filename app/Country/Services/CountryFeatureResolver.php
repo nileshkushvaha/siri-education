@@ -10,7 +10,7 @@ use App\Settings\FeatureSettings;
 use App\Settings\PaymentGatewaySettings;
 
 /**
- * The single authority on GAP-029's effective-feature formula:
+ * The single authority on the effective-feature formula:
  *
  *     effective = global feature enabled
  *                 AND every dependency is also effective
@@ -40,8 +40,8 @@ final class CountryFeatureResolver
     /**
      * `$country` is null when no country could be resolved for this
      * action (guest with no default configured, user with no profile
-     * country, or resolution deliberately not attempted). Per Phase 34
-     * design decision, a missing country carries no override to apply
+     * country, or resolution deliberately not attempted) — by design,
+     * a missing country carries no override to apply
      * — the effective result falls through to the global-only
      * decision, identical to pre-Phase-34 behavior. A resolved but
      * inactive/restricted country is a distinct case and is expected to

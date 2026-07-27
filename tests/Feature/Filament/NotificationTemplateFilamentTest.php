@@ -19,7 +19,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-039 requirement #6 — permission-controlled Filament interface:
+ * Permission-controlled Filament interface:
  * list/view/edit, no create/delete, restore-default, activate/
  * deactivate. Preview safety is covered at the renderer level
  * (NotificationTemplateRendererTest); this covers authorization and

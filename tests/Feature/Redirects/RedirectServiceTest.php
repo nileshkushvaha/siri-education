@@ -17,7 +17,7 @@ use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**
- * GAP-036 (SRS §22.25/26): RedirectService is the sole authoritative
+ * SRS §22.25/26: RedirectService is the sole authoritative
  * boundary for redirect CRUD, normalization, duplicate/loop/target
  * validation, and resolution.
  */

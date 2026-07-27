@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Queue\Support;
 
 /**
- * Phase 24N — GAP-034 (Step 5): parses a failed_jobs.payload string
+ * Parses a failed_jobs.payload string
  * defensively for DISPLAY only — never unserializes the PHP object in
  * `payload.data.command`. Laravel's own dispatch pipeline already
  * writes a plain-string `displayName` field into the payload JSON

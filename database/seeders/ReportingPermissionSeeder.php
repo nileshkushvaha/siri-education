@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 18B — the reporting-foundation permission set. Category-level
+ * The reporting-foundation permission set. Category-level
  * `View*Reports` permissions gate landing-page section visibility
  * (`ReportCategory::requiredPermission()`); `ViewInstructorCompensationReports`
  * is seeded independently of `ViewFinanceReports` — deliberately not a

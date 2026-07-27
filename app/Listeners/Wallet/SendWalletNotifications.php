@@ -25,7 +25,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * operational concern, not a student-facing one — it is audit-logged
  * by WalletRechargeService/WalletRechargeReconciliationService instead.
  *
- * GAP-041 (Phase 33) reuses this same listener/queue/idempotency
+ * Promotional credits reuse this same listener/queue/idempotency
  * discipline for promotional credits rather than standing up a
  * parallel notification pipeline — requirement #8 "do not duplicate
  * ... notification pipelines".

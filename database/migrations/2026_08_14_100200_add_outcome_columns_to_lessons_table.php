@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  * from the operational LessonStatus. FinalizeLessonOutcomeAction /
  * OverrideLessonOutcomeAction are the only writers; outcome_version is
  * the concurrency lock value, incremented on every finalization and
- * override. Lessons finalized before Phase 17A are backfilled so the
+ * override. Already-finalized lessons are backfilled so the
  * "terminal status implies finalized outcome" invariant holds.
  */
 return new class extends Migration

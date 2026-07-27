@@ -28,7 +28,7 @@ final class StoreStudentBookingRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:1000'],
             // Recurrence (optional) — required_if_accepted:recurring means a
             // recurring request without an explicit frequency is rejected
-            // rather than silently defaulting to weekly (Phase 17U.3A).
+            // rather than silently defaulting to weekly.
             'recurring' => ['sometimes', 'boolean'],
             'occurrences' => ['required_if_accepted:recurring', 'integer', 'between:2,'.RecurrenceData::MAX_OCCURRENCES],
             'frequency' => ['required_if_accepted:recurring', Rule::enum(RecurrenceFrequency::class)],

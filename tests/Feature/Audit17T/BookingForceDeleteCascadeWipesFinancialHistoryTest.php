@@ -19,14 +19,12 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 17T Finding S-2, remediated in Phase 17U.1.
- *
  * This test originally proved the opposite of what it proves now: that
  * `BookingsTable::deleteTerminalOnly(force: true)` could silently
  * force-delete a terminal booking and cascade-destroy its Lesson and
  * LessonFinancialDisposition, with no exception and no audit entry.
  *
- * Phase 17U.1 removed every force-delete path for Booking, made
+ * The fix removed every force-delete path for Booking, made
  * `Booking::forceDelete()` throw unconditionally
  * (App\Support\Concerns\PreventsHardDeletion), and replaced every
  * historical `ON DELETE CASCADE` foreign key reachable from `bookings`

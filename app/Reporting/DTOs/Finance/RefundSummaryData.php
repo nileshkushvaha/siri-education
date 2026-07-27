@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Finance;
 
 /**
- * Phase 18E — refund summary. Version 1 lesson-refund policy is WALLET
+ * Refund summary. Version 1 lesson-refund policy is WALLET
  * CREDIT ONLY (verified: the lesson-refund execution action never calls
  * a gateway refund API; gateway refunds exist only in the separate
  * booking-cancellation pipeline). "Decision" = a lesson financial

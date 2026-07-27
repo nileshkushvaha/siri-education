@@ -208,7 +208,7 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
     {
         $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $student->assignRole('student');
-        // Phase 24H.2 — GAP-013: interactive student actions (favoriting
+        // Interactive student actions (favoriting
         // included) require an Active student_status; a bare role
         // assignment leaves it null and is always denied.
         $student->profile()->update(['student_status' => StudentStatus::Active]);
@@ -284,7 +284,7 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
     {
         $studentInstructor = $this->makeInstructor('Student Instructor', InstructorStatus::Approved);
         $studentInstructor->assignRole('student');
-        // Phase 24H.2 — GAP-013: see above — required for the duplicate-
+        // See above — required for the duplicate-
         // favorite assertion below to ever reach the actual create path.
         $studentInstructor->profile()->update(['student_status' => StudentStatus::Active]);
         $nonBookable = $this->makeInstructor('Non Bookable Instructor', InstructorStatus::Suspended);
@@ -320,7 +320,7 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
         $this->assertFalse(Schema::hasTable('student_profiles'));
         $this->assertFalse(Schema::hasTable('instructors'));
         $this->assertFalse(Schema::hasTable('instructor_profiles'));
-        // wallets is the approved Phase 9 foundation; marketplace browsing must
+        // wallets is a separate foundation; marketplace browsing must
         // still never touch it.
         $this->assertSame(0, Wallet::count());
         $this->assertFalse(Schema::hasTable('payments'));

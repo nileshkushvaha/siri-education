@@ -23,7 +23,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
-/** Phase 18D implementation — see the interface for the contract. */
+/** See the interface for the contract. */
 final class StudentEngagementReportService implements StudentEngagementReportServiceInterface
 {
     private const string REPORT_KEY = 'student_engagement';

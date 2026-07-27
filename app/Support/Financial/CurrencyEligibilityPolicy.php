@@ -8,7 +8,7 @@ use App\Models\Currency;
 use App\Support\Financial\Exceptions\CurrencyNotUsableException;
 
 /**
- * Phase 24M — GAP-031 (SRS-21-4, SRS §21.38/§21.40): the single
+ * SRS-21-4, SRS §21.38/§21.40: the single
  * authority on whether a currency code may be used for a given
  * financial operation. Centralizes what would otherwise be scattered
  * `Currency::where('status', 'active')` checks across Booking, Wallet,
@@ -29,7 +29,7 @@ use App\Support\Financial\Exceptions\CurrencyNotUsableException;
 final class CurrencyEligibilityPolicy
 {
     /**
-     * @param  bool  $lock  Phase 24M Step 9: lock the Currency row for
+     * @param  bool  $lock  Lock the Currency row for
      *                      the duration of the caller's transaction —
      *                      only meaningful for NewInitiation, so an
      *                      admin disabling the currency concurrently is

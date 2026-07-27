@@ -7,7 +7,7 @@ namespace App\Queue\DTOs;
 use App\Queue\Enums\FailedJobRetryOutcome;
 
 /**
- * Phase 24N — GAP-034: the typed, safe result of one retry attempt.
+ * The typed, safe result of one retry attempt.
  * `message` is always a generic, admin-safe string — never a raw
  * exception or payload fragment.
  */

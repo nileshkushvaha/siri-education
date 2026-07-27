@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Templates;
 
 /**
- * GAP-039 requirement #6 "preview with safe sample data" — fixed,
+ * Preview with safe sample data — fixed,
  * entirely fictional values keyed by template. Never reads a real
  * record, so a preview can never leak an actual student/instructor
  * name, amount, or reference.

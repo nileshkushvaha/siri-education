@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Reconciliation step (Phase 2 pre-work): teacher_subjects.subject stays a
+ * Reconciliation step: teacher_subjects.subject stays a
  * free-text column — booking flows (AssignmentCriteriaData, GuestBookingData,
  * StudentBookingData, TeacherCandidateRepository) keep reading it exactly as
  * before, nothing here changes that. This only adds an optional link to the

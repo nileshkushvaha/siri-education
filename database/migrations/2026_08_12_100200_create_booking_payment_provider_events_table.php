@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16C — collection-side mirror of instructor_payout_provider_events
+ * Collection-side mirror of instructor_payout_provider_events
  * (see that table's migration for the reasoning). Raw, verified provider
  * event log; `payload_hash` catches a provider reissuing the same
  * logical event under a new ID, independent of `provider_event_id`.

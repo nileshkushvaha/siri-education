@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Operations;
 
 /**
- * Phase 18C — lesson-outcome metrics. Date basis: `lessons.starts_at`
+ * Lesson-outcome metrics. Date basis: `lessons.starts_at`
  * for `scheduled` (scheduled-activity view); `lessons.outcome_finalized_at`
  * for every finalized-outcome count (business-event view) — never
  * `lessons.status` alone, which precedes finalization. `disputed` is

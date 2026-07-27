@@ -10,7 +10,7 @@ use Laravel\Pulse\Contracts\ResolvesUsers;
 use Tests\TestCase;
 
 /**
- * Phase 24O — GAP-033: AppServiceProvider::configurePulse() overrides
+ * AppServiceProvider::configurePulse() overrides
  * Pulse's default user field resolver (Laravel\Pulse\Users), which
  * otherwise returns the user's email in the Usage card's `extra` field.
  */

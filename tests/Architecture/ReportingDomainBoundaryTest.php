@@ -8,7 +8,7 @@ use App\Reporting\Exports\ReportCsvExporter;
 use Tests\TestCase;
 
 /**
- * Phase 18B §21/§23 — permanent guards for the reporting-domain
+ * SRS §21/§23 — permanent guards for the reporting-domain
  * boundary: `App\Reporting` may read other domains' enums/models but
  * must never mutate Booking/Lesson/Wallet/Payments/Earnings, moderate
  * Reviews, or resolve Quality alerts. Source domains must never depend
@@ -41,7 +41,7 @@ class ReportingDomainBoundaryTest extends TestCase
             'App\Reviews\Enums\ReviewReportStatus',
             'App\Quality\Enums\InstructorQualityAlertStatus',
             // Read-only analytics/aggregation contracts that are the
-            // EXISTING calculation owners Phase 18D reuses rather than
+            // EXISTING calculation owners Reporting reuses rather than
             // duplicating (demo conversion, platform rating figures) —
             // both are pure read interfaces with no mutating method.
             'App\Booking\Contracts\BookingAnalyticsRepositoryInterface',
@@ -91,7 +91,7 @@ class ReportingDomainBoundaryTest extends TestCase
 
     public function test_reporting_domain_contains_no_migration(): void
     {
-        // Phase 18B introduces no schema change at all.
+        // The reporting domain introduces no schema change at all.
         $this->assertFileDoesNotExist(base_path('app/Reporting/Migrations'));
     }
 
@@ -106,7 +106,7 @@ class ReportingDomainBoundaryTest extends TestCase
         }
     }
 
-    // ── Phase 18C — operations report boundaries ──────────────────────────
+    // ── Operations report boundaries ──────────────────────────
 
     public function test_reporting_domain_never_dispatches_events_or_notifications(): void
     {
@@ -159,7 +159,7 @@ class ReportingDomainBoundaryTest extends TestCase
         }
     }
 
-    // ── Phase 18D — student/instructor analytics boundaries ───────────────
+    // ── Student/instructor analytics boundaries ───────────────
 
     public function test_analytics_report_services_never_depend_on_financial_domains(): void
     {
@@ -204,7 +204,7 @@ class ReportingDomainBoundaryTest extends TestCase
     public function test_only_the_export_auditor_touches_the_audit_service_inside_reporting(): void
     {
         foreach ($this->phpFilesUnder(base_path('app/Reporting')) as $file) {
-            // The Phase 18B export contract pair is the one sanctioned
+            // The export contract pair is the one sanctioned
             // consumer (the DTO only names the service in a docblock).
             if (str_ends_with($file, 'ReportExportAuditor.php') || str_ends_with($file, 'ExportRequestContext.php')) {
                 continue;
@@ -230,7 +230,7 @@ class ReportingDomainBoundaryTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    // ── Phase 18I — export boundaries ─────────────────────────────────────
+    // ── Export boundaries ─────────────────────────────────────
 
     public function test_export_path_performs_no_source_domain_mutation_or_dynamic_sql(): void
     {
@@ -256,7 +256,7 @@ class ReportingDomainBoundaryTest extends TestCase
             $this->assertContains(
                 $definition->exportPermission,
                 ['ExportReports', 'ExportFinancialReports', 'ExportSensitiveReports'],
-                "{$definition->key} must use one of the Phase 18B export permissions.",
+                "{$definition->key} must use one of the sanctioned export permissions.",
             );
             $this->assertNotEmpty($definition->headers, "{$definition->key} must declare fixed headers — no dynamic columns.");
             $this->assertGreaterThan(0, $definition->maxRows);
@@ -264,7 +264,7 @@ class ReportingDomainBoundaryTest extends TestCase
         }
     }
 
-    // ── Phase 18H — marketplace/executive boundaries ──────────────────────
+    // ── Marketplace/executive boundaries ──────────────────────
 
     public function test_marketplace_executive_pages_delegate_all_queries(): void
     {
@@ -310,7 +310,7 @@ class ReportingDomainBoundaryTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    // ── Phase 18G — referral/quality/communication boundaries ─────────────
+    // ── Referral/quality/communication boundaries ─────────────
 
     public function test_communication_reporting_never_imports_mutation_paths(): void
     {
@@ -359,7 +359,7 @@ class ReportingDomainBoundaryTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    // ── Phase 18F — learning analytics boundaries ─────────────────────────
+    // ── Learning analytics boundaries ─────────────────────────
 
     public function test_learning_reporting_never_imports_academic_mutation_paths(): void
     {
@@ -447,7 +447,7 @@ class ReportingDomainBoundaryTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    // ── Phase 18E — financial reporting boundaries ────────────────────────
+    // ── Financial reporting boundaries ────────────────────────
 
     public function test_financial_reporting_never_touches_mutation_services_or_providers(): void
     {

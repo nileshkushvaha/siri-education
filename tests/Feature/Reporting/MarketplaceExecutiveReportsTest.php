@@ -29,7 +29,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18H — marketplace supply/demand definitions, comparison
+ * Marketplace supply/demand definitions, comparison
  * boundaries, executive composition (owner equality, permission-gated
  * groups), fabrication guards, privacy and zero side effects.
  */

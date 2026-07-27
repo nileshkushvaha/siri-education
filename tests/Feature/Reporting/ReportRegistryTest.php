@@ -18,7 +18,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
-/** Phase 18B §10 — the code-defined report catalogue. */
+/** The code-defined report catalogue. */
 class ReportRegistryTest extends TestCase
 {
     use RefreshDatabase;

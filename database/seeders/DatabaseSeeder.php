@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
             BookingTypeSeeder::class,
             BookingPermissionSeeder::class,
             BookingPaymentPermissionSeeder::class,
-            // Phase 17U.2 §11 — wired into the normal deploy path so
+            // Wired into the normal deploy path so
             // managers can reach lesson/review/feedback admin surfaces
             // without a manual `db:seed --class=X`. Order follows the
             // domain dependency chain (Booking -> Lesson -> Review ->
@@ -40,12 +40,12 @@ class DatabaseSeeder extends Seeder
             FeedbackPermissionSeeder::class,
             WalletPermissionSeeder::class,
             ReferralPermissionSeeder::class,
-            // Phase 30 — reads Auth/Booking/Referral/Wallet signals, so
+            // Reads Auth/Booking/Referral/Wallet signals, so
             // placed after all four domains it monitors.
             SuspiciousActivityFlagPermissionSeeder::class,
             QueueMonitorPermissionSeeder::class,
             PulsePermissionSeeder::class,
-            // Phase 18B — the reporting-foundation permission set. No data
+            // The reporting-foundation permission set. No data
             // dependency of its own; placed after every domain it reports
             // on so it can be reasoned about as "reads everything above".
             ReportingPermissionSeeder::class,
@@ -58,15 +58,15 @@ class DatabaseSeeder extends Seeder
             InstructorSeeder::class,
             InstructorDocumentRequirementSeeder::class,
             FaqSeeder::class,
-            // Phase 31 — GAP-016 support/dispute case management.
+            // Support/dispute case management.
             SupportCasePermissionSeeder::class,
-            // Phase 32 — GAP-017 controlled student-instructor messaging.
+            // Controlled student-instructor messaging.
             MessagingPermissionSeeder::class,
-            // Phase 33 — GAP-041 remaining promotional-credit portion.
+            // Promotional-credit permissions.
             PromotionalCreditPermissionSeeder::class,
-            // Phase 35 — GAP-035 durable operational alerts.
+            // Durable operational alerts.
             OperationalAlertPermissionSeeder::class,
-            // Phase 38 — GAP-036 managed SEO redirects.
+            // Managed SEO redirects.
             RedirectPermissionSeeder::class,
         ]);
     }

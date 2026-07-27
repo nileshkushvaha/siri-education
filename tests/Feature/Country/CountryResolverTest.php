@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 34 (GAP-029, requirement #3) — the single place every
+ * The single place every
  * country-governed mutation resolves "which country applies here".
  */
 class CountryResolverTest extends TestCase

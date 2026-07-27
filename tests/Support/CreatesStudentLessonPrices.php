@@ -14,9 +14,9 @@ use App\Models\User;
 use App\Models\UserProfile;
 
 /**
- * Phase 10.2D-Cleanup-Fix: `BookingType::factory()->paid()` no longer
+ * `BookingType::factory()->paid()` no longer
  * carries a price (see BookingTypeFactory — `booking_types.price`/
- * `currency` were removed in Phase 10.2D-Cleanup). Any test that books
+ * `currency` were removed). Any test that books
  * a paid lesson through `BookingService`/`StudentBookingService` needs
  * an active `StudentLessonPrice` row matching the booking's subject,
  * academic level (or none — "all levels"), billing country, currency,

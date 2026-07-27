@@ -27,7 +27,7 @@ class LessonSettings extends Settings
     public int $min_attendance_seconds;
 
     /**
-     * Master switch for the Phase 17B evidence-driven finalization engine
+     * Master switch for the evidence-driven finalization engine
      * (lessons:finalize-due). Ships OFF: while off, nothing changes and the
      * legacy lenient sweep (lessons:auto-complete) keeps running; while on,
      * the legacy sweep defers so exactly one automation policy is active.

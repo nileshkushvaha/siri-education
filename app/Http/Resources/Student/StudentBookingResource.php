@@ -16,7 +16,7 @@ final class StudentBookingResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // Phase 24H.2A — GAP-013: the URL comes exclusively from the
+        // The URL comes exclusively from the
         // authoritative service (viewer ownership + strict Active
         // lifecycle + visibility setting + booking/meeting status) —
         // this resource serializes only what the domain releases, and

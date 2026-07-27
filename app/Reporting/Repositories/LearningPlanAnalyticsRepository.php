@@ -19,10 +19,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Read-only Learning Plan / Goal / Milestone / Progress Review
- * aggregates (Phase 18F). All figures are SQL aggregation over the
+ * aggregates. All figures are SQL aggregation over the
  * authoritative lifecycle columns; soft-deleted rows are excluded;
  * archived plans and goals remain in every historical count. Reuses
- * the exact Phase 18D predicate for "active plan" (status = 'active'
+ * the exact Student Engagement predicate for "active plan" (status = 'active'
  * only) so Student Engagement and Learning Analytics can never
  * disagree on the shared fact. Never touches private note columns.
  */

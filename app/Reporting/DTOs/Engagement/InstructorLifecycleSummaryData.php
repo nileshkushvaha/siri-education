@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Engagement;
 
 /**
- * Phase 18D — instructor lifecycle summary. `byStatus` is the CURRENT
+ * Instructor lifecycle summary. `byStatus` is the CURRENT
  * `user_profiles.instructor_status` (all 11 lifecycle cases, none
  * collapsed). `approvalsInPeriod` counts structured audit events
  * (`activity_log.event = 'application_approved'`, log name

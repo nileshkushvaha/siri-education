@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Booking payment reconciliation-issue permissions (Phase 16C — mirrors
+ * Booking payment reconciliation-issue permissions (mirrors
  * InstructorPayoutExecutionPermissionSeeder's reconciliation grants).
  * Idempotent. No Create/Update/Delete — an issue is only ever written
  * by BookingPaymentReconciliationService; these four permissions cover

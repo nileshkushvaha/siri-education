@@ -7,11 +7,10 @@ namespace App\DTOs\Instructor;
 use App\Enums\InstructorAnalyticsPeriod;
 
 /**
- * Advanced instructor performance insights (Phase 23P) — trend layer
- * on top of Phase 23O's InstructorAnalyticsData snapshot. Deliberately
+ * Advanced instructor performance insights — trend layer
+ * on top of InstructorAnalyticsData's snapshot. Deliberately
  * excludes demo conversion: existing attribution is platform-wide
- * admin analytics only, not instructor-scoped (see the Phase 23O/23P
- * final reports for the deferral rationale) — "Conversion attribution
+ * admin analytics only, not instructor-scoped — "Conversion attribution
  * requires an approved business definition."
  */
 final readonly class InstructorPerformanceInsightsData

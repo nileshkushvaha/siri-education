@@ -12,7 +12,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Tests\TestCase;
 
 /**
- * Phase 17 closure audit — LessonOutcomeService::finalize() can call
+ * LessonOutcomeService::finalize() can call
  * LessonLifecycleService::complete()/cancel() from inside its own outer
  * DB::transaction (manual review confirmation, the automated
  * finalizer). Without ShouldDispatchAfterCommit, LessonCompleted/

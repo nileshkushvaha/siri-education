@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17H — durable student review eligibility. Exactly one record
+ * Durable student review eligibility. Exactly one record
  * per (lesson, student): outcome corrections transition the SAME row
  * (open → revoked, open → expired, used → manual_review, revoked →
  * open again) rather than creating new rows — history is preserved in

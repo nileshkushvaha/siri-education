@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Phase 18C data-provenance decision (Outcome A, §6.2): `booking_activities.action`
+     * Data-provenance decision (Outcome A, §6.2): `booking_activities.action`
      * is already a structured, enum-backed, typed column (never free text)
      * that records every 'rescheduled' lifecycle event — an authoritative
      * reschedule-count source with no new schema concept. The only gap is

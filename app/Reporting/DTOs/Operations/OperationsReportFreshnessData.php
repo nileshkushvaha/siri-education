@@ -7,7 +7,7 @@ namespace App\Reporting\DTOs\Operations;
 use App\Reporting\Enums\ReportDataFreshness;
 use Carbon\CarbonImmutable;
 
-/** Freshness/timezone metadata every operations report render must display (Phase 18B §17 / Phase 18C §16). */
+/** Freshness/timezone metadata every operations report render must display (SRS §17/§16). */
 final readonly class OperationsReportFreshnessData
 {
     public function __construct(

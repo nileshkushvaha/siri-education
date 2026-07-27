@@ -29,11 +29,11 @@ final class StudentLearningGoalService
     public function create(User $student, array $data): StudentLearningGoal
     {
         return DB::transaction(function () use ($student, $data): StudentLearningGoal {
-            // Phase 24H.2 — GAP-013: create() always makes a goal owned
-            // by $student themselves (the relation below), so this is
-            // unconditionally a student-initiated action — checked
-            // inside the transaction so the locked profile read
-            // serializes against a concurrent suspension.
+            // create() always makes a goal owned by $student themselves
+            // (the relation below), so this is unconditionally a
+            // student-initiated action — checked inside the transaction
+            // so the locked profile read serializes against a
+            // concurrent suspension.
             $this->lifecycle->assertEligibleForStudentAction($student);
 
             $payload = $this->validatedPayload($data);
@@ -185,8 +185,8 @@ final class StudentLearningGoalService
             throw new AuthorizationException;
         }
 
-        // Phase 24H.2 — GAP-013: the lifecycle guard applies only when
-        // the actor IS the owning student (the first branch above). An
+        // The lifecycle guard applies only when the actor IS the owning
+        // student (the first branch above). An
         // admin acting through the 'update' policy permission is
         // governed by that permission alone — a student's restricted
         // status must never block authorized administrative work on

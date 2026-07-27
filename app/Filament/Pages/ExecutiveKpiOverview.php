@@ -18,7 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18H — Executive KPI Overview: a pure composition of existing
+ * Executive KPI Overview: a pure composition of existing
  * report-service results (each group keeps its own owner, permission
  * and definitions). Requires `ViewExecutiveReports`; groups whose
  * underlying permission is absent render as restricted and never

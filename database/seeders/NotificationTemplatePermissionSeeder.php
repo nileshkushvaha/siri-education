@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * GAP-039 notification-template permissions (Filament Shield naming).
+ * Notification-template permissions (Filament Shield naming).
  * Idempotent. No Create/Delete permission exists at all — template
  * keys/channels are a fixed, code-owned set; only content editing and
  * activation are ever administrator actions (NotificationTemplateService).

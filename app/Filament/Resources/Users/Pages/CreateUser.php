@@ -34,7 +34,7 @@ class CreateUser extends CreateRecord
                 ->log('Password change required on first login');
         }
 
-        // Phase 24Q — GAP-011: role assignment happens via Filament's own
+        // Role assignment happens via Filament's own
         // relationship field (UserForm's roles Select) before this hook
         // runs — mirrors EditUser::afterSave()'s 'roles_updated' shape so
         // both surfaces are filterable/comparable the same way in the
@@ -52,7 +52,7 @@ class CreateUser extends CreateRecord
             ]);
         }
 
-        // Phase 24H.1A — GAP-013: a brand-new user created directly
+        // A brand-new user created directly
         // through Filament (not the registration flow) with the student
         // role checked would otherwise be left with student_status null
         // forever — RegistrationService is the only path that normally

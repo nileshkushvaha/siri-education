@@ -39,7 +39,7 @@ final class InstructorHomeworkTest extends TestCase
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
-        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
+        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // interactive student actions require Active status.
     }
 
     // ── Access control ───────────────────────────────────────────────

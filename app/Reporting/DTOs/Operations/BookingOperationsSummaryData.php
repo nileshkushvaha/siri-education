@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Operations;
 
 /**
- * Phase 18C — Booking Report metrics. Date basis: `bookings.created_at`
+ * Booking Report metrics. Date basis: `bookings.created_at`
  * (business-event view — "bookings created in the period"), except
  * `rescheduled` which counts `booking_activities` rows created in the
  * period (a reschedule can happen well after the booking itself was
  * created). All counts, never revenue/price — financial values are out
- * of scope for this phase.
+ * of scope for this report.
  *
  * @param  array<string, int>  $byType  keyed by `ReportingBookingType::value` ('free_demo', 'paid_one_to_one')
  * @param  array<string, int>  $byStatus  keyed by `BookingStatus::value`

@@ -7,8 +7,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 10.2D-Cleanup: `booking_types.price`/`currency` are removed —
- * `StudentLessonPrice` (Phase 10.2D) is now the only source of a paid
+ * `booking_types.price`/`currency` are removed —
+ * `StudentLessonPrice` is now the only source of a paid
  * lesson's student-facing price; `BookingType` defines booking
  * behavior only. Does NOT touch `bookings.price`/`currency` (the
  * per-booking snapshot taken at booking-creation time) or any

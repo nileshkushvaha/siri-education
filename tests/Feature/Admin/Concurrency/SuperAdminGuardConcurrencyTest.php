@@ -9,7 +9,7 @@ use Spatie\Permission\Models\Role;
 use Tests\Feature\Booking\Concurrency\ConcurrencyTestCase;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: real multi-process race proving that
+ * SRS-23-7: real multi-process race proving that
  * when only the final two active Super Admins remain, two concurrent
  * requests each deactivating a DIFFERENT one of them resolve to exactly
  * one success and one rejection — never both committing and leaving

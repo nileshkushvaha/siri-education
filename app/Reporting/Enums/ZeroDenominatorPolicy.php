@@ -6,7 +6,7 @@ namespace App\Reporting\Enums;
 
 /**
  * How a ratio/average metric behaves when its denominator is zero
- * (Phase 18B §11) — every metric definition must pick one explicitly,
+ * (SRS §11) — every metric definition must pick one explicitly,
  * mirroring the codebase-wide convention that a zero-review instructor
  * shows `averageRating: null`, never a fabricated `0`
  * (`InstructorRatingAggregateService::summaryFor()`).

@@ -11,7 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Phase 24N — GAP-034: a trivial job used only by
+ * A trivial job used only by
  * FailedJobRetryConcurrencyTest. Must live in its own PSR-4-autoloadable
  * file (not inline in the test file) — the concurrency harness's child
  * processes (tests/Concurrency/run-op.php) resolve classes purely via

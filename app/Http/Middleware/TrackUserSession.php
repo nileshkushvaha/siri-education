@@ -19,12 +19,12 @@ use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Phase 24F — GAP-012/SRS-1-23: the single place that both tracks and
+ * SRS-1-23: the single place that both tracks and
  * enforces per-session activity. Extends the pre-existing tracker
  * rather than adding a second one — UserSession (keyed by the real
  * Laravel session_id) is already exactly the "per-session, server-
  * written, survives between requests, distinguishes devices" activity
- * record Step 3 asks for.
+ * record this needs.
  *
  * Order within a request: the idle check runs BEFORE $next($request),
  * reading whatever last_activity_at was left by the PREVIOUS request —

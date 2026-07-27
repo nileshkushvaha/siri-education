@@ -42,7 +42,7 @@ class ReferralCampaignForm
                             Toggle::make('requires_fraud_review')
                                 ->label('Hold rewards for fraud review')
                                 ->inline(false)
-                                ->helperText('Every reward from this campaign starts Held until an administrator approves it (Phase 19D).'),
+                                ->helperText('Every reward from this campaign starts Held until an administrator approves it.'),
                         ]),
                         Textarea::make('description')
                             ->rows(2)

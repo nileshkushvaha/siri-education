@@ -106,9 +106,7 @@ use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Wallets\WalletResource;
 
 /**
- * Single source of truth for admin sidebar placement (Phase 1 of the
- * navigation IA redesign — see docs/audits/phase-navigation-*.md for
- * the full inventory/mapping this was built from).
+ * Single source of truth for admin sidebar placement.
  *
  * What this does and does not do:
  *  - Decides GROUP, SUBGROUP (informational), LABEL and SORT for every
@@ -118,7 +116,7 @@ use App\Filament\Resources\Wallets\WalletResource;
  *    this registry runs only after that check already passed.
  *  - Never points two entries at the same underlying route unless
  *    explicitly documented as a `crossLinkedFrom` (metadata only, no
- *    second nav item is created for it in Phase 1).
+ *    second nav item is created for it).
  *
  * Adding a new module: add one entry here and `use HasCentralizedNavigation;`
  * on the new Resource/Page. No other file needs to change.
@@ -504,7 +502,7 @@ final class NavigationRegistry
                 previousGroup: 'Platform',
                 previousLabel: 'Instructor Earnings',
             ),
-            // Phase 1 correction: inspected — this page is configuration-only
+            // Inspected — this page is configuration-only
             // (provider credentials, environment, defaults, IP allowlisting,
             // webhook rotation; its "check health"/"validate configuration"
             // actions verify config structure, never execute or list
@@ -934,7 +932,7 @@ final class NavigationRegistry
                 previousGroup: 'Platform',
                 previousLabel: 'Platform Foundation',
             ),
-            // Phase 1 correction: inspected — this page is configuration-only
+            // Inspected — this page is configuration-only
             // (provider toggles, credentials, auto-creation rules, join-link
             // visibility; its "actions" are configuration validation checks,
             // not operational meeting management — no separate meeting-

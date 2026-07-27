@@ -13,14 +13,14 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24O — GAP-033: `/pulse` is Pulse's own route, protected only by its
+ * `/pulse` is Pulse's own route, protected only by its
  * own `Authorize` middleware (`['web', Authorize::class]` — no `auth`
  * middleware), so denied requests get 403, not a login redirect.
  *
- * Phase 24O.1: the Pulse migration (customized for this MySQL's missing
- * MD5() — see docs/pulse-monitoring.md) is now in the normal migration
+ * The Pulse migration (customized for this MySQL's missing
+ * MD5() — see docs/pulse-monitoring.md) is in the normal migration
  * path, so the dashboard-render tests below run unconditionally — no
- * schema-based skip. A missing table now correctly fails these tests
+ * schema-based skip. A missing table correctly fails these tests
  * instead of silently skipping (see PulseMigrationCompatibilityTest for
  * the dedicated "migration must be present" check).
  */

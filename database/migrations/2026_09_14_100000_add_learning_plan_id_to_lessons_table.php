@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * SRS §6.17.5 / §6.17.10 (GAP-023): a lesson may optionally belong to
+ * SRS §6.17.5 / §6.17.10: a lesson may optionally belong to
  * the one compatible active learning plan resolved at creation time —
  * zero-or-one, never many. Nullable and additive: existing lessons are
  * left unlinked, never backfilled by this migration.

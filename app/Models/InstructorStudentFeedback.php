@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Private, immutable-after-creation instructor-to-student lesson
- * feedback (Phase 17Q). One row per (lesson, instructor) — written
+ * feedback. One row per (lesson, instructor) — written
  * exclusively by SubmitInstructorStudentFeedbackAction. Never exposed
  * publicly, never contributes to a rating or aggregate, and never
  * physically deleted. `outcome_snapshot`/`source_outcome_version`
@@ -67,7 +67,7 @@ class InstructorStudentFeedback extends Model
         return $this->belongsTo(Lesson::class);
     }
 
-    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion / Phase 17U.1. */
+    /** withTrashed() — an archived (soft-deleted) booking must still resolve here; see PreventsHardDeletion. */
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class)->withTrashed();

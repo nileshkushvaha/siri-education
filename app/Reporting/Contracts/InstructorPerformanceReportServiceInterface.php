@@ -17,7 +17,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * Phase 18D — the single read-only entry point for Instructor
+ * The single read-only entry point for Instructor
  * Performance reporting. Base access requires `ViewInstructorReports`;
  * quality figures additionally require `ViewReviewQualityReports` —
  * never implied. Earnings/compensation/settlement data is structurally

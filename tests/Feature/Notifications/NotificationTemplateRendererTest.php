@@ -18,7 +18,7 @@ use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
- * GAP-039 requirement #3 — the one authoritative renderer. Covers
+ * The one authoritative renderer. Covers
  * default fallback, valid override rendering, variable allowlisting,
  * escaping/injection prevention, channel isolation, cache invalidation,
  * and safe fallback when an override is inactive/invalid or the

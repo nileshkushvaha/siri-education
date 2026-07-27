@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Phase 35 (GAP-035) — read-only-by-design operational-alert queue. No
+ * Read-only-by-design operational-alert queue. No
  * Create or Edit page exists; a row is only ever written by
  * OperationalAlertService. Acknowledge/resolve actions live on the
  * table and call that service exclusively.

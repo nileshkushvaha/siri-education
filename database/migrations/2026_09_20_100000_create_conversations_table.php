@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-017 / SRS §17.28-§17.36: one conversation per (student,
+ * SRS §17.28-§17.36: one conversation per (student,
  * instructor, context) triple. `context_type`/`context_id` is a
  * single polymorphic reference restricted to Booking or
  * StudentLearningPlan (§17.30's narrower V1 set — Homework/Lesson/

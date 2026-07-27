@@ -10,7 +10,7 @@ use App\Reporting\ValueObjects\ReportingPeriod;
 use Carbon\CarbonImmutable;
 
 /**
- * Instructor Analytics period filter (Phase 23O). Every bounded case
+ * Instructor Analytics period filter. Every bounded case
  * is computed by the existing App\Reporting\ValueObjects\ReportingPeriod
  * — never a second date-boundary implementation. Last90Days/ThisYear
  * reuse ReportingPeriod::custom() (the admin preset list doesn't cover

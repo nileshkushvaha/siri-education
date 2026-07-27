@@ -22,7 +22,7 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * SRS §9.14 / §9.21-5 (GAP-024): end-to-end marketplace pricing display
+ * SRS §9.14 / §9.21-5: end-to-end marketplace pricing display
  * across discovery cards, the public profile, guest country selection,
  * and checkout parity.
  */

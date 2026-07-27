@@ -24,7 +24,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24D — the student-facing remaining-reschedule-allowance display
+ * The student-facing remaining-reschedule-allowance display
  * and exhausted state on the booking-history modal. The UI is never the
  * authority: every scenario here also exercises the real
  * BookingService::reschedule() path so a stale render cannot bypass the

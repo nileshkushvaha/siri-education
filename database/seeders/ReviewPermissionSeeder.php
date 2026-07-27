@@ -14,18 +14,18 @@ use Spatie\Permission\PermissionRegistrar;
  * Review-eligibility, submitted-review, review-report,
  * instructor-quality-alert, and quality-dashboard permissions
  * (Filament Shield naming for the model-CRUD-style ones; plain
- * page/section names for the Phase 17O dashboard, which spans all
+ * page/section names for the dashboard, which spans all
  * three domains and has no single backing model). Idempotent —
  * required after deploy: policies deny unknown permissions, so
  * without this only super_admin can inspect eligibility/review
  * records, report or resolve reports, view/resolve quality alerts, or
- * open the quality dashboard at all. `Report:LessonReview` (Phase
- * 17M) is the one permission here that is NOT staff-only — it goes to
+ * open the quality dashboard at all. `Report:LessonReview`
+ * is the one permission here that is NOT staff-only — it goes to
  * student and instructor, the two frontend-portal roles that browse
  * public profiles; every other permission here (including every
- * Phase 17N/17O quality permission) stays manager-only — an
+ * quality permission) stays manager-only — an
  * instructor never sees their own quality alerts or the admin
- * dashboard in this phase.
+ * dashboard.
  */
 class ReviewPermissionSeeder extends Seeder
 {
@@ -37,13 +37,13 @@ class ReviewPermissionSeeder extends Seeder
         'Moderate:LessonReview', 'Hide:LessonReview',
         'ViewAny:ReviewReport', 'View:ReviewReport', 'Resolve:ReviewReport',
         'ViewAny:InstructorQualityAlert', 'View:InstructorQualityAlert', 'Resolve:InstructorQualityAlert',
-        // Phase 17O — dashboard page + per-section gates, distinct from
+        // Dashboard page + per-section gates, distinct from
         // the granular model permissions above so a future finer-grained
         // role could hold a subset (e.g. the moderation queue without
         // instructor-quality-alert visibility).
         'ViewQualityDashboard', 'ViewReviewMetrics', 'ViewReviewModerationQueue',
         'ViewReviewReports', 'ViewInstructorQualityAlerts',
-        // Phase 17U.2 §§4,7,10 — Reviews & Quality Settings page and
+        // Reviews & Quality Settings page and
         // Review Tags administration. View and mutate are always two
         // distinct permissions here, same as every model-CRUD pair
         // above: seeing the settings/tags page never implies the

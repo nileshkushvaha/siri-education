@@ -53,7 +53,7 @@ class Message extends Model implements HasMedia
         ];
     }
 
-    /** Phase 41A — private (GAP-037/41A audit): messaging attachments may contain personal content and must never sit on the public disk. */
+    /** Private: messaging attachments may contain personal content and must never sit on the public disk. */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('attachment')
@@ -62,7 +62,7 @@ class Message extends Model implements HasMedia
             ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
     }
 
-    /** GAP-037 — small private preview for image attachments; PDFs are never converted (mime-guarded), stay download-link-only. */
+    /** Small private preview for image attachments; PDFs are never converted (mime-guarded), stay download-link-only. */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {

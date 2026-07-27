@@ -13,7 +13,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
- * Phase 41A requirement #6 — one-time (safely rerunnable) cleanup for
+ * Requirement #6 — one-time (safely rerunnable) cleanup for
  * historical media rows that predate the private-disk collection
  * change: any row still on the 'public' disk for a now-private
  * collection gets its bytes (original + any generated conversions)

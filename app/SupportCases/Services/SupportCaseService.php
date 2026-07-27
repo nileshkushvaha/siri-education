@@ -23,7 +23,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
  * The single authoritative writer of support cases and replies
- * (GAP-016 / SRS Chapter 25). Controllers, Livewire components, and
+ * (SRS Chapter 25). Controllers, Livewire components, and
  * Filament actions must never write `support_cases`/
  * `support_case_replies` directly — every mutation, including status
  * transitions, routes through here so audit logging, notifications,

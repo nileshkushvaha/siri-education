@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * GAP-008 — disabled by default (SRS's own recommended V1 approach:
+ * Disabled by default (SRS's own recommended V1 approach:
  * "no direct demo compensation initially, or demo-to-paid conversion
  * incentive only" — this is a new, real financial cost, never
  * silently turned on). Explicit down() (deleteIfExists) — a bare

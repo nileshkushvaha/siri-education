@@ -101,7 +101,7 @@ class AccountMenuServiceTest extends TestCase
         $this->assertContains('Payments', $studentLabels);
         $this->assertContains('Homework', $studentLabels);
 
-        // Phase 23J — instructors get their own homework review queue, a
+        // Instructors get their own homework review queue, a
         // distinct destination from the student's "submit homework" page.
         $this->assertContains('Homework', $instructorLabels);
     }

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-039 requirement #2 — one row per (template_key, channel) pair,
+ * One row per (template_key, channel) pair,
  * pre-seeded here for every combination the code-owned registry
  * defines. Administrators may only edit an EXISTING row (subject/body/
  * is_active) — they can never insert a new key/channel pair, since the

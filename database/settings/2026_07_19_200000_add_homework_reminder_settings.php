@@ -8,7 +8,7 @@ return new class extends SettingsMigration
     {
         // Conservative V1 default per SRS §7.11 ("Administrators
         // configure reminder behavior globally") — one reminder 24
-        // hours before due time; enabled by default since GAP-020 is a
+        // hours before due time; enabled by default since this is a
         // Critical-severity missing feature, not an opt-in beta.
         $this->migrator->add('homework.homework_due_reminders_enabled', true);
         $this->migrator->add('homework.homework_due_reminder_offset_hours', [24]);

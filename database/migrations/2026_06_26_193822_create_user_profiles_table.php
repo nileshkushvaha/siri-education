@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 
 // Merged: make_profile_preference_columns_nullable
 //         (timezone/language → nullable with updated defaults)
-// Merged (Phase 1 User Profile system): add_profile_details_columns
+// Merged: add_profile_details_columns
 //         (headline, designation, short_bio, bio, website, social links,
 //         visibility, profile_completion, created_by, updated_by, softDeletes)
 //         replace_state_string_with_state_id (state master-table FK)

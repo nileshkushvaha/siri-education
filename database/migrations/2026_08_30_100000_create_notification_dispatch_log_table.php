@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17S — the idempotency guard for domain-event-triggered
+ * The idempotency guard for domain-event-triggered
  * notifications. Laravel's `notifications` table has no dedup key of
  * its own, and every review/quality event in this codebase is
  * designed to fire exactly once per real transition — but a replayed

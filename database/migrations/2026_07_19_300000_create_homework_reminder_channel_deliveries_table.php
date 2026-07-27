@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 24K.1 — GAP-020 partial-channel idempotency: one durable row
+ * Partial-channel idempotency: one durable row
  * per (homework_due_reminder, channel). This is what makes a retry of
  * a partially-successful multi-channel send safe — Laravel's own
  * NotificationSender::sendNow() restarts the WHOLE channel list on

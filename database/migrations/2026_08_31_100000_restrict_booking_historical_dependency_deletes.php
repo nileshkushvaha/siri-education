@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17U.1 — remediates Phase 17T Finding S-2. Every foreign key
+ * Every foreign key
  * that previously cascade-deleted a historical booking/lesson/review/
  * financial/feedback/quality record now RESTRICTs instead — deleting
  * a `users`/`bookings`/`lessons`/`lesson_review_eligibilities`/
@@ -22,10 +22,10 @@ use Illuminate\Support\Facades\Schema;
  *
  * Deliberately NOT touched (out of the "historical business record"
  * scope this remediation targets): `homework_assignments.booking_id`
- * (already `SET NULL`, a different domain, out of this phase's
+ * (already `SET NULL`, a different domain, out of
  * scope), and every FK that was already `RESTRICT`/`NO ACTION`/
  * `SET NULL` (already safe). `booking_guests` no longer exists
- * (Phase 17U.3 — authenticated-only booking, guest participants
+ * (authenticated-only booking, guest participants
  * removed) and `booking_meetings.booking_id` now ships `RESTRICT`
  * from its own baseline migration, so neither needs an entry here
  * anymore.
@@ -34,9 +34,9 @@ return new class extends Migration
 {
     /** @var list<array{table: string, column: string, references: string}> */
     private array $constraints = [
-        // users -> bookings (Phase 17U.1 §11 — account-deletion safety) is
+        // users -> bookings (account-deletion safety) is
         // handled directly in the baseline `create_bookings_table`
-        // migration as of Phase 17U.3's `student_id`/`instructor_id`
+        // migration as of the `student_id`/`instructor_id`
         // rename — both already ship `restrictOnDelete()` from creation,
         // so there is nothing left for this migration to change here.
 

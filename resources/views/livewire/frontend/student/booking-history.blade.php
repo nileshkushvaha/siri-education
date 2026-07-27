@@ -93,7 +93,7 @@
                         @endif
                     </dd>
                 </div>
-                {{-- Phase 24H.2A — $joinUrl comes exclusively from BookingMeetingService::studentJoinUrlFor(); this blade never reads meeting->join_url directly. --}}
+                {{-- $joinUrl comes exclusively from BookingMeetingService::studentJoinUrlFor(); this blade never reads meeting->join_url directly. --}}
                 @if($booking->status->value === 'confirmed')
                     <div>
                         <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Meeting</dt>

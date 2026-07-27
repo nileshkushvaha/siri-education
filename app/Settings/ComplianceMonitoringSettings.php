@@ -7,8 +7,8 @@ namespace App\Settings;
 use Spatie\LaravelSettings\Settings;
 
 /**
- * Typed settings for the rule-based compliance monitoring system
- * (GAP-014/GAP-015). Each of the four rules gets its own
+ * Typed settings for the rule-based compliance monitoring system.
+ * Each of the four rules gets its own
  * enabled/threshold/observation-window/severity/cooldown group —
  * `severity` is stored as the raw string value of
  * SuspiciousActivityFlagSeverity so it can be validated with

@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 10.2F — optional instructor-specific student price override.
+ * Optional instructor-specific student price override.
  * `instructor_id` NULL means the base price (all instructors);
  * `instructor_id` set means a special student-facing price for that
  * instructor only — resolved with higher priority than the base price

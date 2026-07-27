@@ -14,10 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * GAP-022 / SRS-7-8: an instructor's personal, reusable teaching
+ * SRS-7-8: an instructor's personal, reusable teaching
  * resource — categorized (subject/level), searchable, and versioned via
- * HomeworkResourceVersion. Distinct from Phase 37's direct
- * HomeworkAssignment attachments, which remain one-off and untouched.
+ * HomeworkResourceVersion. Distinct from HomeworkAssignment's own direct
+ * attachments, which remain one-off and untouched.
  */
 class HomeworkResource extends Model
 {

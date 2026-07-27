@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24K — GAP-020: the admin settings surface for HomeworkSettings.
+ * The admin settings surface for HomeworkSettings.
  * Offsets are validated (bounded, positive, deduplicated, at least one
  * while enabled), and every change is audit-logged atomically via the
  * shared LogsSettingsUpdates trait.

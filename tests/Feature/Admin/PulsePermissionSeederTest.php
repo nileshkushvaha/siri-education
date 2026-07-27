@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-/** Phase 24O — GAP-033: `pulse.view` mirrors the QueueMonitor/SchedulerMonitor permission convention. */
+/** `pulse.view` mirrors the QueueMonitor/SchedulerMonitor permission convention. */
 class PulsePermissionSeederTest extends TestCase
 {
     use RefreshDatabase;

@@ -158,7 +158,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(TeacherSubject::class, 'teacher_id');
     }
 
-    /** Explicit topic-level coverage (Phase 12.5) — see InstructorSubjectTopic. */
+    /** Explicit topic-level coverage — see InstructorSubjectTopic. */
     public function instructorSubjectTopics(): HasMany
     {
         return $this->hasMany(InstructorSubjectTopic::class, 'teacher_id');
@@ -201,7 +201,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         return $this->hasMany(StudentFavoriteInstructor::class, 'student_user_id');
     }
 
-    /** Waitlist entries this user joined as a student (SRS §6.19, GAP-018). */
+    /** Waitlist entries this user joined as a student (SRS §6.19). */
     public function instructorWaitlistEntries(): HasMany
     {
         return $this->hasMany(InstructorWaitlistEntry::class, 'student_user_id');
@@ -237,7 +237,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         );
     }
 
-    /** GAP-037 — 150x150 thumbnail for card/list/dropdown rendering. */
+    /** 150x150 thumbnail for card/list/dropdown rendering. */
     public function avatarThumbUrl(): Attribute
     {
         return Attribute::make(
@@ -262,7 +262,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
     // ── Role query scopes ────────────────────────────────────────────
 
     /**
-     * Phase 24T — GAP: Spatie's own `role()` scope pre-resolves the role
+     * Spatie's own `role()` scope pre-resolves the role
      * name via Role::findByName(), which throws RoleDoesNotExist when
      * that row doesn't exist yet (fresh install, partial deployment, a
      * seeder that hasn't run). That's correct for authorization checks
@@ -405,14 +405,14 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
 
     public function registerMediaCollections(): void
     {
-        // Explicit public disk (Phase 23E) — see UserProfile::registerMediaCollections().
+        // Explicit public disk — see UserProfile::registerMediaCollections().
         $this->addMediaCollection('instructor_cover')
             ->useDisk('public')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
     }
 
-    /** GAP-037 — 800px display conversion for the public instructor cover banner. */
+    /** 800px display conversion for the public instructor cover banner. */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {
@@ -422,7 +422,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         $this->addDisplayConversion('instructor_cover');
     }
 
-    /** GAP-037 — safely falls back to the original until the queued conversion is generated. */
+    /** Safely falls back to the original until the queued conversion is generated. */
     public function coverDisplayUrl(): Attribute
     {
         return Attribute::make(

@@ -22,7 +22,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 10.2D — admin CRUD + permission boundary for the student
+ * Admin CRUD + permission boundary for the student
  * pricing matrix, and the structural guarantee that an instructor can
  * never reach it (Filament panel access itself is gated to the admin
  * portal — see User::canAccessPanel()).
@@ -222,7 +222,7 @@ class StudentLessonPriceAdminTest extends TestCase
             ->assertSee('499.00');
     }
 
-    // ── Phase 10.2F: instructor-specific price override (admin) ────────
+    // ── Instructor-specific price override (admin) ──────────────────────
 
     public function test_admin_can_create_instructor_specific_price(): void
     {
@@ -351,7 +351,7 @@ class StudentLessonPriceAdminTest extends TestCase
     public function test_no_instructor_facing_dashboard_route_exposes_student_pricing_data(): void
     {
         // No instructor-facing booking/price view exists at all today
-        // (confirmed by direct inspection, Phase 10.2D) — this guards
+        // (confirmed by direct inspection) — this guards
         // against one being added later without the same care this
         // pricing matrix's design otherwise takes.
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);

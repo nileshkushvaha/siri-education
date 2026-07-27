@@ -40,7 +40,7 @@
         $jsonLd['jobTitle'] = $currentPosition->designation;
     }
 
-    // Phase 23F — AggregateRating/Review only when reviews actually exist;
+    // AggregateRating/Review only when reviews actually exist;
     // never a fabricated "0 reviews, 5 stars" block. $reviewSummary and
     // $reviews come from PublicInstructorReviewService — already filtered
     // to published, eligible, public reviews only (see InstructorController).

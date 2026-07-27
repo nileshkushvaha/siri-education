@@ -7,14 +7,14 @@ namespace App\Reporting\DTOs\Marketplace;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 
 /**
- * Phase 18H — marketplace demand: PERIOD-EVENT booking activity
- * (bookings created in the period, the Phase 18C basis) plus two
+ * Marketplace demand: PERIOD-EVENT booking activity
+ * (bookings created in the period, the Booking Operations basis) plus two
  * clearly-labelled interest signals. Subject attribution follows the
- * Phase 18C owner exactly (via `lessons.subject_id` — bookings carry
+ * Booking Operations owner exactly (via `lessons.subject_id` — bookings carry
  * no subject FK); recurrence uses RecurrenceClassifier with
  * `unknown_historical` kept separate, never folded into single.
- * `preferredSubjectInterest` is a self-selected PREFERENCE (Phase 18D
- * labelling) and `activeGoalDemandBySubject` counts currently-Active
+ * `preferredSubjectInterest` is a self-selected PREFERENCE
+ * and `activeGoalDemandBySubject` counts currently-Active
  * learning goals per subject — interest signals, never bookings.
  * Weekday buckets use the reporting timezone.
  *

@@ -26,9 +26,9 @@ use Spatie\LaravelSettings\Settings;
  * sole canonical Reviews on/off switch — it existed first, is the only
  * one any review-domain code reads, and carries review-specific
  * disabled-safe defaults. A same-named `reviews_enabled` property here
- * was a Phase 17T-flagged decoy (Finding S-1: never read by anything,
+ * was a decoy (never read by anything,
  * only ever edited by an admin form that had no runtime effect) and was
- * removed in Phase 17U.2 — see
+ * removed — see
  * database/settings/2026_09_05_100100_remove_decoy_features_reviews_enabled_setting.php.
  * Do not re-add a `reviews_enabled` property here.
  */
@@ -46,7 +46,7 @@ class FeatureSettings extends Settings
 
     public bool $recording_enabled;
 
-    /** GAP-041 / SRS §16.35 "Promotional credit permissions" — the global on/off switch (§20.17 "Promotional credit enabled/disabled"). */
+    /** SRS §16.35 "Promotional credit permissions" — the global on/off switch (§20.17 "Promotional credit enabled/disabled"). */
     public bool $promotional_credit_enabled;
 
     public static function group(): string

@@ -24,7 +24,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18C §8/§19 — the Booking, Lesson & Meeting Operations Filament
+ * The Booking, Lesson & Meeting Operations Filament
  * page: access control, permission-separated sections, timezone/
  * freshness display, and coexistence with the pages that predate it.
  */

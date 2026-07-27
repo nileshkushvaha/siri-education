@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23F boundary: public instructor service/DTO/views
+ * Guards the public-instructor-profile boundary: public instructor service/DTO/views
  * never reference PII, KYC, or internal admin fields.
  */
 final class Phase23FArchitectureTest extends TestCase

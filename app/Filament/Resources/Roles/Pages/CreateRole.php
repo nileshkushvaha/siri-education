@@ -40,11 +40,11 @@ class CreateRole extends CreateRecord
         /** @var Role $role */
         $role = $this->record;
 
-        // Phase 24Q — GAP-011: the base Role model was already saved by
+        // The base Role model was already saved by
         // Filament's own handleRecordCreation() before this hook runs (not
         // atomic with what follows — this panel does not enable
-        // ->databaseTransactions(), matching Phase 24E's finding for
-        // EditUser). The extra-column save + permission sync + audit write
+        // ->databaseTransactions(), matching EditUser's same behavior).
+        // The extra-column save + permission sync + audit write
         // below are wrapped in one transaction so THAT sequence is atomic
         // with itself, even though it can't retroactively cover the
         // already-committed base save.

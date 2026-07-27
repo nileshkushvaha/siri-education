@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17N — durable, deduplicated instructor quality-risk alerts.
+ * Durable, deduplicated instructor quality-risk alerts.
  * `detection_fingerprint` is the database-level dedup guard: every
  * detector computes a deterministic fingerprint and relies on this
  * unique index (plus catching the resulting constraint violation) to

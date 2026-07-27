@@ -8,8 +8,7 @@ use App\Exceptions\HistoricalRecordCannotBeDeletedException;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * Blocks physical deletion of a historical business record — Phase
- * 17U.1, remediating Phase 17T Finding S-2. Throws rather than
+ * Blocks physical deletion of a historical business record. Throws rather than
  * silently returning false, so a caller can never accidentally ignore
  * a blocked delete.
  *

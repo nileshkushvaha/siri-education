@@ -23,7 +23,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Instructor withdrawal requests (Phase 15 — no money moves).
+ * Instructor withdrawal requests (no money moves here).
  * The browser only ever chooses a payout method (ownership-verified
  * server-side) and types an amount; balance, currency, limits, and
  * eligibility are all recalculated by InstructorWithdrawalService

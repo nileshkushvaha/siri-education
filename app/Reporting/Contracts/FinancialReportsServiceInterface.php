@@ -20,7 +20,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * Phase 18E — the single read-only entry point for financial
+ * The single read-only entry point for financial
  * reporting. Every method independently authorizes against its own
  * report definition and permission:
  *

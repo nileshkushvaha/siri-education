@@ -10,7 +10,7 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * GAP-036 requirement #3: a redirect must never send a visitor into an
+ * A redirect must never send a visitor into an
  * admin, API, authentication, storage, asset, webhook, or (live-
  * re-authorized) download route. Resolved against the app's ACTUAL
  * registered route collection/middleware rather than a hand-maintained

@@ -10,7 +10,7 @@ use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Filters\ReportFilterKey;
 
 /**
- * A single code-defined report's metadata (Phase 18B §10). Definitions
+ * A single code-defined report's metadata (SRS §10). Definitions
  * are plain data — building or listing one never executes a query,
  * never instantiates a domain service, and never touches the database.
  *

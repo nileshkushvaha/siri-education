@@ -7,7 +7,7 @@ namespace App\Reporting\DTOs\Communication;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 
 /**
- * Phase 18G — notification activity. Version 1 stores TWO authoritative
+ * Notification activity. Version 1 stores TWO authoritative
  * notification records: in-app database notifications (`notifications`:
  * type, created_at, read_at) and the dispatch idempotency log
  * (`notification_dispatch_log`: one claimed row per deduplicated

@@ -23,15 +23,15 @@ use App\Reviews\Support\ReviewContributionEligibility;
 use Carbon\CarbonImmutable;
 
 /**
- * Instructor Analytics Foundation (Phase 23O) plus Advanced Performance
- * Insights (Phase 23P) — a thin read-only orchestrator across the
- * Lesson, Homework, and Reviews domains, plus the Phase 23N student-
+ * Instructor Analytics Foundation plus Advanced Performance
+ * Insights — a thin read-only orchestrator across the
+ * Lesson, Homework, and Reviews domains, plus the student-
  * relationship service. Every number is a bounded aggregate query;
  * nothing is materialized into PHP just to be counted (the one
  * deliberate exception is qualityTrends()'s small, bounded per-period
  * review set — see its own docblock), and nothing is written, cached,
- * or event-dispatched. Deliberately excludes earnings (Phase 23L
- * already owns instructor earnings visibility) and demo conversion
+ * or event-dispatched. Deliberately excludes earnings (already owned
+ * by the instructor earnings visibility page) and demo conversion
  * (existing attribution is platform-wide admin analytics only, not
  * instructor-scoped — "Conversion attribution requires an approved
  * business definition").
@@ -93,7 +93,7 @@ final class InstructorAnalyticsService
 
         // Always "what's actually next" regardless of the historical
         // period filter — matches the dashboard widget's own
-        // upcoming-lesson semantics (Phase 23I/23K), never period-scoped.
+        // upcoming-lesson semantics, never period-scoped.
         $upcoming = Lesson::query()
             ->forInstructor($instructorId)
             ->open()
@@ -112,7 +112,7 @@ final class InstructorAnalyticsService
     /** @return array{average_rating: ?float, total_reviews: int} */
     private function qualitySummary(User $instructor): array
     {
-        // The exact Phase 17K rating aggregate, reused unchanged —
+        // The exact instructor rating aggregate, reused unchanged —
         // never recalculated from review rows here.
         $ratingSummary = $this->quality->insightsFor($instructor)->ratingSummary;
 
@@ -134,7 +134,7 @@ final class InstructorAnalyticsService
         ];
     }
 
-    // ── Phase 23P — Advanced Performance Insights ───────────────────────
+    // ── Advanced Performance Insights ───────────────────────
 
     public function performanceInsights(User $instructor, InstructorAnalyticsPeriod $period = InstructorAnalyticsPeriod::Last30Days): InstructorPerformanceInsightsData
     {

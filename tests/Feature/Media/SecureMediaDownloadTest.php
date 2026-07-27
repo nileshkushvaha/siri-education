@@ -24,7 +24,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 41A requirement #4 — SecureMediaDownloadController is the one
+ * SecureMediaDownloadController is the one
  * reusable, policy-authorized boundary for every privatized collection
  * (Message, SupportCase, LessonTechnicalIssueReport,
  * UserExperience::supporting_documents, UserEducation). Covers disk

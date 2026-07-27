@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
 /**
- * Instructor self-service payout methods (bank transfer, Phase 15).
+ * Instructor self-service payout methods (bank transfer).
  * Every mutation goes through InstructorPayoutMethodService after a
  * policy check on a server-resolved, ownership-scoped record — nothing
  * from the browser is trusted. Sensitive fields exist here only while

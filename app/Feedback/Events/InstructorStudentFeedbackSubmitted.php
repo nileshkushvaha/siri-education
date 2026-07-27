@@ -13,8 +13,7 @@ use Illuminate\Queue\SerializesModels;
  * An instructor submitted private feedback about a student's
  * participation in a completed lesson. After-commit only. No
  * notification, Learning Plan, quality-alert, report, analytics, or
- * scoring listener is attached in Phase 17Q — those integrations
- * remain outside this phase.
+ * scoring listener is attached — those integrations are out of scope.
  */
 final class InstructorStudentFeedbackSubmitted implements ShouldDispatchAfterCommit
 {

@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23M boundary: vacation mode is a self-service entry
+ * Guards the vacation-mode boundary: vacation mode is a self-service entry
  * point into InstructorOnboardingService's existing setVacation()/
  * resumeFromVacation() lifecycle transitions — no parallel vacation
  * domain, no direct profile writes from the UI, no InstructorStatus
@@ -102,9 +102,8 @@ final class Phase23MArchitectureTest extends TestCase
         $this->assertIsString($service);
 
         // No vacation-specific method/query was added to the dashboard
-        // service this phase — the dashboard view reuses $onboarding['status'],
-        // which InstructorOnboardingService::progress() already returned
-        // before Phase 23M.
+        // service — the dashboard view reuses $onboarding['status'],
+        // which InstructorOnboardingService::progress() already returned.
         $this->assertStringNotContainsString('function vacation', $service);
         $this->assertStringNotContainsString('InstructorVacation', $service);
         $this->assertSame(1, substr_count($service, 'private function earnings('));

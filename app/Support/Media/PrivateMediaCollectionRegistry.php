@@ -11,7 +11,7 @@ use App\Models\UserEducation;
 use App\Models\UserExperience;
 
 /**
- * Phase 41A requirement #4 — the allowlist backing
+ * The allowlist backing
  * SecureMediaDownloadController: a Media row's (model class,
  * collection name) pair must appear here before that controller will
  * even attempt authorization. This is what stops a media id that
@@ -22,7 +22,7 @@ use App\Models\UserExperience;
  *
  * Homework, Recording, and instructor KYC documents already have their
  * own dedicated, already-private, already-tested download controllers
- * (GAP-022, GAP-028, Phase 23E) — deliberately not listed here, so
+ * — deliberately not listed here, so
  * this registry only ever grows to cover genuinely new private
  * collections, never duplicates an existing boundary.
  */

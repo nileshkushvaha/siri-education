@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17I — one review per eligibility (and, structurally, per
+ * One review per eligibility (and, structurally, per
  * booking — a 1-to-1 lesson has exactly one student). Written
  * exclusively by SubmitLessonReviewAction inside the same transaction
  * that marks the source eligibility Used. Nothing here is ever

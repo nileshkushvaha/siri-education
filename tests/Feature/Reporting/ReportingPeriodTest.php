@@ -12,7 +12,7 @@ use Carbon\CarbonImmutable;
 use Tests\TestCase;
 
 /**
- * Phase 18B §6 — the shared reporting-period value object: timezone-
+ * The shared reporting-period value object: timezone-
  * safe UTC boundary conversion, presets, custom ranges, and the
  * half-open `[start_utc, end_utc_exclusive)` query interval (never a
  * fragile `23:59:59` end-of-day calculation).

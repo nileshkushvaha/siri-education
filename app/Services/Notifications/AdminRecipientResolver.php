@@ -11,7 +11,7 @@ use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 /**
  * Resolves active administrator recipients for one permission — the
- * exact permission each Phase 17O queue widget already gates its own
+ * exact permission each queue widget already gates its own
  * `canView()` on (`ViewReviewModerationQueue`, `ViewReviewReports`,
  * `ViewInstructorQualityAlerts`), so "who can act on this" and "who
  * gets notified about this" can never drift apart. `super_admin`s are

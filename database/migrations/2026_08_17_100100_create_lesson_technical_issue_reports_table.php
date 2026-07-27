@@ -7,9 +7,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Participant-reported meeting problems (Phase 17D). A valid in-window
+ * Participant-reported meeting problems. A valid in-window
  * report also flags the lesson's attendance record
- * (technical_issue_reported_at), which is what actually holds Phase 17B
+ * (technical_issue_reported_at), which is what actually holds the
  * automation — this table is the review queue and audit surface.
  * Reports after the window or after finalization stay stored but
  * flagged for administrative review instead of touching the hold.

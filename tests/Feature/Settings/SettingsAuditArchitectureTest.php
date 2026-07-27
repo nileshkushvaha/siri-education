@@ -7,8 +7,8 @@ namespace Tests\Feature\Settings;
 use Tests\TestCase;
 
 /**
- * Phase 24S — GAP: closes the audit-coverage gap left by Phases
- * 24G/24G.1/24K, which only proved GeneralSettingsPage-style atomicity
+ * Closes an audit-coverage gap: earlier tests only proved
+ * GeneralSettingsPage-style atomicity
  * for the Payment and Homework Reminder pages. Every other settings
  * mutation surface (General, Mail, SEO, Meeting, Instructor Earnings,
  * Platform Foundation, RazorpayX Payout, Reviews & Quality, and all six
@@ -143,8 +143,8 @@ class SettingsAuditArchitectureTest extends TestCase
     /**
      * The defining regression this test exists to catch: a Settings
      * object saved directly, bypassing the atomic+audited path — for
-     * example GeneralSettingsPage::resetDefaults() before Phase 24S,
-     * which called $settings->save() a second time outside
+     * example GeneralSettingsPage::resetDefaults() previously
+     * called $settings->save() a second time outside
      * saveSettingsWithAudit(), producing a completely unaudited reset.
      */
     public function test_no_governed_or_delegating_file_calls_save_directly_on_a_settings_object(): void

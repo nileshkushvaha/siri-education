@@ -25,12 +25,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Participant (student/instructor) notifications for booking lifecycle
- * events. Every participant is an authenticated platform user (Phase
- * 17U.3 — no unauthenticated guest participant concept exists). Admin
+ * events. Every participant is an authenticated platform user — no
+ * unauthenticated guest participant concept exists. Admin
  * notifications flow separately through the Activity Log pipeline
  * (LogsActivity → ActivityCreated → NotifyAdminsOnActivity).
  *
- * Phase 17V closure — every send is claimed through the established
+ * Every send is claimed through the established
  * NotificationIdempotencyGuard (already used by the Reviews/Quality
  * listener family) before dispatch: a redelivered event (queue retry
  * after a crash post-side-effect, Laravel's at-least-once delivery)
@@ -84,7 +84,7 @@ final class SendBookingNotifications implements ShouldQueue
         // A lapsed payment reservation reads as "expired" to the student
         // (with a path back to booking again), not as a cancellation; the
         // instructor copy stays the standard cancellation notice either way.
-        // Phase 24C: the student copy states the frozen refund outcome
+        // The student copy states the frozen refund outcome
         // ($event->refundDecision) — never a fresh recalculation, and
         // never "refund initiated" for an ineligible cancellation.
         $this->send(

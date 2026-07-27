@@ -17,7 +17,7 @@ use Illuminate\Notifications\DatabaseNotification;
 use RuntimeException;
 
 /**
- * Phase 24K.1 — GAP-020 partial-channel idempotency: two REAL processes
+ * Partial-channel idempotency: two REAL processes
  * run the full reminder job for the SAME already-claimed reminder at
  * the same instant (modeling two overlapping queue workers, or a
  * duplicate dispatch). Each channel's claim-lease transaction must let

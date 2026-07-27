@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17K — one materialized rating summary per instructor, mirroring
+ * One materialized rating summary per instructor, mirroring
  * the Wallet/WalletLedgerEntry pattern: this row is the maintained
  * counter, `review_rating_contributions` is the durable per-review
  * ledger that makes every update idempotent and rebuildable. Sums and

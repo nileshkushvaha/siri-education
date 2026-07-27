@@ -208,7 +208,7 @@ class MeetingSettingsPageTest extends TestCase
             ->assertNotified('Google configuration: not_configured');
     }
 
-    // ── Phase 24S: audit coverage, atomicity, and credential redaction ──────
+    // ── Audit coverage, atomicity, and credential redaction ──────
 
     private function latestMeetingSettingsUpdate(): ?Activity
     {

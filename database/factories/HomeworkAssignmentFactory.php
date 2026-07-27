@@ -17,7 +17,7 @@ class HomeworkAssignmentFactory extends Factory
     public function definition(): array
     {
         return [
-            // Phase 24J — GAP-021: the homework context CHECK constraint
+            // The homework context CHECK constraint
             // requires booking_id OR learning_plan_id; default to a
             // completed lesson so bare factory rows stay valid.
             'booking_id' => Booking::factory()->completed(),

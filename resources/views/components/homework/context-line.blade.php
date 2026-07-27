@@ -1,6 +1,6 @@
 @props(['assignment'])
 
-{{-- Phase 24J — GAP-021: safe educational-context labels. Historical
+{{-- Safe educational-context labels. Historical
      context stays visible even when the plan is archived/removed. --}}
 @if ($assignment->booking !== null || $assignment->learningPlan !== null)
     <p class="text-xs text-slate-500 mt-1">

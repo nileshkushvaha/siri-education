@@ -61,23 +61,23 @@ class EarningServiceProvider extends ServiceProvider
         $this->app->singleton(InstructorEarningRepositoryInterface::class, InstructorEarningRepository::class);
         $this->app->singleton(InstructorEarningServiceInterface::class, InstructorEarningService::class);
 
-        // Phase 17E — lesson financial-disposition bridge (classification
-        // and holds only; execution belongs to a later phase).
+        // Lesson financial-disposition bridge (classification
+        // and holds only; execution is the separate services below).
         $this->app->singleton(LessonFinancialDispositionServiceInterface::class, LessonFinancialDispositionService::class);
 
-        // Phase 17F — wallet-only refund execution for approved dispositions.
+        // Wallet-only refund execution for approved dispositions.
         $this->app->singleton(LessonWalletRefundServiceInterface::class, LessonWalletRefundService::class);
 
-        // Phase 17G — instructor-side earning reconciliation execution.
+        // Instructor-side earning reconciliation execution.
         $this->app->singleton(LessonEarningReconciliationServiceInterface::class, LessonEarningReconciliationService::class);
 
-        // Phase 14.2 — agreement-based compensation (never student price).
+        // Agreement-based compensation (never student price).
         $this->app->singleton(InstructorCompensationAgreementServiceInterface::class, InstructorCompensationAgreementService::class);
         $this->app->singleton(InstructorCompensationResolverInterface::class, InstructorCompensationResolver::class);
         $this->app->singleton(InstructorPeriodicCompensationServiceInterface::class, InstructorPeriodicCompensationService::class);
         $this->app->singleton(FinancialFeatureConfigurationServiceInterface::class, FinancialFeatureConfigurationService::class);
 
-        // Phase 15 — payout methods & withdrawals (no money movement).
+        // Payout methods & withdrawals (no money movement).
         $this->app->singleton(PayoutMethodFingerprintServiceInterface::class, PayoutMethodFingerprintService::class);
         $this->app->singleton(PayoutMethodSnapshotServiceInterface::class, PayoutMethodSnapshotService::class);
         $this->app->singleton(InstructorPayoutMethodServiceInterface::class, InstructorPayoutMethodService::class);
@@ -85,7 +85,7 @@ class EarningServiceProvider extends ServiceProvider
         $this->app->singleton(InstructorWithdrawalAllocationServiceInterface::class, InstructorWithdrawalAllocationService::class);
         $this->app->singleton(InstructorWithdrawalServiceInterface::class, InstructorWithdrawalService::class);
 
-        // Phase 16A — provider-neutral payout execution (fake provider only).
+        // Provider-neutral payout execution (fake provider only).
         $this->app->singleton(PayoutRequestFingerprintServiceInterface::class, PayoutRequestFingerprintService::class);
         $this->app->singleton(InstructorPayoutProviderRegistryInterface::class, function (): InstructorPayoutProviderRegistry {
             $registry = new InstructorPayoutProviderRegistry;
@@ -98,11 +98,11 @@ class EarningServiceProvider extends ServiceProvider
         $this->app->singleton(InstructorPayoutExecutionServiceInterface::class, InstructorPayoutExecutionService::class);
         $this->app->singleton(InstructorPayoutReconciliationServiceInterface::class, InstructorPayoutReconciliationService::class);
 
-        // Phase 16A.1 — provider-neutral route eligibility (distinct from
-        // account-level InstructorPayoutEligibility, Phase 15).
+        // Provider-neutral route eligibility (distinct from
+        // account-level InstructorPayoutEligibility).
         $this->app->singleton(InstructorPayoutEligibilityServiceInterface::class, InstructorPayoutEligibilityService::class);
 
-        // Phase 16B — RazorpayX India/INR payout adapter. The client
+        // RazorpayX India/INR payout adapter. The client
         // interface is the only thing that ever touches Http:: for
         // RazorpayX; everything above it is transport-agnostic.
         $this->app->singleton(RazorpayXPayoutClientInterface::class, RazorpayXHttpPayoutClient::class);

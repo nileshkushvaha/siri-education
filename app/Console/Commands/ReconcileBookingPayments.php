@@ -8,8 +8,8 @@ use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Scheduled reconciliation sweep for the collection domain (Phase 16C —
- * mirrors ReconcileInstructorPayouts on the payout side). Gated by
+ * Scheduled reconciliation sweep for the collection domain
+ * (mirrors ReconcileInstructorPayouts on the payout side). Gated by
  * booking_payment_reconciliation_enabled inside the service; idempotent
  * — every state transition it makes reuses
  * BookingPaymentService::applyProviderStatus(), so a duplicate/

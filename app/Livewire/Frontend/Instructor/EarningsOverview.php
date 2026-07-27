@@ -10,7 +10,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Read-only instructor earnings history (Phase 23L). No mutation
+ * Read-only instructor earnings history. No mutation
  * exists here — release/reverse/settlement remain staff-only actions
  * through InstructorEarningServiceInterface. Purely a bounded,
  * eager-loaded view over InstructorEarningRepositoryInterface, scoped

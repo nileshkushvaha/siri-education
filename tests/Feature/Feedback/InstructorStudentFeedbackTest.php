@@ -36,7 +36,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 17Q — private, lesson-linked instructor-to-student feedback:
+ * Private, lesson-linked instructor-to-student feedback:
  * completion/participant eligibility, one-record-per-lesson
  * idempotency and concurrency protection, sanitization, privacy
  * (never public, never a rating input), authorization (assigned

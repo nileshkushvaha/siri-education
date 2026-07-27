@@ -9,15 +9,15 @@ use App\Enums\PortalAudience;
 use App\Models\User;
 
 /**
- * Backend-only foundation for dual-role workspace switching (Phase 23B).
+ * Backend-only foundation for dual-role workspace switching.
  * Owns two things, and only these two: which workspaces a user is
  * currently allowed to occupy, and the session-stored preference between
  * them. It does not decide the resolved audience for a request — that
  * remains FrontendPortalAudienceResolver's job; this service is one of
  * its inputs, never a second source of truth.
  *
- * No route or UI reads/writes the session key yet — see the Phase 23A
- * audit's Phase 23B/23C split. selectWorkspace() exists so a future
+ * No route or UI reads/writes the session key yet.
+ * selectWorkspace() exists so a future
  * controller has a single, already-validated place to call.
  */
 final class FrontendPortalWorkspaceService

@@ -11,7 +11,7 @@ use App\Services\Notifications\AdminRecipientResolver;
 use App\Services\Notifications\NotificationIdempotencyGuard;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-/** Recipients: administrators holding the same permission the Phase 17O report-queue widget gates on. */
+/** Recipients: administrators holding the same permission the report-queue widget gates on. */
 final class SendReviewReportedNotification implements ShouldQueue
 {
     private const string PERMISSION = 'ViewReviewReports';

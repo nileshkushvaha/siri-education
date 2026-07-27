@@ -9,12 +9,10 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
 /**
- * Shared export authorization/audit metadata contract (Phase 18B §19-20).
- * No file is generated and no download route exists yet — this is only
- * the metadata shape a later Phase 18 slice's actual CSV export will
- * build and pass to `ReportExportAuditor`. Carries ids and a safe
- * filter summary only — never a raw filter value that could be a
- * secret, and never a hydrated model.
+ * Shared export authorization/audit metadata contract (SRS §19-20).
+ * Built by ReportCsvExporter and passed to `ReportExportAuditor`.
+ * Carries ids and a safe filter summary only — never a raw filter
+ * value that could be a secret, and never a hydrated model.
  */
 final readonly class ExportRequestContext
 {
@@ -32,7 +30,7 @@ final readonly class ExportRequestContext
         public CarbonImmutable $generatedAt,
         public string $format,
         public int $maxRows,
-        /** One reference shared by the requested/completed/failed audit events AND embedded in the generated CSV (Phase 18I §9). */
+        /** One reference shared by the requested/completed/failed audit events AND embedded in the generated CSV (SRS §9). */
         public string $correlationReference,
     ) {}
 

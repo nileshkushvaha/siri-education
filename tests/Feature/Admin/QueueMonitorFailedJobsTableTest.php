@@ -20,7 +20,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24N — GAP-034: single/bulk retry actions on the existing
+ * Single/bulk retry actions on the existing
  * Queue Monitor admin page's failed-jobs table.
  */
 final class QueueMonitorFailedJobsTableTest extends TestCase

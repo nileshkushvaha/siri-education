@@ -30,7 +30,7 @@ use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
-/** Phase 18F implementation — see the interface for the contract. */
+/** See the interface for the contract. */
 final class LearningAnalyticsReportService implements LearningAnalyticsReportServiceInterface
 {
     private const string REPORT_KEY = 'learning_progress';
@@ -203,7 +203,7 @@ final class LearningAnalyticsReportService implements LearningAnalyticsReportSer
         }
     }
 
-    /** Masked unless the viewer holds the explicit full-identity permission — same rule as Phase 18D. */
+    /** Masked unless the viewer holds the explicit full-identity permission — same rule as Student Engagement. */
     private function personLabel(string $firstName, string $lastName, bool $canViewFullIdentity): string
     {
         if ($canViewFullIdentity) {

@@ -40,7 +40,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * SRS §6.19/§10.28 (GAP-018). Booking remains first-come, first-served
+ * SRS §6.19/§10.28. Booking remains first-come, first-served
  * — there is no exclusive offer to test; notification is informational
  * and every currently-eligible Waiting entry for an instructor is
  * notified when a real opening event fires.

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Phase 24K.1 — GAP-020: durable per-channel delivery state for one
+ * Durable per-channel delivery state for one
  * homework due-date reminder. Never rewritten to represent a different
  * channel or reminder — one row per (reminder, channel) for the life
  * of the reminder.

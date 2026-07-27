@@ -12,7 +12,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * SRS §6.19/§10.28 (GAP-018). Never write `status`/`active_key`
+ * SRS §6.19/§10.28. Never write `status`/`active_key`
  * directly outside WaitlistService — the active-key invariant
  * (App\Waitlist\Services\WaitlistService::activeKeyFor()) must stay in
  * lockstep with `status` or the database-level duplicate-prevention

@@ -7,12 +7,12 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23P boundary: advanced performance insights extend
- * the existing Phase 23O InstructorAnalyticsService/InstructorAnalyticsData
+ * Guards the instructor-performance-insights boundary: advanced performance insights extend
+ * the existing InstructorAnalyticsService/InstructorAnalyticsData
  * — no parallel InstructorPerformanceService/InstructorScore domain, no
  * new analytics table, no writes, no earnings duplication, no AI/
  * prediction classes, no private fields exposed, same page/route/nav
- * item as Phase 23O.
+ * item as the analytics foundation.
  */
 final class Phase23PArchitectureTest extends TestCase
 {
@@ -82,7 +82,7 @@ final class Phase23PArchitectureTest extends TestCase
         $service = file_get_contents(app_path('Services/Instructor/InstructorAnalyticsService.php'));
         $this->assertIsString($service);
 
-        // The exact Phase 17K predicate, never a re-implemented rule.
+        // The exact authoritative predicate, never a re-implemented rule.
         $this->assertStringContainsString('ReviewContributionEligibility::qualifies(', $service);
         $this->assertStringNotContainsString('class ReviewContributionEligibility', $service);
     }

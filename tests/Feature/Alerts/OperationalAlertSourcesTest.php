@@ -31,7 +31,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 35 (GAP-035) — each evidence-backed alert source, verified end
+ * Each evidence-backed alert source, verified end
  * to end from its real trigger (not by calling
  * OperationalAlertService directly).
  */
@@ -169,7 +169,7 @@ class OperationalAlertSourcesTest extends TestCase
         $this->assertSame(0, OperationalAlert::query()->count());
     }
 
-    /** GAP-037 requirement #8 — media conversion failures reuse the existing generic queue-health alert bucket, no new alert type/category. */
+    /** Media conversion failures reuse the existing generic queue-health alert bucket, no new alert type/category. */
     public function test_a_failed_media_conversion_job_creates_a_critical_queue_system_alert(): void
     {
         $job = $this->fakeQueueJob('Spatie\\MediaLibrary\\Conversions\\Jobs\\PerformConversionsJob');

@@ -10,7 +10,7 @@ use App\Reporting\Support\ReportingTimezoneResolver;
 use Carbon\CarbonImmutable;
 
 /**
- * An immutable reporting period (Phase 18B §6): a local calendar range
+ * An immutable reporting period (SRS §6): a local calendar range
  * interpreted in an explicit reporting timezone, plus the derived UTC
  * query boundary. Query code must always use `$startUtc`/`$endUtcExclusive`
  * — a half-open interval `[start_utc, end_utc_exclusive)` — never the

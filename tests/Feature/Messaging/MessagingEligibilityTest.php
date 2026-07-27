@@ -17,7 +17,7 @@ use Tests\Feature\Messaging\Concerns\CreatesMessagingFixtures;
 use Tests\TestCase;
 
 /**
- * GAP-017 / SRS §17.29 "Messaging Eligibility" — every qualifying and
+ * SRS §17.29 "Messaging Eligibility" — every qualifying and
  * disqualifying relationship/lifecycle condition.
  */
 class MessagingEligibilityTest extends TestCase

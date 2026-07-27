@@ -12,7 +12,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * GAP-028 requirement #6 — the real security boundary for lesson
+ * The real security boundary for lesson
  * recordings, mirroring HomeworkResourceDownloadController exactly:
  * every request re-checks RecordingPolicy::view() live via
  * RecordingService::assertCanAccess(). No signed/pre-generated URL to

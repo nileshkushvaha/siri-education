@@ -16,7 +16,7 @@ use Tests\Feature\Messaging\Concerns\CreatesMessagingFixtures;
 use Tests\TestCase;
 
 /**
- * GAP-017 / SRS §17.28-§17.36: opening/finding a conversation
+ * SRS §17.28-§17.36: opening/finding a conversation
  * (duplicate prevention), sending, closing, and immutable message
  * content.
  */

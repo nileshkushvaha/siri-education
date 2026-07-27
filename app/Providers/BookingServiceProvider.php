@@ -112,11 +112,11 @@ class BookingServiceProvider extends ServiceProvider
         $this->app->bind(BookingAnalyticsServiceInterface::class, BookingAnalyticsService::class);
         $this->app->bind(StudentLessonPriceRepositoryInterface::class, StudentLessonPriceRepository::class);
 
-        // Phase 16A.1 — provider-neutral collection route eligibility, the
+        // Provider-neutral collection route eligibility, the
         // collection-side counterpart of InstructorPayoutEligibilityService.
         $this->app->bind(PaymentCollectionEligibilityServiceInterface::class, PaymentCollectionEligibilityService::class);
 
-        // Phase 16C — collection-side reconciliation, the counterpart of
+        // Collection-side reconciliation, the counterpart of
         // InstructorPayoutReconciliationService.
         $this->app->bind(BookingPaymentReconciliationServiceInterface::class, BookingPaymentReconciliationService::class);
 
@@ -138,7 +138,7 @@ class BookingServiceProvider extends ServiceProvider
         // tests bind a fake ZoomMeetingClient.
         $this->app->bind(ZoomMeetingClient::class, ZoomApiClient::class);
 
-        // Phase 17C — meeting attendance ingestion & reconciliation.
+        // Meeting attendance ingestion & reconciliation.
         // Evidence only: everything funnels into LessonAttendanceService,
         // never into aggregates or outcomes directly.
         $this->app->bind(BookingMeetingRepositoryInterface::class, BookingMeetingRepository::class);
@@ -184,13 +184,13 @@ class BookingServiceProvider extends ServiceProvider
         // an explicit admin choice). Selection safety (misconfigured
         // credentials, manual_provider_enabled, the meetings_enabled kill
         // switch) lives in MeetingProviderResolver, not here. No
-        // FakeMeetingProvider this phase — business decision.
+        // FakeMeetingProvider — business decision.
         $this->app->afterResolving(MeetingProviderRegistry::class, function (MeetingProviderRegistry $registry, Application $app): void {
             $registry->register($app->make(ManualMeetingProvider::class));
             $registry->register($app->make(GoogleCalendarMeetProvider::class));
             $registry->register($app->make(ZoomMeetingProvider::class));
 
-            // Testing only — attendance-simulation provider (Phase 17C).
+            // Testing only — attendance-simulation provider.
             // Production keeps the "no fake meeting provider" decision.
             if ($app->environment('testing')) {
                 $registry->register($app->make(FakeMeetingProvider::class));

@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23C boundary: one public application entry, no
+ * Guards the instructor-application boundary: one public application entry, no
  * duplicate registration/account-creation path, no direct instructor
  * role/status writes outside the two already-established authorities
  * (InstructorOnboardingService for lifecycle writes, the pre-existing
@@ -31,8 +31,8 @@ final class Phase23CArchitectureTest extends TestCase
     {
         $allowed = [
             app_path('Services/Instructor/InstructorOnboardingService.php'),
-            // Pre-existing Phase 2.4 admin "Force Approve" override — predates
-            // Phase 23C and is unrelated to the public application entry.
+            // Pre-existing admin "Force Approve" override — predates
+            // and is unrelated to the public application entry.
             app_path('Filament/Resources/Users/Pages/EditUser.php'),
         ];
 

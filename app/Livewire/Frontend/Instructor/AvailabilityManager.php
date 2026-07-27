@@ -30,7 +30,7 @@ final class AvailabilityManager extends Component
 
     public bool $hasProfileTimezone = true;
 
-    /** Phase 23M — read-only status banner; the Vacation Mode page is the single owner of the toggle. */
+    /** Read-only status banner; the Vacation Mode page is the single owner of the toggle. */
     public bool $isOnVacation = false;
 
     public int $dayOfWeek = 1;
@@ -50,7 +50,7 @@ final class AvailabilityManager extends Component
     public ?string $timeOffReason = null;
 
     /**
-     * Phase 24I — GAP-019: pending impact-confirmation state. When a
+     * Pending impact-confirmation state. When a
      * reduction affects confirmed upcoming lessons, the first submission
      * changes nothing and this warning state is populated instead:
      * the action to re-run, the safe lesson summaries, and the opaque

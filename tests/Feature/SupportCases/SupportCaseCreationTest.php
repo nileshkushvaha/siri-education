@@ -23,7 +23,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-016 / SRS Chapter 25: case creation, mandatory fields, unique
+ * SRS Chapter 25: case creation, mandatory fields, unique
  * reference numbering, and the linked-record ownership boundary
  * (§25.41 "A requester may link only records they are authorized to
  * view").

@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 34 (GAP-029) — the Country admin form's new Feature Availability
+ * The Country admin form's Feature Availability
  * section: authorization reuses the existing Country permission set,
  * a save is audited the same way any other Country field change is
  * (Activitylog, requirement #6), and an admin-form dependency

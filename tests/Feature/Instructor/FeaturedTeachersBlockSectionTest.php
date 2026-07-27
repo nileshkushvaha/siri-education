@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-025 requirement #9 — admin configuration reuses the EXISTING CMS
+ * Admin configuration reuses the EXISTING CMS
  * block save flow (FeaturedTeachersBlockForm's new `section` field)
  * rather than a new settings page. This proves the block genuinely
  * switches recommendation strategy per its configured section, and

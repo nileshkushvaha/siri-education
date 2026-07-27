@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Alerts\Enums;
 
 /**
- * GAP-035 requirement #4 — only evidence-backed initial alert sources
+ * Only evidence-backed initial alert sources
  * are represented here: each case corresponds to a real, already-
  * observable failure signal in this codebase (an existing audited
  * event, an existing domain event, or Laravel's own queue-failure

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The single write boundary for `student_learning_plans.progress_percent`
- * (SRS §6.17 item 5 / GAP-023). Every evidence mutation that can change
+ * (SRS §6.17 item 5). Every evidence mutation that can change
  * a plan's progress — milestone create/complete, homework assign/
  * relink/grade — funnels through recalculate() instead of writing
  * progress_percent directly, so the calculation, the row lock, the

@@ -24,7 +24,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24K — GAP-020 (SRS §7.11 / SRS-7-11): claim-time candidate
+ * SRS §7.11 / SRS-7-11: claim-time candidate
  * selection and eligibility. Covers thresholds, catch-up after a late
  * scheduler run, multiple/duplicate offsets, due-date changes, cleared
  * due dates, and student-lifecycle eligibility. Time is frozen —

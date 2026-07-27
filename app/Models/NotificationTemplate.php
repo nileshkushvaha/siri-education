@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * GAP-039 requirement #2 — one row per (template_key, channel). Every
+ * One row per (template_key, channel). Every
  * write goes through NotificationTemplateService — this model has no
  * own business logic beyond casts/relations, matching CLAUDE.md
  * (Services own business logic, models stay thin). subject/body being

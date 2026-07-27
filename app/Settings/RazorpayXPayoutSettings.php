@@ -7,7 +7,7 @@ namespace App\Settings;
 use Spatie\LaravelSettings\Settings;
 
 /**
- * Phase 16B — RazorpayX-specific configuration, deliberately a
+ * RazorpayX-specific configuration, deliberately a
  * dedicated settings class rather than folded into
  * `InstructorEarningSettings` (too many fields, a different
  * confidentiality/rotation lifecycle) or `PaymentGatewaySettings` (a

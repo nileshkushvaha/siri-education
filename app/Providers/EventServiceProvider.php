@@ -250,7 +250,7 @@ class EventServiceProvider extends ServiceProvider
             [SendWalletNotifications::class, 'handleRechargeSucceeded'],
             GenerateInvoiceOnWalletRechargeSucceeded::class,
         ],
-        // Phase 33 — GAP-041 remaining promotional-credit portion.
+        // Promotional-credit notifications.
         PromotionalCreditIssued::class => [
             [SendWalletNotifications::class, 'handlePromotionalCreditIssued'],
         ],
@@ -265,7 +265,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         LessonCompleted::class => [
             CreateEarningOnLessonCompleted::class,
-            // GAP-008 — the only automatic demo-conversion-incentive
+            // The only automatic demo-conversion-incentive
             // evaluation trigger; a sibling of CreateEarningOnLessonCompleted,
             // never a replacement for it.
             CheckDemoConversionIncentiveOnLessonCompleted::class,
@@ -294,11 +294,11 @@ class EventServiceProvider extends ServiceProvider
             ReevaluateReferralRewardOnLessonOutcomeOverridden::class,
             RecalculateLearningPlanProgressOnLessonOutcomeOverridden::class,
         ],
-        // Phase 19D — a refunded lesson invalidates its referral reward.
+        // A refunded lesson invalidates its referral reward.
         LessonRefundCompleted::class => [
             ReverseReferralRewardOnLessonRefundCompleted::class,
         ],
-        // Phase 19D — referrer-facing reward notifications (idempotent).
+        // Referrer-facing reward notifications (idempotent).
         ReferralRewardCredited::class => [
             [SendReferralRewardNotifications::class, 'handleCredited'],
         ],
@@ -386,7 +386,7 @@ class EventServiceProvider extends ServiceProvider
         SuspiciousActivityFlagRecorded::class => [
             SendSuspiciousActivityFlagRecordedNotification::class,
         ],
-        // Phase 31 — GAP-016 support/dispute case management. Admin
+        // Support/dispute case management. Admin
         // awareness (new critical case, escalation, user replied,
         // reopened) flows separately through the Activity Log pipeline
         // (AuditTrailService → ActivityCreated → NotifyAdminsOnActivity).
@@ -402,14 +402,14 @@ class EventServiceProvider extends ServiceProvider
         SupportCaseStatusChanged::class => [
             [SendSupportCaseNotifications::class, 'handleStatusChanged'],
         ],
-        // Phase 32 — GAP-017 controlled student-instructor messaging.
+        // Controlled student-instructor messaging.
         MessagingMessageSent::class => [
             [SendMessagingNotifications::class, 'handleMessageSent'],
         ],
         MessageReported::class => [
             EvaluateRepeatedMessageReportsOnMessageReported::class,
         ],
-        // Phase 35 — GAP-035 durable operational alerts.
+        // Durable operational alerts.
         OperationalAlertRecorded::class => [
             SendOperationalAlertRecordedNotification::class,
         ],

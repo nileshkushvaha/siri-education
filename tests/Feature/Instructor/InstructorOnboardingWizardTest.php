@@ -64,7 +64,7 @@ class InstructorOnboardingWizardTest extends TestCase
     {
         $user = User::factory()->create(['status' => 'active']);
         $user->assignRole('student');
-        // Phase 23C: start() is gated by InstructorEligibilityService for a
+        // start() is gated by InstructorEligibilityService for a
         // first-time attempt, which requires some education signal on file —
         // see InstructorApplicationEntryTest/InstructorEligibilityServiceTest
         // for eligibility-specific coverage; this test is about the

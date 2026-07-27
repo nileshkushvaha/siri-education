@@ -15,10 +15,10 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only referral, review-rate and notification aggregates
- * (Phase 18G). Three deliberately small sections against the only
+ * Read-only referral, review-rate and notification aggregates.
+ * Three deliberately small sections against the only
  * authoritative Version 1 sources: the wallet ledger (referral), review
- * eligibilities + the Phase 17 rating aggregate table (review rates),
+ * eligibilities + the instructor rating aggregate table (review rates),
  * and in-app notifications + the dispatch idempotency log
  * (notifications). Everything is SQL aggregation; no payload, token,
  * reporter identity, moderation note or provider secret column is ever
@@ -49,7 +49,7 @@ final class ReferralCommunicationReportsRepository
             ->groupBy('currency_code')
             ->get();
 
-        // Phase 19D — lifecycle counts from the reward table (rows created
+        // Lifecycle counts from the reward table (rows created
         // in the period) and attribution volume; the open held/failed
         // queue is a point-in-time figure, not period-bounded.
         $rewardsByStatus = DB::table('referral_rewards')
@@ -98,7 +98,7 @@ final class ReferralCommunicationReportsRepository
         );
     }
 
-    // ── Review submission rates (complementary to the Phase 17 dashboard) ─
+    // ── Review submission rates (complementary to the Quality dashboard) ─
 
     public function reviewQualityRates(ReportingPeriod $period, ReportFilters $filters): ReviewQualityRatesData
     {
@@ -145,7 +145,7 @@ final class ReferralCommunicationReportsRepository
             revokedExcludedInPeriod: $sum('revoked'),
             manualReviewExcludedInPeriod: $sum('manual_review'),
             // Identical formula to AdminQualityDashboardRepository::platformAverageRating —
-            // the aggregate table (Phase 17) stays the single calculation owner.
+            // the aggregate table stays the single calculation owner.
             platformAverageRating: $reviewCount > 0 ? round((int) $aggregate->rating_sum / $reviewCount, 2) : null,
             publishedEligibleReviewCount: $reviewCount,
             pendingReviewReports: (int) DB::table('review_reports')->where('status', 'pending')->count(),

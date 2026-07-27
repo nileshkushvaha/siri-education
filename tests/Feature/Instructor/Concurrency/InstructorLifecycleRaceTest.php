@@ -11,7 +11,7 @@ use App\Services\Instructor\InstructorOnboardingService;
 use Spatie\Permission\Models\Permission;
 
 /**
- * TRUE cross-process race (Phase 23D): two independent worker processes
+ * TRUE cross-process race: two independent worker processes
  * call InstructorOnboardingService::activate() for the same instructor
  * at the same instant, over separate MySQL connections — proving the
  * lockForUpdate() guard in transitionStatus() converges to exactly one

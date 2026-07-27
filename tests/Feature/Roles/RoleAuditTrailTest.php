@@ -18,7 +18,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24Q — GAP-011/SRS-23-6: every Role/Permission mutation surface
+ * Every Role/Permission mutation surface
  * (CreateRole, EditRole, RolesTable row/bulk/replicate actions) now
  * records through RoleAuditRecorder -> AuditTrailService instead of
  * calling activity() directly. This file proves the resulting events are

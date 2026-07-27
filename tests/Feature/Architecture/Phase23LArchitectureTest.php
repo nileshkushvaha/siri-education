@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23L boundary: instructor finance visibility is a
+ * Guards the instructor-finance-visibility boundary: instructor finance visibility is a
  * pure read layer over the existing Earnings/Settlement domain — no
  * duplicate financial model/service, no mutation route, no payout
  * execution/gateway/wallet/commission logic touched.
@@ -111,7 +111,7 @@ final class Phase23LArchitectureTest extends TestCase
         $method = substr($method, 0, (int) strpos($method, "\n    }"));
 
         $this->assertStringContainsString('->paginate($perPage)', $method);
-        $this->assertStringContainsString("->with([", $method);
+        $this->assertStringContainsString('->with([', $method);
         $this->assertStringNotContainsString('->get()', $method);
     }
 
@@ -131,7 +131,7 @@ final class Phase23LArchitectureTest extends TestCase
         $service = file_get_contents(app_path('Services/Instructor/InstructorDashboardService.php'));
         $this->assertIsString($service);
 
-        // The earnings() aggregation method is untouched by this phase —
+        // The earnings() aggregation method is untouched here —
         // still exactly one private earnings() computation, no second one.
         $this->assertSame(1, substr_count($service, 'private function earnings('));
 

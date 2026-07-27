@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
- * Admin-only student-facing pricing matrix (Phase 10.2D). Never
+ * Admin-only student-facing pricing matrix. Never
  * surfaced to the instructor role/portal — see
  * docs/architecture/phase-10.2d-student-pricing-matrix.md.
  */

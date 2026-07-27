@@ -13,7 +13,7 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * Phase 18J — closure invariants for the whole Phase 18 reporting
+ * Closure invariants for the whole reporting
  * catalogue. These assertions are the machine-readable form of the
  * closure audit: placeholder-free owners, seeded permissions, honest
  * unavailability, export-state consistency and the formal

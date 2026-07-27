@@ -98,7 +98,7 @@ final class InstructorStudentManagementTest extends TestCase
         $otherInstructor->assignRole('instructor');
         $this->makeLesson($otherInstructor, $this->student);
 
-        // Scoped-ownership lookup (Phase 23K precedent): a student the
+        // Scoped-ownership lookup: a student the
         // instructor never taught simply doesn't exist in their roster.
         $this->actingAs($this->instructor)
             ->get(route('dashboard.instructor.students.show', $this->student))

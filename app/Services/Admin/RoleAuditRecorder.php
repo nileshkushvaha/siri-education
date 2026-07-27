@@ -9,7 +9,7 @@ use App\Services\AuditTrailService;
 use Spatie\Permission\Models\Role;
 
 /**
- * Phase 24Q — GAP-011/SRS-23-6: the single place every Role/Permission
+ * The single place every Role/Permission
  * mutation surface (CreateRole, EditRole, RolesTable row/bulk/replicate
  * actions) records its audit entry through. Not a second logger — every
  * method here ends in exactly one AuditTrailService::logUser() call; this

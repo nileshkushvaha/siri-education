@@ -48,9 +48,8 @@ return new class extends Migration
 
             $table->foreign('booking_type_id')->references('id')->on('booking_types')->restrictOnDelete();
             // Historical business records: never cascade a booking away
-            // because a student/instructor account row was deleted (Phase
-            // 17U.1 principle, applied from the baseline since Phase 17U.3 —
-            // no legacy CASCADE data to migrate).
+            // because a student/instructor account row was deleted —
+            // applied from the baseline (no legacy CASCADE data to migrate).
             $table->foreign('student_id')->references('id')->on('users')->restrictOnDelete();
             $table->foreign('instructor_id')->references('id')->on('users')->restrictOnDelete();
             $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();

@@ -10,12 +10,10 @@ use App\Reporting\Enums\ZeroDenominatorPolicy;
 use App\Reporting\Registry\MetricRegistry;
 
 /**
- * A single code-defined metric's metadata (Phase 18B §11) — declares
+ * A single code-defined metric's metadata (SRS §11) — declares
  * how a KPI is authoritatively defined so two dashboards can never
- * calculate the same named metric two different ways. This phase
- * registers metadata only; the metrics needed by the next operations-
- * reporting phase have no query implementation yet (`calculationOwner`
- * says so explicitly for those).
+ * calculate the same named metric two different ways. `calculationOwner`
+ * names the exact service method that owns the calculation.
  *
  * @see MetricRegistry for the Version 1 set.
  */

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\DTOs\Instructor;
 
 /**
- * Current-vs-previous-period rating snapshot (Phase 23P). Never a
+ * Current-vs-previous-period rating snapshot. Never a
  * recalculation of the all-time InstructorRatingAggregate — this is a
  * period slice computed with the exact same eligibility predicate
  * (ReviewContributionEligibility::qualifies()) the aggregate itself

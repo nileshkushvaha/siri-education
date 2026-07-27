@@ -50,7 +50,7 @@ class HomeworkResourceVersion extends Model implements HasMedia
             ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
     }
 
-    /** GAP-037 — small private preview for image resource versions; PDFs are never converted (mime-guarded), stay download-only. */
+    /** Small private preview for image resource versions; PDFs are never converted (mime-guarded), stay download-only. */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {

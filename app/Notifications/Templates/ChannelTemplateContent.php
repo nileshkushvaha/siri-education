@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Templates;
 
 /**
- * GAP-039 — the immutable, code-owned default subject/body for one
+ * The immutable, code-owned default subject/body for one
  * (template key, channel) pair, plus the allowlisted variable names
  * that may appear in that channel's text. For the 'database' channel,
  * "subject" means the notification's `title` field, not an email

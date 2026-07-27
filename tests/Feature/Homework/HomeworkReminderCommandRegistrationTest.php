@@ -9,7 +9,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Tests\TestCase;
 
 /**
- * Phase 24K — GAP-020 Step 15: confirms homework:send-due-reminders is
+ * Confirms homework:send-due-reminders is
  * actually registered on the scheduler with overlap/single-server
  * protection, matching every other idempotent sweep in routes/console.php.
  */

@@ -97,18 +97,18 @@ class UserExperience extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        // Public — a display logo, evidence-backed by the profile experience timeline (Phase 41).
+        // Public — a display logo, evidence-backed by the profile experience timeline.
         $this->addMediaCollection('company_logo')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-        // Phase 41A — private (GAP-037/41A audit): supporting documents may contain personal/sensitive content.
+        // Private: supporting documents may contain personal/sensitive content.
         $this->addMediaCollection('supporting_documents')
             ->useDisk('local')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
     }
 
-    /** GAP-037 — 150x150 thumbnail for the small company-logo icon in the experience timeline. supporting_documents is left unconverted (no confirmed display consumer). */
+    /** 150x150 thumbnail for the small company-logo icon in the experience timeline. supporting_documents is left unconverted (no confirmed display consumer). */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($this->skipStandardImageConversions($media)) {
@@ -118,7 +118,7 @@ class UserExperience extends Model implements HasMedia
         $this->addThumbConversion('company_logo');
     }
 
-    /** GAP-037 — safely falls back to the original until the queued conversion is generated. */
+    /** Safely falls back to the original until the queued conversion is generated. */
     public function companyLogoThumbUrl(): Attribute
     {
         return Attribute::make(

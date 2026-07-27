@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Operations;
 
 /**
- * Phase 18C — meeting metrics. Date basis: `booking_meetings.created_at`
+ * Meeting metrics. Date basis: `booking_meetings.created_at`
  * for `created`/`failed` (when the meeting record itself was created);
  * `bookings.starts_at` for `missingMeeting` (a confirmed booking whose
  * scheduled start falls in the period but has no `Created` meeting);

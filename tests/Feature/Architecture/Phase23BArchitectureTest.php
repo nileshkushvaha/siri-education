@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23B boundary: eligibility/workspace-switch backend
+ * Guards the instructor-eligibility-workspace boundary: eligibility/workspace-switch backend
  * foundation only, no UI, no duplicated rules, no new registration flow.
  */
 final class Phase23BArchitectureTest extends TestCase
@@ -65,7 +65,7 @@ final class Phase23BArchitectureTest extends TestCase
     public function test_workspace_switch_service_still_has_no_controller_or_ui_wiring(): void
     {
         // FrontendPortalWorkspaceService's UI (the actual workspace-switch
-        // control) remains a later phase — Phase 23C explicitly excluded it
+        // control) is explicitly out of scope
         // ("Do not implement: Workspace switch UI"). Only
         // FrontendPortalAudienceResolver (checked separately above) may
         // reference it.
@@ -85,8 +85,8 @@ final class Phase23BArchitectureTest extends TestCase
 
     public function test_eligibility_service_is_only_wired_into_the_phase23c_sanctioned_entry_points(): void
     {
-        // Phase 23B left InstructorEligibilityServiceInterface unwired to any
-        // route. Phase 23C sanctioned exactly these entry points to consult
+        // InstructorEligibilityServiceInterface is sanctioned for exactly
+        // these entry points to consult
         // it; any other controller/Livewire component doing so would be an
         // unreviewed second integration point.
         $allowed = [
@@ -108,7 +108,7 @@ final class Phase23BArchitectureTest extends TestCase
             }
         }
 
-        $this->assertSame([], $offenders, 'InstructorEligibilityServiceInterface must only be wired into the Phase 23C-sanctioned entry points (InstructorApplicationController directly; InstructorOnboardingController/OnboardingWizard indirectly via InstructorApplicationStart).');
+        $this->assertSame([], $offenders, 'InstructorEligibilityServiceInterface must only be wired into the sanctioned entry points (InstructorApplicationController directly; InstructorOnboardingController/OnboardingWizard indirectly via InstructorApplicationStart).');
     }
 
     public function test_no_new_instructor_registration_routes_exist(): void

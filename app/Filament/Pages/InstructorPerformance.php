@@ -28,7 +28,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18D — Instructor Performance report (SRS Chapter 19 Instructor
+ * Instructor Performance report (SRS Chapter 19 Instructor
  * Analytics). Delegates every figure to
  * {@see InstructorPerformanceReportServiceInterface}. Requires
  * `ViewInstructorReports`; the quality section additionally requires

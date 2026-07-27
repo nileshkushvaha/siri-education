@@ -14,7 +14,7 @@ use App\Reporting\Filters\ReportFilters;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use Tests\TestCase;
 
-/** Phase 18B §8 — the shared typed, permission-safe report filter contract. */
+/** The shared typed, permission-safe report filter contract. */
 class ReportFiltersTest extends TestCase
 {
     private function period(): ReportingPeriod

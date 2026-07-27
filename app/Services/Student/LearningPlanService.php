@@ -38,7 +38,7 @@ final class LearningPlanService
         }
 
         return DB::transaction(function () use ($actor, $goal, $data): StudentLearningPlan {
-            // Phase 24H.2 — GAP-013: only when the actor IS the owning
+            // Only when the actor IS the owning
             // student — an admin creating a plan via
             // Create:StudentLearningPlan is governed by that permission
             // alone. Checked inside the transaction (locked profile

@@ -210,7 +210,7 @@ return [
             'enabled' => env('PULSE_SLOW_REQUESTS_ENABLED', true),
             'sample_rate' => env('PULSE_SLOW_REQUESTS_SAMPLE_RATE', 1),
             'threshold' => env('PULSE_SLOW_REQUESTS_THRESHOLD', 1000),
-            // Phase 24O — GAP-033: never record auth/verification/reset
+            // Never record auth/verification/reset
             // links (signed tokens live in the URL), payment/meeting
             // webhook callbacks (tokens/signatures in the query or path),
             // private media download routes, or the platform health
@@ -240,7 +240,7 @@ return [
         Recorders\UserRequests::class => [
             'enabled' => env('PULSE_USER_REQUESTS_ENABLED', true),
             'sample_rate' => env('PULSE_USER_REQUESTS_SAMPLE_RATE', 1),
-            // Phase 24O — GAP-033: same sensitive-route exclusions as
+            // Same sensitive-route exclusions as
             // SlowRequests above — this recorder feeds the per-user
             // "Usage" card, so a sensitive route here would also
             // associate a user identity with a token-bearing URL.

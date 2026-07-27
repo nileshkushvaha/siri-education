@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 24O — GAP-033: `pulse.view` gates the Laravel Pulse dashboard,
+ * `pulse.view` gates the Laravel Pulse dashboard,
  * mirroring the dedicated-permission-per-system-tool convention already
  * used by Queue Monitor/Scheduler Monitor/Cache Manager. Idempotent;
  * super_admin always bypasses via Gate::before().

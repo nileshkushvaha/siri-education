@@ -7,9 +7,9 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23O boundary: the instructor analytics foundation
+ * Guards the instructor-analytics-foundation boundary: the instructor analytics foundation
  * is a pure read-aggregation orchestrator across existing domains
- * (Lesson, Homework, Reviews, Phase 23N students) — no new analytics
+ * (Lesson, Homework, Reviews, student roster) — no new analytics
  * table/model, no writes, no dashboard duplication, no private fields
  * exposed, and every metric traces back to a repository/service, never
  * a raw collection counted in PHP.

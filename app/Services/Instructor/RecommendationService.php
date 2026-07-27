@@ -15,10 +15,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * GAP-025 (SRS Chapter 8 §8.10/§8.19-FR#4/FR#10) — the single
+ * SRS Chapter 8 §8.10/§8.19-FR#4/FR#10 — the single
  * authoritative entry point for marketplace/dashboard recommendation
  * sections. Every method returns InstructorService::card() output
- * (typed instructor-card arrays, Phase 29 pricing included) built on
+ * (typed instructor-card arrays, pricing included) built on
  * InstructorService::baseQuery() — the exact same eligibility, subject,
  * and pricing machinery the existing listing/detail pages already use.
  * No parallel discovery engine, no independent price calculation, no
@@ -35,7 +35,7 @@ final class RecommendationService
         private readonly StudentFavoriteInstructorService $favorites,
     ) {}
 
-    /** Admin-curated (UserProfile::is_featured/featured_order) — unchanged from Phase 23F. */
+    /** Admin-curated via UserProfile::is_featured/featured_order. */
     public function featured(Request $request, int $limit = 4): Collection
     {
         return $this->instructors->featuredCards($request, $limit);

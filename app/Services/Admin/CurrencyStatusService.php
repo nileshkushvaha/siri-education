@@ -8,7 +8,7 @@ use App\Models\Currency;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Phase 24M — GAP-031 Step 9: the smallest governed seam needed to
+ * The smallest governed seam needed to
  * coordinate an admin's currency-status change against a concurrent
  * BookingPaymentService::initiate() call for the same currency code.
  * Both sides lock the same Currency row inside a DB transaction, so

@@ -20,9 +20,9 @@ use App\Reporting\DTOs\Operations\BookingOperationsSummaryData;
 use App\Reporting\DTOs\Operations\LessonOutcomeSummaryData;
 
 /**
- * Phase 18H — the executive overview is a COMPOSITION, never a second
+ * The executive overview is a COMPOSITION, never a second
  * calculation owner: every group is the exact readonly DTO produced by
- * its existing owning report service (Phases 18C–18G), fetched through
+ * its existing owning report service, fetched through
  * that service's own public contract so its authorization and filter
  * restriction run unchanged. A group is null when the viewer lacks the
  * underlying permission — the restricted section's queries never even

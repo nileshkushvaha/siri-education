@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16C — widens booking_payments.status for Stripe's async SCA/3DS
+ * Widens booking_payments.status for Stripe's async SCA/3DS
  * flow (processing) and reconciliation's ambiguous-outcome states
  * (unknown, resolution_required), and adds last_synced_at so a
  * reconciliation poll can record "we checked" without implying a

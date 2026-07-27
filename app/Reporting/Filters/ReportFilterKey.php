@@ -6,13 +6,13 @@ namespace App\Reporting\Filters;
 
 /**
  * Stable identifiers for the optional filter dimensions a report
- * definition may declare support for (Phase 18B §8). `period` and its
+ * definition may declare support for (SRS §8). `period` and its
  * timezone are always present on `ReportFilters` — they are core, not
  * optional, so they have no key here.
  *
  * Referral status and notification channel/status are deliberately
  * absent: no authoritative Referral or Notification-status enum exists
- * anywhere in the codebase yet (Phase 18B discovery), so no filter
+ * anywhere in the codebase, so no filter
  * dimension is defined for them — adding one now would invent a new
  * source-domain status ahead of its owning domain existing.
  */

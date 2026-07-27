@@ -17,7 +17,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18B §12-13 — the report access-context permission model:
+ * The report access-context permission model:
  * category/report visibility, financial/compensation restrictions,
  * masking, and export independence.
  */

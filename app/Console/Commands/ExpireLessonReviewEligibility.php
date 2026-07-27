@@ -8,7 +8,7 @@ use App\Reviews\Contracts\ReviewEligibilityServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17H: expires open review-eligibility windows whose deadline
+ * Expires open review-eligibility windows whose deadline
  * has passed. Idempotent, batched, per-record failure isolated — never
  * touches Used or Revoked records.
  */

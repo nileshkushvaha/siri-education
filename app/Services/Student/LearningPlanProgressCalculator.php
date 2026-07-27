@@ -11,7 +11,7 @@ use App\Models\StudentLearningPlan;
 
 /**
  * The single source of a learning plan's progress percentage (SRS
- * §6.17.5 / GAP-023). Averages every SRS evidence domain — milestones,
+ * §6.17.5). Averages every SRS evidence domain — milestones,
  * directly-linked homework, plan-linked lessons, and the latest
  * structured academic-review assessment — giving each applicable
  * domain equal weight and excluding a domain entirely when the plan

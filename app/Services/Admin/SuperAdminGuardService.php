@@ -13,7 +13,7 @@ use RuntimeException;
 use Spatie\Permission\Models\Role;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: the single authority protecting the
+ * The single authority protecting the
  * platform-wide invariant `active_access_capable_super_admin_count >= 1`.
  *
  * "Active, access-capable Super Admin" is deliberately NOT a new

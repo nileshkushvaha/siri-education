@@ -40,7 +40,7 @@ enum LoginResult: string
             self::AdminAccountOnly => 'These credentials do not match our records.',
             // Deliberately as generic as the other account-status messages
             // — never names "suspended"/"archived" or exposes the admin's
-            // recorded reason on the login screen (Phase 24H Step 8).
+            // recorded reason on the login screen.
             self::StudentAccountRestricted => 'Your account is not available. Please contact support.',
         };
     }

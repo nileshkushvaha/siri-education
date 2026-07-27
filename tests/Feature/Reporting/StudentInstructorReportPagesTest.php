@@ -22,7 +22,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18D §15 — the two report pages: independent permission gates,
+ * The two report pages: independent permission gates,
  * no financial rendering, registry integration, Livewire hydration
  * safety, and Reporting Hub listing.
  */

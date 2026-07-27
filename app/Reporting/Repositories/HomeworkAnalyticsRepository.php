@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only homework aggregates (Phase 18F). Overdue reuses the exact
+ * Read-only homework aggregates. Overdue reuses the exact
  * domain predicate (status Pending AND due_at past — see
  * HomeworkAssignment::scopeOverdue) computed in SQL, never row-by-row.
  * Grading has no stored timestamp, so graded figures are as-of-now

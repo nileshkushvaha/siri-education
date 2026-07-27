@@ -28,12 +28,10 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 /**
  * JSON endpoints for the authenticated student booking flow.
  *
- * Phase 10.2C-Hotfix: this controller no longer initiates or confirms
- * payment. It previously auto-initiated a real gateway payment order on
- * `store()` (bypassing the profile-completeness gate) and exposed a
- * `pay()` action that marked a booking paid from a client-submitted
- * `payment_reference` alone, with no provider signature verification —
- * see docs/audits/phase-10.2c-fix-authenticated-booking-audit.md.
+ * This controller never initiates or confirms payment: `store()` does
+ * not auto-initiate a gateway payment order, and no action marks a
+ * booking paid from a client-submitted `payment_reference` alone —
+ * every payment is provider signature-verified.
  * Payment for a booking created here still goes through the same
  * provider-verified flow as everywhere else: `BookingWizard`/
  * `BookingHistory` (Livewire) or a verified webhook/callback.
@@ -68,7 +66,7 @@ final class StudentBookingController extends Controller
     }
 
     /**
-     * Phase 24B.2 — this endpoint calls AvailabilityServiceInterface
+     * This endpoint calls AvailabilityServiceInterface
      * directly (no StudentBookingService/WizardBookingService in
      * between for this specific teacher+type shape), so the demo-
      * feature check must live here rather than in a service method

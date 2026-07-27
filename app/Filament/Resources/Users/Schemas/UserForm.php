@@ -89,7 +89,7 @@ class UserForm
                                             ->default('active')
                                             ->required()
                                             ->native(false)
-                                            // Phase 24E — GAP-010/SRS-23-7: UI hint only; the
+                                            // SRS-23-7: UI hint only; the
                                             // authoritative guard is EditUser::afterSave(),
                                             // which rejects the save (rolling back this and
                                             // any other change on the form) even if this
@@ -108,7 +108,7 @@ class UserForm
                                     ->icon('heroicon-o-identification')
                                     ->relationship('profile')
                                     ->schema([
-                                        // Phase 23G: `designation` removed from this form —
+                                        // `designation` removed from this form —
                                         // audited and confirmed unused by any public view;
                                         // `headline` is the sole marketplace title field. The
                                         // column is kept (unedited legacy values still work as
@@ -279,7 +279,7 @@ class UserForm
                                             ->preload()
                                             ->searchable()
                                             ->columnSpanFull()
-                                            // Phase 24E — GAP-010/SRS-23-7: UI hint only; the
+                                            // SRS-23-7: UI hint only; the
                                             // authoritative guard is EditUser::afterSave().
                                             ->helperText(fn (?User $record): ?string => $record && app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record)
                                                 ? 'This is the last active Super Admin — the Super Admin role cannot be removed here.'

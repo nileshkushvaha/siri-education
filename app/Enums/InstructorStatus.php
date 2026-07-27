@@ -11,10 +11,7 @@ namespace App\Enums;
  * UserProfile::instructor_status, nullable — null means the user has
  * never applied to become an instructor.
  *
- * Renamed from the original 4-value set (Pending/Approved/Rejected/
- * Published) to this Phase 1 lifecycle: Pending -> Submitted,
- * Published -> Active. Approved/Rejected kept as-is. See
- * database/migrations/2026_07_08_100000_expand_instructor_status_lifecycle.php
+ * See database/migrations/2026_07_08_100000_expand_instructor_status_lifecycle.php
  * for the backfill of existing rows.
  */
 enum InstructorStatus: string
@@ -84,7 +81,7 @@ enum InstructorStatus: string
     }
 
     /**
-     * Phase 23M: publicly viewable — a strictly wider set than
+     * Publicly viewable — a strictly wider set than
      * bookable(). A Vacation instructor's profile must stay visible
      * ("temporarily unavailable", booking disabled) rather than 404/403
      * like an unapproved or suspended instructor's does.

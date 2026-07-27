@@ -19,7 +19,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * Phase 18F — read-only Learning Analytics (SRS Chapter 19 Learning
+ * Read-only Learning Analytics (SRS Chapter 19 Learning
  * Dashboard, Learning Plan Report, Homework Report). Strictly
  * read-only: no method mutates a plan, goal, milestone, review or
  * homework record, dispatches an event or notification, or writes an

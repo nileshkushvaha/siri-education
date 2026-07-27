@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: the canonical super_admin Role record
+ * SRS-23-7: the canonical super_admin Role record
  * cannot be deleted or incompatibly renamed, driven through the real
  * Filament Role resource pages.
  */
@@ -42,7 +42,7 @@ class SuperAdminProtectionRolesTest extends TestCase
             ->callTableAction('delete', $role);
 
         $this->assertNotNull(Role::query()->find($role->id));
-        // Phase 24Q — GAP-011: a blocked mutation must never create a
+        // A blocked mutation must never create a
         // misleading success audit entry.
         $this->assertSame(0, Activity::query()->where('log_name', 'roles')->where('event', 'deleted')->where('subject_id', $role->id)->count());
     }
@@ -56,7 +56,7 @@ class SuperAdminProtectionRolesTest extends TestCase
             ->callTableAction('delete', $role);
 
         $this->assertNull(Role::query()->find($roleId));
-        // Phase 24Q — GAP-011: a successful safe mutation creates exactly one audit event.
+        // A successful safe mutation creates exactly one audit event.
         $this->assertSame(1, Activity::query()->where('log_name', 'roles')->where('event', 'deleted')->where('subject_id', $roleId)->count());
     }
 
@@ -70,7 +70,7 @@ class SuperAdminProtectionRolesTest extends TestCase
 
         $this->assertNotNull(Role::query()->find($superAdminRole->id));
         $this->assertNotNull(Role::query()->find($other->id), 'The whole batch must roll back, including the unrelated role.');
-        // Phase 24Q — GAP-011: the whole batch is rejected — no audit
+        // The whole batch is rejected — no audit
         // entry for either role, including the one that wasn't canonical.
         $this->assertSame(0, Activity::query()->where('log_name', 'roles')->where('event', 'deleted')->whereIn('subject_id', [$superAdminRole->id, $other->id])->count());
     }

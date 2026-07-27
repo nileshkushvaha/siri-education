@@ -11,13 +11,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Status sync, cancellation → payment: cancelling a paid booking
- * refunds it automatically to the student's wallet (Phase 16A.1
- * "Version 1" policy — never the gateway; see
+ * refunds it automatically to the student's wallet ("Version 1"
+ * policy — never the gateway; see
  * BookingPaymentServiceInterface::refundToWallet()). Refund-triggered
  * cancellations are already Refunded by the time this runs, so no loop
  * is possible.
  *
- * Phase 24C: never recomputes eligibility — $event->refundDecision was
+ * Never recomputes eligibility — $event->refundDecision was
  * already frozen synchronously inside BookingService::cancel(), before
  * this event ever dispatched, so a delayed queue worker can't observe
  * a since-changed cancellation-window setting or a later clock. A null

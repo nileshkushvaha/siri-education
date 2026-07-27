@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 24H — GAP-013/SRS-2-20/SRS-B1-12: additive columns supporting
+ * SRS-2-20/SRS-B1-12: additive columns supporting
  * governed student_status transitions, mirroring the existing
  * instructor_reviewed_at/instructor_reviewed_by/instructor_review_reason
  * columns added for the instructor lifecycle. No default backfill here —

@@ -24,7 +24,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24N — GAP-034 (SRS-26-2): FailedJobRetryService mirrors
+ * SRS-26-2: FailedJobRetryService mirrors
  * Laravel's own `queue:retry` canonical behavior (reset attempts,
  * refresh retryUntil, pushRaw — never unserialize-and-execute).
  */

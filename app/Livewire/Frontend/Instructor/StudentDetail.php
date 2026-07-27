@@ -10,7 +10,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Read-only instructor-scoped student detail (Phase 23N). Not a new
+ * Read-only instructor-scoped student detail. Not a new
  * student profile — only the instructor's own teaching-relationship
  * summary with this student, reusing InstructorStudentService. A
  * student the instructor never taught 404s here; there is no separate

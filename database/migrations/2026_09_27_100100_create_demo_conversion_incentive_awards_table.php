@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-008 requirement #6 — one immutable award per converting paid
+ * One immutable award per converting paid
  * lesson (unique `paid_lesson_id` — the idempotency boundary a
  * duplicate/replayed LessonCompleted event resolves against), linking
  * the qualifying demo, the converting paid lesson, and the resulting

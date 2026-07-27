@@ -18,7 +18,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-028 requirement #6 — read-only admin visibility. No create/edit/
+ * Read-only admin visibility. No create/edit/
  * delete anywhere: RecordingService is the only writer, and a
  * recording is never administratively deleted (only expired, keeping
  * its metadata).

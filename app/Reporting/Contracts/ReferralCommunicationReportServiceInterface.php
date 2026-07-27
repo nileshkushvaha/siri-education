@@ -14,7 +14,7 @@ use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * Phase 18G — read-only referral, review-quality-rate and notification
+ * Read-only referral, review-quality-rate and notification
  * reporting (SRS Chapters 16, 17, 18 + 19). Strictly read-only: no
  * reward is credited, no review moderated, no alert resolved, no
  * notification sent or retried, no provider called, no audit row

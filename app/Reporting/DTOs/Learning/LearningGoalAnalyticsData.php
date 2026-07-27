@@ -7,7 +7,7 @@ namespace App\Reporting\DTOs\Learning;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 
 /**
- * Phase 18F — Learning Goal analytics. A learning goal is a
+ * Learning Goal analytics. A learning goal is a
  * `student_learning_goals` row: a student-defined educational
  * objective. Goals legitimately precede plans — `goalsWithoutPlans` is
  * an informational figure, never an error signal. "Completed" and

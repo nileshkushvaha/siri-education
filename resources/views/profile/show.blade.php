@@ -312,7 +312,7 @@
                                         placeholder="e.g. Senior Mathematics Instructor">
                                 </div>
 
-                                {{-- Phase 23G: `designation` field removed — see InstructorProfileTextResolver. --}}
+                                {{-- `designation` field removed — see InstructorProfileTextResolver. --}}
 
                                 {{-- Short Bio --}}
                                 <div class="sm:col-span-2">

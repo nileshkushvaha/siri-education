@@ -45,7 +45,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * Phase 24H.1A — GAP-013: a fully governed, Active student — the
+     * A fully governed, Active student — the
      * 'student' role assigned AND student_status explicitly Active on
      * the profile UserObserver already creates. Use this (not a bare
      * assignRole('student')) whenever a test needs a student who can

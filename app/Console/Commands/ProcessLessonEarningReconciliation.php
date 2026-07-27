@@ -8,7 +8,7 @@ use App\Earnings\Contracts\LessonEarningReconciliationServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17G: executes approved instructor-earning reconciliations
+ * Executes approved instructor-earning reconciliations
  * (create / hold / restore-release / reverse) through the existing
  * earning domain. Idempotent, batched, per-record failure isolated;
  * a no-op while

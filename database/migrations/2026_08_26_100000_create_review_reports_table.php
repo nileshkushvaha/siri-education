@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17M — append-only report record against one published public
+ * Append-only report record against one published public
  * review. Many reports may exist per review (one row per reporter per
  * reason); nothing here is ever physically deleted or edited except
  * through the guarded status transition + resolution fields. Hiding/

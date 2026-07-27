@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Finance;
 
 /**
- * Phase 18E — wallet financial summary. Financial dictionary (§5):
+ * Wallet financial summary. Financial dictionary (SRS §5):
  *
  * - `movements` are PERIOD-EVENT ledger aggregates grouped by
  *   (currency, entry type, direction) — a wallet DEBIT is consumption,

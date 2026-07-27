@@ -17,11 +17,11 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Read-only marketplace supply/demand aggregates (Phase 18H). Shared
+ * Read-only marketplace supply/demand aggregates. Shared
  * definitions are inherited, never redefined: instructor = user with
- * the `instructor` role and CURRENT `user_profiles.instructor_status`
- * (Phase 18D); booking demand = bookings created in the period with
- * subject attribution via `lessons.subject_id` (Phase 18C);
+ * the `instructor` role and CURRENT `user_profiles.instructor_status`;
+ * booking demand = bookings created in the period with
+ * subject attribution via `lessons.subject_id`;
  * recurrence via RecurrenceClassifier with `unknown_historical` kept
  * separate. Supply figures are current-state; demand figures are
  * period events; comparisons pair compatible dimensions only. No
@@ -130,7 +130,7 @@ final class MarketplaceSupplyDemandRepository
 
     // ── Internals — instructor supply ─────────────────────────────────────
 
-    /** Same predicate as Phase 18D: a user holding the `instructor` role. */
+    /** Same predicate as the Instructor Performance report: a user holding the `instructor` role. */
     private function instructors(ReportFilters $filters): Builder
     {
         $query = DB::table('users')
@@ -231,7 +231,7 @@ final class MarketplaceSupplyDemandRepository
         return $query;
     }
 
-    /** @return list<LabeledCountRow> Phase 18C subject basis: via the associated lesson — bookings carry no subject FK. */
+    /** @return list<LabeledCountRow> Subject basis: via the associated lesson — bookings carry no subject FK. */
     private function demandBySubject(ReportingPeriod $period, ReportFilters $filters): array
     {
         return $this->bookings($period, $filters)
@@ -283,7 +283,7 @@ final class MarketplaceSupplyDemandRepository
             ->all();
     }
 
-    /** @return list<LabeledCountRow> Phase 18D definition: students per SELF-SELECTED preferred subject. */
+    /** @return list<LabeledCountRow> Students per SELF-SELECTED preferred subject. */
     private function preferredSubjectInterest(): array
     {
         return DB::table('student_preferred_subjects')

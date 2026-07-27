@@ -15,7 +15,7 @@ use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Read-only aggregate queries over `bookings` (Phase 18C). Date basis:
+ * Read-only aggregate queries over `bookings`. Date basis:
  * `created_at` throughout (business-event view — "bookings created in
  * the period") except `rescheduledCount()`, which counts
  * `booking_activities` rows (a reschedule can occur well after the

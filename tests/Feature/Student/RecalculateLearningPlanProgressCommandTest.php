@@ -21,7 +21,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-023 historical backfill: `learning-plans:recalculate-progress`
+ * Historical backfill: `learning-plans:recalculate-progress`
  * must be safe to run against real historical data — dry-run never
  * writes, a single plan can be targeted, repeated runs are
  * idempotent, and a Completed/Archived plan's lifecycle and stored

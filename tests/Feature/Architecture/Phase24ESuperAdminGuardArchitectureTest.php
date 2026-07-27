@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: guards against a future first-party
+ * SRS-23-7: guards against a future first-party
  * regression that mutates admin-user status/roles or deletes a
  * User/Role record without routing through the central
  * SuperAdminGuardService. Does not (and cannot) protect against direct

@@ -7,9 +7,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Catch-up migration for databases that already ran the pre-Phase-1 base
+ * Catch-up migration for databases that already ran an earlier base
  * user_profiles migration. Fresh installs never see this —
- * create_user_profiles_table.php already has the final Phase 1 schema.
+ * create_user_profiles_table.php already has the final schema.
  * Every step is guarded so this is safe to run regardless of which columns
  * already exist.
  */

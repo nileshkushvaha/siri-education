@@ -17,7 +17,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * One durable, deduplicated operational-failure signal (GAP-035, SRS
+ * One durable, deduplicated operational-failure signal (SRS
  * §26.27-§26.29). Written exclusively by `OperationalAlertService` —
  * never directly by a controller, listener, job, or Filament action.
  * "Historical alerts must not be deleted" (requirement #2):

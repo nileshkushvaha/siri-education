@@ -8,7 +8,7 @@ use App\Quality\Actions\ReconcileInstructorQualityAlertsAction;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17N — repair/reconciliation tool, not the primary update path
+ * Repair/reconciliation tool, not the primary update path
  * (that's the event-driven detectors). Re-evaluates recent published
  * reviews and finalized lesson outcomes, creating any missing alerts
  * and flagging invalidated signals for review without deleting

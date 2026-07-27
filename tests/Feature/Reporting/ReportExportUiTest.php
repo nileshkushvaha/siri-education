@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 /**
- * Phase 18I — export UI: action visibility follows export
+ * Export UI: action visibility follows export
  * authorization, and the hardened legacy Booking Reports CSV keeps its
  * columns/filename while gaining the shared permission gate and audit
  * lifecycle.
@@ -92,7 +92,7 @@ class ReportExportUiTest extends TestCase
         $response->sendContent();
         $body = (string) ob_get_clean();
 
-        // Legacy columns unchanged (Phase 18I compatibility guarantee).
+        // Legacy columns unchanged (compatibility guarantee).
         $this->assertStringContainsString('Section,Metric,Value', $body);
         $this->assertStringContainsString('Total bookings', $body);
 

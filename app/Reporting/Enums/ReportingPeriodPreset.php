@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Reporting\Enums;
 
-/** Standard reporting-period presets (Phase 18B §6). `Custom` carries an explicit start/end date pair. */
+/** Standard reporting-period presets (SRS §6). `Custom` carries an explicit start/end date pair. */
 enum ReportingPeriodPreset: string
 {
     case Today = 'today';

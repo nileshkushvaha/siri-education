@@ -26,7 +26,7 @@ final class InstructorOnboardingService
 {
     public const REVIEW_PERMISSION = 'instructor.applications.review';
 
-    // Phase 23D — dedicated lifecycle-operation permissions. Deliberately
+    // Dedicated lifecycle-operation permissions. Deliberately
     // NOT given the Update:User compatibility fallback REVIEW_PERMISSION
     // has: that fallback exists for a pre-existing rollout, these are new.
     public const ACTIVATE_PERMISSION = 'instructor.lifecycle.activate';
@@ -43,7 +43,7 @@ final class InstructorOnboardingService
      * Non-KYC profile media — never admin-configurable, unlike the KYC
      * document set (see InstructorDocumentRequirementService, which
      * replaced the old REQUIRED_DOCUMENT_COLLECTIONS/
-     * OPTIONAL_DOCUMENT_COLLECTIONS constants in Phase 23G).
+     * OPTIONAL_DOCUMENT_COLLECTIONS constants).
      */
     public const PROFILE_MEDIA_COLLECTIONS = [
         'avatar',
@@ -369,7 +369,7 @@ final class InstructorOnboardingService
 
     /**
      * Active -> Vacation. Profile, reviews, and earnings history are
-     * untouched — only instructor_status changes. Phase 23M: an
+     * untouched — only instructor_status changes. An
      * instructor may set their own vacation status (self-service);
      * VACATION_PERMISSION continues to cover admin-initiated vacation.
      */
@@ -389,7 +389,7 @@ final class InstructorOnboardingService
 
     /**
      * Vacation -> Active. No re-approval — the existing verification/
-     * approval remains valid. Phase 23M: self-service, see setVacation().
+     * approval remains valid. Self-service, see setVacation().
      */
     public function resumeFromVacation(User $instructor, User $actor): UserProfile
     {
@@ -404,7 +404,7 @@ final class InstructorOnboardingService
             'Instructor vacation ended',
         );
 
-        // SRS §10.28/§10.33-4 — GAP-018: an instructor becoming bookable
+        // SRS §10.28/§10.33-4: an instructor becoming bookable
         // again after Vacation is a real "instructor now has open
         // capacity" event. Dispatched after transitionStatus()'s own
         // transaction commits (ShouldDispatchAfterCommit).
@@ -637,7 +637,7 @@ final class InstructorOnboardingService
     }
 
     /**
-     * Concurrency-safe guarded transition for Phase 23D lifecycle actions
+     * Concurrency-safe guarded transition for lifecycle actions
      * (activate/vacation/suspend/archive/interview). Unlike
      * transitionByAdmin() (which is FROM-status-agnostic and used by the
      * pre-existing review pipeline), this re-reads the row under
@@ -695,7 +695,7 @@ final class InstructorOnboardingService
     }
 
     /**
-     * Phase 23M: an instructor acting on their own vacation status needs
+     * An instructor acting on their own vacation status needs
      * no permission grant — self-service. Anyone else (including staff)
      * still needs the dedicated permission, exactly as before.
      */

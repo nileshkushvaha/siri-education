@@ -13,14 +13,14 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H.1 — GAP-013/SRS-1-16 correction: suspended/archived students
+ * SRS-1-16: suspended/archived students
  * must not establish (login) or retain (mid-session middleware) access
  * to the WHOLE account — including through another role on the same
- * user. Phase 24H's original multi-role login exception (a bookable
- * instructor capability letting a suspended/archived student profile
- * still authenticate) was never an approved SRS deviation and has been
- * removed; the SRS's blanket "Suspended or archived accounts shall be
- * prevented from authenticating" is now enforced account-wide.
+ * user. A multi-role login exception (a bookable instructor capability
+ * letting a suspended/archived student profile still authenticate) is
+ * never an approved SRS deviation; the SRS's blanket "Suspended or
+ * archived accounts shall be prevented from authenticating" is enforced
+ * account-wide.
  */
 class StudentLoginEnforcementTest extends TestCase
 {

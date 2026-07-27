@@ -9,11 +9,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Forward-compatible reconciliation for any database that ran the
- * pre-Phase-17U.3 `bookings`/`booking_types` migrations under their
- * original content, before those files were rewritten in place
- * (Phase 17U.3 authenticated-only cleanup; Phase 17U.3A type-scope
- * alignment). Editing an already-applied migration's `up()` has no
+ * Forward-compatible reconciliation for any database that ran an
+ * earlier version of the `bookings`/`booking_types` migrations under
+ * their original content, before those files were rewritten in place
+ * (authenticated-only cleanup; type-scope alignment). Editing an
+ * already-applied migration's `up()` has no
  * effect on a database that already recorded it as run — only a true
  * `migrate:fresh` picks up the new content, and that command is
  * deliberately blocked outside the `testing` environment

@@ -17,7 +17,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H.1 — GAP-013 Step 5: students:reconcile-lifecycle-status.
+ * students:reconcile-lifecycle-status.
  * Dry-run by default; --apply required to mutate. Every alignment goes
  * through StudentLifecycleService::alignLegacyVerifiedStudent() (the
  * same governed, row-locked, audited transition primitive as any other
@@ -196,7 +196,7 @@ class ReconcileStudentLifecycleStatusTest extends TestCase
         $this->assertStringContainsString('1 ambiguous record(s)', $output);
     }
 
-    // ── 20/21 (Phase 24H.1A). Null statuses reported ambiguous, never promoted ──
+    // ── 20/21. Null statuses reported ambiguous, never promoted ──────────────
 
     public function test_null_status_students_are_reported_as_ambiguous(): void
     {

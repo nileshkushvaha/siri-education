@@ -28,7 +28,7 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 16C — proves the Stripe Payment Element frontend contract at
+ * Proves the Stripe Payment Element frontend contract at
  * the Livewire boundary (the JS itself is exercised by Stripe.js, not
  * covered here — see the guardrail against real Stripe calls in
  * automated tests): the checkout payload's client_secret/publishable_key

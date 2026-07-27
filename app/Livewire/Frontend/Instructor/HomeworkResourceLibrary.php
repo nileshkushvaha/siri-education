@@ -24,9 +24,9 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * GAP-022 (37A) — SRS §7.15 "Resource Library": an instructor's own
- * categorized, searchable, versioned resources. Distinct from Phase
- * 37's direct HomeworkAssignment attachments — those remain one-off
+ * SRS §7.15 "Resource Library": an instructor's own
+ * categorized, searchable, versioned resources. Distinct from
+ * direct HomeworkAssignment attachments — those remain one-off
  * and are managed from HomeworkList, not here.
  */
 final class HomeworkResourceLibrary extends Component

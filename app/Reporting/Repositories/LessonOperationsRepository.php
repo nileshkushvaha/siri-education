@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
- * Read-only aggregate queries over `lessons` (Phase 18C). Date basis:
+ * Read-only aggregate queries over `lessons`. Date basis:
  * `starts_at` for "scheduled" (scheduled-activity view — what's on the
  * calendar in this period, regardless of outcome yet); `outcome_finalized_at`
  * for every finalized-outcome count (business-event view — never

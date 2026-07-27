@@ -18,7 +18,7 @@ use stdClass;
 use Throwable;
 
 /**
- * Phase 24N — GAP-034 (SRS-26-2): the sole authority for retrying a
+ * SRS-26-2: the sole authority for retrying a
  * failed queue job from the admin UI. Mirrors Laravel's own
  * `queue:retry` command (Illuminate\Queue\Console\RetryCommand) —
  * resets `attempts`, refreshes `retryUntil` for jobs that define it,

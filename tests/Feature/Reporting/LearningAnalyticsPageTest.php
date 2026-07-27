@@ -23,7 +23,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18F — Learning Analytics page: permission gate, section
+ * Learning Analytics page: permission gate, section
  * rendering, honest unavailable-state messaging, privacy in rendered
  * output, Livewire hydration safety and Reporting Hub listing.
  */
@@ -206,7 +206,7 @@ class LearningAnalyticsPageTest extends TestCase
             ->assertDontSee('₹');
     }
 
-    // ── Livewire hydration safety (Phase 18C regression class) ────────────
+    // ── Livewire hydration safety ────────────
 
     public function test_string_filter_hydration_never_throws(): void
     {

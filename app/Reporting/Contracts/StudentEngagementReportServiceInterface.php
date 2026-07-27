@@ -15,7 +15,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * Phase 18D — the single read-only entry point for Student Engagement
+ * The single read-only entry point for Student Engagement
  * reporting. Every method independently re-authorizes
  * (`ViewStudentReports`), restricts filters to the report definition,
  * masks identity server-side, and never mutates a source domain or

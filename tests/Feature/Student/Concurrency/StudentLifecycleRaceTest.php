@@ -13,7 +13,7 @@ use App\Services\Student\StudentLifecycleService;
 use Spatie\Permission\Models\Permission;
 
 /**
- * TRUE cross-process race (Phase 24H): two independent worker processes
+ * TRUE cross-process race: two independent worker processes
  * call StudentLifecycleService::suspend() for the SAME Active student at
  * the same instant, over separate MySQL connections — proving the
  * lockForUpdate() guard in transitionStatus() converges to exactly one
@@ -50,7 +50,7 @@ class StudentLifecycleRaceTest extends ConcurrencyTestCase
     }
 
     /**
-     * Phase 24H.1 — GAP-013 Step 9: a delayed verification/legacy-
+     * A delayed verification/legacy-
      * reconciliation activation racing an admin suspension for the SAME
      * Registered student. Whichever operation's transaction commits
      * first, the row lock means the loser re-reads the just-committed
@@ -88,7 +88,7 @@ class StudentLifecycleRaceTest extends ConcurrencyTestCase
     }
 
     /**
-     * Phase 24H.2 — an interactive student action (favorite) racing an
+     * An interactive student action (favorite) racing an
      * admin suspension of the SAME student. The favorite's
      * in-transaction locked status read serializes against suspend's
      * profile-row lock, so exactly two outcomes are valid: favorite

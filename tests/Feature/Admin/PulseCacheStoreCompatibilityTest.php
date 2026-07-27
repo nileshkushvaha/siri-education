@@ -16,7 +16,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24O.2 — GAP-033 corrective: root cause was this local machine's
+ * Root cause was this local machine's
  * default `opcache.interned_strings_buffer` (8MB, PHP's own default) being
  * 100% exhausted in the long-running `php artisan serve` process (confirmed
  * via opcache_get_status() against the live server — free_memory: 0), a

@@ -21,7 +21,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 24Q.1 — GAP-011/SRS-23-6 corrective: Permission-side counterpart
+ * Permission-side counterpart
  * of RoleAuditTrailTest. Every Permission CRUD surface (CreatePermission,
  * EditPermission header delete, PermissionsTable bulk delete) now records
  * through PermissionAuditRecorder -> AuditTrailService instead of having
@@ -266,7 +266,7 @@ class PermissionAuditTrailTest extends TestCase
 
     // ── 11. Row deletion — N/A: PermissionsTable has no row-level delete ───
     // Only EditPermission's header delete and the table's bulk delete exist
-    // (confirmed via source inspection — see Phase 24Q.1 report).
+    // (confirmed via source inspection).
 
     // ── 12/13. Bulk deletion audits every committed deletion, no duplicates ─
 

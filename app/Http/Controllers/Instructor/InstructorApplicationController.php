@@ -12,7 +12,7 @@ use App\Services\Faq\FaqService;
 use Illuminate\View\View;
 
 /**
- * Public "Become an Instructor" entry point (Phase 23C). Read-only —
+ * Public "Become an Instructor" entry point. Read-only —
  * never starts an application, assigns a role, or writes anything.
  * Guests see generic marketing copy; an authenticated user sees
  * status-aware messaging built from data already loaded on their own

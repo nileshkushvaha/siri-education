@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Livewire\Component;
 
 /**
- * GAP-025 — the same CMS block now drives every Version 1 recommendation
+ * The same CMS block drives every Version 1 recommendation
  * section via $section, reusing the existing audited page/post block
  * save flow as its "admin configuration" (requirement #9) rather than a
  * new settings page. $section defaults to 'featured' so every block

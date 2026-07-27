@@ -24,10 +24,10 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
  * The single authoritative writer of conversations/messages/reports/
- * restrictions (GAP-017 / SRS §17.28-§17.36). Controllers, Livewire
+ * restrictions (SRS §17.28-§17.36). Controllers, Livewire
  * components, and Filament actions must never write these tables
  * directly. Eligibility is recomputed on every send — never trusted
- * from conversation-open time (requirement #4).
+ * from conversation-open time.
  */
 final class MessagingService
 {

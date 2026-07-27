@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 use Throwable;
 
 /**
- * GAP-028 reconciliation sweep — complements the queued
+ * Reconciliation sweep — complements the queued
  * CaptureLessonRecordingJob dispatched at meeting-creation time. Picks
  * up any Pending recording the delayed job missed (worker restart,
  * queue outage) or that is still waiting on a transient provider

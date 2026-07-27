@@ -8,15 +8,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-041 (remaining promotional-credit portion) / SRS §13.20,
- * §16.17-§16.19. Mirrors `referral_campaigns`' shape and constraint
+ * SRS §13.20, §16.17-§16.19. Mirrors `referral_campaigns`' shape and constraint
  * style — a fixed-amount-only campaign (no percentage/basis-point
- * reward type, per requirement #2's literal field list: "credit
+ * reward type, per the literal field list: "credit
  * amount and currency"). `total_budget_minor` is nullable (optional
  * cap); SRS §20.17 marks "Campaign budget cap" as a "future" setting,
- * but this phase's own explicit requirement asks for it as an
- * additive, reversible field — building it does not violate any V1
- * restriction, so it is included (see Phase 33 final report).
+ * but building it as an additive, reversible field does not violate
+ * any V1 restriction, so it is included.
  */
 return new class extends Migration
 {

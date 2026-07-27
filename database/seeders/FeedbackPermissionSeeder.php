@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Instructor-to-student lesson-feedback permissions (Phase 17Q).
+ * Instructor-to-student lesson-feedback permissions.
  * Manager-only, mirroring ReviewPermissionSeeder's convention.
  * Idempotent — required after deploy: without it only super_admin can
  * view instructor-student feedback records (submission itself is

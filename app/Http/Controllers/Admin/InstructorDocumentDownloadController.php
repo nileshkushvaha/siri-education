@@ -15,7 +15,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * The real security boundary for KYC documents (Phase 23E) — every
+ * The real security boundary for KYC documents — every
  * request re-checks InstructorDocumentPolicy live; there is no
  * pre-generated signed/temporary URL to leak or bookmark. A bookmarked
  * link to this route is worthless without a currently authenticated,

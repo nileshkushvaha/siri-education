@@ -31,7 +31,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24J — GAP-021 (SRS-7-1 / SRS-7-12, SRS §7.19): every homework
+ * SRS-7-1 / SRS-7-12, SRS §7.19: every homework
  * assignment must reference a Lesson (completed booking) or a Learning
  * Plan; both links are allowed and must be cross-consistent. Enforced by
  * HomeworkContextValidator inside HomeworkService::assign()/changeContext()

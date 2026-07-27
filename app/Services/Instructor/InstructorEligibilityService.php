@@ -10,12 +10,11 @@ use App\Enums\InstructorEligibilityCode;
 use App\Models\User;
 
 /**
- * Single authority for instructor-application eligibility (Phase 23B).
+ * Single authority for instructor-application eligibility.
  * Does not start, resume, or modify an application — InstructorOnboardingService
  * remains the only writer of onboarding/lifecycle state. This service only
- * answers "may this user press Start?"; nothing in this phase calls it from
- * a route yet (no public "Become Instructor" entry exists — see Phase 23A
- * audit, Phase 23C).
+ * answers "may this user press Start?"; nothing currently calls it from
+ * a route yet (no public "Become Instructor" entry exists).
  */
 final class InstructorEligibilityService implements InstructorEligibilityServiceInterface
 {

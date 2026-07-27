@@ -7,7 +7,7 @@ namespace App\Reporting\DTOs\Learning;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 
 /**
- * Phase 18F — Homework analytics. Homework lifecycle is
+ * Homework analytics. Homework lifecycle is
  * Pending → Submitted → Graded (`HomeworkStatus`). Submission and
  * grading are distinct: `submitted_at` is an authoritative event
  * timestamp; Graded is a current state with NO stored grading

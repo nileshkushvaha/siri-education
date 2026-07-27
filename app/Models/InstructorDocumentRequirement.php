@@ -12,7 +12,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Admin-configurable KYC document requirement (Phase 23G) — replaces
+ * Admin-configurable KYC document requirement — replaces
  * the hardcoded InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS
  * constant. `collection_name` must match a Spatie Media Library
  * collection actually registered on UserProfile (see

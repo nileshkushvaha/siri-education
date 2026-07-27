@@ -23,14 +23,13 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Phase 24K — GAP-020 Step 14 / Phase 24K.1 partial-channel closure:
- * sends one already-claimed reminder. Carries only the reminder's ID
+ * Sends one already-claimed reminder. Carries only the reminder's ID
  * (cheap re-hydration on retry); every fact needed to decide whether to
  * send is re-read fresh from the database, never trusted from
  * serialized state.
  *
  * Delivery itself is delegated per-channel to HomeworkReminderChannelSender,
- * which is the actual idempotency authority (Phase 24K.1) — this job's
+ * which is the actual idempotency authority — this job's
  * own $tries/backoff only control HOW OFTEN this orchestration re-runs;
  * they never cause a channel that already succeeded to resend, because
  * HomeworkReminderChannelSender re-checks each channel's own durable

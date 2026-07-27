@@ -20,7 +20,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
-/** Phase 18G implementation — see the interface for the contract. */
+/** See the interface for the contract. */
 final class ReferralCommunicationReportService implements ReferralCommunicationReportServiceInterface
 {
     public function __construct(

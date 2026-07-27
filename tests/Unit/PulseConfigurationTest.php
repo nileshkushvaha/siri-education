@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Phase 24O/24O.1 — GAP-033: config-level checks that don't require a
+ * Config-level checks that don't require a
  * database connection. See PulseMigrationHashCompatibilityTest for the
  * MySQL-MD5-incompatibility/SHA2-replacement verification and
  * docs/pulse-monitoring.md for the full rationale.
@@ -39,7 +39,7 @@ class PulseConfigurationTest extends TestCase
 
     public function test_pulse_migration_is_in_the_normal_discoverable_path(): void
     {
-        // Phase 24O.1: the migration is customized (SHA2-based key_hash for
+        // The migration is customized (SHA2-based key_hash for
         // MySQL — see docs/pulse-monitoring.md) but lives in the normal
         // path, same as any other migration — no withheld/pending-fix state.
         $this->assertFileExists(base_path('database/migrations/2026_07_20_150026_create_pulse_tables.php'));

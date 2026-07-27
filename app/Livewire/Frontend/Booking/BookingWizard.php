@@ -22,12 +22,12 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * The authenticated-student booking-creation wizard (Phase 17U.3 —
+ * The authenticated-student booking-creation wizard —
  * `/book` is auth-gated; renamed from the pre-authenticated-only
- * "guest wizard"). Student identity always comes from the session —
+ * "guest wizard". Student identity always comes from the session —
  * this component never collects or stores name/email/phone.
  *
- * Phase 17U.3A: the booking mode (Free Demo / Paid Lesson) is always
+ * The booking mode (Free Demo / Paid Lesson) is always
  * an explicit choice — never a silent default from array/DB ordering.
  * The step sequence is variable-length: `phases()` computes the
  * ordered list of phases for the current selections (paid types add
@@ -324,7 +324,7 @@ final class BookingWizard extends Component
             return;
         }
 
-        // Phase 10.2C-Fix: see BookingHistory::initiatePayment() for the
+        // See BookingHistory::initiatePayment() for the
         // identical check and rationale (billing country required before
         // checkout, enforced at the UI entry point rather than inside
         // BookingPaymentService::initiate() itself).

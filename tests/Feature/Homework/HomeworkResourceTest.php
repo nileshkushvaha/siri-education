@@ -32,7 +32,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-022 (SRS-7-3/8): homework resource and attachment library.
+ * SRS-7-3/8: homework resource and attachment library.
  * Instructor-provided resources and student submission attachments are
  * both Media Library collections on the existing HomeworkAssignment
  * model (Message-style pattern), served only through the
@@ -379,10 +379,9 @@ final class HomeworkResourceTest extends TestCase
         $count = count(DB::getQueryLog());
         DB::disableQueryLog();
 
-        // Bound raised from 6 to 8 in Phase 37A: paginatedForStudent() now
-        // also eager-loads resourceVersions.resource/.media for the
-        // reusable library — still a small fixed number of queries per
-        // PAGE, not one per row.
+        // paginatedForStudent() eager-loads resourceVersions.resource/.media
+        // for the reusable library — still a small fixed number of
+        // queries per PAGE, not one per row.
         $this->assertLessThanOrEqual(8, $count);
     }
 

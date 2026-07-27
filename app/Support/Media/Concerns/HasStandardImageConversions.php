@@ -8,7 +8,7 @@ use App\Support\Media\StandardImageConversion;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * GAP-037 requirement #1 — reusable conversion registration so no
+ * Reusable conversion registration so no
  * model duplicates the fit/dimension/quality definitions in
  * StandardImageConversion. A model calls one (or more) of the
  * `add*Conversion()` helpers from its own `registerMediaConversions()`,

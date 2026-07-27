@@ -67,7 +67,7 @@ final class InstructorAvailabilityService
             return $availability;
         });
 
-        // SRS §10.28/§10.33-4 — GAP-018: a newly published (active)
+        // SRS §10.28/§10.33-4: a newly published (active)
         // window is exactly the "instructor later opens matching
         // availability" trigger. Dispatched after the transaction
         // above commits (ShouldDispatchAfterCommit); a draft/inactive
@@ -93,7 +93,7 @@ final class InstructorAvailabilityService
      */
     public function update(TeacherAvailability $availability, array $data, User $actor, ?string $impactConfirmation = null): TeacherAvailability
     {
-        // Phase 24I — GAP-019: the instructor-scoped booking lock
+        // The instructor-scoped booking lock
         // serializes this mutation (and its impact recheck) against
         // booking creation/confirmation for the same instructor, so a
         // booking can never slip in between the final impact check and
@@ -178,7 +178,7 @@ final class InstructorAvailabilityService
     }
 
     /**
-     * Phase 24I — GAP-019: builds the hypothetical after-state window
+     * Builds the hypothetical after-state window
      * set for this mutation (current active rows with the target row
      * replaced by an unsaved clone carrying the proposed payload, or
      * removed entirely for a delete) and runs the impact analysis.
@@ -212,7 +212,7 @@ final class InstructorAvailabilityService
     }
 
     /**
-     * Phase 24I: a duplicate submission (double-click, stale tab) can
+     * A duplicate submission (double-click, stale tab) can
      * carry an in-memory model whose row is already gone — re-checked
      * under the instructor lock so it fails safely instead of silently
      * re-mutating and double-auditing.

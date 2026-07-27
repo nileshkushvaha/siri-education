@@ -3,8 +3,8 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 14.5 consolidated financial settings baseline (replaces the
- * four Phase 14.x/15.x settings migrations). Instructor compensation is
+ * Consolidated financial settings baseline (replaces the
+ * earlier per-feature settings migrations). Instructor compensation is
  * agreement-based and independent of student pricing — no commission
  * key exists. All three feature switches default OFF and may only be
  * flipped through FinancialFeatureConfigurationService, which runs the
@@ -31,7 +31,7 @@ return new class extends SettingsMigration
         $this->migrator->add('instructor_earnings.demo_compensation_policy', 'none');
         $this->migrator->add('instructor_earnings.demo_fixed_amount_minor', null);
 
-        // ── Compensation exception retries (Phase 14.5 backoff) ──────
+        // ── Compensation exception retries (backoff) ──────
         $this->migrator->add('instructor_earnings.compensation_retry_max_attempts', 10);
 
         // ── Withdrawals ──────────────────────────────────────────────

@@ -8,7 +8,7 @@ use App\Wallet\Contracts\LessonWalletRefundServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17F: credits approved lesson-outcome wallet refunds through
+ * Credits approved lesson-outcome wallet refunds through
  * the wallet domain. Idempotent (ledger idempotency keys), batched,
  * per-record failure isolated; a no-op while
  * instructor_earnings.lesson_refund_execution_enabled is off.

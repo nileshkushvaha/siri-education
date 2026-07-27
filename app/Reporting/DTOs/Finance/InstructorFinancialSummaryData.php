@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Finance;
 
 /**
- * Phase 18E — instructor financial summary. Requires
+ * Instructor financial summary. Requires
  * `ViewInstructorCompensationReports` (never implied by general
- * finance access). Financial dictionary (§5):
+ * finance access). Financial dictionary (SRS §5):
  *
  * - An EARNING is the platform's compensation obligation for an
  *   eligible lesson (`earning_amount_minor` — never the student-facing
@@ -33,7 +33,7 @@ namespace App\Reporting\DTOs\Finance;
  * @param  array<string, int>  $withdrawalRequestedAmountByCurrency
  * @param  array<string, int>  $withdrawalPaidAmountByCurrency
  * @param  array<string, int>  $payoutAttemptsByStatus  status => count
- * @param  array<string, int>  $demoConversionIncentiveAmountByCurrency  GAP-008 — awards created in the period, by currency
+ * @param  array<string, int>  $demoConversionIncentiveAmountByCurrency  Awards created in the period, by currency
  */
 final readonly class InstructorFinancialSummaryData
 {

@@ -15,10 +15,10 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18B — the permission-controlled reporting landing page (§18).
+ * The permission-controlled reporting landing page (SRS §18).
  * A simple catalogue: for every category the current administrator may
  * see, lists the reports already available (with a real link) and the
- * reports still planned for a later Phase 18 slice (no link, no faked
+ * reports formally unavailable by design (no link, no faked
  * data). Rendering this page never executes a report query — it only
  * reads code-defined metadata from `ReportRegistryInterface`.
  *

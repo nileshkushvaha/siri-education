@@ -28,7 +28,7 @@ use Livewire\WithPagination;
  * Instructor's own lesson list: upcoming schedule with meeting join
  * access, lesson details, attendance confirmation, technical-issue
  * reporting, teaching-outcome confirmation, and the private
- * student-feedback form (Phase 17Q). The feedback form appears only
+ * student-feedback form. The feedback form appears only
  * for a lesson whose finalized outcome is Completed and only until
  * the instructor's own feedback exists — once submitted it is shown
  * read-only, with no edit or delete control, matching the SRS's

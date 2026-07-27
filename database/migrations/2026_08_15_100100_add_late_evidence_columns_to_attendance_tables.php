@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17B: evidence arriving after the attendance record is sealed
+ * Evidence arriving after the attendance record is sealed
  * (or after the lesson left its open state) is still stored for audit —
  * flagged is_late and excluded from the merged aggregates — and the
  * record carries late_evidence_reported_at, which acts as an

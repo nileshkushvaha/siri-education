@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Support case permissions (GAP-016 / SRS Chapter 25, Filament Shield
+ * Support case permissions (SRS Chapter 25, Filament Shield
  * naming). Idempotent. Every write goes through SupportCaseService —
  * these permissions gate which actions a manager may invoke, never a
  * direct model write.

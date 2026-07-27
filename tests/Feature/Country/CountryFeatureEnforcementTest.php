@@ -45,7 +45,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 34 (GAP-029) — cross-domain enforcement of the country-feature
+ * Cross-domain enforcement of the country-feature
  * gate at each real service boundary. Every test here calls the
  * domain service directly (never through Livewire/Filament), which is
  * exactly what a crafted/direct request bypassing a disabled UI

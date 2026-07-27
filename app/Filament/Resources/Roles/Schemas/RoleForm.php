@@ -41,7 +41,7 @@ class RoleForm
                                     ignoreRecord: true,
                                 )
                                 ->placeholder('e.g. content-manager')
-                                // Phase 24E — GAP-010/SRS-23-7: UI convenience
+                                // UI convenience
                                 // only; the authoritative guard is
                                 // EditRole::mutateFormDataBeforeSave(), which
                                 // rejects an incompatible rename even if this

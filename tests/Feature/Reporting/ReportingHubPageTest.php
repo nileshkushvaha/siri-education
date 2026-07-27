@@ -17,7 +17,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
-/** Phase 18B §18 — the permission-controlled reporting landing page. */
+/** The permission-controlled reporting landing page. */
 class ReportingHubPageTest extends TestCase
 {
     use RefreshDatabase;
@@ -66,8 +66,7 @@ class ReportingHubPageTest extends TestCase
 
         $response = $this->actingAs($superAdmin)->get(ReportingHub::getUrl())->assertOk();
 
-        // Phase 18H implemented the executive overview — `meeting_reliability`
-        // is the remaining planned placeholder.
+        // `meeting_reliability` is the one formally-unavailable placeholder.
         $response->assertSee('Executive KPI Overview');
         $response->assertSee('Planned');
         // No fabricated numeric KPI values are ever rendered on this page.

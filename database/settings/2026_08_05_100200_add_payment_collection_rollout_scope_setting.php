@@ -3,7 +3,7 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 16A.1 — rollout POLICY, not a kill switch.
+ * Rollout POLICY, not a kill switch.
  * `PaymentGatewaySettings::payments_enabled` remains the sole
  * authoritative switch. Defaults to `india_razorpay_only`, matching
  * the platform's current safe state (Razorpay is the only provider

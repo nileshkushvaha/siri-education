@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * GAP-036 (SRS §22.25/26): a managed 301/302 redirect. Deactivated
+ * SRS §22.25/26: a managed 301/302 redirect. Deactivated
  * (never hard-deleted in normal operation) rows are kept for historical
  * auditability — `active_source_path` (a DB-generated column, see the
  * migration) is what actually enforces "unique among active sources,"

@@ -8,7 +8,7 @@ use App\Lessons\Contracts\LessonFinalizationServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Phase 17B evidence-driven finalizer: seals due attendance records,
+ * Evidence-driven finalizer: seals due attendance records,
  * determines each open ended lesson's outcome from the evidence, and
  * finalizes it through the existing outcome pipeline. Idempotent and
  * concurrent-safe; a no-op while

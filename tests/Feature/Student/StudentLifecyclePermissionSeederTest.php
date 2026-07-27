@@ -13,8 +13,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H — GAP-013: mirrors InstructorPermissionSeederTest's exact
- * pattern for the new student lifecycle permissions.
+ * Mirrors InstructorPermissionSeederTest's exact
+ * pattern for the student lifecycle permissions.
  */
 class StudentLifecyclePermissionSeederTest extends TestCase
 {

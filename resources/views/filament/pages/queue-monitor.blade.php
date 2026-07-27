@@ -173,7 +173,7 @@
                         </div>
                     @endif
 
-                    {{-- Phase 24N — GAP-034: the full, paginated, retryable failed-jobs table. --}}
+                    {{-- The full, paginated, retryable failed-jobs table. --}}
                     <p class="px-6 pt-4 text-xs text-gray-400 dark:text-gray-500">
                         Retrying may repeat the job's operation. Confirm that the underlying issue has been resolved before retrying.
                     </p>

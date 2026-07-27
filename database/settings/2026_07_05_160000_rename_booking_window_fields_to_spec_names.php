@@ -4,7 +4,7 @@ use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
  * Renames the two BookingSettings fields BookingWindowRule reads to match
- * the Phase 1 settings spec's naming — no duplicate field is introduced,
+ * the settings spec's naming — no duplicate field is introduced,
  * this is a straight rename (+ unit conversion for the lead-time field).
  */
 return new class extends SettingsMigration

@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * GAP-036 (SRS §22.25/26): redirects are applied on the public request
+ * SRS §22.25/26: redirects are applied on the public request
  * path only, ahead of the plain 404 page, and never inside admin/API/
  * authenticated territory.
  */

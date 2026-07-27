@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * GAP-036 redirect-management permissions (Filament Shield naming).
+ * Redirect-management permissions (Filament Shield naming).
  * No Delete/Restore permission — redirects are deactivated, never hard
  * deleted, per requirement #5's historical-auditability rule.
  */

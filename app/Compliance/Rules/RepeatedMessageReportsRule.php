@@ -13,8 +13,8 @@ use App\Settings\ComplianceMonitoringSettings;
 use Illuminate\Support\Facades\Date;
 
 /**
- * GAP-017 requirement #7 — integrates message reporting with the
- * existing rule-based compliance monitoring infrastructure (Phase 30)
+ * Integrates message reporting with the
+ * existing rule-based compliance monitoring infrastructure
  * rather than inventing a parallel mechanism. Counts distinct reports
  * against messages sent by the same user within a rolling window —
  * evidence for human review only, never an automatic restriction

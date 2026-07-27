@@ -16,7 +16,7 @@ use Spatie\Permission\PermissionRegistrar;
  * that do not exist, so without this only super_admin can reach the
  * booking admin.
  *
- * Phase 17U.1: `Archive:Booking` replaces `Delete:Booking` — a
+ * `Archive:Booking` replaces `Delete:Booking` — a
  * booking is never deleted, only administratively archived
  * (soft-deleted) through BookingArchivalService. `ForceDelete:Booking`
  * is deliberately never seeded or granted to anyone, including
@@ -34,10 +34,10 @@ class BookingPermissionSeeder extends Seeder
         'ViewAny:BookingType', 'View:BookingType', 'Create:BookingType', 'Update:BookingType', 'Delete:BookingType', 'Restore:BookingType',
         'ViewAny:TeacherAvailability', 'View:TeacherAvailability', 'Create:TeacherAvailability', 'Update:TeacherAvailability', 'Delete:TeacherAvailability',
         'ViewAny:TeacherUnavailability', 'View:TeacherUnavailability', 'Create:TeacherUnavailability', 'Update:TeacherUnavailability', 'Delete:TeacherUnavailability',
-        // Student-facing pricing matrix (Phase 10.2D) — admin only, never
+        // Student-facing pricing matrix — admin only, never
         // granted to the instructor role.
         'ViewAny:StudentLessonPrice', 'View:StudentLessonPrice', 'Create:StudentLessonPrice', 'Update:StudentLessonPrice', 'Delete:StudentLessonPrice', 'Restore:StudentLessonPrice',
-        // GAP-028 — recording access is participant-or-explicitly-
+        // Recording access is participant-or-explicitly-
         // permitted-admin only; no Create/Update/Delete permission
         // exists because RecordingService is the only writer.
         'ViewAny:Recording', 'View:Recording',

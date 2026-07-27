@@ -7,7 +7,7 @@ namespace App\Notifications\Templates;
 use InvalidArgumentException;
 
 /**
- * GAP-039 requirement #1 — one code-owned template registration:
+ * One code-owned template registration:
  * stable key, human category/description for the admin UI, and one
  * ChannelTemplateContent per supported channel (its own default
  * subject/body/variables — never shared across channels).

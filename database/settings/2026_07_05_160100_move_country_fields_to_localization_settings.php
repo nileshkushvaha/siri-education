@@ -5,7 +5,7 @@ use Spatie\LaravelSettings\Migrations\SettingsMigration;
 /**
  * Moves the country/locale-switching fields out of GeneralSettings (where
  * they were temporarily merged) into their own LocalizationSettings group,
- * per the Phase 1 settings spec's 12 required groups. GeneralSettings keeps
+ * per the settings spec's 12 required groups. GeneralSettings keeps
  * timezone/language/date-time-format/currency — no fields are duplicated
  * across the two groups.
  */

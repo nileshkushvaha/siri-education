@@ -11,7 +11,7 @@ use App\Reporting\Filters\ReportFilterKey;
 
 /**
  * The single place that decides what an administrator may do with the
- * reporting layer (Phase 18B §13). Permissions are always the source of
+ * reporting layer (SRS §13). Permissions are always the source of
  * truth; every method denies safely (`false`) rather than throwing when
  * context is incomplete, so a caller must always check before acting —
  * nothing here grants access merely because a report definition exists

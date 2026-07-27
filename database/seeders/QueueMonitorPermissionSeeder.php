@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Phase 24N — GAP-034: `queue_monitor.retry_failed_jobs` is the
+ * `queue_monitor.retry_failed_jobs` is the
  * dedicated, recovery-action permission — distinct from
  * `queue_monitor.view`, since viewing failed jobs never implies the
  * ability to retry them. `queue_monitor.view` itself was referenced by

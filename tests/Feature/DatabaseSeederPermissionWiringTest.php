@@ -13,7 +13,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 17U.2 §11 — every current Phase 17 permission seeder
+ * Every permission seeder
  * (Booking incl. archive/restore, Lesson, Review/moderation,
  * Review-report, Quality-dashboard/alert, Feedback, and the new
  * Review-settings/tags permissions) is now wired into the normal

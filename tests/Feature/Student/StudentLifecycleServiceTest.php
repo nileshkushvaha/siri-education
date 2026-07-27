@@ -20,7 +20,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24H — GAP-013/SRS-2-20/SRS-B1-12: StudentLifecycleService is the
+ * SRS-2-20/SRS-B1-12: StudentLifecycleService is the
  * single authoritative write path for UserProfile::student_status.
  * Covers the governed transition matrix, reason requirements,
  * authorization, audit evidence, session revocation, and multi-role
@@ -275,9 +275,9 @@ class StudentLifecycleServiceTest extends TestCase
         $this->assertNotNull(LoginHistory::query()->where('user_id', $student->id)->first()->logged_out_at);
     }
 
-    // ── 24/26. Multi-role behavior — Phase 24H.1: account-wide, no bypass ───
+    // ── 24/26. Multi-role behavior: account-wide, no bypass ──────────────────
 
-    /** Phase 24H.1 correction: a bookable instructor capability no longer bypasses the SRS's blanket authentication restriction. */
+    /** A bookable instructor capability never bypasses the SRS's blanket authentication restriction. */
     public function test_blocks_login_is_true_even_when_the_same_account_has_a_bookable_instructor_status(): void
     {
         $student = $this->studentWith(StudentStatus::Suspended);
@@ -310,7 +310,7 @@ class StudentLifecycleServiceTest extends TestCase
         $this->assertFalse($this->service->blocksLogin($student->fresh()));
     }
 
-    // ── Phase 24H.1A — strict isEligibleForStudentActions() ──────────────────
+    // ── Strict isEligibleForStudentActions() ──────────────────────────────────
 
     public function test_active_student_is_eligible_for_student_actions(): void
     {
@@ -340,7 +340,7 @@ class StudentLifecycleServiceTest extends TestCase
         $this->assertFalse($this->service->isEligibleForStudentActions($student->fresh()));
     }
 
-    /** Phase 24H.1A correction: null is invalid/ambiguous data, never an implicit Active grant (Phase 24H.1's carve-out is removed). */
+    /** Null is invalid/ambiguous data, never an implicit Active grant. */
     public function test_null_status_student_is_not_eligible(): void
     {
         $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
@@ -369,7 +369,7 @@ class StudentLifecycleServiceTest extends TestCase
         $this->assertFalse(app(StudentLifecycleService::class)->isEligibleForStudentActions($nullStatus->fresh()));
     }
 
-    // ── Phase 24H.1A — null-state prevention on role assignment ──────────────
+    // ── Null-state prevention on role assignment ──────────────────────────────
 
     public function test_initializing_a_null_status_student_role_sets_registered(): void
     {

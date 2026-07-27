@@ -7,7 +7,7 @@ namespace App\Reporting\Enums;
 use App\Booking\Enums\RecurrenceFrequency;
 
 /**
- * The reporting-filter recurrence dimension (Phase 18B §8). Value 1
+ * The reporting-filter recurrence dimension (SRS §8). Value 1
  * bookings are either part of a recurrence group (`RecurrenceFrequency`
  * — `Daily`/`Weekly`, the source domain enum) or a one-off booking with
  * no recurrence group at all. `Single` is a reporting-layer concept

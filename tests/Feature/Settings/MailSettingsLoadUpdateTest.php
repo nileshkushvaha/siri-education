@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24S — GAP: MailSettingsPage previously had zero audit coverage
+ * MailSettingsPage previously had zero audit coverage
  * at all (no LogsSettingsUpdates usage, plain ->save()). SMTP password
  * is the one sensitive field here — must always be presence-only
  * redacted, never logged in plaintext or ciphertext.

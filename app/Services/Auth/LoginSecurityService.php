@@ -121,7 +121,7 @@ final class LoginSecurityService
 
     private function notifyAdminsOfLock(User $lockedUser, string $ipAddress): void
     {
-        // Phase 24T: whereHasRoleNamed(), not role() — a missing
+        // whereHasRoleNamed(), not role() — a missing
         // super_admin role must never crash the failed-login-handling
         // path itself; it should just mean "no one to notify".
         User::query()

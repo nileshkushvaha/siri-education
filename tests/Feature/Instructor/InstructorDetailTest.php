@@ -34,7 +34,7 @@ class InstructorDetailTest extends TestCase
         $user->profile->update(array_merge([
             'profile_visibility' => 'public',
             'instructor_status' => InstructorStatus::Approved,
-            // Phase 23F: offers_demo defaults to false; this suite's fixture
+            // offers_demo defaults to false; this suite's fixture
             // represents a typical fully-bookable instructor with both CTAs.
             'offers_demo' => true,
         ], $profileOverrides));
@@ -238,7 +238,7 @@ class InstructorDetailTest extends TestCase
 
     public function test_unauthenticated_visitor_following_a_book_button_is_redirected_to_login(): void
     {
-        // Phase 10.2C-Fix: the profile page itself stays public, but both
+        // The profile page itself stays public, but both
         // Book buttons point at booking.create, which now requires auth —
         // this follows that link end-to-end rather than asserting the
         // route in isolation (see BookingWizardLivewireTest for that).

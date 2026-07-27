@@ -80,7 +80,7 @@ class AcademicLevelForm
                                 ->placeholder('e.g. 8'),
                         ]),
 
-                        // Education-system scoping (Phase 12.5): UK "Year 10"
+                        // Education-system scoping: UK "Year 10"
                         // and US "Grade 9" can coexist as country-scoped rows;
                         // blank = global. min/max grade above keep every level
                         // bridged to the universal 1-12 ints booking matches on.

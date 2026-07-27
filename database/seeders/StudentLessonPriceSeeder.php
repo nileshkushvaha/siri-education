@@ -15,7 +15,7 @@ use Illuminate\Database\Seeder;
  * Minimal starter pricing so `paid_one_to_one` is actually bookable in
  * a fresh dev environment — not a production price list. Deliberately
  * one "all levels" row (academic_level_id null) rather than one row
- * per academic level, per Phase 10.2D-Cleanup's "do not invent a huge
+ * per academic level, per the "do not invent a huge
  * price list" instruction. Skips silently if any referenced seed row
  * (subject/country/currency/booking type) is missing, since this
  * seeder must run after SubjectSeeder/CountrySeeder/CurrencySeeder/

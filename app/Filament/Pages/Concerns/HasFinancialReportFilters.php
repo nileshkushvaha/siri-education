@@ -12,8 +12,8 @@ use App\Wallet\Enums\WalletLedgerEntryType;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18E — shared filter state for the four financial report pages.
- * Livewire hydrates select values as strings (Phase 18C lesson) — all
+ * Shared filter state for the four financial report pages.
+ * Livewire hydrates select values as strings — all
  * properties stay ?string and are cast once in filters().
  */
 trait HasFinancialReportFilters

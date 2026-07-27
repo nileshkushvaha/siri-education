@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Phase 18C data-provenance decision (Outcome B, §6.1): the recurring-
+     * Data-provenance decision (Outcome B, §6.1): the recurring-
      * booking workflow already knows the recurrence frequency (daily/
      * weekly) at creation time (`RecurrenceData::$frequency`) but never
      * persisted it — every occurrence became an indistinguishable

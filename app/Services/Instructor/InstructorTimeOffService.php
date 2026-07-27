@@ -34,7 +34,7 @@ final class InstructorTimeOffService
      */
     public function create(array $data, User $actor, ?string $impactConfirmation = null): TeacherUnavailability
     {
-        // Phase 24I — GAP-019: serialized against booking creation for
+        // Serialized against booking creation for
         // the same instructor (lock outside, transaction inside), so no
         // booking can be confirmed inside the proposed blackout between
         // the impact check and the write.

@@ -14,7 +14,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 24I — GAP-019/SRS-10-12/SRS §10.24: analyzes a PROPOSED
+ * SRS-10-12/SRS §10.24: analyzes a PROPOSED
  * availability mutation against the instructor's future confirmed
  * bookings, without mutating anything. A booking is "affected" when it
  * is this instructor's, starts in the future, is in Confirmed status

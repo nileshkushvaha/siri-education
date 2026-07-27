@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17E — the idempotent financial-decision bridge: exactly one
+ * The idempotent financial-decision bridge: exactly one
  * disposition record per lesson (unique lesson_id). Re-evaluations
  * (outcome overrides) push the previous snapshot into `history` and
  * bump `version` — records are never deleted, and this table never

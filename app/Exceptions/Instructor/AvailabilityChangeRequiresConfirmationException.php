@@ -8,7 +8,7 @@ use App\Booking\DTOs\AvailabilityChangeImpact;
 use RuntimeException;
 
 /**
- * Phase 24I — GAP-019/SRS §10.24: thrown by the availability/time-off
+ * SRS §10.24: thrown by the availability/time-off
  * mutation services on the FIRST submission of a change that would
  * leave future confirmed bookings outside the instructor's effective
  * schedule. Nothing has been mutated when this is thrown — the caller

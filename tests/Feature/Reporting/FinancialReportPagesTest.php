@@ -19,7 +19,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
-/** Phase 18E §10/§22 — the four financial report pages: gates, no-secret rendering, registry integration. */
+/** The four financial report pages: gates, no-secret rendering, registry integration. */
 class FinancialReportPagesTest extends TestCase
 {
     use RefreshDatabase;

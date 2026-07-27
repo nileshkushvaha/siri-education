@@ -222,7 +222,7 @@ final class InstructorOnboardingResourceTest extends TestCase
         ], InstructorOnboardingResource::getRelations());
     }
 
-    // ── Phase 24S.1: navigation badge resilience when the instructor role row doesn't exist ──
+    // ── Navigation badge resilience when the instructor role row doesn't exist ──
 
     /**
      * Filament evaluates every registered resource's getNavigationBadge()
@@ -261,8 +261,7 @@ final class InstructorOnboardingResourceTest extends TestCase
      * admin pages 500'd because Filament evaluates every resource's nav
      * badge on every page load — proven here directly against a
      * completely unrelated settings page, with no role pre-seeded at
-     * all, mirroring the exact conditions the 8 previously-failing
-     * Phase 24S render tests hit.
+     * all.
      */
     public function test_an_unrelated_settings_page_renders_without_the_instructor_role_seeded(): void
     {

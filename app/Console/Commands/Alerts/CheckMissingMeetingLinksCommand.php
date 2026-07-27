@@ -20,7 +20,7 @@ use Throwable;
 
 /**
  * SRS §26.36 "Missing Meeting Link Alert" (Critical priority) — no
- * proactive sweep for this existed before this phase (the
+ * proactive sweep for this existed previously (the
  * SRS_Compliance_Audit finding for SRS-26-6 was "no proactive
  * pre-lesson sweep/alert"). Scoped to confirmed, online bookings whose
  * payment status makes them meeting-eligible at all

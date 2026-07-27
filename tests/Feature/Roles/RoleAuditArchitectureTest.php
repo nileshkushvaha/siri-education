@@ -12,16 +12,16 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24Q/24Q.1 — GAP-011/SRS-23-6: architecture guard covering BOTH the
+ * Architecture guard covering BOTH the
  * Role and Permission domains. Every governed mutation surface must call
  * AuditTrailService (via RoleAuditRecorder or PermissionAuditRecorder,
  * each of which only ever calls AuditTrailService::logUser()) — never raw
- * activity(). Scoped narrowly to the files this phase governs, so
+ * activity(). Scoped narrowly to the files this guard governs, so
  * unrelated legacy activity() usage elsewhere in the app is never flagged.
  *
  * Read-only pages (ListRoles/ListPermissions — no mutation logic of their
  * own) and the bootstrap-only seeder/observer path are explicitly
- * classified rather than silently ignored, per Phase 24Q.1 Step 6.
+ * classified rather than silently ignored.
  */
 class RoleAuditArchitectureTest extends TestCase
 {

@@ -14,9 +14,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Read-only instructor student roster (Phase 23N). The instructor-student
+ * Read-only instructor student roster. The instructor-student
  * relationship is never a new table — it is derived entirely from Lesson,
- * the same authoritative source Phase 23K's lesson management already
+ * the same authoritative source lesson management already
  * relies on. Three bounded queries per page load: the grouped Lesson
  * aggregate (paginated), a student hydration lookup, and a learning-plan
  * status lookup — never a query per row.
@@ -37,7 +37,7 @@ final class InstructorStudentService
 
     /**
      * Students in the roster with no currently scheduled/live future
-     * lesson (Phase 23P) — a point-in-time fact, never period-scoped
+     * lesson — a point-in-time fact, never period-scoped
      * and never an "at risk"/retention judgment. Two bounded aggregate
      * queries, independent of roster size.
      */

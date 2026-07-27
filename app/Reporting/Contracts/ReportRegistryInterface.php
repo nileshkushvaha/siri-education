@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Reporting\DTOs\ReportDefinition;
 
 /**
- * Code-defined report catalogue (Phase 18B §10). Listing never executes
+ * Code-defined report catalogue (SRS §10). Listing never executes
  * a report query and never instantiates a domain service — definitions
  * are plain data built once at construction.
  */

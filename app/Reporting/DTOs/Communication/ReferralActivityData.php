@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Communication;
 
 /**
- * Phase 18G referral activity, extended by Phase 19D now that the
- * Referral domain exists (attributions, campaigns, reward records).
- * The wallet ledger remains the authority on executed credit VALUE;
- * the referral_rewards table is the authority on reward lifecycle
- * counts; referral_attributions on sign-up attribution. Referral
- * conversion rate is still deliberately absent — the Phase 18G §4A
+ * Referral activity, covering attributions, campaigns, and reward
+ * records. The wallet ledger remains the authority on executed credit
+ * VALUE; the referral_rewards table is the authority on reward
+ * lifecycle counts; referral_attributions on sign-up attribution.
+ * Referral conversion rate is still deliberately absent — the SRS §4A
  * definition gate (an agreed qualifying-event denominator) has not
  * been re-opened — and referred booking value is never labeled
  * revenue. Amounts are integer minor units grouped by currency, never

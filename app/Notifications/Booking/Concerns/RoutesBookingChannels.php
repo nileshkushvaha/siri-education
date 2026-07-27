@@ -55,14 +55,14 @@ trait RoutesBookingChannels
 
     /**
      * One-line plain-text variant used by WhatsApp/SMS/database
-     * channels. Phase 24L — GAP-030: takes the actual notifiable so
+     * channels. Takes the actual notifiable so
      * each recipient's own timezone can be resolved; never resolve
      * from $this->booking->student or any other shared/cached value.
      */
     abstract protected function plainText(object $notifiable): string;
 
     /**
-     * Phase 24L — GAP-030 (SRS-21-6, SRS §21.13/§21.16): resolves the
+     * SRS-21-6, SRS §21.13/§21.16: resolves the
      * ACTUAL notifiable's own timezone — never the booking's captured
      * (student's) timezone, never another recipient's. AnonymousNotifiable
      * (guest email routing) has no profile, so it falls back to the

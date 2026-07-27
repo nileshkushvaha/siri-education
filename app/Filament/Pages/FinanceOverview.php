@@ -19,7 +19,7 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Phase 18E — Finance Overview (§11). Opening requires
+ * Finance Overview (SRS §11). Opening requires
  * `ViewFinanceReports`; every embedded section independently re-checks
  * its own stricter permission through the service — an overview user
  * without wallet/payment/compensation permission sees that section

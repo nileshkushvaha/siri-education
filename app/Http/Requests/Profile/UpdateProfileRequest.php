@@ -28,7 +28,7 @@ class UpdateProfileRequest extends FormRequest
             // Email is frozen — never accepted from the profile form. See
             // UpdateProfileAction, which never writes to users.email.
             'headline' => [$instructorOnly, 'nullable', 'string', 'max:255'],
-            // Phase 23G: `designation` removed — audited and confirmed
+            // `designation` removed — audited and confirmed
             // unused by any public view; see InstructorProfileTextResolver.
             'short_bio' => [$instructorOnly, 'nullable', 'string', 'max:160'],
             'bio' => [$instructorOnly, 'nullable', 'string', 'max:2000'],

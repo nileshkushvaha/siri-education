@@ -11,7 +11,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Read-only instructor settlement history (Phase 23L). No mutation
+ * Read-only instructor settlement history. No mutation
  * exists here — batch creation/approval/mark-paid remain staff-only
  * actions through InstructorEarningServiceInterface. Mirrors
  * WithdrawalsManager's direct-model-query pattern: InstructorEarning

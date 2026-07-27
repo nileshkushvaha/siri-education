@@ -14,7 +14,7 @@ use App\Models\Lesson;
 use Tests\Support\ManagesFinancialSettings;
 
 /**
- * Phase 17U.4 (Section 16) — a real cross-process race on
+ * A real cross-process race on
  * FinalizeLessonOutcomeAction, the single writer of a lesson's
  * finalized outcome. Two independent worker processes call
  * LessonOutcomeService::finalize() for the very same lesson at the

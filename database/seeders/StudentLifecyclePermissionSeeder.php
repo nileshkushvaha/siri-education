@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Phase 24H — GAP-013/SRS-2-20/SRS-B1-12. Mirrors InstructorPermissionSeeder's
+ * SRS-2-20/SRS-B1-12. Mirrors InstructorPermissionSeeder's
  * exact pattern: dedicated lifecycle permissions, granted to manager and
  * super_admin only. Super Admin also has blanket access via Gate::before(),
  * independent of these rows.

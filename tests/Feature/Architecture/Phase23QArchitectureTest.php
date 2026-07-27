@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23Q boundary: /register became the canonical,
+ * Guards the unified-registration boundary: /register became the canonical,
  * role-neutral registration entry point — wording and routing only.
  * No second authentication system, no duplicate registration
  * controller/service, no new instructor-specific registration route,

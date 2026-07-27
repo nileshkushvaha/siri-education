@@ -17,7 +17,7 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-/** Phase 18E — Payments & Reconciliation report (§13/§14). Requires `ViewPaymentReports`. */
+/** Payments & Reconciliation report (SRS §13/§14). Requires `ViewPaymentReports`. */
 class PaymentsReconciliation extends Page
 {
     use ExportsReportCsv;

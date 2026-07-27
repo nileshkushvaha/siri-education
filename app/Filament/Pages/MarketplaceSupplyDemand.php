@@ -23,7 +23,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18H — Marketplace Supply & Demand (SRS Chapter 19). Every
+ * Marketplace Supply & Demand (SRS Chapter 19). Every
  * figure is delegated to
  * {@see MarketplaceExecutiveReportServiceInterface}; supply is
  * current-state, demand is period-event, comparisons pair compatible
@@ -52,7 +52,7 @@ class MarketplaceSupplyDemand extends Page
     public ?string $customEnd = null;
 
     // Livewire hydrates select values as strings — kept ?string, cast
-    // once in filters() (Phase 18C hydration-regression lesson).
+    // once in filters().
     public ?string $countryId = null;
 
     public ?string $subjectId = null;

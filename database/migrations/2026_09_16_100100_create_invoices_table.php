@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * SRS §14.21-14.24 (GAP-007): one immutable invoice/receipt per
+ * SRS §14.21-14.24: one immutable invoice/receipt per
  * successful booking payment or wallet recharge. Every student/
  * financial/platform field is a snapshot taken at issuance — never a
  * live join — so a later profile, country, or GeneralSettings change

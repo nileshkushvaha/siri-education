@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23N boundary: the instructor student roster is a
+ * Guards the instructor-student-roster boundary: the instructor student roster is a
  * pure read layer derived from Lesson — no new relationship table, no
  * duplicate student domain, no direct DB writes from Livewire, and no
  * payment/private-feedback fields ever selected or rendered.
@@ -22,7 +22,7 @@ final class Phase23NArchitectureTest extends TestCase
         $this->assertFileDoesNotExist(app_path('Services/Instructor/InstructorCRMService.php'));
 
         // No migration creates a new relationship table — the roster is
-        // Lesson-derived. (instructor_student_feedback is Phase 17Q's
+        // Lesson-derived. (instructor_student_feedback is a
         // pre-existing private-feedback table, not a relationship table.)
         $migrations = glob(database_path('migrations/*.php'));
         $newRelationshipMigrations = array_filter(

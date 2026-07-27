@@ -38,7 +38,7 @@ use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
 /**
- * Phase 17B — the lessons:finalize-due automated finalizer: evidence
+ * The lessons:finalize-due automated finalizer: evidence
  * windows, per-outcome delays, technical-issue holds, manual/override
  * protection, idempotency, concurrency, batch isolation, and earnings
  * pipeline compatibility.

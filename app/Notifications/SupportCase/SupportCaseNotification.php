@@ -10,8 +10,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
 /**
- * Base for GAP-016 support-case lifecycle notifications. Distinct from
- * the pre-existing `App\Notifications\Support` namespace, which
+ * Base for support-case lifecycle notifications. Distinct from
+ * the `App\Notifications\Support` namespace, which
  * belongs to the unrelated one-way public contact/support form
  * (ContactFormController) and is not touched by this module.
  */

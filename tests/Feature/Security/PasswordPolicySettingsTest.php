@@ -168,7 +168,7 @@ class PasswordPolicySettingsTest extends TestCase
         $this->assertTrue(Schema::hasTable('user_password_histories'));
     }
 
-    // ── Phase 24S: audit coverage via the shared atomic+audited helper ──────
+    // ── Audit coverage via the shared atomic+audited helper ──────────────────
 
     public function test_save_creates_an_audit_event_with_the_diff(): void
     {

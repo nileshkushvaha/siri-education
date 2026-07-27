@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * Phase 17A — attendance evidence ingestion, outcome determination,
+ * Attendance evidence ingestion, outcome determination,
  * finalization, override, idempotency, and concurrency protections.
  */
 class LessonAttendanceOutcomeTest extends TestCase

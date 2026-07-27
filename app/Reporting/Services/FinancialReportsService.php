@@ -25,7 +25,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
-/** Phase 18E implementation — see the interface for the permission and read-only contract. */
+/** See the interface for the permission and read-only contract. */
 final class FinancialReportsService implements FinancialReportsServiceInterface
 {
     public function __construct(

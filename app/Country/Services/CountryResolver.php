@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
- * GAP-029 requirement #3 — the single place every country-governed
+ * The single place every country-governed
  * mutation resolves "which country applies here", so no domain service
  * re-derives its own country logic:
  *

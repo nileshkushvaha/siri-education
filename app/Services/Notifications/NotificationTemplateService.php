@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
- * GAP-039 requirement #7 — the only writer of NotificationTemplate
+ * The only writer of NotificationTemplate
  * rows. Every mutation is audited via AuditTrailService (never
  * activity() directly, per CLAUDE.md) and busts the renderer's cache
  * for that exact (key, channel) so the next render sees the change

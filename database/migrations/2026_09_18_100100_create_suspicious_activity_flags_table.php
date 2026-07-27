@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 30 (GAP-014/GAP-015) — rule-based compliance monitoring. A row
+ * Rule-based compliance monitoring. A row
  * is evidence for human review, never a sanction; nothing here ever
  * cascades into suspension, payment blocking, or wallet freezing.
  *

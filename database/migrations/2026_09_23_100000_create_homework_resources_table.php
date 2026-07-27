@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-022 / SRS-7-8 (§7.15 "Resource Library"): a personal, reusable
+ * SRS-7-8 (§7.15 "Resource Library"): a personal, reusable
  * teaching resource an instructor maintains independently of any single
  * homework assignment. subject_id/academic_level_id are optional
  * categorization metadata (search/filter), not an assignment link —

@@ -217,7 +217,7 @@ class InstructorEarningSettingsPage extends Page
                     ]),
 
                 Section::make('Withdrawals')
-                    ->description('Phase 15: instructors request payouts of released earnings to verified payout methods. Requests only reserve earnings — no external transfer is ever executed.')
+                    ->description('Instructors request payouts of released earnings to verified payout methods. Requests only reserve earnings — no external transfer is ever executed.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
@@ -254,7 +254,7 @@ class InstructorEarningSettingsPage extends Page
                     ]),
 
                 Section::make('Payout Execution')
-                    ->description('Phase 16A: executes approved withdrawals via a provider-neutral internal pipeline. Only the deterministic fake provider is registered — no external payout API exists in this phase.')
+                    ->description('Executes approved withdrawals via a provider-neutral internal pipeline. Only the deterministic fake provider is registered — no external payout API exists yet.')
                     ->columnSpanFull()
                     ->schema([
                         Placeholder::make('payout_execution_overview')
@@ -269,7 +269,7 @@ class InstructorEarningSettingsPage extends Page
                                 ->options(['fake' => 'Fake (deterministic, no network calls)'])
                                 ->required()
                                 ->native(false)
-                                ->helperText('Only the fake provider is registered in Phase 16A.'),
+                                ->helperText('Only the fake provider is registered.'),
                             Toggle::make('payout_maker_checker_enabled')
                                 ->label('Maker-checker enabled')
                                 ->helperText('On = the withdrawal approver cannot also execute its payout.'),

@@ -13,17 +13,15 @@ use App\Settings\RegistrationSettings;
 use App\Settings\SessionSettings;
 
 /**
- * Phase 24S — previously wrote field-level diffs straight to
- * `activity('security')`, bypassing AuditTrailService (against the
- * project's "never activity() directly in business code" rule) and
- * saving settings and their audit record as two separate,
- * non-transactional steps. Now reuses the same
- * LogsSettingsUpdates::saveSettingsWithAudit() helper every other
- * settings page routes through — same 'security' log_name and
- * 'settings_updated' event as before, atomic settings+audit commit,
- * and any future password/secret/token-shaped Security field
- * automatically gets presence-only redaction instead of silently being
- * dropped from the diff.
+ * Reuses the same LogsSettingsUpdates::saveSettingsWithAudit() helper
+ * every other settings page routes through — routing field-level diffs
+ * through AuditTrailService rather than calling `activity('security')`
+ * directly (per the project's "never activity() directly in business
+ * code" rule), with an atomic settings+audit commit under 'security'
+ * log_name / 'settings_updated' event, and any future
+ * password/secret/token-shaped Security field automatically gets
+ * presence-only redaction instead of silently being dropped from the
+ * diff.
  */
 class SecuritySettingsService
 {

@@ -8,7 +8,7 @@ use Spatie\LaravelSettings\Settings;
 
 class PaymentGatewaySettings extends Settings
 {
-    // Platform-wide gateway routing/kill-switch (Phase 10.2A). None of
+    // Platform-wide gateway routing/kill-switch. None of
     // these are read by PaymentProviderResolver unless explicitly set —
     // see PaymentProviderResolver's routing-order docblock. Adding these
     // does not change existing behavior: default_provider starts null,
@@ -32,10 +32,10 @@ class PaymentGatewaySettings extends Settings
 
     public bool $fake_enabled;
 
-    /** Phase 16A.1 — rollout policy (not a kill switch); see App\Booking\Enums\PaymentCollectionRolloutScope. */
+    /** Rollout policy (not a kill switch); see App\Booking\Enums\PaymentCollectionRolloutScope. */
     public string $payment_collection_rollout_scope;
 
-    /** Phase 16C — gates BookingPaymentReconciliationService::reconcileDue(); detection-only, moves no money. */
+    /** Gates BookingPaymentReconciliationService::reconcileDue(); detection-only, moves no money. */
     public bool $booking_payment_reconciliation_enabled;
 
     /** Minutes a non-terminal payment must sit unsynced before a reconciliation sweep polls it again. */

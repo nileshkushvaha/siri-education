@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-/** Phase 24N — GAP-034: `queue_monitor.retry_failed_jobs` is a distinct permission from `queue_monitor.view`. */
+/** `queue_monitor.retry_failed_jobs` is a distinct permission from `queue_monitor.view`. */
 class QueueMonitorPermissionSeederTest extends TestCase
 {
     use RefreshDatabase;

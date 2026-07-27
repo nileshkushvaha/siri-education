@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17K — exactly one row per LessonReview (unique review_id),
+ * Exactly one row per LessonReview (unique review_id),
  * tracking whether that review currently contributes to its
  * instructor's rating aggregate. Reconciliation is idempotent by
  * construction: a publish/hide/restore/reject/archive event just

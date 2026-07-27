@@ -226,7 +226,7 @@ final class InstructorLifecycleManagementTest extends TestCase
         $expectedVisible = [
             InstructorStatus::Approved,
             InstructorStatus::Active,
-            // Phase 23M — a Vacation instructor's profile stays visible
+            // A Vacation instructor's profile stays visible
             // ("temporarily unavailable", booking disabled), unlike an
             // unapproved/suspended/archived instructor's.
             InstructorStatus::Vacation,

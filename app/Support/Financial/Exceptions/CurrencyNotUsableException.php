@@ -7,7 +7,7 @@ namespace App\Support\Financial\Exceptions;
 use RuntimeException;
 
 /**
- * Phase 24M — GAP-031: thrown only for NewInitiation when the currency
+ * Thrown only for NewInitiation when the currency
  * does not exist, is soft-deleted, or is not Active. The message is
  * always the safe, generic, user-facing text — never provider/routing
  * configuration, never an internal currency ID.

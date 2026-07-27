@@ -26,7 +26,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Phase 18D — Student Engagement report (SRS Chapter 19 Student
+ * Student Engagement report (SRS Chapter 19 Student
  * Analytics). Every figure is delegated to
  * {@see StudentEngagementReportServiceInterface}; this page holds only
  * filter state and never queries a source domain directly. Requires
@@ -56,7 +56,7 @@ class StudentEngagement extends Page
     public ?string $customEnd = null;
 
     // Livewire hydrates select/number values as strings — kept ?string,
-    // cast once in filters() (Phase 18C hydration-regression lesson).
+    // cast once in filters().
     public ?string $countryId = null;
 
     public ?string $educationLevelId = null;

@@ -10,12 +10,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Covers InstructorProfileTextResolver — the Phase 23G field-reconciliation
+ * Covers InstructorProfileTextResolver — the field-reconciliation
  * decision.
  *
  * Note on scope vs. the original ask: a "designation fallback" case is not
  * covered here because `user_profiles.designation` no longer exists — the
- * Phase 1 audit (see the resolver's own docblock) found it was write-only
+ * audit (see the resolver's own docblock) found it was write-only
  * everywhere in the app (never read by any public view/card/search/SEO
  * output), so per explicit instruction this is a dev-mode cleanup with no
  * legacy data to preserve, it was dropped outright rather than kept as a

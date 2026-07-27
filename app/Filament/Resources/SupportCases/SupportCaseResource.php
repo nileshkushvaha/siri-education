@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-016 / SRS Chapter 25 staff surface. Only admin-operational cases
+ * SRS Chapter 25 staff surface. Only admin-operational cases
  * are created here (§25.16) — student/instructor self-service creation
  * lives on the frontend dashboard. Every lifecycle mutation delegates
  * to SupportCaseService; there is no Edit page and no delete action of

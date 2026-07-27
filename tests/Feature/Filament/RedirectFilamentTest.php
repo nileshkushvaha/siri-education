@@ -19,8 +19,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * GAP-036 requirement #5 — permission-controlled list/create/edit/view
- * plus activate/deactivate. No delete action anywhere (requirement #5's
+ * Permission-controlled list/create/edit/view
+ * plus activate/deactivate. No delete action anywhere (SRS
  * historical-auditability rule); every mutation flows through
  * RedirectService, never a direct model write from the resource.
  */

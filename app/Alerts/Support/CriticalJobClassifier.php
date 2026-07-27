@@ -24,7 +24,7 @@ final class CriticalJobClassifier
     private const array BOOKING_MEETING_PATTERNS = ['Booking', 'Meeting', 'Lesson'];
 
     /**
-     * GAP-037 requirement #8 — Spatie Media Library's own queued
+     * Spatie Media Library's own queued
      * conversion/responsive-image jobs (image optimization/thumbnail
      * generation, SRS §26.24 "File and Media Job Monitoring"). Routed
      * to the existing generic queue-health bucket, not a new category:

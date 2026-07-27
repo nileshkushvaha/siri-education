@@ -12,7 +12,7 @@ use App\Models\HomeworkDueReminder;
 use App\Models\User;
 
 /**
- * Phase 24K — GAP-020: two processes race claiming the identical
+ * Two processes race claiming the identical
  * reminder identity (same assignment, recipient, due-date snapshot,
  * offset) for the same homework assignment. The composite unique index
  * on homework_due_reminders must let exactly one process claim it; the

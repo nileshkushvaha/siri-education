@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Learning;
 
 /**
- * Phase 18F — milestone and progress-review analytics. In this
+ * Milestone and progress-review analytics. In this
  * codebase every `learning_plan_milestones` row is already
  * plan-assigned (there is no separate curriculum milestone-definition
  * table), so no definition can be miscounted as an achievement; an

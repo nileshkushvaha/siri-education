@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Phase 23Q — the registration route is now role-neutral (/register
+ * The registration route is role-neutral (/register
  * canonical) rather than student-only (/student-registration). Covers
  * the route flip, the backward-compatible redirect (including query
  * string preservation for the instructor-intent flow), and that

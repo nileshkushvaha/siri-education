@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bookings', function (Blueprint $table): void {
-            // Per-booking meeting creation state (Phase 11) — distinct from
+            // Per-booking meeting creation state — distinct from
             // meeting_provider/meeting_ref/meeting_url, which only ever
             // told you the last-known link, never whether creation was
             // attempted, succeeded, or failed.

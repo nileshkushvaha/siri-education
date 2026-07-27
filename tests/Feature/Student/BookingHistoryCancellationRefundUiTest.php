@@ -20,7 +20,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24C — the student-facing preview (before confirming a
+ * The student-facing preview (before confirming a
  * cancellation) and the frozen post-cancellation outcome message on the
  * booking-history modal.
  */

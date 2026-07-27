@@ -24,7 +24,7 @@ class BookingSettings extends Settings
     public ?int $max_daily_bookings_per_teacher;
 
     // Bookable window — the only fields BookingWindowRule reads for
-    // lead-time/advance-window enforcement. Named to match the Phase 1
+    // lead-time/advance-window enforcement. Named to match the original
     // settings spec; do not add a second pair of fields for this concept.
     public int $minimum_booking_notice_minutes;
 

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Phase 24K — GAP-020: append-only claim/operation ledger for
+ * Append-only claim/operation ledger for
  * homework due-date reminders. Never hard-deleted or backdated; a
  * changed due date produces a new row via a new due_at_snapshot,
  * never a rewrite of an existing one.
@@ -51,7 +51,7 @@ class HomeworkDueReminder extends Model
         return $this->belongsTo(User::class, 'recipient_user_id');
     }
 
-    /** Phase 24K.1 — GAP-020: per-channel delivery state (idempotency + audit). */
+    /** Per-channel delivery state (idempotency + audit). */
     public function channelDeliveries(): HasMany
     {
         return $this->hasMany(HomeworkReminderChannelDelivery::class, 'homework_due_reminder_id');

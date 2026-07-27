@@ -149,7 +149,7 @@ class QueueMonitorPageTest extends TestCase
 
     public function test_get_failed_job_stats_returns_expected_keys(): void
     {
-        // Phase 24N — GAP-034: the static "5 most recent" summary was
+        // The static "5 most recent" summary was
         // superseded by the full, paginated, retryable Filament table
         // (QueueMonitorPage::table()); getFailedJobStats() no longer
         // computes a separate 'recent' slice.

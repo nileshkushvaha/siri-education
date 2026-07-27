@@ -26,7 +26,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 1 of the admin navigation IA redesign — proves the redesign is
+ * Proves the centralized admin navigation registry is
  * additive-only:
  *
  *  - Every one of the ~100 registered destinations still resolves

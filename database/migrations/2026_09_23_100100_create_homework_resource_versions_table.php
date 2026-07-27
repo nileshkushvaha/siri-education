@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-022 / SRS-7-8: an immutable published version of a HomeworkResource.
+ * SRS-7-8: an immutable published version of a HomeworkResource.
  * Its file (Media Library, private disk) never changes after publish —
  * "updating a file" creates a new row/new version instead, so an
  * assignment linked to an earlier version keeps its exact historical

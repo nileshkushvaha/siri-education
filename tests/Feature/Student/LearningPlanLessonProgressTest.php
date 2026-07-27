@@ -30,7 +30,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * SRS §6.17.5 / §6.17.10 (GAP-023): lessons may be server-resolved
+ * SRS §6.17.5 / §6.17.10: lessons may be server-resolved
  * onto exactly one compatible active learning plan at creation time,
  * and finalized outcomes on plan-linked lessons feed
  * LearningPlanProgressCalculator's lessons domain. Review contribution

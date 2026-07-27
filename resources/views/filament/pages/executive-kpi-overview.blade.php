@@ -149,7 +149,7 @@
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Instructor compensation requires its own dedicated permission.</p>
                 @endif
                 <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    No recognized revenue, net revenue or margin exists (Phase 18E §7 Outcome B). Amounts are per currency and never combined.
+                    No recognized revenue, net revenue or margin exists. Amounts are per currency and never combined.
                 </p>
             </div>
 
@@ -165,7 +165,7 @@
                 @else
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Requires the notification report permission.</p>
                 @endif
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Delivery rate, provider performance and messaging analytics are unavailable — those sources do not exist in this platform version (Phase 18G).</p>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Delivery rate, provider performance and messaging analytics are unavailable — those sources do not exist in this platform version.</p>
             </div>
 
         @endif

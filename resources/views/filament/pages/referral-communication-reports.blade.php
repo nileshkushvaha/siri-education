@@ -66,7 +66,7 @@
                     <span class="text-gray-700 dark:text-gray-300">Reversals: <span class="font-semibold {{ $referrals->reversalsInPeriod > 0 ? 'text-danger-600' : 'text-gray-950 dark:text-white' }}">{{ $referrals->reversalsInPeriod }}</span></span>
                     <span class="text-gray-700 dark:text-gray-300">Referral module: <span class="font-semibold text-gray-950 dark:text-white">{{ $referrals->referralModuleEnabled ? 'Enabled' : 'Disabled' }}</span></span>
                 </div>
-                {{-- Phase 19D — reward-lifecycle and attribution figures from the Referral domain --}}
+                {{-- Reward-lifecycle and attribution figures from the Referral domain --}}
                 <div class="mt-3 flex flex-wrap gap-6 text-sm">
                     <span class="text-gray-700 dark:text-gray-300">Attributions in period: <span class="font-semibold text-gray-950 dark:text-white">{{ $referrals->attributionsInPeriod }}</span></span>
                     @foreach($referrals->rewardsByStatus as $status => $count)
@@ -114,7 +114,7 @@
                 </div>
                 <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
                     Rates cover eligibility windows opened in the period that have concluded (submitted or expired).
-                    The platform rating reuses the Phase 17 published-rating aggregate — hidden, rejected, archived and
+                    The platform rating reuses the published-rating aggregate — hidden, rejected, archived and
                     private-feedback reviews never contribute.
                     @if($this->qualityDashboardUrl())
                         Moderation, report and alert queues live on the

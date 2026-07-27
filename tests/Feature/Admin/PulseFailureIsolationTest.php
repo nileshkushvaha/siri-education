@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
- * Phase 24O.1 — GAP-033 corrective: two independent guarantees.
+ * Two independent guarantees.
  *
  *  1. A recorder that fails to write (e.g. because its storage table is
  *     unavailable) must never break the business request it's attached to —

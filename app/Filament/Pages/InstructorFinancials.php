@@ -16,7 +16,7 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Phase 18E — Instructor Earnings, Settlements & Withdrawals (§17/§18).
+ * Instructor Earnings, Settlements & Withdrawals (SRS §17/§18).
  * Requires `ViewInstructorCompensationReports` — the strictest financial
  * permission; never implied by general finance/wallet/payment access.
  */

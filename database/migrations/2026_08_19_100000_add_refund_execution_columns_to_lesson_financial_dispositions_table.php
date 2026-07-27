@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 17F: a disposition that produced a wallet refund stores the
+ * A disposition that produced a wallet refund stores the
  * resulting immutable ledger entry — the linkage that makes duplicate
  * execution detectable and override-after-refund reconciliation
  * traceable.

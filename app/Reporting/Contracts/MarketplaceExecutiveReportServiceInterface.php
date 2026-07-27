@@ -15,7 +15,7 @@ use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * Phase 18H — Marketplace Supply & Demand (`ViewMarketplaceReports`)
+ * Marketplace Supply & Demand (`ViewMarketplaceReports`)
  * and Executive KPI Overview (`ViewExecutiveReports`). Strictly
  * read-only. The executive overview composes existing owning services
  * — each underlying group additionally requires ITS OWN permission and

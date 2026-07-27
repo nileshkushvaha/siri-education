@@ -15,7 +15,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * GAP-028 (SRS §12.18-21/31): durable lesson-recording metadata. The
+ * SRS §12.18-21/31: durable lesson-recording metadata. The
  * file itself lives in the private 'file' Media Library collection
  * (never a public disk, never a public URL); duration/size/mime_type
  * are ALSO stored directly on this row (not read only from the Media

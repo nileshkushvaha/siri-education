@@ -10,8 +10,8 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Read-only instructor analytics foundation (Phase 23O) plus Advanced
- * Performance Insights (Phase 23P) — same page, same component, one
+ * Read-only instructor analytics foundation plus Advanced
+ * Performance Insights — same page, same component, one
  * shared period filter. Every figure comes from InstructorAnalyticsService,
  * scoped to auth()->user() only — never a request-supplied instructor
  * id. The period filter only changes which bounded aggregate queries

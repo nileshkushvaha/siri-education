@@ -15,7 +15,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
 
 /**
- * GAP-039 requirement #6 — key/channel are always displayed read-only
+ * Key/channel are always displayed read-only
  * (never a Select/TextInput an admin could repurpose to a different
  * key or channel); only subject/body are ever editable here.
  */

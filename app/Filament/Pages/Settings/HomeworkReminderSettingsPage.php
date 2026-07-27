@@ -23,7 +23,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 
 /**
- * Phase 24K — GAP-020: the sole runtime-configuration surface for
+ * The sole runtime-configuration surface for
  * HomeworkSettings' reminder fields. Offsets are validated here
  * (bounded, positive, deduplicated, at least one when enabled) since
  * Spatie Settings has no native array-content validation.
@@ -63,7 +63,7 @@ class HomeworkReminderSettingsPage extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'GAP-020 — SRS §7.11: administrator-configured reminder schedule and channel routing.';
+        return 'SRS §7.11: administrator-configured reminder schedule and channel routing.';
     }
 
     public function getBreadcrumbs(): array

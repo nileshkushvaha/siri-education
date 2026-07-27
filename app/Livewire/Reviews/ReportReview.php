@@ -17,8 +17,8 @@ use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 /**
- * Phase 18A — the sole user-facing entry point to the existing Phase
- * 17M Review Reporting backend. Authorization, reason validation,
+ * The sole user-facing entry point to the existing
+ * Review Reporting backend. Authorization, reason validation,
  * duplicate prevention, explanation sanitization, audit logging, and
  * every domain rule are enforced exclusively by
  * ReviewReportServiceInterface::submit() (→ SubmitReviewReportAction);
@@ -90,7 +90,7 @@ final class ReportReview extends Component
         } catch (ReviewNotReportableException) {
             // Neutral message only — never the review's actual
             // status/mode, which the raw exception message exposes
-            // (Phase 18A §6: internal review statuses are never shown).
+            // (internal review statuses are never shown).
             $this->addError('form', 'This review can no longer be reported.');
 
             return;

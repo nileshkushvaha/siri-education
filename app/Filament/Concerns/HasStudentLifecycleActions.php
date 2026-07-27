@@ -13,8 +13,8 @@ use Filament\Notifications\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Phase 24H — GAP-013/SRS-2-20/SRS-B1-12: governed student_status
- * transitions on the User resource's Edit page. Mirrors
+ * Governed student_status
+ * transitions on the User resource's Edit page (SRS-2-20/SRS-B1-12). Mirrors
  * HasInstructorLifecycleActions' exact pattern (permission-gated
  * visible(), required-reason Textarea for adverse/administrative
  * transitions, delegation to the lifecycle service, safe notification).

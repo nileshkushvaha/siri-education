@@ -10,7 +10,7 @@ use App\Settings\GeneralSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Phase 18B §7 — the single authoritative reporting-timezone resolver. */
+/** The single authoritative reporting-timezone resolver. */
 class ReportingTimezoneResolverTest extends TestCase
 {
     use RefreshDatabase;

@@ -27,7 +27,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24I — GAP-019/SRS-10-12/SRS §10.24: before an availability
+ * SRS-10-12/SRS §10.24: before an availability
  * reduction that would leave future CONFIRMED bookings outside the
  * instructor's effective schedule commits, the mutation services throw
  * a typed requires-confirmation result (mutating nothing); the caller

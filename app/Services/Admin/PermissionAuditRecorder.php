@@ -9,7 +9,7 @@ use App\Services\AuditTrailService;
 use Spatie\Permission\Models\Permission;
 
 /**
- * Phase 24Q.1 — GAP-011/SRS-23-6 corrective: the Permission-side sibling
+ * The Permission-side sibling
  * of RoleAuditRecorder. Kept as a separate class rather than folded into
  * RoleAuditRecorder — the two domains' safe property shapes genuinely
  * differ (role diffs vs. permission rename/affected-role-count), and

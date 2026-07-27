@@ -7,7 +7,7 @@ namespace App\Exceptions\Student;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * Phase 24H.2 — GAP-013: thrown by StudentLifecycleService::
+ * Thrown by StudentLifecycleService::
  * assertEligibleForStudentAction() when an interactive student action is
  * attempted by an account that is not an Active student. Deliberately
  * carries ONE fixed, generic message — never the actual status

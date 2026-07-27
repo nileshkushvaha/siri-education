@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Phase 16A.1 — proves the "same pattern, separate contracts" principle
+ * Proves the "same pattern, separate contracts" principle
  * structurally: collection and payout both use a registry/resolver/
  * capabilities/eligibility shape, but the two are never interchangeable
  * and neither domain's provider selection can influence the other's.
@@ -89,7 +89,7 @@ class CrossDomainFinancialIsolationTest extends TestCase
         $this->assertTrue($registry->has('fake'));
         $this->assertInstanceOf(FakeInstructorPayoutProvider::class, $registry->get('fake'));
 
-        // Phase 16B — a RazorpayX adapter now exists (registered), but
+        // A RazorpayX adapter now exists (registered), but
         // it is disabled/uncredentialed by default; every other
         // provider key remains genuinely unregistered.
         $this->assertTrue($registry->has('razorpayx'));
@@ -103,7 +103,7 @@ class CrossDomainFinancialIsolationTest extends TestCase
     {
         $result = app(InstructorPayoutEligibilityServiceInterface::class)->resolve('IN', 'IN', 'INR', PayoutMethodType::BankTransfer);
 
-        // A RazorpayX adapter is registered (Phase 16B), but
+        // A RazorpayX adapter is registered, but
         // InstructorEarningSettings::payout_provider still defaults to
         // 'fake' — an India/INR route must resolve against whatever IS
         // actually configured, never silently switch to RazorpayX just
@@ -141,7 +141,7 @@ class CrossDomainFinancialIsolationTest extends TestCase
         // MODEL classes specifically (import or static/instantiation use)
         // — not the legitimate, pre-existing, already-tested
         // BookingPaymentStatus/BookingStatus ELIGIBILITY enums the
-        // earnings domain reads to gate earning creation (Phase 14),
+        // earnings domain reads to gate earning creation,
         // which are a world away from reading a price or payment record.
         foreach ($this->phpFilesIn([app_path('Earnings')]) as $path => $code) {
             $this->assertDoesNotMatchRegularExpression(
@@ -202,7 +202,7 @@ class CrossDomainFinancialIsolationTest extends TestCase
 
     public function test_payout_execution_service_handles_no_http_route(): void
     {
-        // Phase 16B's one deliberate exception: the RazorpayX payout
+        // One deliberate exception: the RazorpayX payout
         // webhook — public, unauthenticated, signature-verified — never
         // touches a Filament/Livewire session and never calls
         // InstructorPayoutExecutionService directly (it normalizes the
@@ -228,13 +228,13 @@ class CrossDomainFinancialIsolationTest extends TestCase
         }
     }
 
-    // ── Phase 16C additions ─────────────────────────────────────────────
+    // ── Collection-side reconciliation additions ─────────────────────────────────────────────
 
     public function test_no_guest_payment_route_exists(): void
     {
-        // GuestBookingPaymentController exists (Phase 10.2C-Fix, kept for
-        // reference) but must never be bound to any route — no
-        // unauthenticated user may initiate payment.
+        // GuestBookingPaymentController no longer exists and must never
+        // be bound to any route — no unauthenticated user may initiate
+        // payment.
         foreach (app('router')->getRoutes() as $route) {
             $this->assertStringNotContainsStringIgnoringCase(
                 'GuestBookingPaymentController',
@@ -318,7 +318,7 @@ class CrossDomainFinancialIsolationTest extends TestCase
     public function test_stripe_collection_provider_cannot_resolve_from_the_payout_registry(): void
     {
         // Reinforces test_only_the_fake_and_razorpayx_providers_are_registered_for_payout()
-        // with the exact Phase 16C wording the spec asks for.
+        // with the exact wording the spec asks for.
         $payoutRegistry = app(InstructorPayoutProviderRegistryInterface::class);
         $this->assertFalse($payoutRegistry->has('stripe'), 'Stripe collection provider must never resolve as a payout provider.');
     }
@@ -326,7 +326,7 @@ class CrossDomainFinancialIsolationTest extends TestCase
     public function test_razorpayx_payout_provider_cannot_resolve_from_the_collection_registry(): void
     {
         // Reinforces test_collection_provider_cannot_resolve_from_the_payout_registry_or_vice_versa()
-        // with the exact Phase 16C wording the spec asks for.
+        // with the exact wording the spec asks for.
         $collectionRegistry = app(PaymentProviderRegistry::class);
         $this->assertFalse($collectionRegistry->has('razorpayx'), 'RazorpayX payout provider must never resolve as a collection provider.');
     }

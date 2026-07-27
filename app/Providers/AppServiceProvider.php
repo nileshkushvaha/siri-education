@@ -109,7 +109,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Phase 24O — GAP-033: Pulse's stock user resolver (Laravel\Pulse\Users)
+     * Pulse's stock user resolver (Laravel\Pulse\Users)
      * returns the user's email in the "Usage" card's `extra` field by
      * default — overridden here to a display name only. Avoids touching
      * $user->profile (Pulse bulk-loads only the User model itself via
@@ -199,7 +199,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('queue_monitor.view', [QueueMonitorPolicy::class, 'viewPage']);
         Gate::define('queue_monitor.retry_failed_jobs', [QueueMonitorPolicy::class, 'retryFailedJobs']);
 
-        // Phase 24O — GAP-033: 'viewPulse' is Laravel Pulse's own fixed
+        // 'viewPulse' is Laravel Pulse's own fixed
         // Gate ability name (its Authorize middleware calls exactly
         // this), overriding the package's local-environment-only default.
         Gate::define('viewPulse', [PulsePolicy::class, 'view']);
@@ -339,7 +339,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // RazorpayX instructor payout webhook — separate from every
-        // booking-payment webhook limiter (Phase 16B, a distinct
+        // booking-payment webhook limiter (a distinct
         // financial domain). Generous enough for legitimate retry
         // storms from RazorpayX, tight enough to bound abuse of a
         // public, unauthenticated endpoint.

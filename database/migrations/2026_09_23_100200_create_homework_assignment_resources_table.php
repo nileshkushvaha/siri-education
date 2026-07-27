@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-022 / SRS-7-8: links a homework assignment to a specific,
+ * SRS-7-8: links a homework assignment to a specific,
  * immutable resource version — the "reuse across lessons" half of the
  * resource library. The unique index is the database-level guarantee
  * that the same version can never be linked twice to the same

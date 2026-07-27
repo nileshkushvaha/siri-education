@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * GAP-016 / SRS Chapter 25: one support/dispute case (SRS §25.11
+ * SRS Chapter 25: one support/dispute case (SRS §25.11
  * "Case Data Fields"). `student_id`/`instructor_id` identify the
  * subject of the case (who the issue is about/for), which is not
  * always `created_by` — an admin may open a case on a student's or

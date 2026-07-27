@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Read-only aggregate queries over `booking_meetings`/`lesson_attendance_records`/
- * `lesson_technical_issue_reports` (Phase 18C). Date basis:
+ * `lesson_technical_issue_reports`. Date basis:
  * `booking_meetings.created_at` for created/failed; `bookings.starts_at`
  * for missing-meeting (a confirmed booking whose scheduled start falls
  * in the period with no `Created` meeting); the lesson's `starts_at`

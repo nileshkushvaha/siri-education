@@ -55,7 +55,7 @@ class ReviewSettings extends Settings
     public int $review_edit_window_hours;
 
     /**
-     * Phase 17S — notification channel availability, mirroring
+     * Notification channel availability, mirroring
      * BookingSettings' channel toggles. In-app (database) delivery is
      * always on for real users, same as booking notifications — these
      * three gate only the external channels. One shared set governs

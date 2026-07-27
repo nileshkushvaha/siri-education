@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\Enums;
 
 /**
- * Version 1 report categories (Phase 18B §9). Each category owns a
+ * Version 1 report categories (SRS §9). Each category owns a
  * coarse-grained "may this administrator see this section of the
  * reporting landing page at all" permission — individual report
  * definitions may still require a stricter, additional permission on

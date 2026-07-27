@@ -15,7 +15,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
 /**
- * Phase 41A requirement #6 — media:migrate-to-private. Historical rows
+ * media:migrate-to-private. Historical rows
  * are simulated by forcing an upload onto the 'public' disk via
  * toMediaCollection($collection, 'public') — the second parameter is
  * Spatie's own disk override, standing in for "uploaded before this

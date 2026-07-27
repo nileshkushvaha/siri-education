@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 23G cleanup — dev mode, no legacy data to preserve.
+ * Column cleanup — dev mode, no legacy data to preserve.
  *
  * `user_profiles.designation` audited (grep across app/ + resources/views)
  * and confirmed write-only: captured by the admin form and the generic

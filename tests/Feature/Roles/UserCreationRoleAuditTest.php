@@ -13,10 +13,10 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24Q — GAP-011: role assignment on user creation happens via
+ * Role assignment on user creation happens via
  * Filament's own relationship field (UserForm's roles Select), before
  * CreateUser::afterCreate() runs. This mirrors EditUser::afterSave()'s
- * existing 'roles_updated' audit shape (unchanged by this phase — see
+ * existing 'roles_updated' audit shape (see
  * SuperAdminGuardAuditTrailTest) so both surfaces are equally auditable.
  */
 class UserCreationRoleAuditTest extends TestCase

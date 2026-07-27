@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Shared by both student and instructor audiences (GAP-017), mirroring
+ * Shared by both student and instructor audiences, mirroring
  * the Support Case controller's shape — no separate instructor-only
  * route group. Every write delegates to MessagingService; this
  * controller never touches `conversations`/`messages`/`message_reports`

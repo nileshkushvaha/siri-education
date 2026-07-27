@@ -16,8 +16,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * GAP-022 — the real security boundary for homework resources,
- * submission attachments, AND (37A) library resource-version files,
+ * The real security boundary for homework resources,
+ * submission attachments, AND library resource-version files,
  * mirroring InstructorDocumentDownloadController: every request
  * re-checks the owning model's policy live, so a bookmarked link is
  * worthless without a currently authenticated, currently authorized
@@ -47,7 +47,7 @@ final class HomeworkResourceDownloadController extends Controller
             abort(403);
         }
 
-        // Phase 41A requirement #5 — inline preview thumbnails must go
+        // Inline preview thumbnails must go
         // through this exact same authorization check, never a raw
         // conversion URL on the private 'local' disk.
         if ($request->boolean('preview') && $media->hasGeneratedConversion(StandardImageConversion::Preview->value)) {

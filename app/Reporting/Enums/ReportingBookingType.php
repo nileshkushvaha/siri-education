@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\Enums;
 
 /**
- * The reporting-filter booking-type dimension (Phase 18B §8/§18B baseline).
+ * The reporting-filter booking-type dimension (SRS §8).
  * Values mirror `App\Booking\Registry\BookingTypeRegistry`'s exact
  * approved Version 1 keys (`tests/Architecture/BookingTypeScopeGuardTest`)
  * — this is a filter-layer enum, not a duplicate source of truth; an

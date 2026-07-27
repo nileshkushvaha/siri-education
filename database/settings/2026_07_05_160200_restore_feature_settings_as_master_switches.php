@@ -3,7 +3,7 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Per the Phase 1 settings spec, FeatureSettings is the single on/off
+ * Per the settings spec, FeatureSettings is the single on/off
  * switch per feature module — domain settings classes hold configuration
  * only. Re-adds features.wallet_enabled/referral_enabled/recording_enabled
  * (removed by 2026_07_05_150000) and removes wallet.enabled /

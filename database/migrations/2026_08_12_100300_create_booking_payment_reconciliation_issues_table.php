@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Phase 16C — collection-side mirror of instructor_payout_reconciliation_issues
+ * Collection-side mirror of instructor_payout_reconciliation_issues
  * (see that table's migration for the STORED-generated-column dedupe
  * reasoning). FK is to booking_payments, not a withdrawal/attempt pair
  * — the collection domain has one attempt-level row per gateway

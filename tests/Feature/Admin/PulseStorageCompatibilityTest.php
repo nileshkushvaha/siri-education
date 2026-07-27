@@ -15,15 +15,15 @@ use Laravel\Pulse\Value;
 use Tests\TestCase;
 
 /**
- * Phase 24O.1 — GAP-033 corrective: exercises the actual installed Pulse
- * storage implementation (not just raw SQL) against the now-active,
+ * Exercises the actual installed Pulse
+ * storage implementation (not just raw SQL) against the
  * SHA2-based migration, using only benign synthetic entries.
  */
 class PulseStorageCompatibilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Required test 9: Pulse storage records benign values/entries via the real storage API. */
+    /** Pulse storage records benign values/entries via the real storage API. */
     public function test_storage_records_a_benign_value_and_entry(): void
     {
         $storage = app(Storage::class);

@@ -13,7 +13,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24O — GAP-033: the "Application Performance" nav link is a
+ * The "Application Performance" nav link is a
  * convenience only — Pulse's own Authorize middleware on the /pulse route
  * is the actual security boundary (see PulseAccessTest), so this only
  * verifies the link's visibility follows the same permission.

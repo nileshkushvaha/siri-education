@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Finance;
 
 /**
- * Phase 18E — payment collection summary. Financial dictionary (§5):
+ * Payment collection summary. Financial dictionary (SRS §5):
  *
  * - "Successful external collection" = a `booking_payments` attempt in
  *   `Captured` (or `Refunded`, which was captured before being

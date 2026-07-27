@@ -17,22 +17,22 @@ final readonly class NavigationDestination
 {
     /**
      * @param  string  $id  Stable identifier, never reused/renamed once assigned —
-     *                      safe to persist in favorites/recents (Phase 2).
+     *                      safe to persist in favorites/recents when that lands.
      * @param  string  $label  Current display label (may differ from the class's
      *                         own $navigationLabel — this one wins).
      * @param  string|null  $group  One of the 10 top-level sidebar sections. Null
      *                              means "no group header" (Home/Dashboard only).
      * @param  string|null  $subgroup  Contextual sub-heading within the section
      *                                 (e.g. "Instructors", "Finance Configuration").
-     *                                 Informational in Phase 1 (used by breadcrumbs/
-     *                                 search path display and section landing pages
-     *                                 in Phase 2) — it does not change how Filament
-     *                                 renders the flat two-level sidebar today.
+     *                                 Currently informational only (reserved for
+     *                                 breadcrumbs/search path display and section
+     *                                 landing pages) — it does not change how
+     *                                 Filament renders the flat two-level sidebar today.
      * @param  int|null  $sort  Order within the group.
      * @param  string|null  $crossLinkedFrom  Another section this destination is
      *                                        also contextually relevant to. Documents
-     *                                        a cross-link (Phase 2 UI); never creates
-     *                                        a second navigable route for the same page.
+     *                                        a cross-link, reserved for future UI; never
+     *                                        creates a second navigable route for the same page.
      * @param  string|null  $previousGroup  Prior navigationGroup value, for the
      *                                      old-to-new migration mapping/report.
      * @param  string|null  $previousLabel  Prior navigationLabel value, for the

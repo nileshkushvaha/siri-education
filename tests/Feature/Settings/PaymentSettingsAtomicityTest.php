@@ -27,7 +27,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24G.1 — corrective continuation of Phase 24G. Closes two
+ * Closes two
  * remaining risks: (1) a payment settings write and its Critical audit
  * record must commit or roll back together, never one without the
  * other; (2) bank/UPI financial identifiers must never be stored as

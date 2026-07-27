@@ -11,8 +11,8 @@ use Illuminate\Database\Seeder;
  * Seeds the exact current behavior of the now-removed
  * InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS constant —
  * all five as required=true, matching what every existing instructor
- * has always had to provide. Deliberately does NOT match the Phase 23G
- * prompt's illustrative example rows verbatim (which showed
+ * has always had to provide. Deliberately does NOT match an earlier
+ * illustrative example's rows verbatim (which showed
  * teaching_certificate as required=false) — that would silently loosen
  * an existing requirement, a real behavior change outside this phase's
  * "preserve existing onboarding" scope. `introduction_video` is

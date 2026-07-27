@@ -16,7 +16,7 @@ use Carbon\CarbonImmutable;
 use Spatie\Permission\Models\Role;
 
 /**
- * Phase 24I — GAP-019: TRUE cross-process race between a free-demo
+ * TRUE cross-process race between a free-demo
  * booking and an unconfirmed availability deactivation for the same
  * instructor. Both operations serialize on the same booking:host:%d
  * GET_LOCK, so exactly one order occurs: booking-first → the

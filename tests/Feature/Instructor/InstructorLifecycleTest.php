@@ -22,7 +22,7 @@ use Tests\TestCase;
  * under_review, documents_pending, interview_required, vacation,
  * suspended, archived, rejected) must be excluded from booking
  * eligibility and public listing. Public profile *visibility* is
- * slightly wider (Phase 23M): Vacation stays visible with booking
+ * slightly wider: Vacation stays visible with booking
  * disabled, while every other non-bookable status is still forbidden.
  */
 class InstructorLifecycleTest extends TestCase
@@ -64,7 +64,7 @@ class InstructorLifecycleTest extends TestCase
 
         $response = $this->get(route('instructors.show', $instructor));
 
-        // Phase 23M — Vacation is the one non-bookable status whose
+        // Vacation is the one non-bookable status whose
         // profile stays visible (booking disabled, not hidden); every
         // other non-bookable status is still forbidden entirely.
         if ($status === InstructorStatus::Vacation) {

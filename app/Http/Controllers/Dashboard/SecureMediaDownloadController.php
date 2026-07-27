@@ -14,7 +14,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Phase 41A requirement #4 — the one reusable, policy-authorized
+ * The one reusable, policy-authorized
  * download boundary for every genuinely private, non-Homework/
  * Recording/KYC media collection (Message, SupportCase,
  * LessonTechnicalIssueReport, UserExperience::supporting_documents,
@@ -33,8 +33,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * `?preview=1` serves the (already-private, same-disk) 'preview'
  * conversion inline instead of forcing a download — this is what keeps
- * Phase 41's homework/message inline thumbnails behind the exact same
- * authorization check as the full download, per requirement #5.
+ * the homework/message inline thumbnails behind the exact same
+ * authorization check as the full download.
  */
 final class SecureMediaDownloadController extends Controller
 {

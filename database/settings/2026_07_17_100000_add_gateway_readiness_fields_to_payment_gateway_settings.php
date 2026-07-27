@@ -3,7 +3,7 @@
 use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
 /**
- * Phase 10.2A — additive readiness/routing bookkeeping fields.
+ * Additive readiness/routing bookkeeping fields.
  * default_provider stays null so BookingSettings::payment_provider
  * (already load-bearing for every existing checkout flow) remains
  * authoritative until an admin deliberately sets this one.

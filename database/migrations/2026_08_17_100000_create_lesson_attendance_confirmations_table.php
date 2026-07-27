@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Participant-submitted attendance claims (Phase 17D). Append-only
+ * Participant-submitted attendance claims. Append-only
  * history: a conflicting resubmission creates a new row, an identical
  * one dedups on the unique (lesson_id, participant, fingerprint).
  * Claims are evidence candidates — only an accepted review feeds them

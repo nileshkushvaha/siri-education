@@ -7,7 +7,7 @@ namespace Tests\Feature\Architecture;
 use Tests\TestCase;
 
 /**
- * Guards the Phase 23K boundary: the instructor lesson management
+ * Guards the instructor-lesson-management boundary: the instructor lesson management
  * workflow extends the existing Booking/Lesson/Meeting/Attendance/
  * Outcome domains — no duplicate Lesson/InstructorBooking/
  * InstructorSchedule/Attendance/Meeting model or service, no direct
@@ -84,13 +84,13 @@ final class Phase23KArchitectureTest extends TestCase
         $this->assertStringContainsString("authorize('reportTechnicalIssue'", $component);
         $this->assertStringContainsString("authorize('complete'", $component);
 
-        // No new Lesson policy abilities were introduced — the phase
+        // No new Lesson policy abilities were introduced — this
         // reuses view/complete/submitAttendance/reportTechnicalIssue,
-        // all of which already existed before Phase 23K.
+        // all of which already existed.
         $policy = file_get_contents(app_path('Policies/LessonPolicy.php'));
         $this->assertIsString($policy);
         $abilityCount = preg_match_all('/public function \w+\(/', $policy);
-        $this->assertSame(17, $abilityCount, 'LessonPolicy should still expose exactly its pre-existing 17 abilities — no new ability method was added for this phase.');
+        $this->assertSame(17, $abilityCount, 'LessonPolicy should still expose exactly its pre-existing 17 abilities — no new ability method was added here.');
     }
 
     public function test_no_instructor_cancel_or_reschedule_action_was_introduced(): void
@@ -115,7 +115,7 @@ final class Phase23KArchitectureTest extends TestCase
         $service = file_get_contents(app_path('Services/Instructor/InstructorDashboardService.php'));
         $this->assertIsString($service);
 
-        // Still the single bounded LIMIT 4 query from Phase 23I — no
+        // Still the single bounded LIMIT 4 query — no
         // second/duplicate lesson query path was added for the join button.
         $this->assertStringContainsString('->limit(4)', $service);
         $this->assertSame(1, substr_count($service, '->limit(4)'));

@@ -19,7 +19,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * Phase 18C — the single read-only entry point for the Booking, Lesson
+ * The single read-only entry point for the Booking, Lesson
  * & Meeting Operations report. Every method independently re-checks
  * authorization (never trusts that the Filament page already checked
  * once) and every filter is restricted to what this report declares

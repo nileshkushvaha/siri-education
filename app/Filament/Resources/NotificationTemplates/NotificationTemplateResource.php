@@ -18,7 +18,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-039 requirement #6 — list/view/edit only. No create/delete
+ * List/view/edit only. No create/delete
  * ability anywhere: template_key/channel pairs are a fixed, code-owned
  * set (NotificationTemplateRegistry), pre-seeded by migration — an
  * administrator may only edit an existing row's content or activation

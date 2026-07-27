@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Phase 18C implementation. Every public method re-authorizes fresh —
+ * Every public method re-authorizes fresh —
  * a caller must never be able to skip a check by reaching a method
  * directly instead of going through the Filament page. Meeting data is
  * gated by an ADDITIONAL, separate permission on top of base

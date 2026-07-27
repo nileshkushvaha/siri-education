@@ -31,7 +31,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18E — financial reporting: terminology separation (§5/§7),
+ * Financial reporting: terminology separation (§5/§7),
  * wallet liability and movements (§8/§12), payment collection and
  * success rate (§13), refunds (§15), instructor financials (§17/§18),
  * permission separation (§22), currency policy (§9), and the

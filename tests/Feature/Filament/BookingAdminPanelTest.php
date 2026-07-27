@@ -68,7 +68,7 @@ class BookingAdminPanelTest extends TestCase
 
     public function test_booking_type_form_no_longer_exposes_price_or_currency_fields(): void
     {
-        // Phase 10.2D-Cleanup: student-facing paid prices are managed
+        // Student-facing paid prices are managed
         // exclusively from Student Lesson Prices — the columns backing
         // these fields no longer exist on booking_types at all.
         $this->actingAs($this->admin);

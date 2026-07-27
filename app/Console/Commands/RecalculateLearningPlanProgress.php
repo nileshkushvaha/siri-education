@@ -11,8 +11,8 @@ use Illuminate\Console\Command;
 use Throwable;
 
 /**
- * Bounded, idempotent backfill for GAP-023: historical plans still
- * carry the pre-fix milestone-only percentage. The comparison always
+ * Bounded, idempotent backfill: historical plans may still
+ * carry a stale milestone-only percentage. The comparison always
  * runs through LearningPlanProgressCalculator (the single formula) and
  * the actual write always runs through LearningPlanProgressService
  * (the single write boundary), so a plan that is already correct, or
@@ -27,7 +27,7 @@ final class RecalculateLearningPlanProgress extends Command
         {--dry-run : Report what would change without writing anything}
         {--chunk=200 : Number of plans read per chunk}';
 
-    protected $description = 'Recalculate stored learning-plan progress percentages using the corrected composite formula (GAP-023).';
+    protected $description = 'Recalculate stored learning-plan progress percentages using the corrected composite formula.';
 
     public function handle(LearningPlanProgressCalculator $calculator, LearningPlanProgressService $progress): int
     {

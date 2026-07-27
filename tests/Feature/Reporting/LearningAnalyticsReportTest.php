@@ -43,10 +43,10 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18F — Learning Analytics: terminology boundaries (§5),
+ * Learning Analytics: terminology boundaries (§5),
  * provenance-gated metrics (§7), lifecycle counts, homework semantics,
  * milestone/review semantics, trends, filters, permissions, privacy,
- * zero side effects, Phase 18D reconciliation and performance bounds.
+ * zero side effects, Student Engagement reconciliation and performance bounds.
  */
 class LearningAnalyticsReportTest extends TestCase
 {
@@ -139,7 +139,7 @@ class LearningAnalyticsReportTest extends TestCase
     }
 
     /**
-     * Phase 24J — GAP-021: every homework assignment must reference a
+     * Every homework assignment must reference a
      * completed lesson (booking) or a learning plan. This reporting suite
      * only exercises homework status/date semantics and never asserts on
      * booking identity, so an independent completed booking is created for
@@ -686,7 +686,7 @@ class LearningAnalyticsReportTest extends TestCase
         Http::assertNothingSent();
     }
 
-    // ── Phase 18D reconciliation (§23) ────────────────────────────────────
+    // ── Student Engagement reconciliation (§23) ────────────────────────────────────
 
     public function test_active_plan_definition_matches_phase_18d_student_engagement(): void
     {

@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
- * Phase 24H — GAP-013/SRS-2-20/SRS-B1-12: the single authoritative write
+ * SRS-2-20/SRS-B1-12: the single authoritative write
  * path for UserProfile::student_status. Controllers and Filament actions
  * must never update student_status directly — every transition goes
  * through here, mirroring App\Services\Instructor\InstructorOnboardingService's
@@ -26,7 +26,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  *
  * Transition matrix — see StudentStatus::canTransitionTo() for the
  * authoritative table and the reasoning for treating Archived as
- * terminal in this phase (the SRS never confirms archived-student
+ * terminal (the SRS never confirms archived-student
  * restoration; this is the deliberately safer, restrictive reading).
  */
 final class StudentLifecycleService
@@ -57,7 +57,7 @@ final class StudentLifecycleService
     }
 
     /**
-     * Phase 24H.1 — GAP-013 Step 5: system-triggered Registered -> Active
+     * System-triggered Registered -> Active
      * for a legacy account the reconciliation command has already
      * determined is eligible (student role, verified email, whole-account
      * Active, no ambiguity). Shares the exact same locked, idempotent
@@ -100,7 +100,7 @@ final class StudentLifecycleService
     }
 
     /**
-     * Phase 24H.1A — GAP-013 Step: null-state prevention. Whenever a
+     * Null-state prevention. Whenever a
      * first-party path grants the 'student' role to a user whose
      * profile doesn't already carry a governed student_status (i.e. it
      * is null — this never happens through RegistrationService, which
@@ -173,7 +173,7 @@ final class StudentLifecycleService
         return $this->transitionStatus($student, $actor, StudentStatus::Active, $this->requireReason($reason), 'admin_action');
     }
 
-    /** Registered/Active/Suspended -> Archived. Terminal in this phase — reason optional, mirroring InstructorOnboardingService::archive(). */
+    /** Registered/Active/Suspended -> Archived. Terminal — reason optional, mirroring InstructorOnboardingService::archive(). */
     public function archive(User $student, User $actor, ?string $reason = null): UserProfile
     {
         $this->authorizeLifecycleAction($actor, self::ARCHIVE_PERMISSION);
@@ -203,15 +203,12 @@ final class StudentLifecycleService
 
     /**
      * True if this student's account must be blocked from ordinary
-     * login entirely. Phase 24H.1 — GAP-013 correction: the SRS states
-     * plainly that "Suspended or archived accounts shall be prevented
-     * from authenticating until their status changes," with no
-     * multi-role carve-out. Phase 24H's original implementation let a
-     * bookable instructor capability on the same account bypass this;
-     * that exception was never an approved SRS deviation and is removed
-     * here — a Suspended/Archived student_status now blocks the WHOLE
-     * account's authentication, regardless of any other role/status on
-     * it. This does not touch instructor_status itself, roles, or any
+     * login entirely. The SRS states plainly that "Suspended or
+     * archived accounts shall be prevented from authenticating until
+     * their status changes," with no multi-role carve-out — a
+     * Suspended/Archived student_status blocks the WHOLE account's
+     * authentication, regardless of any other role/status on it. This
+     * does not touch instructor_status itself, roles, or any
      * booking/lesson/earning data — only the ability to authenticate.
      */
     public function blocksLogin(User $student): bool
@@ -222,17 +219,15 @@ final class StudentLifecycleService
     }
 
     /**
-     * Phase 24H.1A — GAP-013 strict correction: the single authoritative
-     * gate for ordinary student business actions (booking creation,
-     * reschedule, cancellation). Requires student_status to be exactly
-     * Active — Registered, Suspended, Archived, a missing profile, and a
-     * null student_status are ALL rejected. A null status is invalid or
-     * ambiguous legacy/incomplete data, never an implicit grant of
-     * student capability (Phase 24H.1's null-is-unblocked carve-out was
-     * an unapproved weakening of this authorization boundary and has
-     * been removed). See StudentLifecycleService::initializeStudentRole()
-     * and the students:reconcile-lifecycle-status command for how a
-     * null/legacy status gets to a real governed status instead.
+     * The single authoritative gate for ordinary student business
+     * actions (booking creation, reschedule, cancellation). Requires
+     * student_status to be exactly Active — Registered, Suspended,
+     * Archived, a missing profile, and a null student_status are ALL
+     * rejected. A null status is invalid or ambiguous legacy/incomplete
+     * data, never an implicit grant of student capability. See
+     * StudentLifecycleService::initializeStudentRole() and the
+     * students:reconcile-lifecycle-status command for how a null/legacy
+     * status gets to a real governed status instead.
      */
     public function isEligibleForStudentActions(User $student): bool
     {
@@ -240,7 +235,7 @@ final class StudentLifecycleService
     }
 
     /**
-     * Phase 24H.2 — GAP-013: the single authoritative guard for every
+     * The single authoritative guard for every
      * interactive student capability (favorites, review submission and
      * reporting, learning goals, learning-plan drafts, homework
      * submission, referral participation, ...). Requires the student
@@ -337,7 +332,7 @@ final class StudentLifecycleService
     }
 
     /**
-     * Reuses Phase 24F's session infrastructure (UserSession + Laravel's
+     * Reuses the existing session infrastructure (UserSession + Laravel's
      * own sessions table) rather than a new subsystem — the same
      * delete-both-tables pattern SessionService already uses for
      * self-service revocation, minus the "except current session"

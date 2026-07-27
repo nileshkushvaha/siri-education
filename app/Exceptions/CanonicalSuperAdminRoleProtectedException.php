@@ -7,7 +7,7 @@ namespace App\Exceptions;
 use RuntimeException;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: thrown when a Filament action attempts
+ * SRS-23-7: thrown when a Filament action attempts
  * to delete or incompatibly rename the canonical `super_admin` role.
  * Every authorization path in the app (Gate::before(), PortalResolver,
  * User::isSuperAdmin()) recognizes Super Admins by this exact role

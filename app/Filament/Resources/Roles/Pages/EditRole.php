@@ -87,7 +87,7 @@ class EditRole extends EditRecord
         // Only pass Spatie-fillable fields to the model save
         $data = Arr::only($data, ['name', 'guard_name']);
 
-        // Phase 24E — GAP-010/SRS-23-7: every authorization path recognizes
+        // Every authorization path recognizes
         // Super Admin access by this exact role NAME (Gate::before(),
         // User::isSuperAdmin(), PortalResolver) — renaming it away would
         // silently strip access from every Super Admin at once.

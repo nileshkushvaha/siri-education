@@ -10,10 +10,10 @@ use DateTimeZone;
 use Exception;
 
 /**
- * Phase 24L — GAP-030 (SRS-21-6, SRS §21.13/§21.16): the single
+ * SRS-21-6, SRS §21.13/§21.16: the single
  * authoritative recipient-timezone resolver for every notification
  * that displays a scheduled date/time. Extracted from the
- * homework-reminder-specific resolver of the same shape (Phase 24K) —
+ * homework-reminder-specific resolver of the same shape —
  * the logic was always generic; only the name and namespace were
  * homework-specific.
  *

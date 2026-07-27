@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Shared by both student and instructor audiences (GAP-016 owns no
+ * Shared by both student and instructor audiences (owns no
  * separate instructor-only route group — a case's SupportCaseType is
  * derived from the acting user's active workspace via
  * FrontendPortalAudienceResolver, the same dual-role resolution

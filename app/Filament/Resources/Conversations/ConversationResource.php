@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-017 / SRS §17.36 staff oversight surface. Conversations are
+ * SRS §17.36 staff oversight surface. Conversations are
  * opened only through MessagingService (from the student/instructor
  * dashboard) — there is intentionally no Create page. Every action
  * delegates to MessagingService; no business logic here.

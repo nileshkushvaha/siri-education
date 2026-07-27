@@ -40,17 +40,16 @@ enum StudentStatus: string
     }
 
     /**
-     * Phase 24H transition matrix. The SRS states the four states and
-     * that suspension/archival exist, but never spells out a transition
-     * matrix (unlike Instructor/Admin, which get explicit lifecycle
-     * diagrams) — this is deliberately the SAFER, MORE RESTRICTIVE
-     * reading where the SRS is silent:
+     * The SRS states the four states and that suspension/archival exist,
+     * but never spells out a transition matrix (unlike Instructor/Admin,
+     * which get explicit lifecycle diagrams) — this is deliberately the
+     * SAFER, MORE RESTRICTIVE reading where the SRS is silent:
      *
      * - Registered can go to any of Active/Suspended/Archived (an
      *   unverified/inactive account can still be administratively
      *   restricted).
-     * - Active <-> Suspended is reversible, per this phase's own
-     *   "suspension is a reversible administrative restriction" default.
+     * - Active <-> Suspended is reversible — suspension is treated as a
+     *   reversible administrative restriction.
      * - Active/Suspended -> Archived is one-way. Archived is treated as
      *   TERMINAL — no transition back to Active or Suspended — mirroring
      *   the existing, already-shipped InstructorStatus::archive()
@@ -58,8 +57,8 @@ enum StudentStatus: string
      *   the lifecycle through this service"). The SRS's only hint that
      *   anything is ever "restored" (§6.22 "Account restoration", §17.9
      *   "Account restored") is generic and never confirms this applies
-     *   to Archived specifically — restoring archived-student access is
-     *   a genuine product decision this phase does not make unilaterally.
+     *   to Archived specifically — restoring archived-student access
+     *   would be a separate product decision, not made here.
      *
      * @var array<string, list<string>>
      */

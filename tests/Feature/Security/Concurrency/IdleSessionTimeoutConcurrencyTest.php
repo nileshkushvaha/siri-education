@@ -12,7 +12,7 @@ use Spatie\Permission\Models\Role;
 use Tests\Feature\Booking\Concurrency\ConcurrencyTestCase;
 
 /**
- * Phase 24F — GAP-012/SRS-1-23: real multi-process race proving an
+ * SRS-1-23: real multi-process race proving an
  * already-expired session cannot be revived by a concurrent request.
  * Two workers evaluate TrackUserSession::expireIfIdle() for the SAME
  * tracked session at the same instant, past its expiry boundary — the

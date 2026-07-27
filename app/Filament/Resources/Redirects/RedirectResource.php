@@ -21,7 +21,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * GAP-036 (SRS §22.25/26) — managed 301/302 redirect administration.
+ * Managed 301/302 redirect administration (SRS §22.25/26).
  * Every mutation flows through RedirectService via the Create/Edit
  * pages and the table's activate/deactivate actions; this resource is
  * wiring only.

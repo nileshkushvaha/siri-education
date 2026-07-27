@@ -30,7 +30,7 @@ final class RetryBlockedLessons extends Command
 
         InstructorCompensationException::query()
             // Backoff-aware: only due, non-exhausted retryables — the
-            // escalating schedule lives on next_retry_at (Phase 14.5).
+            // escalating schedule lives on next_retry_at.
             ->dueForRetry()
             ->orderBy('first_failed_at')
             ->orderBy('id')

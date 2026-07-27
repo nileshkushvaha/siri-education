@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * SRS §6.17.5 (GAP-023): the final learning-plan progress evidence
+ * SRS §6.17.5: the final learning-plan progress evidence
  * domain. A review has no draft/finalized lifecycle of its own —
  * `reviewed_at` is always set at creation (see LearningPlanService::
  * createReview()) — so a persisted review with both `reviewed_at` and

@@ -13,7 +13,7 @@ use Tests\Feature\Booking\Concurrency\ConcurrencyTestCase;
 use Tests\Support\ConcurrencyRetryTestJob;
 
 /**
- * Phase 24N — GAP-034 (SRS-26-2): a real cross-process race retrying
+ * SRS-26-2: a real cross-process race retrying
  * the SAME failed job. FailedJobRetryService's row lock on
  * `failed_jobs` must let exactly one worker requeue+forget it; the
  * other observes it already gone and returns NotFound. Reuses

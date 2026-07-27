@@ -21,7 +21,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
 /**
- * GAP-037 — the shared StandardImageConversion definitions (thumb/
+ * The shared StandardImageConversion definitions (thumb/
  * display/preview), applied via HasStandardImageConversions across
  * every evidence-backed collection. Covers registration correctness,
  * image-only execution, dimensions/upscale rules, storage-boundary
@@ -148,7 +148,7 @@ final class StandardImageConversionsTest extends TestCase
         $this->assertFalse($pdfMedia->hasGeneratedConversion('preview'));
     }
 
-    // ── No conversions for Recording (Phase 40) ──────────────────────
+    // ── No conversions for Recording ──────────────────────
 
     public function test_recording_collection_registers_no_conversions(): void
     {

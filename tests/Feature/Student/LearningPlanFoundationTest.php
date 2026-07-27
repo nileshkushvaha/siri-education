@@ -51,11 +51,11 @@ class LearningPlanFoundationTest extends TestCase
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->student->assignRole('student');
-        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
+        $this->student->profile()->update(['student_status' => StudentStatus::Active]); // interactive student actions require Active status.
 
         $this->otherStudent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $this->otherStudent->assignRole('student');
-        $this->otherStudent->profile()->update(['student_status' => StudentStatus::Active]); // Phase 24H.2: interactive student actions require Active status.
+        $this->otherStudent->profile()->update(['student_status' => StudentStatus::Active]); // interactive student actions require Active status.
 
         $this->instructor = $this->makeInstructor(InstructorStatus::Approved);
 
@@ -111,7 +111,7 @@ class LearningPlanFoundationTest extends TestCase
 
         $this->assertSame(0, Booking::count());
         $this->assertSame(0, HomeworkAssignment::count());
-        // wallets is the approved Phase 9 foundation; learning-plan creation
+        // Wallets are a separate foundation; learning-plan creation
         // must still never touch it.
         $this->assertSame(0, Wallet::count());
         $this->assertFalse(Schema::hasTable('payments'));

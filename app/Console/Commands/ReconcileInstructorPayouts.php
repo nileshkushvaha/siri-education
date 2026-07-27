@@ -8,12 +8,12 @@ use App\Earnings\Contracts\InstructorPayoutReconciliationServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Scheduled reconciliation sweep (Phase 16A). Gated by
+ * Scheduled reconciliation sweep. Gated by
  * `payout_reconciliation_enabled` inside the service; idempotent —
  * every state transition it makes reuses
  * InstructorPayoutExecutionService::applyProviderStatus(), so a
  * duplicate/overlapping run can never apply a financial effect twice.
- * Phase 16A only ever reconciles against the fake provider.
+ * Only ever reconciles against the fake provider.
  */
 final class ReconcileInstructorPayouts extends Command
 {

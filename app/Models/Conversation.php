@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
- * GAP-017 / SRS §17.28-§17.36 — one conversation per (student,
+ * SRS §17.28-§17.36 — one conversation per (student,
  * instructor, context) triple. Written exclusively by
  * MessagingService; `status` reflects MessagingRestriction state or
  * an explicit close, never a bare assignment from a controller.

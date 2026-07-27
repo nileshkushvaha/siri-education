@@ -10,12 +10,9 @@ use App\Reporting\Enums\ReportExportResult;
 use App\Services\AuditTrailService;
 
 /**
- * Defines how a later Phase 18 export slice will record sensitive
- * exports (Phase 18B §20) — routed exclusively through the existing
- * `AuditTrailService`, never a second audit mechanism and never a raw
- * Spatie Activitylog helper call. No export is actually executed by
- * this phase; this class exists so the contract and its metadata shape
- * are settled and tested before any report performs a real export.
+ * Records sensitive report exports (SRS §20) — routed exclusively
+ * through the existing `AuditTrailService`, never a second audit
+ * mechanism and never a raw Spatie Activitylog helper call.
  */
 final class ReportExportAuditor
 {

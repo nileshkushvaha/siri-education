@@ -33,7 +33,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Phase 18D — Student Engagement report: definition boundaries (§6),
+ * Student Engagement report: definition boundaries (§6),
  * summary metrics, breakdowns, historical behavior, masking/drill-down
  * and performance bounds.
  */

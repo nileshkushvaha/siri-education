@@ -41,13 +41,13 @@ class MeetingSettings extends Settings
 
     public ?string $google_calendar_id;
 
-    /** 'service_account' (implemented) | 'oauth_user' (reserved — no connection screen built this phase). */
+    /** 'service_account' (implemented) | 'oauth_user' (reserved — no connection screen built yet). */
     public string $google_auth_type;
 
     /** Encrypted service-account JSON — never rendered back to the admin UI after save. */
     public ?string $google_credentials_json;
 
-    /** Reserved for a future OAuth-user flow; encrypted when set. Not used by GoogleCalendarMeetProvider this phase. */
+    /** Reserved for a future OAuth-user flow; encrypted when set. Not currently used by GoogleCalendarMeetProvider. */
     public ?string $google_oauth_refresh_token;
 
     public bool $google_credentials_configured;
@@ -86,10 +86,10 @@ class MeetingSettings extends Settings
 
     public ?string $zoom_last_checked_at;
 
-    /** Accept meeting-attendance webhooks (Phase 17C). Ships OFF — evidence only, never outcomes. */
+    /** Accept meeting-attendance webhooks. Ships OFF — evidence only, never outcomes. */
     public bool $attendance_webhooks_enabled;
 
-    /** Run meetings:sync-attendance pulls (Phase 17C). Ships OFF. */
+    /** Run meetings:sync-attendance pulls. Ships OFF. */
     public bool $attendance_sync_enabled;
 
     /** Minutes after the booking end before the first attendance pull. */
@@ -107,7 +107,7 @@ class MeetingSettings extends Settings
     /** Bounded retries per meeting before a sync failure is marked permanent. */
     public int $attendance_sync_max_attempts;
 
-    /** GAP-028 — minutes after a booking ends before the first recording-capture attempt. */
+    /** Minutes after a booking ends before the first recording-capture attempt. */
     public int $recording_capture_delay_minutes;
 
     /** Transient capture failures keep retrying until this many minutes after the booking end. */

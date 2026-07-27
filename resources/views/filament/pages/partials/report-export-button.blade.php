@@ -1,4 +1,4 @@
-{{-- Phase 18I — export action; hidden without export authorization (server-side re-check always runs). --}}
+{{-- Export action; hidden without export authorization (server-side re-check always runs). --}}
 @if($this->canExportCsv($exportKey))
     <button
         type="button"

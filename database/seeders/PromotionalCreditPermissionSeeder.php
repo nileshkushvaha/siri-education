@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * GAP-041 promotional-credit permissions, matching the Referral
+ * Promotional-credit permissions, matching the Referral
  * module's plain-name convention (ViewReferralCampaigns/
  * ManageReferralCampaigns) rather than the Shield-style `Verb:Model`
  * names used elsewhere — promotional credits are a sibling of referral

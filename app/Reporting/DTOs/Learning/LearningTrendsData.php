@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Learning;
 
 /**
- * Phase 18F — daily period-event trends, bucketed in the reporting
+ * Daily period-event trends, bucketed in the reporting
  * timezone (fixed-offset CONVERT_TZ, same documented DST limitation as
- * the Phase 18D registration trend). Every map is keyed Y-m-d over the
+ * the registration trend). Every map is keyed Y-m-d over the
  * full period with empty days zero-filled; each series is a true event
  * stream on its own authoritative timestamp — current-state totals are
  * never trended. No smoothing, no forecast.

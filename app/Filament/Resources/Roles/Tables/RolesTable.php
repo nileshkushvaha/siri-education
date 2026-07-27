@@ -192,7 +192,7 @@ class RolesTable
                             $guard = app(SuperAdminGuardService::class);
 
                             try {
-                                // Phase 24E — GAP-010/SRS-23-7: checked for
+                                // Checked for
                                 // every role in the selection BEFORE any
                                 // deletion runs, so the canonical role being
                                 // anywhere in the batch rejects the whole

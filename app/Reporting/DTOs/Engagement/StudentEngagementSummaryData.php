@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Reporting\DTOs\Engagement;
 
 /**
- * Phase 18D — Student Engagement summary. Definition decisions (§6):
+ * Student Engagement summary. Definition decisions (SRS §6):
  *
  * - `byAccountStatus` is the CURRENT `user_profiles.student_status`
  *   (registered/active/suspended/archived) — an account attribute,

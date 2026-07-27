@@ -24,9 +24,9 @@ final class StudentFavoriteInstructorService
         $this->ensureCanFavorite($student, $instructor);
 
         return DB::transaction(function () use ($student, $instructor): StudentFavoriteInstructor {
-            // Phase 24H.2 — GAP-013: re-checked INSIDE the transaction so
-            // the locked profile read serializes against a concurrent
-            // suspension (see assertEligibleForStudentAction()).
+            // Re-checked INSIDE the transaction so the locked profile
+            // read serializes against a concurrent suspension (see
+            // assertEligibleForStudentAction()).
             $this->lifecycle->assertEligibleForStudentAction($student);
 
             $favorite = StudentFavoriteInstructor::firstOrCreate([

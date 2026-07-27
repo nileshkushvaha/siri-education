@@ -12,10 +12,10 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Standalone reference data (Beginner/Intermediate/Advanced/Expert) —
- * optional per the Phase 1 spec. Not yet attached to Subject or
- * TeacherSubject; wiring proficiency into instructor/subject
- * relationships is a later phase.
+ * Reference data (Beginner/Intermediate/Advanced/Expert), optional per
+ * the SRS. Instructors self-declare skill levels via
+ * `instructor_skill_level_ids` on their profile; not yet attached to
+ * Subject or TeacherSubject as a structured relationship.
  */
 class SkillLevel extends Model
 {

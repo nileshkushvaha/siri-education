@@ -198,7 +198,7 @@ final class BookingHistory extends Component
                 reason: filled($this->cancelReason) ? $this->cancelReason : null,
             ));
 
-            // Phase 24C — the synchronous refund-execution listener
+            // The synchronous refund-execution listener
             // mutates payment_status on its own freshly-queried copy of
             // the booking, not this in-memory $updated instance, so a
             // refresh is required or the modal would keep showing the
@@ -221,9 +221,9 @@ final class BookingHistory extends Component
         $this->modalBanner = '';
         $this->paymentOrder = [];
 
-        // Phase 10.2C-Fix: a resolvable billing country is required before
-        // checkout — PaymentProviderResolver's country-aware routing (Phase
-        // 10.2B) would otherwise silently fall through to the platform
+        // A resolvable billing country is required before
+        // checkout — PaymentProviderResolver's country-aware routing
+        // would otherwise silently fall through to the platform
         // default, which is correct for *routing* but not a substitute for
         // asking the student to complete their profile first. Checked here
         // (the UI entry point), not inside BookingPaymentService::initiate()
@@ -242,8 +242,8 @@ final class BookingHistory extends Component
             // Gateway-neutral: backend decides the provider, frontend only
             // reacts to it. Only Razorpay has a client-side checkout step
             // today — Stripe Elements/Checkout is intentionally deferred
-            // (see docs/architecture/phase-10-razorpay-checkout-payment-capture.md,
-            // Phase 10.2C), and the fake provider has no real checkout UI
+            // (see docs/architecture/phase-10-razorpay-checkout-payment-capture.md),
+            // and the fake provider has no real checkout UI
             // at all, only the "Simulate payment" controls below.
             if (($payload['provider'] ?? null) === 'razorpay') {
                 $this->paymentOrder = $payload;
@@ -397,7 +397,7 @@ final class BookingHistory extends Component
 
     /**
      * Whether the selected booking's payment was recovered as a wallet
-     * credit (Phase 10.2B Option B) rather than actively refunded —
+     * credit rather than actively refunded —
      * cheap, safe metadata check, no sensitive payload exposed.
      */
     public function paymentWasCreditedToWallet(): bool
@@ -413,7 +413,7 @@ final class BookingHistory extends Component
     }
 
     /**
-     * Phase 24D — the student-facing reschedule allowance for the
+     * The student-facing reschedule allowance for the
      * selected booking. Purely informational: BookingService::reschedule()
      * re-derives and enforces the same decision under the instructor
      * lock, so a stale render here can never let a student bypass the
@@ -433,7 +433,7 @@ final class BookingHistory extends Component
     }
 
     /**
-     * Phase 24C — pre-confirmation preview only, shown while the cancel
+     * Pre-confirmation preview only, shown while the cancel
      * panel is open on a still-paid booking. Deliberately uses now(): no
      * commitment has happened yet, so there is nothing frozen to read
      * back yet — this is exactly the one place a live recalculation is
@@ -454,7 +454,7 @@ final class BookingHistory extends Component
     }
 
     /**
-     * Phase 24C — the actual FROZEN outcome after cancellation, read
+     * The actual FROZEN outcome after cancellation, read
      * back from the payment's own metadata (the same durable record
      * BookingPaymentService wrote at cancellation time) — never a
      * fresh policy recalculation, so this always matches what actually
@@ -531,7 +531,7 @@ final class BookingHistory extends Component
         return view('livewire.frontend.student.booking-history', [
             'history' => $this->bookings->bookingHistory(auth()->user(), 10, $status),
             'statuses' => BookingStatus::cases(),
-            // Phase 24H.2A — GAP-013: the join URL comes exclusively from
+            // The join URL comes exclusively from
             // the authoritative BookingMeetingService::studentJoinUrlFor()
             // (ownership + strict Active lifecycle on a fresh read +
             // visibility setting + booking/meeting status) — this

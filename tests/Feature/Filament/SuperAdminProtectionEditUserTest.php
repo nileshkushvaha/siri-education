@@ -12,7 +12,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Phase 24E — GAP-010/SRS-23-7: the authoritative EditUser guard, driven
+ * SRS-23-7: the authoritative EditUser guard, driven
  * through the real Filament Livewire form (not the service directly),
  * proving the UI cannot bypass SuperAdminGuardService.
  */

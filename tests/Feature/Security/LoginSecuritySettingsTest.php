@@ -122,7 +122,7 @@ class LoginSecuritySettingsTest extends TestCase
             ->assertHasErrors(['data.lockout_duration']);
     }
 
-    // ── Phase 24S: audit coverage via the shared atomic+audited helper ──────
+    // ── Audit coverage via the shared atomic+audited helper ──────────────────
 
     public function test_save_creates_an_audit_event_with_the_diff(): void
     {

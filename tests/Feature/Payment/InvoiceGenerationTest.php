@@ -37,7 +37,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * SRS §14.21-14.24 (GAP-007): an invoice/receipt is generated
+ * SRS §14.21-14.24: an invoice/receipt is generated
  * automatically for every successful booking payment (gateway or
  * wallet) and every successful wallet recharge, is uniquely numbered,
  * is fully immutable, and is visible only to its owner or an

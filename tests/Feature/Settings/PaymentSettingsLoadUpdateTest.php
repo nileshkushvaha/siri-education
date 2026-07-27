@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * "Payment Settings" (Phase 1 group #4) is satisfied by 4 existing,
+ * "Payment Settings" is satisfied by 4 existing,
  * already-tested-via-admin-UI classes: PaymentConfigurationSettings,
  * PaymentGatewaySettings, PaymentAdvancedSettings, BankSettings. This
  * test covers PaymentConfigurationSettings as the representative core

@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The single authoritative service for every waitlist mutation (SRS
- * §6.19/§10.28, GAP-018). Controllers, Livewire components, Filament
+ * §6.19/§10.28). Controllers, Livewire components, Filament
  * actions, listeners, and commands must call this service — none may
  * write `instructor_waitlist_entries` directly.
  *

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Roles\Pages;
 
 use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\Admin\RoleAuditRecorder;
 use App\Services\Admin\SuperAdminGuardService;
@@ -19,6 +21,8 @@ use Spatie\Permission\Models\Role;
 
 class EditRole extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = RoleResource::class;
 
     /** @var array<string> Permission names selected in the matrix */
@@ -31,7 +35,8 @@ class EditRole extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Roles'),
             ViewAction::make(),
             DeleteAction::make()
                 ->hidden(fn (): bool => $this->record->name === SuperAdminGuardService::SUPER_ADMIN_ROLE)
@@ -62,7 +67,7 @@ class EditRole extends EditRecord
                         Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
                     }
                 }),
-        ];
+        ]);
     }
 
     protected function mutateFormDataBeforeFill(array $data): array

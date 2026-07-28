@@ -6,7 +6,9 @@ namespace App\Filament\Resources\Redirects\Pages;
 
 use App\Content\Redirects\Exceptions\RedirectException;
 use App\Content\Redirects\Services\RedirectService;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Redirects\RedirectResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\Redirect;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -15,7 +17,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class EditRedirect extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = RedirectResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Redirects'),
+        ]);
+    }
 
     /** Updates flow through the service — normalized, validated, audited. */
     protected function handleRecordUpdate(Model $record, array $data): Model

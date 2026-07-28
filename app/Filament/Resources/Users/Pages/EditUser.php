@@ -5,7 +5,9 @@ namespace App\Filament\Resources\Users\Pages;
 use App\Events\Auth\UserApproved;
 use App\Exceptions\LastActiveSuperAdminException;
 use App\Filament\Concerns\HasStudentLifecycleActions;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
 use App\Services\AuditTrailService;
@@ -19,6 +21,7 @@ use Spatie\Permission\Models\Role;
 
 class EditUser extends EditRecord
 {
+    use HasSectionBreadcrumb;
     use HasStudentLifecycleActions;
 
     protected static string $resource = UserResource::class;
@@ -28,7 +31,8 @@ class EditUser extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Users'),
             ViewAction::make(),
             ...$this->studentLifecycleActions(),
             DeleteAction::make()
@@ -46,7 +50,7 @@ class EditUser extends EditRecord
                         Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
                     }
                 }),
-        ];
+        ]);
     }
 
     /**

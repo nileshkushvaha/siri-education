@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\HomeworkSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -32,6 +33,7 @@ class HomeworkReminderSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     private const int MAX_OFFSET_HOURS = 336; // 14 days — a generous but bounded ceiling
@@ -64,15 +66,6 @@ class HomeworkReminderSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'SRS §7.11: administrator-configured reminder schedule and channel routing.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'Homework Reminders',
-        ];
     }
 
     public function mount(): void

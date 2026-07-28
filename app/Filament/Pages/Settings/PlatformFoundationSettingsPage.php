@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
@@ -30,6 +31,7 @@ class PlatformFoundationSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
@@ -58,15 +60,6 @@ class PlatformFoundationSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Prepare booking, wallet, instructor, localization, and feature flag defaults. Referral reward rules live in Referral Campaigns; meeting providers live under Meeting Settings.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'Platform Foundation',
-        ];
     }
 
     public function mount(): void

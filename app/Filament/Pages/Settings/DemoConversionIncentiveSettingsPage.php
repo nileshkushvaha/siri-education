@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Models\Country;
 use App\Models\Subject;
 use App\Settings\DemoConversionIncentiveSettings;
@@ -37,6 +38,7 @@ class DemoConversionIncentiveSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGift;
@@ -65,15 +67,6 @@ class DemoConversionIncentiveSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'SRS §15.18: instructor bonus rules for students who convert from a completed demo to a completed paid lesson.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'Demo Conversion Incentive',
-        ];
     }
 
     public function mount(): void

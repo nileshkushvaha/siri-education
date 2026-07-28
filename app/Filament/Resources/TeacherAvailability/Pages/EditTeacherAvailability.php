@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\TeacherAvailability\Pages;
 
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\TeacherAvailability\TeacherAvailabilityResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\TeacherAvailability;
 use App\Services\Instructor\InstructorAvailabilityService;
 use App\Support\AvailabilityImpactConfirmation;
@@ -15,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class EditTeacherAvailability extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = TeacherAvailabilityResource::class;
 
     protected function handleRecordUpdate(Model $record, array $data): Model
@@ -33,7 +37,8 @@ class EditTeacherAvailability extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Teacher Availability'),
             DeleteAction::make()
                 ->using(function (TeacherAvailability $record): bool {
                     return AvailabilityImpactConfirmation::run(
@@ -41,6 +46,6 @@ class EditTeacherAvailability extends EditRecord
                         fn (?string $impactConfirmation) => app(InstructorAvailabilityService::class)->delete($record, auth()->user(), $impactConfirmation),
                     );
                 }),
-        ];
+        ]);
     }
 }

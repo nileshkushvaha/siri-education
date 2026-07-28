@@ -86,7 +86,8 @@ class FaqForm
                                             ->helperText('Show in the Featured section on the help center.'),
                                     ]),
                             ]),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 }

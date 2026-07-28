@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SupportCases\Pages;
 
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\SupportCases\SupportCaseResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\SupportCase;
 use App\Models\User;
 use App\SupportCases\DTOs\CreateSupportCaseData;
@@ -24,7 +26,16 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CreateSupportCase extends CreateRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = SupportCaseResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Support Cases'),
+        ]);
+    }
 
     protected function handleRecordCreation(array $data): Model
     {

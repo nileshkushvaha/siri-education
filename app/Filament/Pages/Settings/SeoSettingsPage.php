@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\SeoSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -28,6 +29,7 @@ class SeoSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMagnifyingGlass;
@@ -56,15 +58,6 @@ class SeoSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Manage your site\'s SEO metadata, analytics integrations, and social sharing settings.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'SEO',
-        ];
     }
 
     public function mount(): void

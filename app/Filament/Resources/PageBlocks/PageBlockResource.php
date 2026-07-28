@@ -32,6 +32,12 @@ class PageBlockResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Content Blocks';
 
+    // 'name' is an optional field (PageBlockForm) — Filament falls back to
+    // the model label automatically when it's null, giving a safe "Edit
+    // Content Block" heading for unnamed blocks instead of exposing raw
+    // content/IDs.
+    protected static ?string $recordTitleAttribute = 'name';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Content';
 
     protected static ?int $navigationSort = 5;

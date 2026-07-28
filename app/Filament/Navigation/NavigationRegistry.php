@@ -1119,4 +1119,9 @@ final class NavigationRegistry
     {
         return self::find($class)?->sort;
     }
+
+    public static function subgroupFor(string $class): ?string
+    {
+        return self::find($class)?->subgroup;
+    }
 }

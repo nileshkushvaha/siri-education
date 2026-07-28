@@ -28,6 +28,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -42,6 +43,24 @@ use pxlrbt\FilamentEnvironmentIndicator\EnvironmentIndicatorPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
+    /**
+     * Removes "Create & create another" from every conventional resource
+     * create page in one place, via Filament's own supported extension
+     * point (`CreateRecord::disableCreateAnother()` flips the protected
+     * static `$canCreateAnother` property, which every subclass reads
+     * through late static binding unless it redeclares the property
+     * itself). No page override, macro, CSS, or JS is involved, and no
+     * vendor file is touched.
+     *
+     * A resource that genuinely needs repeated-entry can opt back in by
+     * declaring `protected static bool $canCreateAnother = true;` on its
+     * own Create page — the same framework mechanism, used in reverse.
+     */
+    public function boot(): void
+    {
+        CreateRecord::disableCreateAnother();
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel

@@ -6,17 +6,27 @@ namespace App\Filament\Resources\Bookings\Pages;
 
 use App\Booking\Contracts\BookingArchivalServiceInterface;
 use App\Booking\Exceptions\BookingArchivalException;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Bookings\BookingResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\Booking;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditBooking extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = BookingResource::class;
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Scheduling and status changes happen from the bookings list — this page is a read-only detail view.';
+    }
 
     /**
      * No DeleteAction/ForceDeleteAction exists here at all (Phase
@@ -26,7 +36,8 @@ class EditBooking extends EditRecord
      */
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Bookings'),
             Action::make('archive')
                 ->label('Archive Booking')
                 ->icon('heroicon-m-archive-box')
@@ -58,7 +69,7 @@ class EditBooking extends EditRecord
                 ->action(function (Booking $record, array $data): void {
                     $this->archiveOrRestore(fn (BookingArchivalServiceInterface $service) => $service->restore($record, auth()->user(), $data['reason']), 'Booking restored');
                 }),
-        ];
+        ]);
     }
 
     /** Converts domain failures into a friendly notification — never a raw SQL/authorization exception reaching the panel. */

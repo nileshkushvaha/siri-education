@@ -8,6 +8,7 @@ use App\Booking\Services\GoogleCalendarConfigurationService;
 use App\Booking\Services\RecordingAvailabilityResolver;
 use App\Booking\Services\ZoomConfigurationService;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\MeetingSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -42,6 +43,7 @@ class MeetingSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedVideoCamera;
@@ -70,15 +72,6 @@ class MeetingSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Meeting providers (Manual, Google Meet, Zoom), credentials, auto-creation rules, and join-link visibility.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'Meetings',
-        ];
     }
 
     public function mount(): void

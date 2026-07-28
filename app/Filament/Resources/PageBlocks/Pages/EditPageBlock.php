@@ -4,7 +4,9 @@ namespace App\Filament\Resources\PageBlocks\Pages;
 
 use App\Actions\ValidateBlockContentAction;
 use App\Enums\BlockType;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\PageBlocks\PageBlockResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\Page;
 use App\Models\Post;
 use App\Services\BlockContentConverter;
@@ -17,6 +19,8 @@ use Illuminate\Validation\ValidationException;
 
 class EditPageBlock extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = PageBlockResource::class;
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -83,10 +87,11 @@ class EditPageBlock extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Content Blocks'),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),
-        ];
+        ]);
     }
 }

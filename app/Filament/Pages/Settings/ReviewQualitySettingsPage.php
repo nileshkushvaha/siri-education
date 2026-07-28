@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Models\User;
 use App\Settings\ReviewSettings;
 use BackedEnum;
@@ -52,6 +53,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 class ReviewQualitySettingsPage extends Page
 {
     use HasCentralizedNavigation;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;
@@ -80,15 +82,6 @@ class ReviewQualitySettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'The canonical reviews.reviews_enabled switch, rating rules, moderation model, quality-alert thresholds, dashboard classification, and notification channel routing.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'Reviews & Quality',
-        ];
     }
 
     public static function canAccess(): bool

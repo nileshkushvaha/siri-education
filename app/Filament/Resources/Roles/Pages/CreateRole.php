@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Roles\Pages;
 
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\Admin\RoleAuditRecorder;
 use Filament\Notifications\Notification;
@@ -15,10 +17,19 @@ use Spatie\Permission\Models\Role;
 
 class CreateRole extends CreateRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = RoleResource::class;
 
     /** @var array<string> */
     public array $selectedPermissions = [];
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Roles'),
+        ]);
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

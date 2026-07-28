@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Models\Page as PageModel;
 use App\Settings\GeneralSettings;
 use BackedEnum;
@@ -30,6 +31,7 @@ class GeneralSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
@@ -58,15 +60,6 @@ class GeneralSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Configure your application\'s global information, branding, and localization.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'General',
-        ];
     }
 
     public function mount(): void

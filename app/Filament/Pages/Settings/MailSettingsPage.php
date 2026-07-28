@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Notifications\Support\TestMailConfigurationNotification;
 use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
@@ -31,6 +32,7 @@ class MailSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;
@@ -61,15 +63,6 @@ class MailSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Configure SMTP settings for outgoing email. Passwords are encrypted before storage.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/settings/general' => 'Settings',
-            '#' => 'Mail',
-        ];
     }
 
     public function mount(): void

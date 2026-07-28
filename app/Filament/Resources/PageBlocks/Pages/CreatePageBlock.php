@@ -4,7 +4,9 @@ namespace App\Filament\Resources\PageBlocks\Pages;
 
 use App\Actions\ValidateBlockContentAction;
 use App\Enums\BlockType;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\PageBlocks\PageBlockResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\Page;
 use App\Models\Post;
 use App\Services\BlockContentConverter;
@@ -13,7 +15,16 @@ use Illuminate\Validation\ValidationException;
 
 class CreatePageBlock extends CreateRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = PageBlockResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Content Blocks'),
+        ]);
+    }
 
     protected function getFillableFields(): array
     {

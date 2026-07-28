@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Security;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\Security\SecuritySettingsService;
 use App\Settings\PasswordPolicySettings;
 use BackedEnum;
@@ -28,6 +29,7 @@ class PasswordPolicyPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSecurityAccess;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedKey;
 
@@ -60,15 +62,6 @@ class PasswordPolicyPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Enforce password quality and expiry requirements for all users.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/security/password-policy' => 'Security',
-            '#' => 'Password Policy',
-        ];
     }
 
     public function mount(): void

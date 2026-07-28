@@ -187,6 +187,28 @@ class AdminNavigationRegistryTest extends TestCase
     }
 
     /**
+     * Stage 2 (admin forms presentation foundation): subgroupFor() is an
+     * additive accessor alongside groupFor()/labelFor()/sortFor(), read
+     * by the new breadcrumb resolver to build "Section → Subgroup →
+     * Page" settings breadcrumbs. It must never diverge from the same
+     * destination's own ->subgroup property.
+     */
+    public function test_subgroup_for_matches_the_registry_entry(): void
+    {
+        $this->assertSame('Instructor Earnings & Payouts', NavigationRegistry::subgroupFor(InstructorEarningResource::class));
+        $this->assertSame('Finance Configuration', NavigationRegistry::subgroupFor(InstructorEarningSettingsPage::class));
+
+        foreach (NavigationRegistry::destinations() as $class => $destination) {
+            $this->assertSame($destination->subgroup, NavigationRegistry::subgroupFor($class));
+        }
+    }
+
+    public function test_subgroup_for_returns_null_for_an_unregistered_class(): void
+    {
+        $this->assertNull(NavigationRegistry::subgroupFor(self::class));
+    }
+
+    /**
      * @return array<int, class-string>
      */
     private function findClassesUsingTrait(string $trait): array

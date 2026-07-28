@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Security;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\Security\SecuritySettingsService;
 use App\Settings\AuthenticationSettings;
 use BackedEnum;
@@ -28,6 +29,7 @@ class AuthenticationPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSecurityAccess;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
@@ -60,15 +62,6 @@ class AuthenticationPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Control how users authenticate into the application.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/security/authentication' => 'Security',
-            '#' => 'Authentication',
-        ];
     }
 
     public function mount(): void

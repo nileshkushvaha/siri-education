@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Security;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\Security\SecuritySettingsService;
 use App\Settings\LoginSecuritySettings;
 use BackedEnum;
@@ -28,6 +29,7 @@ class LoginSecurityPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSecurityAccess;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;
 
@@ -60,15 +62,6 @@ class LoginSecurityPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Protect against brute-force attacks and unauthorised login attempts.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/security/login-security' => 'Security',
-            '#' => 'Login Security',
-        ];
     }
 
     public function mount(): void

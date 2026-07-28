@@ -2,16 +2,31 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\PasswordPolicySettings;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateUser extends CreateRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = UserResource::class;
+
+    /**
+     * @return array<Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Users'),
+        ]);
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

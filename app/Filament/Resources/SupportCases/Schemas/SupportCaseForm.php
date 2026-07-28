@@ -45,9 +45,11 @@ class SupportCaseForm
                     ]),
                     TextInput::make('subject')->required()->maxLength(255),
                     Textarea::make('description')->required()->maxLength(4000)->rows(4),
-                ]),
+                ])
+                ->columnSpanFull(),
 
             Section::make('Who this case is about')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         Select::make('student_id')
@@ -65,6 +67,7 @@ class SupportCaseForm
 
             Section::make('Linked record (optional)')
                 ->description('Staff may link any record — the requester-ownership check only applies to student/instructor self-service cases.')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         Select::make('linked_record_type')

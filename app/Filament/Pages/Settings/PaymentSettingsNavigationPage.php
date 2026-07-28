@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\Support\Htmlable;
 class PaymentSettingsNavigationPage extends Page
 {
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 

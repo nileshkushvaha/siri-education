@@ -45,10 +45,12 @@ class NotificationTemplateForm
 
                             return new HtmlString($list !== '' ? $list : '<em>No variables for this channel.</em>');
                         }),
-                ]),
+                ])
+                ->columnSpanFull(),
 
             Section::make('Content')
                 ->description('Leave blank to use the code-owned default shown as placeholder text.')
+                ->columnSpanFull()
                 ->schema([
                     TextInput::make('subject')
                         ->label(fn (NotificationTemplate $record): string => $record->channel->value === 'database' ? 'Title override' : 'Subject override')

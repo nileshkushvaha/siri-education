@@ -49,7 +49,8 @@ class PostCategoryForm
                         ->required(),
                     Toggle::make('is_active')
                         ->default(true),
-                ]),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 }

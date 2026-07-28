@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Security;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\Security\SecuritySettingsService;
 use App\Settings\RegistrationSettings;
 use BackedEnum;
@@ -29,6 +30,7 @@ class RegistrationPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSecurityAccess;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserPlus;
 
@@ -61,15 +63,6 @@ class RegistrationPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Control how new accounts are created and who can register.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/security/registration' => 'Security',
-            '#' => 'Registration',
-        ];
     }
 
     public function mount(): void

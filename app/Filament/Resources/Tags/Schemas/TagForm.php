@@ -43,7 +43,8 @@ class TagForm
                         ->required(),
                     Toggle::make('is_active')
                         ->default(true),
-                ]),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 }

@@ -37,7 +37,8 @@ class RedirectForm
                     Textarea::make('description')
                         ->label('Description (optional)')
                         ->maxLength(1000),
-                ]),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 }

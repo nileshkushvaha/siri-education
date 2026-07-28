@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Permissions\Pages;
 
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Permissions\PermissionResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\Admin\PermissionAuditRecorder;
 use Filament\Actions\DeleteAction;
@@ -15,6 +17,8 @@ use Spatie\Permission\Models\Permission;
 
 class EditPermission extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = PermissionResource::class;
 
     private ?string $previousName = null;
@@ -23,7 +27,8 @@ class EditPermission extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Permissions'),
             DeleteAction::make()
                 ->action(function (): void {
                     /** @var Permission $permission */
@@ -47,7 +52,7 @@ class EditPermission extends EditRecord
 
                     $this->redirect($this->getResource()::getUrl('index'));
                 }),
-        ];
+        ]);
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

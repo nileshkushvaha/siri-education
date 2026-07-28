@@ -6,6 +6,7 @@ use App\Actions\GeneratePageSlugAction;
 use App\Enums\PageContentWidth;
 use App\Enums\PageStatus;
 use App\Enums\PageVisibility;
+use App\Filament\Support\Presentation\ContentBlockLinksPlaceholder;
 use App\Models\Page;
 use App\Services\Cms\StructuredPageContentService;
 use Filament\Forms\Components\DateTimePicker;
@@ -19,7 +20,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
 
 class PageForm
 {
@@ -137,21 +137,12 @@ class PageForm
                                     ->schema([
                                         Placeholder::make('blocks_notice')
                                             ->label('Block Builder')
-                                            ->content(function (?Page $record): HtmlString {
-                                                if (! $record) {
-                                                    return new HtmlString('Save this page first, then you can add content blocks.');
-                                                }
-
-                                                $createUrl = url('/admin/page-blocks/create?page_id='.$record->id);
-                                                $listUrl = url('/admin/page-blocks?tableFilters[blockable_type][value]=App%5CModels%5CPage');
-
-                                                return new HtmlString(
-                                                    '<div style="display:flex;gap:12px;align-items:center;">'
-                                                    .'<a href="'.$createUrl.'" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#f59e0b;color:#fff;border-radius:6px;font-weight:600;text-decoration:none;">+ Add Block</a>'
-                                                    .'<a href="'.$listUrl.'" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;font-weight:500;text-decoration:none;">View Page Blocks</a>'
-                                                    .'</div>'
-                                                );
-                                            }),
+                                            ->content(fn (?Page $record) => ContentBlockLinksPlaceholder::content(
+                                                $record,
+                                                ownerQueryParam: 'page_id',
+                                                blockableTypeFilterValue: Page::class,
+                                                noun: 'Page',
+                                            )),
                                     ]),
                             ]),
 

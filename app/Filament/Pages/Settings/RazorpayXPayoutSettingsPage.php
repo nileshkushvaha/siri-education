@@ -7,6 +7,7 @@ namespace App\Filament\Pages\Settings;
 use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutConfigurationValidator;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\RazorpayXPayoutSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -45,6 +46,7 @@ class RazorpayXPayoutSettingsPage extends Page
 {
     use HasCentralizedNavigation;
     use HasSettingsAccess;
+    use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;

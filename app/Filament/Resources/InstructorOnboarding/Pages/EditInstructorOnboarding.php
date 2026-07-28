@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorOnboarding\Pages;
 
 use App\Filament\Concerns\HasInstructorLifecycleActions;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\InstructorOnboarding\InstructorOnboardingResource;
 use App\Filament\Resources\InstructorOnboarding\Schemas\InstructorOnboardingForm;
+use App\Filament\Support\Presentation\BackAction;
 use App\Services\AuditTrailService;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
@@ -25,6 +27,7 @@ use Illuminate\Support\Facades\Gate;
 class EditInstructorOnboarding extends EditRecord
 {
     use HasInstructorLifecycleActions;
+    use HasSectionBreadcrumb;
 
     protected static string $resource = InstructorOnboardingResource::class;
 
@@ -65,7 +68,13 @@ class EditInstructorOnboarding extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return $this->instructorLifecycleActions();
+        // Back is placed first, outside/before the lifecycle action group,
+        // so it reads as page navigation rather than another review
+        // decision alongside Approve/Reject/Suspend/etc.
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Instructor Onboarding'),
+            ...$this->instructorLifecycleActions(),
+        ]);
     }
 
     /**

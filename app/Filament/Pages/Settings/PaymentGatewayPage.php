@@ -6,6 +6,7 @@ namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
+use App\Filament\Support\Presentation\BackAction;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -47,6 +48,16 @@ class PaymentGatewayPage extends PaymentSettingsPage
     public function getSubheading(): ?string
     {
         return 'Configure and secure online payment gateway credentials.';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::make(
+                PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
+                'Back to Payment Settings',
+            ),
+        ]);
     }
 
     public function content(Schema $schema): Schema

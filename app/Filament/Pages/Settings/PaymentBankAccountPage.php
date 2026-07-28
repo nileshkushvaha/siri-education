@@ -6,6 +6,7 @@ namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
+use App\Filament\Support\Presentation\BackAction;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -45,6 +46,16 @@ class PaymentBankAccountPage extends PaymentSettingsPage
     public function getSubheading(): ?string
     {
         return 'Manage offline payment and bank transfer details.';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::make(
+                PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
+                'Back to Payment Settings',
+            ),
+        ]);
     }
 
     public function content(Schema $schema): Schema

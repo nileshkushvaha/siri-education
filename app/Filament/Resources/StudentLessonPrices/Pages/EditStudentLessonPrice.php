@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentLessonPrices\Pages;
 
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\StudentLessonPrices\StudentLessonPriceResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\Currency;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
@@ -13,15 +15,18 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditStudentLessonPrice extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = StudentLessonPriceResource::class;
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Lesson Prices'),
             DeleteAction::make(),
             RestoreAction::make(),
             ForceDeleteAction::make(),
-        ];
+        ]);
     }
 
     /** @param  array<string, mixed>  $data */

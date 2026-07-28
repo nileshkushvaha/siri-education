@@ -32,6 +32,8 @@ class StudentLearningGoalResource extends Resource
 
     protected static ?string $modelLabel = 'Student Learning Goal';
 
+    protected static ?string $recordTitleAttribute = 'title';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Students';
 
     protected static ?int $navigationSort = 2;

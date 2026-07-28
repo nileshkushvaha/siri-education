@@ -6,7 +6,9 @@ namespace App\Filament\Resources\StudentLearningPlans\Pages;
 
 use App\Enums\InstructorStatus;
 use App\Enums\LearningPlanStatus;
+use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\StudentLearningPlans\StudentLearningPlanResource;
+use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\Student\LearningPlanService;
 use Filament\Actions\Action;
@@ -20,18 +22,21 @@ use Illuminate\Database\Eloquent\Builder;
 
 class EditStudentLearningPlan extends EditRecord
 {
+    use HasSectionBreadcrumb;
+
     protected static string $resource = StudentLearningPlanResource::class;
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_filter([
+            BackAction::toResourceIndex(static::getResource(), 'Back to Learning Plans'),
             $this->assignInstructorAction(),
             $this->activatePlanAction(),
             $this->markReviewDueAction(),
             $this->adjustPlanAction(),
             $this->completePlanAction(),
             $this->archivePlanAction(),
-        ];
+        ]);
     }
 
     /**

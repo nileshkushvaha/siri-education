@@ -60,12 +60,12 @@ class HomeworkReminderSettingsPage extends Page
 
     public function getTitle(): string|Htmlable
     {
-        return 'Homework Due-Date Reminder Settings';
+        return 'Homework Reminders';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'SRS §7.11: administrator-configured reminder schedule and channel routing.';
+        return 'Configure when due-date reminders are sent and which channels deliver them.';
     }
 
     public function mount(): void
@@ -111,10 +111,10 @@ class HomeworkReminderSettingsPage extends Page
                 ->columnSpanFull()
                 ->schema([
                     Toggle::make('homework_due_reminders_enabled')
-                        ->label('Due-Date Reminders Enabled')
-                        ->helperText('Off stops the scheduler from claiming or sending any reminder.'),
+                        ->label('Enable due-date reminders')
+                        ->helperText('When disabled, no reminders are scheduled or sent.'),
                     TagsInput::make('homework_due_reminder_offset_hours')
-                        ->label('Reminder Offsets (hours before due time)')
+                        ->label('Reminder offsets (hours before due time)')
                         ->helperText(sprintf(
                             'Whole hours, 1–%d, up to %d offsets. Example: 24 sends one reminder a day before the due time.',
                             self::MAX_OFFSET_HOURS,
@@ -123,18 +123,18 @@ class HomeworkReminderSettingsPage extends Page
                         ->placeholder('e.g. 24'),
                 ]),
 
-            Section::make('Notification Channel Routing')
-                ->description('In-app delivery is always on for real users.')
+            Section::make('Notification channels')
+                ->description('In-app notifications are always sent in addition to any channels enabled below.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(3)->schema([
                         Toggle::make('homework_reminder_channel_email_enabled')->label('Email'),
                         Toggle::make('homework_reminder_channel_whatsapp_enabled')
                             ->label('WhatsApp')
-                            ->helperText('No gateway is configured yet — messages log and skip until one is wired in.'),
+                            ->helperText('No provider is configured yet — messages are logged but not sent until one is set up.'),
                         Toggle::make('homework_reminder_channel_sms_enabled')
                             ->label('SMS')
-                            ->helperText('No gateway is configured yet — messages log and skip until one is wired in.'),
+                            ->helperText('No provider is configured yet — messages are logged but not sent until one is set up.'),
                     ]),
                 ]),
         ]);

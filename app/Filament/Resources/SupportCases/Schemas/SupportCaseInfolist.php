@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SupportCases\Schemas;
 
 use App\Models\SupportCase;
+use App\Support\ModelDisplayName;
 use App\SupportCases\Enums\SupportCasePriority;
 use App\SupportCases\Enums\SupportCaseStatus;
 use App\SupportCases\Enums\SupportCaseType;
@@ -60,7 +61,7 @@ class SupportCaseInfolist
                     Grid::make(2)->schema([
                         TextEntry::make('linked_record_type')
                             ->label('Type')
-                            ->formatStateUsing(fn (?string $state): string => $state !== null ? class_basename($state) : '—')
+                            ->formatStateUsing(fn (?string $state): string => ModelDisplayName::for($state))
                             ->placeholder('—'),
                         TextEntry::make('linked_record_id')
                             ->label('ID')

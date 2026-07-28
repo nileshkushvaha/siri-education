@@ -22,20 +22,20 @@ class BookingTypeForm
         return $schema
             ->components([
                 Section::make('Type')
-                    ->description('The key links this row to its code driver — rows hold tunable values, drivers hold behavior.')
+                    ->description('The system type determines the underlying behavior for this booking type. The fields on this page only control its name, duration, price, and other settings.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('key')
-                                ->label('Driver key')
+                                ->label('System type')
                                 // Only registered drivers are bookable, so only they may be created.
                                 ->options(app(BookingTypeRegistry::class)->options())
                                 ->required()
                                 ->unique(ignoreRecord: true)
                                 ->disabledOn('edit')
                                 ->dehydratedWhenHidden()
-                                ->placeholder('Select a driver')
-                                ->helperText('New keys require a BookingTypeInterface driver (see docs/booking.md).'),
+                                ->placeholder('Select a type')
+                                ->helperText('Only types already built into the platform can be selected here. Contact engineering to add a new one.'),
                             TextInput::make('name')
                                 ->required()
                                 ->maxLength(255)

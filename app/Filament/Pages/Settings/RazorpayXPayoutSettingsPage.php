@@ -27,6 +27,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\HtmlString;
 
@@ -425,14 +426,27 @@ class RazorpayXPayoutSettingsPage extends Page
         $settings = app(RazorpayXPayoutSettings::class);
 
         $line = fn (string $label, string $value): string => sprintf('<div class="flex justify-between gap-8"><span>%s</span><strong>%s</strong></div>', e($label), e($value));
+        $formatTimestamp = fn (?string $value): string => $value !== null ? Carbon::parse($value)->format('M j, Y g:i A') : 'Never';
+
+        $configStatusLabel = match ($settings->razorpayx_config_status) {
+            'ready' => 'Ready',
+            'invalid' => 'Invalid credentials',
+            default => 'Not configured',
+        };
+
+        $healthStatusLabel = match ($settings->razorpayx_last_health_status ?? null) {
+            'healthy' => 'Healthy',
+            'unhealthy' => 'Unhealthy',
+            default => 'Not checked yet',
+        };
 
         return new HtmlString(
             '<div class="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">'
-            .$line('Configuration status', $settings->razorpayx_config_status)
-            .$line('Last validated', $settings->razorpayx_last_checked_at ?? 'never')
-            .$line('Last health check', $settings->razorpayx_last_health_check_at ?? 'never')
-            .$line('Last health status', $settings->razorpayx_last_health_status)
-            .$line('IP allowlisting confirmed', $settings->razorpayx_ip_allowlisting_confirmed_at ?? 'not confirmed')
+            .$line('Configuration status', $configStatusLabel)
+            .$line('Last validated', $formatTimestamp($settings->razorpayx_last_checked_at))
+            .$line('Last health check', $formatTimestamp($settings->razorpayx_last_health_check_at))
+            .$line('Last health status', $healthStatusLabel)
+            .$line('IP allowlisting confirmed', $settings->razorpayx_ip_allowlisting_confirmed_at !== null ? $formatTimestamp($settings->razorpayx_ip_allowlisting_confirmed_at) : 'Not confirmed')
             .'</div>'
         );
     }

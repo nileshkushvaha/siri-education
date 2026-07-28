@@ -44,7 +44,7 @@ class TeacherLeaveForm
                                 ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
                                 ->searchable()
                                 ->placeholder('Defaults to the instructor profile timezone')
-                                ->helperText('Defaults to the instructor profile timezone and is stored for audit/display clarity.'),
+                                ->helperText("Defaults to the instructor's profile timezone. Used to interpret and display the leave window correctly."),
                         ]),
 
                         // The leave window itself.

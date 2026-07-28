@@ -94,7 +94,8 @@ class PromotionalCreditIssuancesTable
                             ->native(false)
                             ->live(),
                         TextInput::make('amount_minor')
-                            ->label('Amount (minor units)')
+                            ->label('Amount (smallest currency unit)')
+                            ->helperText('Enter the amount in the smallest unit of the currency below — e.g. paise for INR, cents for USD.')
                             ->numeric()
                             ->integer()
                             ->minValue(1)

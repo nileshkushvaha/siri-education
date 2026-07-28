@@ -65,7 +65,7 @@ class BookingPaymentsTable
                     ->placeholder('Never')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('failure_reason')
-                    ->label('Safe Failure Reason')
+                    ->label('Resolution reason')
                     ->state(fn (BookingPayment $record): ?string => $record->metadata['manual_resolution_reason']
                         ?? $record->metadata['refund_reason']
                         ?? null)
@@ -154,7 +154,7 @@ class BookingPaymentsTable
                     ->icon('heroicon-m-arrow-uturn-left')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalDescription('Exception path only — calls the real gateway directly. The normal cancellation flow already credits the wallet automatically; use this only for a duplicate charge, compliance requirement, or finance correction.')
+                    ->modalDescription('For unusual situations only — calls the payment gateway directly to issue the refund. The normal cancellation flow already credits the wallet automatically; use this only for a duplicate charge, compliance requirement, or finance correction.')
                     ->authorize(fn (BookingPayment $record): bool => auth()->user()?->can('refundViaProvider', $record) ?? false)
                     ->visible(fn (BookingPayment $record): bool => $record->status === BookingPaymentRecordStatus::Captured
                         && ($record->metadata['refund_resolution'] ?? null) === null

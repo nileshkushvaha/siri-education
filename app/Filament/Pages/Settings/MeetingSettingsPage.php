@@ -187,7 +187,7 @@ class MeetingSettingsPage extends Page
                 ]),
 
             Section::make('Google Calendar + Meet')
-                ->description('Service-account credentials for GoogleCalendarMeetProvider. The JSON is never displayed after saving — leave it blank to keep the existing value.')
+                ->description('Service account credentials used to create Google Meet links for lessons. The JSON is never displayed after saving — leave it blank to keep the existing value.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
@@ -197,7 +197,7 @@ class MeetingSettingsPage extends Page
                                 'service_account' => 'Service Account',
                                 'oauth_user' => 'OAuth User (not yet supported)',
                             ])
-                            ->helperText('Only Service Account is implemented — OAuth User is reserved for a future connection screen.')
+                            ->helperText('Only Service Account is currently supported — OAuth User will be available in a future connection screen.')
                             ->required()
                             ->native(false),
                         TextInput::make('google_calendar_id')
@@ -208,7 +208,7 @@ class MeetingSettingsPage extends Page
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('google_config_status')
-                            ->label('Config Status')
+                            ->label('Configuration status')
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('google_last_checked_at')
@@ -258,7 +258,7 @@ class MeetingSettingsPage extends Page
                             ->maxLength(64)
                             ->placeholder('e.g. Asia/Kolkata'),
                         TextInput::make('zoom_config_status')
-                            ->label('Config Status')
+                            ->label('Configuration status')
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('zoom_last_checked_at')

@@ -29,6 +29,7 @@ class PermissionsTable
                     ->sortable(),
 
                 TextColumn::make('guard_name')
+                    ->label('Guard')
                     ->badge()
                     ->color('warning')
                     ->sortable(),

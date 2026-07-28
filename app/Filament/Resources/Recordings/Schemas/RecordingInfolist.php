@@ -15,7 +15,7 @@ class RecordingInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Recording')
+            Section::make('Details')
                 ->schema([
                     Grid::make(2)->schema([
                         TextEntry::make('booking.reference')->label('Booking'),
@@ -30,7 +30,10 @@ class RecordingInfolist
                     ]),
                     Grid::make(3)->schema([
                         TextEntry::make('provider'),
-                        TextEntry::make('duration_seconds')->label('Duration (s)')->placeholder('—'),
+                        TextEntry::make('duration_seconds')
+                            ->label('Duration')
+                            ->state(fn (?int $state): ?string => $state !== null ? gmdate($state >= 3600 ? 'H:i:s' : 'i:s', $state) : null)
+                            ->placeholder('—'),
                         TextEntry::make('mime_type')->label('Format')->placeholder('—'),
                     ]),
                     Grid::make(3)->schema([

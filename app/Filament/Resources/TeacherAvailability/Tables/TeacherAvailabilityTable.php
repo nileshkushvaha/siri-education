@@ -122,7 +122,7 @@ class TeacherAvailabilityTable
                             }
 
                             $warned > 0
-                                ? Notification::make()->title("Deactivated with {$warned} window(s) requiring impact confirmation — repeat to confirm those.")->warning()->send()
+                                ? Notification::make()->title("{$warned} window(s) affect upcoming lessons and weren't deactivated — repeat the action to confirm.")->warning()->send()
                                 : Notification::make()->title('Windows deactivated')->warning()->send();
                         })
                         ->deselectRecordsAfterCompletion(),
@@ -151,7 +151,7 @@ class TeacherAvailabilityTable
                             }
 
                             if ($warned > 0) {
-                                Notification::make()->title("{$warned} window(s) require impact confirmation — repeat the delete to confirm those.")->warning()->send();
+                                Notification::make()->title("{$warned} window(s) affect upcoming lessons and weren't deleted — repeat the delete to confirm.")->warning()->send();
                             }
 
                             $failures > 0

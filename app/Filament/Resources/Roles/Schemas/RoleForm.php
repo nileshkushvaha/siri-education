@@ -57,7 +57,7 @@ class RoleForm
                                 ->default('web')
                                 ->required()
                                 ->maxLength(50)
-                                ->helperText('Auth guard this role applies to (usually "web").'),
+                                ->helperText('Which login system this role applies to. Leave as "web" unless you know this needs to be different.'),
                         ]),
 
                         Grid::make(2)->schema([

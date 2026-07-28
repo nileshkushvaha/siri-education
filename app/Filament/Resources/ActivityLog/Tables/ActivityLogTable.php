@@ -8,6 +8,7 @@ use App\Enums\ActivityActorType;
 use App\Models\Activity;
 use App\Models\User;
 use App\Support\ActivityLogColors;
+use App\Support\ModelDisplayName;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
@@ -47,7 +48,7 @@ class ActivityLogTable
                 TextColumn::make('subject_type')
                     ->label('Subject')
                     ->formatStateUsing(fn (?string $state, Activity $record): string => $state
-                        ? class_basename($state).' #'.($record->subject_id ?? '—')
+                        ? ModelDisplayName::for($state).' #'.($record->subject_id ?? '—')
                         : '—'
                     )
                     ->searchable()
@@ -128,7 +129,7 @@ class ActivityLogTable
                             ->distinct()
                             ->whereNotNull('subject_type')
                             ->pluck('subject_type', 'subject_type')
-                            ->mapWithKeys(fn ($v) => [$v => class_basename($v)])
+                            ->mapWithKeys(fn ($v) => [$v => ModelDisplayName::for($v)])
                             ->toArray()
                     ))
                     ->placeholder('All subjects'),

@@ -225,7 +225,7 @@ abstract class PaymentSettingsPage extends Page
                             ])
                             ->action(fn (array $data) => $this->validateGatewayCredentials($data['gateway'])),
                         Action::make('test_connection')
-                            ->label('Test Connection')
+                            ->label('Check Connection Readiness')
                             ->icon(Heroicon::OutlinedSignal)
                             ->color('info')
                             ->form([
@@ -280,7 +280,7 @@ abstract class PaymentSettingsPage extends Page
                             ->icon(Heroicon::OutlinedClipboardDocumentCheck)
                             ->color('success')
                             ->requiresConfirmation()
-                            ->modalDescription('Confirms an admin has walked through docs/architecture/payment-gateway-production-checklist.md for the currently enabled gateways before enabling them for real traffic.')
+                            ->modalDescription('Confirms an administrator has completed the production readiness checklist for the currently enabled gateways before enabling them for real traffic.')
                             ->action(fn () => $this->markProductionChecklistReviewed()),
                     ])->key('form-actions'),
                 ]),
@@ -947,7 +947,8 @@ abstract class PaymentSettingsPage extends Page
      */
     protected function markProductionChecklistReviewed(): void
     {
-        $reviewedAt = now()->toIso8601String();
+        $now = now();
+        $reviewedAt = $now->toIso8601String();
 
         $ok = $this->saveSettingsWithAudit(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $settings) use ($reviewedAt): void {
             $settings->production_ready_at = $reviewedAt;
@@ -959,7 +960,7 @@ abstract class PaymentSettingsPage extends Page
 
         Notification::make()
             ->title('Production checklist marked reviewed')
-            ->body('Recorded at '.$reviewedAt.'. This does not enable any gateway by itself.')
+            ->body('Recorded at '.$now->format('M j, Y g:i A').'. This does not enable any gateway by itself.')
             ->success()
             ->send();
     }
@@ -995,8 +996,8 @@ abstract class PaymentSettingsPage extends Page
         }
 
         Notification::make()
-            ->title('Credentials validated')
-            ->body(Str::title($gateway).' credentials look complete.')
+            ->title('Required fields are filled in')
+            ->body(Str::title($gateway).' credentials are present. This does not confirm they are correct.')
             ->success()
             ->send();
     }
@@ -1096,8 +1097,8 @@ abstract class PaymentSettingsPage extends Page
         $this->validateGatewayCredentials($gateway);
 
         Notification::make()
-            ->title('Connection test deferred')
-            ->body('Real gateway API ping is disabled for now. Credentials are saved and locally validated.')
+            ->title('Credentials checked (not a live test)')
+            ->body('This only confirms the credentials are present and correctly formatted — it does not contact the gateway. Credentials have been saved.')
             ->info()
             ->send();
     }

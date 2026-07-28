@@ -49,7 +49,7 @@ class BookingForm
                     ]),
 
                 Section::make('Payment')
-                    ->description('Snapshotted at booking time by BookingPriceCalculator — settlement happens through the payment workflow, never edited here.')
+                    ->description("The price is fixed at the time of booking and can't be edited here — settlement happens through the payment workflow.")
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([
@@ -64,7 +64,7 @@ class BookingForm
                     ]),
 
                 Section::make('Meeting')
-                    ->description('Read-only summary of the booking_meetings row — use the "Create/Update Meeting", "Retry Google Meet", and "Mark Meeting Cancelled" table actions to make changes, so eligibility, provider selection, and idempotency always run through BookingMeetingService.')
+                    ->description('Read-only summary. Use the "Create/Update Meeting", "Retry Google Meet", and "Mark Meeting Cancelled" actions in the table below to make changes.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(3)->schema([

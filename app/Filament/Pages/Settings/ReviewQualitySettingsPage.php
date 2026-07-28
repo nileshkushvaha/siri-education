@@ -279,18 +279,18 @@ class ReviewQualitySettingsPage extends Page
                     ]),
                 ]),
 
-            Section::make('Notification Channel Routing')
-                ->description('One shared set governing every review/quality-alert notification\'s external channels. In-app delivery is always on.')
+            Section::make('Notification channels')
+                ->description('These channel settings apply to every review and quality-alert notification. In-app notifications are always sent in addition to any channels enabled below.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(3)->schema([
                         Toggle::make('review_channel_email_enabled')->label('Email'),
                         Toggle::make('review_channel_whatsapp_enabled')
                             ->label('WhatsApp')
-                            ->helperText('No gateway is configured yet — messages log and skip until one is wired in.'),
+                            ->helperText('No provider is configured yet — messages are logged but not sent until one is set up.'),
                         Toggle::make('review_channel_sms_enabled')
                             ->label('SMS')
-                            ->helperText('No gateway is configured yet — messages log and skip until one is wired in.'),
+                            ->helperText('No provider is configured yet — messages are logged but not sent until one is set up.'),
                     ]),
                 ]),
         ]);

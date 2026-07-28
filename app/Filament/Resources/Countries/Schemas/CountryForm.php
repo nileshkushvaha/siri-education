@@ -148,7 +148,7 @@ class CountryForm
                     ->columnSpanFull(),
 
                 Section::make('Payment Routing')
-                    ->description('Optional per-country payment gateway override — see PaymentProviderResolver. Leave the provider empty to fall through to the platform default.')
+                    ->description('Optional per-country payment gateway override. Leave the provider empty to use the platform default.')
                     ->icon('heroicon-o-credit-card')
                     ->schema([
                         Grid::make(2)->schema([

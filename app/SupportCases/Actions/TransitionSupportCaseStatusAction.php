@@ -50,17 +50,17 @@ final class TransitionSupportCaseStatusAction
                 throw new InvalidSupportCaseTransitionException(sprintf(
                     'Support case %s cannot transition from %s to %s.',
                     $locked->case_number,
-                    $from->value,
-                    $to->value,
+                    $from->label(),
+                    $to->label(),
                 ));
             }
 
             if ($to === SupportCaseStatus::Escalated && trim((string) $reason) === '') {
-                throw new InvalidSupportCaseTransitionException('Escalation requires a reason (SRS §25.42).');
+                throw new InvalidSupportCaseTransitionException('Escalation requires a reason.');
             }
 
             if ($to === SupportCaseStatus::Resolved && trim((string) $resolutionSummary) === '') {
-                throw new InvalidSupportCaseTransitionException('Resolution requires a resolution summary (SRS §25.42).');
+                throw new InvalidSupportCaseTransitionException('Resolution requires a resolution summary.');
             }
 
             $attributes = ['status' => $to];

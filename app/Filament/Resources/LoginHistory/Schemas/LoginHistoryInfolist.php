@@ -105,7 +105,8 @@ class LoginHistoryInfolist
                     ]),
             ]),
 
-            Section::make('User Agent')
+            Section::make('Advanced details')
+                ->description('The raw browser/device text sent with this request — for troubleshooting only.')
                 ->icon('heroicon-o-computer-desktop')
                 ->schema([
                     TextEntry::make('user_agent')

@@ -174,8 +174,8 @@ class InstructorEarningSettingsPage extends Page
                                 ->required()
                                 ->native(false),
                             TextInput::make('demo_fixed_amount_minor')
-                                ->label('Fixed demo amount (minor units)')
-                                ->helperText('Required when the policy is fixed. e.g. 15000 = 150.00 in the agreement currency.')
+                                ->label('Fixed demo amount (smallest currency unit)')
+                                ->helperText('Required when the policy is fixed. Enter the amount in the smallest unit of the instructor\'s agreement currency — e.g. 15000 equals 150.00 in its main unit.')
                                 ->numeric()
                                 ->minValue(1),
                         ]),
@@ -193,7 +193,7 @@ class InstructorEarningSettingsPage extends Page
                                 ->required(),
                             Toggle::make('auto_release_enabled')
                                 ->label('Auto-release after hold')
-                                ->helperText('Gates the hourly instructor-earnings:release sweep.'),
+                                ->helperText('When enabled, the scheduled hourly job releases held earnings automatically once the hold period ends.'),
                         ]),
                     ]),
 
@@ -202,8 +202,8 @@ class InstructorEarningSettingsPage extends Page
                     ->schema([
                         Grid::make(2)->schema([
                             TextInput::make('minimum_settlement_amount_minor')
-                                ->label('Minimum batch amount (minor units)')
-                                ->helperText('Empty = no minimum.')
+                                ->label('Minimum batch amount (smallest currency unit)')
+                                ->helperText('Enter the amount in the smallest unit of the relevant currency — e.g. paise for INR, cents for USD. Leave blank for no minimum.')
                                 ->numeric()
                                 ->minValue(0),
                             Select::make('settlement_frequency')
@@ -228,21 +228,21 @@ class InstructorEarningSettingsPage extends Page
                                 ->helperText('Off = instructors cannot submit withdrawal requests.'),
                             Toggle::make('payout_method_verification_required')
                                 ->label('Verified payout method required')
-                                ->helperText('Keep on in production.'),
+                                ->helperText('Recommended to keep enabled — prevents payouts to an unverified payout method.'),
                             Toggle::make('withdrawal_review_required')
                                 ->label('Review before approval')
                                 ->helperText('On = requests must enter review before they can be approved.'),
                         ]),
                         Grid::make(3)->schema([
                             TextInput::make('minimum_withdrawal_minor')
-                                ->label('Minimum withdrawal (minor units)')
-                                ->helperText('e.g. 50000 = 500.00.')
+                                ->label('Minimum withdrawal (smallest currency unit)')
+                                ->helperText('Enter the amount in the smallest unit of the relevant currency — e.g. 50000 equals 500.00 in its main unit.')
                                 ->numeric()
                                 ->minValue(0)
                                 ->required(),
                             TextInput::make('maximum_withdrawal_minor')
-                                ->label('Maximum withdrawal (minor units)')
-                                ->helperText('Empty = no cap.')
+                                ->label('Maximum withdrawal (smallest currency unit)')
+                                ->helperText('Same smallest-currency-unit format as the minimum above. Leave blank for no cap.')
                                 ->numeric()
                                 ->minValue(1),
                             TextInput::make('maximum_active_requests_per_instructor')
@@ -256,7 +256,7 @@ class InstructorEarningSettingsPage extends Page
                     ]),
 
                 Section::make('Payout Execution')
-                    ->description('Executes approved withdrawals via a provider-neutral internal pipeline. Only the deterministic fake provider is registered — no external payout API exists yet.')
+                    ->description('Executes approved withdrawals through the configured payout provider. Only a test provider is currently available, so enabling this does not move any real money yet.')
                     ->columnSpanFull()
                     ->schema([
                         Placeholder::make('payout_execution_overview')
@@ -268,10 +268,10 @@ class InstructorEarningSettingsPage extends Page
                                 ->helperText('Off = no provider is ever called. Enabling runs a server-side preflight and requires the Configure:InstructorPayoutExecution permission (enforced on save, not just in this form).'),
                             Select::make('payout_provider')
                                 ->label('Provider')
-                                ->options(['fake' => 'Fake (deterministic, no network calls)'])
+                                ->options(['fake' => 'Test provider (no real payment is sent)'])
                                 ->required()
                                 ->native(false)
-                                ->helperText('Only the fake provider is registered.'),
+                                ->helperText('Only a test provider is currently available.'),
                             Toggle::make('payout_maker_checker_enabled')
                                 ->label('Maker-checker enabled')
                                 ->helperText('On = the withdrawal approver cannot also execute its payout.'),

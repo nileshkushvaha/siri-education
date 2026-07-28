@@ -48,8 +48,8 @@ class ListInstructorCompensationAgreements extends ListRecords
                         ->required()
                         ->native(false),
                     TextInput::make('amount_minor')
-                        ->label('Agreed amount (minor units)')
-                        ->helperText('e.g. 80000 = 800.00 per hour/day/week/month depending on the basis.')
+                        ->label('Agreed amount (smallest currency unit)')
+                        ->helperText('Enter the amount in the smallest unit of the currency below — e.g. 80000 equals 800.00 per hour/day/week/month, depending on the basis chosen.')
                         ->numeric()
                         ->minValue(1)
                         ->required(),

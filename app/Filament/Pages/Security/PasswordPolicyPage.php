@@ -140,7 +140,7 @@ class PasswordPolicyPage extends Page
                         Toggle::make('prevent_reuse')
                             ->label('Prevent Password Reuse')
                             ->live()
-                            ->helperText('Enforcement requires the password history table (future).'),
+                            ->helperText('Not yet enforced — this setting is saved for a future update.'),
 
                         TextInput::make('password_history_count')
                             ->label('Password History Count')
@@ -158,7 +158,7 @@ class PasswordPolicyPage extends Page
                         Toggle::make('expiry_enabled')
                             ->label('Enable Password Expiry')
                             ->live()
-                            ->helperText('Enforcement requires password_expires_at on users (future).'),
+                            ->helperText('Not yet enforced — this setting is saved for a future update.'),
 
                         TextInput::make('expiry_days')
                             ->label('Password Expiry Days')

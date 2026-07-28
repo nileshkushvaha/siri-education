@@ -86,7 +86,7 @@ class NavigationMenuForm
                                     ->schema([
                                         KeyValue::make('settings')
                                             ->nullable()
-                                            ->helperText('Optional key-value pairs for custom configuration.'),
+                                            ->helperText('Optional custom settings for this menu, used only by templates built to read them.'),
                                     ])
                                     ->collapsible()
                                     ->collapsed(),

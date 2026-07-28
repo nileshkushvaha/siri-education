@@ -49,7 +49,7 @@ class NotificationTemplateForm
                 ->columnSpanFull(),
 
             Section::make('Content')
-                ->description('Leave blank to use the code-owned default shown as placeholder text.')
+                ->description('Leave blank to use the default text shown as placeholder text below.')
                 ->columnSpanFull()
                 ->schema([
                     TextInput::make('subject')

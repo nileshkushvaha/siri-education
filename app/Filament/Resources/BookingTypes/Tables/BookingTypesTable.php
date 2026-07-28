@@ -32,6 +32,7 @@ class BookingTypesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('key')
+                    ->label('System type')
                     ->badge()
                     ->color('gray'),
                 TextColumn::make('duration_minutes')

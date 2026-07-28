@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Conversations\Schemas;
 
 use App\Messaging\Enums\ConversationStatus;
+use App\Support\ModelDisplayName;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -28,7 +29,7 @@ class ConversationInfolist
                     Grid::make(2)->schema([
                         TextEntry::make('context_type')
                             ->label('Context Type')
-                            ->formatStateUsing(fn (string $state): string => class_basename($state)),
+                            ->formatStateUsing(fn (string $state): string => ModelDisplayName::for($state)),
                         TextEntry::make('context_id')->label('Context ID')->copyable(),
                     ]),
                     Grid::make(3)->schema([

@@ -64,7 +64,7 @@ class PageForm
                                     ]),
 
                                 Section::make('Page Template')
-                                    ->description('Controls the outer chrome — header, footer, and page hero visibility.')
+                                    ->description('Controls whether this page shows the site header, footer, and title banner.')
                                     ->collapsible(false)
                                     ->schema([
                                         Radio::make('template')
@@ -94,15 +94,15 @@ class PageForm
                         Tabs\Tab::make('Content')
                             ->schema([
                                 Section::make('Main Content')
-                                    ->description('Write your page content here. This is the primary editable area, similar to a WordPress post editor.')
+                                    ->description('Write your page content here.')
                                     ->collapsible(false)
                                     ->schema([
                                         RichEditor::make('content')
                                             ->label('')
                                             ->disabled(fn (?Page $record): bool => app(StructuredPageContentService::class)->usesStructuredContent($record))
                                             ->helperText(fn (?Page $record): string => app(StructuredPageContentService::class)->usesStructuredContent($record)
-                                                ? 'This page uses a protected structured design. Update page settings, SEO, publishing, and content width normally; the visual section markup is protected from Rich Editor sanitization.'
-                                                : 'Use the editor for standard page content. Advanced structured pages are managed through their dedicated design content.')
+                                                ? "This page's content is managed through its design sections instead of this editor. You can still update its settings, SEO, publishing, and content width normally."
+                                                : 'Use this editor for standard page content. Pages built with custom design sections are edited separately.')
                                             ->toolbarButtons([
                                                 'bold',
                                                 'italic',

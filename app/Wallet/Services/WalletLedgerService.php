@@ -287,7 +287,7 @@ final class WalletLedgerService
         }
 
         if ($entry->status !== WalletLedgerStatus::Posted) {
-            throw new WalletException(sprintf('Ledger entry %s is %s and cannot be reversed.', $entry->id, $entry->status->value));
+            throw new WalletException(sprintf('Ledger entry %s is %s and cannot be reversed.', $entry->id, $entry->status->label()));
         }
 
         return $this->transactional(function () use ($entry, $actor, $reason): WalletLedgerEntry {
@@ -295,7 +295,7 @@ final class WalletLedgerService
             $entry = WalletLedgerEntry::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
 
             if ($entry->status !== WalletLedgerStatus::Posted) {
-                throw new WalletException(sprintf('Ledger entry %s is %s and cannot be reversed.', $entry->id, $entry->status->value));
+                throw new WalletException(sprintf('Ledger entry %s is %s and cannot be reversed.', $entry->id, $entry->status->label()));
             }
 
             $opposite = $entry->direction->opposite();

@@ -115,7 +115,7 @@ final class SupportCaseService
     public function addReply(SupportCase $case, User $author, string $body, SupportCaseReplyVisibility $visibility): SupportCaseReply
     {
         if ($visibility === SupportCaseReplyVisibility::InternalNote && ! $this->canAddInternalNotes($author)) {
-            throw new InvalidSupportCaseTransitionException('Only authorized staff may add internal notes (SRS §25.19).');
+            throw new InvalidSupportCaseTransitionException('You are not authorized to add internal notes.');
         }
 
         return DB::transaction(function () use ($case, $author, $body, $visibility): SupportCaseReply {
@@ -172,7 +172,7 @@ final class SupportCaseService
             throw new InvalidSupportCaseTransitionException(sprintf(
                 'Support case %s cannot be reopened from status %s.',
                 $case->case_number,
-                $case->status->value,
+                $case->status->label(),
             ));
         }
 

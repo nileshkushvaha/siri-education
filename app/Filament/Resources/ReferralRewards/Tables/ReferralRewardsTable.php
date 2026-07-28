@@ -88,13 +88,14 @@ class ReferralRewardsTable
                     ->icon('heroicon-m-check-badge')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalDescription('Re-validates eligibility and currency, then credits through the single reward-credit path.')
+                    ->modalDescription("Re-checks eligibility and currency, then credits the reward to the referrer's wallet.")
                     ->authorize(fn (): bool => auth()->user()?->can('ApproveReferralRewards') ?? false)
                     ->visible(fn (ReferralReward $record): bool => $record->status === ReferralRewardStatus::Held)
                     ->form([self::reasonField()])
                     ->action(fn (ReferralReward $record, array $data) => self::callService(
                         fn (ReferralRewardServiceInterface $service) => $service->approveHeldReward($record, auth()->user(), $data['reason']),
                         'Reward approved',
+                        'Approval failed',
                     )),
 
                 Action::make('reject')
@@ -107,6 +108,7 @@ class ReferralRewardsTable
                     ->action(fn (ReferralReward $record, array $data) => self::callService(
                         fn (ReferralRewardServiceInterface $service) => $service->rejectHeldReward($record, auth()->user(), $data['reason']),
                         'Reward rejected',
+                        'Rejection failed',
                     )),
 
                 Action::make('retry_credit')
@@ -120,6 +122,7 @@ class ReferralRewardsTable
                     ->action(fn (ReferralReward $record, array $data) => self::callService(
                         fn (ReferralRewardServiceInterface $service) => $service->retryFailedCredit($record, auth()->user(), $data['reason']),
                         'Credit retried',
+                        'Retry failed',
                     )),
 
                 Action::make('complete_reversal')
@@ -127,13 +130,14 @@ class ReferralRewardsTable
                     ->icon('heroicon-m-arrow-uturn-left')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalDescription('Posts the offsetting wallet ledger entry through WalletLedgerService::reverse(). Requires wallet-manage authority.')
+                    ->modalDescription("Reverses the credited reward by posting an offsetting entry to the referrer's wallet. Requires wallet-management permission.")
                     ->authorize(fn (): bool => auth()->user()?->can('ReverseReferralRewards') ?? false)
                     ->visible(fn (ReferralReward $record): bool => $record->status === ReferralRewardStatus::Credited && $record->hold_reason === 'reversal_required')
                     ->form([self::reasonField()])
                     ->action(fn (ReferralReward $record, array $data) => self::callService(
                         fn (ReferralRewardServiceInterface $service) => $service->completeRequiredReversal($record, auth()->user(), $data['reason']),
                         'Reversal completed',
+                        'Reversal failed',
                     )),
             ])
             ->defaultSort('id', 'desc');
@@ -148,13 +152,13 @@ class ReferralRewardsTable
             ->helperText('Recorded in the audit trail. Never shown to students.');
     }
 
-    private static function callService(callable $callback, string $successTitle): void
+    private static function callService(callable $callback, string $successTitle, string $failureTitle): void
     {
         try {
             $callback(app(ReferralRewardServiceInterface::class));
             Notification::make()->title($successTitle)->success()->send();
         } catch (ReferralException $e) {
-            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            Notification::make()->title($failureTitle)->body($e->getMessage())->danger()->send();
         } catch (AuthorizationException) {
             Notification::make()->title('Not authorized')->danger()->send();
         }

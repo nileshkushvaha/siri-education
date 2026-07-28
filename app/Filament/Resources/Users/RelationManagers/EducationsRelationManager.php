@@ -170,7 +170,9 @@ class EducationsRelationManager extends RelationManager
                     ->searchable(),
 
                 TextColumn::make('education_level')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (EducationLevel $state): string => $state->label())
+                    ->color(fn (EducationLevel $state): string => $state->color()),
 
                 TextColumn::make('start_date')
                     ->date('M Y')
@@ -189,6 +191,7 @@ class EducationsRelationManager extends RelationManager
 
                 TextColumn::make('status')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->color(fn (string $state): string => $state === 'active' ? 'success' : 'danger'),
             ])
             ->filters([

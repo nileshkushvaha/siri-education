@@ -76,7 +76,7 @@ class ReferralCodesTable
                             app(ReferralCodeServiceInterface::class)->disable($record, auth()->user(), $data['reason']);
                             Notification::make()->title('Referral code disabled')->success()->send();
                         } catch (ReferralException $e) {
-                            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                            Notification::make()->title('Disable failed')->body($e->getMessage())->danger()->send();
                         } catch (AuthorizationException) {
                             Notification::make()->title('Not authorized')->danger()->send();
                         }

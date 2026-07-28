@@ -58,7 +58,7 @@ class OperationalAlertInfolist
                 ]),
 
             Section::make('Safe metadata')
-                ->description('Safe summary/reference data only — never credentials, provider payloads, bank details, or private user content.')
+                ->description('Summary and reference data only — never credentials, raw provider data, bank details, or private user content.')
                 ->schema([
                     KeyValueEntry::make('metadata'),
                 ]),

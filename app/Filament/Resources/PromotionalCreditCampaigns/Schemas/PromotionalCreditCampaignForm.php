@@ -49,17 +49,17 @@ class PromotionalCreditCampaignForm
                 ]),
 
             Section::make('Credit rules')
-                ->description('Fixed amount only (SRS §16.18 "Fixed Credit") — every student in this campaign receives the same amount.')
+                ->description('Every student in this campaign receives the same fixed credit amount — this cannot be set as a percentage.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         TextInput::make('amount_minor')
-                            ->label('Credit amount (minor units)')
+                            ->label('Credit amount (smallest currency unit)')
                             ->numeric()
                             ->integer()
                             ->required()
                             ->minValue(1)
-                            ->helperText('Integer minor units, e.g. 50000 = 500.00 in the selected currency.'),
+                            ->helperText('Enter the amount in the smallest unit of the selected currency — e.g. paise for INR, cents for USD. For example, 50000 equals 500.00 in that currency\'s main unit.'),
                         Select::make('currency_code')
                             ->label('Currency')
                             ->options(fn (): array => Currency::query()->active()->orderBy('sort_order')->pluck('code', 'code')->toArray())
@@ -75,11 +75,11 @@ class PromotionalCreditCampaignForm
                             ->minValue(1)
                             ->default(1),
                         TextInput::make('total_budget_minor')
-                            ->label('Total campaign budget (minor units, optional)')
+                            ->label('Total campaign budget (optional)')
                             ->numeric()
                             ->integer()
                             ->minValue(1)
-                            ->helperText('Leave empty for no cap.'),
+                            ->helperText('Same smallest-currency-unit format as the credit amount above. Leave blank for no cap.'),
                     ]),
                 ]),
 

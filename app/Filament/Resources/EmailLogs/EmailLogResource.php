@@ -65,15 +65,24 @@ class EmailLogResource extends Resource
         return $schema->components([
             TextEntry::make('status')->badge(),
             TextEntry::make('category')->badge(),
-            TextEntry::make('provider')->badge(),
-            TextEntry::make('mailer')->badge(),
+            TextEntry::make('provider')
+                ->label('Delivery Provider')
+                ->helperText('Which email service actually sent this message.')
+                ->badge(),
+            TextEntry::make('mailer')
+                ->label('Mailer')
+                ->helperText('The mail configuration used when sending.')
+                ->badge(),
             TextEntry::make('subject')->columnSpanFull(),
             TextEntry::make('from_address')->label('From'),
             TextEntry::make('from_name'),
             KeyValueEntry::make('to')->columnSpanFull(),
             KeyValueEntry::make('cc')->columnSpanFull(),
             KeyValueEntry::make('bcc')->columnSpanFull(),
-            TextEntry::make('notification_type')->columnSpanFull(),
+            TextEntry::make('notification_type')
+                ->label('Notification Type')
+                ->formatStateUsing(fn (?string $state): ?string => $state !== null ? class_basename($state) : null)
+                ->columnSpanFull(),
             TextEntry::make('notification_id'),
             TextEntry::make('provider_message_id'),
             TextEntry::make('error')->columnSpanFull(),

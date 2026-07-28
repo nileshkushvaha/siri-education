@@ -162,7 +162,9 @@ class ExperiencesRelationManager extends RelationManager
                     ->searchable(),
 
                 TextColumn::make('employment_type')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (EmploymentType $state): string => $state->label())
+                    ->color(fn (EmploymentType $state): string => $state->color()),
 
                 TextColumn::make('start_date')
                     ->date('M Y')
@@ -181,6 +183,7 @@ class ExperiencesRelationManager extends RelationManager
 
                 TextColumn::make('status')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->color(fn (string $state): string => $state === 'active' ? 'success' : 'danger'),
             ])
             ->filters([

@@ -35,7 +35,7 @@ class InstructorDocumentRequirementForm
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('collection_name')
-                                ->label('Media Collection')
+                                ->label('Evidence Type')
                                 ->options(InstructorEvidenceCollection::options())
                                 ->native(false)
                                 ->searchable()

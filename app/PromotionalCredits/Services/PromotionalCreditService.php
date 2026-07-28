@@ -359,7 +359,7 @@ final class PromotionalCreditService
     private function assertCampaignIssuable(PromotionalCreditCampaign $campaign, string $currencyCode): void
     {
         if ($campaign->status !== PromotionalCreditCampaignStatus::Active) {
-            throw new PromotionalCreditException(sprintf('Campaign "%s" is %s, not active.', $campaign->name, $campaign->status->value));
+            throw new PromotionalCreditException(sprintf('Campaign "%s" is %s, not active.', $campaign->name, $campaign->status->label()));
         }
 
         $now = now();

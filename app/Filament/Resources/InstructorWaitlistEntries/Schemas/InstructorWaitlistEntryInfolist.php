@@ -16,7 +16,7 @@ class InstructorWaitlistEntryInfolist
     {
         return $schema->components([
             Section::make('Waitlist entry')
-                ->description('Read-only — written only by WaitlistService, never edited here.')
+                ->description("This entry is created automatically when a student joins the waitlist and can't be edited here.")
                 ->schema([
                     Grid::make(3)->schema([
                         TextEntry::make('instructor.name')

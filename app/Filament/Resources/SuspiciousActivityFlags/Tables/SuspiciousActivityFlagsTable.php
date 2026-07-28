@@ -115,6 +115,7 @@ class SuspiciousActivityFlagsTable
                     ->action(fn (SuspiciousActivityFlag $record) => self::callService(
                         fn () => app(ComplianceMonitoringService::class)->startReview($record, auth()->user()),
                         'Marked as in review',
+                        'Could not begin review',
                     )),
 
                 Action::make('resolve')
@@ -141,6 +142,7 @@ class SuspiciousActivityFlagsTable
                     ->action(fn (SuspiciousActivityFlag $record, array $data) => self::callService(
                         fn () => app(ComplianceMonitoringService::class)->resolve($record, auth()->user(), $data['reason'], SuspiciousActivityFlagDecision::from($data['decision'])),
                         'Flag resolved',
+                        'Could not resolve flag',
                     )),
 
                 Action::make('dismiss')
@@ -161,18 +163,19 @@ class SuspiciousActivityFlagsTable
                     ->action(fn (SuspiciousActivityFlag $record, array $data) => self::callService(
                         fn () => app(ComplianceMonitoringService::class)->dismiss($record, auth()->user(), $data['reason']),
                         'Flag dismissed',
+                        'Could not dismiss flag',
                     )),
             ])
             ->defaultSort('last_observed_at', 'desc');
     }
 
-    private static function callService(callable $callback, string $successTitle): void
+    private static function callService(callable $callback, string $successTitle, string $failureTitle): void
     {
         try {
             $callback();
             Notification::make()->title($successTitle)->success()->send();
         } catch (AuthorizationException|ComplianceValidationException|InvalidSuspiciousActivityFlagTransitionException $e) {
-            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            Notification::make()->title($failureTitle)->body($e->getMessage())->danger()->send();
         }
     }
 }

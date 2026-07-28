@@ -269,8 +269,16 @@ class InstructorPayoutMethodsTable
     {
         try {
             $link = $callback(app(RazorpayXDestinationProvisioningServiceInterface::class));
-            $status = $link instanceof InstructorPayoutDestinationProviderLink ? $link->status->label() : null;
-            Notification::make()->title($successTitle)->body($status !== null ? "Current state: {$status}." : null)->success()->send();
+            $status = $link instanceof InstructorPayoutDestinationProviderLink ? $link->status : null;
+            $notification = Notification::make()->title($successTitle)->body($status !== null ? "Current state: {$status->label()}." : null);
+
+            match ($status?->color()) {
+                'success' => $notification->success(),
+                'danger' => $notification->danger(),
+                default => $notification->warning(),
+            };
+
+            $notification->send();
         } catch (RazorpayXProvisioningException $e) {
             Notification::make()->title('RazorpayX action failed')->body($e->getMessage())->danger()->send();
         }

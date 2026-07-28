@@ -481,7 +481,7 @@ final class InstructorCompensationAgreementService implements InstructorCompensa
     private function transition(InstructorCompensationAgreement $agreement, CompensationAgreementStatus $next, array $extra = []): InstructorCompensationAgreement
     {
         if (! $agreement->status->canTransitionTo($next)) {
-            throw new CompensationException(sprintf('An agreement cannot move from %s to %s.', $agreement->status->value, $next->value));
+            throw new CompensationException(sprintf('An agreement cannot move from %s to %s.', $agreement->status->label(), $next->label()));
         }
 
         $agreement->forceFill([...$extra, 'status' => $next])->save();

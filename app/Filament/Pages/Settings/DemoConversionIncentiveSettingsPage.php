@@ -61,12 +61,12 @@ class DemoConversionIncentiveSettingsPage extends Page
 
     public function getTitle(): string|Htmlable
     {
-        return 'Demo-to-Paid Conversion Incentive Settings';
+        return 'Demo Conversion Incentive';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'SRS §15.18: instructor bonus rules for students who convert from a completed demo to a completed paid lesson.';
+        return 'Configure the bonus instructors earn when a student converts from a completed demo lesson to a completed paid lesson.';
     }
 
     public function mount(): void
@@ -111,38 +111,40 @@ class DemoConversionIncentiveSettingsPage extends Page
     {
         return $schema->components([
             Section::make('Rule')
-                ->description('A single global Version 1 rule — fixed bonus only, never a percentage (SRS §15.18 recommended approach).')
+                ->description('Configure the one active bonus rule. Bonuses are a fixed amount — this cannot be set as a percentage of the lesson price.')
                 ->columnSpanFull()
                 ->schema([
                     Toggle::make('enabled')
-                        ->label('Incentive Enabled')
-                        ->helperText('Off stops every award from being created — a real financial cost, off by default.'),
+                        ->label('Enable incentive')
+                        ->helperText('When disabled, no new incentive awards are created.'),
                     Grid::make(2)->schema([
                         TextInput::make('conversion_window_days')
-                            ->label('Conversion Window (days)')
+                            ->label('Conversion window (days)')
+                            ->helperText('Maximum number of days between the demo lesson and the qualifying paid lesson.')
                             ->numeric()->integer()->minValue(1)->maxValue(365)->required(),
                         TextInput::make('min_completed_paid_lessons')
-                            ->label('Minimum Completed Paid Lessons')
-                            ->helperText('The converting lesson must be at least the Nth completed paid lesson for the pair.')
+                            ->label('Minimum completed paid lessons')
+                            ->helperText('The student must complete at least this many paid lessons with the instructor before the bonus can be awarded.')
                             ->numeric()->integer()->minValue(1)->maxValue(100)->required(),
                     ]),
                     Grid::make(3)->schema([
                         TextInput::make('bonus_amount_minor')
-                            ->label('Bonus Amount (minor units)')
-                            ->helperText('e.g. 20000 = ₹200.00.')
+                            ->label('Bonus amount (smallest currency unit)')
+                            ->helperText('Enter the amount in the smallest unit of the currency below — e.g. paise for INR, cents for USD. For example, 20000 equals 200.00 in that currency\'s main unit.')
                             ->numeric()->integer()->minValue(1)->required(),
                         TextInput::make('bonus_currency_code')
                             ->label('Currency')
-                            ->helperText('Version 1: primarily INR (SRS §15.16).')
+                            ->helperText('3-letter currency code for the bonus, e.g. INR or USD.')
                             ->maxLength(3)->required(),
                         TextInput::make('max_awards_per_pair')
-                            ->label('Max Awards per Student/Instructor Pair')
+                            ->label('Maximum awards per student-instructor pair')
+                            ->helperText('No further bonus is awarded to the same student and instructor once this many have been given.')
                             ->numeric()->integer()->minValue(1)->maxValue(100)->required(),
                     ]),
                 ]),
 
-            Section::make('Applicability (optional)')
-                ->description('Leave empty to apply to every country/subject.')
+            Section::make('Applicability')
+                ->description('Leave blank to make the rule available for all countries and subjects.')
                 ->columnSpanFull()
                 ->schema([
                     Select::make('applicable_country_ids')

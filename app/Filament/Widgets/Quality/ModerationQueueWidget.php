@@ -136,6 +136,7 @@ class ModerationQueueWidget extends TableWidget
                     ->action(fn (LessonReview $record, array $data) => $this->moderate(
                         fn (ReviewModerationServiceInterface $s) => $s->approve($record, auth()->user(), filled($data['reason'] ?? null) ? $data['reason'] : null),
                         'Review approved',
+                        'Could not approve review',
                     )),
                 Action::make('reject')
                     ->label('Reject')
@@ -149,6 +150,7 @@ class ModerationQueueWidget extends TableWidget
                     ->action(fn (LessonReview $record, array $data) => $this->moderate(
                         fn (ReviewModerationServiceInterface $s) => $s->reject($record, auth()->user(), $data['reason']),
                         'Review rejected',
+                        'Could not reject review',
                     )),
                 Action::make('hide')
                     ->label('Hide')
@@ -162,6 +164,7 @@ class ModerationQueueWidget extends TableWidget
                     ->action(fn (LessonReview $record, array $data) => $this->moderate(
                         fn (ReviewModerationServiceInterface $s) => $s->hide($record, auth()->user(), $data['reason']),
                         'Review hidden',
+                        'Could not hide review',
                     )),
                 Action::make('restore')
                     ->label('Restore')
@@ -175,6 +178,7 @@ class ModerationQueueWidget extends TableWidget
                     ->action(fn (LessonReview $record, array $data) => $this->moderate(
                         fn (ReviewModerationServiceInterface $s) => $s->restore($record, auth()->user(), $data['reason']),
                         'Review restored',
+                        'Could not restore review',
                     )),
                 Action::make('archive')
                     ->label('Archive')
@@ -188,6 +192,7 @@ class ModerationQueueWidget extends TableWidget
                     ->action(fn (LessonReview $record, array $data) => $this->moderate(
                         fn (ReviewModerationServiceInterface $s) => $s->archive($record, auth()->user(), $data['reason']),
                         'Review archived',
+                        'Could not archive review',
                     )),
             ])
             ->recordAction(null)
@@ -197,13 +202,13 @@ class ModerationQueueWidget extends TableWidget
     }
 
     /** Converts domain failures into a friendly notification — never a raw exception reaching the panel. */
-    private function moderate(callable $callback, string $successTitle): void
+    private function moderate(callable $callback, string $successTitle, string $failureTitle): void
     {
         try {
             $callback(app(ReviewModerationServiceInterface::class));
             Notification::make()->title($successTitle)->success()->send();
         } catch (InvalidReviewTransitionException|ReviewValidationException $e) {
-            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            Notification::make()->title($failureTitle)->body($e->getMessage())->danger()->send();
         } catch (AuthorizationException $e) {
             Notification::make()->title('Not authorized')->body($e->getMessage())->danger()->send();
         }

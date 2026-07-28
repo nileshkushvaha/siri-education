@@ -106,6 +106,7 @@ class ReportQueueWidget extends TableWidget
                     ->action(fn (ReviewReport $record) => $this->resolve(
                         fn (ReviewReportServiceInterface $s) => $s->startReview($record, auth()->user()),
                         'Report review started',
+                        'Could not start report review',
                     )),
                 Action::make('uphold')
                     ->label('Uphold')
@@ -130,6 +131,7 @@ class ReportQueueWidget extends TableWidget
                     ->action(fn (ReviewReport $record, array $data) => $this->resolve(
                         fn (ReviewReportServiceInterface $s) => $s->uphold($record, auth()->user(), $data['resolution_reason'], ReviewReportResolutionAction::from($data['action'])),
                         'Report upheld',
+                        'Could not uphold report',
                     )),
                 Action::make('dismiss')
                     ->label('Dismiss')
@@ -152,6 +154,7 @@ class ReportQueueWidget extends TableWidget
                     ->action(fn (ReviewReport $record, array $data) => $this->resolve(
                         fn (ReviewReportServiceInterface $s) => $s->dismiss($record, auth()->user(), $data['resolution_reason'], ReviewReportResolutionAction::from($data['action'])),
                         'Report dismissed',
+                        'Could not dismiss report',
                     )),
                 Action::make('markDuplicate')
                     ->label('Mark Duplicate')
@@ -165,6 +168,7 @@ class ReportQueueWidget extends TableWidget
                     ->action(fn (ReviewReport $record, array $data) => $this->resolve(
                         fn (ReviewReportServiceInterface $s) => $s->markDuplicate($record, auth()->user(), filled($data['resolution_reason'] ?? null) ? $data['resolution_reason'] : null),
                         'Report marked duplicate',
+                        'Could not mark report as duplicate',
                     )),
                 Action::make('markRemainingDuplicate')
                     ->label('Mark Remaining Duplicate')
@@ -179,6 +183,7 @@ class ReportQueueWidget extends TableWidget
                     ->action(fn (ReviewReport $record, array $data) => $this->resolve(
                         fn (ReviewReportServiceInterface $s) => $s->markRemainingPendingAsDuplicate($record->review, auth()->user(), $data['resolution_reason']),
                         'Remaining reports on this review marked duplicate',
+                        'Could not mark remaining reports as duplicate',
                     )),
             ])
             ->recordAction(null)
@@ -188,13 +193,13 @@ class ReportQueueWidget extends TableWidget
     }
 
     /** Converts domain failures into a friendly notification — never a raw exception reaching the panel. */
-    private function resolve(callable $callback, string $successTitle): void
+    private function resolve(callable $callback, string $successTitle, string $failureTitle): void
     {
         try {
             $callback(app(ReviewReportServiceInterface::class));
             Notification::make()->title($successTitle)->success()->send();
         } catch (InvalidReviewReportTransitionException|ReviewValidationException $e) {
-            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            Notification::make()->title($failureTitle)->body($e->getMessage())->danger()->send();
         } catch (AuthorizationException $e) {
             Notification::make()->title('Not authorized')->body($e->getMessage())->danger()->send();
         }

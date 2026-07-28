@@ -76,7 +76,7 @@ class BookingPaymentInfolist
                 ]),
 
             Section::make('Resolution')
-                ->description('A payment that settled after its booking went terminal (cancelled/expired). Never the raw webhook payload.')
+                ->description('A payment that settled after its booking was already cancelled or expired. Shows a summary only, never the raw data received from the payment provider.')
                 ->visible(fn (BookingPayment $record): bool => ($record->metadata['late_terminal_handled'] ?? false) === true)
                 ->schema([
                     Grid::make(2)->schema([

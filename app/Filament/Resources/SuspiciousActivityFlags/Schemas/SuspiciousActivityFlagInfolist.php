@@ -21,7 +21,7 @@ class SuspiciousActivityFlagInfolist
     {
         return $schema->components([
             Section::make('Compliance flag')
-                ->description('Read-only — written only by ComplianceMonitoringService. Evidence for human review, not proof of fraud.')
+                ->description("This flag is generated automatically by the compliance monitoring system and can't be edited here. It's evidence for human review, not proof of fraud.")
                 ->schema([
                     Grid::make(3)->schema([
                         TextEntry::make('reference')->fontFamily('mono')->copyable(),

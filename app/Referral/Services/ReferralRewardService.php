@@ -284,7 +284,7 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
             $reward = $this->locked($reward);
 
             if ($reward->status !== ReferralRewardStatus::Held) {
-                throw new ReferralException(sprintf('Reward #%d is %s — only a held reward can be approved.', $reward->id, $reward->status->value));
+                throw new ReferralException(sprintf('Reward #%d is %s — only a held reward can be approved.', $reward->id, $reward->status->label()));
             }
 
             $this->assertStillCreditable($reward);
@@ -344,7 +344,7 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
             }
 
             if (! in_array($reward->status, [ReferralRewardStatus::Held, ReferralRewardStatus::CreditFailed], true)) {
-                throw new ReferralException(sprintf('Reward #%d is %s — only a held or credit-failed reward can be rejected.', $reward->id, $reward->status->value));
+                throw new ReferralException(sprintf('Reward #%d is %s — only a held or credit-failed reward can be rejected.', $reward->id, $reward->status->label()));
             }
 
             $reward->forceFill([
@@ -376,7 +376,7 @@ final class ReferralRewardService implements ReferralRewardServiceInterface
         $this->assertAdminDecision($reward, $admin, 'RetryReferralRewardCredits', $reason);
 
         if ($reward->status !== ReferralRewardStatus::CreditFailed) {
-            throw new ReferralException(sprintf('Reward #%d is %s — only a credit-failed reward can be retried.', $reward->id, $reward->status->value));
+            throw new ReferralException(sprintf('Reward #%d is %s — only a credit-failed reward can be retried.', $reward->id, $reward->status->label()));
         }
 
         $this->auditTrail->logOverride(

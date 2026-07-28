@@ -130,10 +130,14 @@ class InstructorCompensationAgreementsTable
                             ->maxValue(480)
                             ->nullable(),
                         TextInput::make('amount_minor')
-                            ->label('Hourly override amount (minor units)')
+                            ->label('Hourly override amount (smallest currency unit)')
                             ->numeric()
                             ->minValue(1)
-                            ->required(),
+                            ->required()
+                            ->helperText(fn (InstructorCompensationAgreement $record): string => sprintf(
+                                'Enter the amount in the smallest unit of this agreement\'s currency (%s) — e.g. 10000 equals 100.00 in its main unit.',
+                                $record->currency_code,
+                            )),
                     ])
                     ->action(fn (InstructorCompensationAgreement $record, array $data) => self::callService(
                         fn (InstructorCompensationAgreementServiceInterface $service) => $service->addOverride(
@@ -191,10 +195,11 @@ class InstructorCompensationAgreementsTable
                             ->required()
                             ->native(false),
                         TextInput::make('amount_minor')
-                            ->label('New agreed amount (minor units)')
+                            ->label('New agreed amount (smallest currency unit)')
                             ->numeric()
                             ->minValue(1)
-                            ->required(),
+                            ->required()
+                            ->helperText('Enter the amount in the smallest unit of the currency below — e.g. paise for INR, cents for USD.'),
                         Select::make('currency_code')
                             ->label('Currency')
                             ->options(fn (): array => Currency::query()->active()->orderBy('sort_order')->pluck('code', 'code')->toArray())

@@ -41,10 +41,12 @@ class LanguagesTable
 
                 TextColumn::make('direction')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => strtoupper($state))
                     ->color(fn (string $state): string => $state === 'rtl' ? 'warning' : 'gray'),
 
                 TextColumn::make('status')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->color(fn (string $state): string => match ($state) {
                         'active' => 'success',
                         'inactive' => 'danger',

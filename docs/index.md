@@ -34,5 +34,6 @@
 | Pulse Monitoring | pulse-monitoring.md |
 | Testing | testing.md |
 | Standards | standards.md |
+| Admin Copy Style Guide | admin-copy-style-guide.md |
 | Decisions | decisions.md |
 | Roadmap | roadmap.md |

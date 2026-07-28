@@ -7,6 +7,7 @@ namespace App\Filament\Resources\ActivityLog\Schemas;
 use App\Enums\ActivityActorType;
 use App\Models\Activity;
 use App\Support\ActivityLogColors;
+use App\Support\ModelDisplayName;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -44,7 +45,7 @@ class ActivityLogInfolist
                     ->schema([
                         TextEntry::make('subject_type')
                             ->label('Type')
-                            ->formatStateUsing(fn (?string $state): string => $state ? class_basename($state) : '—'),
+                            ->formatStateUsing(fn (?string $state): string => ModelDisplayName::for($state)),
 
                         TextEntry::make('subject_id')
                             ->label('ID')
@@ -59,14 +60,15 @@ class ActivityLogInfolist
                                 }
                                 $class = $record->subject_type;
                                 if (! class_exists($class)) {
-                                    return class_basename($class).' (class not found)';
+                                    return 'Unable to load this record type';
                                 }
                                 try {
                                     $model = (new $class)->find($record->subject_id);
+                                    $label = ModelDisplayName::for($class);
 
                                     return $model
-                                        ? class_basename($class).' #'.$record->subject_id.' (exists)'
-                                        : class_basename($class).' #'.$record->subject_id.' (deleted)';
+                                        ? $label.' #'.$record->subject_id.' — record still exists'
+                                        : $label.' #'.$record->subject_id.' — record was deleted';
                                 } catch (\Throwable) {
                                     return '—';
                                 }

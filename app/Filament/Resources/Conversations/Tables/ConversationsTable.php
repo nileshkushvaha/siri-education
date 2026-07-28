@@ -9,6 +9,7 @@ use App\Messaging\Exceptions\MessagingException;
 use App\Messaging\Services\MessagingService;
 use App\Models\Conversation;
 use App\Models\MessagingRestriction;
+use App\Support\ModelDisplayName;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
@@ -34,7 +35,7 @@ class ConversationsTable
                     ->searchable(),
                 TextColumn::make('context_type')
                     ->label('Context')
-                    ->formatStateUsing(fn (string $state): string => class_basename($state)),
+                    ->formatStateUsing(fn (string $state): string => ModelDisplayName::for($state)),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (ConversationStatus $state): string => $state->label())

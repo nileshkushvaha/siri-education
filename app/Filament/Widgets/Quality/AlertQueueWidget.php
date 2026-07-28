@@ -129,6 +129,7 @@ class AlertQueueWidget extends TableWidget
                     ->action(fn (InstructorQualityAlert $record) => self::callService(
                         fn (InstructorQualityAlertServiceInterface $service) => $service->startReview($record, Auth::user()),
                         'Review started',
+                        'Could not start review',
                     )),
 
                 Action::make('assign')
@@ -148,6 +149,7 @@ class AlertQueueWidget extends TableWidget
                             User::query()->findOrFail($data['assignee_id']),
                         ),
                         'Alert assigned',
+                        'Could not assign alert',
                     )),
 
                 Action::make('resolve')
@@ -171,6 +173,7 @@ class AlertQueueWidget extends TableWidget
                             InstructorQualityAlertResolutionAction::from($data['action']),
                         ),
                         'Alert resolved',
+                        'Could not resolve alert',
                     )),
 
                 Action::make('dismiss')
@@ -184,6 +187,7 @@ class AlertQueueWidget extends TableWidget
                     ->action(fn (InstructorQualityAlert $record, array $data) => self::callService(
                         fn (InstructorQualityAlertServiceInterface $service) => $service->dismiss($record, Auth::user(), $data['reason']),
                         'Alert dismissed',
+                        'Could not dismiss alert',
                     )),
 
                 Action::make('mark_duplicate')
@@ -198,6 +202,7 @@ class AlertQueueWidget extends TableWidget
                     ->action(fn (InstructorQualityAlert $record, array $data) => self::callService(
                         fn (InstructorQualityAlertServiceInterface $service) => $service->markDuplicate($record, Auth::user(), $data['reason'] ?? null),
                         'Alert marked duplicate',
+                        'Could not mark alert as duplicate',
                     )),
             ])
             ->paginated([10, 25, 50])
@@ -217,13 +222,13 @@ class AlertQueueWidget extends TableWidget
     }
 
     /** Run a service call, converting domain failures into panel notifications — mirrors BookingsTable::callService(). */
-    private static function callService(callable $callback, string $successTitle): void
+    private static function callService(callable $callback, string $successTitle, string $failureTitle): void
     {
         try {
             $callback(app(InstructorQualityAlertServiceInterface::class));
             Notification::make()->title($successTitle)->success()->send();
         } catch (AuthorizationException|QualityAlertValidationException|InvalidInstructorQualityAlertTransitionException $e) {
-            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            Notification::make()->title($failureTitle)->body($e->getMessage())->danger()->send();
         }
     }
 }

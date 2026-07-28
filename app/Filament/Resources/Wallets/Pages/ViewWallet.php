@@ -78,11 +78,14 @@ class ViewWallet extends ViewRecord
                         ->default('credit')
                         ->required(),
                     TextInput::make('amount_minor')
-                        ->label('Amount (minor units)')
+                        ->label('Amount (smallest currency unit)')
                         ->numeric()
                         ->minValue(1)
                         ->required()
-                        ->helperText('Integer minor units — e.g. 10000 = ₹100.00 for a 2-decimal currency.'),
+                        ->helperText(fn (Wallet $record): string => sprintf(
+                            'Enter the amount in the smallest unit of this wallet\'s currency (%s) — e.g. 10000 equals 100.00 in its main unit.',
+                            $record->currency_code,
+                        )),
                     Textarea::make('reason')->required()->maxLength(500),
                 ])
                 ->action(function (Wallet $record, array $data): void {

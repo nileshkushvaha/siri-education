@@ -37,7 +37,7 @@ class UserForm
                         Tab::make('General')
                             ->icon('heroicon-o-user')
                             ->schema([
-                                Section::make('General Information')
+                                Section::make('Account details')
                                     ->description('Basic account details for this user.')
                                     ->icon('heroicon-o-information-circle')
                                     ->schema([
@@ -323,7 +323,7 @@ class UserForm
                                         ]),
                                     ]),
 
-                                Section::make('Account Info')
+                                Section::make('Account summary')
                                     ->icon('heroicon-o-information-circle')
                                     ->schema([
                                         Placeholder::make('member_since')
@@ -336,7 +336,7 @@ class UserForm
 
                                         Placeholder::make('portal')
                                             ->label('Portal')
-                                            ->content('Frontend Portal (Student)'),
+                                            ->content('Student portal'),
                                     ]),
                             ]),
                     ]),

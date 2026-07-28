@@ -38,12 +38,12 @@ class MessagesRelationManager extends RelationManager
                 TextColumn::make('sender.name')->label('From'),
                 TextColumn::make('body')->wrap()->limit(300),
                 IconColumn::make('flagged_leakage')
-                    ->label('Flagged')
+                    ->label('Flagged for shared contact info')
                     ->boolean(),
                 TextColumn::make('read_at')->dateTime()->placeholder('Unread'),
             ])
             ->filters([
-                TernaryFilter::make('flagged_leakage')->label('Flagged'),
+                TernaryFilter::make('flagged_leakage')->label('Flagged for shared contact info'),
             ])
             ->headerActions([])
             ->recordActions([])

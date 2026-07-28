@@ -141,7 +141,7 @@ class RegistrationPage extends Page
 
                         Toggle::make('auto_verify_email')
                             ->label('Auto Verify Email')
-                            ->helperText('Skip the email verification step. Intended for internal or single-tenant systems.'),
+                            ->helperText('Skip the email verification step. Only recommended for private, internal deployments where confirming email ownership isn\'t necessary.'),
                     ]),
 
                 Section::make('Future Options')

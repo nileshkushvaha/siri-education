@@ -48,7 +48,10 @@ class NotificationTemplatesTable
                     ->afterStateUpdated(function (NotificationTemplate $record, bool $state): void {
                         app(NotificationTemplateService::class)->setActive($record, auth()->user(), $state);
                     }),
-                TextColumn::make('version')->label('Version')->sortable(),
+                TextColumn::make('version')
+                    ->label('Revision')
+                    ->tooltip('Increases each time this template\'s content is saved.')
+                    ->sortable(),
                 TextColumn::make('editor.name')->label('Last edited by')->placeholder('—'),
                 TextColumn::make('updated_at')->dateTime()->since()->sortable(),
             ])

@@ -58,12 +58,12 @@ class ReferralCampaignForm
                                 ->required()
                                 ->seconds(false)
                                 ->after('starts_at')
-                                ->helperText('Half-open window: the campaign covers starts_at up to but not including ends_at.'),
+                                ->helperText('The campaign runs from the start time up to, but not including, the end time.'),
                         ]),
                     ]),
 
                 Section::make('Reward rules')
-                    ->description('The single authoritative source of referral reward configuration. No floats: percentage is integer basis points, fixed is integer minor units.')
+                    ->description('Configure how the referral reward is calculated — as a percentage of the eligible lesson price (in basis points) or as a fixed amount.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
@@ -77,7 +77,7 @@ class ReferralCampaignForm
                                 ->live(),
                             TextInput::make('reward_value')
                                 ->label(fn (Get $get): string => $get('reward_type') === ReferralRewardType::Fixed->value
-                                    ? 'Reward amount (minor units)'
+                                    ? 'Reward amount (smallest currency unit)'
                                     : 'Reward (basis points)')
                                 ->numeric()
                                 ->integer()
@@ -85,7 +85,7 @@ class ReferralCampaignForm
                                 ->minValue(1)
                                 ->maxValue(fn (Get $get): ?int => $get('reward_type') === ReferralRewardType::Percentage->value ? 10000 : null)
                                 ->helperText(fn (Get $get): string => $get('reward_type') === ReferralRewardType::Fixed->value
-                                    ? 'Integer minor units, e.g. 10000 = 100.00 in the selected currency.'
+                                    ? 'Enter the amount in the smallest unit of the selected currency — e.g. 10000 equals 100.00.'
                                     : '100 basis points = 1%. Example: 500 = 5% of each eligible lesson.'),
                             Select::make('reward_currency_code')
                                 ->label('Fixed reward currency')

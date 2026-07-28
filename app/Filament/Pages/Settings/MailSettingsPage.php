@@ -175,10 +175,10 @@ class MailSettingsPage extends Page
                                 ->label('Mail Driver')
                                 ->options([
                                     'smtp' => 'SMTP',
-                                    'resend' => 'Resend (production)',
+                                    'resend' => 'Resend',
                                     'sendmail' => 'Sendmail',
-                                    'log' => 'Log (development)',
-                                    'array' => 'Array (testing)',
+                                    'log' => 'Log only (does not send real email)',
+                                    'array' => 'Test mode (does not send real email)',
                                 ])
                                 ->native(false)
                                 ->required()

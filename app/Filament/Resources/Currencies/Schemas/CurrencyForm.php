@@ -50,7 +50,8 @@ class CurrencyForm
                             ->helperText('ISO 4217 numeric code, e.g. 840. Leading zeros are significant (e.g. 008) — kept as text, not a number field.'),
 
                         TextInput::make('minor_units')
-                            ->label('Minor Units')
+                            ->label('Decimal places')
+                            ->helperText('Number of decimal places this currency uses, e.g. 2 for USD, 0 for JPY.')
                             ->integer()
                             ->minValue(0)
                             ->maxValue(4)

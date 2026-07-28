@@ -334,7 +334,7 @@ class GeneralSettingsPage extends Page
                         Select::make('homepage_display')
                             ->label('Your homepage displays')
                             ->options([
-                                'template' => '🏠  Default template (home.blade.php)',
+                                'template' => '🏠  Default template (built-in homepage)',
                                 'static_page' => '📄  A static page',
                             ])
                             ->native(false)

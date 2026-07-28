@@ -30,7 +30,7 @@ class ReviewTagForm
                                 ->alphaDash()
                                 ->disabledOn('edit')
                                 ->dehydratedWhenHidden()
-                                ->helperText('Snake_case, permanent — already-submitted reviews store this key.'),
+                                ->helperText('Use lowercase words separated by underscores (e.g. great_explanations). Permanent — already-submitted reviews store this key.'),
                             TextInput::make('label')
                                 ->required()
                                 ->maxLength(100)

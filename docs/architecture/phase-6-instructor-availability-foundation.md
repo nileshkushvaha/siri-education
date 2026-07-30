@@ -200,10 +200,7 @@ Existing relevant test coverage includes:
 Relevant docs:
 
 - `docs/booking.md`
-- `docs/architecture/phase-5-marketplace-discovery-foundation.md`
-- `docs/audits/phase-5-marketplace-discovery-final-audit.md`
-- `docs/audits/phase-4-learning-plan-final-audit.md`
-- `docs/audits/phase-2-instructor-onboarding-final-audit.md`
+- `docs/archive/phases/phase-5-marketplace-discovery-foundation.md` (historical)
 
 ## Duplicate Prevention Decision
 

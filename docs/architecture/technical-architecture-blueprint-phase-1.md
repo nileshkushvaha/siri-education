@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This blueprint defines the Phase 1 foundation architecture for the SIRI Education platform based on the current codebase inventory in `docs/architecture/phase-1-foundation-inventory.md`.
+This blueprint defines the foundation architecture for the SIRI Education platform, based on the codebase inventory originally captured in `docs/archive/phases/phase-1-foundation-inventory.md` (historical).
 
 The application is an existing Laravel 13 modular monolith with Filament administration, Blade/Livewire public frontend, CMS, booking, settings, media, permissions, activity logging, and transactional email foundations already present. Future work must enhance these foundations instead of rebuilding them.
 
@@ -60,7 +60,7 @@ Do not place cross-domain side effects directly inside controllers, Filament res
 
 ## Technology Baseline
 
-Current source-of-truth versions are in `docs/Architecture.md` and `composer.json`.
+Current source-of-truth versions are in `docs/architecture/overview.md` and `composer.json`.
 
 | Concern         | Current implementation                           |
 | --------------- | ------------------------------------------------ |

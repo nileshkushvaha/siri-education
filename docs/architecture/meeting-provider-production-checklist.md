@@ -4,7 +4,7 @@ Audit-readiness checklist for enabling real meeting providers
 (Google Meet — Phase 11, Zoom — Phase 11B) in production. Complements
 `docs/architecture/payment-gateway-production-checklist.md` (whose
 "Meeting creation" section covers the payment↔meeting boundary rules)
-and `docs/architecture/phase-11-meeting-creation-foundation.md` (the
+and `docs/architecture/meetings.md` (the
 design). Everything here is manual/operational — the automated
 guarantees are already enforced by the focused test suites
 (`BookingMeetingTest`, `ManualMeetingProviderTest`,

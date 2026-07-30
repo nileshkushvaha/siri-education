@@ -1,8 +1,8 @@
 # Admin Forms — Shared Presentation Conventions
 
-Stage 2 of the Admin Forms Production-Readiness Program: the shared presentation foundation. Everything in this document is either (a) a convention to apply later, or (b) a small, tested piece of reusable support already built. **Nothing here has been applied to an existing resource, settings, or security page yet** — that's Stage 3 (pilot) and Stage 4 (domain batches). Applying these conventions to a specific page means adopting the relevant trait/helper described below on that page, one page at a time, in a later stage.
+The shared presentation conventions for Filament admin forms/pages: headings, subheadings, breadcrumbs, Back navigation, action labels, and semantic color. Each convention below is either (a) a rule to apply when touching a page, or (b) a small, tested, reusable helper already built. Not every existing page has adopted every convention yet — apply the relevant trait/helper below when you next touch a page, rather than doing a one-time sweep.
 
-See [docs/audits/admin-forms-stage1-audit.md](../audits/admin-forms-stage1-audit.md) for the inventory and findings this foundation responds to, and [docs/audits/admin-forms-remediation-backlog.md](../audits/admin-forms-remediation-backlog.md) for the functional/security findings deliberately deferred out of this program.
+For the functional/security findings found alongside this work but deliberately out of scope for presentation changes, see the open backlog: [docs/audits/admin-forms-remediation-backlog.md](../audits/admin-forms-remediation-backlog.md). The original audit that surfaced the findings these conventions respond to is retained for historical context at [`docs/archive/audits/admin-forms-stage1-audit.md`](../archive/audits/admin-forms-stage1-audit.md) — not required reading to apply anything below.
 
 ## 1. Full-width content
 
@@ -10,7 +10,7 @@ See [docs/audits/admin-forms-stage1-audit.md](../audits/admin-forms-stage1-audit
 
 **Convention:** do not add a page-level `maxContentWidth()` override. If a specific page is later found not to inherit the panel setting, that's a bug to fix at the panel level, not a reason to add a per-page override.
 
-## 2. Responsive layout convention (for later stages to apply)
+## 2. Responsive layout convention
 
 - **Mobile:** one column.
 - **Tablet:** one or two columns, based on how closely related the fields are.
@@ -20,7 +20,7 @@ See [docs/audits/admin-forms-stage1-audit.md](../audits/admin-forms-stage1-audit
 - Sections span the available page width (no fixed-width containers).
 - No horizontal page scrolling under any breakpoint.
 
-Filament's own `Grid::make(int $columns)` already applies only at the `lg` breakpoint and stacks to one column below it (confirmed in `vendor/filament/schemas/src/Concerns/HasColumns.php`) — this convention is about *which* column count each field group should target, not a new mechanism. Stage 4 batches apply it schema by schema.
+Filament's own `Grid::make(int $columns)` already applies only at the `lg` breakpoint and stacks to one column below it (confirmed in `vendor/filament/schemas/src/Concerns/HasColumns.php`) — this convention is about *which* column count each field group should target, not a new mechanism. Apply it schema by schema as each page is touched.
 
 ## 3. "Create & create another" — removed centrally
 
@@ -60,11 +60,11 @@ Deliberately **not** built: a single mega-trait combining all six concerns. Head
 
 **Resource create pages:** `Create {singular resource label}` — this is Filament's own default (`getTitle()` on `CreateRecord`), unchanged.
 
-**Resource edit pages:** `Edit {record title}`, falling back to `Edit {singular resource label}` if no safe record title is available — this is Filament's own default (`getTitle()` on `EditRecord`, via `getRecordTitle()`). Never expose a sensitive record value (an email, a bank detail, a raw ID) in a heading; if a resource's natural "title" field is sensitive, that resource must override `getRecordTitle()`/`getTitle()` to use a safe label instead once it's touched in a later stage.
+**Resource edit pages:** `Edit {record title}`, falling back to `Edit {singular resource label}` if no safe record title is available — this is Filament's own default (`getTitle()` on `EditRecord`, via `getRecordTitle()`). Never expose a sensitive record value (an email, a bank detail, a raw ID) in a heading; if a resource's natural "title" field is sensitive, that resource must override `getRecordTitle()`/`getTitle()` to use a safe label instead.
 
 **Settings pages:** the configuration domain name (e.g. "Payment Configuration", "Instructor Earnings Rules", "Review & Quality Configuration") — never prefixed with "Create"/"Edit". Several settings pages already do this correctly (custom `getTitle()`); this is documentation of the existing correct pattern, not a new mechanism.
 
-**Section headings:** never repeat the page heading. Use concise, generic labels — "Details", "Category details", "Visibility", "Publishing", "Access", "Configuration" — chosen per form in a later stage, not applied panel-wide here.
+**Section headings:** never repeat the page heading. Use concise, generic labels — "Details", "Category details", "Visibility", "Publishing", "Access", "Configuration" — chosen per form as each one is touched, not applied panel-wide here.
 
 ## 6. Subheading standards
 
@@ -81,7 +81,7 @@ Subheadings are optional. Add one only when it explains what the record controls
 - Edit: `Section → Resource → Record → Edit`
 - Settings: `Settings → Subgroup → Page`
 
-**What exists today, and why a new resolver was needed:** `Filament\Resources\Pages\Page::getBreadcrumbs()` already builds a correct `Resource → Create/Edit` trail (with real links) — it just never includes a leading Section. `Filament\Pages\Page::getBreadcrumbs()` (used by every standalone Settings/Security page) returns `[]` by default — some settings pages hand-rolled their own trail, inconsistently (see the Stage 1 audit's breadcrumb findings), and one hardcodes the same wrong mid-crumb on every page in the group.
+**What exists today, and why a new resolver was needed:** `Filament\Resources\Pages\Page::getBreadcrumbs()` already builds a correct `Resource → Create/Edit` trail (with real links) — it just never includes a leading Section. `Filament\Pages\Page::getBreadcrumbs()` (used by every standalone Settings/Security page) returns `[]` by default — some settings pages hand-rolled their own trail, inconsistently, and one hardcodes the same wrong mid-crumb on every page in the group.
 
 **New shared code** (`app/Filament/Navigation/`):
 - `BreadcrumbResolver::prependSection(array $trail, ?string $sectionLabel)` — prepends a plain-text Section crumb in front of an existing resource breadcrumb trail. Returns the trail unchanged if no section is known.
@@ -93,7 +93,7 @@ Both trails are built entirely from **plain-text** crumbs where no destination p
 
 **Legacy URLs:** untouched — breadcrumbs are display-only and never change a route.
 
-**Fully unit-tested** (`tests/Unit/Filament/BreadcrumbResolverTest.php`, `tests/Unit/Filament/AdminNavigationRegistryTest.php::test_subgroup_for_matches_the_registry_entry`). The two traits are not yet exercised against a real page — by design, since no page adopts them in Stage 2 (see §9 below on why that's a reasonable boundary).
+**Fully unit-tested** (`tests/Unit/Filament/BreadcrumbResolverTest.php`, `tests/Unit/Filament/AdminNavigationRegistryTest.php::test_subgroup_for_matches_the_registry_entry`). The two traits are pure, page-independent logic — see §9 below for why adopting them onto a specific page is a separate, later step rather than something this document does itself.
 
 ## 8. Back navigation standards
 
@@ -110,9 +110,9 @@ Both trails are built entirely from **plain-text** crumbs where no destination p
 
 **Tested:** `tests/Unit/Filament/BackActionTest.php` — null-when-unknown, label/icon/color/url wiring, custom key.
 
-## 9. Why the breadcrumb/back mechanisms aren't applied to any page in Stage 2
+## 9. Adopting the breadcrumb/back mechanisms on a page
 
-Both `HasSectionBreadcrumb`/`HasSettingsSectionBreadcrumb` and `BackAction` read from `NavigationRegistry`/act on a real page's own class identity — attaching either to a real page is precisely "migrating that page," which Stage 2 was explicitly scoped to not do. They're built and tested as pure, page-independent logic now so that Stage 3's pilot and Stage 4's domain batches can adopt them with a one- or two-line change per page instead of re-deriving the logic each time.
+Both `HasSectionBreadcrumb`/`HasSettingsSectionBreadcrumb` and `BackAction` read from `NavigationRegistry`/act on a real page's own class identity — attaching either to a page is a one- or two-line change (add the trait, or call the factory) rather than something that needs re-deriving per page. Adopt them the next time you touch a page that doesn't have them yet, rather than as a separate blanket migration.
 
 ## 10. Action label standards
 
@@ -122,13 +122,13 @@ Already the framework default, confirmed against the installed package's languag
 - **Resource edit:** primary `Save changes`, secondary `Cancel`. Destructive actions (Delete, etc.) stay separate header actions, never a form action.
 - **Settings:** primary `Save changes` (several existing pages already use a more specific variant like "Save Mail Settings" — that's fine per-page specificity, not a violation).
 
-**Named exception, kept as-is:** `AdminChangePassword`'s `Update Password` label is clearer and more accurate for that specialized operation than a generic `Save changes` would be — do not force it to the generic wording in a later stage.
+**Named exception, kept as-is:** `AdminChangePassword`'s `Update Password` label is clearer and more accurate for that specialized operation than a generic `Save changes` would be — do not force it to the generic wording.
 
 No action execution, hooks, notifications, or redirects are affected by any labeling decision.
 
 ## 11. Semantic color standards
 
-Documented, not re-applied to any lifecycle action in Stage 2 (color changes to existing actions are explicitly deferred — see the remediation backlog):
+Documented here; not yet re-applied to every existing lifecycle action across the panel (see the remediation backlog for the specific actions still colored inconsistently):
 
 - **Primary submission** → `primary`
 - **Secondary navigation / cancellation** → `gray` (neutral)
@@ -139,6 +139,3 @@ Documented, not re-applied to any lifecycle action in Stage 2 (color changes to 
 
 Always via Filament's semantic `->color()` API (or an enum's own `->color()` method) — never a hardcoded hex/RGB value or a raw Tailwind palette class in a form component. The Navigation Menu Builder's existing hardcoded panel colors are a known exception, tracked in the remediation backlog as its own custom-component task, not touched here.
 
-## 12. Status
-
-Stage 2 complete: extension points verified, full-width confirmed, "Create & create another" removed panel-wide, shared breadcrumb/back-action support built and unit-tested, conventions documented above. Stage 3 (pilot) is the first place any of §5–§9's mechanisms get adopted on a real page.

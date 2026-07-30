@@ -57,7 +57,7 @@ php artisan test --env=testing --filter ClassName
 php artisan test --env=testing --filter "ClassName::test_method"
 ```
 
-Never use `php artisan test` bare — it runs against the dev database. See [Testing.md](Testing.md).
+Never use `php artisan test` bare — it runs against the dev database. See [testing.md](testing.md).
 
 ### Settings Migrations
 
@@ -128,7 +128,7 @@ php artisan tinker                    # REPL
 4. Create a Filament page in `app/Filament/Pages/Settings/` using `HasSettingsAccess` trait
 5. Run `php artisan migrate --path=database/settings`
 
-See [Settings-Architecture.md](Settings-Architecture.md) for the full pattern.
+See [settings.md](../settings.md) for the full pattern.
 
 ---
 

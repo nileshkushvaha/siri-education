@@ -2,7 +2,7 @@
 
 ## Purpose
 
-These standards define how new Phase 1 code should be written in this existing Laravel 13 modular monolith. They complement `docs/standards.md` and make the current architecture rules explicit for future implementation prompts.
+These standards define how new code should be written in this Laravel 13 modular monolith, making the current architecture rules explicit for anyone adding to it.
 
 If current code differs from these standards, do not rewrite it wholesale. Align gradually when touching the relevant file.
 
@@ -55,8 +55,10 @@ Do not move a whole domain just to make it look more uniform.
 | Listener | Imperative action | `SendBookingNotifications`, `RecordBookingLifecycleAudit`. |
 | Policy | `{Model}Policy` | `BookingPolicy`. |
 | Settings | `{Domain}Settings` | `BookingSettings`. |
+| Settings group | `{domain}_{sub}` | `security_auth`, `payment_bank`. |
 | Filament resource | `{Model}Resource` | `BookingResource`. |
 | Livewire component | Noun or workflow name | `BookingWizard`, `SiteHeader`. |
+| Gate ability | `{domain}.{resource}.{action}` | `security.authentication.update`. |
 
 Use existing internal names where already established. Example: do not introduce `TutorAvailability` while the current model is `TeacherAvailability`.
 
@@ -166,6 +168,18 @@ private function hasPermission(User $user, string $permission): bool
 
 Current alignment note: some existing policies still call `$user->can(...)`. Replace gradually when touching those policies.
 
+## Password Validation
+
+`PasswordRuleBuilder` (`app/Services/Security/PasswordRuleBuilder.php`) is the single source of truth for password validation rules — it reads the admin-configured password policy. Always use it instead of building a `Password::min()` chain inline:
+
+```php
+// Correct — respects the admin-configured policy
+'password' => [app(PasswordRuleBuilder::class)->build()],
+
+// Wrong — ignores admin configuration
+'password' => [Password::min(8)->mixedCase()->numbers()],
+```
+
 ## Event and Listener Pattern
 
 Use events for domain lifecycle moments and listeners for cross-domain reactions.
@@ -234,6 +248,20 @@ Minimum expectations:
 - Test queue/notification dispatch with fakes where appropriate.
 - Avoid brittle tests that assert implementation details not visible to the domain.
 
+Filament/Livewire-specific gotchas:
+
+- A field with `.visible(fn ($get) => ...)` is excluded from `getState()` when hidden. In tests, always set the controlling toggle before setting the dependent field:
+
+  ```php
+  Livewire::test(PasswordPolicyPage::class)
+      ->set('data.expiry_enabled', true)   // must come first
+      ->set('data.expiry_days', 60)
+      ->call('save');
+  ```
+- Settings tests must call `$this->artisan('migrate', ['--path' => 'database/settings'])` in `setUp()` — the `settings:migrate` artisan command does not exist in this project.
+- After a settings `save()` in a test, call `$settings->refresh()` to read the value back from the DB rather than trusting in-memory state.
+- Always `actingAs($this->superAdmin)` before a Filament Livewire test.
+
 ## Filament Resource Rules
 
 Filament resources must stay thin.
@@ -243,6 +271,7 @@ Rules:
 - Resource classes define metadata and delegate form/table to schema/table classes.
 - Form schemas live in `Schemas`.
 - Table schemas live in `Tables`.
+- Non-resource pages use `content(Schema $schema)`, not `form(Form $form)` — Filament v5's `Schema` class replaces `Form` for standalone pages. See any Security page for the current pattern.
 - Page classes should call services/actions for lifecycle work.
 - Do not put business rules in table actions.
 - Use policies for resource access.

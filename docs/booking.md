@@ -1,17 +1,8 @@
 # Booking Engine
 
-Enterprise booking foundation supporting the SRS Version 1 appointment
-types (Free Demo, Paid Lesson — single or recurring) behind one
-lifecycle, one registry, and one set of contracts.
+The booking foundation supporting the two current appointment types (Free Demo, Paid Lesson — single or recurring) behind one lifecycle, one registry, and one set of contracts.
 
-## Status
-
-Engine complete: foundation, database layer, and concrete
-implementations (`BookingService`, `AvailabilityService`,
-`BookingRepository`, `AvailabilityRepository`,
-`BookingTypeRepository`), domain rules, queued participant
-notifications, and listeners — all bound in `BookingServiceProvider`.
-Filament resources, controllers, and frontend land next.
+Every booking participant is an authenticated, verified platform user. There is no unauthenticated guest-booking path anywhere in this domain — not a data shape, not an API surface, not a UI path. All booking creation goes through the authenticated `/book` wizard or the student dashboard's explicit-teacher-choice flow (both described below). `tests/Architecture/BookingGuestRemovalGuardTest.php` fails the build if any guest-booking class, table, column, or route reappears, or if `attendee`/`host`-style identifiers creep back into the domain's own source.
 
 ## Teacher Availability Engine
 
@@ -74,7 +65,7 @@ teacher's daily cap (`BookingSettings::max_daily_bookings_per_teacher`).
 
 ## Admin Panel (Filament)
 
-Navigation group **Bookings**: Bookings, Booking Types, Teacher
+Navigation group **Booking**: Bookings, Booking Types, Teacher
 Availability, Teacher Leave (`TeacherUnavailability` model), and a
 Reports page. All follow the Schemas/Tables delegation pattern.
 
@@ -84,7 +75,7 @@ Reports page. All follow the Schemas/Tables delegation pattern.
   locking, timeline, events, and notifications always run;
   `BookingException` surfaces as a danger notification. Status tabs,
   filters (status, payment, type, teacher, date range, trashed),
-  Guests + Timeline relation managers, soft deletes, CSV export.
+  an Activities (timeline) relation manager, soft deletes, CSV export.
 - **Booking Types** restricts `key` to registered drivers
   (`BookingTypeRegistry::options()`), has a Bookings relation manager,
   activate/deactivate bulk actions, soft deletes, CSV export.
@@ -92,8 +83,8 @@ Reports page. All follow the Schemas/Tables delegation pattern.
   approved/published instructors; availability has activate/deactivate
   bulk actions; leave defaults to current-or-upcoming filter. Create,
   edit, delete, and publish-style actions — including table row
-  `DeleteAction` and bulk `DeleteBulkAction`, hardened in Phase 6.3 —
-  run through `InstructorAvailabilityService` / `InstructorTimeOffService`
+  `DeleteAction` and bulk `DeleteBulkAction` — run through
+  `InstructorAvailabilityService` / `InstructorTimeOffService`
   so timezone, bookable-status, overlap, permission, and audit rules
   are consistent with frontend self-service. No generic
   `Model::delete()` path remains on either resource's table: row
@@ -114,7 +105,7 @@ Reports page. All follow the Schemas/Tables delegation pattern.
   (`ViewAny:Booking`, …); run `shield:generate` (or seed permissions)
   before granting managers access. Smoke-tested in
   `tests/Feature/Filament/BookingAdminPanelTest.php`.
-- **Service-level ownership/admin guards (Phase 6.3)**: policies gate
+- **Service-level ownership/admin guards**: policies gate
   the Filament layer, but `InstructorAvailabilityService` and
   `InstructorTimeOffService` also assert authorization internally on
   every `create`/`update`/`delete`, so the same rule applies whether
@@ -133,8 +124,7 @@ Reports page. All follow the Schemas/Tables delegation pattern.
 
 Required on every deploy, in order:
 
-1. `php artisan migrate --force` — includes settings migrations and
-   the one-way token-hashing data migration (2026_07_04_100000).
+1. `php artisan migrate --force` — includes settings migrations.
 2. `php artisan db:seed --class=BookingTypeSeeder --force` — sync
    booking-type drivers to rows (idempotent).
 3. `php artisan db:seed --class=BookingPermissionSeeder --force` —
@@ -148,112 +138,33 @@ Required on every deploy, in order:
 5. **Scheduler** — `* * * * * php artisan schedule:run` cron. Gates
    `booking:release-expired` (unpaid reservation cleanup, every
    5 min) and the existing prune jobs.
-6. `npm run build` — the guest wizard/manage pages ship compiled
-   Tailwind.
+6. `npm run build` — the booking wizard ships compiled Tailwind.
 
 Settings checklist (Spatie `booking` group): `payment_provider`
 (**`fake` moves no money** — implement a real
 `PaymentProviderInterface` before enabling paid types publicly),
 `payment_reservation_minutes`, `captcha_enabled` +
 `turnstile_site_key`/`turnstile_secret_key`,
-`max_daily_bookings_per_teacher`, `min_lead_hours`,
-`max_advance_days`, notification channel toggles.
+`max_daily_bookings_per_teacher`, `minimum_booking_notice_minutes`,
+`maximum_advance_booking_days`, notification channel toggles.
 
-## Subject normalization plan (deferred)
+## Subject normalization
 
-`subject` currently lives as strings in `teacher_subjects.subject` and
-`bookings.meta.subject` (used by matching + analytics). Normalizing is
-deliberately deferred; when subjects need admin CRUD or i18n:
+`teacher_subjects` has a nullable `subject_id` FK to the `Subject` master (added by the reconciliation described in `docs/architecture/subject-teacher-subject-reconciliation.md`), alongside its original free-text `subject` column; `InstructorService`/`TeacherCandidateRepository` prefer the `subject_id` relation when set, falling back to free text otherwise.
 
-1. Create `subjects` (uuid, slug unique, name, is_active) and seed
-   from `SELECT DISTINCT subject FROM teacher_subjects`.
-2. Add nullable `subject_id` FKs to `teacher_subjects` and `bookings`;
-   backfill by slug (bookings via `meta->>'$.subject'`).
-3. Dual-write in `TeacherCandidateRepository` + booking meta; switch
-   readers (matching, analytics `popularSubjects`) to the FK.
-4. Drop the string column / stop writing meta.subject once verified.
+`bookings.meta.subject` (used by matching + analytics) is still free-text only — no `subject_id` FK exists on `bookings` today. Normalizing that side follows the same pattern already used for `teacher_subjects` (add a nullable FK, backfill by slug, dual-write, then switch readers) whenever it's needed for admin CRUD or i18n on the booking side specifically.
 
-Each step is independently deployable and reversible until step 4.
-
-## Guest Booking API
-
-Unauthenticated REST API under `/api/v1/guest` (routes/api.php).
-Guests never see teachers — availability is aggregated across eligible
-teachers and the assignment engine picks one on booking.
-
-| Method | Endpoint | Throttle |
-|---|---|---|
-| GET | `/availability/dates?type&subject&grade&from&to&timezone` | 30/min per IP |
-| GET | `/availability/slots?type&subject&grade&date&timezone` | 30/min per IP |
-| POST | `/bookings` | 5/min + 20/day per IP |
-| GET | `/bookings/{reference}?token` | 30/min per IP |
-| POST | `/bookings/{reference}/cancel` | 5/min + 20/day per IP |
-| POST | `/bookings/{reference}/reschedule` | 5/min + 20/day per IP |
-
-- **Guest identity** lives on the booking (`guest_name`, `guest_email`,
-  `guest_phone`; `attendee_id` is nullable, a CHECK requires one of
-  the two). Guest attendees receive mail via on-demand notification
-  routing.
-- **Authorization without auth**: creating a booking returns a 64-char
-  `manage_token` exactly once (plus a ready `manage_url`). Only its
-  SHA-256 hash is stored (`bookings.manage_token`); lookups hash the
-  presented token and compare with `hash_equals`. A bad token is
-  answered with 404, never revealing whether the reference exists.
-- **Manage page**: `/book/manage/{reference}?token=…`
-  (`booking.manage`) lets guests view, cancel, and reschedule using
-  the same API endpoints. The link embeds the capability token by
-  design (signed-URL pattern) — treat access logs accordingly.
-- **Spam protection**: honeypot `website` field (`prohibited` rule),
-  aggressive write throttles, a cap of 3 active upcoming bookings per
-  guest email (`GuestBookingService::MAX_ACTIVE_PER_EMAIL`), and
-  optional **Cloudflare Turnstile** (`BookingSettings::captcha_enabled`
-  + site/secret keys; `App\Rules\TurnstileToken`, implicit so absent
-  tokens fail). Authenticated flows are exempt.
-- **Performance**: `availableDates` streams per teacher (date strings
-  only, never slot objects) and stops once every day in the range has
-  coverage — measured: 25 teachers × 30 days ≈ 0.8 s / bounded memory
-  (previously OOM). Add caching only if real traffic demands it.
-- **Errors**: `BookingException` renders as JSON 422 on `api/*`
-  (bootstrap/app.php); validation failures are standard 422s.
-- FormRequests live in `app/Http/Requests/Api/Guest/` (the store
-  request merges per-type driver `formRules()`); resources in
-  `app/Http/Resources/Guest/`; thin controllers in
-  `app/Http/Controllers/Api/Guest/` delegate to
-  `GuestBookingServiceInterface`.
-
-## Guest Booking Frontend
-
-Public wizard at `/book` (`GuestBookingPageController` →
-`resources/views/booking/create.blade.php`, layout
-`layouts.frontend`). Single-page Alpine.js component — every step is
-AJAX against `/api/v1/guest`; no page reloads.
-
-Flow: type → subject → grade → calendar → slots → guest details →
-confirmation. Two catalog endpoints power steps 1–2:
-`GET /booking-types` and `GET /subjects` (`GuestCatalogController`).
-
-- Reusable Blade components in `resources/views/components/booking/`:
-  `progress`, `step`, `option-card`, `field`, `alert`, `spinner`.
-- **Gotcha**: on Blade components, Alpine bindings need `::attr`
-  (single `:attr` is a Blade PHP expression binding).
-- Live validation client-side on blur, server 422s mapped back onto
-  fields; domain errors (slot taken, no teacher, 429) surface in a
-  dismissible retry banner.
-- Accessibility: `aria-current` progress, `aria-pressed` option
-  buttons, focus moved to each step's heading, `aria-live`
-  announcements, honeypot hidden from assistive tech.
-- Browser timezone auto-detected and sent on every availability call;
-  calendar is capped to the 90-day booking window.
-- The `manage_token` is displayed once on the confirmation step with
-  copy-to-clipboard.
-
-## Student Booking (authenticated)
+## Student Booking
 
 Session-auth JSON endpoints under `/dashboard/bookings` (same
 middleware stack as the student dashboard), backed by
 `StudentBookingServiceInterface` — a thin layer over the core engine;
 every occurrence still runs through `BookingService::request` (rules,
-locks, events, notifications identical to guest/admin flows).
+locks, events, notifications identical to every other flow).
+
+The authenticated `/book` wizard (`BookingWizard` Livewire component, `WizardBookingService`/`WizardBookingData`) is the other entry point — it auto-assigns a teacher and drives payment; the route requires `auth` (redirects to login, preserving the intended URL — no slot/price state is preserved across that boundary, the student picks again once logged in). `WizardBookingService::book()` also independently refuses when unauthenticated, since `CreateBookingData::$studentId` is a non-nullable `int`.
+
+`BookingActor::Student`/`::Instructor` are the domain's own participant terminology — distinct from `teacher` (marketplace/matching context: `TeacherAssignmentService`, `teacher_subjects`, `TeacherAvailability`) and meeting-provider `host` fields (`booking_meetings.host_url`, Zoom `host_user_id`/`host_email`), which are legitimate, unrelated uses of similar words.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
@@ -267,22 +178,35 @@ locks, events, notifications identical to guest/admin flows).
 - **Teacher choice** is validated: with subject+grade the teacher must
   teach it (`teacher_subjects`); otherwise they must be an
   approved/published instructor.
-- **Recurring** books up to 12 weekly (or n-weekly) occurrences,
-  tagged with a shared `meta.recurring_group` uuid; conflicting
-  occurrences are skipped and reported in `failures` — all failing is
-  a 422.
+- **Recurring** books up to 12 occurrences on a `Daily` or `Weekly` cadence (`RecurrenceFrequency` enum), tagged with a shared
+  `meta.recurring_group` uuid; conflicting occurrences are skipped and reported in
+  `failures` (`RecurringBookingResult::$failures`) — all failing is a 422. The wizard's `WizardBookingService::bookRecurring()`
+  resolves the instructor once (locked via deep-link, or auto-assigned for the first occurrence) and reuses that same instructor for every later occurrence.
+  Recurrence is rejected on a non-paid type with a `BookingException`.
 - **Payments**: paid types return a payment intent on creation.
   `BookingPaymentServiceInterface` is bound to a clearly marked
   PLACEHOLDER (`BookingPaymentService`) — generates references,
   verifies them on `pay`, flips `payment_status` to Paid, and records
   a timeline entry. Swap the binding for an
   app/Services/Payment-backed gateway; callers don't change.
-  `BookingPolicy::pay` restricts settlement to the attendee (or
+  `BookingPolicy::pay` restricts settlement to the student (or
   `Update:Booking`).
 - `BookingActor::forUser()` is the shared actor-resolution helper.
 - JSON error handling for non-`api/*` endpoints comes from
   `expectsJson()` in bootstrap/app.php (exceptions + BookingException
   → 422).
+
+## Booking-type scope
+
+Exactly two booking modes exist: `free_demo` and `paid_one_to_one` ("Paid Lesson"), each single-occurrence or recurring. `BookingTypeRegistry` only ever contains these two drivers; `BookingTypeSeeder` (idempotent, `firstOrCreate` per driver) cannot create a third row through a fresh install. The Filament Booking Type form's `key` field is a closed `Select` populated from `BookingTypeRegistry::options()` with a `unique` constraint — an admin cannot type an arbitrary key.
+
+Every booking is exclusive: one instructor + one exact time admits exactly one active booking. There is no group-capacity or shared-slot mechanism.
+
+`BookingWizard::mount()` never silently selects a type — the phase list (`BookingWizard::phases()`) always starts with `mode` (Free Demo vs Paid Lesson) unless a valid `?type=` query param was supplied (public instructor-profile CTAs pass one explicitly). Paid types add a `billing_mode` phase (Single vs Recurring) and, if recurring, a `frequency` phase (Daily/Weekly + occurrence count) — Free Demo skips both and never enters payment.
+
+`BookingService::request()` rejects any type key that isn't an active `booking_types` row, independent of what the Livewire UI offers.
+
+Regression coverage: `tests/Architecture/BookingTypeScopeGuardTest.php` (asserts the registry/seeded set is exactly `free_demo`, `paid_one_to_one`, and that no shared-slot/capacity mechanism has reappeared) and `tests/Feature/Booking/BookingTypeScopeTest.php` (behavioral scope: explicit selection, CTAs, recurrence, service-level rejection).
 
 ## Analytics
 
@@ -297,7 +221,7 @@ KPIs (default period: last 30 days):
 | KPI | Definition |
 |---|---|
 | Demo requests | `free_demo` bookings created in period |
-| Conversion rate | distinct demo bookers (user id / guest email) with a later paid booking |
+| Conversion rate | distinct demo bookers (user id) with a later paid booking |
 | Teacher utilization | booked hours ÷ (weekly schedule × weeks) — approximation, leave/holidays not subtracted |
 | Popular subjects | `meta.subject` grouped (top 8) |
 | Popular time slots | session-start hour (UTC), non-cancelled |
@@ -347,7 +271,7 @@ cancel a PAID booking → automatic refund (SyncPaymentOnCancellation listener)
 
 ## Teacher Assignment Engine
 
-Guests and students never select a teacher. Callers build an
+Students never directly select a teacher for auto-assigned flows. Callers build an
 `AssignmentCriteriaData` (type, subject, grade, slot, timezone;
 `language` reserved for the future) and
 `TeacherAssignmentService::assign()` returns the teacher, whose id
@@ -385,11 +309,11 @@ Scores are clamped to [0, 1]; ties break on lowest user id.
 - Validation runs twice by design: the pipeline fast-fails before the
   lock; the same checks re-run inside it (only the locked copy is
   authoritative).
-- Every slot is exclusive (Phase 17U.3A) — one booking = one student +
+- Every slot is exclusive — one booking = one student +
   one instructor + one slot. Any overlap, of any type, always blocks;
   there is no shared-slot/group-capacity mechanism.
 - Booking window limits are admin-tunable via `BookingSettings`
-  (`booking.min_lead_hours`, `booking.max_advance_days`), enforced by
+  (`minimum_booking_notice_minutes`, `maximum_advance_booking_days`), enforced by
   `BookingWindowRule`.
 
 ## Notifications
@@ -400,14 +324,13 @@ off the five domain events (Requested/Created, Confirmed, Cancelled,
 Rescheduled, Completed), registered in `EventServiceProvider`:
 
 - **`SendBookingNotifications`** — participant delivery. Teachers
-  (hosts) are notified on every lifecycle event; attendees are users
-  or guests (guests via on-demand mail routing to `guest_email`).
+  (hosts) are notified on every lifecycle event; students are notified
+  via the normal notification pipeline.
   `BookingCompletedNotification` covers both Completed and NoShow
   wording.
 - **`RecordBookingLifecycleAudit`** — writes semantic entries
   (`booking_requested`, `booking_confirmed`, …) to the `bookings`
-  activity log via `AuditTrailService` (guest bookings use the Guest
-  actor). `NotificationMapper` maps exactly these five events to
+  activity log via `AuditTrailService`. `NotificationMapper` maps exactly these five events to
   admin notifications through the existing pipeline
   (`ActivityCreated` → `NotifyAdminsOnActivity`); the model's generic
   `created`/`updated` audit rows stay silent, so admins see one clean
@@ -430,7 +353,7 @@ notifications never change when gateways arrive.
 
 UUID primary keys on all booking tables except `booking_activities`
 (bigint append-only log, `created_at` only). FKs to `users` stay
-bigint. All datetimes are UTC.
+bigint. All datetimes are UTC. `bookings.student_id`/`instructor_id` are `NOT NULL` (`restrictOnDelete()`, not `cascade`, on both).
 
 | Table | Purpose | Notes |
 |---|---|---|
@@ -451,14 +374,14 @@ app/Booking/
 ├── Actions/            Single-responsibility persistence + transition guards
 ├── Contracts/          All interfaces (repositories, services, type driver, rule)
 ├── DTOs/               Immutable readonly inputs/outputs
-├── Enums/              Status, payment status, location, actor
+├── Enums/               Status, payment status, location, actor
 ├── Events/             Domain events (past tense)
 ├── Exceptions/         BookingException base + specific failures
 ├── Registry/           BookingTypeRegistry (single source of truth for types)
-├── Types/              Built-in BookingTypeInterface implementations
+├── Types/               Built-in BookingTypeInterface implementations
 └── Validation/         BookingValidationPipeline (domain rules)
 
-app/Models/Booking.php            Eloquent model (standards.md: models live here)
+app/Models/Booking.php            Eloquent model (see docs/architecture/code-standards.md: models live here)
 app/Policies/BookingPolicy.php    Authorization
 app/Providers/BookingServiceProvider.php
 ```
@@ -509,7 +432,7 @@ value persisted in `bookings.booking_type`.
 3. Optional: add type-specific domain rules (`rules()`) and HTTP
    rules (`formRules()`).
 
-No core changes are required.
+No core changes are required. (See also "Booking-type scope" above — the registry is deliberately restricted to exactly two drivers today; adding a third is a product decision, not a technical limitation.)
 
 ## Lifecycle
 
@@ -530,7 +453,7 @@ Types with `requiresApproval() === false` are auto-confirmed by
 
 Three layers, in order:
 
-1. **HTTP (shape)** — FormRequests (phase 2) validate input shape.
+1. **HTTP (shape)** — FormRequests validate input shape.
    Base booking rules + `BookingTypeRegistry::get($key)->formRules()`
    merged per type. The FormRequest builds `CreateBookingData`.
 2. **Domain (business)** — `BookingValidationPipeline` runs
@@ -540,7 +463,7 @@ Three layers, in order:
    subclasses. Availability is enforced by
    `AvailabilityServiceInterface::ensureAvailable()` →
    `SlotUnavailableException`.
-3. **Authorization** — `BookingPolicy`. Participants (attendee/host)
+3. **Authorization** — `BookingPolicy`. Participants (student/instructor)
    manage their own bookings; staff need explicit permissions
    (`ViewAny:Booking`, `Confirm:Booking`, …). Portal routing stays
    in `PortalResolver`; the policy only answers WHAT a user may do.
@@ -560,10 +483,10 @@ Three layers, in order:
 | Exception | `{Failure}Exception` | `SlotUnavailableException` |
 | Permission | `{Ability}:Booking` | `Reschedule:Booking` |
 
-All times are stored UTC (`CarbonImmutable`); the attendee's
+All times are stored UTC (`CarbonImmutable`); the participant's
 timezone travels on the DTO/record for display only.
 
-## Deletion policy (Phase 17U.1)
+## Deletion policy
 
 Bookings are never physically deleted through the application.
 `Booking` is `SoftDeletes` + `App\Support\Concerns\PreventsHardDeletion`
@@ -585,145 +508,29 @@ refund/earning/wallet/settlement change).
 Every foreign key reachable from `bookings`/`lessons`/`lesson_reviews`/
 `lesson_review_eligibilities` (and the `users → bookings`,
 `users → wallets/wallet_ledger_entries/instructor_rating_aggregates`,
-`bookings → booking_guests/booking_meetings` edges) was changed from
-`CASCADE` to `RESTRICT` at the database level — even a raw SQL
-`DELETE` against a booking with any dependent lesson, attendance,
-financial, review, feedback, quality, guest, or meeting record is
-rejected by MySQL itself, not just by application code. Zero foreign
-keys referencing `bookings` remain `CASCADE` (Phase 17U.2 §1 closed
-the `booking_guests`/`booking_meetings` residual deliberately left
-open by Phase 17U.1 — see
-`database/migrations/2026_09_05_100000_restrict_booking_guest_and_meeting_deletes.php`).
-The same `PreventsHardDeletion` trait (in delete-blocking mode, since these
-models have no `SoftDeletes`) is applied to every model in that
-historical chain — `Lesson` (force-delete-blocking, since it does have
-`SoftDeletes`), `LessonReview`, `LessonReviewRevision`,
+`bookings → booking_meetings` edges) is `RESTRICT`, not `CASCADE`, at
+the database level — even a raw SQL `DELETE` against a booking with
+any dependent lesson, attendance, financial, review, feedback,
+quality, or meeting record is rejected by MySQL itself, not just by
+application code. The same `PreventsHardDeletion` trait (in
+delete-blocking mode for models without `SoftDeletes`) is applied to
+every model in that chain — `Lesson` (force-delete-blocking, since it
+does have `SoftDeletes`), `LessonReview`, `LessonReviewRevision`,
 `InstructorStudentFeedback`, `LessonFinancialDisposition`,
 `InstructorEarning`, `ReviewReport`, `InstructorQualityAlert`,
 `LessonReviewEligibility`, `ReviewRatingContribution`,
 `InstructorRatingAggregate`, the three `LessonAttendance*` models,
 `LessonTechnicalIssueReport`, `WalletLedgerEntry`,
-`InstructorSettlementBatch`, `NotificationDispatchLog`, and — as of
-Phase 17U.2 §1 — `BookingMeeting` (no `SoftDeletes`, hooks `deleting`
-and rejects unconditionally; meeting cancellation already worked by
-transitioning `status` rather than deleting the row —
-`BookingMeetingService::cancelMeeting()`). `BookingGuest` itself was
-removed entirely in Phase 17U.3 (see below) rather than kept under
-this protection — there is no unauthenticated/guest participant
-concept left to protect.
+`InstructorSettlementBatch`, `NotificationDispatchLog`, and
+`BookingMeeting` (no `SoftDeletes`, hooks `deleting` and rejects
+unconditionally; meeting cancellation already works by transitioning
+`status` rather than deleting the row —
+`BookingMeetingService::cancelMeeting()`).
 
 Permissions: `Archive:Booking` + `Restore:Booking` (manager).
-`Delete:Booking`/`ForceDelete:Booking` no longer exist — neither is
+`Delete:Booking`/`ForceDelete:Booking` do not exist — neither is
 seeded nor grantable to anyone, including super_admin.
 
 See `tests/Feature/Booking/BookingArchivalTest.php` for the full
 archive/restore/idempotency/authorization/historical-preservation
-suite, and `tests/Feature/Audit17T/BookingForceDeleteCascadeWipesFinancialHistoryTest.php`
-(Phase 17T Finding S-2, remediated here) for the regression proof.
-
-## Authenticated-only booking (Phase 17U.3)
-
-Every booking participant is an authenticated, verified platform user.
-There is no unauthenticated guest booking concept anywhere in this
-domain — not a data shape, not an API surface, not a UI path.
-
-- **Schema**: `bookings.student_id`/`instructor_id` are `NOT NULL`
-  from the baseline migration (`restrictOnDelete()`, not `cascade`, on
-  both — historical business records, same principle as Phase 17U.1).
-  `guest_name`/`guest_email`/`guest_phone`/`manage_token` never exist.
-  `booking_guests` never exists.
-- **Terminology**: `BookingActor::Attendee`/`::Host` are
-  `BookingActor::Student`/`::Instructor`; `Booking::attendee()`/`host()`
-  are `Booking::student()`/`instructor()`; every DTO/repository method
-  using `attendeeId`/`hostId` uses `studentId`/`instructorId`. Scoped
-  to the Booking domain's own participant concept only — `teacher`
-  (marketplace/matching context: `TeacherAssignmentService`,
-  `teacher_subjects`, `TeacherAvailability`) and meeting-provider `host`
-  fields (`booking_meetings.host_url`, Zoom `host_user_id`/`host_email`)
-  are untouched, both legitimate, unrelated uses of similar words.
-- **The `/book` wizard** (`BookingWizard` Livewire component,
-  `WizardBookingService`/`WizardBookingData`, renamed from the
-  pre-authenticated-only "guest" naming) is the one UI that creates a
-  booking with auto-teacher-assignment and drives payment; the route
-  requires `auth` (redirects to login, preserving the intended URL —
-  no slot/price state is preserved across that boundary, the student
-  just picks again once logged in). `WizardBookingService::book()`
-  also independently refuses when unauthenticated — defense-in-depth
-  below the route middleware, since `CreateBookingData::$studentId` is
-  a non-nullable `int` and must never be asked to accept a null one.
-  `/dashboard/bookings/*` (`StudentBookingController`,
-  `StudentBookingServiceInterface`) is the explicit-teacher-choice +
-  recurring-booking flow; both funnel through the same
-  `BookingService::request()` core.
-- **Removed entirely**: the `/api/v1/guest` API (catalog, availability,
-  booking CRUD, payment — all of it, including the read-only browse
-  endpoints), `GuestBookingPageController`/`GuestBookingService`/
-  `GuestBookingServiceInterface`/`GuestBookingData`, `BookingGuest` +
-  `booking_guests`, `AuthenticatedAttendeeRule` (superseded by the
-  type system itself), `/book/manage/{reference}` + its capability
-  token, and every guest-specific test.
-- **Permanent guard**: `tests/Architecture/BookingGuestRemovalGuardTest.php`
-  fails the build if guest-booking classes/tables/columns/routes
-  reappear, or if `attendee`/`host` identifiers creep back into the
-  Booking domain's own source — while explicitly protecting the
-  legitimate, unrelated uses of "guest" (Laravel's `guest` middleware,
-  the Activity Log's generic guest-actor system used by public forms).
-
-## Booking-type scope: Free Demo and Paid Lesson only (Phase 17U.3A)
-
-- **Version 1 booking modes**: exactly two — `free_demo` and
-  `paid_one_to_one` ("Paid Lesson"), each single-occurrence or
-  recurring (daily or weekly). `Counselling`, `Parent Meeting`, and
-  `Webinar` (type drivers, seed rows, admin options) are removed
-  entirely — no disabled seeds, reserved enum cases, or hidden admin
-  config. `BookingTypeRegistry` only ever contains the two approved
-  drivers; `BookingTypeSeeder` (idempotent, `firstOrCreate` per driver)
-  can therefore never create a third row through a fresh install.
-- **No group-capacity / shared-slot mechanism**: `booking_types.max_attendees`,
-  `BookingTypeInterface::maxAttendees()`, `sharedSlotTypeKey`
-  (threaded through `AvailabilityService`/`BookingRepository::hasOverlap()`),
-  `BookingService::sharedSlotKey()`/`assertCapacity()`, and
-  `BookingRepository::studentCountForSlot()` are all removed. Every
-  booking is now unconditionally exclusive — one instructor + one
-  exact time admits exactly one active booking, enforced by the same
-  overlap check `hasOverlap()` always ran, just without the shared-slot
-  carve-out. `TimeSlotData::$remainingCapacity` is gone; a returned
-  slot is simply bookable.
-- **Explicit wizard selection**: `BookingWizard::mount()` never
-  silently selects a type (the old `collect($this->types)->first()['key']`
-  default — DB/array ordering — is gone). The wizard's phase list
-  (`BookingWizard::phases()`) always starts with `mode` (Free Demo vs
-  Paid Lesson) unless a valid `?type=` query param was supplied (the
-  public instructor-profile CTAs pass one explicitly); a generic CTA
-  with no query params lands on the mode step with nothing
-  preselected. Paid types add a `billing_mode` phase (Single vs
-  Recurring) and, if recurring, a `frequency` phase (Daily/Weekly +
-  occurrence count) — Free Demo skips both and never enters payment.
-- **Recurring bookings**: `RecurrenceData` supports both `Daily` and
-  `Weekly` (`RecurrenceFrequency` enum), not weekly-only. The wizard's
-  `WizardBookingService::bookRecurring()` resolves the instructor once
-  (locked via deep-link, or auto-assigned for the first occurrence)
-  and reuses that same instructor for every later occurrence in the
-  series; occurrences that lose availability are skipped and reported
-  (`RecurringBookingResult::$failures`), never silently dropped.
-  `StudentBookingService::bookRecurring()` (the explicit-teacher
-  `/dashboard/bookings` API) shares the same `RecurrenceData` DTO.
-  Both reject recurrence on a non-paid type with a `BookingException`.
-- **Service-level validation, not just UI**: `BookingService::request()`
-  rejects any type key that isn't an active `booking_types` row —
-  structurally impossible for a removed type to reach it, since the
-  row never exists. `WizardBookingService`/`StudentBookingService`
-  reject recurrence on Free Demo directly, independent of the Livewire
-  validation that also prevents the UI from offering it.
-- **Admin restriction**: the Filament Booking Type form's `key` field
-  is a closed `Select` populated from `BookingTypeRegistry::options()`
-  (currently 2 entries) with a `unique` constraint — an admin cannot
-  type an arbitrary key or recreate a removed type. The capacity field
-  is gone from both the form and the table/CSV export.
-- **Permanent guard**: `tests/Architecture/BookingTypeScopeGuardTest.php`
-  fails the build if the Counselling/Parent-Meeting/Webinar drivers,
-  the capacity column/methods, or the shared-slot mechanism reappear,
-  and asserts the registry/seeded set is exactly `free_demo`,
-  `paid_one_to_one`. `tests/Feature/Booking/BookingTypeScopeTest.php`
-  covers the behavioral scope (explicit selection, CTAs, recurrence,
-  service-level rejection).
+suite.

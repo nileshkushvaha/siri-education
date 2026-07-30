@@ -156,7 +156,7 @@ lessons are engine-created.
    listeners are queued.
 4. Scheduler cron — gates `lessons:auto-complete` (every 15 min).
 
-## Attendance & Lesson Outcome (Phase 17A)
+## Attendance & Lesson Outcome
 
 Evidence-grade attendance and an authoritative finalized outcome,
 layered on top of (never replacing) the Phase 13 lifecycle.
@@ -229,7 +229,7 @@ the only entry points. Under them: `RecordAttendanceAction`,
   managers): `OverrideOutcome:Lesson`, `InspectAttendance:Lesson`.
   Instructor confirmation reuses `markAttendance` policy (own lessons).
 
-## Automated Finalization (Phase 17B)
+## Automated Finalization
 
 `lessons:finalize-due` (scheduled every 5 min, `withoutOverlapping`,
 logs to `lessons-finalize-due.log`) — the evidence-driven finalizer:
@@ -271,7 +271,7 @@ writes outcomes, statuses, bookings, or earnings itself.
   fingerprint-deduped. Cancelled/pending bookings still reject
   evidence outright.
 
-## Provider Attendance Ingestion (Phase 17C)
+## Provider Attendance Ingestion
 
 Provider-agnostic ingestion feeding the 17A evidence layer. Everything
 accepted flows through `LessonAttendanceService` →
@@ -327,7 +327,7 @@ gated behind `lessons.automated_finalization_enabled`.
   or webhook secret token configured, and Google Meet/manual expose no
   attendance API — documented dependency for a later phase.
 
-## Manual Confirmation & Technical-Issue Review (Phase 17D)
+## Manual Confirmation & Technical-Issue Review
 
 The participant fallback when provider attendance is unavailable, plus
 the admin review desk. No pre-existing support/dispute module existed
@@ -366,7 +366,7 @@ are never edited, only re-decided via a new decision that conflicts.
   releases the hold), request additional evidence (back to
   under_review), resolve ambiguous 17C provider events by assigning
   the participant, and finalize/override outcomes strictly through the
-  Phase 17A outcome service. Every decision: row-locked (two admins
+  the same outcome service described above. Every decision: row-locked (two admins
   can't resolve differently — the loser conflicts; repeats are
   idempotent), mandatory reason, audited with previous/new status
   (`lesson_attendance_confirmation_*`, `lesson_technical_issue_*`,
@@ -376,7 +376,7 @@ are never edited, only re-decided via a new decision that conflicts.
   only), `reviewAttendance` (staff). No financial, homework, review,
   or notification side effects.
 
-## Financial Disposition & Hold Foundation (Phase 17E)
+## Financial Disposition & Hold Foundation
 
 The idempotent decision bridge between finalized outcomes and the
 Wallet / Instructor Earnings / Settlement domains — classification and
@@ -421,7 +421,7 @@ earnings, or changes amounts. Gated by
   `lesson_financial_disposition_*` events with previous/new state).
   Resolved records re-open only via an outcome override.
 
-## Wallet Refund Execution (Phase 17F)
+## Wallet Refund Execution
 
 Executes approved 17E refund dispositions — **wallet-only** (Version 1
 never calls a gateway refund API; gateway-paid lessons are credited to
@@ -469,7 +469,7 @@ the student wallet with the original payment record preserved) and
   `AuditTrailService` (`lesson_refund_executed` with actor, amount,
   currency, previous/new balance, reason).
 
-## Earning Reconciliation Execution (Phase 17G)
+## Earning Reconciliation Execution
 
 Instructor-side counterpart of 17F: executes approved reconciliation
 dispositions (status Ready + reason `earning_reconciliation_required`
@@ -522,7 +522,7 @@ analytics, lesson notifications mapping, student/instructor frontend
 lesson UI, join-click-based automatic attendance, real provider
 attendance adapters (Zoom attendance-report API + webhook secret
 token; Google Meet has no attendance API) and admin UI for the
-attendance review queue (17D+), outcome-driven financial corrections
+attendance review queue, outcome-driven financial corrections
 after an admin override.
 
 ## Tests
@@ -530,32 +530,32 @@ after an admin override.
 `tests/Feature/Lesson/` — `LessonLifecycleTest` (creation trigger,
 eligibility, snapshot, transitions, attendance, completion, no-show,
 dispute, booking↔lesson sync both directions, auto-complete command),
-`LessonAttendanceOutcomeTest` (Phase 17A: evidence recording,
+`LessonAttendanceOutcomeTest` (evidence recording,
 idempotent/out-of-order/overlapping ingestion, authorization,
 determinations, terminal protection, override + audit, concurrency,
 exactly-once event, UTC safety), `LessonAutomatedFinalizationTest`
-(Phase 17B: kill switch + legacy deferral, determination matrix,
+(kill switch + legacy deferral, determination matrix,
 technical-issue window, delays, manual/override protection, cancelled
 sync, idempotent/concurrent runs, batch isolation, late evidence,
 earnings exactly-once, scheduler registration, UTC safety),
 `LessonPermissionSeederTest`, `LessonAdminPanelTest`;
-`tests/Feature/Booking/MeetingAttendanceIngestionTest` (Phase 17C:
+`tests/Feature/Booking/MeetingAttendanceIngestionTest` (
 signed webhooks, signature/malformed/unknown rejections, participant
 resolution + spoof protection, normalization semantics, webhook+sync
 overlap, sync idempotency/failure isolation/retries, privacy
 guarantees, finalization-stays-off), `LessonManualReviewTest`
-(Phase 17D: participant claims + authorization, idempotency/history,
+(participant claims + authorization, idempotency/history,
 technical-issue windows + holds, sanitization, admin review
 accept/reject/conflict, outcome delegation, no side effects),
-`tests/Feature/Earnings/LessonFinancialDispositionTest` (Phase 17E:
+`tests/Feature/Earnings/LessonFinancialDispositionTest` (
 classification matrix, earning holds + settlement exclusion, override
 history, settled-money protection, admin resolution, kill switch,
 no-money-movement guarantees), `tests/Feature/Earnings/
-LessonWalletRefundTest` (Phase 17F: eligibility matrix, original-charge
+LessonWalletRefundTest` (eligibility matrix, original-charge
 amounts/currency, gateway-untouched wallet credits, ledger linkage,
 idempotency/concurrency, cancellation dedup, failure safety,
 override-after-refund reconciliation, earning isolation),
-`tests/Feature/Earnings/LessonEarningReconciliationTest` (Phase 17G:
+`tests/Feature/Earnings/LessonEarningReconciliationTest` (
 creation eligibility matrix, agreement-not-price compensation,
 snapshot immutability, hold/restore-release/reverse corrections,
 settled-money protection, idempotency/concurrency, audit history,

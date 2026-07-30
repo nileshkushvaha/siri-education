@@ -2,7 +2,7 @@
 
 Findings from the Stage 1 audit (and one found live during Stage 2) that are **not** presentation issues — fixing any of them means changing validation, confirmation requirements, action execution, permissions, or database behavior, all explicitly out of scope for the Admin Forms Production-Readiness Program's Stage 2. Nothing in this document has been implemented. Each item needs its own separate approval before work starts.
 
-Full context for every item below: [docs/audits/admin-forms-stage1-audit.md](admin-forms-stage1-audit.md).
+Each item below is self-contained (where, issue, what a fix would require). The original Stage 1 audit that surfaced most of these has since concluded and moved to historical archive at [`docs/archive/audits/admin-forms-stage1-audit.md`](../archive/audits/admin-forms-stage1-audit.md) — it is retained for historical context only and is not required to act on any item here.
 
 ## P0 — safety-relevant, recommend fixing ahead of the normal stage sequence
 
@@ -50,11 +50,12 @@ Lesson's admin `mark_attendance`/`complete` actions pass `override: true` to the
 
 ## P2 — inconsistent headings, spacing, widths, help text, colors (informational — most of this is exactly what Stage 3/4's form-by-form work already addresses)
 
-- Help-text coverage is uneven inside nearly every form audited, in every domain (§4 of the Stage 1 audit has the full list per domain).
+- Help-text coverage is uneven inside nearly every form audited, in every domain (e.g. FAQ Category: 1 of 5 fields; PostCategory/Tag: 0 of any field; Country/StudentLessonPrice: near-universal coverage). No documented convention exists for when a field is expected to have one.
 - Grid column counts (2 vs. 3) mixed with no documented convention — Stage 2 §2 of the presentation conventions doc now documents the intended convention; applying it form-by-form is Stage 4 work.
 - Section count/complexity varies wildly for structurally similar "reference data" (Country: 6 sections; Academic sub-resources: 1 section each).
 - Isolated hardcoded/non-semantic decoration: emoji in Select option labels (`GeneralSettingsPage`); hardcoded Tailwind `purple-*` classes on `SchedulerMonitorPage`; `theme.css`'s sortable drag-state colors not tracking the panel's actual `primary` (Amber) token; 4 hardcoded hex panel-accent colors in the Navigation Menu Builder (see item 2 above).
 - Required-ness enforced only in `save()`/service logic, never reflected as `->required()` in the schema: `HomeworkReminderSettingsPage`'s "at least one offset" rule; `PromotionalCreditIssuances`' conditionally-required amount/currency fields.
+- Analytics & Reporting's 7 report pages are filter-bar-only (no true forms) — their remaining P2 scope is limited to filter-bar visual consistency: Reset-button placement, "no permission" messaging consistency, and grid-fill/item-count consistency across the 7 pages. No form-redesign work applies to this domain.
 
 ## Confirmed during Stage 2 (investigation only, no fix) — Decision #9
 
@@ -62,4 +63,4 @@ Lesson's admin `mark_attendance`/`complete` actions pass `override: true` to the
 
 ## Not in this backlog
 
-Items already fixed as part of Stage 2 (not functional/security issues — pure presentation infrastructure): "Create & create another" removal, the breadcrumb/heading/back-action/color conventions documented in [docs/architecture/admin-forms-presentation-conventions.md](../architecture/admin-forms-presentation-conventions.md). Analytics & Reporting's filter-bar-only P2 findings (Reset-button placement, "no permission" messaging inconsistency, uneven grid fill) remain tracked in the Stage 1 audit itself since that domain has no true forms and stays out of this program's form-foundation work per your decision #10.
+Items already fixed as part of Stage 2 (not functional/security issues — pure presentation infrastructure): "Create & create another" removal, the breadcrumb/heading/back-action/color conventions documented in [docs/architecture/admin-forms-presentation-conventions.md](../architecture/admin-forms-presentation-conventions.md). Analytics & Reporting's P2 items are tracked above in this backlog (not a separate document) since that domain has no true forms and stays out of this program's form-foundation work per your decision #10.

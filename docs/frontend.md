@@ -1,8 +1,7 @@
 # Public Frontend
 
-Foundation for new Blade + Livewire + Alpine + Tailwind frontend work.
-This phase is scaffolding only — no pages were built. It extends the
-existing frontend infrastructure (layouts, 57 Blade components already
+Foundation for Blade + Livewire + Alpine + Tailwind frontend work.
+Extends the existing frontend infrastructure (layouts, Blade components
 under `resources/views/components/`) rather than duplicating it; see
 "What already existed" below before assuming something needs building.
 
@@ -36,18 +35,13 @@ under `resources/views/components/`) rather than duplicating it; see
 
 | Layout | Extends | Audience | Status |
 |---|---|---|---|
-| `layouts.frontend` | — (base HTML shell) | all | existing — SEO/analytics/Vite/Alpine/Livewire assets, header, footer, flash messages |
-| `layouts.guest` | `layouts.frontend` | anonymous visitors | **new** — thin, intention-named entry point for new public pages |
-| `layouts.auth` | `layouts.frontend` (bare) | sign-in/up style pages | **new** — reusable split-panel chrome using the existing `.auth-*` CSS classes |
-| `layouts.student` | `layouts.account` | authenticated frontend-portal users | **new** — thin alias; `layouts.account` already implements the dark portal chrome used by 9+ existing dashboard pages |
-| `layouts.error` | `layouts.frontend` | any (error pages) | **new** — reusable dark-hero chrome extracted from the pattern duplicated inline in `errors/404.blade.php` / `errors/500.blade.php` |
+| `layouts.frontend` | — (base HTML shell) | all | SEO/analytics/Vite/Alpine/Livewire assets, header, footer, flash messages |
+| `layouts.guest` | `layouts.frontend` | anonymous visitors | thin, intention-named entry point for public pages |
+| `layouts.auth` | `layouts.frontend` (bare) | sign-in/up style pages | reusable split-panel chrome using the `.auth-*` CSS classes |
+| `layouts.student` | `layouts.account` | authenticated frontend-portal users | thin alias; `layouts.account` implements the dark portal chrome used across the dashboard |
+| `layouts.error` | `layouts.frontend` | any (error pages) | reusable dark-hero chrome, shared by `errors/404.blade.php` / `errors/500.blade.php` |
 
-**None of the existing layouts, auth views, or error views were
-modified** — `layouts.account`, `layouts.page`, `layouts.landing`,
-`layouts.blank`, and every file under `resources/views/auth/` and
-`resources/views/errors/` are untouched. The four new layouts above
-are additive; future pages should extend them by name, but nothing
-currently extending the old layouts needs to change.
+`layouts.account`, `layouts.page`, `layouts.landing`, `layouts.blank`, and every file under `resources/views/auth/` and `resources/views/errors/` are separate, established layouts — extend the one matching your page's audience by name rather than building a new one.
 
 The one shared edit: `layouts/frontend.blade.php` gained
 `@livewireStyles` (head) and `@livewireScripts` (before `</body>`) —
@@ -214,7 +208,7 @@ rather than given speculative responsibilities.
 ## Portal architecture (unchanged)
 
 `PortalResolver` remains the single source of truth for portal
-routing — this phase didn't touch it. `layouts.student` sits *below*
+routing. `layouts.student` sits *below*
 `PortalResolver` in the stack: it's a rendering choice for pages the
 resolver has already decided belong to the Frontend Portal, not a
 routing decision itself.
@@ -290,7 +284,7 @@ identical to what `LoginController::store()` already did.
 `resources/views/components/ui/auth-input.blade.php`,
 `auth-checkbox.blade.php`, `auth-button.blade.php` — wrap the
 `.auth-input`/`.auth-label`/`.auth-card`/`.auth-btn-primary` CSS
-classes already defined in `resources/css/app.css` (not Codex's
+classes already defined in `resources/css/app.css` (not the
 generic `<x-ui.input>` kit, which is styled for a light theme; the
 auth pages are dark-themed by design via these bespoke classes).
 These replace what was previously hand-rolled 8+ times across the
@@ -306,7 +300,7 @@ checkbox's embedded links, never user input).
 rate limiter engaging after repeated failures, remember-me
 persistence, the unverified-email banner + resend, admin-portal
 redirect-instead-of-authenticate, and the full reset-password token
-flow. Full suite: 1505 passing.
+flow.
 
 ## Student Dashboard (Livewire)
 
@@ -369,4 +363,4 @@ deep-linked, falling back to the existing session-flash behavior).
 — 75 tests using `Livewire::test()`/`Livewire::actingAs()`, covering
 per-student data isolation, pagination, status filtering, the
 homework submit authorization + duplicate-submission guard, and
-empty states. Full suite: 1539 passing.
+empty states.

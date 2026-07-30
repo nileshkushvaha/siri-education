@@ -35,10 +35,12 @@ Records prune after 30 days via `MassPrunable`. Scheduled: `php artisan model:pr
 
 Tasks using `withoutOverlapping()` show a lock indicator when the mutex is held (`Cache::has($event->mutexName())`).
 
-## Scheduled tasks defined in `routes/console.php`
+## Scheduled tasks
 
-| Command | Schedule |
-|---|---|
-| `PublishScheduledContent` | Every minute, `withoutOverlapping()` |
-| `model:prune --model=SchedulerHistory` | Daily |
-| `activitylog:clean` | Weekly |
+All scheduled tasks are defined in `routes/console.php` — that file is the authoritative, current list (it currently schedules over 20 commands spanning content publishing, lesson lifecycle, instructor earnings/payout reconciliation, booking reservation cleanup, meeting sync, and record pruning). Don't duplicate that list here; it changes often enough to go stale immediately. To see it:
+
+```bash
+grep -n "->command(" routes/console.php
+```
+
+The Scheduler Monitor page (above) reflects whatever's currently registered there automatically — no separate config to keep in sync.

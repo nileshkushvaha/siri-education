@@ -2,9 +2,7 @@
 
 ## Executive Summary
 
-This is a small, focused fix for the one open risk flagged in the Phase 1 implementation audit: `Subject` (the admin-managed academic master introduced in the Academic Master Foundation phase) and `TeacherSubject.subject` (the pre-existing free-text field every booking flow reads) were two unreconciled mechanisms for the same real-world concept. **`Subject` is now the long-term source of truth.** `TeacherSubject` gained an optional, nullable `subject_id` link to it. Nothing else changed: the free-text `subject` column, every booking DTO, every booking query, and every existing test keep working exactly as before.
-
-This was deliberately **not** a rebuild. No table was dropped, no column was removed, no booking behavior changed. It is the smallest change that gives future code (starting with Instructor Onboarding) a structured `Subject` to select from, without breaking anything that depends on the string today.
+`Subject` (the admin-managed academic master — see `docs/archive/reports/academic-master-foundation.md`) and `TeacherSubject.subject` (the pre-existing free-text field every booking flow reads) were two unreconciled mechanisms for the same real-world concept. **`Subject` is the long-term source of truth.** `TeacherSubject` has an optional, nullable `subject_id` link to it. The free-text `subject` column, every booking DTO, every booking query, and every existing test keep working exactly as before — no table was dropped, no column was removed, no booking behavior changed. It gives instructor-onboarding-style code a structured `Subject` to select from, without breaking anything that depends on the string.
 
 ## What Was Reconciled and How
 
@@ -17,9 +15,9 @@ This was deliberately **not** a rebuild. No table was dropped, no column was rem
 
 ## Why This Approach (Not a Rebuild)
 
-- **`TeacherSubject` was not removed or replaced.** It has no Filament admin UI today (confirmed by inspection — no resource, no relation manager exists for it) and is populated only by tests/factories in this codebase currently. Even so, every booking DTO (`AssignmentCriteriaData`, `GuestBookingData`, `StudentBookingData`) and the assignment repository (`TeacherCandidateRepository`) read the plain string, and removing it would require rewriting all of them — explicitly out of scope for this task ("Do not build pricing/curriculum/booking changes in this phase").
+- **`TeacherSubject` was not removed or replaced.** It has no Filament admin UI (no resource, no relation manager exists for it) and is populated only by tests/factories in this codebase currently. Even so, every booking DTO (`AssignmentCriteriaData`, `GuestBookingData`, `StudentBookingData`) and the assignment repository (`TeacherCandidateRepository`) read the plain string, and removing it would require rewriting all of them — deliberately out of scope here.
 - **A new `InstructorSubject` pivot table was not created.** The existing `TeacherSubject` table already *is* the "what does this teacher teach" record; adding a nullable FK column to it is strictly less than creating a parallel table, and the task's own rules require a strong, approved reason before adding a new pivot — none existed.
-- **The booking-matching logic (`scopeForSubject`, `TeacherCandidateRepository`) was deliberately left untouched.** Booking criteria are still plain strings end to end. Making search/booking "Subject-aware" would mean deciding how a guest's free-text search term maps to a `Subject`, which is a real design question (fuzzy matching? category-level search? synonyms?) that belongs to a future phase, not this reconciliation.
+- **The booking-matching logic (`scopeForSubject`, `TeacherCandidateRepository`) was deliberately left untouched.** Booking criteria are still plain strings end to end. Making search/booking "Subject-aware" would mean deciding how a free-text search term maps to a `Subject`, which is a real design question (fuzzy matching? category-level search? synonyms?) that belongs to a separate, deliberate decision, not this reconciliation.
 
 ## Backfill Strategy
 
@@ -54,21 +52,19 @@ None of these were touched. Booking and search continue to match on the free-tex
 - **Rollback**: `down()` drops the FK and column — safe, since nothing outside this reconciliation reads `subject_id` yet.
 - **Production data note**: if a production environment has existing `teacher_subjects` rows whose free-text values don't exactly match any `Subject.name`, they will simply keep `subject_id = null` and continue working exactly as they do today — no data is lost, no booking flow breaks. The migration's log output lists exactly which free-text values didn't match, so an admin can decide whether to add matching `Subject` rows later.
 
-## Confirmation: Old Booking Flow Still Works
+## Booking Flow Compatibility
 
-Directly tested, not assumed:
 - A `TeacherSubject` with no `subject_id` (the old shape) is still returned as a valid booking candidate by `TeacherCandidateRepository::eligible()`/`isEligible()`.
-- The full existing Booking/Guest/Student booking test suites (129 tests across `tests/Feature/Booking`, `tests/Feature/Guest`, `tests/Feature/Student`) pass unchanged.
-- The full existing Instructor test suite (94 tests) passes unchanged.
+- Covered by `tests/Feature/Academic/SubjectTeacherSubjectReconciliationTest.php` plus the existing Booking/Guest/Student and Instructor test suites.
 
-## Phase 2 Direction
+## Direction for future instructor-facing UI
 
-**New instructor onboarding (Phase 2) must select `subject_id` from the `Subject` master, not free-text.** The `subject` column stays populated for backward-compatible display/matching (it can be derived from the selected `Subject`'s name at write time, the same way it already is for any linked row), but the master is the source of truth for anything new. This reconciliation deliberately does not build that onboarding UI — only the data model it will need.
+Any new instructor-onboarding-style UI that lets an instructor declare what they teach should select `subject_id` from the `Subject` master, not free-text. The `subject` column should stay populated for backward-compatible display/matching (derivable from the selected `Subject`'s name at write time), but the master should be the source of truth for anything new.
 
-## Files Changed
+## Key files
 
-- `database/migrations/2026_07_09_100000_add_subject_id_to_teacher_subjects_table.php` (new)
-- `app/Models/TeacherSubject.php` (added `subject_id` to `$fillable`, added `subjectMaster()` relation, docblock updated)
-- `app/Models/Subject.php` (added `teacherSubjects()` relation, docblock updated)
+- `database/migrations/2026_07_09_100000_add_subject_id_to_teacher_subjects_table.php`
+- `app/Models/TeacherSubject.php` (`subject_id` in `$fillable`, `subjectMaster()` relation)
+- `app/Models/Subject.php` (`teacherSubjects()` relation)
 - `app/Services/Instructor/InstructorService.php` (`subjectsFor()` prefers the relation; `cardRelations()` eager-loads it)
-- `tests/Feature/Academic/SubjectTeacherSubjectReconciliationTest.php` (new — 8 tests)
+- `tests/Feature/Academic/SubjectTeacherSubjectReconciliationTest.php`

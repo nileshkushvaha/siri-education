@@ -11,8 +11,7 @@ namespace App\Country\Enums;
  * enforcement boundary (§21.38 "Country-level feature flag must
  * reference a valid feature" — arbitrary JSON keys are never
  * accepted). A candidate is deliberately absent from this list when no
- * such boundary exists yet — see docs/country-feature-flags.md for the
- * per-case mapping.
+ * such boundary exists yet.
  */
 enum CountryFeature: string
 {

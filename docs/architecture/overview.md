@@ -82,7 +82,7 @@ app/
 │   ├── Permission/     — PermissionGroupingService
 │   ├── Profile/        — ProfileService, SessionService
 │   └── Security/       — SecuritySettingsService, PasswordRuleBuilder, AdminSessionService
-├── Settings/           — 13 Spatie Settings classes (see Settings-Architecture.md)
+├── Settings/           — Spatie Settings classes (see ../settings.md)
 └── Support/            — PermissionLabelFormatter, UserAgentParser
 ```
 

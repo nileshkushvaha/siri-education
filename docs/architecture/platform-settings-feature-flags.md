@@ -4,9 +4,9 @@
 
 The platform uses Spatie Laravel Settings as the only settings system — one settings table (`settings`), one migration path (`database/settings/`), one `app(XSettings::class)` resolution pattern. No parallel key-value store or second settings mechanism exists or should be introduced.
 
-This document is the corrected, current-state record of the 12 required Phase 1 settings groups. It supersedes an earlier pass that, while well-intentioned, introduced real duplication under the *appearance* of new functionality: two names for the same booking-window fields, a `LocalizationSettings` class re-declaring fields `GeneralSettings` already owned, and three features with two competing on/off switches each. Every one of those has been corrected here — see "Corrections Applied" below for the specific bugs this fixed.
+This document is the current-state record of the platform's settings groups. Historically, two duplication bugs existed and were corrected: two names for the same booking-window fields, and a couple of features that briefly had two competing on/off switches each — see "Design Clarifications" below for what to watch for so these don't reappear.
 
-Business logic is still not wired to every setting in this phase (wallet ledger, referral payouts, meeting provider integrations, full feature-flag enforcement). These are typed, validated, admin-editable defaults that later services will consume — not yet the services themselves.
+Business logic is not wired to every setting yet (full feature-flag enforcement across every route/nav/UI check, for example). These are typed, validated, admin-editable defaults that services consume — check the specific consuming service before assuming a setting is enforced everywhere its name implies.
 
 ## The 12 Required Groups
 
@@ -20,14 +20,14 @@ Business logic is still not wired to every setting in this phase (wallet ledger,
 | 6 | WalletSettings | Existing, `enabled` removed | `app/Settings/WalletSettings.php` (`wallet` group) |
 | 7 | MeetingSettings | Existing, unchanged | `app/Settings/MeetingSettings.php` (`meeting` group) |
 | 8 | InstructorSettings | Existing, unchanged | `app/Settings/InstructorSettings.php` (`instructor` group) |
-| 9 | ReferralSettings | Existing, `enabled` removed | `app/Settings/ReferralSettings.php` (`referral` group) |
+| 9 | Referral configuration | Per-campaign, not a global settings class | `ReferralCampaign` model (reward type/value, eligibility, timing) — there is no `ReferralSettings` class; only the platform-wide on/off switch lives in `FeatureSettings::$referral_enabled` |
 | 10 | LocalizationSettings | Recreated, thin | `app/Settings/LocalizationSettings.php` (`localization` group) |
 | 11 | SecuritySettings | Existing split, kept split | `AuthenticationSettings`, `PasswordPolicySettings`, `LoginSecuritySettings`, `SessionSettings`, `RegistrationSettings`, `AccountProtectionSettings` |
 | 12 | FeatureSettings | Existing, restored as master switch | `app/Settings/FeatureSettings.php` (`features` group) |
 
-**Groups 4 and 11 are intentionally not single classes.** Payment and Security were each split into focused classes before this phase, each with its own Filament page, its own tests, and its own permission gates (`security.authentication.*`, `security.password_policy.*`, `security.login_security.*`, `security.session.*`, `security.registration.*`, `security.account_protection.*`). Collapsing six well-tested, independently-authorized classes into one monolithic `SecuritySettings` (or four into one `PaymentSettings`) would be a regression, not standardization — so it wasn't done. If a future need genuinely requires a single facade over these, that's a deliberate follow-up decision, not a side effect of this phase.
+**Groups 4 and 11 are intentionally not single classes.** Payment and Security are each split into focused classes, each with its own Filament page, its own tests, and its own permission gates (`security.authentication.*`, `security.password_policy.*`, `security.login_security.*`, `security.session.*`, `security.registration.*`, `security.account_protection.*`). Collapsing six well-tested, independently-authorized classes into one monolithic `SecuritySettings` (or four into one `PaymentSettings`) would be a regression, not standardization — don't do it without a deliberate, separately-approved decision.
 
-## Corrections Applied
+## Design Clarifications
 
 ### 1. BookingSettings — one pair of fields, not two
 
@@ -54,10 +54,10 @@ Managed in the **Localization** section of `PlatformFoundationSettingsPage`; `Ge
 
 ### 3. FeatureSettings — one on/off switch per feature, always in the same place
 
-`WalletSettings` and `ReferralSettings` each briefly had their own `enabled` field *in addition to* `FeatureSettings::$wallet_enabled` / `$referral_enabled` — two switches that could disagree. Resolved by making **`FeatureSettings` the single master switch** for every feature module; domain classes hold configuration only, never their own enabled flag:
+`FeatureSettings` is the single master switch for every feature module; domain classes hold configuration only, never their own enabled flag:
 
 - `WalletSettings` — no `enabled` field. Use `FeatureSettings::$wallet_enabled`.
-- `ReferralSettings` — no `enabled` field. Use `FeatureSettings::$referral_enabled`.
+- Referral has no global settings class at all (see the table above) — per-campaign fields live on `ReferralCampaign`; the platform-wide switch is `FeatureSettings::$referral_enabled`.
 - `MeetingSettings::$recording_enabled` — **kept alongside** `FeatureSettings::$recording_enabled`. This is the one deliberate exception: the two represent different layers, not a duplicate. `FeatureSettings::$recording_enabled` gates whether the Recording capability exists on the platform at all; `MeetingSettings::$recording_enabled` is the default recording behavior for a session once that capability is on (paired with `recording_retention_days`, which only means anything if recording is happening). Same name, different question — documented in both classes' docblocks so it isn't "fixed" back into a duplicate by mistake.
 
 Full `FeatureSettings` field set: `demo_lessons_enabled`, `wallet_enabled`, `referral_enabled`, `waitlist_enabled`, `homework_enabled`, `reviews_enabled`, `recording_enabled`.
@@ -81,9 +81,9 @@ Access is gated by the existing `HasSettingsAccess` trait (super_admin, or any `
 
 (granted to the `manager` role; super_admin always passes via `Gate::before()`).
 
-`GeneralSettings`, `SeoSettings`, `MailSettings`, the four Payment classes, and the six Security classes each keep their own existing, already-authorized Filament pages — this phase didn't touch that structure except to add the 3 Localization fields' *removal* from `GeneralSettingsPage` (moved to Platform Foundation's Localization section).
+`GeneralSettings`, `SeoSettings`, `MailSettings`, the four Payment classes, and the six Security classes each keep their own existing, already-authorized Filament pages — that structure is unchanged aside from the 3 Localization fields having moved from `GeneralSettingsPage` to Platform Foundation's Localization section.
 
-## Boundaries — Not Implemented in This Phase
+## Boundaries — Not Yet Implemented
 
 - Wallet ledger or balance calculations.
 - Meeting provider API integrations.
@@ -93,11 +93,11 @@ Access is gated by the existing `HasSettingsAccess` trait (super_admin, or any `
 
 Future business logic must consume these settings through services/actions — never directly from Livewire components, Blade views, or Filament resources.
 
-## Settings Migrations (chronological)
+## Settings Migrations
 
 | File | Purpose |
 |---|---|
-| `2026_07_05_140000_add_platform_foundation_settings.php` | Original Phase 1 pass — added all 7 new-at-the-time groups. Left in place; never edit an applied migration. |
+| `2026_07_05_140000_add_platform_foundation_settings.php` | Original pass — added the settings groups. Left in place; never edit an applied migration. |
 | `2026_07_05_150000_deduplicate_platform_foundation_settings.php` | First correction pass — removed the dead Booking duplicate fields and the `Wallet/Referral::$enabled` fields (later partially reversed by the next file once the master-switch design was clarified). |
 | `2026_07_05_160000_rename_booking_window_fields_to_spec_names.php` | Renames `min_lead_hours`/`max_advance_days` to the spec names (with unit conversion), rather than re-adding them as a duplicate. |
 | `2026_07_05_160100_move_country_fields_to_localization_settings.php` | Moves `default_country`/`country_detection_enabled`/`allow_user_locale_switching` from `general.*` to `localization.*`. |

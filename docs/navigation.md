@@ -14,7 +14,7 @@ The navigation system is a standalone bounded context in `app/Navigation/`. It i
 | `NavigationCacheManager` | Invalidates/warms cache (tagged: `navigation`) |
 | `NavigationItemService` | Resolves `is_active` state for current URL |
 | `PermissionEvaluator` | Visibility checks (roles, permissions, publish windows) |
-| `UrlResolver` + `Drivers/` | 10 link type drivers |
+| `UrlResolver` + `Drivers/` | link type drivers, registered in `NavigationServiceProvider` |
 
 ## Models
 
@@ -22,11 +22,11 @@ The navigation system is a standalone bounded context in `app/Navigation/`. It i
 
 `App\Models\NavigationItem` — uses **Kalnoy NestedSet** (`_lft`, `_rgt`, `parent_id`, `depth`). Never use raw adjacency list queries.
 
-## 10 link types (`NavigationItem::$link_type`)
+## Link types (`App\Enums\Navigation\NavigationLinkType`)
 
-Page, Post, Route (named route), External URL, Anchor, Email, Phone, File, Custom, Separator.
+11 cases: Page, Post, Category, Tag, Route (named route), Url, External, Email, Phone, Anchor, Custom.
 
-Each type has a driver in `app/Navigation/Drivers/`.
+10 of these have a registered driver in `app/Navigation/Drivers/`, wired in `NavigationServiceProvider`. `Custom` has no driver registered — `LinkTypeRegistry::resolve()` throws if a type has no driver, so confirm how `Custom` items are actually resolved (likely a direct stored URL, not driver-resolved) before adding a new link type that assumes every case goes through a driver.
 
 ## Item visibility
 

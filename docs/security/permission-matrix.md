@@ -99,22 +99,17 @@ Grant via the Role's own Permission Assignment matrix (module: "Role Management"
 
 ## Shield-Generated Permissions
 
-Filament Shield generates permissions in the format `{action}_{resource}` for each Filament Resource. These are stored in the `permissions` table and assignable to roles.
+Filament Shield generates one permission per Filament Resource ability, in the format **`{Ability}:{ModelName}`** — e.g. `ViewAny:Booking`, `Create:Wallet`, `Update:Role`. The separator is `:` (configured in `config/filament-shield.php`'s `separator` key — the package default is `_`, this project overrides it). These are stored in the `permissions` table and assignable to roles.
 
-Resources with Shield permissions:
-- `ActivityLog` — view_activity_log, view_any_activity_log
-- `Countries` — view, view_any, create, update, delete, delete_any
-- `Navigation` — (menus and items)
-- `PageBlocks` — view, view_any, create, update, delete
-- `Pages` — view, view_any, create, update, delete, replicate
-- `Permissions` — view, view_any, create, update, delete
-- `PostCategories` — view, view_any, create, update, delete
-- `Posts` — view, view_any, create, update, delete, replicate
-- `Roles` — view, view_any, create, update, delete
-- `Tags` — view, view_any, create, update, delete
-- `Users` — view, view_any, create, update, delete, restore
+There are 55+ Filament Resources today, each contributing several ability permissions — too many to keep as a manually maintained list here without it drifting immediately. To see the full current list:
 
-After adding a new Resource, regenerate permissions:
+```bash
+php artisan permission:show
+```
+
+or query the `permissions` table directly. Policies read these with `$user->hasPermissionTo('Ability:Model')` (see `docs/architecture/code-standards.md`'s Policy Pattern for the standard `hasPermission()` wrapper every policy uses).
+
+After adding a new Resource, regenerate its permissions:
 
 ```bash
 php artisan shield:generate --resource=MyNewResource
@@ -148,7 +143,7 @@ For Filament Resources, the standard Filament policy methods (`canViewAny`, `can
 - Users with `update_post` permission can update/delete Post blocks
 - `viewAny` and `create` require either `update_page` OR `update_post`
 
-The `ContentBlockPolicyTest` covers 7 scenarios including cross-ownership denial.
+`tests/Feature/ContentBlockPolicyTest.php` covers this, including cross-ownership denial.
 
 ---
 

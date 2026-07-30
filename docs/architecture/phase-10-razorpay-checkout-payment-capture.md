@@ -792,7 +792,7 @@ New gates in `resolve()`, checked before the fake/real-provider split:
 
 `Country::payment_routing` reuse: no migration was needed (`payment_routing`
 already existed, nullable JSON, documented in
-`docs/architecture/localization-foundation.md` as explicitly
+`docs/archive/reports/localization-foundation.md` (historical) as explicitly
 unimplemented routing logic — "This phase deliberately does not
 implement: ... Payment gateway selection logic"). `CountryForm` gained
 a "Payment Routing" section (`payment_routing.provider` select,
@@ -1620,7 +1620,7 @@ event → `CreateMeetingOnBookingConfirmed` listener →
 `BookingPaymentWebhookController`, or either Livewire component).
 Frontend success alone (`verifyCheckout()`'s signature check, before
 `markPaid()` is ever called) still cannot create a meeting — see
-`docs/architecture/phase-11-meeting-creation-foundation.md`. Option
+`docs/architecture/meetings.md`. Option
 B's late-terminal-payment path (`handleLateTerminalPayment()`) never
 calls `confirm()` and therefore never dispatches `BookingConfirmed` —
 it still cannot create a meeting either.
@@ -1630,7 +1630,7 @@ dedicated `booking_meetings` table (not `bookings.meeting_status`,
 which was dropped) with two working providers, `ManualMeetingProvider`
 and `GoogleCalendarMeetProvider` — no fake provider was built. The
 trigger point and every guarantee above are unchanged; see
-`docs/architecture/phase-11-meeting-creation-foundation.md` for the
+`docs/architecture/meetings.md` for the
 current design.
 
 ### Tests added in Phase 10.2E

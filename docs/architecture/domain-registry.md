@@ -36,6 +36,18 @@ When adding a feature, find the matching domain here first. If a domain already 
 | Reuse notes | Add profile fields to `user_profiles` only if missing. Use roles for student/instructor distinction. |
 | Do not duplicate | Do not create `students`, `instructors`, or `tutors` identity tables in Phase 1. |
 
+### Three separate status enums
+
+Identity has three independent status concepts — do not conflate them:
+
+| Enum | Column | Values | Meaning |
+|---|---|---|---|
+| `User::$status` (constants) | `users.status` | `active`, `pending_verification`, `inactive`, `blocked`, `suspended` | Account-level access status. |
+| `StudentStatus` | `user_profiles.student_status` (nullable) | `registered`, `active`, `suspended`, `archived` | Student-side lifecycle. Null = never held the `student` role. |
+| `InstructorStatus` | `user_profiles.instructor_status` (nullable) | `draft`, `submitted`, `under_review`, `documents_pending`, `interview_required`, `approved`, `active`, `vacation`, `suspended`, `archived`, `rejected` | Instructor application/professional lifecycle. Null = never applied to teach. |
+
+`InstructorStatus::bookable()` returns `[Approved, Active]` — this is the single source of truth for booking/public-listing/public-profile eligibility. Never hardcode this list elsewhere.
+
 ## CMS Pages and Blocks
 
 | Category | Existing assets |
@@ -216,6 +228,20 @@ When adding a feature, find the matching domain here first. If a domain already 
 | Reuse notes | Use events/listeners and services for all notification/audit work. |
 | Do not duplicate | Do not call `activity()` or `Mail::send()` directly in new business code. |
 
+## Admin Panel Navigation Groups
+
+Filament resources and pages are organized into navigation groups via `$navigationGroup`. The current groups (verified against `app/Filament/**` — do not copy this list without re-checking, it grows as new domains ship):
+
+`Platform` · `Users & Access` · `Academic` · `Scheduling` · `Booking` · `Finance` · `Earnings` · `Wallet` · `Instructor` · `Referral` · `Students` · `Support` · `Compliance` · `Content` · `Communication` · `Reports` · `System`
+
+To see the current, authoritative resource-to-group assignment, run:
+
+```bash
+grep -rhoE "navigationGroup\s*=\s*'[^']+'" app/Filament/ | sort -u
+```
+
+When adding a new resource, pick the existing group that matches its domain rather than inventing a new one. Add a group only when a resource genuinely doesn't fit any existing group's purpose.
+
 ## Reference Data and Academic Masters
 
 | Category | Existing assets |
@@ -228,6 +254,6 @@ When adding a feature, find the matching domain here first. If a domain already 
 | Filament | `Countries`, `States`, `Currencies`, `Languages`, `Academic\{AcademicCategoryResource,SubjectResource,AcademicLevelResource,SkillLevelResource}` (nav group `Academic`). |
 | Policies | `CountryPolicy`, `StatePolicy`, `CurrencyPolicy`, `LanguagePolicy`, `AcademicCategoryPolicy`, `SubjectPolicy`, `AcademicLevelPolicy`, `SkillLevelPolicy`. |
 | Tests | country/state/currency/language coverage via resource/profile tests; `tests/Feature/Academic/*` and `tests/Feature/Filament/AcademicResourceCrudTest.php` for academic masters. |
-| Reuse notes | `AcademicLevel` is deliberately NOT named `EducationLevel` — that enum already means an instructor's own credential type (see `app/Enums/EducationLevel.php`, used by `UserEducation`), a different concept. `Subject` (master data) is separate from `TeacherSubject` (the free-text field booking flows actually read) — see `docs/architecture/academic-master-foundation.md` for why they were not merged in Phase 1. |
+| Reuse notes | `AcademicLevel` is deliberately NOT named `EducationLevel` — that enum already means an instructor's own credential type (see `app/Enums/EducationLevel.php`, used by `UserEducation`), a different concept. `Subject` (master data) is separate from `TeacherSubject` (the free-text field booking flows actually read) — see `docs/archive/reports/academic-master-foundation.md` (historical) and `docs/architecture/subject-teacher-subject-reconciliation.md` (current) for why they were not merged and how they now relate. |
 | Do not duplicate | Do not create new country/state/currency/language tables without a clear gap. Do not create a second subject/category/level/skill-level table — enhance `app/Models/Academic*`/`Subject`/`SkillLevel` instead. |
 

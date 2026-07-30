@@ -2,17 +2,16 @@
 
 ## Purpose
 
-This document defines hard rules to prevent parallel concepts, duplicate tables, duplicate services, and duplicate UI systems in Phase 1.
+This document defines hard rules to prevent parallel concepts, duplicate tables, duplicate services, and duplicate UI systems.
 
 Before adding any model, migration, service, setting, policy, component, or resource, check:
 
-1. `docs/architecture/phase-1-foundation-inventory.md`
-2. `docs/architecture/domain-registry.md`
-3. Existing migrations
-4. Existing models
-5. Existing services/contracts/repositories
-6. Existing settings classes
-7. Existing Filament resources/pages
+1. `docs/architecture/domain-registry.md`
+2. Existing migrations
+3. Existing models
+4. Existing services/contracts/repositories
+5. Existing settings classes
+6. Existing Filament resources/pages
 8. Existing Livewire and Blade components
 
 If something already exists, enhance it.
@@ -260,13 +259,13 @@ Rules:
 
 ## Academic Masters
 
-Phase 1 added admin-managed academic master tables — `AcademicCategory`, `Subject`, `AcademicLevel`, `SkillLevel` — under `App\Enums\EducationLevel`'s pre-existing constraint (that enum means an instructor's own credential type, not a grade band, so the new grade-band model was named `AcademicLevel` instead). See `docs/architecture/academic-master-foundation.md` for the full design and the naming/reuse decisions behind it.
+Admin-managed academic master tables: `AcademicCategory`, `Subject`, `AcademicLevel`, `SkillLevel` — named to avoid colliding with `App\Enums\EducationLevel`'s existing meaning (an instructor's own credential type, not a grade band; the grade-band model was named `AcademicLevel` instead). See `docs/archive/reports/academic-master-foundation.md` (historical — design rationale and naming decisions only, not current instruction) for the full background.
 
 Existing related concepts (unchanged, not duplicated):
 
 - `EducationLevel` enum — instructor's own credential type, unrelated to `AcademicLevel`
 - `EmploymentType` enum
-- `TeacherSubject` — still the free-text subject field actually used by booking flows; `Subject` (master data) is not yet wired into it
+- `TeacherSubject` — has a nullable `subject_id` FK to `Subject` (added by the reconciliation described in `docs/architecture/subject-teacher-subject-reconciliation.md`) alongside its original free-text `subject` field; `InstructorService` prefers the `subject_id` relation when set, falling back to free text
 - `BookingType`
 - `FaqCategory`
 - `PostCategory`
@@ -275,17 +274,16 @@ Existing related concepts (unchanged, not duplicated):
 
 Rules:
 
-- Do not create a second subject/category/level/skill-level table — enhance the Phase 1 models instead.
-- `TeacherSubject.subject` stays free-text until a later phase deliberately migrates booking flows onto `Subject`; do not start that migration as a side effect of unrelated work.
+- Do not create a second subject/category/level/skill-level table — enhance the existing models instead.
 - Grades currently appear in booking flows via `TeacherSubject::grade_from/grade_to`; `AcademicLevel::min_grade/max_grade` is an admin-manageable label over the same numbers, not a replacement.
 - Course/catalog concepts should first check CMS blocks and booking types before adding new tables.
 
 ## Naming Consistency Rules
 
-- Public UI may say “Instructor”.
+- Public UI may say "Instructor".
 - Existing DB/domain internals may still say `Teacher*`.
-- Do not mix new `Tutor*` names into Phase 1 unless a migration plan renames the existing teacher concepts.
-- Prefer “Instructor” in public-facing routes/views/docs.
+- Do not mix new `Tutor*` names in without a migration plan that renames the existing teacher concepts.
+- Prefer "Instructor" in public-facing routes/views/docs.
 - Prefer existing class/table names in code until a formal rename is planned.
 
 ## Migration Approval Checklist

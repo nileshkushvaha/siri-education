@@ -1,4 +1,4 @@
-# Instructor-to-Student Lesson Feedback (Phase 17Q)
+# Instructor-to-Student Lesson Feedback
 
 Private, lesson-linked feedback an instructor records about a
 student's participation after a lesson completes — a distinct,
@@ -50,7 +50,7 @@ the lock:
 2. The instructor's account is active and holds the `instructor` role — the same basic account-standing check every other instructor-facing controller in this codebase already performs (`hasRole('instructor')`); this phase does **not** additionally gate on `instructor_status` (that is an Earnings-domain payout-eligibility concept — see `InstructorPayoutEligibility` — not a general teaching-authorization rule, and inventing one here was avoided).
 3. `$lesson->outcome === LessonOutcome::Completed` and `hasFinalizedOutcome()` — a single check that structurally rejects Pending, StudentNoShow, InstructorNoShow, BothAbsent, TechnicalIssue, and Cancelled lessons all at once.
 4. The booking exists and is not `Cancelled` — this codebase has no distinct "invalidated" booking status, so "not cancelled or invalidated" is implemented as `booking->status !== Cancelled`, a structural defense-in-depth check independent of the outcome check above (an outcome can say Completed while a booking is separately cancelled after the fact).
-5. `$lesson->student_id === $booking->attendee_id` and `$lesson->instructor_id === $booking->host_id` — the same "participants match their booking" structural guard `OpenLessonReviewEligibilityAction` (Phase 17H) already established.
+5. `$lesson->student_id === $booking->student_id` and `$lesson->instructor_id === $booking->instructor_id` — the same "participants match their booking" structural guard `OpenLessonReviewEligibilityAction` already established.
 
 Demo and paid completed lessons both qualify — no existing SRS-backed
 policy excludes either.
@@ -91,9 +91,8 @@ there is no edit or delete control anywhere in the UI.
 
 ## Observations & sanitization
 
-Every observation field reuses `ReviewContentSanitizer::sanitize()`
-(Phase 17I) and `ReviewContentFlag` unchanged — no second sanitizer was
-built. HTML/scripts, emails, phone numbers, external links/meeting
+Every observation field reuses the existing `ReviewContentSanitizer::sanitize()`
+and `ReviewContentFlag` unchanged — no second sanitizer was built. HTML/scripts, emails, phone numbers, external links/meeting
 domains, social handles, payment-solicitation phrases, and promotional
 spam are stripped or redacted per field; only the flag *categories*
 that tripped are stored in `sanitization_metadata` (keyed per field),
@@ -257,14 +256,5 @@ page; no change to the rating aggregate, quality alerts, review
 eligibility, lesson outcome, booking status, or financial records
 (earnings/settlement); no notification sent; no Learning Plan record
 touched; an outcome override afterward preserves the original
-`outcome_snapshot` and the feedback text unchanged; and a light
-Phase 17H–17P regression check.
-
-## Verification results
-
-- `php artisan migrate` — ran cleanly against the dev database (only this phase's migration was pending).
-- `php artisan test --env=testing --filter=InstructorStudentFeedbackTest` — 36/36 passed, 53 assertions.
-- `php artisan test --env=testing` (full suite) — see final report for the exact count.
-- `./vendor/bin/pint --test` — passed (after one auto-fix to import ordering in the new test file).
-- `composer validate` — see final report.
-- `npm run build` — see final report.
+`outcome_snapshot` and the feedback text unchanged; and a regression
+check against the surrounding Reviews/Lesson-lifecycle domains.

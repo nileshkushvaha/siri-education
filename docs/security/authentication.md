@@ -24,7 +24,7 @@ POST /login → LoginController → LoginService
 
 ## Account states
 
-`User::$status` values: `active`, `inactive`, `pending`, `blocked`
+`User::$status` values: `active`, `pending_verification`, `inactive`, `blocked`, `suspended`
 
 A user is locked (too many failed attempts) via `User::$locked_until`. This is separate from `$status`.
 

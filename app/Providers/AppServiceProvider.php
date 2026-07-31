@@ -7,6 +7,7 @@ use App\Contracts\PhoneOtpSender;
 use App\Contracts\PhoneVerificationServiceInterface;
 use App\Contracts\StudentFinancialVerificationGate;
 use App\Models\Activity;
+use App\Models\ContactInquiry;
 use App\Models\EmailLog;
 use App\Models\Faq;
 use App\Models\FaqCategory;
@@ -14,6 +15,7 @@ use App\Models\LearningPlanAssessment;
 use App\Models\LearningPlanMilestone;
 use App\Models\LearningPlanReview;
 use App\Models\NavigationMenu;
+use App\Models\NewsletterSubscriber;
 use App\Models\NotificationTemplate;
 use App\Models\Page;
 use App\Models\Post;
@@ -40,6 +42,7 @@ use App\Observers\UserObserver;
 use App\Observers\UserProfileObserver;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\CacheManagerPolicy;
+use App\Policies\ContactInquiryPolicy;
 use App\Policies\EmailLogPolicy;
 use App\Policies\FaqCategoryPolicy;
 use App\Policies\FaqPolicy;
@@ -49,6 +52,7 @@ use App\Policies\LearningPlanAssessmentPolicy;
 use App\Policies\LearningPlanMilestonePolicy;
 use App\Policies\LearningPlanReviewPolicy;
 use App\Policies\NavigationMenuPolicy;
+use App\Policies\NewsletterSubscriberPolicy;
 use App\Policies\NotificationTemplatePolicy;
 use App\Policies\PermissionPolicy;
 use App\Policies\ProfilePolicy;
@@ -66,6 +70,7 @@ use App\Services\Instructor\InstructorEligibilityService;
 use App\Services\Phone\PhoneVerificationService;
 use App\Services\Phone\UnavailablePhoneOtpSender;
 use App\Services\Student\DefaultStudentFinancialVerificationGate;
+use App\Settings\GeneralSettings;
 use App\Settings\LoginSecuritySettings;
 use App\Wallet\Contracts\WalletRechargeServiceInterface;
 use App\Wallet\Services\WalletRechargeService;
@@ -78,6 +83,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pulse\Facades\Pulse;
 use Laravel\Pulse\Pulse as PulseManager;
@@ -106,6 +112,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerRateLimiters();
         $this->guardAgainstDestructiveDatabaseCommands();
         $this->configurePulse();
+        $this->applySettingsDrivenAppName();
     }
 
     /**
@@ -136,6 +143,39 @@ class AppServiceProvider extends ServiceProvider
         // already-redacting exception logger instead of being silently
         // discarded, so an operator can still see it happened.
         Pulse::handleExceptionsUsing(fn (Throwable $e) => report($e));
+    }
+
+    /**
+     * GeneralSettings::$app_name (Admin → Settings → General → Application
+     * Information) is the source of truth for the app's display name
+     * everywhere it's shown — page titles, email subjects/branding, the
+     * admin panel brand — with config('app.name') (APP_NAME in .env) kept
+     * only as the fallback when no admin value is set. Overriding the
+     * config value here, once, means every existing config('app.name')
+     * call site across the app picks it up automatically.
+     *
+     * Runs on every boot (web requests, queue workers, artisan commands)
+     * so queued notification emails render with the current name too —
+     * wrapped defensively since boot() also runs before the `settings`
+     * table exists (a fresh install's first migrate) or when the DB is
+     * unreachable (a build step); either case just leaves config/app.php's
+     * env-derived value in place.
+     */
+    private function applySettingsDrivenAppName(): void
+    {
+        try {
+            if (! Schema::hasTable('settings')) {
+                return;
+            }
+
+            $appName = app(GeneralSettings::class)->app_name ?? null;
+
+            if (filled($appName)) {
+                config(['app.name' => $appName]);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -188,6 +228,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(LearningPlanAssessment::class, LearningPlanAssessmentPolicy::class);
         Gate::policy(LearningPlanMilestone::class, LearningPlanMilestonePolicy::class);
         Gate::policy(LearningPlanReview::class, LearningPlanReviewPolicy::class);
+        Gate::policy(ContactInquiry::class, ContactInquiryPolicy::class);
+        Gate::policy(NewsletterSubscriber::class, NewsletterSubscriberPolicy::class);
 
         Gate::define('cache_manager.view', [CacheManagerPolicy::class, 'viewPage']);
         Gate::define('cache_manager.clear', [CacheManagerPolicy::class, 'clearApplicationCache']);
@@ -328,7 +370,7 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip());
         });
 
-        // Public forms (Callback / Feedback / Support / General Inquiry).
+        // Shared public-form-submission limiter (e.g. Newsletter subscribe).
         // Livewire actions never hit route-level throttle middleware — this
         // limiter is applied manually via ThrottlesLivewireRequests.
         RateLimiter::for('forms', function (Request $request) {

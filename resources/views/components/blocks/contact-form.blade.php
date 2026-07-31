@@ -1,10 +1,18 @@
 {{-- Contact Form Block --}}
 <section class="relative py-20 overflow-hidden" data-contact-form-block>
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-10 items-start">
+    @php
+        $contactSettings = app(\App\Settings\GeneralSettings::class);
+        $contactPhone = $contactSettings->support_phone ?? null;
+        $contactEmail = $contactSettings->support_email ?? null;
+        $contactAddress = $contactSettings->address ?? null;
+    @endphp
+    <div class="contact-form-shell max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-10 items-stretch">
 
             {{-- ── Left info panel ──────────────────────────────────────── --}}
-            <div class="lg:col-span-2 space-y-8">
+            <div class="contact-form-info lg:col-span-2 space-y-8">
+                <span class="contact-form-orb contact-form-orb-one" aria-hidden="true"></span>
+                <span class="contact-form-orb contact-form-orb-two" aria-hidden="true"></span>
 
                 {{-- Heading --}}
                 <div>
@@ -15,10 +23,35 @@
                         <p class="mt-3 text-base text-slate-500 leading-relaxed">{{ $description }}</p>
                     @endif
                 </div>
+
+                <div class="contact-info-grid">
+                    @if($contactPhone)
+                        <a href="tel:{{ preg_replace('/[^+0-9]/', '', $contactPhone) }}" class="contact-info-item">
+                            <span class="contact-info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.362-.271.527-.734.417-1.173L6.963 3.102A1.125 1.125 0 0 0 5.872 2.25H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/></svg></span>
+                            <span><small>Call our team</small><strong>{{ $contactPhone }}</strong></span>
+                        </a>
+                    @endif
+                    @if($contactEmail)
+                        <a href="mailto:{{ $contactEmail }}" class="contact-info-item">
+                            <span class="contact-info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0-8.659 5.771a2.25 2.25 0 0 1-2.182 0L2.25 6.75"/></svg></span>
+                            <span><small>Email support</small><strong>{{ $contactEmail }}</strong></span>
+                        </a>
+                    @endif
+                    <a href="{{ route('faqs.index') }}" class="contact-info-item">
+                        <span class="contact-info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.625 9.75a3.375 3.375 0 1 1 5.83 2.318c-.86.895-2.455 1.43-2.455 2.807m0 3.375h.008v.008H12v-.008Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></span>
+                        <span><small>Quick answers</small><strong>Explore our FAQs</strong></span>
+                    </a>
+                    @if($contactAddress)
+                        <div class="contact-info-item">
+                            <span class="contact-info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21s7.5-5.25 7.5-12a7.5 7.5 0 1 0-15 0C4.5 15.75 12 21 12 21Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.25 9a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg></span>
+                            <span><small>Our location</small><strong>{{ $contactAddress }}</strong></span>
+                        </div>
+                    @endif
+                </div>
             </div>
 
             {{-- ── Right form panel ─────────────────────────────────────── --}}
-            <div class="lg:col-span-3">
+            <div class="contact-form-panel lg:col-span-3">
                 <div class="relative rounded-3xl bg-white/40 backdrop-blur-xl border border-white/60 shadow-2xl shadow-indigo-200/30 p-8 sm:p-10">
 
                     {{-- Subtle inner highlight --}}

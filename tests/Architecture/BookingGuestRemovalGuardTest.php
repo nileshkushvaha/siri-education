@@ -25,7 +25,7 @@ use Tests\TestCase;
  * middleware, Blade `@guest`, the public-visitor persona, and the
  * generic Activity Log actor-type system (Activity::$guest_name/
  * guest_email/guest_phone, AuditTrailService::logGuest(), used by
- * ContactFormController/PublicFormService/NewsletterSubscriptionService
+ * ContactFormController/NewsletterSubscriptionService
  * — none of them booking-related) — is deliberately untouched by every
  * check below.
  */

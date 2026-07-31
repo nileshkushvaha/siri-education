@@ -46,7 +46,10 @@ class ContactFormTest extends TestCase
             'email' => 'jane@example.com',
         ])->assertRedirect();
 
-        $this->assertDatabaseHas('activity_log', ['log_name' => 'contact']);
+        $this->assertDatabaseHas('contact_inquiries', [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+        ]);
     }
 
     public function test_honeypot_still_rejects_bots(): void

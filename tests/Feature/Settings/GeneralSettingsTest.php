@@ -32,6 +32,7 @@ class GeneralSettingsTest extends TestCase
         $this->assertSame('en', $settings->default_language);
         $this->assertSame('INR', $settings->default_currency);
         $this->assertFalse($settings->maintenance_mode);
+        $this->assertFalse($settings->header_top_bar_enabled);
     }
 
     public function test_admin_can_update_general_settings(): void
@@ -50,6 +51,8 @@ class GeneralSettingsTest extends TestCase
             ->set('data.time_format', 'h:i A')
             ->set('data.default_currency', 'USD')
             ->set('data.decimal_precision', 2)
+            ->set('data.header_top_bar_enabled', true)
+            ->set('data.instagram_url', 'https://instagram.com/sphere')
             ->set('data.homepage_display', 'template')
             ->call('save')
             ->assertNotified('General settings saved');
@@ -59,6 +62,8 @@ class GeneralSettingsTest extends TestCase
         $this->assertSame('America/New_York', $settings->default_timezone);
         $this->assertSame('fr', $settings->default_language);
         $this->assertSame('USD', $settings->default_currency);
+        $this->assertTrue($settings->header_top_bar_enabled);
+        $this->assertSame('https://instagram.com/sphere', $settings->instagram_url);
     }
 
     public function test_updating_general_settings_logs_an_audit_entry_with_the_diff(): void

@@ -129,7 +129,7 @@
                     <p class="text-xs font-black uppercase tracking-[0.14em] text-cyan-100">Need individual help?</p>
                     <h3 class="mt-2 text-xl font-black">Your question deserves a clear answer.</h3>
                     <p class="mt-3 text-sm leading-6 text-indigo-100">Send the support team the relevant account or booking context. Avoid sharing passwords or sensitive payment credentials.</p>
-                    <a href="{{ route('forms.support') }}" class="mt-5 inline-flex min-h-11 items-center rounded-xl bg-white px-5 text-sm font-black text-indigo-700 transition hover:-translate-y-0.5 hover:bg-cyan-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30">Contact support →</a>
+                    <a href="{{ route('page.show', 'contact-us') }}" class="mt-5 inline-flex min-h-11 items-center rounded-xl bg-white px-5 text-sm font-black text-indigo-700 transition hover:-translate-y-0.5 hover:bg-cyan-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30">Contact support →</a>
                 </div>
             </aside>
 
@@ -186,21 +186,6 @@
         </div>
     </section>
 
-    <section class="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-700 py-14 text-white sm:py-16">
-        <div class="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-amber-300/20 blur-3xl" aria-hidden="true"></div>
-        <div class="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8" data-faq-reveal>
-            <div class="max-w-3xl">
-                <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Ready to move forward?</p>
-                <h2 class="mt-2 text-3xl font-black tracking-tight">Turn helpful answers into your next learning step</h2>
-                <p class="mt-3 leading-7 text-indigo-100">Explore approved instructor profiles or create an account to organise bookings, payments, homework, and progress in one place.</p>
-            </div>
-            <div class="flex shrink-0 flex-wrap gap-3">
-                <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 items-center rounded-xl bg-white px-6 text-sm font-black text-indigo-700 shadow-xl transition hover:-translate-y-0.5 hover:bg-cyan-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30">Explore instructors</a>
-                <a href="{{ route('auth.register') }}" class="inline-flex min-h-12 items-center rounded-xl border border-white/25 bg-white/10 px-6 text-sm font-black text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/20">Create account →</a>
-            </div>
-        </div>
-    </section>
 </main>
 
 @push('scripts')

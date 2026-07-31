@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Content\Models\ContentBlock;
 use App\Enums\BlockType;
+use App\Models\ContactInquiry;
 use App\Notifications\Cms\ContactFormSubmissionNotification;
 use App\Rules\TurnstileToken;
-use App\Services\AuditTrailService;
 use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
 use Illuminate\Http\RedirectResponse;
@@ -86,6 +86,25 @@ class ContactFormController extends Controller
             })->all(),
         ];
 
+        ContactInquiry::create([
+            'type' => 'contact',
+            'name' => (string) ($validated['name'] ?? $validated['full_name'] ?? ''),
+            'email' => $validated['email'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'subject' => $validated['subject'] ?? null,
+            'message' => $validated['message'] ?? null,
+            'meta' => [
+                'block_id' => $payload['block_id'],
+                'page_id' => $payload['page_id'],
+                'page_slug' => $payload['page_slug'],
+                'page_title' => $payload['page_title'],
+                'fields' => $validated,
+                'field_labels' => $payload['field_labels'],
+            ],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         $generalSettings = app(GeneralSettings::class);
         $recipient = $generalSettings->support_email ?: config('mail.from.address');
 
@@ -95,17 +114,6 @@ class ContactFormController extends Controller
 
         app(TransactionalNotificationService::class)
             ->routeMail($recipient, new ContactFormSubmissionNotification($payload));
-
-        app(AuditTrailService::class)->logGuest(
-            logName: 'contact',
-            event: 'contact_form_submitted',
-            description: 'Contact form submitted',
-            subject: $block,
-            guestName: (string) ($validated['name'] ?? $validated['full_name'] ?? ''),
-            guestEmail: (string) ($validated['email'] ?? ''),
-            guestPhone: (string) ($validated['phone'] ?? ''),
-            properties: ['page_id' => $block->blockable_id],
-        );
 
         $successMessage = trim((string) ($content['success_message'] ?? ''));
 

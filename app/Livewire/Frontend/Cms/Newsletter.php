@@ -15,6 +15,8 @@ final class Newsletter extends Component
 {
     use ThrottlesLivewireRequests;
 
+    public bool $compact = false;
+
     public string $eyebrow = '';
 
     public string $title = '';
@@ -51,6 +53,7 @@ final class Newsletter extends Component
     public bool $submitted = false;
 
     public function mount(
+        bool $compact = false,
         string $eyebrow = '',
         string $title = '',
         string $description = '',
@@ -62,6 +65,7 @@ final class Newsletter extends Component
         string $consentText = '',
         string $successMessage = '',
     ): void {
+        $this->compact = $compact;
         $this->eyebrow = $eyebrow;
         $this->title = $title;
         $this->description = $description;

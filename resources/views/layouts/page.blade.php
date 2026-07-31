@@ -67,8 +67,13 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    {{-- Alpine is NOT loaded here — Livewire 4 (@livewireStyles /
+         @livewireScripts, below) bundles and auto-starts its own Alpine
+         instance; a second, separately-loaded Alpine (as this used to be)
+         causes "Detected multiple instances of Alpine running" and
+         Livewire-internal errors like "$wire is not defined". The
+         collapse plugin Livewire's Alpine needs is registered via
+         resources/js/frontend/alpine.js (bundled into app.js) instead. --}}
 
     @include('partials.head-styles')
 
@@ -79,7 +84,7 @@
 
     @livewireStyles
 </head>
-<body class="text-slate-800 antialiased" style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
+<body class="text-slate-800 antialiased" data-public-motion-page style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
 
     @if($site['google_tag_manager_id'] ?? false)
         <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $site['google_tag_manager_id'] }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -94,9 +99,15 @@
     <livewire:frontend.layout.site-header :app-name="$appName" :logo="$logo" />
     <livewire:frontend.layout.search-overlay />
 
-    @if(session()->has('success') || session()->has('error') || session()->has('warning') || session()->has('info'))
+    @php
+        // The contact-form block renders its own success message directly
+        // above the form fields, so the global top-of-page banner would be
+        // a duplicate on pages that contain one — suppress it there only.
+        $suppressGlobalSuccessFlash = str_contains($content ?? '', 'data-contact-form-block');
+    @endphp
+    @if((session()->has('success') && ! $suppressGlobalSuccessFlash) || session()->has('error') || session()->has('warning') || session()->has('info'))
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 space-y-2">
-        @if(session('success'))
+        @if(session('success') && ! $suppressGlobalSuccessFlash)
         <div class="flex items-center gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400">
             <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
             {{ session('success') }}
@@ -173,6 +184,7 @@
         {!! $content ?? '' !!}
     </main>
 
+    <x-frontend.pre-footer-cta />
     <livewire:frontend.layout.site-footer
         :app-name="$appName"
         :logo="$logo"
@@ -183,6 +195,7 @@
         :address="$address"
     />
     <livewire:frontend.layout.cookie-banner />
+    <livewire:frontend.layout.whatsapp-button />
 
     @livewireScripts
 

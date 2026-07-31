@@ -30,6 +30,17 @@ class GeneralSettings extends Settings
 
     public ?string $favicon;
 
+    // Header
+    public bool $header_top_bar_enabled;
+
+    public ?string $facebook_url;
+
+    public ?string $instagram_url;
+
+    public ?string $x_url;
+
+    public ?string $youtube_url;
+
     // Localization — country/detection settings live in LocalizationSettings.
     public string $default_timezone;
 

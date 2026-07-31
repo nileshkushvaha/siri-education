@@ -34,6 +34,8 @@ final class FeaturedTeachers extends Component
 
     public string $section = 'featured';
 
+    public bool $embedded = false;
+
     public function mount(
         string $eyebrow = '',
         string $title = '',
@@ -43,6 +45,7 @@ final class FeaturedTeachers extends Component
         string $linkLabel = '',
         string $linkUrl = '',
         string $section = 'featured',
+        bool $embedded = false,
     ): void {
         $this->eyebrow = $eyebrow;
         $this->title = $title;
@@ -52,6 +55,7 @@ final class FeaturedTeachers extends Component
         $this->linkLabel = $linkLabel;
         $this->linkUrl = $linkUrl;
         $this->section = $section;
+        $this->embedded = $embedded;
     }
 
     public function render(RecommendationService $recommendations, Request $request): View

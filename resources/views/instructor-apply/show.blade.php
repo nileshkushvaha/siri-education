@@ -142,34 +142,39 @@
         </div>
     </section>
 
-    <section class="border-y border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 py-16 sm:py-20">
-        <div class="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+    <section class="relative isolate overflow-hidden border-y border-white/10 bg-[#080b24] py-16 text-white sm:py-20">
+        <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+            <div class="absolute -left-32 -top-24 h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl"></div>
+            <div class="absolute -bottom-40 right-0 h-[28rem] w-[28rem] rounded-full bg-fuchsia-500/20 blur-3xl"></div>
+            <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(#818cf8 .7px,transparent .7px);background-size:24px 24px"></div>
+        </div>
+        <div class="relative mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
             <div>
-                <p class="text-sm font-bold uppercase tracking-[0.16em] text-indigo-600">Eligibility</p>
-                <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950">Who can apply?</h2>
-                <p class="mt-4 max-w-xl leading-7 text-slate-600">Applications are open to adults with meaningful subject knowledge and the ability to support students responsibly.</p>
+                <p class="text-sm font-bold uppercase tracking-[0.16em] text-cyan-300">Eligibility</p>
+                <h2 class="mt-3 text-3xl font-black tracking-tight text-white">Who can apply?</h2>
+                <p class="mt-4 max-w-xl leading-7 text-slate-300">Applications are open to adults with meaningful subject knowledge and the ability to support students responsibly.</p>
                 <div class="mt-8 grid gap-3 sm:grid-cols-2">
                     @foreach(['University students', 'Graduates', 'Working professionals', 'Experienced teachers'] as $audience)
-                        <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/80 p-4 font-bold text-slate-700 shadow-sm">
-                            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700" aria-hidden="true">✓</span>
+                        <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 font-bold text-white shadow-lg shadow-black/10 backdrop-blur">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/20" aria-hidden="true">✓</span>
                             {{ $audience }}
                         </div>
                     @endforeach
                 </div>
-                <p class="mt-5 flex items-start gap-2 text-sm leading-6 text-slate-500">
-                    <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 4.5h.008v.008H12V16.5Z"/></svg>
+                <p class="mt-5 flex items-start gap-2 text-sm leading-6 text-slate-400">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 4.5h.008v.008H12V16.5Z"/></svg>
                     Current school students up to and including grade 12 cannot apply as instructors.
                 </p>
             </div>
 
-            <div class="rounded-3xl border border-indigo-100 bg-white p-6 shadow-xl shadow-indigo-100/50 sm:p-8">
-                <p class="text-sm font-bold uppercase tracking-[0.16em] text-violet-600">Trust and verification</p>
-                <h2 class="mt-3 text-2xl font-black text-slate-950">What you may need</h2>
-                <p class="mt-3 text-sm leading-6 text-slate-600">Exact requirements are configurable and shown inside your application.</p>
+            <div class="rounded-3xl border border-white/15 bg-white/[0.08] p-6 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8">
+                <p class="text-sm font-bold uppercase tracking-[0.16em] text-fuchsia-300">Trust and verification</p>
+                <h2 class="mt-3 text-2xl font-black text-white">What you may need</h2>
+                <p class="mt-3 text-sm leading-6 text-slate-300">Exact requirements are configurable and shown inside your application.</p>
                 <div class="mt-6 grid gap-3 sm:grid-cols-2">
                     @foreach(['Government-issued ID', 'Profile photograph', 'Address verification', 'Education qualifications', 'Professional certificates', 'Resume or introduction video'] as $document)
-                        <div class="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
-                            <svg class="h-5 w-5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3.75h7.5l3 3v13.5H6.75V3.75Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.25 3.75v3h3M9.75 12h4.5M9.75 15h4.5"/></svg>
+                        <div class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-3 text-sm font-semibold text-slate-200">
+                            <svg class="h-5 w-5 shrink-0 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3.75h7.5l3 3v13.5H6.75V3.75Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.25 3.75v3h3M9.75 12h4.5M9.75 15h4.5"/></svg>
                             {{ $document }}
                         </div>
                     @endforeach
@@ -206,21 +211,24 @@
     </section>
 
     @if($faqs->isNotEmpty())
-        <section class="bg-slate-50 py-16 sm:py-20" aria-labelledby="instructor-faq-heading">
-            <div class="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
-                <div>
-                    <p class="text-sm font-bold uppercase tracking-[0.16em] text-indigo-600">Common questions</p>
-                    <h2 id="instructor-faq-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950">Apply with clarity</h2>
-                    <p class="mt-4 leading-7 text-slate-600">Understand eligibility, verification, review, and earning expectations before you begin.</p>
+        <section class="relative overflow-hidden border-t border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-rose-50 py-16 sm:py-20" aria-labelledby="instructor-faq-heading">
+            <div class="pointer-events-none absolute -left-24 top-16 h-64 w-64 rounded-full bg-cyan-200/30 blur-3xl" aria-hidden="true"></div>
+            <div class="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-violet-200/35 blur-3xl" aria-hidden="true"></div>
+            <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="max-w-3xl">
+                    <span class="inline-flex rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-indigo-600 shadow-sm">Common questions</span>
+                    <h2 id="instructor-faq-heading" class="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Apply with clarity</h2>
+                    <p class="mt-4 max-w-2xl leading-7 text-slate-600">Understand eligibility, verification, review, and earning expectations before you begin.</p>
                 </div>
-                <div class="space-y-3">
+
+                <div class="mt-10 grid items-start gap-4 md:grid-cols-2">
                     @foreach($faqs as $faq)
-                        <details class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm open:border-indigo-200 open:shadow-md">
+                        <details class="group rounded-2xl border border-white/80 bg-white/85 p-5 shadow-lg shadow-indigo-100/40 backdrop-blur open:border-indigo-200 open:shadow-xl">
                             <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-extrabold text-slate-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">
                                 {{ $faq->question }}
-                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition group-open:rotate-45" aria-hidden="true">+</span>
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 ring-1 ring-indigo-100 transition group-open:rotate-45" aria-hidden="true">+</span>
                             </summary>
-                            <p class="mt-4 pr-10 text-sm leading-7 text-slate-600">{{ $faq->answer }}</p>
+                            <div class="cms-content mt-4 border-t border-indigo-50 pt-4 pr-10 text-sm leading-7 text-slate-600">{!! $faq->answer !!}</div>
                         </details>
                     @endforeach
                 </div>
@@ -228,17 +236,5 @@
         </section>
     @endif
 
-    <section class="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 py-16 text-center sm:py-20">
-        <div class="pointer-events-none absolute inset-0 opacity-20" style="background-image:radial-gradient(white 0.7px,transparent 0.7px);background-size:20px 20px" aria-hidden="true"></div>
-        <div class="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-            <p class="text-sm font-bold uppercase tracking-[0.18em] text-indigo-100">Teach with purpose</p>
-            <h2 class="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">Ready to build your instructor profile?</h2>
-            <p class="mx-auto mt-4 max-w-xl leading-7 text-indigo-100">Start your application, complete each section at your pace, and track the verification decision from your dashboard.</p>
-            <div class="mt-8 flex justify-center">
-                @include('instructor-apply.partials.cta', ['size' => 'lg'])
-            </div>
-            <p class="mt-5 text-xs leading-5 text-indigo-100/80">Potential earnings depend on approved lessons, availability, pricing, student demand, and platform policies. Fixed income is not guaranteed.</p>
-        </div>
-    </section>
 </div>
 @endsection

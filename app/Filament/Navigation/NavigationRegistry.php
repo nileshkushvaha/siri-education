@@ -41,6 +41,7 @@ use App\Filament\Pages\Settings\PlatformFoundationSettingsPage;
 use App\Filament\Pages\Settings\RazorpayXPayoutSettingsPage;
 use App\Filament\Pages\Settings\ReviewQualitySettingsPage;
 use App\Filament\Pages\Settings\SeoSettingsPage;
+use App\Filament\Pages\Settings\WhatsAppSettingsPage;
 use App\Filament\Pages\StudentEngagement;
 use App\Filament\Pages\WalletRefunds;
 use App\Filament\Resources\Academic\AcademicCategoryResource;
@@ -54,6 +55,7 @@ use App\Filament\Resources\BookingPaymentReconciliationIssues\BookingPaymentReco
 use App\Filament\Resources\BookingPayments\BookingPaymentResource;
 use App\Filament\Resources\Bookings\BookingResource;
 use App\Filament\Resources\BookingTypes\BookingTypeResource;
+use App\Filament\Resources\ContactInquiries\ContactInquiryResource;
 use App\Filament\Resources\Conversations\ConversationResource;
 use App\Filament\Resources\Countries\CountryResource;
 use App\Filament\Resources\Currencies\CurrencyResource;
@@ -76,6 +78,7 @@ use App\Filament\Resources\Languages\LanguageResource;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Filament\Resources\LoginHistory\LoginHistoryResource;
 use App\Filament\Resources\Navigation\NavigationResource;
+use App\Filament\Resources\NewsletterSubscribers\NewsletterSubscriberResource;
 use App\Filament\Resources\NotificationTemplates\NotificationTemplateResource;
 use App\Filament\Resources\OperationalAlerts\OperationalAlertResource;
 use App\Filament\Resources\PageBlocks\PageBlockResource;
@@ -703,6 +706,33 @@ final class NavigationRegistry
                 sort: 13,
                 previousGroup: 'Communication',
                 previousLabel: 'Notification Templates',
+            ),
+            ContactInquiryResource::class => new NavigationDestination(
+                id: 'content.communication.contact-inquiries',
+                label: 'Contact Inquiries',
+                group: 'Content & Communication',
+                subgroup: 'Communication',
+                sort: 14,
+                previousGroup: 'Communication',
+                previousLabel: 'Contact Inquiries',
+            ),
+            WhatsAppSettingsPage::class => new NavigationDestination(
+                id: 'content.communication.whatsapp',
+                label: 'WhatsApp',
+                group: 'Content & Communication',
+                subgroup: 'Communication',
+                sort: 15,
+                previousGroup: 'Communication',
+                previousLabel: 'WhatsApp',
+            ),
+            NewsletterSubscriberResource::class => new NavigationDestination(
+                id: 'content.communication.newsletter-subscribers',
+                label: 'Newsletter Subscribers',
+                group: 'Content & Communication',
+                subgroup: 'Communication',
+                sort: 16,
+                previousGroup: 'Communication',
+                previousLabel: 'Newsletter Subscribers',
             ),
             HomeworkReminderSettingsPage::class => new NavigationDestination(
                 id: 'content.communication.homework-reminders',

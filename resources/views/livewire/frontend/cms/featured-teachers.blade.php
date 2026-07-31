@@ -7,9 +7,34 @@
 @endphp
 
 <div>
-    @if($teachers->isNotEmpty() || filled($title) || filled($description) || filled($eyebrow))
-        <section class="py-16 sm:py-20">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    @if($teachers->isNotEmpty() || (! $embedded && (filled($title) || filled($description) || filled($eyebrow))))
+        @if($embedded)
+            <div data-home-instructor-group>
+                @if(filled($eyebrow) || filled($title) || filled($description))
+                    <div class="mb-6 flex flex-col gap-2 border-t border-indigo-100 pt-7 sm:flex-row sm:items-end sm:justify-between">
+                        <div class="max-w-3xl">
+                            @if(filled($eyebrow))
+                                <p class="text-xs font-black uppercase tracking-[0.15em] text-indigo-600">{{ $eyebrow }}</p>
+                            @endif
+                            @if(filled($title))
+                                <h3 class="mt-2 text-2xl font-black tracking-tight text-slate-950">{{ $title }}</h3>
+                            @endif
+                            @if(filled($description))
+                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ $description }}</p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                <div class="grid grid-cols-1 gap-5 {{ $gridColumns }}">
+                    @foreach($teachers as $teacher)
+                        <x-instructor.card :instructor="$teacher" data-home-instructor-card />
+                    @endforeach
+                </div>
+            </div>
+        @else
+            <section class="py-16 sm:py-20">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 @if(filled($eyebrow) || filled($title) || filled($description) || (filled($linkLabel) && filled($linkUrl)))
                     <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                         <div class="max-w-3xl">
@@ -35,11 +60,12 @@
                 @if($teachers->isNotEmpty())
                     <div class="mt-10 grid grid-cols-1 gap-5 {{ $gridColumns }}">
                         @foreach($teachers as $teacher)
-                            <x-instructor.card :instructor="$teacher" />
+                            <x-instructor.card :instructor="$teacher" data-home-instructor-card />
                         @endforeach
                     </div>
                 @endif
-            </div>
-        </section>
+                </div>
+            </section>
+        @endif
     @endif
 </div>

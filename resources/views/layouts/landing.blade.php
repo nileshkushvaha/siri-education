@@ -58,8 +58,9 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    {{-- Alpine is NOT loaded here — see layouts/page.blade.php for why:
+         a second, separately-loaded Alpine conflicts with the one
+         Livewire bundles via @livewireStyles/@livewireScripts. --}}
 
     @include('partials.head-styles')
 

@@ -75,13 +75,14 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->brandName('Sphere Education')
+            ->brandName(fn (): string => $this->brandName())
             ->brandLogo(null)
             ->favicon(fn (): ?string => $this->faviconUrl())
             // Filament defaults every page's content to max-w-7xl (1280px)
             // when unset — on wide monitors that leaves a large dead zone
             // next to every form/table. Use the full available width instead.
             ->maxContentWidth(Width::Full)
+            ->sidebarCollapsibleOnDesktop()
 
             // ── Profile page: adds "My Profile" to user menu automatically ──
             ->profile(AdminProfile::class, isSimple: false)
@@ -169,6 +170,11 @@ class AdminPanelProvider extends PanelProvider
                 // added here explicitly too.
                 TrackUserSession::class,
             ]);
+    }
+
+    private function brandName(): string
+    {
+        return app(GeneralSettings::class)->app_name ?: config('app.name');
     }
 
     private function faviconUrl(): ?string

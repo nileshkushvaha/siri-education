@@ -14,8 +14,12 @@
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
 
+        @php
+            $portalGeneralSettings = app(\App\Settings\GeneralSettings::class);
+            $portalBadgeLetter = mb_substr($portalGeneralSettings->app_short_name ?: $portalGeneralSettings->app_name, 0, 1);
+        @endphp
         <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[rgb(var(--portal-a))] via-indigo-500 to-[rgb(var(--portal-c))] text-sm font-black text-white shadow-lg shadow-[rgb(var(--portal-a)/.18)]" aria-hidden="true">{{ mb_substr(config('app.name'), 0, 1) }}</span>
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[rgb(var(--portal-a))] via-indigo-500 to-[rgb(var(--portal-c))] text-sm font-black text-white shadow-lg shadow-[rgb(var(--portal-a)/.18)]" aria-hidden="true">{{ $portalBadgeLetter }}</span>
             <span class="hidden truncate text-sm font-bold text-white sm:block">{{ config('app.name') }} Portal</span>
         </a>
 

@@ -7,7 +7,6 @@ use App\Providers\ComplianceServiceProvider;
 use App\Providers\EarningServiceProvider;
 use App\Providers\FeedbackServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
-use App\Providers\FormsServiceProvider;
 use App\Providers\FrontendServiceProvider;
 use App\Providers\HomeworkServiceProvider;
 use App\Providers\LessonServiceProvider;
@@ -23,7 +22,6 @@ return [
     CmsServiceProvider::class,
     ComplianceServiceProvider::class,
     EarningServiceProvider::class,
-    FormsServiceProvider::class,
     FrontendServiceProvider::class,
     HomeworkServiceProvider::class,
     LessonServiceProvider::class,

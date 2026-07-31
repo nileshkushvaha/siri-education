@@ -68,8 +68,7 @@ class ContactUsPageSeeder extends Seeder
         <div class="contact-intro-copy">
             <p class="contact-eyebrow">Let’s solve the right problem</p>
             <h2>Clear help starts with the right context</h2>
-            <p class="contact-lead">Whether you are learning, teaching, booking a lesson, managing a payment, or exploring a partnership, we will help route your question to the right workflow.</p>
-            <p>Choose a direct help option below or send the team a message. Include relevant references and dates, but never share a password, verification code, or complete card or bank details.</p>
+            <p class="contact-lead">Whether you are learning, teaching, booking a lesson, managing a payment, or exploring a partnership, share the essentials and our team will guide you to the right help.</p>
             <div class="contact-actions">
                 <a class="contact-button contact-button-primary" href="#contact-form">Send a message</a>
                 <a class="contact-button contact-button-secondary" href="/faqs">Explore FAQs</a>
@@ -86,20 +85,6 @@ class ContactUsPageSeeder extends Seeder
         </aside>
     </section>
 
-    <section class="contact-routes cms-section" data-contact-reveal>
-        <div class="contact-section-heading">
-            <p class="contact-eyebrow">Choose the right path</p>
-            <h2>Faster help for common needs</h2>
-            <p>Dedicated workflows collect the information needed for that request and reduce unnecessary back-and-forth.</p>
-        </div>
-        <div class="contact-route-grid">
-            <a href="/support"><span class="contact-route-icon contact-icon-cyan">?</span><h3>Account or platform support</h3><p>Report a problem affecting your account, dashboard, booking, lesson, homework, payment, or wallet.</p><b>Open support form →</b></a>
-            <a href="/callback"><span class="contact-route-icon contact-icon-violet">↗</span><h3>Request a callback</h3><p>Ask the team to contact you when a conversation would be more useful than a written reply.</p><b>Request a callback →</b></a>
-            <a href="/feedback"><span class="contact-route-icon contact-icon-amber">✦</span><h3>Share product feedback</h3><p>Suggest an improvement or tell us about an experience that could work better for students or instructors.</p><b>Share feedback →</b></a>
-            <a href="/inquiry"><span class="contact-route-icon contact-icon-emerald">◇</span><h3>General or partnership inquiry</h3><p>Contact us about institutions, partnerships, platform information, or another non-support question.</p><b>Start an inquiry →</b></a>
-        </div>
-    </section>
-
     <section class="contact-context cms-section" data-contact-reveal>
         <div class="contact-section-heading contact-section-heading-dark">
             <p class="contact-eyebrow">Before you send</p>
@@ -109,15 +94,6 @@ class ContactUsPageSeeder extends Seeder
         <div class="contact-context-grid">
             <article class="contact-context-good"><p class="contact-card-label">Helpful to include</p><ul><li>Account email or safe contact email</li><li>Booking, lesson, application, or transaction reference</li><li>Relevant date, timezone, subject, or instructor</li><li>A short description of what you already tried</li></ul></article>
             <article class="contact-context-private"><p class="contact-card-label">Never send</p><ul><li>Your password or one-time verification code</li><li>Complete card, bank, or wallet credentials</li><li>Private identity documents in a general message</li><li>Sensitive student information unrelated to the request</li></ul></article>
-        </div>
-    </section>
-
-    <section class="contact-expectations cms-section" data-contact-reveal>
-        <div><p class="contact-eyebrow">What happens next</p><h2>Your message enters an accountable support workflow</h2></div>
-        <div class="contact-expectation-grid">
-            <article><b>01</b><h3>Secure submission</h3><p>Validation, throttling, bot protection, and controlled fields help protect the public form.</p></article>
-            <article><b>02</b><h3>Responsible routing</h3><p>Your request is delivered to the configured support recipient with its page and submission context.</p></article>
-            <article><b>03</b><h3>Traceable receipt</h3><p>The submission event is recorded through the platform audit pipeline for operational accountability.</p></article>
         </div>
     </section>
 </div>

@@ -594,18 +594,6 @@
         @endif
     </main>
 
-    <section class="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-700 py-14 text-white sm:py-16">
-        <div class="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-amber-300/20 blur-3xl" aria-hidden="true"></div>
-        <div class="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8" data-profile-reveal>
-            <div class="max-w-3xl">
-                <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Compare before you choose</p>
-                <h2 class="mt-2 text-3xl font-black tracking-tight">Find the instructor relationship that fits your goals</h2>
-                <p class="mt-3 leading-7 text-indigo-100">Explore other approved profiles by subject, academic level, language, timezone, and visible availability.</p>
-            </div>
-            <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 shrink-0 items-center rounded-xl bg-white px-6 text-sm font-black text-indigo-700 shadow-xl transition hover:-translate-y-0.5 hover:bg-cyan-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30">Explore all instructors →</a>
-        </div>
-    </section>
 </div>
 
 @push('scripts')

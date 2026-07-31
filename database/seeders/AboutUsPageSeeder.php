@@ -114,15 +114,6 @@ class AboutUsPageSeeder extends Seeder
         </div>
     </section>
 
-    <section class="about-closing cms-section" data-about-reveal>
-        <p class="about-eyebrow">Learn · Teach · Grow</p>
-        <h2>Education becomes more powerful when the whole journey works together</h2>
-        <p>Explore approved instructors, start a student account, or learn how to bring your expertise to the platform.</p>
-        <div class="about-actions about-actions-center">
-            <a class="about-button about-button-light" href="/instructors">Find an instructor</a>
-            <a class="about-button about-button-glass" href="/become-instructor">Become an instructor</a>
-        </div>
-    </section>
 </div>
 HTML;
     }

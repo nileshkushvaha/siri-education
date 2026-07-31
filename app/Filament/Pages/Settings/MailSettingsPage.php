@@ -154,7 +154,7 @@ class MailSettingsPage extends Page
                                 ->label('From Name')
                                 ->required()
                                 ->maxLength(100)
-                                ->placeholder('Sphere Education'),
+                                ->placeholder('SIRI Education'),
 
                             TextInput::make('from_email')
                                 ->label('From Email')

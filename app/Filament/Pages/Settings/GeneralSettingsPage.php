@@ -77,6 +77,11 @@ class GeneralSettingsPage extends Page
             'logo' => $settings->logo,
             'logo_dark' => $settings->logo_dark,
             'favicon' => $settings->favicon,
+            'header_top_bar_enabled' => $settings->header_top_bar_enabled,
+            'facebook_url' => $settings->facebook_url,
+            'instagram_url' => $settings->instagram_url,
+            'x_url' => $settings->x_url,
+            'youtube_url' => $settings->youtube_url,
             'default_timezone' => $settings->default_timezone,
             'default_language' => $settings->default_language,
             'date_format' => $settings->date_format,
@@ -136,12 +141,12 @@ class GeneralSettingsPage extends Page
                                 ->label('Application Name')
                                 ->required()
                                 ->maxLength(150)
-                                ->placeholder('Sphere Education'),
+                                ->placeholder('SIRI Education'),
 
                             TextInput::make('app_short_name')
                                 ->label('Short Name')
                                 ->maxLength(50)
-                                ->placeholder('Sphere'),
+                                ->placeholder('SIRI'),
 
                             TextInput::make('organization_name')
                                 ->label('Organization Name')
@@ -209,6 +214,42 @@ class GeneralSettingsPage extends Page
                                 ->imagePreviewHeight('80')
                                 ->helperText('ICO or PNG. Max 512KB.'),
                         ]),
+                    ]),
+
+                Section::make('Header Top Bar')
+                    ->description('Show contact details and optional social links above the public navigation.')
+                    ->columnSpanFull()
+                    ->schema([
+                        Toggle::make('header_top_bar_enabled')
+                            ->label('Show header top bar')
+                            ->helperText('The support phone and email come from Application Information above.')
+                            ->live(),
+
+                        Grid::make(4)->schema([
+                            TextInput::make('facebook_url')
+                                ->label('Facebook URL')
+                                ->url()
+                                ->maxLength(255)
+                                ->placeholder('https://facebook.com/...'),
+
+                            TextInput::make('instagram_url')
+                                ->label('Instagram URL')
+                                ->url()
+                                ->maxLength(255)
+                                ->placeholder('https://instagram.com/...'),
+
+                            TextInput::make('x_url')
+                                ->label('X URL')
+                                ->url()
+                                ->maxLength(255)
+                                ->placeholder('https://x.com/...'),
+
+                            TextInput::make('youtube_url')
+                                ->label('YouTube URL')
+                                ->url()
+                                ->maxLength(255)
+                                ->placeholder('https://youtube.com/@...'),
+                        ])->visible(fn ($get) => (bool) $get('header_top_bar_enabled')),
                     ]),
 
                 // ── Localization ──────────────────────────────────── right
@@ -317,7 +358,7 @@ class GeneralSettingsPage extends Page
                         TextInput::make('footer_copyright')
                             ->label('Copyright Text')
                             ->maxLength(255)
-                            ->placeholder('© 2025 Sphere Education. All rights reserved.'),
+                            ->placeholder('© 2025 SIRI Education. All rights reserved.'),
 
                         Textarea::make('footer_text')
                             ->label('Footer Text')
@@ -382,6 +423,11 @@ class GeneralSettingsPage extends Page
             $settings->logo = $data['logo'] ?? $settings->logo;
             $settings->logo_dark = $data['logo_dark'] ?? $settings->logo_dark;
             $settings->favicon = $data['favicon'] ?? $settings->favicon;
+            $settings->header_top_bar_enabled = (bool) ($data['header_top_bar_enabled'] ?? false);
+            $settings->facebook_url = $data['facebook_url'] ?? null;
+            $settings->instagram_url = $data['instagram_url'] ?? null;
+            $settings->x_url = $data['x_url'] ?? null;
+            $settings->youtube_url = $data['youtube_url'] ?? null;
             $settings->default_timezone = $data['default_timezone'];
             $settings->default_language = $data['default_language'];
             $settings->date_format = $data['date_format'];
@@ -417,6 +463,11 @@ class GeneralSettingsPage extends Page
             $settings->default_currency = 'INR';
             $settings->decimal_precision = 2;
             $settings->maintenance_mode = false;
+            $settings->header_top_bar_enabled = false;
+            $settings->facebook_url = null;
+            $settings->instagram_url = null;
+            $settings->x_url = null;
+            $settings->youtube_url = null;
             $settings->homepage_display = 'template';
             $settings->homepage_id = null;
         });

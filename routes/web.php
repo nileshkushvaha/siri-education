@@ -23,10 +23,6 @@ use App\Http\Controllers\Dashboard\SecureMediaDownloadController;
 use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
 use App\Http\Controllers\Faq\PublicFaqController;
-use App\Http\Controllers\Forms\CallbackController;
-use App\Http\Controllers\Forms\FeedbackController;
-use App\Http\Controllers\Forms\GeneralInquiryController;
-use App\Http\Controllers\Forms\SupportController;
 use App\Http\Controllers\Instructor\InstructorAnalyticsController;
 use App\Http\Controllers\Instructor\InstructorApplicationController;
 use App\Http\Controllers\Instructor\InstructorAvailabilityController;
@@ -112,12 +108,6 @@ Route::get('/blog/{slug}', [PostController::class, 'show'])->name('blog.show');
 Route::post('/contact/submit', [ContactFormController::class, 'submit'])
     ->middleware('throttle:10,1')
     ->name('contact.submit');
-
-// ── Public Forms (Callback / Feedback / Support / General Inquiry) ───
-Route::get('/callback', [CallbackController::class, 'show'])->name('forms.callback');
-Route::get('/feedback', [FeedbackController::class, 'show'])->name('forms.feedback');
-Route::get('/support', [SupportController::class, 'show'])->name('forms.support');
-Route::get('/inquiry', [GeneralInquiryController::class, 'show'])->name('forms.inquiry');
 
 // ── Newsletter unsubscribe (token-based, no auth) ─────────────────────
 Route::get('/newsletter/unsubscribe/{token}', NewsletterUnsubscribeController::class)->name('newsletter.unsubscribe');

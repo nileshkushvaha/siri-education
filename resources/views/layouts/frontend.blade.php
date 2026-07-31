@@ -70,7 +70,7 @@
          alongside Alpine — see docs/frontend.md for component conventions. --}}
     @livewireStyles
 </head>
-<body class="text-slate-800 antialiased" style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
+<body class="text-slate-800 antialiased" data-public-motion-page style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
 
     @if($gtmId)
         <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $gtmId }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -130,6 +130,7 @@
 
         @yield('content')
 
+        <x-frontend.pre-footer-cta />
         <livewire:frontend.layout.site-footer
             :app-name="$appName"
             :logo="$logo"
@@ -140,6 +141,7 @@
             :address="$address"
         />
         <livewire:frontend.layout.cookie-banner />
+        <livewire:frontend.layout.whatsapp-button />
     @endif
 
     @stack('scripts')

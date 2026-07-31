@@ -68,6 +68,12 @@ class DatabaseSeeder extends Seeder
             OperationalAlertPermissionSeeder::class,
             // Managed SEO redirects.
             RedirectPermissionSeeder::class,
+            // Public contact-form inquiries (read-only admin viewing).
+            ContactInquiryPermissionSeeder::class,
+            // Floating WhatsApp click-to-chat button settings.
+            WhatsAppSettingsPermissionSeeder::class,
+            // Public newsletter subscribers (read-only admin viewing).
+            NewsletterSubscriberPermissionSeeder::class,
         ]);
     }
 }

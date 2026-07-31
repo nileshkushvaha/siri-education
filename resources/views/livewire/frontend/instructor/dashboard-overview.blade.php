@@ -125,7 +125,7 @@
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-rose-300">Application status</p>
                 <h2 class="mt-1 text-lg font-semibold text-white">Application not approved</h2>
                 <p class="mt-2 text-sm leading-6 text-slate-400">Your instructor application was not approved. Contact support if you have questions about this decision.</p>
-                <a href="{{ route('forms.support') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Contact support</a>
+                <a href="{{ route('page.show', 'contact-us') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Contact support</a>
             </x-account.card>
         @elseif($onboarding['show_prompt'])
             <x-account.card>

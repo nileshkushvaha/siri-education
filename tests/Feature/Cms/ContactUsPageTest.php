@@ -19,11 +19,12 @@ class ContactUsPageTest extends TestCase
         $this->get('/contact-us')
             ->assertOk()
             ->assertSee('Clear help starts with the right context')
-            ->assertSee('Faster help for common needs')
             ->assertSee('Include what helps. Protect what matters.')
             ->assertSee('Send message securely')
-            ->assertSee('/support', false)
-            ->assertSee('/callback', false)
+            ->assertDontSee('/support', false)
+            ->assertDontSee('/callback', false)
+            ->assertDontSee('/feedback', false)
+            ->assertDontSee('/inquiry', false)
             ->assertDontSee('I have create about us page');
 
         $this->assertDatabaseHas('content_blocks', [

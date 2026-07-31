@@ -75,49 +75,34 @@
 
     <section class="relative z-10 bg-gradient-to-b from-[#f5f7ff] to-white pb-8" aria-labelledby="marketplace-filter-heading">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <form method="GET" action="{{ route('instructors.index') }}" class="marketplace-filter-form -translate-y-16 overflow-hidden rounded-[2rem] border border-indigo-200/80 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/60 p-5 shadow-2xl shadow-indigo-200/50 sm:p-7" data-marketplace-reveal>
-                <div class="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <form method="GET" action="{{ route('instructors.index') }}" class="marketplace-filter-form -translate-y-16 overflow-hidden rounded-[2rem] border border-indigo-200/80 bg-gradient-to-br from-white via-indigo-50/40 to-cyan-50/60 p-4 shadow-2xl shadow-indigo-200/50 sm:p-5" data-marketplace-reveal>
+                <div class="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <p class="text-xs font-black uppercase tracking-[0.15em] text-indigo-600">Personalise discovery</p>
-                        <h2 id="marketplace-filter-heading" class="mt-2 text-2xl font-black text-slate-950">Build a useful shortlist</h2>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">Search broadly, then use only the filters that matter to your learning plan.</p>
+                        <h2 id="marketplace-filter-heading" class="mt-1.5 text-xl font-black text-slate-950">Build a useful shortlist</h2>
                     </div>
                     <div class="flex items-center gap-2">
-                        @if($activeFilterCount > 0)<span class="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700">{{ $activeFilterCount }} active {{ Str::plural('filter', $activeFilterCount) }}</span>@endif
+                        @if($activeFilterCount > 0)
+                            <a href="{{ route('instructors.index') }}" class="rounded-full border border-violet-100 bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700 transition hover:-translate-y-0.5 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-100">Clear {{ $activeFilterCount }} {{ Str::plural('filter', $activeFilterCount) }}</a>
+                        @endif
                         <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">{{ $instructors->total() }} {{ Str::plural('match', $instructors->total()) }}</span>
                     </div>
                 </div>
 
-                <div class="mt-6 grid gap-4 lg:grid-cols-12">
-                    <div class="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 lg:col-span-5"><x-ui.input name="q" label="Search instructors" value="{{ request('q') }}" placeholder="Name, subject, expertise, or teaching focus" /></div>
-                    <div class="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 lg:col-span-4">
+                <div class="marketplace-filter-controls mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(11rem,.8fr)_minmax(11rem,.8fr)_auto] lg:items-end">
+                    <div class="marketplace-filter-field"><x-ui.input name="q" label="Search instructors" value="{{ request('q') }}" placeholder="Name, subject, expertise, or teaching focus" /></div>
+                    <div class="marketplace-filter-field">
                         <x-ui.select name="subject" label="Subject"><option value="">All subjects</option>@foreach($filters['subjects'] as $subject)<option value="{{ $subject['value'] }}" @selected(request('subject') === $subject['value'])>{{ $subject['label'] }}</option>@endforeach</x-ui.select>
                     </div>
-                    <div class="rounded-2xl border border-violet-100 bg-violet-50/70 p-4 lg:col-span-3">
+                    <div class="marketplace-filter-field">
                         <x-ui.select name="topic" label="Topic"><option value="">All topics</option>@foreach($filters['topics'] as $topic)<option value="{{ $topic['value'] }}" @selected(request('topic') === $topic['value'])>{{ $topic['label'] }}</option>@endforeach</x-ui.select>
                     </div>
-                </div>
-
-                <details class="group mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-r from-slate-50 via-white to-violet-50/60" @if($activeFilterCount > 0) open @endif>
-                    <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-4 text-sm font-black text-slate-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-indigo-100">
-                        More ways to refine your match
-                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm transition group-open:rotate-45" aria-hidden="true">+</span>
-                    </summary>
-                    <div class="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-12">
-                        <div class="lg:col-span-3"><x-ui.select name="academic_level" label="Academic level"><option value="">All levels</option>@foreach($filters['academic_levels'] as $level)<option value="{{ $level['value'] }}" @selected(request('academic_level') === $level['value'])>{{ $level['label'] }}</option>@endforeach</x-ui.select></div>
-                        <div class="lg:col-span-2"><x-ui.select name="language" label="Language"><option value="">All languages</option>@foreach($filters['languages'] as $language)<option value="{{ $language['value'] }}" @selected(request('language') === $language['value'])>{{ $language['label'] }}</option>@endforeach</x-ui.select></div>
-                        <div class="lg:col-span-2"><x-ui.select name="country" label="Country"><option value="">All countries</option>@foreach($filters['countries'] as $country)<option value="{{ $country['value'] }}" @selected((string) request('country') === (string) $country['value'])>{{ $country['label'] }}</option>@endforeach</x-ui.select></div>
-                        <div class="lg:col-span-2"><x-ui.select name="timezone" label="Timezone"><option value="">All timezones</option>@foreach($filters['timezones'] as $timezone)<option value="{{ $timezone['value'] }}" @selected(request('timezone') === $timezone['value'])>{{ $timezone['label'] }}</option>@endforeach</x-ui.select></div>
-                        <div class="lg:col-span-2"><x-ui.select name="sort" label="Sort results"><option value="featured" @selected(request('sort', 'featured') === 'featured')>Featured</option><option value="name" @selected(request('sort') === 'name')>Name A–Z</option><option value="newest" @selected(request('sort') === 'newest')>Newest</option></x-ui.select></div>
-                        <div class="flex items-end lg:col-span-1"><label class="flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-black text-emerald-700"><input type="checkbox" name="available" value="1" @checked(request()->boolean('available')) class="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-200"><span>Open</span></label></div>
+                    <div class="marketplace-filter-action">
+                        <button type="submit" class="group relative inline-flex min-h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 px-6 text-sm font-black whitespace-nowrap text-white shadow-lg shadow-indigo-200 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 lg:w-auto">
+                            <span class="absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent transition-all duration-700 group-hover:left-[125%]" aria-hidden="true"></span>
+                            <span class="relative">Apply filters</span><span class="relative transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">→</span>
+                        </button>
                     </div>
-                </details>
-
-                <div class="mt-5 flex flex-wrap items-center gap-3">
-                    <button type="submit" class="inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 px-6 text-sm font-black text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-violet-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">Apply filters <span aria-hidden="true">→</span></button>
-                    @if(request()->hasAny(['q', 'subject', 'topic', 'academic_level', 'language', 'country', 'timezone', 'sort', 'available']))
-                        <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-rose-100">Clear filters</a>
-                    @endif
                 </div>
             </form>
         </div>
@@ -187,14 +172,6 @@
         </div>
     </section>
 
-    <section class="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-700 py-14 text-white sm:py-16">
-        <div class="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-amber-300/20 blur-3xl" aria-hidden="true"></div>
-        <div class="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8" data-marketplace-reveal>
-            <div class="max-w-3xl"><p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Share your expertise</p><h2 class="mt-2 text-3xl font-black tracking-tight">Are you ready to help students make meaningful progress?</h2><p class="mt-3 leading-7 text-indigo-100">Apply to become an instructor, complete the verification journey, and build an approved public teaching profile.</p></div>
-            <a href="{{ route('instructor.apply') }}" class="inline-flex min-h-12 shrink-0 items-center rounded-xl bg-white px-6 text-sm font-black text-indigo-700 shadow-xl transition hover:-translate-y-0.5 hover:bg-cyan-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30">Become an instructor →</a>
-        </div>
-    </section>
 </main>
 
 @push('scripts')

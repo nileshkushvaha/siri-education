@@ -4,6 +4,11 @@
 @section('title', 'Create Your Account — ' . config('app.name'))
 @section('meta_description', 'Create your ' . config('app.name') . ' account to connect with instructors, manage your learning, and access personalized education tools.')
 
+@php
+    $generalSettings = app(\App\Settings\GeneralSettings::class);
+    $appBadgeLetter = mb_substr($generalSettings->app_short_name ?: $generalSettings->app_name, 0, 1);
+@endphp
+
 @section('content')
 <main class="min-h-screen bg-slate-950 text-white lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(32rem,1.1fr)]">
     <section class="relative hidden overflow-hidden border-r border-white/[0.08] lg:block" aria-labelledby="registration-benefits-title">
@@ -14,7 +19,7 @@
         <div class="relative flex flex-1 flex-col">
             <div class="flex items-center justify-between gap-5">
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 font-black">{{ mb_substr(config('app.name'), 0, 1) }}</span>
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 font-black">{{ $appBadgeLetter }}</span>
                     <span class="text-lg font-bold">{{ config('app.name') }}</span>
                 </a>
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">Explore website <span class="ml-1" aria-hidden="true">↗</span></a>
@@ -95,7 +100,7 @@
         <div class="w-full max-w-xl">
             <div class="mb-4 flex items-center justify-between lg:hidden">
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center gap-2 rounded-xl font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 lg:hidden">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500">{{ mb_substr(config('app.name'), 0, 1) }}</span>{{ config('app.name') }}
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500">{{ $appBadgeLetter }}</span>{{ config('app.name') }}
                 </a>
                 <a href="{{ route('home') }}" class="ml-auto inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">Explore website</a>
             </div>

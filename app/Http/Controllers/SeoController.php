@@ -29,15 +29,6 @@ class SeoController extends Controller
                     ->latest('updated_at')
                     ->get();
 
-                // Public form pages have no CMS-managed content, so they carry
-                // no updated_at — they're listed with a static low priority.
-                $staticRoutes = [
-                    'forms.callback',
-                    'forms.feedback',
-                    'forms.support',
-                    'forms.inquiry',
-                ];
-
                 // Same eligibility as the public listing/detail
                 // pages (InstructorService::sitemapEntries() reuses baseQuery()).
                 $instructors = $instructorService->sitemapEntries();
@@ -45,7 +36,6 @@ class SeoController extends Controller
                 return view('seo.sitemap', [
                     'pages' => $pages,
                     'posts' => $posts,
-                    'staticRoutes' => $staticRoutes,
                     'instructors' => $instructors,
                 ])->render();
             }

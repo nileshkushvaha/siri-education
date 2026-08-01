@@ -40,11 +40,15 @@ class BookingsPerDayChartWidget extends DashboardChartWidget
             'label' => $dataset['label'],
             'data' => $dataset['data'],
             'borderColor' => $dataset['color'],
-            'backgroundColor' => $isBar ? $dataset['color'] : 'rgba(99, 102, 241, 0.12)',
+            'backgroundColor' => $isBar ? $dataset['color'] : $this->areaFill($dataset['color']),
             'fill' => ! $isBar,
             'tension' => 0.3,
             'pointRadius' => 0,
-            'pointHoverRadius' => 4,
+            'pointHoverRadius' => 5,
+            'pointHoverBackgroundColor' => $dataset['color'],
+            'pointHoverBorderColor' => '#ffffff',
+            'pointHoverBorderWidth' => 2,
+            'borderWidth' => 2.5,
             'borderRadius' => $isBar ? 4 : 0,
         ];
     }

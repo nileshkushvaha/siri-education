@@ -99,3 +99,353 @@
 body.is-dragging * {
     cursor: grabbing !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════════
+   Scoped entirely under `.fi-dashboard` so the rest of the admin
+   panel — which uses Filament's amber primary — is untouched. This
+   layer is presentation only: it introduces no metric, changes no
+   permission and reads no data.
+
+   Domain colour is assigned ONCE here and reused verbatim by KPI
+   cards, charts, domain summaries and report tiles, so a domain
+   never changes colour between surfaces.
+   ─────────────────────────────────────────────────────────────── */
+
+.fi-dashboard {
+    /* Domain ramps (start → end). */
+    --dash-brand-a: #ec4899;      /* SIRI pink   */
+    --dash-brand-b: #8b5cf6;      /* violet      */
+    --dash-ops-a: #8b5cf6;
+    --dash-ops-b: #6366f1;
+    --dash-students-a: #22d3ee;
+    --dash-students-b: #3b82f6;
+    --dash-market-a: #6366f1;
+    --dash-market-b: #22d3ee;
+    --dash-quality-a: #a855f7;
+    --dash-quality-b: #ec4899;
+    --dash-finance-a: #f59e0b;
+    --dash-finance-b: #f97316;
+    --dash-healthy-a: #10b981;
+    --dash-healthy-b: #14b8a6;
+    --dash-critical-a: #ef4444;
+    --dash-critical-b: #f43f5e;
+
+    /* Layered surfaces. */
+    --dash-surface: #ffffff;
+    --dash-surface-inner: #f8fafc;
+    --dash-border: rgb(2 6 23 / 0.07);
+    --dash-ring: rgb(2 6 23 / 0.05);
+    --dash-shadow: 0 1px 2px rgb(2 6 23 / 0.04), 0 8px 24px -12px rgb(2 6 23 / 0.12);
+    --dash-shadow-hover: 0 2px 4px rgb(2 6 23 / 0.06), 0 16px 40px -16px rgb(2 6 23 / 0.22);
+    --dash-muted: #64748b;
+}
+
+:where(.dark) .fi-dashboard {
+    --dash-surface: #0f1420;
+    --dash-surface-inner: #0a0e17;
+    --dash-border: rgb(255 255 255 / 0.07);
+    --dash-ring: rgb(255 255 255 / 0.06);
+    --dash-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.7);
+    --dash-shadow-hover: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -18px rgb(0 0 0 / 0.85);
+    --dash-muted: #94a3b8;
+}
+
+/* Per-domain helper: set --a/--b once on a container, reuse below. */
+.dash-d-brand    { --a: var(--dash-brand-a);    --b: var(--dash-brand-b); }
+.dash-d-ops      { --a: var(--dash-ops-a);      --b: var(--dash-ops-b); }
+.dash-d-students { --a: var(--dash-students-a); --b: var(--dash-students-b); }
+.dash-d-market   { --a: var(--dash-market-a);   --b: var(--dash-market-b); }
+.dash-d-quality  { --a: var(--dash-quality-a);  --b: var(--dash-quality-b); }
+.dash-d-finance  { --a: var(--dash-finance-a);  --b: var(--dash-finance-b); }
+.dash-d-healthy  { --a: var(--dash-healthy-a);  --b: var(--dash-healthy-b); }
+.dash-d-critical { --a: var(--dash-critical-a); --b: var(--dash-critical-b); }
+
+/* ── Hero ─────────────────────────────────────────────────── */
+
+.dash-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid var(--dash-border);
+    background: var(--dash-surface);
+    box-shadow: var(--dash-shadow);
+}
+
+/* Ambient brand glow — one radial wash, no animation. */
+.dash-hero::before {
+    content: '';
+    position: absolute;
+    inset: -40% 40% 40% -10%;
+    background: radial-gradient(60% 60% at 30% 40%,
+        color-mix(in oklab, var(--dash-brand-a) 24%, transparent), transparent 70%);
+    pointer-events: none;
+}
+
+.dash-hero::after {
+    content: '';
+    position: absolute;
+    inset: -30% -10% 50% 45%;
+    background: radial-gradient(55% 55% at 60% 40%,
+        color-mix(in oklab, var(--dash-brand-b) 20%, transparent), transparent 70%);
+    pointer-events: none;
+}
+
+.dash-hero > * { position: relative; }
+
+/* Hairline brand rule under the hero. */
+.dash-hero-rule {
+    height: 2px;
+    background: linear-gradient(90deg, var(--dash-brand-a), var(--dash-brand-b), transparent);
+}
+
+/* ── Section headings ─────────────────────────────────────── */
+
+.dash-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--a, var(--dash-brand-a)), var(--b, var(--dash-brand-b)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
+
+.dash-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.875rem;
+    border: 1px solid var(--dash-border);
+    background: var(--dash-surface);
+    box-shadow: var(--dash-shadow);
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+/* Horizontal variant. Declared here rather than leaning on Tailwind's
+   `flex-row` utility: both are single-class selectors, so the winner
+   would be decided by stylesheet order — and this layer is appended
+   last, which silently beat the utility. */
+.dash-card-row {
+    flex-direction: row;
+}
+
+/* Inner top highlight — the "lit from above" edge. */
+.dash-card::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent,
+        color-mix(in oklab, var(--a, var(--dash-brand-a)) 55%, transparent), transparent);
+    pointer-events: none;
+}
+
+a.dash-card:hover,
+.dash-card-interactive:hover {
+    box-shadow: var(--dash-shadow-hover);
+    border-color: color-mix(in oklab, var(--a, var(--dash-brand-a)) 38%, var(--dash-border));
+    transform: translateY(-2px);
+}
+
+a.dash-card:focus-visible,
+.dash-card-interactive:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--a, var(--dash-brand-a)) 80%, white);
+    outline-offset: 2px;
+}
+
+/* Arrow nudge on hover. */
+.dash-card .dash-go { transition: transform 160ms ease; }
+a.dash-card:hover .dash-go { transform: translateX(3px); }
+
+/* Icon capsule — domain gradient, always legible. */
+.dash-capsule {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.625rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--a, var(--dash-brand-a)), var(--b, var(--dash-brand-b)));
+    box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--a, var(--dash-brand-a)) 60%, transparent);
+}
+
+/* Soft domain wash behind a card's upper-right corner. */
+.dash-wash::before {
+    content: '';
+    position: absolute;
+    top: -35%;
+    right: -20%;
+    width: 60%;
+    height: 110%;
+    background: radial-gradient(closest-side,
+        color-mix(in oklab, var(--a, var(--dash-brand-a)) 16%, transparent), transparent);
+    pointer-events: none;
+}
+
+/* ── Attention cards ──────────────────────────────────────── */
+
+.dash-attn {
+    border-left: 3px solid color-mix(in oklab, var(--a) 85%, transparent);
+    background:
+        linear-gradient(180deg,
+            color-mix(in oklab, var(--a) 10%, transparent),
+            transparent 55%),
+        var(--dash-surface);
+}
+
+.dash-attn-critical {
+    border-color: color-mix(in oklab, var(--dash-critical-a) 45%, var(--dash-border));
+}
+
+/* Healthy cards sit deliberately quieter than urgent ones. */
+.dash-attn-healthy {
+    background:
+        linear-gradient(180deg,
+            color-mix(in oklab, var(--dash-healthy-a) 7%, transparent),
+            transparent 50%),
+        var(--dash-surface);
+    box-shadow: none;
+}
+
+.dash-attn-healthy:hover { box-shadow: var(--dash-shadow); }
+
+/* A single slow halo, only on unresolved critical items. */
+@keyframes dash-halo {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--dash-critical-a) 34%, transparent); }
+    50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--dash-critical-a) 0%, transparent); }
+}
+
+.dash-pulse { animation: dash-halo 2.8s ease-out infinite; }
+
+/* ── Charts ───────────────────────────────────────────────── */
+
+.dash-plot {
+    border-radius: 0.75rem;
+    background: var(--dash-surface-inner);
+    border: 1px solid var(--dash-border);
+}
+
+/* Filament's chart widget renders its own wrapper; strip the duplicate
+   panel so it sits flush inside .dash-plot. */
+.dash-plot .fi-wi,
+.dash-plot .fi-wi-chart {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+}
+
+/* ── Status pills ─────────────────────────────────────────── */
+
+.dash-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    border: 1px solid transparent;
+}
+
+.dash-pill-healthy {
+    color: #047857; background: rgb(16 185 129 / 0.12); border-color: rgb(16 185 129 / 0.3);
+}
+.dash-pill-warning {
+    color: #b45309; background: rgb(245 158 11 / 0.12); border-color: rgb(245 158 11 / 0.3);
+}
+.dash-pill-critical {
+    color: #b91c1c; background: rgb(239 68 68 / 0.12); border-color: rgb(239 68 68 / 0.3);
+}
+.dash-pill-idle {
+    color: #475569; background: rgb(100 116 139 / 0.12); border-color: rgb(100 116 139 / 0.28);
+}
+
+:where(.dark) .dash-pill-healthy  { color: #6ee7b7; }
+:where(.dark) .dash-pill-warning  { color: #fcd34d; }
+:where(.dark) .dash-pill-critical { color: #fca5a5; }
+:where(.dark) .dash-pill-idle     { color: #cbd5e1; }
+
+/* ── Progress rail (domain summaries) ─────────────────────── */
+
+.dash-rail {
+    height: 5px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--dash-muted) 22%, transparent);
+    overflow: hidden;
+}
+
+.dash-rail > span {
+    display: block;
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--a, var(--dash-brand-a)), var(--b, var(--dash-brand-b)));
+}
+
+/* ── Compact empty state ──────────────────────────────────── */
+
+.dash-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+    padding: 1.25rem 1rem;
+    border-radius: 0.75rem;
+    background: var(--dash-surface-inner);
+    border: 1px dashed var(--dash-border);
+}
+
+@media (min-width: 640px) {
+    .dash-empty { padding: 1.75rem 1.25rem; }
+}
+
+/* ── Loading shimmer ──────────────────────────────────────── */
+
+@keyframes dash-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+.dash-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background: color-mix(in oklab, var(--dash-muted) 16%, transparent);
+}
+
+.dash-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent,
+        color-mix(in oklab, var(--dash-muted) 22%, transparent), transparent);
+    animation: dash-shimmer 1.6s infinite;
+}
+
+/* ── Reduced motion: keep every affordance, drop the movement ── */
+
+@media (prefers-reduced-motion: reduce) {
+    .dash-card,
+    .dash-card .dash-go {
+        transition: none;
+    }
+
+    a.dash-card:hover,
+    .dash-card-interactive:hover {
+        transform: none;
+    }
+
+    .dash-pulse { animation: none; }
+    .dash-skeleton::after { animation: none; }
+}

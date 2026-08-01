@@ -15,7 +15,6 @@ use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Support\ReportingTimezoneResolver;
 use App\Reporting\Support\ReportPeriodResolver;
 use BackedEnum;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Icons\Heroicon;
@@ -79,9 +78,27 @@ class Dashboard extends BaseDashboard
 
     // ── Page chrome ──────────────────────────────────────────────────
 
+    /**
+     * The greeting now lives in the dashboard's own hero, which also
+     * owns the Refresh / View Site actions. Filament's page header is
+     * left empty so the two do not duplicate each other; breadcrumbs
+     * still render above it for orientation.
+     */
     public function getHeading(): string|Htmlable
     {
+        return '';
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return null;
+    }
+
+    /** Time-of-day greeting, rendered by the hero. */
+    public function greeting(): string
+    {
         $hour = now()->hour;
+
         $greeting = match (true) {
             $hour < 12 => 'Good morning',
             $hour < 17 => 'Good afternoon',
@@ -93,32 +110,15 @@ class Dashboard extends BaseDashboard
         return "{$greeting}, {$name} 👋";
     }
 
-    public function getSubheading(): string|Htmlable|null
-    {
-        return 'Marketplace health, open work, and where to look next.';
-    }
-
     public function getBreadcrumbs(): array
     {
         return ['#' => 'Dashboard'];
     }
 
+    /** Both actions are rendered by the hero instead — see the context bar partial. */
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('refresh')
-                ->label('Refresh')
-                ->icon('heroicon-o-arrow-path')
-                ->color('gray')
-                ->action('refreshDashboard'),
-
-            Action::make('view_site')
-                ->label('View Site')
-                ->icon('heroicon-o-arrow-top-right-on-square')
-                ->url('/')
-                ->openUrlInNewTab()
-                ->color('gray'),
-        ];
+        return [];
     }
 
     /**
@@ -161,8 +161,9 @@ class Dashboard extends BaseDashboard
 
     /**
      * A country id from the URL is only honoured when it identifies a
-     * real country. An unknown id is dropped rather than silently
-     * producing an empty dashboard that looks like "no activity".
+     * country the dashboard actually offers. An unknown or unavailable
+     * id is dropped rather than silently producing an empty dashboard
+     * that looks like "no activity".
      */
     private function resolvedCountryId(): ?int
     {
@@ -172,7 +173,9 @@ class Dashboard extends BaseDashboard
 
         $id = (int) $this->countryId;
 
-        return Country::query()->whereKey($id)->exists() ? $id : null;
+        // Validated against the same set the dropdown offers, so a
+        // hand-edited URL cannot select a country the UI never showed.
+        return Country::query()->availableForRegistration()->whereKey($id)->exists() ? $id : null;
     }
 
     /** True when a custom range was supplied but rejected, so the view can say so. */
@@ -227,9 +230,23 @@ class Dashboard extends BaseDashboard
         return collect(ReportingPeriodPreset::cases());
     }
 
-    /** @return Collection<int, Country> */
+    /**
+     * The same country list the public registration form offers —
+     * `Country::availableForRegistration()` is the single owner of that
+     * definition (active, with an active default currency).
+     *
+     * Filtering the dashboard by a country nobody can register in would
+     * only ever return an empty result, so offering it would be
+     * misleading.
+     *
+     * @return Collection<int, Country>
+     */
     public function countryOptions(): Collection
     {
-        return Country::query()->orderBy('name')->get(['id', 'name']);
+        return Country::query()
+            ->availableForRegistration()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 }

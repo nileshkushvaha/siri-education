@@ -40,7 +40,11 @@ class HomeworkActivityChartWidget extends DashboardChartWidget
             'fill' => false,
             'tension' => 0.3,
             'pointRadius' => 0,
-            'pointHoverRadius' => 4,
+            'pointHoverRadius' => 5,
+            'pointHoverBackgroundColor' => $dataset['color'],
+            'pointHoverBorderColor' => '#ffffff',
+            'pointHoverBorderWidth' => 2,
+            'borderWidth' => 2.5,
         ];
     }
 

@@ -70,8 +70,10 @@ final class RegisterForm extends Component
     {
         InstructorApplicationIntent::captureFromRequest();
 
-        $this->countries = Country::query()->active()
-            ->whereHas('defaultCurrency', fn ($query) => $query->active())
+        // `availableForRegistration()` is the shared definition of this
+        // set — the admin dashboard's country filter reads the same scope,
+        // so the two lists cannot drift apart.
+        $this->countries = Country::query()->availableForRegistration()
             ->with('defaultCurrency:id,code')
             ->orderBy('sort_order')->orderBy('name')
             ->get(['id', 'iso2', 'name', 'phone_code', 'default_currency_id'])

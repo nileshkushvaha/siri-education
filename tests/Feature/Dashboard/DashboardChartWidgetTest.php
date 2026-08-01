@@ -81,9 +81,35 @@ class DashboardChartWidgetTest extends TestCase
             'ends_at' => now()->subDays(2)->addHour(),
         ]);
 
-        Livewire::actingAs($manager)
+        // The card header now owns the chart's title, so asserting on the
+        // widget's own heading would prove nothing. Assert the actual
+        // series instead — a stronger claim than the previous one.
+        $component = Livewire::actingAs($manager)
             ->test(LessonOutcomeChartWidget::class, $this->contextProps())
-            ->assertSuccessful()
+            ->assertSuccessful();
+
+        $summary = $component->instance()->chartSummary();
+
+        $this->assertStringContainsString('Lesson outcomes', $summary);
+        $this->assertStringContainsString('Completed: 2', $summary);
+        $this->assertStringContainsString('Student No-Show: 1', $summary);
+    }
+
+    public function test_the_chart_title_is_rendered_by_the_dashboard_card_header(): void
+    {
+        $manager = $this->manager();
+
+        Lesson::factory()->create([
+            'status' => LessonStatus::Completed,
+            'outcome' => LessonOutcome::Completed,
+            'outcome_finalized_at' => now()->subDay(),
+            'starts_at' => now()->subDays(2),
+            'ends_at' => now()->subDays(2)->addHour(),
+        ]);
+
+        $this->actingAs($manager)
+            ->get(Dashboard::getUrl())
+            ->assertOk()
             ->assertSee('Lesson outcomes');
     }
 
@@ -126,10 +152,14 @@ class DashboardChartWidgetTest extends TestCase
             'ends_at' => now()->subDays(2)->addHour(),
         ]);
 
-        Livewire::actingAs($user)
+        $component = Livewire::actingAs($user)
             ->test(LessonOutcomeChartWidget::class, $this->contextProps())
-            ->assertSuccessful()
-            ->assertDontSee('Lesson outcomes');
+            ->assertSuccessful();
+
+        // No chart in the composition means no series in the widget —
+        // asserted on the data itself, not on rendered markup.
+        $this->assertSame('', $component->instance()->chartSummary());
+        $component->assertDontSee('Lesson outcomes');
     }
 
     public function test_widgets_accept_a_custom_period_without_throwing(): void

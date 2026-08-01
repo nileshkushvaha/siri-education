@@ -27,12 +27,16 @@
         $chartKey = md5(json_encode($chartProps));
     @endphp
 
-    <div class="space-y-6" wire:key="dashboard-{{ $chartKey }}">
+    {{-- `fi-dashboard` scopes the entire design system so no other
+         admin page is affected. Section rhythm is wider than card
+         rhythm so related cards stay visually grouped. --}}
+    <div class="fi-dashboard space-y-8" wire:key="dashboard-{{ $chartKey }}">
 
         @include('filament.pages.partials.dashboard.context-bar', [
             'context' => $context,
             'dashboard' => $dashboard,
             'attention' => $attention,
+            'greeting' => $this->greeting(),
         ])
 
         @include('filament.pages.partials.dashboard.attention', ['attention' => $attention])
@@ -54,13 +58,18 @@
             ])
 
         @else
-            <div class="fi-section rounded-xl bg-white p-6 text-center shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-                <x-filament::icon icon="heroicon-o-lock-closed" class="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500" />
-                <p class="mt-3 text-sm font-medium text-gray-950 dark:text-white">No reporting sections are available to you</p>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Marketplace figures require reporting permissions. Ask an administrator if you need them.
-                </p>
-            </div>
+            @include('filament.pages.partials.dashboard._empty-state', [
+                'message' => 'Marketplace figures require reporting permissions. Ask an administrator if you need them.',
+                'icon' => 'heroicon-o-lock-closed',
+                'tone' => 'unavailable',
+                'domain' => 'dash-d-brand',
+                'url' => null,
+                'linkLabel' => null,
+            ])
+
+            <p class="text-center text-sm font-medium text-gray-950 dark:text-white">
+                No reporting sections are available to you
+            </p>
         @endif
 
         @include('filament.pages.partials.dashboard.launchpad', ['dashboard' => $dashboard])

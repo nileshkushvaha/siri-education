@@ -68,6 +68,26 @@ class Country extends Model
         return $query->where('status', 'active');
     }
 
+    /**
+     * Countries a person can actually be registered and billed in:
+     * active, AND carrying an active default currency.
+     *
+     * The currency condition is not decoration — registration resolves a
+     * student's billing currency from the country's default, so a
+     * country whose currency is inactive cannot complete a signup.
+     *
+     * This is the single definition of that set. It backs the public
+     * registration form and every admin surface that filters by
+     * "country a user could belong to", so the two can never drift into
+     * offering different lists.
+     */
+    public function scopeAvailableForRegistration(Builder $query): Builder
+    {
+        return $query
+            ->active()
+            ->whereHas('defaultCurrency', fn (Builder $currency): Builder => $currency->active());
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

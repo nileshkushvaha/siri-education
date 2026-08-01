@@ -18,6 +18,7 @@ use App\Filament\Resources\OperationalAlerts\OperationalAlertResource;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Country;
+use App\Models\Currency;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Reporting\Enums\ReportingPeriodPreset;
@@ -145,15 +146,75 @@ class DashboardDrillDownTest extends TestCase
         $this->assertNull($page->context()->countryId);
     }
 
-    public function test_a_real_country_id_is_honoured(): void
+    public function test_a_registerable_country_id_is_honoured(): void
     {
         $this->actingAs($this->manager());
-        $country = Country::factory()->create();
+        $country = $this->registerableCountry();
 
         $page = new Dashboard;
         $page->countryId = (string) $country->id;
 
         $this->assertSame($country->id, $page->context()->countryId);
+    }
+
+    public function test_a_country_nobody_can_register_in_is_not_offered_or_honoured(): void
+    {
+        $this->actingAs($this->manager());
+
+        // Active, but its default currency is inactive — registration
+        // could never resolve a billing currency for it, so filtering the
+        // dashboard by it would only ever return nothing.
+        $currency = Currency::query()->create([
+            'code' => 'XTS', 'name' => 'Test Currency', 'symbol' => 'X',
+            'minor_units' => 2, 'status' => 'inactive',
+        ]);
+        $country = Country::factory()->create(['default_currency_id' => $currency->id]);
+
+        $page = new Dashboard;
+        $page->countryId = (string) $country->id;
+
+        $this->assertNull($page->context()->countryId);
+        $this->assertFalse($page->countryOptions()->contains('id', $country->id));
+    }
+
+    public function test_the_dashboard_offers_exactly_the_registration_country_list(): void
+    {
+        $this->actingAs($this->manager());
+
+        $offered = $this->registerableCountry();
+
+        $inactiveCurrency = Currency::query()->create([
+            'code' => 'XTY', 'name' => 'Dormant', 'symbol' => 'Y',
+            'minor_units' => 2, 'status' => 'inactive',
+        ]);
+        $hidden = Country::factory()->create(['default_currency_id' => $inactiveCurrency->id]);
+        $noCurrency = Country::factory()->create(['default_currency_id' => null]);
+        $suspended = Country::factory()->create([
+            'status' => 'inactive',
+            'default_currency_id' => $offered->default_currency_id,
+        ]);
+
+        // The registration form's own source of truth.
+        $registration = Country::query()->availableForRegistration()->pluck('id')->sort()->values();
+        $dashboard = (new Dashboard)->countryOptions()->pluck('id')->sort()->values();
+
+        $this->assertEquals($registration->all(), $dashboard->all());
+        $this->assertTrue($dashboard->contains($offered->id));
+
+        foreach ([$hidden, $noCurrency, $suspended] as $excluded) {
+            $this->assertFalse($dashboard->contains($excluded->id));
+        }
+    }
+
+    /** A country the public registration form would actually offer. */
+    private function registerableCountry(): Country
+    {
+        $currency = Currency::query()->firstOrCreate(
+            ['code' => 'INR'],
+            ['name' => 'Indian Rupee', 'symbol' => '₹', 'minor_units' => 2, 'status' => 'active'],
+        );
+
+        return Country::factory()->create(['default_currency_id' => $currency->id]);
     }
 
     public function test_a_non_numeric_country_id_is_dropped(): void

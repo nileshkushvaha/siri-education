@@ -55,14 +55,51 @@ abstract class DashboardChartWidget extends ChartWidget
     /** Matches `DashboardChart::$key` produced by the composition service. */
     abstract protected function chartKey(): string;
 
+    /**
+     * The dashboard card that hosts this widget already renders the
+     * chart's title, subtitle and header totals, so the widget's own
+     * heading is suppressed to avoid printing both.
+     *
+     * `chart()?->title` remains the accessible name via the canvas
+     * `aria-label` below.
+     */
     public function getHeading(): string|Htmlable|null
     {
-        return $this->chart()?->title;
+        return null;
     }
 
     public function getDescription(): string|Htmlable|null
     {
-        return $this->chart()?->subtitle;
+        return null;
+    }
+
+    /**
+     * A plain-language summary of the series, so a reader who cannot
+     * perceive the chart still gets its content.
+     */
+    public function chartSummary(): string
+    {
+        $chart = $this->chart();
+
+        if ($chart === null) {
+            return '';
+        }
+
+        $parts = [];
+
+        foreach ($chart->segments as $segment) {
+            $parts[] = sprintf('%s: %s', $segment['label'], number_format((int) $segment['value']));
+        }
+
+        foreach ($chart->datasets as $dataset) {
+            if ($chart->segments !== []) {
+                break;
+            }
+
+            $parts[] = sprintf('%s totalling %s', $dataset['label'], number_format(array_sum($dataset['data'])));
+        }
+
+        return sprintf('%s. %s.', $chart->title, implode('; ', $parts));
     }
 
     protected function chart(): ?DashboardChart
@@ -126,9 +163,14 @@ abstract class DashboardChartWidget extends ChartWidget
     abstract protected function dataset(array $dataset): array;
 
     /**
-     * Dark-theme-legible grid, legend and tooltip defaults. Filament's
-     * chart component re-themes automatically, so only the parts Chart.js
-     * does not adapt (grid alpha, tick precision) are set here.
+     * Shared chart chrome: grid, tooltip, legend and axis treatment used
+     * by every dashboard chart so they read as one system.
+     *
+     * Grid lines are a low-alpha slate rather than white — a pure-white
+     * rule on a dark plot competes with the data. Tick density is capped
+     * with `autoSkip` + `maxTicksLimit` so a 30-day range never produces
+     * the unreadable diagonal date wall it otherwise would; labels stay
+     * horizontal for the same reason.
      *
      * @return array<string, mixed>
      */
@@ -136,23 +178,83 @@ abstract class DashboardChartWidget extends ChartWidget
     {
         return [
             'maintainAspectRatio' => false,
+            'layout' => ['padding' => ['top' => 4, 'right' => 4, 'bottom' => 0, 'left' => 0]],
+            'interaction' => ['mode' => 'index', 'intersect' => false],
             'plugins' => [
                 'legend' => [
                     'display' => true,
                     'position' => 'bottom',
-                    'labels' => ['usePointStyle' => true, 'boxWidth' => 8],
+                    'labels' => [
+                        'usePointStyle' => true,
+                        'pointStyle' => 'circle',
+                        'boxWidth' => 7,
+                        'boxHeight' => 7,
+                        'padding' => 14,
+                        'font' => ['size' => 11],
+                    ],
                 ],
+                'tooltip' => $this->tooltipOptions(),
             ],
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
-                    'ticks' => ['precision' => 0],
-                    'grid' => ['color' => 'rgba(148, 163, 184, 0.18)'],
+                    'border' => ['display' => false],
+                    'ticks' => ['precision' => 0, 'maxTicksLimit' => 5, 'font' => ['size' => 10], 'padding' => 6],
+                    'grid' => ['color' => 'rgba(148, 163, 184, 0.16)', 'drawTicks' => false],
                 ],
                 'x' => [
+                    'border' => ['display' => false],
                     'grid' => ['display' => false],
+                    'ticks' => [
+                        'autoSkip' => true,
+                        // Keeps date labels horizontal and sparse enough
+                        // to stay legible at every breakpoint.
+                        'maxTicksLimit' => 7,
+                        'maxRotation' => 0,
+                        'minRotation' => 0,
+                        'font' => ['size' => 10],
+                        'padding' => 4,
+                    ],
                 ],
             ],
         ];
+    }
+
+    /**
+     * Compact, high-contrast tooltip shared by every chart.
+     *
+     * @return array<string, mixed>
+     */
+    protected function tooltipOptions(): array
+    {
+        return [
+            'backgroundColor' => 'rgba(15, 20, 32, 0.96)',
+            'titleColor' => '#f8fafc',
+            'bodyColor' => '#cbd5e1',
+            'borderColor' => 'rgba(148, 163, 184, 0.25)',
+            'borderWidth' => 1,
+            'cornerRadius' => 8,
+            'padding' => 10,
+            'displayColors' => true,
+            'usePointStyle' => true,
+            'boxPadding' => 4,
+            'titleFont' => ['size' => 12, 'weight' => '600'],
+            'bodyFont' => ['size' => 11],
+        ];
+    }
+
+    /**
+     * Translucent area fill for line charts.
+     *
+     * A true canvas gradient would need `getOptions()` to return the
+     * whole options object as `RawJs`, since Filament JSON-encodes an
+     * array and a nested JS callback would not survive that. A flat
+     * low-alpha wash reads almost identically under the plot and keeps
+     * the options declarative, so the gradient work is done where it is
+     * genuinely free: the CSS surfaces and the SVG KPI sparklines.
+     */
+    protected function areaFill(string $hex, string $alpha = '26'): string
+    {
+        return $hex.$alpha;
     }
 }

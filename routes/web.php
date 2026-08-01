@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Booking\BookingWizardPageController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactFormController;
@@ -73,9 +74,6 @@ use App\Http\Middleware\EnsureInstructorWorkspaceAccess;
 use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
 use App\Services\PortalResolver;
-use App\Services\Student\StudentLifecycleService;
-use App\Support\InstructorApplicationIntent;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -165,6 +163,37 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     })->middleware('throttle:3,1')->name('verification.resend.guest');
 });
 
+// ── Email verification — deliberately PUBLIC ────────────────────────
+//
+// These two routes used to live in the `auth` group below, which meant a
+// verification link only worked in the browser that submitted the
+// registration form: opening it on a phone redirected to a login that
+// could not succeed, because registration creates the account
+// `pending_verification` and LoginService rejects any non-active
+// account. Verifying a mailbox must not depend on a browser session.
+//
+// The route NAME and PATH are unchanged (`auth.verification.verify`,
+// `/verify-email/{id}/{hash}`). Signed URLs sign the path, and
+// VerifyEmailNotification generates this exact name, so every link
+// already sitting in an inbox keeps working.
+//
+// Security is unchanged: `signed` still enforces the signature and its
+// expiry, the controller resolves the user from the signed id and
+// constant-time-compares the hash against the account's current email,
+// and throttling limits brute-force probing of the id/hash pair.
+Route::name('auth.')->group(function (): void {
+    Route::get('/verify-email/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
+    // Public because a guest who just verified on a second device has to
+    // be able to read the outcome.
+    Route::get('/email-verified', fn () => view('auth.verified', [
+        'outcome' => null,
+        'accountIsUsable' => true,
+    ]))->name('verified');
+});
+
 // Permanent redirect for the previous student-only registration URL —
 // preserves bookmarks and SEO value. A closure rather than the bare
 // Route::redirect() helper, because that helper drops the query
@@ -188,30 +217,6 @@ Route::name('auth.')->middleware('auth')->group(function (): void {
         return view('auth.verify-email');
     })->name('verification.notice');
 
-    Route::get('/verify-email/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $user = $request->user();
-        if ($user->hasVerifiedEmail()) {
-            if (InstructorApplicationIntent::consume()) {
-                return redirect()->route('dashboard.instructor.onboarding')
-                    ->with('success', 'Your email is already verified.');
-            }
-
-            return redirect(app(PortalResolver::class)->loginRedirect($user))
-                ->with('success', 'Your email is already verified.');
-        }
-
-        $request->fulfill();
-        $user->update(['status' => User::STATUS_ACTIVE]);
-        app(StudentLifecycleService::class)->activateFromVerification($user);
-
-        if (InstructorApplicationIntent::consume()) {
-            return redirect()->route('dashboard.instructor.onboarding')
-                ->with('success', 'Email verified! Continue your instructor application below.');
-        }
-
-        return redirect()->route('auth.verified');
-    })->middleware('signed')->name('verification.verify');
-
     Route::post('/resend-verification', function (Request $request) {
         $user = $request->user();
         if ($user->hasVerifiedEmail()) {
@@ -222,9 +227,6 @@ Route::name('auth.')->middleware('auth')->group(function (): void {
 
         return back()->with('resent', true);
     })->middleware('throttle:6,1')->name('verification.resend');
-
-    // Verification success page
-    Route::get('/email-verified', fn () => view('auth.verified'))->name('verified');
 
     // ── Force password change (no email.verify or password.change middlewares — avoids loop) ──
     Route::get('/password/change-required', [ForcePasswordChangeController::class, 'showForm'])->name('password.change-required');

@@ -31,11 +31,15 @@ class StudentRegistrationChartWidget extends DashboardChartWidget
             'label' => $dataset['label'],
             'data' => $dataset['data'],
             'borderColor' => $dataset['color'],
-            'backgroundColor' => 'rgba(236, 72, 153, 0.12)',
+            'backgroundColor' => $this->areaFill($dataset['color']),
             'fill' => true,
             'tension' => 0.3,
             'pointRadius' => 0,
-            'pointHoverRadius' => 4,
+            'pointHoverRadius' => 5,
+            'pointHoverBackgroundColor' => $dataset['color'],
+            'pointHoverBorderColor' => '#ffffff',
+            'pointHoverBorderWidth' => 2,
+            'borderWidth' => 2.5,
         ];
     }
 

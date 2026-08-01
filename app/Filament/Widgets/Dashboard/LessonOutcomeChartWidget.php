@@ -24,7 +24,10 @@ namespace App\Filament\Widgets\Dashboard;
  */
 class LessonOutcomeChartWidget extends DashboardChartWidget
 {
-    protected ?string $maxHeight = '120px';
+    protected ?string $maxHeight = '72px';
+
+    /** Matches the compact bar so the skeleton does not reserve chart-sized space. */
+    protected ?string $placeholderHeight = '72px';
 
     protected function chartKey(): string
     {
@@ -43,7 +46,9 @@ class LessonOutcomeChartWidget extends DashboardChartWidget
             'data' => $dataset['data'],
             'backgroundColor' => $dataset['color'],
             'borderWidth' => 0,
-            'barThickness' => 28,
+            'barThickness' => 34,
+            'borderRadius' => 3,
+            'borderSkipped' => false,
         ];
     }
 

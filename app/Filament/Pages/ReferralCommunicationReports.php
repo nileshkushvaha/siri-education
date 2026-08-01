@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Pages\Concerns\HasReportSectionState;
 use App\Reporting\Contracts\ReferralCommunicationReportServiceInterface;
 use App\Reporting\DTOs\Communication\NotificationActivityData;
 use App\Reporting\DTOs\Communication\ReferralActivityData;
@@ -12,12 +13,13 @@ use App\Reporting\DTOs\Communication\ReviewQualityRatesData;
 use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
 use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Filters\ReportFilters;
-use App\Reporting\Support\ReportingTimezoneResolver;
+use App\Reporting\Support\ReportPeriodResolver;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 
 /**
  * Referrals, Quality & Communications (SRS Chapters 16–19). Three
@@ -30,6 +32,7 @@ use Illuminate\Support\Collection;
 class ReferralCommunicationReports extends Page
 {
     use HasCentralizedNavigation;
+    use HasReportSectionState;
 
     protected string $view = 'filament.pages.referral-communication-reports';
 
@@ -43,17 +46,22 @@ class ReferralCommunicationReports extends Page
 
     protected static ?int $navigationSort = 14;
 
+    #[Url(as: 'period')]
     public string $periodPreset = 'last_30_days';
 
+    #[Url(as: 'start')]
     public ?string $customStart = null;
 
+    #[Url(as: 'end')]
     public ?string $customEnd = null;
 
     // Livewire hydrates select values as strings — kept ?string, cast
     // once in filters() rather than typed here, to avoid a hydration
     // regression.
+    #[Url(as: 'currency')]
     public ?string $currencyCode = null;
 
+    #[Url(as: 'instructor')]
     public ?string $instructorId = null;
 
     public static function canAccess(): bool
@@ -79,14 +87,12 @@ class ReferralCommunicationReports extends Page
 
     public function period(): ReportingPeriod
     {
-        $preset = ReportingPeriodPreset::tryFrom($this->periodPreset) ?? ReportingPeriodPreset::Last30Days;
-        $timezone = ReportingTimezoneResolver::resolve();
-
-        if ($preset === ReportingPeriodPreset::Custom && filled($this->customStart) && filled($this->customEnd)) {
-            return ReportingPeriod::custom($this->customStart, $this->customEnd, $timezone);
-        }
-
-        return ReportingPeriod::forPreset($preset === ReportingPeriodPreset::Custom ? ReportingPeriodPreset::Last30Days : $preset, $timezone);
+        return ReportPeriodResolver::resolve(
+            preset: $this->periodPreset,
+            customStart: $this->customStart,
+            customEnd: $this->customEnd,
+            default: ReportingPeriodPreset::Last30Days,
+        );
     }
 
     private function filters(): ReportFilters
@@ -139,5 +145,18 @@ class ReferralCommunicationReports extends Page
     public function periodPresets(): Collection
     {
         return collect(ReportingPeriodPreset::cases());
+    }
+
+    /**
+     * This page hosts more than one registered report definition, so a
+     * dashboard card must be able to address the right block. Keys are
+     * validated against this list — an unknown `?section=` resolves to
+     * null and the page renders normally.
+     *
+     * @return list<string>
+     */
+    public function sectionKeys(): array
+    {
+        return ['referrals', 'quality', 'notifications'];
     }
 }

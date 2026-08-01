@@ -11,10 +11,6 @@ use App\Filament\Pages\CacheManagerPage;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\QueueMonitorPage;
 use App\Filament\Pages\SchedulerMonitorPage;
-use App\Filament\Widgets\RecentAuditTrailWidget;
-use App\Filament\Widgets\RecentLoginsWidget;
-use App\Filament\Widgets\RecentUsersWidget;
-use App\Filament\Widgets\StatsOverviewWidget;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\TrackUserSession;
 use App\Settings\GeneralSettings;
@@ -136,13 +132,18 @@ class AdminPanelProvider extends PanelProvider
                     ->openUrlInNewTab()
                     ->visible(fn (): bool => auth()->user()?->can('viewPulse') ?? false),
             ])
+            // Discovery registers every widget as a Livewire component so
+            // pages can render one explicitly. No widget is listed in
+            // ->widgets() any more: the dashboard composes its own layout
+            // in Blade instead of rendering a generic widget grid, and
+            // the panel-level list only ever fed that grid.
+            //
+            // StatsOverviewWidget, RecentUsersWidget, RecentLoginsWidget
+            // and RecentAuditTrailWidget remain intact and permissioned
+            // for reuse elsewhere — they are simply no longer part of the
+            // dashboard, which now shows marketplace figures rather than
+            // identity-system activity tables.
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->widgets([
-                StatsOverviewWidget::class,
-                RecentUsersWidget::class,
-                RecentLoginsWidget::class,
-                RecentAuditTrailWidget::class,
-            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -8,6 +8,7 @@ use App\Enums\LearningGoalStatus;
 use App\Enums\LearningPlanStatus;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
+use App\Filament\Pages\Concerns\HasReportSectionState;
 use App\Homework\Enums\HomeworkStatus;
 use App\Models\AcademicLevel;
 use App\Models\Subject;
@@ -22,13 +23,14 @@ use App\Reporting\DTOs\Learning\MilestoneReviewAnalyticsData;
 use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
 use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Filters\ReportFilters;
-use App\Reporting\Support\ReportingTimezoneResolver;
+use App\Reporting\Support\ReportPeriodResolver;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 
 /**
  * Learning Analytics (SRS Chapter 19 Learning Dashboard,
@@ -42,6 +44,7 @@ class LearningAnalytics extends Page
 {
     use ExportsReportCsv;
     use HasCentralizedNavigation;
+    use HasReportSectionState;
 
     protected string $view = 'filament.pages.learning-analytics';
 
@@ -55,22 +58,30 @@ class LearningAnalytics extends Page
 
     protected static ?int $navigationSort = 13;
 
+    #[Url(as: 'period')]
     public string $periodPreset = 'last_30_days';
 
+    #[Url(as: 'start')]
     public ?string $customStart = null;
 
+    #[Url(as: 'end')]
     public ?string $customEnd = null;
 
     // Livewire hydrates select values as strings — kept ?string, cast
     // once in filters().
+    #[Url(as: 'subject')]
     public ?string $subjectId = null;
 
+    #[Url(as: 'education_level')]
     public ?string $educationLevelId = null;
 
+    #[Url(as: 'learning_plan_status')]
     public ?string $planStatus = null;
 
+    #[Url(as: 'learning_goal_status')]
     public ?string $goalStatus = null;
 
+    #[Url(as: 'homework_status')]
     public ?string $homeworkStatus = null;
 
     public static function canAccess(): bool
@@ -94,14 +105,12 @@ class LearningAnalytics extends Page
 
     public function period(): ReportingPeriod
     {
-        $preset = ReportingPeriodPreset::tryFrom($this->periodPreset) ?? ReportingPeriodPreset::Last30Days;
-        $timezone = ReportingTimezoneResolver::resolve();
-
-        if ($preset === ReportingPeriodPreset::Custom && filled($this->customStart) && filled($this->customEnd)) {
-            return ReportingPeriod::custom($this->customStart, $this->customEnd, $timezone);
-        }
-
-        return ReportingPeriod::forPreset($preset === ReportingPeriodPreset::Custom ? ReportingPeriodPreset::Last30Days : $preset, $timezone);
+        return ReportPeriodResolver::resolve(
+            preset: $this->periodPreset,
+            customStart: $this->customStart,
+            customEnd: $this->customEnd,
+            default: ReportingPeriodPreset::Last30Days,
+        );
     }
 
     private function filters(): ReportFilters
@@ -209,5 +218,18 @@ class LearningAnalytics extends Page
     public function academicLevelOptions(): Collection
     {
         return AcademicLevel::query()->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * This page hosts more than one registered report definition, so a
+     * dashboard card must be able to address the right block. Keys are
+     * validated against this list — an unknown `?section=` resolves to
+     * null and the page renders normally.
+     *
+     * @return list<string>
+     */
+    public function sectionKeys(): array
+    {
+        return ['plans', 'goals', 'homework', 'milestones', 'trends'];
     }
 }

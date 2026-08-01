@@ -53,6 +53,15 @@
             </div>
         </div>
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=referrals. --}}
+        <div id="section-referrals" class="scroll-mt-24">
+            @if ($this->isActiveSection('referrals'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Referral activity
+                </p>
+            @endif
+        </div>
         {{-- ── Referral activity (ViewReferralReports) ─────────────────── --}}
         @if($referrals !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
@@ -87,6 +96,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=quality. --}}
+        <div id="section-quality" class="scroll-mt-24">
+            @if ($this->isActiveSection('quality'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Review & quality
+                </p>
+            @endif
+        </div>
         {{-- ── Review & quality rates (ViewReviewQualityReports) ───────── --}}
         @if($rates !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
@@ -124,6 +142,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=notifications. --}}
+        <div id="section-notifications" class="scroll-mt-24">
+            @if ($this->isActiveSection('notifications'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Notification activity
+                </p>
+            @endif
+        </div>
         {{-- ── Notification activity (ViewNotificationReports) ─────────── --}}
         @if($notifications !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
@@ -174,5 +201,7 @@
         </p>
 
     </div>
+
+    @include('filament.pages.partials.report-section-scroll')
 
 </x-filament-panels::page>

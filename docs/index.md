@@ -38,6 +38,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Navigation | `navigation.md` |
 | Media | `media.md` |
 | Public frontend (Blade/Livewire/Alpine/Tailwind) | `frontend.md` |
+| Admin dashboard (`/admin` command centre, composition layer, drill-down) | `dashboard.md` |
 | Users | `users.md` |
 | Activity Log / Audit Trail | `activity-log.md` |
 | Notifications (admin bell + transactional email) | `notifications.md` |
@@ -98,6 +99,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Topic | File |
 |---|---|
 | Admin-forms functional/security remediation backlog (unresolved items) | `audits/admin-forms-remediation-backlog.md` |
+| Main-dashboard content audit (dated snapshot; implemented — see its §0 corrections) | `audits/main-dashboard-content-audit.md` |
 
 ## Historical / archived
 

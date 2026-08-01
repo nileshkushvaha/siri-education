@@ -23,13 +23,14 @@ use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
 use App\Reporting\Enums\ReportingBookingType;
 use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Filters\ReportFilters;
-use App\Reporting\Support\ReportingTimezoneResolver;
+use App\Reporting\Support\ReportPeriodResolver;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 
 /**
  * The Booking, Lesson & Meeting Operations report (SRS Chapter 19:
@@ -58,29 +59,40 @@ class BookingLessonMeetingOperations extends Page
 
     protected static ?int $navigationSort = 3;
 
+    #[Url(as: 'period')]
     public string $periodPreset = 'last_30_days';
 
+    #[Url(as: 'start')]
     public ?string $customStart = null;
 
+    #[Url(as: 'end')]
     public ?string $customEnd = null;
 
     // Livewire hydrates <select>/<input> values as strings — typed ?int
     // properties throw on assignment ("Cannot assign string to property").
     // Kept as ?string here; cast once, in filters(), never in the view.
+    #[Url(as: 'country')]
     public ?string $countryId = null;
 
+    #[Url(as: 'subject')]
     public ?string $subjectId = null;
 
+    #[Url(as: 'instructor')]
     public ?string $instructorId = null;
 
+    #[Url(as: 'booking_type')]
     public ?string $bookingType = null;
 
+    #[Url(as: 'booking_status')]
     public ?string $bookingStatus = null;
 
+    #[Url(as: 'lesson_status')]
     public ?string $lessonStatus = null;
 
+    #[Url(as: 'lesson_outcome')]
     public ?string $lessonOutcome = null;
 
+    #[Url(as: 'meeting_status')]
     public ?string $meetingStatus = null;
 
     public static function canAccess(): bool
@@ -107,14 +119,12 @@ class BookingLessonMeetingOperations extends Page
 
     public function period(): ReportingPeriod
     {
-        $preset = ReportingPeriodPreset::tryFrom($this->periodPreset) ?? ReportingPeriodPreset::Last30Days;
-        $timezone = ReportingTimezoneResolver::resolve();
-
-        if ($preset === ReportingPeriodPreset::Custom && filled($this->customStart) && filled($this->customEnd)) {
-            return ReportingPeriod::custom($this->customStart, $this->customEnd, $timezone);
-        }
-
-        return ReportingPeriod::forPreset($preset === ReportingPeriodPreset::Custom ? ReportingPeriodPreset::Last30Days : $preset, $timezone);
+        return ReportPeriodResolver::resolve(
+            preset: $this->periodPreset,
+            customStart: $this->customStart,
+            customEnd: $this->customEnd,
+            default: ReportingPeriodPreset::Last30Days,
+        );
     }
 
     private function filters(): ReportFilters

@@ -6,28 +6,47 @@ namespace App\Filament\Pages\Concerns;
 
 use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Filters\ReportFilters;
-use App\Reporting\Support\ReportingTimezoneResolver;
+use App\Reporting\Support\ReportPeriodResolver;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use App\Wallet\Enums\WalletLedgerEntryType;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 
 /**
  * Shared filter state for the four financial report pages.
  * Livewire hydrates select values as strings — all
  * properties stay ?string and are cast once in filters().
+ *
+ * Every filter is bound to the query string so the dashboard can hand
+ * its period and currency context straight to a financial report, and
+ * so a browser back-navigation restores the previous view. Only the
+ * dimensions these four pages actually implement are bound — a report
+ * never accepts a filter it does not support.
+ *
+ * Raw URL values are untrusted: the period goes through
+ * {@see ReportPeriodResolver} (which enforces `ReportingPeriod`'s
+ * maximum-range and ordering rules and degrades to the default rather
+ * than throwing), and every other value is either `tryFrom()`-cast to a
+ * valid enum case or dropped in filters().
  */
 trait HasFinancialReportFilters
 {
+    #[Url(as: 'period')]
     public string $periodPreset = 'last_30_days';
 
+    #[Url(as: 'start')]
     public ?string $customStart = null;
 
+    #[Url(as: 'end')]
     public ?string $customEnd = null;
 
+    #[Url(as: 'currency')]
     public ?string $currencyCode = null;
 
+    #[Url(as: 'instructor')]
     public ?string $instructorId = null;
 
+    #[Url(as: 'wallet_transaction_type')]
     public ?string $walletTransactionType = null;
 
     public function resetFilters(): void
@@ -38,14 +57,12 @@ trait HasFinancialReportFilters
 
     public function period(): ReportingPeriod
     {
-        $preset = ReportingPeriodPreset::tryFrom($this->periodPreset) ?? ReportingPeriodPreset::Last30Days;
-        $timezone = ReportingTimezoneResolver::resolve();
-
-        if ($preset === ReportingPeriodPreset::Custom && filled($this->customStart) && filled($this->customEnd)) {
-            return ReportingPeriod::custom($this->customStart, $this->customEnd, $timezone);
-        }
-
-        return ReportingPeriod::forPreset($preset === ReportingPeriodPreset::Custom ? ReportingPeriodPreset::Last30Days : $preset, $timezone);
+        return ReportPeriodResolver::resolve(
+            preset: $this->periodPreset,
+            customStart: $this->customStart,
+            customEnd: $this->customEnd,
+            default: ReportingPeriodPreset::Last30Days,
+        );
     }
 
     protected function filters(): ReportFilters

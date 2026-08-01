@@ -19,9 +19,18 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Widget visibility is permission-driven: each widget has canView() which
- * Filament calls before rendering. Gate::before() handles the super_admin
- * bypass so no explicit isSuperAdmin() logic lives inside widgets.
+ * The legacy dashboard widgets after the marketplace redesign.
+ *
+ * These five widgets used to BE the dashboard. They are no longer part
+ * of its composition — the page now renders marketplace figures through
+ * an explicit Blade layout, and `Dashboard::getWidgets()` returns
+ * nothing — but the classes themselves are intact, still permission-
+ * gated, and still registered as Livewire components, so any surface
+ * that wants them can render one.
+ *
+ * This file therefore covers two things: that each widget's own
+ * `canView()` still behaves, and that none of them can reach the
+ * dashboard again by accident.
  */
 class DashboardWidgetTest extends TestCase
 {
@@ -135,52 +144,54 @@ class DashboardWidgetTest extends TestCase
         $this->assertFalse(RecentUsersWidget::canView());
     }
 
-    // ── Dashboard::getWidgets() filters to only visible widgets ──────────────
+    // ── None of them is part of the dashboard any more ───────────────────────
 
-    public function test_super_admin_dashboard_includes_all_widgets(): void
+    public function test_dashboard_composes_no_widgets_for_super_admin(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        // Even with every permission, the dashboard's widget grid is empty:
+        // its content comes from the composition layer and its own Blade
+        // layout, not from panel-registered widgets.
+        $this->assertSame([], (new Dashboard)->getWidgets());
+    }
+
+    public function test_dashboard_composes_no_widgets_for_manager(): void
+    {
+        $this->actingAs($this->manager);
+
+        $this->assertSame([], (new Dashboard)->getWidgets());
+    }
+
+    public function test_legacy_dashboard_widgets_are_not_reachable_through_the_dashboard(): void
     {
         $this->actingAs($this->superAdmin);
 
         $widgets = (new Dashboard)->getWidgets();
 
-        $this->assertContains(StatsOverviewWidget::class, $widgets);
-        $this->assertContains(RecentUsersWidget::class, $widgets);
-        $this->assertContains(RecentLoginsWidget::class, $widgets);
-        $this->assertContains(RecentAuditTrailWidget::class, $widgets);
-        $this->assertContains(QuickActionsWidget::class, $widgets);
+        foreach ([
+            StatsOverviewWidget::class,
+            RecentUsersWidget::class,
+            RecentLoginsWidget::class,
+            RecentAuditTrailWidget::class,
+            QuickActionsWidget::class,
+        ] as $widget) {
+            $this->assertNotContains($widget, $widgets);
+        }
     }
 
-    public function test_manager_without_permissions_dashboard_contains_only_quick_actions(): void
+    public function test_the_hardcoded_widget_constant_is_gone(): void
     {
-        // Manager has no widget permissions yet — only QuickActionsWidget
-        // is visible (its canView() just requires authentication).
-        $this->actingAs($this->manager);
-
-        $widgets = (new Dashboard)->getWidgets();
-
-        $this->assertContains(QuickActionsWidget::class, $widgets);
-        $this->assertNotContains(StatsOverviewWidget::class, $widgets);
-        $this->assertNotContains(RecentUsersWidget::class, $widgets);
-        $this->assertNotContains(RecentLoginsWidget::class, $widgets);
-        $this->assertNotContains(RecentAuditTrailWidget::class, $widgets);
+        // The old page carried a WIDGETS constant listing its grid. The
+        // redesign replaced it with a composition service, so a stale
+        // constant must not linger and mislead.
+        $this->assertFalse((new \ReflectionClass(Dashboard::class))->hasConstant('WIDGETS'));
     }
 
-    public function test_dashboard_getwidgets_respects_can_view(): void
-    {
-        $this->manager->givePermissionTo('View:StatsOverviewWidget');
-        $this->actingAs($this->manager);
-
-        $widgets = (new Dashboard)->getWidgets();
-
-        $this->assertContains(StatsOverviewWidget::class, $widgets);
-        $this->assertNotContains(RecentUsersWidget::class, $widgets);
-    }
-
-    // ── Quick Actions — view vs create permission variants ────────────────────
+    // ── Quick Actions — retained class, still permission-aware ───────────────
 
     public function test_super_admin_quick_actions_shows_create_labels(): void
     {
-        // super_admin has all permissions — sees the "create" variant of each card
         $this->actingAs($this->superAdmin);
 
         $actions = (new QuickActionsWidget)->getActions();
@@ -194,7 +205,6 @@ class DashboardWidgetTest extends TestCase
 
     public function test_manager_with_view_any_user_sees_users_index_card(): void
     {
-        // Manager has ViewAny:User but not Create:User — sees "Users" (index) card
         $this->manager->givePermissionTo('ViewAny:User');
         $this->actingAs($this->manager);
 
@@ -209,7 +219,6 @@ class DashboardWidgetTest extends TestCase
 
     public function test_manager_with_create_user_sees_create_user_card(): void
     {
-        // When Create:User is also granted, the card upgrades to "Create User"
         $this->manager->givePermissionTo(['ViewAny:User', 'Create:User']);
         $this->actingAs($this->manager);
 
@@ -221,69 +230,18 @@ class DashboardWidgetTest extends TestCase
         $this->assertContains(route('filament.admin.resources.users.create'), $urls);
     }
 
-    public function test_manager_with_default_permissions_sees_correct_cards(): void
-    {
-        // Default manager permissions: ViewAny:User/Role/Post/Page/Activity/LoginHistory
-        $this->manager->givePermissionTo([
-            'ViewAny:User', 'ViewAny:Role', 'ViewAny:Post',
-            'ViewAny:Page', 'ViewAny:Activity', 'ViewAny:LoginHistory',
-        ]);
-        $this->actingAs($this->manager);
-
-        $actions = (new QuickActionsWidget)->getActions();
-        $labels = array_column($actions, 'label');
-
-        $this->assertContains('Users', $labels);
-        $this->assertContains('Pages', $labels);
-        $this->assertContains('Posts', $labels);
-        $this->assertContains('Roles', $labels);
-        $this->assertContains('Activity Log', $labels);
-        $this->assertContains('Login History', $labels);
-        $this->assertNotContains('Create User', $labels);
-        $this->assertNotContains('Settings', $labels);
-    }
-
     public function test_manager_with_no_permissions_sees_no_quick_action_cards(): void
     {
         $this->actingAs($this->manager);
         $this->assertEmpty((new QuickActionsWidget)->getActions());
     }
 
-    // ── Widget registration is extensible ─────────────────────────────────────
+    // ── Widgets still render on their own ────────────────────────────────────
 
-    public function test_widget_list_is_defined_on_dashboard_page(): void
-    {
-        $reflection = new \ReflectionClass(Dashboard::class);
-        $constant = $reflection->getConstant('WIDGETS');
-
-        $this->assertIsArray($constant);
-        $this->assertNotEmpty($constant);
-
-        foreach ($constant as $widgetClass) {
-            $this->assertTrue(
-                method_exists($widgetClass, 'canView'),
-                "{$widgetClass} must implement canView()"
-            );
-        }
-    }
-
-    // ── canView() prevents widgets loading on the dashboard page ────────────
-    // Filament uses canView() as a filter in getWidgets(), not as an HTTP
-    // guard — a widget excluded from getWidgets() never mounts, so its
-    // queries never run. The authoritative test is Dashboard::getWidgets().
-
-    public function test_excluded_widget_is_absent_from_dashboard_getwidgets(): void
-    {
-        $this->actingAs($this->manager);
-        // Manager has no widget permissions — stats widget must be absent.
-        $this->assertNotContains(StatsOverviewWidget::class, (new Dashboard)->getWidgets());
-    }
-
-    public function test_stats_widget_renders_for_super_admin(): void
+    public function test_stats_widget_still_renders_when_mounted_directly(): void
     {
         $this->actingAs($this->superAdmin);
 
-        Livewire::test(StatsOverviewWidget::class)
-            ->assertSuccessful();
+        Livewire::test(StatsOverviewWidget::class)->assertSuccessful();
     }
 }

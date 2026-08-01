@@ -15,12 +15,13 @@ use App\Reporting\DTOs\Marketplace\MarketplaceSupplyData;
 use App\Reporting\DTOs\Operations\OperationsReportFreshnessData;
 use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\Filters\ReportFilters;
-use App\Reporting\Support\ReportingTimezoneResolver;
+use App\Reporting\Support\ReportPeriodResolver;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 
 /**
  * Marketplace Supply & Demand (SRS Chapter 19). Every
@@ -45,18 +46,24 @@ class MarketplaceSupplyDemand extends Page
 
     protected static ?int $navigationSort = 15;
 
+    #[Url(as: 'period')]
     public string $periodPreset = 'last_30_days';
 
+    #[Url(as: 'start')]
     public ?string $customStart = null;
 
+    #[Url(as: 'end')]
     public ?string $customEnd = null;
 
     // Livewire hydrates select values as strings — kept ?string, cast
     // once in filters().
+    #[Url(as: 'country')]
     public ?string $countryId = null;
 
+    #[Url(as: 'subject')]
     public ?string $subjectId = null;
 
+    #[Url(as: 'instructor')]
     public ?string $instructorId = null;
 
     public static function canAccess(): bool
@@ -75,14 +82,12 @@ class MarketplaceSupplyDemand extends Page
 
     public function period(): ReportingPeriod
     {
-        $preset = ReportingPeriodPreset::tryFrom($this->periodPreset) ?? ReportingPeriodPreset::Last30Days;
-        $timezone = ReportingTimezoneResolver::resolve();
-
-        if ($preset === ReportingPeriodPreset::Custom && filled($this->customStart) && filled($this->customEnd)) {
-            return ReportingPeriod::custom($this->customStart, $this->customEnd, $timezone);
-        }
-
-        return ReportingPeriod::forPreset($preset === ReportingPeriodPreset::Custom ? ReportingPeriodPreset::Last30Days : $preset, $timezone);
+        return ReportPeriodResolver::resolve(
+            preset: $this->periodPreset,
+            customStart: $this->customStart,
+            customEnd: $this->customEnd,
+            default: ReportingPeriodPreset::Last30Days,
+        );
     }
 
     private function filters(): ReportFilters

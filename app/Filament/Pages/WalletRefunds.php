@@ -7,6 +7,7 @@ namespace App\Filament\Pages;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Pages\Concerns\ExportsReportCsv;
 use App\Filament\Pages\Concerns\HasFinancialReportFilters;
+use App\Filament\Pages\Concerns\HasReportSectionState;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\ReportAccessContextInterface;
 use App\Reporting\Contracts\ReportRegistryInterface;
@@ -26,6 +27,7 @@ class WalletRefunds extends Page
     use ExportsReportCsv;
     use HasCentralizedNavigation;
     use HasFinancialReportFilters;
+    use HasReportSectionState;
 
     protected string $view = 'filament.pages.wallet-refunds';
 
@@ -76,5 +78,18 @@ class WalletRefunds extends Page
     public function entryTypeOptions(): Collection
     {
         return collect(WalletLedgerEntryType::cases());
+    }
+
+    /**
+     * This page hosts more than one registered report definition, so a
+     * dashboard card must be able to address the right block. Keys are
+     * validated against this list — an unknown `?section=` resolves to
+     * null and the page renders normally.
+     *
+     * @return list<string>
+     */
+    public function sectionKeys(): array
+    {
+        return ['wallet', 'refunds'];
     }
 }

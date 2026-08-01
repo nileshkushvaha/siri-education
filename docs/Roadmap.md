@@ -27,12 +27,12 @@
 - Promotional wallet credit campaigns (see `promotional-credits.md`)
 - Referral program
 - Instructor earnings, compensation agreements, settlement, and withdrawals (see `financial-domain-architecture.md`)
+- Admin dashboard redesign (marketplace command centre: attention cards, KPIs, charts, permission-filtered report launchpad, filter-preserving drill-down — see `dashboard.md`)
 
 ## Planned / known gaps
 
 - Real payment-provider activation: RazorpayX payout and Stripe collection are code-complete but not yet enabled for real traffic — see `docs/architecture/financial-provider-activation-handoff.md` for the exact external prerequisites (account verification, credentials) blocking each.
 - Media Library admin UI (Filament resource for managing uploaded media directly — currently media is only manageable through the model it's attached to).
-- Dashboard improvements (charts, richer widgets).
 - Password history enforcement (table exists; enforcement not yet wired — see `docs/security/permission-matrix.md`/`docs/development/testing.md` area docs for related security settings).
 - Instructor-facing "my bookings" surface with meeting-link visibility (documented gap — see `docs/architecture/meetings.md`'s Visibility section).
 - Open functional/security items tracked in `docs/audits/admin-forms-remediation-backlog.md` (admin-panel-specific — confirmation/permission/validation inconsistencies, not full features).

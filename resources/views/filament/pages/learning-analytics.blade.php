@@ -105,6 +105,15 @@
             </div>
         </div>
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=plans. --}}
+        <div id="section-plans" class="scroll-mt-24">
+            @if ($this->isActiveSection('plans'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Learning plans
+                </p>
+            @endif
+        </div>
         {{-- ── Learning Plans ──────────────────────────────────────────── --}}
         @if($plans !== null)
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -162,6 +171,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=goals. --}}
+        <div id="section-goals" class="scroll-mt-24">
+            @if ($this->isActiveSection('goals'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Learning goals
+                </p>
+            @endif
+        </div>
         {{-- ── Learning Goals ──────────────────────────────────────────── --}}
         @if($goals !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
@@ -183,6 +201,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=homework. --}}
+        <div id="section-homework" class="scroll-mt-24">
+            @if ($this->isActiveSection('homework'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Homework
+                </p>
+            @endif
+        </div>
         {{-- ── Homework ────────────────────────────────────────────────── --}}
         @if($homework !== null)
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -231,6 +258,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=milestones. --}}
+        <div id="section-milestones" class="scroll-mt-24">
+            @if ($this->isActiveSection('milestones'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Milestones & progress reviews
+                </p>
+            @endif
+        </div>
         {{-- ── Milestones & progress reviews ───────────────────────────── --}}
         @if($milestones !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
@@ -255,6 +291,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=trends. --}}
+        <div id="section-trends" class="scroll-mt-24">
+            @if ($this->isActiveSection('trends'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Daily trends
+                </p>
+            @endif
+        </div>
         {{-- ── Trends ──────────────────────────────────────────────────── --}}
         @if($trends !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-6">
@@ -348,6 +393,15 @@
             </div>
         @endif
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=homework. --}}
+        <div id="section-homework" class="scroll-mt-24">
+            @if ($this->isActiveSection('homework'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Homework
+                </p>
+            @endif
+        </div>
         {{-- ── Homework attention table ────────────────────────────────── --}}
         @if(($homeworkRows = $this->homeworkAttentionRows()) !== null)
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
@@ -398,5 +452,7 @@
         </p>
 
     </div>
+
+    @include('filament.pages.partials.report-section-scroll')
 
 </x-filament-panels::page>

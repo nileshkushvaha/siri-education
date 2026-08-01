@@ -14,6 +14,15 @@
             @include('filament.pages.partials.report-export-button', ['exportKey' => 'wallet_refund_linkage_rows', 'label' => 'Refund linkage rows'])
         </div>
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=wallet. --}}
+        <div id="section-wallet" class="scroll-mt-24">
+            @if ($this->isActiveSection('wallet'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Wallet activity
+                </p>
+            @endif
+        </div>
         {{-- ── Current-state wallet metrics (as-of, never period-scoped) ── --}}
         <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="fi-section-header px-6 py-4 border-b border-gray-200 dark:border-white/10">
@@ -72,6 +81,15 @@
             </div>
         </div>
 
+        {{-- Drill-down anchor: the dashboard links here with ?section=refunds. --}}
+        <div id="section-refunds" class="scroll-mt-24">
+            @if ($this->isActiveSection('refunds'))
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/30">
+                    <x-filament::icon icon="heroicon-m-arrow-down-circle" class="h-3.5 w-3.5" />
+                    You were sent to: Refunds
+                </p>
+            @endif
+        </div>
         {{-- ── Refunds ───────────────────────────────────────────────────── --}}
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-4">
@@ -137,5 +155,7 @@
         </div>
 
     </div>
+
+    @include('filament.pages.partials.report-section-scroll')
 
 </x-filament-panels::page>

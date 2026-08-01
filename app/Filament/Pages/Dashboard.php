@@ -110,9 +110,16 @@ class Dashboard extends BaseDashboard
         return "{$greeting}, {$name} 👋";
     }
 
+    /**
+     * No breadcrumbs. A trail exists to show where you are relative to
+     * somewhere else — the dashboard is the root, so "Dashboard" on its own
+     * pointed at the page you were already on (`#`) and sat directly above a
+     * hero that already says so. The sidebar's own Dashboard item is the
+     * orientation cue here.
+     */
     public function getBreadcrumbs(): array
     {
-        return ['#' => 'Dashboard'];
+        return [];
     }
 
     /** Both actions are rendered by the hero instead — see the context bar partial. */

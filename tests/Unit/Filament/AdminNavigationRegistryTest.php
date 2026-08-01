@@ -47,6 +47,9 @@ class AdminNavigationRegistryTest extends TestCase
         'Content & Communication',
         'Quality & Compliance',
         'Analytics',
+        'Reference Data',
+        'Access Control',
+        'System',
         'Settings',
     ];
 

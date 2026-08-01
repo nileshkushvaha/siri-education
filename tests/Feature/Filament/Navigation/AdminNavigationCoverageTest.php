@@ -126,6 +126,9 @@ class AdminNavigationCoverageTest extends TestCase
             'Content & Communication',
             'Quality & Compliance',
             'Analytics',
+            'Reference Data',
+            'Access Control',
+            'System',
             'Settings',
         ];
 
@@ -177,10 +180,10 @@ class AdminNavigationCoverageTest extends TestCase
             'Reporting Hub' => 'Analytics',
             'Review & Quality Configuration' => 'Settings',
             'Meeting Settings' => 'Settings',
-            'Countries' => 'Settings',
-            'Roles' => 'Settings',
-            'Activity Log' => 'Settings',
-            'Application Performance' => 'Settings',
+            'Countries' => 'Reference Data',
+            'Roles' => 'Access Control',
+            'Activity Log' => 'System',
+            'Application Performance' => 'System',
         ];
 
         foreach ($expectations as $label => $expectedGroup) {

@@ -100,6 +100,17 @@ class AdminPanelProvider extends PanelProvider
             // per-destination group/label/sort source of truth. Ten
             // primary sections (plus the ungrouped Dashboard/Home
             // link); order here is the sidebar's group display order.
+            // Day-to-day domain work first, then administration. The last four
+            // are deliberately separate concerns that all used to be dumped
+            // into "Settings", which made it a 22-item list mixing master data
+            // (Countries), identity (Roles), health monitoring (Queue Monitor)
+            // and actual configuration:
+            //   Reference Data — CRUD master data other records depend on
+            //   Access Control — who may sign in and what they may do
+            //   System         — is the platform healthy, and what happened
+            //   Settings       — platform-wide configuration only
+            // Domain-specific configuration (Mail, payments, SEO…) stays with
+            // the domain it configures rather than moving here.
             ->navigationGroups([
                 'People',
                 'Academics',
@@ -109,6 +120,9 @@ class AdminPanelProvider extends PanelProvider
                 'Content & Communication',
                 'Quality & Compliance',
                 'Analytics',
+                'Reference Data',
+                'Access Control',
+                'System',
                 'Settings',
             ])
             ->pages([
@@ -126,8 +140,11 @@ class AdminPanelProvider extends PanelProvider
             ->navigationItems([
                 NavigationItem::make('Application Performance')
                     ->icon(Heroicon::OutlinedChartBar)
-                    ->group('Settings')
-                    ->sort(21)
+                    // System, not Settings: Pulse reports platform health, it
+                    // configures nothing — same reasoning as Queue Monitor,
+                    // Scheduler and Cache Manager.
+                    ->group('System')
+                    ->sort(7)
                     ->url(fn (): string => '/'.config('pulse.path', 'pulse'))
                     ->openUrlInNewTab()
                     ->visible(fn (): bool => auth()->user()?->can('viewPulse') ?? false),

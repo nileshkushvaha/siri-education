@@ -83,7 +83,7 @@ class UserProfileCreationTest extends TestCase
         $userId = DB::table('users')->insertGetId([
             'name' => 'Legacy User',
             'first_name' => 'Legacy',
-            'email' => 'legacy@sirieducation.com',
+            'email' => 'legacy@example.com',
             'password' => Hash::make('password'),
             'status' => 'active',
             'created_at' => now(),

@@ -75,7 +75,6 @@ class GeneralSettingsPage extends Page
             'website_url' => $settings->website_url,
             'address' => $settings->address,
             'logo' => $settings->logo,
-            'logo_dark' => $settings->logo_dark,
             'favicon' => $settings->favicon,
             'header_top_bar_enabled' => $settings->header_top_bar_enabled,
             'facebook_url' => $settings->facebook_url,
@@ -83,12 +82,7 @@ class GeneralSettingsPage extends Page
             'x_url' => $settings->x_url,
             'youtube_url' => $settings->youtube_url,
             'default_timezone' => $settings->default_timezone,
-            'default_language' => $settings->default_language,
-            'date_format' => $settings->date_format,
-            'time_format' => $settings->time_format,
             'default_currency' => $settings->default_currency,
-            'decimal_precision' => $settings->decimal_precision,
-            'maintenance_mode' => $settings->maintenance_mode,
             'footer_copyright' => $settings->footer_copyright,
             'footer_text' => $settings->footer_text,
             'homepage_display' => $settings->homepage_display ?? 'template',
@@ -194,16 +188,6 @@ class GeneralSettingsPage extends Page
                                 ->imagePreviewHeight('80')
                                 ->helperText('PNG, JPG or SVG. Max 2MB.'),
 
-                            FileUpload::make('logo_dark')
-                                ->label('Logo (Dark)')
-                                ->image()
-                                ->disk('public')
-                                ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml'])
-                                ->maxSize(2048)
-                                ->directory('settings/branding')
-                                ->imagePreviewHeight('80')
-                                ->helperText('For dark backgrounds.'),
-
                             FileUpload::make('favicon')
                                 ->label('Favicon')
                                 ->image()
@@ -268,52 +252,12 @@ class GeneralSettingsPage extends Page
                                 ->searchable()
                                 ->native(false)
                                 ->required(),
-
-                            Select::make('default_language')
-                                ->label('Default Language')
-                                ->options([
-                                    'en' => 'English',
-                                    'hi' => 'Hindi',
-                                    'fr' => 'French',
-                                    'de' => 'German',
-                                    'es' => 'Spanish',
-                                    'ar' => 'Arabic',
-                                    'zh' => 'Chinese',
-                                    'ja' => 'Japanese',
-                                    'pt' => 'Portuguese',
-                                ])
-                                ->native(false)
-                                ->required(),
-                        ]),
-
-                        Grid::make(2)->schema([
-                            Select::make('date_format')
-                                ->label('Date Format')
-                                ->options([
-                                    'Y-m-d' => 'YYYY-MM-DD (2025-06-27)',
-                                    'd/m/Y' => 'DD/MM/YYYY (27/06/2025)',
-                                    'm/d/Y' => 'MM/DD/YYYY (06/27/2025)',
-                                    'd-m-Y' => 'DD-MM-YYYY (27-06-2025)',
-                                    'd M Y' => 'DD Mon YYYY (27 Jun 2025)',
-                                    'F j, Y' => 'Month D, YYYY (June 27, 2025)',
-                                ])
-                                ->native(false)
-                                ->required(),
-
-                            Select::make('time_format')
-                                ->label('Time Format')
-                                ->options([
-                                    'H:i' => '24-hour (14:30)',
-                                    'h:i A' => '12-hour (02:30 PM)',
-                                ])
-                                ->native(false)
-                                ->required(),
                         ]),
                     ]),
 
                 // ── Application ───────────────────────────────────── left
                 Section::make('Application')
-                    ->description('Currency, precision, and maintenance settings.')
+                    ->description('Default currency for pricing and wallet balances.')
                     ->schema([
                         Grid::make(2)->schema([
                             Select::make('default_currency')
@@ -331,24 +275,7 @@ class GeneralSettingsPage extends Page
                                 ->native(false)
                                 ->searchable()
                                 ->required(),
-
-                            Select::make('decimal_precision')
-                                ->label('Decimal Precision')
-                                ->options([
-                                    0 => '0 decimals (100)',
-                                    1 => '1 decimal (100.0)',
-                                    2 => '2 decimals (100.00)',
-                                    3 => '3 decimals (100.000)',
-                                ])
-                                ->native(false)
-                                ->required(),
                         ]),
-
-                        Toggle::make('maintenance_mode')
-                            ->label('Maintenance Mode')
-                            ->helperText('When enabled, the public site will show a maintenance message.')
-                            ->onColor('danger')
-                            ->offColor('success'),
                     ]),
 
                 // ── Footer ────────────────────────────────────────── right
@@ -421,7 +348,6 @@ class GeneralSettingsPage extends Page
             $settings->website_url = $data['website_url'] ?? null;
             $settings->address = $data['address'] ?? null;
             $settings->logo = $data['logo'] ?? $settings->logo;
-            $settings->logo_dark = $data['logo_dark'] ?? $settings->logo_dark;
             $settings->favicon = $data['favicon'] ?? $settings->favicon;
             $settings->header_top_bar_enabled = (bool) ($data['header_top_bar_enabled'] ?? false);
             $settings->facebook_url = $data['facebook_url'] ?? null;
@@ -429,12 +355,7 @@ class GeneralSettingsPage extends Page
             $settings->x_url = $data['x_url'] ?? null;
             $settings->youtube_url = $data['youtube_url'] ?? null;
             $settings->default_timezone = $data['default_timezone'];
-            $settings->default_language = $data['default_language'];
-            $settings->date_format = $data['date_format'];
-            $settings->time_format = $data['time_format'];
             $settings->default_currency = $data['default_currency'];
-            $settings->decimal_precision = (int) $data['decimal_precision'];
-            $settings->maintenance_mode = (bool) ($data['maintenance_mode'] ?? false);
             $settings->footer_copyright = $data['footer_copyright'] ?? null;
             $settings->footer_text = $data['footer_text'] ?? null;
             $settings->homepage_display = $data['homepage_display'] ?? 'template';
@@ -457,12 +378,7 @@ class GeneralSettingsPage extends Page
     {
         $saved = $this->saveSettingsWithAudit(GeneralSettings::class, 'settings', function (GeneralSettings $settings): void {
             $settings->default_timezone = 'Asia/Kolkata';
-            $settings->default_language = 'en';
-            $settings->date_format = 'Y-m-d';
-            $settings->time_format = 'H:i';
             $settings->default_currency = 'INR';
-            $settings->decimal_precision = 2;
-            $settings->maintenance_mode = false;
             $settings->header_top_bar_enabled = false;
             $settings->facebook_url = null;
             $settings->instagram_url = null;

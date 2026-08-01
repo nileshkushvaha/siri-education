@@ -38,14 +38,14 @@ class LoginFormTest extends TestCase
     public function test_wrong_password_surfaces_a_field_error_without_authenticating(): void
     {
         User::factory()->create([
-            'email' => 'login@sirieducation.com',
+            'email' => 'login@example.com',
             'password' => Hash::make('CorrectPass123!'),
             'status' => User::STATUS_ACTIVE,
             'email_verified_at' => now(),
         ]);
 
         Livewire::test(LoginForm::class)
-            ->set('email', 'login@sirieducation.com')
+            ->set('email', 'login@example.com')
             ->set('password', 'wrong-password')
             ->call('login')
             ->assertHasErrors('email');
@@ -56,14 +56,14 @@ class LoginFormTest extends TestCase
     public function test_correct_credentials_with_remember_me_authenticate_and_persist_remember_token(): void
     {
         $user = User::factory()->create([
-            'email' => 'login@sirieducation.com',
+            'email' => 'login@example.com',
             'password' => Hash::make('CorrectPass123!'),
             'status' => User::STATUS_ACTIVE,
             'email_verified_at' => now(),
         ]);
 
         Livewire::test(LoginForm::class)
-            ->set('email', 'login@sirieducation.com')
+            ->set('email', 'login@example.com')
             ->set('password', 'CorrectPass123!')
             ->set('remember', true)
             ->call('login');
@@ -77,14 +77,14 @@ class LoginFormTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create([
-            'email' => 'unverified@sirieducation.com',
+            'email' => 'unverified@example.com',
             'password' => Hash::make('CorrectPass123!'),
             'status' => User::STATUS_ACTIVE,
             'email_verified_at' => null,
         ]);
 
         $component = Livewire::test(LoginForm::class)
-            ->set('email', 'unverified@sirieducation.com')
+            ->set('email', 'unverified@example.com')
             ->set('password', 'CorrectPass123!')
             ->call('login');
 
@@ -106,7 +106,7 @@ class LoginFormTest extends TestCase
 
         for ($i = 0; $i < 11; $i++) {
             $component = Livewire::test(LoginForm::class)
-                ->set('email', 'rate-limit-target@sirieducation.com')
+                ->set('email', 'rate-limit-target@example.com')
                 ->set('password', 'wrong')
                 ->call('login');
 
@@ -127,7 +127,7 @@ class LoginFormTest extends TestCase
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
 
         $admin = User::factory()->create([
-            'email' => 'admin-login@sirieducation.com',
+            'email' => 'admin-login@example.com',
             'password' => Hash::make('CorrectPass123!'),
             'status' => User::STATUS_ACTIVE,
             'email_verified_at' => now(),
@@ -135,7 +135,7 @@ class LoginFormTest extends TestCase
         $admin->assignRole('super_admin');
 
         Livewire::test(LoginForm::class)
-            ->set('email', 'admin-login@sirieducation.com')
+            ->set('email', 'admin-login@example.com')
             ->set('password', 'CorrectPass123!')
             ->call('login')
             ->assertRedirect(route('filament.admin.auth.login'));

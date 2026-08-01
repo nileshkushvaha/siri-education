@@ -106,7 +106,7 @@ class StudentReviewEditingTest extends TestCase
 
     public function test_eligible_flagged_review_can_be_edited(): void
     {
-        $review = $this->submitPublicReview(content: 'Contact me on reach.me@sirieducation.com for details of this lesson.')->fresh();
+        $review = $this->submitPublicReview(content: 'Contact me on reach.me@example.com for details of this lesson.')->fresh();
         $this->assertSame(StudentReviewStatus::Flagged, $review->status);
 
         $edited = $this->editing->edit($review, $review->student, $this->edit(content: 'A clean rewritten review without contact details.'));
@@ -252,11 +252,11 @@ class StudentReviewEditingTest extends TestCase
     {
         $review = $this->submitPublicReview()->fresh();
 
-        $this->editing->edit($review, $review->student, $this->edit(content: 'Reach me at sneaky.contact@sirieducation.com to continue outside.'));
+        $this->editing->edit($review, $review->student, $this->edit(content: 'Reach me at sneaky.contact@example.com to continue outside.'));
 
         $fresh = $review->fresh();
         $this->assertSame(StudentReviewStatus::Flagged, $fresh->status);
-        $this->assertStringNotContainsString('sneaky.contact@sirieducation.com', (string) $fresh->content);
+        $this->assertStringNotContainsString('sneaky.contact@example.com', (string) $fresh->content);
     }
 
     public function test_clean_private_edit_remains_private(): void
@@ -299,7 +299,7 @@ class StudentReviewEditingTest extends TestCase
 
     public function test_revision_history_contains_sanitized_content_only(): void
     {
-        $rawEmail = 'never.stored@sirieducation.com';
+        $rawEmail = 'never.stored@example.com';
         $review = $this->submitPublicReview(content: "Original with a leak: {$rawEmail} embedded in the text.")->fresh();
         $this->assertStringNotContainsString($rawEmail, (string) $review->content);
 
@@ -322,7 +322,7 @@ class StudentReviewEditingTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $serialized = json_encode($activity->properties) . $activity->description;
+        $serialized = json_encode($activity->properties).$activity->description;
         $this->assertStringNotContainsString('314-1592', $serialized);
         $this->assertContains('phone_number', $activity->properties->get('content_flags'));
         $this->assertStringNotContainsString('314-1592', (string) $review->fresh()->content);

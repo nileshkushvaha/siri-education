@@ -47,39 +47,49 @@ class BreadcrumbResolverTest extends TestCase
         $this->assertSame('Finance', $result[0]);
     }
 
-    public function test_settings_page_trail_orders_section_then_subgroup_then_page(): void
+    public function test_settings_page_trail_orders_section_then_page(): void
     {
-        $result = BreadcrumbResolver::forSettingsPage('Finance', 'Instructor Earnings & Payouts', 'Instructor Earning Settings');
+        $result = BreadcrumbResolver::forSettingsPage('Finance', 'Instructor Earning Settings');
 
-        $this->assertSame(
-            ['Finance', 'Instructor Earnings & Payouts', 'Instructor Earning Settings'],
-            $result,
-        );
+        $this->assertSame(['Finance', 'Instructor Earning Settings'], $result);
+    }
+
+    public function test_settings_page_trail_never_includes_the_registry_subgroup(): void
+    {
+        // The registry's subgroup is informational only — it is never fed to
+        // Filament's navigation, so no such level exists in the sidebar or at
+        // any URL. Rendering it produced trails like
+        // "Settings > Platform > General Settings", naming a destination that
+        // was never reachable.
+        $result = BreadcrumbResolver::forSettingsPage('Settings', 'General Settings');
+
+        $this->assertSame(['Settings', 'General Settings'], $result);
+        $this->assertNotContains('Platform', $result);
     }
 
     public function test_settings_page_trail_drops_missing_segments_instead_of_rendering_blank(): void
     {
         $this->assertSame(
             ['Settings', 'Payment Configuration'],
-            BreadcrumbResolver::forSettingsPage('Settings', null, 'Payment Configuration'),
+            BreadcrumbResolver::forSettingsPage('Settings', 'Payment Configuration'),
         );
 
         $this->assertSame(
             ['Payment Configuration'],
-            BreadcrumbResolver::forSettingsPage(null, null, 'Payment Configuration'),
+            BreadcrumbResolver::forSettingsPage(null, 'Payment Configuration'),
         );
 
         $this->assertSame(
             [],
-            BreadcrumbResolver::forSettingsPage(null, null, null),
+            BreadcrumbResolver::forSettingsPage(null, null),
         );
     }
 
     public function test_settings_page_trail_entries_are_never_links(): void
     {
-        $result = BreadcrumbResolver::forSettingsPage('Settings', 'Payment', 'Gateways');
+        $result = BreadcrumbResolver::forSettingsPage('Settings', 'Gateways');
 
-        $this->assertSame([0, 1, 2], array_keys($result));
+        $this->assertSame([0, 1], array_keys($result));
     }
 
     /**

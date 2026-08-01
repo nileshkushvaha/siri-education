@@ -24,7 +24,7 @@ class GoogleCalendarMeetProviderTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const DELEGATED_ACCOUNT = 'meetings@sirieducation.com';
+    private const DELEGATED_ACCOUNT = 'meetings@example.com';
 
     private function configureGoogle(bool $enabled = true): void
     {
@@ -116,7 +116,7 @@ class GoogleCalendarMeetProviderTest extends TestCase
     {
         $this->configureGoogle();
         $settings = app(MeetingSettings::class);
-        $settings->platform_meeting_account = 'stale@sirieducation.com';
+        $settings->platform_meeting_account = 'stale@example.com';
         $settings->save();
         $settings->platform_meeting_account = self::DELEGATED_ACCOUNT;
         $settings->save();
@@ -313,7 +313,7 @@ class GoogleCalendarMeetProviderTest extends TestCase
             ->once()
             ->andThrow(new \RuntimeException(
                 'Google Calendar API error (HTTP 400, reason: invalid): Invalid conference type value. '
-                .'Calendar: calendar-123@group.calendar.google.com. Delegated account: meetings@sirieducation.com. '
+                .'Calendar: calendar-123@group.calendar.google.com. Delegated account: meetings@example.com. '
                 .'Requested conference type: hangoutsMeet.',
             ));
 

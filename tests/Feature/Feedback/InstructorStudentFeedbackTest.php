@@ -285,7 +285,7 @@ class InstructorStudentFeedbackTest extends TestCase
     {
         $instructor = $this->instructorUser();
         $lesson = $this->completedLesson($this->paidLesson($instructor));
-        $email = 'student.private@sirieducation.com';
+        $email = 'student.private@example.com';
 
         $result = $this->feedback->submit($lesson, $instructor, $this->data(
             areasNeedingSupport: "Parent asked to be reached at {$email} for updates.",
@@ -310,7 +310,7 @@ class InstructorStudentFeedbackTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $serialized = json_encode($activity->properties) . $activity->description;
+        $serialized = json_encode($activity->properties).$activity->description;
         $this->assertStringNotContainsString('222-3344', $serialized);
         $this->assertContains('phone_number', $activity->properties->get('sanitization_flag_categories')['private_notes'] ?? []);
     }

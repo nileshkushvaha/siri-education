@@ -25,10 +25,10 @@ class ResetPasswordFormTest extends TestCase
 
     public function test_invalid_token_is_rejected(): void
     {
-        $user = User::factory()->create(['email' => 'reset@sirieducation.com']);
+        $user = User::factory()->create(['email' => 'reset@example.com']);
         $originalHash = $user->password;
 
-        Livewire::test(ResetPasswordForm::class, ['token' => 'bad-token', 'email' => 'reset@sirieducation.com'])
+        Livewire::test(ResetPasswordForm::class, ['token' => 'bad-token', 'email' => 'reset@example.com'])
             ->set('password', 'NewStrongPass123!')
             ->set('password_confirmation', 'NewStrongPass123!')
             ->call('resetPassword')
@@ -40,13 +40,13 @@ class ResetPasswordFormTest extends TestCase
     public function test_valid_token_resets_password_and_auto_logs_in(): void
     {
         $user = User::factory()->create([
-            'email' => 'reset@sirieducation.com',
+            'email' => 'reset@example.com',
             'status' => User::STATUS_ACTIVE,
             'email_verified_at' => now(),
         ]);
         $token = Password::createToken($user);
 
-        Livewire::test(ResetPasswordForm::class, ['token' => $token, 'email' => 'reset@sirieducation.com'])
+        Livewire::test(ResetPasswordForm::class, ['token' => $token, 'email' => 'reset@example.com'])
             ->set('password', 'NewStrongPass123!')
             ->set('password_confirmation', 'NewStrongPass123!')
             ->call('resetPassword');
@@ -57,10 +57,10 @@ class ResetPasswordFormTest extends TestCase
 
     public function test_password_confirmation_mismatch_is_caught_before_touching_the_token(): void
     {
-        $user = User::factory()->create(['email' => 'reset@sirieducation.com']);
+        $user = User::factory()->create(['email' => 'reset@example.com']);
         $token = Password::createToken($user);
 
-        Livewire::test(ResetPasswordForm::class, ['token' => $token, 'email' => 'reset@sirieducation.com'])
+        Livewire::test(ResetPasswordForm::class, ['token' => $token, 'email' => 'reset@example.com'])
             ->set('password', 'NewStrongPass123!')
             ->set('password_confirmation', 'Mismatch123!')
             ->call('resetPassword')

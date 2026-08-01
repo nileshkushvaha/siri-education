@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\CacheManagerService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -18,6 +19,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 class CacheManagerPage extends Page
 {
     use HasCentralizedNavigation;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCircleStack;
 
@@ -74,15 +76,6 @@ class CacheManagerPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Monitor cache status and safely manage application caches.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/system/cache-manager' => 'System',
-            '#' => 'Cache Manager',
-        ];
     }
 
     // ── System info ───────────────────────────────────────────────────────

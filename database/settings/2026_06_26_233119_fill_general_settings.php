@@ -27,7 +27,7 @@ return new class extends SettingsMigration
         $this->migrator->add('general.decimal_precision', 2);
         $this->migrator->add('general.maintenance_mode', false);
 
-        $this->migrator->add('general.footer_copyright', '© ' . date('Y') . ' Sphere Education. All rights reserved.');
+        $this->migrator->add('general.footer_copyright', '© '.date('Y').' Sphere Education. All rights reserved.');
         $this->migrator->add('general.footer_text', null);
     }
 };

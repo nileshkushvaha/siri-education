@@ -36,7 +36,7 @@ class NewsletterTest extends TestCase
     public function test_honeypot_field_rejects_bots(): void
     {
         Livewire::test(Newsletter::class, $this->baseProps())
-            ->set('email', 'bot@sirieducation.com')
+            ->set('email', 'bot@example.com')
             ->set('website', 'http://spam.example')
             ->call('subscribe')
             ->assertHasErrors(['website']);
@@ -50,12 +50,12 @@ class NewsletterTest extends TestCase
 
         Livewire::test(Newsletter::class, $this->baseProps())
             ->set('name', 'Sam')
-            ->set('email', 'sam@sirieducation.com')
+            ->set('email', 'sam@example.com')
             ->call('subscribe')
             ->assertHasNoErrors()
             ->assertSet('submitted', true);
 
-        $subscriber = NewsletterSubscriber::firstWhere('email', 'sam@sirieducation.com');
+        $subscriber = NewsletterSubscriber::firstWhere('email', 'sam@example.com');
         $this->assertNotNull($subscriber);
         $this->assertSame(NewsletterSubscriberStatus::Subscribed, $subscriber->status);
         $this->assertNotEmpty($subscriber->unsubscribe_token);
@@ -66,11 +66,11 @@ class NewsletterTest extends TestCase
     public function test_resubscribing_with_same_email_updates_existing_row(): void
     {
         Livewire::test(Newsletter::class, $this->baseProps())
-            ->set('email', 'sam@sirieducation.com')
+            ->set('email', 'sam@example.com')
             ->call('subscribe');
 
         Livewire::test(Newsletter::class, $this->baseProps())
-            ->set('email', 'sam@sirieducation.com')
+            ->set('email', 'sam@example.com')
             ->call('subscribe');
 
         $this->assertDatabaseCount('newsletter_subscribers', 1);
@@ -79,10 +79,10 @@ class NewsletterTest extends TestCase
     public function test_unsubscribe_marks_subscriber_as_unsubscribed(): void
     {
         Livewire::test(Newsletter::class, $this->baseProps())
-            ->set('email', 'sam@sirieducation.com')
+            ->set('email', 'sam@example.com')
             ->call('subscribe');
 
-        $subscriber = NewsletterSubscriber::firstWhere('email', 'sam@sirieducation.com');
+        $subscriber = NewsletterSubscriber::firstWhere('email', 'sam@example.com');
 
         $this->get(route('newsletter.unsubscribe', $subscriber->unsubscribe_token))
             ->assertOk()

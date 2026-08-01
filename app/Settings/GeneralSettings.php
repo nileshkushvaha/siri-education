@@ -26,8 +26,6 @@ class GeneralSettings extends Settings
     // Branding
     public ?string $logo;
 
-    public ?string $logo_dark;
-
     public ?string $favicon;
 
     // Header
@@ -44,18 +42,8 @@ class GeneralSettings extends Settings
     // Localization — country/detection settings live in LocalizationSettings.
     public string $default_timezone;
 
-    public string $default_language;
-
-    public string $date_format;
-
-    public string $time_format;
-
     // Application
     public string $default_currency;
-
-    public int $decimal_precision;
-
-    public bool $maintenance_mode;
 
     // Footer
     public ?string $footer_copyright;

@@ -21,6 +21,6 @@ return new class extends SettingsMigration
      */
     public function up(): void
     {
-        $this->migrator->update('mail.driver', fn(): string => '');
+        $this->migrator->update('mail.driver', fn (): string => '');
     }
 };

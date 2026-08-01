@@ -116,14 +116,14 @@ class AuditTrailTest extends TestCase
             event: 'contact_form_submitted',
             description: 'Contact form submitted',
             guestName: 'John Doe',
-            guestEmail: 'john@sirieducation.com',
+            guestEmail: 'john@example.com',
             guestPhone: '+1234567890',
         );
 
         $this->assertSame(ActivityActorType::Guest, $activity->actor_type);
         $this->assertNull($activity->causer_id);
         $this->assertSame('John Doe', $activity->guest_name);
-        $this->assertSame('john@sirieducation.com', $activity->guest_email);
+        $this->assertSame('john@example.com', $activity->guest_email);
         $this->assertSame('+1234567890', $activity->guest_phone);
     }
 
@@ -208,17 +208,17 @@ class AuditTrailTest extends TestCase
 
     public function test_actor_email_for_user_returns_user_email(): void
     {
-        $user = $this->user(['email' => 'alice@sirieducation.com']);
+        $user = $this->user(['email' => 'alice@example.com']);
         $activity = $this->audit()->logUser($user, 'users', 'created', 'created');
 
-        $this->assertSame('alice@sirieducation.com', $activity->actorEmail());
+        $this->assertSame('alice@example.com', $activity->actorEmail());
     }
 
     public function test_actor_email_for_guest_returns_guest_email(): void
     {
-        $activity = $this->audit()->logGuest('contact', 'submitted', 'submitted', guestEmail: 'bob@sirieducation.com');
+        $activity = $this->audit()->logGuest('contact', 'submitted', 'submitted', guestEmail: 'bob@example.com');
 
-        $this->assertSame('bob@sirieducation.com', $activity->actorEmail());
+        $this->assertSame('bob@example.com', $activity->actorEmail());
     }
 
     public function test_actor_email_for_system_returns_null(): void
@@ -230,19 +230,19 @@ class AuditTrailTest extends TestCase
 
     public function test_actor_description_for_user(): void
     {
-        $user = $this->user(['name' => 'Alice', 'email' => 'alice@sirieducation.com']);
+        $user = $this->user(['name' => 'Alice', 'email' => 'alice@example.com']);
         $activity = $this->audit()->logUser($user, 'users', 'created', 'created');
 
         $this->assertStringContainsString('Alice', $activity->actorDescription());
-        $this->assertStringContainsString('alice@sirieducation.com', $activity->actorDescription());
+        $this->assertStringContainsString('alice@example.com', $activity->actorDescription());
     }
 
     public function test_actor_description_for_guest(): void
     {
-        $activity = $this->audit()->logGuest('contact', 'submitted', 'submitted', guestName: 'Bob', guestEmail: 'bob@sirieducation.com');
+        $activity = $this->audit()->logGuest('contact', 'submitted', 'submitted', guestName: 'Bob', guestEmail: 'bob@example.com');
 
         $this->assertStringContainsString('Bob', $activity->actorDescription());
-        $this->assertStringContainsString('bob@sirieducation.com', $activity->actorDescription());
+        $this->assertStringContainsString('bob@example.com', $activity->actorDescription());
     }
 
     public function test_actor_description_for_system_is_automated(): void
@@ -378,7 +378,7 @@ class AuditTrailTest extends TestCase
             event: 'contact_form_submitted',
             description: 'Contact form submitted',
             guestName: 'John',
-            guestEmail: 'john@sirieducation.com',
+            guestEmail: 'john@example.com',
         );
 
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $admin->id]);

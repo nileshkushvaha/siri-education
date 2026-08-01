@@ -281,7 +281,7 @@ class InstructorQualityInsightsTest extends TestCase
     {
         $fields = array_keys(get_object_vars(new \ReflectionClass(InstructorQualityInsightsData::class)));
         $properties = (new \ReflectionClass(InstructorQualityInsightsData::class))->getProperties();
-        $propertyNames = array_map(fn($p) => $p->getName(), $properties);
+        $propertyNames = array_map(fn ($p) => $p->getName(), $properties);
 
         foreach (['summary', 'recommendation', 'aiSummary', 'coachingAdvice', 'suggestion'] as $forbidden) {
             $this->assertNotContains($forbidden, $propertyNames);
@@ -333,12 +333,12 @@ class InstructorQualityInsightsTest extends TestCase
     public function test_student_email_phone_image_and_id_are_absent(): void
     {
         $instructor = $this->instructorUser();
-        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Priyanka', 'email' => 'priyanka-private@sirieducation.com']);
+        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Priyanka', 'email' => 'priyanka-private@example.com']);
         $this->submitPublicReview($instructor, student: $student);
 
         $response = $this->actingAs($instructor)->get(route('dashboard.instructor.quality-insights'));
         $response->assertOk();
-        $response->assertDontSee('priyanka-private@sirieducation.com');
+        $response->assertDontSee('priyanka-private@example.com');
     }
 
     public function test_private_review_text_is_absent(): void
@@ -413,7 +413,7 @@ class InstructorQualityInsightsTest extends TestCase
     public function test_unsupported_completion_or_response_time_metrics_are_not_fabricated(): void
     {
         $properties = (new \ReflectionClass(InstructorQualityInsightsData::class))->getProperties();
-        $propertyNames = array_map(fn($p) => $p->getName(), $properties);
+        $propertyNames = array_map(fn ($p) => $p->getName(), $properties);
 
         foreach (['completionConsistency', 'responseTime', 'completionRate'] as $forbidden) {
             $this->assertNotContains($forbidden, $propertyNames);

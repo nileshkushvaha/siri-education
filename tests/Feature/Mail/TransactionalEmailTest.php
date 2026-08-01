@@ -89,8 +89,8 @@ class TransactionalEmailTest extends TestCase
     {
         $id = (string) Str::uuid();
         $message = (new Email)
-            ->from('booking@sirieducation.com')
-            ->to('student@sirieducation.com')
+            ->from('booking@example.com')
+            ->to('student@example.com')
             ->subject('Booking confirmed')
             ->text('Confirmed.');
 

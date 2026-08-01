@@ -396,7 +396,7 @@ class StudentEngagementReportTest extends TestCase
     public function test_engagement_rows_contain_no_email_phone_or_financial_fields(): void
     {
         $admin = $this->manager();
-        $student = $this->student(['email' => 'private-student@sirieducation.com']);
+        $student = $this->student(['email' => 'private-student@example.com']);
         $this->bookingFor($student);
 
         $rows = $this->reports->engagementRows($admin, $this->period(), $this->filters());

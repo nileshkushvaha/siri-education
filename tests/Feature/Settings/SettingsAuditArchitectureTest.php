@@ -46,6 +46,10 @@ class SettingsAuditArchitectureTest extends TestCase
             $base.'/app/Filament/Pages/Settings/RazorpayXPayoutSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/ReviewQualitySettingsPage.php',
             $base.'/app/Filament/Pages/Settings/HomeworkReminderSettingsPage.php',
+            // Governed like the rest: use LogsSettingsUpdates and persist
+            // through saveSettingsWithAudit(), never a bare ->save().
+            $base.'/app/Filament/Pages/Settings/DemoConversionIncentiveSettingsPage.php',
+            $base.'/app/Filament/Pages/Settings/WhatsAppSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/PaymentSettingsPage.php',
             $base.'/app/Services/Security/SecuritySettingsService.php',
         ];

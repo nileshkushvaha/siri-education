@@ -40,19 +40,29 @@ final class BreadcrumbResolver
     }
 
     /**
-     * Builds a "Settings → Subgroup → Page" style trail for standalone
-     * pages (Settings, Security) that get no breadcrumbs from Filament
-     * by default. Any missing segment (no subgroup registered, no
-     * current-page label) is dropped rather than rendered blank, and
-     * every segment is plain text since none of these have a landing
-     * page of their own to link to yet.
+     * Builds a "Section → Page" trail for standalone pages (Settings,
+     * Security) that get no breadcrumbs from Filament by default.
+     *
+     * Deliberately TWO segments, not three. NavigationRegistry also carries a
+     * `subgroup`, and this used to render it in the middle — producing trails
+     * like "Settings → Platform → General Settings". But subgroup is
+     * informational metadata: HasCentralizedNavigation feeds only `group`,
+     * `label` and `sort` to Filament, so no "Platform" level exists in the
+     * sidebar, at a URL, or anywhere else a person could navigate to. A
+     * breadcrumb naming a level that does not exist tells the reader they are
+     * one click from somewhere that was never there.
+     *
+     * Section mirrors the sidebar group, so the trail always describes a real
+     * path. A missing segment is dropped rather than rendered blank, and both
+     * are plain text because neither a group nor these pages' sections have a
+     * landing page to link to.
      *
      * @return array<int, string>
      */
-    public static function forSettingsPage(?string $section, ?string $subgroup, ?string $currentLabel): array
+    public static function forSettingsPage(?string $section, ?string $currentLabel): array
     {
         return array_values(array_filter(
-            [$section, $subgroup, $currentLabel],
+            [$section, $currentLabel],
             static fn (?string $segment): bool => filled($segment),
         ));
     }

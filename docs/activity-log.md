@@ -24,7 +24,7 @@ $audit->logUser($user, 'users', 'created', 'User created', subject: $user, prope
 
 // Anonymous visitor action
 $audit->logGuest('contact', 'contact_form_submitted', 'Contact form submitted',
-    subject: $block, guestName: 'John', guestEmail: 'john@sirieducation.com', guestPhone: '+1...');
+    subject: $block, guestName: 'John', guestEmail: 'john@example.com', guestPhone: '+1...');
 
 // Automated / background action
 $audit->logSystem('scheduler_monitor', 'manually_ran', 'Task executed', properties: []);
@@ -46,7 +46,7 @@ Helper methods (never check `$activity->causer` directly — use these):
 | `actorName()`        | string — user name / guest name / 'System'            |
 | `actorEmail()`       | ?string                                               |
 | `actorIdentifier()`  | string — best available identifier                    |
-| `actorDescription()` | string — 'Alice Smith <alice@sirieducation.com>' etc. |
+| `actorDescription()` | string — 'Alice Smith <alice@example.com>' etc. |
 
 `booted()` hook auto-detects actor type for raw `activity()` helper calls (backward compat): sets `user` if `causer_id` is present, `system` otherwise.
 

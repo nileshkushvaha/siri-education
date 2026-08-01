@@ -216,11 +216,11 @@ class CountrySeeder extends Seeder
     ];
 
     private const LOCALIZATION = [
-        'IN' => ['INR', 'en', 'Asia/Kolkata', 'support-in@sirieducation.com', '+91 00000 00000', 'd/m/Y', 'H:i', '1,23,456.78'],
-        'US' => ['USD', 'en', 'America/New_York', 'support-us@sirieducation.com', '+1 000 000 0000', 'm/d/Y', 'h:i A', '1,234.56'],
-        'GB' => ['GBP', 'en', 'Europe/London', 'support-uk@sirieducation.com', '+44 0000 000000', 'd/m/Y', 'H:i', '1,234.56'],
-        'CA' => ['CAD', 'en', 'America/Toronto', 'support-ca@sirieducation.com', '+1 000 000 0000', 'Y-m-d', 'H:i', '1,234.56'],
-        'AU' => ['AUD', 'en', 'Australia/Sydney', 'support-au@sirieducation.com', '+61 000 000 000', 'd/m/Y', 'h:i A', '1,234.56'],
+        'IN' => ['INR', 'en', 'Asia/Kolkata', 'support-in@example.com', '+91 00000 00000', 'd/m/Y', 'H:i', '1,23,456.78'],
+        'US' => ['USD', 'en', 'America/New_York', 'support-us@example.com', '+1 000 000 0000', 'm/d/Y', 'h:i A', '1,234.56'],
+        'GB' => ['GBP', 'en', 'Europe/London', 'support-uk@example.com', '+44 0000 000000', 'd/m/Y', 'H:i', '1,234.56'],
+        'CA' => ['CAD', 'en', 'America/Toronto', 'support-ca@example.com', '+1 000 000 0000', 'Y-m-d', 'H:i', '1,234.56'],
+        'AU' => ['AUD', 'en', 'Australia/Sydney', 'support-au@example.com', '+61 000 000 000', 'd/m/Y', 'h:i A', '1,234.56'],
     ];
 
     public function run(): void
@@ -248,7 +248,7 @@ class CountrySeeder extends Seeder
                     'date_format' => $localization[5] ?? null,
                     'time_format' => $localization[6] ?? null,
                     'number_format' => $localization[7] ?? null,
-                ], fn($value): bool => $value !== null)
+                ], fn ($value): bool => $value !== null)
             );
         }
     }
@@ -257,7 +257,7 @@ class CountrySeeder extends Seeder
     private function flagEmoji(string $iso2): string
     {
         $codePoints = array_map(
-            fn(string $letter): int => 0x1F1E6 + (ord($letter) - ord('A')),
+            fn (string $letter): int => 0x1F1E6 + (ord($letter) - ord('A')),
             str_split(strtoupper($iso2))
         );
 

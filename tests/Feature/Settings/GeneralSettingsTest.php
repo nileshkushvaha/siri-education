@@ -29,9 +29,7 @@ class GeneralSettingsTest extends TestCase
         $settings = app(GeneralSettings::class);
 
         $this->assertSame('Asia/Kolkata', $settings->default_timezone);
-        $this->assertSame('en', $settings->default_language);
         $this->assertSame('INR', $settings->default_currency);
-        $this->assertFalse($settings->maintenance_mode);
         $this->assertFalse($settings->header_top_bar_enabled);
     }
 
@@ -44,13 +42,9 @@ class GeneralSettingsTest extends TestCase
 
         Livewire::test(GeneralSettingsPage::class)
             ->set('data.app_name', 'Sphere Education')
-            ->set('data.support_email', 'support@sirieducation.com')
+            ->set('data.support_email', 'support@example.com')
             ->set('data.default_timezone', 'America/New_York')
-            ->set('data.default_language', 'fr')
-            ->set('data.date_format', 'd/m/Y')
-            ->set('data.time_format', 'h:i A')
             ->set('data.default_currency', 'USD')
-            ->set('data.decimal_precision', 2)
             ->set('data.header_top_bar_enabled', true)
             ->set('data.instagram_url', 'https://instagram.com/sphere')
             ->set('data.homepage_display', 'template')
@@ -60,7 +54,6 @@ class GeneralSettingsTest extends TestCase
         $settings = app()->make(GeneralSettings::class)->refresh();
 
         $this->assertSame('America/New_York', $settings->default_timezone);
-        $this->assertSame('fr', $settings->default_language);
         $this->assertSame('USD', $settings->default_currency);
         $this->assertTrue($settings->header_top_bar_enabled);
         $this->assertSame('https://instagram.com/sphere', $settings->instagram_url);
@@ -74,13 +67,9 @@ class GeneralSettingsTest extends TestCase
 
         Livewire::test(GeneralSettingsPage::class)
             ->set('data.app_name', 'Sphere Education')
-            ->set('data.support_email', 'support@sirieducation.com')
+            ->set('data.support_email', 'support@example.com')
             ->set('data.default_timezone', 'America/New_York')
-            ->set('data.default_language', 'fr')
-            ->set('data.date_format', 'd/m/Y')
-            ->set('data.time_format', 'h:i A')
             ->set('data.default_currency', 'USD')
-            ->set('data.decimal_precision', 2)
             ->set('data.homepage_display', 'template')
             ->call('save');
 
@@ -107,11 +96,7 @@ class GeneralSettingsTest extends TestCase
             ->set('data.app_name', $settings->app_name)
             ->set('data.support_email', $settings->support_email)
             ->set('data.default_timezone', $settings->default_timezone)
-            ->set('data.default_language', $settings->default_language)
-            ->set('data.date_format', $settings->date_format)
-            ->set('data.time_format', $settings->time_format)
             ->set('data.default_currency', $settings->default_currency)
-            ->set('data.decimal_precision', $settings->decimal_precision)
             ->set('data.homepage_display', $settings->homepage_display)
             ->call('save');
 

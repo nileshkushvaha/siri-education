@@ -175,11 +175,11 @@ class ReviewReportingTest extends TestCase
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(
             reason: ReviewReportReason::PersonalInformation,
-            explanation: '<script>alert(1)</script>Contact me at leaky@sirieducation.com now.',
+            explanation: '<script>alert(1)</script>Contact me at leaky@example.com now.',
         ));
 
         $this->assertStringNotContainsString('<script>', (string) $report->explanation);
-        $this->assertStringNotContainsString('leaky@sirieducation.com', (string) $report->explanation);
+        $this->assertStringNotContainsString('leaky@example.com', (string) $report->explanation);
     }
 
     public function test_contact_information_is_not_stored(): void
@@ -189,11 +189,11 @@ class ReviewReportingTest extends TestCase
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(
             reason: ReviewReportReason::OffPlatformSolicitation,
-            explanation: 'Call me on +1 (555) 222-3333 or email leaky@sirieducation.com.',
+            explanation: 'Call me on +1 (555) 222-3333 or email leaky@example.com.',
         ));
 
         $this->assertStringNotContainsString('555', (string) $report->explanation);
-        $this->assertStringNotContainsString('@sirieducation.com', (string) $report->explanation);
+        $this->assertStringNotContainsString('@example.com', (string) $report->explanation);
     }
 
     /**

@@ -20,7 +20,7 @@ class PulseUserResolverTest extends TestCase
 
     public function test_resolver_returns_only_safe_display_fields(): void
     {
-        $user = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@sirieducation.com']);
+        $user = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']);
 
         $resolver = app(ResolvesUsers::class);
         $resolver->load(collect([$user->id]));
@@ -33,7 +33,7 @@ class PulseUserResolverTest extends TestCase
 
     public function test_resolver_falls_back_to_identifier_when_name_is_blank(): void
     {
-        $user = User::factory()->create(['name' => '', 'email' => 'noname@sirieducation.com']);
+        $user = User::factory()->create(['name' => '', 'email' => 'noname@example.com']);
 
         $resolver = app(ResolvesUsers::class);
         $resolver->load(collect([$user->id]));

@@ -52,7 +52,7 @@ class MeetingProviderRegistryScopeTest extends TestCase
     {
         $this->app->instance(GoogleCalendarClient::class, Mockery::mock(GoogleCalendarClient::class));
 
-        $this->configureGoogle('meetings@sirieducation.com');
+        $this->configureGoogle('meetings@example.com');
 
         $providerBeforeUpdate = app(MeetingProviderRegistry::class)->get(GoogleCalendarMeetProvider::KEY);
         $this->assertTrue($providerBeforeUpdate->isConfigured());
@@ -77,7 +77,7 @@ class MeetingProviderRegistryScopeTest extends TestCase
     {
         $this->app->instance(GoogleCalendarClient::class, Mockery::mock(GoogleCalendarClient::class));
 
-        $this->configureGoogle('meetings@sirieducation.com');
+        $this->configureGoogle('meetings@example.com');
 
         // Resolving once (as the first job on a worker would) must not
         // pin the resolver/registry to this moment's settings.

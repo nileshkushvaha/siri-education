@@ -54,7 +54,7 @@ final class RedirectServiceTest extends TestCase
     public function test_full_urls_pasted_as_source_are_reduced_to_their_path(): void
     {
         $redirect = $this->redirects->create($this->admin, [
-            'source_path' => config('app.url') . '/old-legal-page',
+            'source_path' => config('app.url').'/old-legal-page',
             'target_path' => '/legal/terms',
             'type' => RedirectType::Permanent,
         ]);
@@ -207,7 +207,7 @@ final class RedirectServiceTest extends TestCase
         $this->expectException(RedirectException::class);
         $this->expectExceptionMessage('Protocol-relative');
 
-        $this->redirects->create($this->admin, ['source_path' => '/x', 'target_path' => '//evil.sirieducation.com/phish', 'type' => RedirectType::Permanent]);
+        $this->redirects->create($this->admin, ['source_path' => '/x', 'target_path' => '//evil.example.com/phish', 'type' => RedirectType::Permanent]);
     }
 
     public function test_external_absolute_target_is_rejected(): void
@@ -215,7 +215,7 @@ final class RedirectServiceTest extends TestCase
         $this->expectException(RedirectException::class);
         $this->expectExceptionMessage('External');
 
-        $this->redirects->create($this->admin, ['source_path' => '/x', 'target_path' => 'https://evil.sirieducation.com/phish', 'type' => RedirectType::Permanent]);
+        $this->redirects->create($this->admin, ['source_path' => '/x', 'target_path' => 'https://evil.example.com/phish', 'type' => RedirectType::Permanent]);
     }
 
     public function test_unsafe_scheme_target_is_rejected(): void

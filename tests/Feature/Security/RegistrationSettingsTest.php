@@ -127,7 +127,7 @@ class RegistrationSettingsTest extends TestCase
 
         $this->post(route('auth.register.store'), [
             'first_name' => 'Test',
-            'email' => 'new@sirieducation.com',
+            'email' => 'new@example.com',
             'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
             'terms' => '1',

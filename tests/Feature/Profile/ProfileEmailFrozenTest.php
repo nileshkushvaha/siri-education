@@ -25,16 +25,16 @@ class ProfileEmailFrozenTest extends TestCase
 
     public function test_profile_update_ignores_a_different_email_in_the_request(): void
     {
-        $user = $this->activeUser(['email' => 'original@sirieducation.com']);
+        $user = $this->activeUser(['email' => 'original@example.com']);
 
         $this->actingAs($user)
             ->post(route('profile.update'), [
                 'first_name' => $user->first_name ?? 'First',
-                'email' => 'changed@sirieducation.com',
+                'email' => 'changed@example.com',
             ])
             ->assertRedirect();
 
-        $this->assertSame('original@sirieducation.com', $user->fresh()->email);
+        $this->assertSame('original@example.com', $user->fresh()->email);
     }
 
     public function test_profile_update_succeeds_without_an_email_field_at_all(): void

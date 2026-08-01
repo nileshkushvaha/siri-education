@@ -89,11 +89,11 @@ class MessageReportingTest extends TestCase
         $service = app(MessagingService::class);
         $conversation = $service->openOrFindConversation($student, $instructor, $student);
 
-        $message = $service->send($conversation, $student, 'Email me at test@sirieducation.com instead');
+        $message = $service->send($conversation, $student, 'Email me at test@example.com instead');
 
         $this->assertTrue($message->flagged_leakage);
         $this->assertContains('email_address', $message->flagged_leakage_reasons);
-        $this->assertSame('Email me at test@sirieducation.com instead', $message->body, 'Body is never mutated by leakage detection.');
+        $this->assertSame('Email me at test@example.com instead', $message->body, 'Body is never mutated by leakage detection.');
     }
 
     public function test_admin_can_review_a_report(): void

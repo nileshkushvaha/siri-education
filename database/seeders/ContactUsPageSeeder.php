@@ -41,7 +41,7 @@ class ContactUsPageSeeder extends Seeder
                     'description' => 'Share enough context for the team to route your request. Please never include passwords, one-time codes, or full payment credentials.',
                     'fields' => [
                         ['name' => 'name', 'label' => 'Full name', 'type' => 'text', 'placeholder' => 'Your full name', 'required' => true, 'options' => ''],
-                        ['name' => 'email', 'label' => 'Email address', 'type' => 'email', 'placeholder' => 'you@sirieducation.com', 'required' => true, 'options' => ''],
+                        ['name' => 'email', 'label' => 'Email address', 'type' => 'email', 'placeholder' => 'you@example.com', 'required' => true, 'options' => ''],
                         ['name' => 'phone', 'label' => 'Mobile number', 'type' => 'phone', 'placeholder' => 'Include your country code', 'required' => false, 'options' => ''],
                         ['name' => 'request_type', 'label' => 'How can we help?', 'type' => 'select', 'placeholder' => '', 'required' => true, 'options' => 'Student account,Instructor application,Booking or lesson,Payment or wallet,Partnership or institution,Privacy or safety,General question'],
                         ['name' => 'reference', 'label' => 'Reference number', 'type' => 'text', 'placeholder' => 'Optional booking, payment, or application reference', 'required' => false, 'options' => ''],
@@ -57,7 +57,7 @@ class ContactUsPageSeeder extends Seeder
             ],
         );
 
-        cache()->forget('page-render:' . $page->getKey());
+        cache()->forget('page-render:'.$page->getKey());
     }
 
     private function content(): string

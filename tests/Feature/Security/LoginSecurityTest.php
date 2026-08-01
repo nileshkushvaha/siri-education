@@ -74,7 +74,7 @@ class LoginSecurityTest extends TestCase
         $this->setLockout(max: 5, duration: 15);
 
         $this->post(route('auth.login.store'), [
-            'email' => 'nobody@sirieducation.com',
+            'email' => 'nobody@example.com',
             'password' => 'anything',
         ]);
 
@@ -434,10 +434,10 @@ class LoginSecurityTest extends TestCase
 
         // Hit the limiter (>5 per minute)
         for ($i = 0; $i < 5; $i++) {
-            $this->post(route('auth.password.email'), ['email' => 'test@sirieducation.com']);
+            $this->post(route('auth.password.email'), ['email' => 'test@example.com']);
         }
 
-        $this->post(route('auth.password.email'), ['email' => 'test@sirieducation.com'])
+        $this->post(route('auth.password.email'), ['email' => 'test@example.com'])
             ->assertStatus(429);
     }
 
@@ -449,7 +449,7 @@ class LoginSecurityTest extends TestCase
 
         // Exceed normal threshold without hitting 429
         for ($i = 0; $i < 8; $i++) {
-            $response = $this->post(route('auth.password.email'), ['email' => 'test@sirieducation.com']);
+            $response = $this->post(route('auth.password.email'), ['email' => 'test@example.com']);
             $this->assertNotEquals(429, $response->status());
         }
     }

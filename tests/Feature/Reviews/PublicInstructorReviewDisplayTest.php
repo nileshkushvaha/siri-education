@@ -128,7 +128,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
     public function test_flagged_review_is_not_displayed(): void
     {
         $instructor = $this->makeInstructor();
-        $this->submitPublicReview($instructor, content: 'Contact me at leaky@sirieducation.com please.');
+        $this->submitPublicReview($instructor, content: 'Contact me at leaky@example.com please.');
 
         $this->get(route('instructors.show', $instructor))
             ->assertOk()
@@ -232,12 +232,12 @@ class PublicInstructorReviewDisplayTest extends TestCase
             'status' => 'active',
             'first_name' => 'Nilesh',
             'last_name' => 'Kushvaha',
-            'email' => 'nilesh-private@sirieducation.com',
+            'email' => 'nilesh-private@example.com',
         ]);
         $this->submitPublicReview($instructor, student: $student);
 
         $response = $this->get(route('instructors.show', $instructor))->assertOk();
-        $response->assertDontSee('nilesh-private@sirieducation.com');
+        $response->assertDontSee('nilesh-private@example.com');
         // The review's own primary key legitimately reaches the page
         // via the embedded `reviews.report-review`
         // Livewire component (needed so the "Report Review" action

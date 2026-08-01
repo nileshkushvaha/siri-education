@@ -239,8 +239,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.featured_instructor_limit', $instructor->featured_instructor_limit)
             ->set('data.availability_required_for_public_profile', $instructor->availability_required_for_public_profile)
             ->set('data.default_country', $localization->default_country)
-            ->set('data.country_detection_enabled', $localization->country_detection_enabled)
-            ->set('data.allow_user_locale_switching', $localization->allow_user_locale_switching)
             ->set('data.demo_lessons_enabled', $features->demo_lessons_enabled)
             ->set('data.wallet_enabled', $features->wallet_enabled)
             ->set('data.referral_enabled', $features->referral_enabled)

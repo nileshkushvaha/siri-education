@@ -223,7 +223,7 @@ class ReviewQualityNotificationTest extends TestCase
         Notification::fake();
 
         $this->submissions->submit($eligibility, $eligibility->student, $this->reviewData(
-            content: 'Contact me at leaking.email@sirieducation.com for more.',
+            content: 'Contact me at leaking.email@example.com for more.',
         ));
 
         Notification::assertSentToTimes($admin, ReviewModerationRequiredNotification::class, 1);
@@ -310,7 +310,7 @@ class ReviewQualityNotificationTest extends TestCase
 
         Notification::fake();
 
-        $this->submitPublicReview(content: 'Reach me at excluded.admin@sirieducation.com now.');
+        $this->submitPublicReview(content: 'Reach me at excluded.admin@example.com now.');
 
         Notification::assertNotSentTo($inactiveAdmin, ReviewModerationRequiredNotification::class);
     }
@@ -324,7 +324,7 @@ class ReviewQualityNotificationTest extends TestCase
 
         Notification::fake();
 
-        $this->submitPublicReview(content: 'Contact via overlap.test@sirieducation.com directly.');
+        $this->submitPublicReview(content: 'Contact via overlap.test@example.com directly.');
 
         Notification::assertSentToTimes($manager, ReviewModerationRequiredNotification::class, 1);
     }

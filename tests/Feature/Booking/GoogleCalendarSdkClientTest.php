@@ -125,7 +125,7 @@ class GoogleCalendarSdkClientTest extends TestCase
         $method = new ReflectionMethod(GoogleCalendarSdkClient::class, 'buildClient');
         $decoded = json_decode(self::FAKE_CREDENTIALS, true);
 
-        $client = $method->invoke(new GoogleCalendarSdkClient, $decoded, 'meetings@sirieducation.com');
+        $client = $method->invoke(new GoogleCalendarSdkClient, $decoded, 'meetings@example.com');
 
         $this->assertSame(['https://www.googleapis.com/auth/calendar'], $client->getScopes());
     }
@@ -135,11 +135,11 @@ class GoogleCalendarSdkClientTest extends TestCase
         $method = new ReflectionMethod(GoogleCalendarSdkClient::class, 'buildClient');
         $decoded = json_decode(self::FAKE_CREDENTIALS, true);
 
-        $client = $method->invoke(new GoogleCalendarSdkClient, $decoded, 'meetings@sirieducation.com');
+        $client = $method->invoke(new GoogleCalendarSdkClient, $decoded, 'meetings@example.com');
 
         $config = (new ReflectionProperty($client, 'config'))->getValue($client);
 
-        $this->assertSame('meetings@sirieducation.com', $config['subject']);
+        $this->assertSame('meetings@example.com', $config['subject']);
     }
 
     public function test_service_construction_fails_at_the_token_step_before_any_calendar_api_call(): void
@@ -151,12 +151,12 @@ class GoogleCalendarSdkClientTest extends TestCase
         $method = new ReflectionMethod(GoogleCalendarSdkClient::class, 'service');
 
         try {
-            $method->invoke(new GoogleCalendarSdkClient, self::FAKE_CREDENTIALS, 'meetings@sirieducation.com');
+            $method->invoke(new GoogleCalendarSdkClient, self::FAKE_CREDENTIALS, 'meetings@example.com');
             $this->fail('Expected a GatewayRequestException from token acquisition.');
         } catch (GatewayRequestException $e) {
             $this->assertStringContainsString('116902683368346528512', $e->getMessage());
             $this->assertStringContainsString('siri-education@siri-education.iam.gserviceaccount.com', $e->getMessage());
-            $this->assertStringContainsString('meetings@sirieducation.com', $e->getMessage());
+            $this->assertStringContainsString('meetings@example.com', $e->getMessage());
             $this->assertStringContainsString('https://www.googleapis.com/auth/calendar', $e->getMessage());
             $this->assertStringNotContainsString('FAKE_PRIVATE_KEY_TOKEN_ABCDEFGHIJKLMNOP', $e->getMessage());
         }
@@ -176,7 +176,7 @@ class GoogleCalendarSdkClientTest extends TestCase
             new GoogleCalendarSdkClient,
             $googleException,
             'calendar-123@group.calendar.google.com',
-            'meetings@sirieducation.com',
+            'meetings@example.com',
             self::FAKE_CREDENTIALS,
         );
 
@@ -185,7 +185,7 @@ class GoogleCalendarSdkClientTest extends TestCase
         $this->assertStringContainsString('invalid', $result->getMessage());
         $this->assertStringContainsString('Invalid conference type value.', $result->getMessage());
         $this->assertStringContainsString('calendar-123@group.calendar.google.com', $result->getMessage());
-        $this->assertStringContainsString('meetings@sirieducation.com', $result->getMessage());
+        $this->assertStringContainsString('meetings@example.com', $result->getMessage());
         $this->assertStringContainsString('hangoutsMeet', $result->getMessage());
 
         // Never exposes anything token/key-shaped from the fake credentials.
@@ -212,7 +212,7 @@ class GoogleCalendarSdkClientTest extends TestCase
             new GoogleCalendarSdkClient,
             $googleException,
             'primary',
-            'meetings@sirieducation.com',
+            'meetings@example.com',
             self::FAKE_CREDENTIALS,
         );
 
@@ -224,7 +224,7 @@ class GoogleCalendarSdkClientTest extends TestCase
         $client = new GoogleCalendarSdkClient;
 
         try {
-            $client->verifyTokenAcquisition(self::FAKE_CREDENTIALS, 'meetings@sirieducation.com');
+            $client->verifyTokenAcquisition(self::FAKE_CREDENTIALS, 'meetings@example.com');
             $this->fail('Expected a GatewayRequestException.');
         } catch (GatewayRequestException $e) {
             $this->assertStringNotContainsString('FAKE_PRIVATE_KEY_TOKEN_ABCDEFGHIJKLMNOP', $e->getMessage());

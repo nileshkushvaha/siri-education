@@ -46,7 +46,7 @@ class UserCreationRoleAuditTest extends TestCase
         Livewire::test(CreateUser::class)
             ->fillForm([
                 'name' => 'New Admin User',
-                'email' => 'new-admin-user@sirieducation.com',
+                'email' => 'new-admin-user@example.com',
                 'password' => 'Sup3r$ecret!',
                 'password_confirmation' => 'Sup3r$ecret!',
                 'status' => 'active',
@@ -55,7 +55,7 @@ class UserCreationRoleAuditTest extends TestCase
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $user = User::where('email', 'new-admin-user@sirieducation.com')->firstOrFail();
+        $user = User::where('email', 'new-admin-user@example.com')->firstOrFail();
 
         $events = Activity::query()
             ->where('log_name', 'users')
@@ -75,7 +75,7 @@ class UserCreationRoleAuditTest extends TestCase
         Livewire::test(CreateUser::class)
             ->fillForm([
                 'name' => 'Roleless User',
-                'email' => 'roleless-user@sirieducation.com',
+                'email' => 'roleless-user@example.com',
                 'password' => 'Sup3r$ecret!',
                 'password_confirmation' => 'Sup3r$ecret!',
                 'status' => 'active',
@@ -83,7 +83,7 @@ class UserCreationRoleAuditTest extends TestCase
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $user = User::where('email', 'roleless-user@sirieducation.com')->firstOrFail();
+        $user = User::where('email', 'roleless-user@example.com')->firstOrFail();
 
         $this->assertSame(
             0,

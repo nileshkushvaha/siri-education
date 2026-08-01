@@ -48,7 +48,7 @@ class NavigationItemServiceTest extends TestCase
         return NavigationItem::factory()->create(array_merge([
             'navigation_id' => $menu->id,
             'link_type' => NavigationLinkType::Url->value,
-            'url' => 'https://sirieducation.com',
+            'url' => 'https://example.com',
         ], $attrs));
     }
 
@@ -57,7 +57,7 @@ class NavigationItemServiceTest extends TestCase
         return NavigationItemData::fromArray(array_merge([
             'label' => $label,
             'link_type' => 'url',
-            'url' => 'https://sirieducation.com',
+            'url' => 'https://example.com',
         ], $overrides));
     }
 
@@ -111,7 +111,7 @@ class NavigationItemServiceTest extends TestCase
             'parent_id' => $parent->id,
             'label' => 'Web Design',
             'link_type' => NavigationLinkType::Url->value,
-            'url' => 'https://sirieducation.com/web',
+            'url' => 'https://example.com/web',
         ]);
         NavigationItem::fixTree();
 
@@ -169,13 +169,13 @@ class NavigationItemServiceTest extends TestCase
         $item = $this->service->createForUrl(
             $menu,
             NavigationLinkType::Email,
-            'info@sirieducation.com',
+            'info@example.com',
             'Contact Us',
         );
 
         $this->assertSame('Contact Us', $item->label);
         $this->assertSame(NavigationLinkType::Email, $item->link_type);
-        $this->assertSame('info@sirieducation.com', $item->url);
+        $this->assertSame('info@example.com', $item->url);
         $this->assertNull($item->linkable_type);
     }
 
@@ -203,7 +203,7 @@ class NavigationItemServiceTest extends TestCase
         $data = NavigationItemData::fromArray([
             'label' => 'Child',
             'link_type' => 'url',
-            'url' => 'https://child.sirieducation.com',
+            'url' => 'https://child.example.com',
             'parent_id' => $parent->id,
         ]);
 
@@ -225,7 +225,7 @@ class NavigationItemServiceTest extends TestCase
         $data = NavigationItemData::fromArray([
             'label' => 'Orphan',
             'link_type' => 'url',
-            'url' => 'https://sirieducation.com',
+            'url' => 'https://example.com',
             'parent_id' => $parent->id,
         ]);
 
@@ -385,7 +385,7 @@ class NavigationItemServiceTest extends TestCase
             'parent_id' => $parent->id,
             'label' => 'Child',
             'link_type' => NavigationLinkType::Url->value,
-            'url' => 'https://sirieducation.com',
+            'url' => 'https://example.com',
         ]);
         $child->load('roles', 'permissions');
         NavigationItem::fixTree();

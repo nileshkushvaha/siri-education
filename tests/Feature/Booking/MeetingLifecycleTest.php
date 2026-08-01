@@ -44,7 +44,7 @@ class MeetingLifecycleTest extends TestCase
         $settings->google_meet_enabled = true;
         $settings->google_auth_type = 'service_account';
         $settings->google_calendar_id = 'primary';
-        $settings->platform_meeting_account = 'meetings@sirieducation.com';
+        $settings->platform_meeting_account = 'meetings@example.com';
         $settings->google_credentials_json = Crypt::encryptString(
             json_encode(['type' => 'service_account', 'client_id' => '116902683368346528512', 'client_email' => 'svc@project.iam.gserviceaccount.com', 'private_key' => 'FAKE_PRIVATE_KEY_TOKEN_ABCDEFGHIJKLMNOP']),
         );
@@ -81,7 +81,7 @@ class MeetingLifecycleTest extends TestCase
 
         $client->shouldReceive('deleteEvent')
             ->once()
-            ->withArgs(fn(string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_live');
+            ->withArgs(fn (string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_live');
 
         $this->cancelBooking($booking);
 
@@ -213,7 +213,7 @@ class MeetingLifecycleTest extends TestCase
 
         $client->shouldReceive('updateEvent')
             ->once()
-            ->withArgs(fn(string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_pending')
+            ->withArgs(fn (string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_pending')
             ->andReturn([
                 'id' => 'evt_pending',
                 'hangoutLink' => 'https://meet.google.com/now-ready',
@@ -275,7 +275,7 @@ class MeetingLifecycleTest extends TestCase
     {
         $resolver = app(NotificationChannelResolver::class);
 
-        $guest = Notification::route('mail', 'guest@sirieducation.com');
+        $guest = Notification::route('mail', 'guest@example.com');
         $this->assertNotContains('database', $resolver->channels($guest));
 
         $user = User::factory()->create();

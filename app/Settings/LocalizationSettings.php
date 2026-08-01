@@ -16,10 +16,6 @@ class LocalizationSettings extends Settings
     /** ISO 3166-1 alpha-2 country code used before per-user/geo detection is available. */
     public string $default_country;
 
-    public bool $country_detection_enabled;
-
-    public bool $allow_user_locale_switching;
-
     public static function group(): string
     {
         return 'localization';

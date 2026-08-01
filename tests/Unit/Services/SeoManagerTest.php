@@ -68,12 +68,12 @@ class SeoManagerTest extends TestCase
     public function test_page_metadata_canonical_uses_explicit_value(): void
     {
         $page = Page::factory()->create([
-            'canonical_url' => 'https://sirieducation.com/canonical',
+            'canonical_url' => 'https://example.com/canonical',
         ]);
 
         $meta = $this->seo->getPageMetadata($page);
 
-        $this->assertSame('https://sirieducation.com/canonical', $meta['canonical']);
+        $this->assertSame('https://example.com/canonical', $meta['canonical']);
     }
 
     public function test_page_metadata_canonical_falls_back_to_route(): void

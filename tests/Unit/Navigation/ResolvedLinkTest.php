@@ -11,7 +11,7 @@ class ResolvedLinkTest extends TestCase
 {
     public function test_is_external_returns_true_for_blank_target(): void
     {
-        $link = new ResolvedLink('https://sirieducation.com', '_blank', 'noopener noreferrer', []);
+        $link = new ResolvedLink('https://example.com', '_blank', 'noopener noreferrer', []);
 
         $this->assertTrue($link->isExternal());
     }

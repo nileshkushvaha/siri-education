@@ -34,16 +34,16 @@ class ForgotPasswordFormTest extends TestCase
     {
         Notification::fake();
 
-        User::factory()->create(['email' => 'exists@sirieducation.com']);
+        User::factory()->create(['email' => 'exists@example.com']);
 
         Livewire::test(ForgotPasswordForm::class)
-            ->set('email', 'exists@sirieducation.com')
+            ->set('email', 'exists@example.com')
             ->call('send')
             ->assertSet('sent', true);
 
         // Enumeration protection: an unknown email reaches the same state.
         Livewire::test(ForgotPasswordForm::class)
-            ->set('email', 'does-not-exist@sirieducation.com')
+            ->set('email', 'does-not-exist@example.com')
             ->call('send')
             ->assertSet('sent', true);
     }

@@ -88,8 +88,6 @@ class PlatformFoundationSettingsPage extends Page
             'featured_instructor_limit' => $instructor->featured_instructor_limit,
             'availability_required_for_public_profile' => $instructor->availability_required_for_public_profile,
             'default_country' => $localization->default_country,
-            'country_detection_enabled' => $localization->country_detection_enabled,
-            'allow_user_locale_switching' => $localization->allow_user_locale_switching,
             'demo_lessons_enabled' => $features->demo_lessons_enabled,
             'wallet_enabled' => $features->wallet_enabled,
             'referral_enabled' => $features->referral_enabled,
@@ -171,8 +169,6 @@ class PlatformFoundationSettingsPage extends Page
                             ->minLength(2)
                             ->maxLength(2)
                             ->required(),
-                        Toggle::make('country_detection_enabled')->label('Detect Country from Visitor'),
-                        Toggle::make('allow_user_locale_switching')->label('Allow User Locale Switching'),
                     ]),
 
                 Section::make('Feature Flags')
@@ -281,8 +277,6 @@ class PlatformFoundationSettingsPage extends Page
     {
         return $this->saveSettingsWithAudit(LocalizationSettings::class, 'settings', function (LocalizationSettings $settings) use ($data): void {
             $settings->default_country = strtoupper((string) $data['default_country']);
-            $settings->country_detection_enabled = (bool) ($data['country_detection_enabled'] ?? false);
-            $settings->allow_user_locale_switching = (bool) ($data['allow_user_locale_switching'] ?? false);
         });
     }
 

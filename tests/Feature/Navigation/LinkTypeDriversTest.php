@@ -75,12 +75,12 @@ class LinkTypeDriversTest extends TestCase
 
     public function test_external_driver_sets_blank_target(): void
     {
-        $item = $this->makeItem(['url' => 'https://sirieducation.com', 'link_type' => NavigationLinkType::External->value]);
+        $item = $this->makeItem(['url' => 'https://example.com', 'link_type' => NavigationLinkType::External->value]);
         $driver = app(ExternalLinkDriver::class);
         $link = $driver->resolve($item);
 
         $this->assertSame('_blank', $link->target);
-        $this->assertSame('https://sirieducation.com', $link->url);
+        $this->assertSame('https://example.com', $link->url);
     }
 
     public function test_external_driver_sets_noopener_rel_when_not_specified(): void
@@ -95,18 +95,18 @@ class LinkTypeDriversTest extends TestCase
 
     public function test_email_driver_prepends_mailto(): void
     {
-        $item = $this->makeItem(['url' => 'hello@sirieducation.com', 'link_type' => NavigationLinkType::Email->value]);
+        $item = $this->makeItem(['url' => 'hello@example.com', 'link_type' => NavigationLinkType::Email->value]);
         $driver = app(EmailLinkDriver::class);
 
-        $this->assertSame('mailto:hello@sirieducation.com', $driver->resolve($item)->url);
+        $this->assertSame('mailto:hello@example.com', $driver->resolve($item)->url);
     }
 
     public function test_email_driver_does_not_double_prepend(): void
     {
-        $item = $this->makeItem(['url' => 'mailto:hello@sirieducation.com', 'link_type' => NavigationLinkType::Email->value]);
+        $item = $this->makeItem(['url' => 'mailto:hello@example.com', 'link_type' => NavigationLinkType::Email->value]);
         $driver = app(EmailLinkDriver::class);
 
-        $this->assertSame('mailto:hello@sirieducation.com', $driver->resolve($item)->url);
+        $this->assertSame('mailto:hello@example.com', $driver->resolve($item)->url);
     }
 
     // ── PhoneLinkDriver ───────────────────────────────────────────────────

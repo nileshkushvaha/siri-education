@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\SchedulerService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -19,6 +20,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 class SchedulerMonitorPage extends Page
 {
     use HasCentralizedNavigation;
+    use HasSettingsSectionBreadcrumb;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
@@ -69,15 +71,6 @@ class SchedulerMonitorPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'View scheduled tasks, execution history, and run tasks manually.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/system/scheduler' => 'System',
-            '#' => 'Scheduler',
-        ];
     }
 
     // ── Data ──────────────────────────────────────────────────────────────

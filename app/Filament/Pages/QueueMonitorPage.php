@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
+use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Models\FailedJob;
 use App\Queue\DTOs\FailedJobRetryResult;
 use App\Queue\Enums\FailedJobRetryOutcome;
@@ -30,6 +31,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 class QueueMonitorPage extends Page implements HasTable
 {
     use HasCentralizedNavigation;
+    use HasSettingsSectionBreadcrumb;
     use InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
@@ -88,15 +90,6 @@ class QueueMonitorPage extends Page implements HasTable
     public function getSubheading(): string|Htmlable|null
     {
         return 'Queue driver status, pending jobs, and failed job history.';
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [
-            '/admin' => 'Dashboard',
-            '/admin/system/queue-monitor' => 'System',
-            '#' => 'Queue Monitor',
-        ];
     }
 
     // ── Failed-jobs table ─────────────────────────────

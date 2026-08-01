@@ -28,7 +28,7 @@ class GoogleCalendarConfigurationServiceTest extends TestCase
 
     private const CLIENT_EMAIL = 'siri-education@siri-education.iam.gserviceaccount.com';
 
-    private const DELEGATED_ACCOUNT = 'meetings@sirieducation.com';
+    private const DELEGATED_ACCOUNT = 'meetings@example.com';
 
     private function configureGoogle(): void
     {

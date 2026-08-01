@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Navigation\NavigationRegistry;
 use App\Filament\Pages\Settings\GeneralSettingsPage;
 use App\Filament\Resources\Bookings\Pages\EditBooking;
 use App\Filament\Resources\Faq\FaqCategoryResource;
@@ -221,11 +222,33 @@ class AdminFormsPresentationPilotTest extends TestCase
         $this->assertSame(1, substr_count($matches[0], 'Jordan Rivera'));
     }
 
-    public function test_general_settings_breadcrumb_uses_the_registry_subgroup_not_a_hardcoded_page(): void
+    public function test_general_settings_breadcrumb_comes_from_the_registry_not_a_hardcoded_page(): void
     {
         $this->actingAs($this->superAdmin());
 
         Livewire::test(GeneralSettingsPage::class)
-            ->assertSeeInOrder(['Settings', 'Platform', 'General Settings']);
+            ->assertSeeInOrder(['Settings', 'General Settings']);
+    }
+
+    public function test_settings_breadcrumbs_never_render_the_registry_subgroup(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        // NavigationRegistry carries a `subgroup` ('Platform' here) that is
+        // informational only — HasCentralizedNavigation feeds Filament just
+        // group/label/sort, so no such level exists in the sidebar or at any
+        // URL. Rendering it produced "Settings > Platform > General Settings",
+        // naming a destination a reader could never reach.
+        $html = Livewire::test(GeneralSettingsPage::class)->html();
+
+        preg_match('/<nav[^>]*fi-breadcrumbs.*?<\/nav>/s', $html, $matches);
+        $this->assertNotEmpty($matches, 'Breadcrumb nav not found in rendered output.');
+
+        $this->assertStringContainsString('Settings', $matches[0]);
+        $this->assertStringContainsString('General Settings', $matches[0]);
+        $this->assertStringNotContainsString(
+            NavigationRegistry::subgroupFor(GeneralSettingsPage::class) ?? '__none__',
+            $matches[0],
+        );
     }
 }

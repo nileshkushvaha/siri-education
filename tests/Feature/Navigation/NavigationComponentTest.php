@@ -44,7 +44,7 @@ class NavigationComponentTest extends TestCase
         return NavigationItem::factory()->create(array_merge([
             'navigation_id' => $menu->id,
             'link_type' => NavigationLinkType::Url->value,
-            'url' => 'https://sirieducation.com',
+            'url' => 'https://example.com',
             'is_active' => true,
         ], $attrs));
     }
@@ -116,11 +116,11 @@ class NavigationComponentTest extends TestCase
     public function test_renders_links_with_href(): void
     {
         $menu = $this->menu();
-        $this->item($menu, ['label' => 'About', 'url' => 'https://sirieducation.com/about']);
+        $this->item($menu, ['label' => 'About', 'url' => 'https://example.com/about']);
 
         $html = $this->render('<x-navigation location="header" />');
 
-        $this->assertStringContainsString('href="https://sirieducation.com/about"', $html);
+        $this->assertStringContainsString('href="https://example.com/about"', $html);
         $this->assertStringContainsString('About', $html);
     }
 
@@ -162,7 +162,7 @@ class NavigationComponentTest extends TestCase
         $parent = $this->item($menu, ['label' => 'Products', 'url' => '#']);
         $child = $this->item($menu, [
             'label' => 'Widget Pro',
-            'url' => 'https://sirieducation.com/widget',
+            'url' => 'https://example.com/widget',
             'parent_id' => $parent->id,
         ]);
 
@@ -178,7 +178,7 @@ class NavigationComponentTest extends TestCase
         $parent = $this->item($menu, ['label' => 'Products', 'url' => '#']);
         $this->item($menu, [
             'label' => 'Child Item',
-            'url' => 'https://sirieducation.com/child',
+            'url' => 'https://example.com/child',
             'parent_id' => $parent->id,
         ]);
 
@@ -193,7 +193,7 @@ class NavigationComponentTest extends TestCase
         $parent = $this->item($menu, ['label' => 'Products', 'url' => '#']);
         $this->item($menu, [
             'label' => 'Child',
-            'url' => 'https://sirieducation.com/child',
+            'url' => 'https://example.com/child',
             'parent_id' => $parent->id,
         ]);
 

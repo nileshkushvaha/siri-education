@@ -100,7 +100,7 @@ class InstructorRatingAggregateTest extends TestCase
 
     public function test_flagged_review_does_not_contribute(): void
     {
-        $review = $this->submitPublicReview(content: 'Contact me at leaky@sirieducation.com for more.')->fresh();
+        $review = $this->submitPublicReview(content: 'Contact me at leaky@example.com for more.')->fresh();
 
         $this->assertSame(StudentReviewStatus::Flagged, $review->status);
         $this->assertNull($this->aggregateFor($review->instructor_id));

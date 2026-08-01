@@ -68,7 +68,7 @@
                     @error('password_confirmation')<p class="mt-1 text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
                 </div>
             </div>
-            <p class="mt-2 w-full text-xs leading-relaxed text-slate-400">Use 8 or more characters with uppercase and lowercase letters, at least one number, and one symbol.</p>
+            <p class="mt-2 w-full text-xs leading-relaxed text-slate-400">{{ $this->passwordPolicyHint() }}</p>
         </fieldset>
 
         <fieldset class="rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.06] p-3.5">

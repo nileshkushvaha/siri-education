@@ -11,6 +11,7 @@ use App\Models\Country;
 use App\Services\Auth\RegistrationCaptchaService;
 use App\Services\Auth\RegistrationService;
 use App\Services\PortalResolver;
+use App\Services\Security\PasswordRuleBuilder;
 use App\Support\InstructorApplicationIntent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -216,6 +217,16 @@ final class RegisterForm extends Component
 
         session()->flash('success', 'Account created! Please check your email to verify your address before signing in.');
         $this->redirect(route('auth.verification.notice'), navigate: false);
+    }
+
+    /**
+     * Password requirements in words, derived from the same settings that
+     * build the validation rule — so the hint under the field always matches
+     * what registration will actually accept.
+     */
+    public function passwordPolicyHint(): string
+    {
+        return app(PasswordRuleBuilder::class)->describe();
     }
 
     public function render(): View

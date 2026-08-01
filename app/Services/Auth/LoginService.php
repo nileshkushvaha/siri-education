@@ -24,6 +24,7 @@ final class LoginService
         private readonly LoginSecurityService $loginSecurity,
         private readonly AccountProtectionService $accountProtection,
         private readonly StudentLifecycleService $studentLifecycle,
+        private readonly VerificationResendService $verificationResend,
     ) {}
 
     public function attempt(
@@ -60,6 +61,15 @@ final class LoginService
             }
 
             if (! $user->isActive()) {
+                // A brand-new registration lands here (status is
+                // pending_verification), never reaching the credential check
+                // below — so without this the user is stuck: they cannot
+                // verify without the link, and cannot log in to request one.
+                // The service refuses anything that is not a genuinely new,
+                // unverified, un-restricted registration, and rate-limits per
+                // account since this branch runs before the password check.
+                $this->verificationResend->resendIfEligible($user);
+
                 LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountInactive->value, $sessionId);
 
                 return LoginResult::AccountInactive;
@@ -101,6 +111,11 @@ final class LoginService
         // Check email verification AFTER successful credential check
         if ($this->authSettings->email_verification_required && ! $authenticated->hasVerifiedEmail()) {
             auth()->logout();
+
+            // Reached only after a correct password, so this is provably the
+            // account owner asking. Same cooldown applies.
+            $this->verificationResend->resendIfEligible($authenticated);
+
             LoginFailed::dispatch($authenticated, $email, $ipAddress, $userAgent, LoginResult::EmailUnverified->value, $sessionId);
 
             return LoginResult::EmailUnverified;

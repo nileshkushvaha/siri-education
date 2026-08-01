@@ -73,6 +73,7 @@ use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureInstructorWorkspaceAccess;
 use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
+use App\Services\Auth\VerificationResendService;
 use App\Services\PortalResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -154,10 +155,10 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
             ->whereNull('email_verified_at')
             ->first();
 
-        // Always show success to prevent email enumeration
-        if ($user) {
-            $user->sendEmailVerificationNotification();
-        }
+        // Eligibility (never blocked/suspended, never an account that has
+        // logged in before) and the per-account cooldown both live in the
+        // service — this route only supplies the address.
+        app(VerificationResendService::class)->resendIfEligible($user);
 
         return back()->with('success', 'Verification email sent! Please check your inbox.');
     })->middleware('throttle:3,1')->name('verification.resend.guest');

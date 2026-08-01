@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Livewire\Frontend\Auth\Concerns\ThrottlesLivewireRequests;
 use App\Models\User;
 use App\Services\Auth\LoginService;
+use App\Services\Auth\VerificationResendService;
 use App\Services\PortalResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -99,6 +100,20 @@ final class LoginForm extends Component
             return;
         }
 
+        // A brand-new registration is rejected as "inactive" before its
+        // password is ever checked, and the generic inactive copy ("contact
+        // support") is a dead end for someone who simply lost the mail.
+        // LoginService has already re-sent it by this point, so say so and
+        // offer the resend control rather than the locked banner.
+        if ($result === LoginResult::AccountInactive
+            && app(VerificationResendService::class)->eligible($candidate)) {
+            $this->bannerType = 'unverified';
+            $this->bannerMessage = 'Your email address is not verified yet. We have sent a fresh verification link — please check your inbox.';
+            $this->unverifiedEmail = $this->email;
+
+            return;
+        }
+
         if (in_array($result, [LoginResult::AccountLocked, LoginResult::AccountBlocked, LoginResult::AccountInactive], true)) {
             $this->bannerType = 'locked';
             $this->bannerMessage = $result->message();
@@ -137,7 +152,10 @@ final class LoginForm extends Component
             ->whereNull('email_verified_at')
             ->first();
 
-        $user?->sendEmailVerificationNotification();
+        // Never mails a blocked, suspended or previously-active account —
+        // and the message below stays identical either way, so the response
+        // cannot be used to probe an account's status.
+        app(VerificationResendService::class)->resendIfEligible($user);
 
         $this->bannerType = null;
         $this->bannerMessage = 'Verification email sent! Please check your inbox.';

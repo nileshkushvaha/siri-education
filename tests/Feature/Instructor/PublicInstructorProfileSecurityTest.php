@@ -32,11 +32,11 @@ final class PublicInstructorProfileSecurityTest extends TestCase
 
     public function test_public_profile_never_exposes_email(): void
     {
-        $instructor = $this->makeInstructor(userOverrides: ['email' => 'very-secret-address@example.com']);
+        $instructor = $this->makeInstructor(userOverrides: ['email' => 'very-secret-address@sirieducation.com']);
 
         $this->get(route('instructors.show', $instructor))
             ->assertOk()
-            ->assertDontSee('very-secret-address@example.com');
+            ->assertDontSee('very-secret-address@sirieducation.com');
     }
 
     public function test_public_profile_never_exposes_phone(): void

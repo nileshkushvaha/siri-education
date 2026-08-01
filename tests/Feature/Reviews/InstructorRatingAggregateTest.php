@@ -100,7 +100,7 @@ class InstructorRatingAggregateTest extends TestCase
 
     public function test_flagged_review_does_not_contribute(): void
     {
-        $review = $this->submitPublicReview(content: 'Contact me at leaky@example.com for more.')->fresh();
+        $review = $this->submitPublicReview(content: 'Contact me at leaky@sirieducation.com for more.')->fresh();
 
         $this->assertSame(StudentReviewStatus::Flagged, $review->status);
         $this->assertNull($this->aggregateFor($review->instructor_id));
@@ -362,15 +362,21 @@ class InstructorRatingAggregateTest extends TestCase
         $this->submitPublicReview(overallRating: 3, instructor: $instructor, teachingQuality: 4);
 
         $before = $this->aggregateFor($instructor->id)->only([
-            'eligible_review_count', 'overall_rating_sum', 'rating_distribution',
-            'teaching_quality_rating_sum', 'teaching_quality_rating_count',
+            'eligible_review_count',
+            'overall_rating_sum',
+            'rating_distribution',
+            'teaching_quality_rating_sum',
+            'teaching_quality_rating_count',
         ]);
 
         $this->ratings->rebuildForInstructor($instructor->id);
 
         $after = $this->aggregateFor($instructor->id)->fresh()->only([
-            'eligible_review_count', 'overall_rating_sum', 'rating_distribution',
-            'teaching_quality_rating_sum', 'teaching_quality_rating_count',
+            'eligible_review_count',
+            'overall_rating_sum',
+            'rating_distribution',
+            'teaching_quality_rating_sum',
+            'teaching_quality_rating_count',
         ]);
 
         $this->assertSame($before, $after);

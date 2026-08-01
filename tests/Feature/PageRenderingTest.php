@@ -267,7 +267,7 @@ class PageRenderingTest extends TestCase
 
     public function test_canonical_url_in_seo(): void
     {
-        $canonicalUrl = 'https://example.com/canonical-url';
+        $canonicalUrl = 'https://sirieducation.com/canonical-url';
         $page = Page::factory()->create([
             'status' => PageStatus::Published,
             'canonical_url' => $canonicalUrl,

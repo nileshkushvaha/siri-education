@@ -273,13 +273,13 @@ class ReviewReportUiTest extends TestCase
         Livewire::actingAs($this->reporterUser())
             ->test(ReportReview::class, ['reviewId' => $review->id])
             ->set('selectedReason', ReviewReportReason::PersonalInformation->value)
-            ->set('explanation', '<script>alert(1)</script>Contact me at leaky@example.com now.')
+            ->set('explanation', '<script>alert(1)</script>Contact me at leaky@sirieducation.com now.')
             ->call('submitReport')
             ->assertHasNoErrors();
 
         $report = ReviewReport::query()->where('review_id', $review->id)->firstOrFail();
         $this->assertStringNotContainsString('<script>', (string) $report->explanation);
-        $this->assertStringNotContainsString('leaky@example.com', (string) $report->explanation);
+        $this->assertStringNotContainsString('leaky@sirieducation.com', (string) $report->explanation);
     }
 
     // ── 5. Authorization ─────────────────────────────────────────────────

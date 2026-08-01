@@ -78,7 +78,7 @@ class ReviewModerationTest extends TestCase
 
     public function test_risk_based_flagged_public_review_remains_flagged(): void
     {
-        $review = $this->submitPublicReview(content: 'Contact me at leaky@example.com for more.');
+        $review = $this->submitPublicReview(content: 'Contact me at leaky@sirieducation.com for more.');
 
         $this->assertSame(StudentReviewStatus::Flagged, $review->fresh()->status);
     }
@@ -137,7 +137,7 @@ class ReviewModerationTest extends TestCase
 
     public function test_unauthorized_user_cannot_moderate(): void
     {
-        $review = $this->submitPublicReview(content: 'Contact me at leaky@example.com please.');
+        $review = $this->submitPublicReview(content: 'Contact me at leaky@sirieducation.com please.');
         $stranger = User::factory()->create();
 
         $this->expectException(AuthorizationException::class);

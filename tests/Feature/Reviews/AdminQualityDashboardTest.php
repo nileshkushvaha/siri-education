@@ -145,7 +145,7 @@ class AdminQualityDashboardTest extends TestCase
     public function test_flagged_review_count_is_correct(): void
     {
         $instructor = $this->instructorUser();
-        $this->submitPublicReview($instructor, content: 'Contact me at leaky@example.com please.');
+        $this->submitPublicReview($instructor, content: 'Contact me at leaky@sirieducation.com please.');
 
         $this->assertSame(1, $this->dashboard->summary()->flaggedReviews);
     }
@@ -434,8 +434,8 @@ class AdminQualityDashboardTest extends TestCase
         $secondCall = $this->dashboard->moderationQueue(new ModerationQueueFilters, perPage: 2);
 
         $this->assertSame(
-            array_map(fn ($r) => $r->reviewId, $firstCall->items()),
-            array_map(fn ($r) => $r->reviewId, $secondCall->items()),
+            array_map(fn($r) => $r->reviewId, $firstCall->items()),
+            array_map(fn($r) => $r->reviewId, $secondCall->items()),
         );
     }
 

@@ -21,10 +21,11 @@ trait ConfiguresTransactionalEmail
 
     protected function configureMailMessage(MailMessage $message): MailMessage
     {
-        $sender = app(TransactionalMailSender::class)->resolve($this->senderKey());
+        $mail = app(TransactionalMailSender::class);
+        $sender = $mail->resolve($this->senderKey());
 
         return $message
-            ->mailer(app()->environment('production') ? 'resend' : config('mail.default'))
+            ->mailer($mail->mailer())
             ->from($sender['address'], $sender['name']);
     }
 }

@@ -235,7 +235,7 @@ class LessonManualReviewTest extends TestCase
 
         $report = $this->confirmations->reportTechnicalIssue($lesson, $lesson->student, new TechnicalIssueReportData(
             category: TechnicalIssueCategory::Other,
-            description: '<script>alert(1)</script> Link was https://zoom.us/j/1?pwd=tok_secret and my email me@example.com '.str_repeat('x', 1200),
+            description: '<script>alert(1)</script> Link was https://zoom.us/j/1?pwd=tok_secret and my email me@sirieducation.com ' . str_repeat('x', 1200),
         ));
 
         $this->assertStringNotContainsString('<script>', $report->description);

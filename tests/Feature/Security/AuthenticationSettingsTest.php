@@ -206,7 +206,7 @@ class AuthenticationSettingsTest extends TestCase
         $settings->save();
 
         $this->post(route('auth.login.store'), [
-            'email' => 'user@example.com',
+            'email' => 'user@sirieducation.com',
             'password' => 'password',
         ])->assertRedirect()->assertSessionHasErrors('email');
     }
@@ -262,7 +262,7 @@ class AuthenticationSettingsTest extends TestCase
 
         // When remember_me is disabled, no remember_web_* cookie should be set
         $cookies = collect($response->headers->getCookies())
-            ->filter(fn ($c) => str_starts_with($c->getName(), 'remember_web_'));
+            ->filter(fn($c) => str_starts_with($c->getName(), 'remember_web_'));
 
         $this->assertCount(0, $cookies);
     }
@@ -287,7 +287,7 @@ class AuthenticationSettingsTest extends TestCase
         ]);
 
         $cookies = collect($response->headers->getCookies())
-            ->filter(fn ($c) => str_starts_with($c->getName(), 'remember_web_'));
+            ->filter(fn($c) => str_starts_with($c->getName(), 'remember_web_'));
 
         $this->assertGreaterThan(0, $cookies->count());
     }

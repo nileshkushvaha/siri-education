@@ -6,6 +6,7 @@ namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
+use App\Services\CmsCacheService;
 use App\Settings\SeoSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -150,7 +151,7 @@ class SeoSettingsPage extends Page
                                 ->label('Canonical URL')
                                 ->url()
                                 ->maxLength(255)
-                                ->placeholder('https://example.com'),
+                                ->placeholder('https://sirieducation.com'),
                         ]),
                     ]),
 
@@ -237,6 +238,13 @@ class SeoSettingsPage extends Page
         if (! $saved) {
             return;
         }
+
+        // robots.txt and the sitemap are cached under a discovery-versioned key
+        // (CmsCacheService), with robots.txt held for an hour by default. Now
+        // that robots.txt reflects the Robots setting, saving has to invalidate
+        // that cache — otherwise switching the site to "noindex" would appear
+        // to work while robots.txt kept serving "Allow: /" for up to an hour.
+        app(CmsCacheService::class)->bumpDiscoveryVersion();
 
         Notification::make()
             ->title('SEO settings saved')

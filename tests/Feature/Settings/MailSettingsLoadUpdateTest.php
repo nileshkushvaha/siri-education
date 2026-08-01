@@ -7,6 +7,8 @@ namespace Tests\Feature\Settings;
 use App\Filament\Pages\Settings\MailSettingsPage;
 use App\Models\Activity;
 use App\Models\User;
+use App\Notifications\Auth\VerifyEmailNotification;
+use App\Services\Mail\TransactionalMailSender;
 use App\Settings\MailSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -42,9 +44,80 @@ class MailSettingsLoadUpdateTest extends TestCase
     {
         $settings = app(MailSettings::class);
 
-        $this->assertSame('smtp', $settings->driver);
+        // Blank, not 'smtp': the driver is now actually consumed by
+        // TransactionalMailSender, so seeding a concrete transport would
+        // override MAIL_MAILER on every fresh install before an administrator
+        // has chosen one.
+        $this->assertSame('', $settings->driver);
         $this->assertSame('smtp.mailtrap.io', $settings->host);
-        $this->assertFalse($settings->queue_emails);
+        $this->assertSame(30, $settings->connection_timeout);
+    }
+
+    public function test_settings_nothing_reads_are_not_offered_to_administrators(): void
+    {
+        // transactional_domain, queue_emails and retry_attempts were editable
+        // but inert — changing them persisted and did nothing, which is worse
+        // than not offering them. They must stay gone unless something wires
+        // them up.
+        $properties = array_keys(get_class_vars(MailSettings::class));
+
+        $this->assertNotContains('transactional_domain', $properties);
+        $this->assertNotContains('queue_emails', $properties);
+        $this->assertNotContains('retry_attempts', $properties);
+    }
+
+    public function test_a_blank_driver_inherits_the_environment_mailer(): void
+    {
+        $settings = app(MailSettings::class);
+        $settings->driver = '';
+        app()->instance(MailSettings::class, $settings);
+
+        $this->assertSame(
+            config('mail.default'),
+            app(TransactionalMailSender::class)->mailer(),
+        );
+    }
+
+    public function test_a_configured_driver_overrides_the_environment_mailer(): void
+    {
+        $settings = app(MailSettings::class);
+        $settings->driver = 'log';
+        app()->instance(MailSettings::class, $settings);
+
+        // The settings table is the authority — an admin changing Mail Driver
+        // must take effect without a deploy.
+        $this->assertNotSame('log', config('mail.default'));
+        $this->assertSame('log', app(TransactionalMailSender::class)->mailer());
+    }
+
+    public function test_a_driver_naming_no_configured_mailer_falls_back_instead_of_failing(): void
+    {
+        $settings = app(MailSettings::class);
+        $settings->driver = 'a-mailer-that-was-removed';
+        app()->instance(MailSettings::class, $settings);
+
+        // A stale value must never hard-fail every send with no way to recover
+        // from the UI.
+        $this->assertSame(
+            config('mail.default'),
+            app(TransactionalMailSender::class)->mailer(),
+        );
+    }
+
+    public function test_queued_transactional_mail_uses_the_configured_driver(): void
+    {
+        $settings = app(MailSettings::class);
+        $settings->driver = 'log';
+        $settings->auth_from_email = 'no-reply@sirieducation.com';
+        $settings->auth_from_name = 'SIRI Education';
+        app()->instance(MailSettings::class, $settings);
+
+        $message = (new VerifyEmailNotification)->toMail(
+            User::factory()->create(['email' => 'student@example.test']),
+        );
+
+        $this->assertSame('log', $message->mailer);
+        $this->assertSame('no-reply@sirieducation.com', $message->from[0]);
     }
 
     public function test_mail_settings_can_be_updated(): void
@@ -52,14 +125,37 @@ class MailSettingsLoadUpdateTest extends TestCase
         $settings = app(MailSettings::class);
         $settings->host = 'smtp.sendgrid.net';
         $settings->port = 2525;
-        $settings->queue_emails = true;
+        $settings->connection_timeout = 45;
         $settings->save();
 
         $fresh = app()->make(MailSettings::class)->refresh();
 
         $this->assertSame('smtp.sendgrid.net', $fresh->host);
         $this->assertSame(2525, $fresh->port);
-        $this->assertTrue($fresh->queue_emails);
+        $this->assertSame(45, $fresh->connection_timeout);
+    }
+
+    public function test_saving_on_a_non_smtp_driver_preserves_the_stored_smtp_configuration(): void
+    {
+        $this->actingAs($this->admin());
+
+        // The SMTP fields are hidden for non-SMTP drivers and therefore absent
+        // from the submitted state. Saving must fall back to the stored values:
+        // reading them straight off the form state threw a TypeError, and
+        // defaulting them to nulls would wipe a config an admin can switch back
+        // to.
+        Livewire::test(MailSettingsPage::class)
+            ->set('data.driver', 'resend')
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->assertNotified('Mail settings saved');
+
+        $fresh = app()->make(MailSettings::class)->refresh();
+
+        $this->assertSame('resend', $fresh->driver);
+        $this->assertSame('smtp.mailtrap.io', $fresh->host);
+        $this->assertSame(587, $fresh->port);
+        $this->assertSame(30, $fresh->connection_timeout);
     }
 
     public function test_saving_the_mail_settings_page_creates_an_audit_event(): void
@@ -67,6 +163,9 @@ class MailSettingsLoadUpdateTest extends TestCase
         $this->actingAs($this->admin());
 
         Livewire::test(MailSettingsPage::class)
+            // The SMTP section only renders for the SMTP driver, and Filament
+            // does not dehydrate hidden fields.
+            ->set('data.driver', 'smtp')
             ->set('data.host', 'smtp.sendgrid.net')
             ->call('save')
             ->assertNotified('Mail settings saved');
@@ -86,6 +185,7 @@ class MailSettingsLoadUpdateTest extends TestCase
         $this->actingAs($this->admin());
 
         Livewire::test(MailSettingsPage::class)
+            ->set('data.driver', 'smtp')
             ->set('data.password', 'synthetic-smtp-password')
             ->call('save')
             ->assertHasNoFormErrors();

@@ -40,16 +40,10 @@
         @endif
     @endif
 
-    @if($site['google_search_console_verification'] ?? false)
-        <meta name="google-site-verification" content="{{ $site['google_search_console_verification'] }}">
-    @endif
+    @include('partials.seo.tracking-head')
 
     @if(!empty($structured_data))
         <script type="application/ld+json">{!! json_encode($structured_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
-    @endif
-
-    @if($site['google_tag_manager_id'] ?? false)
-        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ $site['google_tag_manager_id'] }}');</script>
     @endif
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,21 +58,10 @@
 
     @include('partials.head-styles')
 
-    @if($site['google_analytics_id'] ?? false)
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $site['google_analytics_id'] }}"></script>
-        <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ $site['google_analytics_id'] }}');</script>
-    @endif
 </head>
 <body class="text-slate-800 antialiased" style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
 
-    @if($site['google_tag_manager_id'] ?? false)
-        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $site['google_tag_manager_id'] }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    @endif
-
-    @if($site['facebook_pixel_id'] ?? false)
-        <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','{{ $site['facebook_pixel_id'] }}');fbq('track','PageView');</script>
-        <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={{ $site['facebook_pixel_id'] }}&ev=PageView&noscript=1"/></noscript>
-    @endif
+    @include('partials.seo.tracking-body')
 
     {{-- Landing pages have no global header or footer — full conversion focus --}}
     <main id="main-content" class="{{ $content_width_classes ?? 'w-full' }}" data-content-width="{{ $content_width ?? 'default' }}">

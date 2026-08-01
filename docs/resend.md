@@ -7,7 +7,7 @@ Production transactional email uses **Resend** through the official `resend/rese
 ```dotenv
 MAIL_MAILER=resend
 RESEND_API_KEY=...
-MAIL_FROM_ADDRESS=noreply@example.com
+MAIL_FROM_ADDRESS=noreply@sirieducation.com
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 

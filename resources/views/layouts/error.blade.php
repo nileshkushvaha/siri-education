@@ -174,8 +174,10 @@
             font-size: 0.85rem;
         }
     </style>
+    @include('partials.seo.tracking-head')
 </head>
 <body>
+    @include('partials.seo.tracking-body')
     <div class="shell">
         <header class="brand" aria-label="{{ $appName }}">
             <span class="brand-mark" aria-hidden="true">{{ mb_substr($appName, 0, 1) }}</span>

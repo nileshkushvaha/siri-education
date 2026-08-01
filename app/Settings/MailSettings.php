@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Settings;
 
+use App\Services\Mail\TransactionalMailSender;
 use Spatie\LaravelSettings\Settings;
 
 class MailSettings extends Settings
@@ -12,8 +13,6 @@ class MailSettings extends Settings
     public string $from_name;
 
     public string $from_email;
-
-    public ?string $transactional_domain;
 
     public ?string $auth_from_name;
 
@@ -47,9 +46,21 @@ class MailSettings extends Settings
 
     public ?string $review_from_email;
 
-    // SMTP
+    /**
+     * Transport selection. Blank means "inherit MAIL_MAILER"; any other value
+     * must name a mailer configured in config/mail.php.
+     *
+     * @see TransactionalMailSender::mailer()
+     */
     public string $driver;
 
+    /**
+     * SMTP connection details. These apply to the `smtp` driver ONLY — they are
+     * merged into config('mail.mailers.smtp') at boot by
+     * AppServiceProvider::applySettingsDrivenMailTransport(). API-based mailers
+     * (Resend, SES, Postmark) ignore them entirely and read their credentials
+     * from the environment, because those are deployment secrets.
+     */
     public string $host;
 
     public int $port;
@@ -60,13 +71,7 @@ class MailSettings extends Settings
 
     public string $encryption;
 
-    // Queue
-    public bool $queue_emails;
-
-    // Advanced
     public int $connection_timeout;
-
-    public int $retry_attempts;
 
     public static function group(): string
     {

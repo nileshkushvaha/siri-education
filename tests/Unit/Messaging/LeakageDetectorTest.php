@@ -12,7 +12,7 @@ class LeakageDetectorTest extends TestCase
 {
     public function test_detects_an_email_address(): void
     {
-        $flags = (new LeakageDetector)->detect('Reach me at someone@example.com please.');
+        $flags = (new LeakageDetector)->detect('Reach me at someone@sirieducation.com please.');
 
         $this->assertContains('email_address', $flags);
     }
@@ -33,7 +33,7 @@ class LeakageDetectorTest extends TestCase
 
     public function test_does_not_flag_a_link_to_the_platforms_own_domain(): void
     {
-        $flags = (new LeakageDetector)->detect('See '.config('app.url').'/lessons/123');
+        $flags = (new LeakageDetector)->detect('See ' . config('app.url') . '/lessons/123');
 
         $this->assertNotContains('external_link', $flags);
     }
@@ -54,10 +54,10 @@ class LeakageDetectorTest extends TestCase
 
     public function test_never_mutates_the_input_body(): void
     {
-        $body = 'Call me at 555-123-4567 or email test@example.com';
+        $body = 'Call me at 555-123-4567 or email test@sirieducation.com';
 
         (new LeakageDetector)->detect($body);
 
-        $this->assertSame('Call me at 555-123-4567 or email test@example.com', $body);
+        $this->assertSame('Call me at 555-123-4567 or email test@sirieducation.com', $body);
     }
 }

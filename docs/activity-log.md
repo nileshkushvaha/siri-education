@@ -8,11 +8,11 @@ Business services never call `activity()` directly. All audit trail writes go th
 
 `App\Enums\ActivityActorType` — backed enum with values `user`, `guest`, `system`.
 
-| Actor | When | causer_id |
-|---|---|---|
-| `User` | Authenticated user action | set |
-| `Guest` | Anonymous visitor (contact form, public registration) | null |
-| `System` | Queue job, scheduler, CLI, automated process | null |
+| Actor    | When                                                  | causer_id |
+| -------- | ----------------------------------------------------- | --------- |
+| `User`   | Authenticated user action                             | set       |
+| `Guest`  | Anonymous visitor (contact form, public registration) | null      |
+| `System` | Queue job, scheduler, CLI, automated process          | null      |
 
 ## AuditTrailService
 
@@ -24,7 +24,7 @@ $audit->logUser($user, 'users', 'created', 'User created', subject: $user, prope
 
 // Anonymous visitor action
 $audit->logGuest('contact', 'contact_form_submitted', 'Contact form submitted',
-    subject: $block, guestName: 'John', guestEmail: 'john@example.com', guestPhone: '+1...');
+    subject: $block, guestName: 'John', guestEmail: 'john@sirieducation.com', guestPhone: '+1...');
 
 // Automated / background action
 $audit->logSystem('scheduler_monitor', 'manually_ran', 'Task executed', properties: []);
@@ -38,15 +38,15 @@ All three methods capture request context automatically (ip_address, user_agent,
 
 Helper methods (never check `$activity->causer` directly — use these):
 
-| Method | Returns |
-|---|---|
-| `isUser()` | bool |
-| `isGuest()` | bool |
-| `isSystem()` | bool |
-| `actorName()` | string — user name / guest name / 'System' |
-| `actorEmail()` | ?string |
-| `actorIdentifier()` | string — best available identifier |
-| `actorDescription()` | string — 'Alice Smith <alice@example.com>' etc. |
+| Method               | Returns                                               |
+| -------------------- | ----------------------------------------------------- |
+| `isUser()`           | bool                                                  |
+| `isGuest()`          | bool                                                  |
+| `isSystem()`         | bool                                                  |
+| `actorName()`        | string — user name / guest name / 'System'            |
+| `actorEmail()`       | ?string                                               |
+| `actorIdentifier()`  | string — best available identifier                    |
+| `actorDescription()` | string — 'Alice Smith <alice@sirieducation.com>' etc. |
 
 `booted()` hook auto-detects actor type for raw `activity()` helper calls (backward compat): sets `user` if `causer_id` is present, `system` otherwise.
 
@@ -56,17 +56,17 @@ Helper methods (never check `$activity->causer` directly — use these):
 
 Additional columns added to Spatie's base schema:
 
-| Column | Type | Purpose |
-|---|---|---|
-| `actor_type` | varchar(20) | ActivityActorType enum value |
-| `guest_name` | varchar | Guest display name |
-| `guest_email` | varchar | Guest email |
-| `guest_phone` | varchar(50) | Guest phone |
-| `ip_address` | varchar(45) | Request IP (IPv6-safe) |
-| `user_agent` | text | Browser/client UA string |
-| `route` | varchar(500) | Request path |
-| `method` | varchar(10) | HTTP method |
-| `session_id` | varchar(100) | Session ID |
+| Column        | Type         | Purpose                      |
+| ------------- | ------------ | ---------------------------- |
+| `actor_type`  | varchar(20)  | ActivityActorType enum value |
+| `guest_name`  | varchar      | Guest display name           |
+| `guest_email` | varchar      | Guest email                  |
+| `guest_phone` | varchar(50)  | Guest phone                  |
+| `ip_address`  | varchar(45)  | Request IP (IPv6-safe)       |
+| `user_agent`  | text         | Browser/client UA string     |
+| `route`       | varchar(500) | Request path                 |
+| `method`      | varchar(10)  | HTTP method                  |
+| `session_id`  | varchar(100) | Session ID                   |
 
 ## Pipeline
 

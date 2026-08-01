@@ -43,12 +43,12 @@ class ContactFormTest extends TestCase
         $this->post(route('contact.submit'), [
             'block_id' => $block->id,
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
+            'email' => 'jane@sirieducation.com',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('contact_inquiries', [
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
+            'email' => 'jane@sirieducation.com',
         ]);
     }
 
@@ -59,7 +59,7 @@ class ContactFormTest extends TestCase
         $this->post(route('contact.submit'), [
             'block_id' => $block->id,
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
+            'email' => 'jane@sirieducation.com',
             'website' => 'http://spam.example',
         ])->assertSessionHasErrors('website');
     }
@@ -77,7 +77,7 @@ class ContactFormTest extends TestCase
         $this->post(route('contact.submit'), [
             'block_id' => $block->id,
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
+            'email' => 'jane@sirieducation.com',
         ])->assertSessionHasErrors('cf-turnstile-response');
     }
 
@@ -98,7 +98,7 @@ class ContactFormTest extends TestCase
         $this->post(route('contact.submit'), [
             'block_id' => $block->id,
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
+            'email' => 'jane@sirieducation.com',
             'cf-turnstile-response' => 'valid-token',
         ])->assertRedirect()->assertSessionHasNoErrors();
     }

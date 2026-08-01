@@ -114,7 +114,7 @@ class LoginHistoryTest extends TestCase
     public function test_failed_login_for_unknown_email_still_creates_record(): void
     {
         $this->post(route('auth.login.store'), [
-            'email' => 'nobody@example.com',
+            'email' => 'nobody@sirieducation.com',
             'password' => 'wrong',
         ]);
 

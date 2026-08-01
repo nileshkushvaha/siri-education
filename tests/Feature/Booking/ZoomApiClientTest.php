@@ -54,7 +54,7 @@ class ZoomApiClientTest extends TestCase
                 'timezone' => 'Asia/Kolkata',
                 'status' => 'waiting',
                 'instructor_id' => 'raw-host-id-should-never-leak',
-                'settings' => ['alternative_hosts' => 'internal@example.com'],
+                'settings' => ['alternative_hosts' => 'internal@sirieducation.com'],
             ], $meetingStatus),
         ]);
     }
@@ -70,15 +70,15 @@ class ZoomApiClientTest extends TestCase
                 return false;
             }
 
-            $expected = 'Basic '.base64_encode('client_abc:'.self::SECRET);
+            $expected = 'Basic ' . base64_encode('client_abc:' . self::SECRET);
 
             return $request->hasHeader('Authorization', $expected)
                 && str_contains($request->body(), 'grant_type=account_credentials')
                 && str_contains($request->body(), 'account_id=acct_123');
         });
 
-        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/v2/users/host-user-1/meetings')
-            && $request->hasHeader('Authorization', 'Bearer '.self::TOKEN));
+        Http::assertSent(fn(Request $request): bool => str_contains($request->url(), '/v2/users/host-user-1/meetings')
+            && $request->hasHeader('Authorization', 'Bearer ' . self::TOKEN));
     }
 
     public function test_token_is_cached_across_api_calls(): void

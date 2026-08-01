@@ -72,6 +72,7 @@ use App\Services\Phone\UnavailablePhoneOtpSender;
 use App\Services\Student\DefaultStudentFinancialVerificationGate;
 use App\Settings\GeneralSettings;
 use App\Settings\LoginSecuritySettings;
+use App\Settings\MailSettings;
 use App\Wallet\Contracts\WalletRechargeServiceInterface;
 use App\Wallet\Services\WalletRechargeService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -79,6 +80,7 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -113,6 +115,7 @@ class AppServiceProvider extends ServiceProvider
         $this->guardAgainstDestructiveDatabaseCommands();
         $this->configurePulse();
         $this->applySettingsDrivenAppName();
+        $this->applySettingsDrivenMailTransport();
     }
 
     /**
@@ -172,6 +175,72 @@ class AppServiceProvider extends ServiceProvider
 
             if (filled($appName)) {
                 config(['app.name' => $appName]);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Applies the admin panel's SMTP connection settings to the runtime mail
+     * config.
+     *
+     * config/mail.php builds the `smtp` mailer purely from MAIL_HOST/PORT/
+     * USERNAME/PASSWORD, so without this the Mail Settings page's SMTP
+     * Configuration section was inert: an administrator could select the SMTP
+     * driver and enter a host and credentials, and Laravel would still connect
+     * to whatever .env said. Now that TransactionalMailSender honours the
+     * stored driver, that mismatch would send mail through the wrong server.
+     *
+     * Only the `smtp` mailer is touched. API-key mailers (Resend, SES,
+     * Postmark) are configured entirely from .env by design — their
+     * credentials are deployment secrets and are deliberately not editable
+     * from the admin panel.
+     *
+     * Same defensive shape as applySettingsDrivenAppName(): boot() also runs
+     * before the settings table exists and when the DB is unreachable, and
+     * either case must leave the env-derived config untouched rather than
+     * break the boot.
+     */
+    private function applySettingsDrivenMailTransport(): void
+    {
+        try {
+            if (! Schema::hasTable('settings')) {
+                return;
+            }
+
+            $settings = app(MailSettings::class);
+
+            $overrides = array_filter([
+                'host' => filled($settings->host) ? $settings->host : null,
+                'port' => $settings->port > 0 ? $settings->port : null,
+                'username' => filled($settings->username) ? $settings->username : null,
+                'timeout' => $settings->connection_timeout > 0 ? $settings->connection_timeout : null,
+            ], static fn (mixed $value): bool => $value !== null);
+
+            // 'none' is a real choice meaning "no encryption", which Symfony
+            // expects as null rather than a string, so it cannot go through the
+            // filter above.
+            if (filled($settings->encryption)) {
+                $overrides['scheme'] = $settings->encryption === 'none' ? null : ($settings->encryption === 'ssl' ? 'smtps' : 'smtp');
+            }
+
+            // Stored encrypted by MailSettingsPage. A decrypt failure (rotated
+            // APP_KEY, hand-edited row) must not take the whole password out of
+            // .env with it — leave the env-configured credential in place.
+            if (filled($settings->password)) {
+                try {
+                    $overrides['password'] = Crypt::decryptString($settings->password);
+                } catch (Throwable) {
+                    // Intentionally silent: reported below only if nothing else applies.
+                }
+            }
+
+            if ($overrides !== []) {
+                config(['mail.mailers.smtp' => array_merge(
+                    (array) config('mail.mailers.smtp', []),
+                    $overrides,
+                )]);
             }
         } catch (Throwable $e) {
             report($e);

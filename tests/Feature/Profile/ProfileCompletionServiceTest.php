@@ -72,7 +72,7 @@ class ProfileCompletionServiceTest extends TestCase
             'phone' => '12345',
             'address' => '123 Main St',
             'country_id' => $country->id,
-            'website' => 'https://example.com',
+            'website' => 'https://sirieducation.com',
             'facebook' => 'https://facebook.com/jane',
             'twitter' => 'https://twitter.com/jane',
             'linkedin' => 'https://linkedin.com/in/jane',

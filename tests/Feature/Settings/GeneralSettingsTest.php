@@ -44,7 +44,7 @@ class GeneralSettingsTest extends TestCase
 
         Livewire::test(GeneralSettingsPage::class)
             ->set('data.app_name', 'Sphere Education')
-            ->set('data.support_email', 'support@example.com')
+            ->set('data.support_email', 'support@sirieducation.com')
             ->set('data.default_timezone', 'America/New_York')
             ->set('data.default_language', 'fr')
             ->set('data.date_format', 'd/m/Y')
@@ -74,7 +74,7 @@ class GeneralSettingsTest extends TestCase
 
         Livewire::test(GeneralSettingsPage::class)
             ->set('data.app_name', 'Sphere Education')
-            ->set('data.support_email', 'support@example.com')
+            ->set('data.support_email', 'support@sirieducation.com')
             ->set('data.default_timezone', 'America/New_York')
             ->set('data.default_language', 'fr')
             ->set('data.date_format', 'd/m/Y')

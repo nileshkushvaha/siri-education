@@ -81,7 +81,7 @@ class MeetingLifecycleTest extends TestCase
 
         $client->shouldReceive('deleteEvent')
             ->once()
-            ->withArgs(fn (string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_live');
+            ->withArgs(fn(string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_live');
 
         $this->cancelBooking($booking);
 
@@ -213,7 +213,7 @@ class MeetingLifecycleTest extends TestCase
 
         $client->shouldReceive('updateEvent')
             ->once()
-            ->withArgs(fn (string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_pending')
+            ->withArgs(fn(string $credentials, string $calendarId, string $eventId): bool => $eventId === 'evt_pending')
             ->andReturn([
                 'id' => 'evt_pending',
                 'hangoutLink' => 'https://meet.google.com/now-ready',
@@ -275,7 +275,7 @@ class MeetingLifecycleTest extends TestCase
     {
         $resolver = app(NotificationChannelResolver::class);
 
-        $guest = Notification::route('mail', 'guest@example.com');
+        $guest = Notification::route('mail', 'guest@sirieducation.com');
         $this->assertNotContains('database', $resolver->channels($guest));
 
         $user = User::factory()->create();

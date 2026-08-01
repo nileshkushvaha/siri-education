@@ -54,7 +54,7 @@ class UserResourceProfileTest extends TestCase
         Livewire::test(CreateUser::class)
             ->fillForm([
                 'name' => 'New Person',
-                'email' => 'new-person@example.com',
+                'email' => 'new-person@sirieducation.com',
                 'password' => 'Sup3r$ecret!',
                 'password_confirmation' => 'Sup3r$ecret!',
                 'status' => 'active',
@@ -64,12 +64,12 @@ class UserResourceProfileTest extends TestCase
                 'profile.country_id' => $country->id,
                 'profile.state_id' => $state->id,
                 'profile.city' => 'Metropolis',
-                'profile.website' => 'https://example.com',
+                'profile.website' => 'https://sirieducation.com',
             ])
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $user = User::where('email', 'new-person@example.com')->firstOrFail();
+        $user = User::where('email', 'new-person@sirieducation.com')->firstOrFail();
 
         $this->assertSame(1, $user->profile()->count());
         $this->assertSame('Senior Instructor', $user->profile->headline);

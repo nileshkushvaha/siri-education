@@ -248,7 +248,7 @@ class StudentReviewSubmissionTest extends TestCase
     public function test_contact_details_are_redacted_and_the_review_is_flagged(): void
     {
         $eligibility = $this->openEligibility($this->paidLesson());
-        $email = 'reach.me.directly@example.com';
+        $email = 'reach.me.directly@sirieducation.com';
 
         $result = $this->reviews->submit($eligibility, $eligibility->student, $this->data(
             content: "Great lesson! Contact me at {$email} for more sessions please.",
@@ -281,7 +281,7 @@ class StudentReviewSubmissionTest extends TestCase
     public function test_raw_unsafe_content_is_not_logged(): void
     {
         $eligibility = $this->openEligibility($this->paidLesson());
-        $email = 'super.secret.address@example.com';
+        $email = 'super.secret.address@sirieducation.com';
         $phone = '+1 (555) 987-6543';
 
         $this->reviews->submit($eligibility, $eligibility->student, $this->data(
@@ -294,7 +294,7 @@ class StudentReviewSubmissionTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $serialized = json_encode($activity->properties).$activity->description;
+        $serialized = json_encode($activity->properties) . $activity->description;
         $this->assertStringNotContainsString($email, $serialized);
         $this->assertStringNotContainsString('987-6543', $serialized);
         $this->assertContains('email', $activity->properties->get('content_flags'));

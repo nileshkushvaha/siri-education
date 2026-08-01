@@ -253,7 +253,10 @@ class MeetingAttendanceIngestionTest extends TestCase
         // The sync pull reports an overlapping 15–45 session.
         FakeMeetingProvider::$syncEvents = [
             FakeMeetingProvider::makeEvent(
-                'sync-s1', $meeting->provider_meeting_id, self::STUDENT_REF, 'session',
+                'sync-s1',
+                $meeting->provider_meeting_id,
+                self::STUDENT_REF,
+                'session',
                 occurredAt: $lesson->ends_at->toIso8601String(),
                 joinedAt: $lesson->starts_at->addMinutes(15)->toIso8601String(),
                 leftAt: $lesson->starts_at->addMinutes(45)->toIso8601String(),
@@ -353,7 +356,10 @@ class MeetingAttendanceIngestionTest extends TestCase
 
         FakeMeetingProvider::$syncEvents = [
             FakeMeetingProvider::makeEvent(
-                'sync-1', $meeting->provider_meeting_id, self::STUDENT_REF, 'session',
+                'sync-1',
+                $meeting->provider_meeting_id,
+                self::STUDENT_REF,
+                'session',
                 occurredAt: $lesson->ends_at->toIso8601String(),
                 joinedAt: $lesson->starts_at->toIso8601String(),
                 leftAt: $lesson->ends_at->toIso8601String(),
@@ -383,7 +389,10 @@ class MeetingAttendanceIngestionTest extends TestCase
         FakeMeetingProvider::$failNextSync = true; // first meeting only — the flag self-clears
         FakeMeetingProvider::$syncEvents = [
             FakeMeetingProvider::makeEvent(
-                'sync-ok-1', $meeting2->provider_meeting_id, self::STUDENT_REF, 'session',
+                'sync-ok-1',
+                $meeting2->provider_meeting_id,
+                self::STUDENT_REF,
+                'session',
                 occurredAt: $lesson2->ends_at->toIso8601String(),
                 joinedAt: $lesson2->starts_at->toIso8601String(),
                 leftAt: $lesson2->ends_at->toIso8601String(),
@@ -426,7 +435,10 @@ class MeetingAttendanceIngestionTest extends TestCase
         // Provider recovered — the next run settles the meeting.
         FakeMeetingProvider::$syncEvents = [
             FakeMeetingProvider::makeEvent(
-                'sync-retry-1', $meeting->provider_meeting_id, self::STUDENT_REF, 'session',
+                'sync-retry-1',
+                $meeting->provider_meeting_id,
+                self::STUDENT_REF,
+                'session',
                 occurredAt: $lesson->ends_at->toIso8601String(),
                 joinedAt: $lesson->starts_at->toIso8601String(),
                 leftAt: $lesson->ends_at->toIso8601String(),
@@ -448,7 +460,7 @@ class MeetingAttendanceIngestionTest extends TestCase
         $event['meta'] = [
             'device' => 'web',
             'join_url' => 'https://provider.test/j/secret-room',
-            'email' => 'student-private@example.com',
+            'email' => 'student-private@sirieducation.com',
             'access_token' => 'tok_super_secret',
             'phone_number' => '+15550001111',
         ];
@@ -464,7 +476,7 @@ class MeetingAttendanceIngestionTest extends TestCase
         $row = MeetingAttendanceProviderEvent::query()->firstOrFail();
         $json = json_encode($row->normalized_events);
         $this->assertStringNotContainsString('secret-room', $json);
-        $this->assertStringNotContainsString('student-private@example.com', $json);
+        $this->assertStringNotContainsString('student-private@sirieducation.com', $json);
         $this->assertStringNotContainsString('tok_super_secret', $json);
         // Participant references are hashed, never stored raw.
         $this->assertStringNotContainsString(self::STUDENT_REF, $json);
@@ -477,18 +489,18 @@ class MeetingAttendanceIngestionTest extends TestCase
 
         $logged = [];
         Log::listen(function (MessageLogged $event) use (&$logged): void {
-            $logged[] = $event->message.' '.json_encode($event->context);
+            $logged[] = $event->message . ' ' . json_encode($event->context);
         });
 
         // An email-shaped participant ref that resolves nowhere — forces
         // the review path (which logs) with PII in play.
-        $event = $this->sessionEvent('evt-log', 'student-private@example.com', $lesson, 0, 30);
+        $event = $this->sessionEvent('evt-log', 'student-private@sirieducation.com', $lesson, 0, 30);
         $event['meta'] = ['join_url' => 'https://provider.test/j/secret-room'];
 
         $this->postWebhook($this->envelope($meeting, [$event]))->assertStatus(202);
 
         $all = implode("\n", $logged);
-        $this->assertStringNotContainsString('student-private@example.com', $all);
+        $this->assertStringNotContainsString('student-private@sirieducation.com', $all);
         $this->assertStringNotContainsString('secret-room', $all);
     }
 
@@ -572,7 +584,7 @@ class MeetingAttendanceIngestionTest extends TestCase
             'occurred_at' => $joined->toIso8601String(),
             'joined_at' => $joined->toIso8601String(),
             'left_at' => $joined->addMinutes($durationMinutes)->toIso8601String(),
-        ], fn ($value) => $value !== null);
+        ], fn($value) => $value !== null);
     }
 
     private function postWebhook(array $payload): TestResponse
@@ -584,7 +596,7 @@ class MeetingAttendanceIngestionTest extends TestCase
 
     private function webhookUri(): string
     {
-        return '/api/webhooks/meetings/attendance/'.FakeMeetingProvider::KEY;
+        return '/api/webhooks/meetings/attendance/' . FakeMeetingProvider::KEY;
     }
 
     private function enableWebhooks(): void

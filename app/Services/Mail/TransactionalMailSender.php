@@ -11,6 +11,31 @@ final class TransactionalMailSender
     public function __construct(private readonly MailSettings $settings) {}
 
     /**
+     * The mailer transactional notifications should send through.
+     *
+     * The settings table is the authority — an administrator changing Mail
+     * Driver in the admin panel must take effect without a deploy, so this is
+     * read before MAIL_MAILER rather than after it. Previously nothing read
+     * this setting at all: production was hard-coded to 'resend', which meant
+     * the field was editable but inert.
+     *
+     * A stored driver is only honoured when it names a mailer that actually
+     * exists in config/mail.php. A stale value left behind by a removed mailer
+     * would otherwise hard-fail every send with no way to recover from the UI,
+     * so an unknown or blank value falls back to MAIL_MAILER.
+     */
+    public function mailer(): string
+    {
+        $configured = $this->settings->driver;
+
+        if ($configured !== '' && array_key_exists($configured, (array) config('mail.mailers', []))) {
+            return $configured;
+        }
+
+        return (string) config('mail.default');
+    }
+
+    /**
      * @return array{address: string, name: string}
      */
     public function resolve(string $key): array

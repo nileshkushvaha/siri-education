@@ -28,7 +28,7 @@ class LocalizationFoundationTest extends TestCase
             'default_currency_id' => $currency->id,
             'default_language_id' => $language->id,
             'default_timezone' => 'America/New_York',
-            'support_email' => 'support-us@example.com',
+            'support_email' => 'support-us@sirieducation.com',
             'support_phone' => '+1 000 000 0000',
             'date_format' => 'm/d/Y',
             'time_format' => 'h:i A',

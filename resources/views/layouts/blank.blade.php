@@ -37,8 +37,10 @@
          Livewire bundles via @livewireStyles/@livewireScripts. --}}
 
     @include('partials.head-styles')
+    @include('partials.seo.tracking-head')
 </head>
 <body class="text-slate-800 antialiased" style="font-family:'Inter',ui-sans-serif,system-ui,sans-serif; background:#ffffff;">
+    @include('partials.seo.tracking-body')
 
     <main id="main-content" class="{{ $content_width_classes ?? 'w-full' }}" data-content-width="{{ $content_width ?? 'default' }}">
         {!! $content ?? '' !!}

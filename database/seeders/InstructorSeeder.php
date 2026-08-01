@@ -34,7 +34,7 @@ class InstructorSeeder extends Seeder
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
 
         foreach (self::INSTRUCTORS as $i => $data) {
-            $email = 'instructor'.($i + 1).'@example.com';
+            $email = 'instructor' . ($i + 1) . '@sirieducation.com';
 
             $user = User::query()->firstOrCreate(
                 ['email' => $email],

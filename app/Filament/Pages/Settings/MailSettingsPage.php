@@ -14,7 +14,6 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions as ActionsComponent;
@@ -22,11 +21,13 @@ use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form as FormComponent;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
 
 class MailSettingsPage extends Page
 {
@@ -72,7 +73,6 @@ class MailSettingsPage extends Page
         $this->form->fill([
             'from_name' => $settings->from_name,
             'from_email' => $settings->from_email,
-            'transactional_domain' => $settings->transactional_domain,
             'auth_from_name' => $settings->auth_from_name,
             'auth_from_email' => $settings->auth_from_email,
             'booking_from_name' => $settings->booking_from_name,
@@ -87,15 +87,15 @@ class MailSettingsPage extends Page
             'support_from_email' => $settings->support_from_email,
             'admin_from_name' => $settings->admin_from_name,
             'admin_from_email' => $settings->admin_from_email,
+            'review_from_name' => $settings->review_from_name,
+            'review_from_email' => $settings->review_from_email,
             'driver' => $settings->driver,
             'host' => $settings->host,
             'port' => $settings->port,
             'username' => $settings->username,
             'password' => null, // never prefill password
             'encryption' => $settings->encryption,
-            'queue_emails' => $settings->queue_emails,
             'connection_timeout' => $settings->connection_timeout,
-            'retry_attempts' => $settings->retry_attempts,
         ]);
     }
 
@@ -161,29 +161,36 @@ class MailSettingsPage extends Page
                                 ->email()
                                 ->required()
                                 ->maxLength(150)
-                                ->placeholder('noreply@example.com'),
+                                ->placeholder('no-reply@sirieducation.com'),
                         ]),
                     ]),
 
+                // ── Mail Driver ────────────────────────────────── full width
+                Section::make('Mail Driver')
+                    ->description('Which transport outgoing mail is sent through.')
+                    ->columnSpanFull()
+                    ->schema([
+                        Select::make('driver')
+                            ->label('Mail Driver')
+                            ->options($this->mailerOptions())
+                            ->native(false)
+                            // Deliberately not required(): the blank option is
+                            // a real choice meaning "inherit MAIL_MAILER".
+                            ->live()
+                            ->helperText('API-based providers (Resend, SES, Postmark) take their credentials from the server environment, not from this page.'),
+                    ]),
+
                 // ── SMTP Configuration ─────────────────────────── full width
+                // Shown only for the SMTP transport. These fields configure the
+                // `smtp` mailer and nothing else, so displaying them alongside
+                // Resend invited the reasonable-but-wrong conclusion that Resend
+                // was somehow being sent through smtp.mailtrap.io.
                 Section::make('SMTP Configuration')
                     ->description('Connection settings for your mail server.')
                     ->columnSpanFull()
+                    ->visible(fn (Get $get): bool => $get('driver') === 'smtp')
                     ->schema([
                         Grid::make(4)->schema([
-                            Select::make('driver')
-                                ->label('Mail Driver')
-                                ->options([
-                                    'smtp' => 'SMTP',
-                                    'resend' => 'Resend',
-                                    'sendmail' => 'Sendmail',
-                                    'log' => 'Log only (does not send real email)',
-                                    'array' => 'Test mode (does not send real email)',
-                                ])
-                                ->native(false)
-                                ->required()
-                                ->live(),
-
                             Select::make('encryption')
                                 ->label('Encryption')
                                 ->options([
@@ -192,11 +199,11 @@ class MailSettingsPage extends Page
                                     'none' => 'None',
                                 ])
                                 ->native(false)
-                                ->required(),
+                                ->required(fn (Get $get): bool => $get('driver') === 'smtp'),
 
                             TextInput::make('host')
                                 ->label('SMTP Host')
-                                ->required()
+                                ->required(fn (Get $get): bool => $get('driver') === 'smtp')
                                 ->maxLength(255)
                                 ->placeholder('smtp.mailtrap.io')
                                 ->columnSpan(1),
@@ -204,10 +211,18 @@ class MailSettingsPage extends Page
                             TextInput::make('port')
                                 ->label('SMTP Port')
                                 ->numeric()
-                                ->required()
+                                ->required(fn (Get $get): bool => $get('driver') === 'smtp')
                                 ->minValue(1)
                                 ->maxValue(65535)
                                 ->placeholder('587'),
+
+                            TextInput::make('connection_timeout')
+                                ->label('Connection Timeout (seconds)')
+                                ->numeric()
+                                ->required(fn (Get $get): bool => $get('driver') === 'smtp')
+                                ->minValue(5)
+                                ->maxValue(300)
+                                ->default(30),
                         ]),
 
                         Grid::make(2)->schema([
@@ -231,11 +246,6 @@ class MailSettingsPage extends Page
                     ->description('Verified domain sender addresses used by queued transactional notifications.')
                     ->columnSpanFull()
                     ->schema([
-                        TextInput::make('transactional_domain')
-                            ->label('Verified Sending Domain')
-                            ->placeholder('example.com')
-                            ->maxLength(255),
-
                         Grid::make(2)->schema($this->senderFields('auth', 'Auth')),
                         Grid::make(2)->schema($this->senderFields('booking', 'Booking')),
                         Grid::make(2)->schema($this->senderFields('payment', 'Payment')),
@@ -243,39 +253,7 @@ class MailSettingsPage extends Page
                         Grid::make(2)->schema($this->senderFields('wallet', 'Wallet')),
                         Grid::make(2)->schema($this->senderFields('support', 'Support')),
                         Grid::make(2)->schema($this->senderFields('admin', 'Admin Alerts')),
-                    ]),
-
-                // ── Email Queue ────────────────────────────────────── left
-                Section::make('Email Queue')
-                    ->description('Control whether emails are sent synchronously or queued.')
-                    ->schema([
-                        Toggle::make('queue_emails')
-                            ->label('Queue Emails')
-                            ->helperText('Send emails asynchronously via the queue worker. Requires a running queue worker.')
-                            ->onColor('success'),
-                    ]),
-
-                // ── Advanced ──────────────────────────────────────── right
-                Section::make('Advanced')
-                    ->description('Timeout and retry configuration.')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            TextInput::make('connection_timeout')
-                                ->label('Connection Timeout (seconds)')
-                                ->numeric()
-                                ->required()
-                                ->minValue(5)
-                                ->maxValue(300)
-                                ->default(30),
-
-                            TextInput::make('retry_attempts')
-                                ->label('Retry Attempts')
-                                ->numeric()
-                                ->required()
-                                ->minValue(1)
-                                ->maxValue(10)
-                                ->default(3),
-                        ]),
+                        Grid::make(2)->schema($this->senderFields('review', 'Review')),
                     ]),
 
             ]),
@@ -293,19 +271,23 @@ class MailSettingsPage extends Page
         $saved = $this->saveSettingsWithAudit(MailSettings::class, 'settings', function (MailSettings $settings) use ($data): void {
             $settings->from_name = $data['from_name'];
             $settings->from_email = $data['from_email'];
-            $settings->transactional_domain = $data['transactional_domain'] ?? null;
-            foreach (['auth', 'booking', 'payment', 'tutor', 'wallet', 'support', 'admin'] as $area) {
+            foreach (['auth', 'booking', 'payment', 'tutor', 'wallet', 'support', 'admin', 'review'] as $area) {
                 $settings->{"{$area}_from_name"} = $data["{$area}_from_name"] ?? $settings->from_name;
                 $settings->{"{$area}_from_email"} = $data["{$area}_from_email"] ?? $settings->from_email;
             }
-            $settings->driver = $data['driver'];
-            $settings->host = $data['host'];
-            $settings->port = (int) $data['port'];
-            $settings->username = $data['username'] ?? null;
-            $settings->encryption = $data['encryption'];
-            $settings->queue_emails = (bool) ($data['queue_emails'] ?? false);
-            $settings->connection_timeout = (int) ($data['connection_timeout'] ?? 30);
-            $settings->retry_attempts = (int) ($data['retry_attempts'] ?? 3);
+            // '' is the "inherit MAIL_MAILER" choice; the property is non-nullable.
+            $settings->driver = (string) ($data['driver'] ?? '');
+
+            // The SMTP section is hidden unless the SMTP driver is selected, and
+            // Filament does not dehydrate hidden fields — so these keys are
+            // simply absent on any other driver. Fall back to the stored value
+            // rather than the form's: switching to Resend must not silently wipe
+            // a working SMTP configuration an admin may switch back to.
+            $settings->host = (string) ($data['host'] ?? $settings->host);
+            $settings->port = (int) ($data['port'] ?? $settings->port);
+            $settings->username = array_key_exists('username', $data) ? $data['username'] : $settings->username;
+            $settings->encryption = (string) ($data['encryption'] ?? $settings->encryption);
+            $settings->connection_timeout = (int) ($data['connection_timeout'] ?? $settings->connection_timeout);
 
             // Only update password if a new one was provided — encrypt it
             if (filled($data['password'] ?? null)) {
@@ -360,6 +342,39 @@ class MailSettingsPage extends Page
     }
 
     /**
+     * Selectable mail drivers, derived from the mailers actually defined in
+     * config/mail.php so the dropdown can never offer a transport that does
+     * not exist. The blank option means "inherit MAIL_MAILER" — otherwise the
+     * field is required and there would be no way to hand control back to the
+     * environment once a driver has been chosen.
+     *
+     * @return array<string, string>
+     */
+    private function mailerOptions(): array
+    {
+        $labels = [
+            'smtp' => 'SMTP',
+            'resend' => 'Resend',
+            'ses' => 'Amazon SES',
+            'postmark' => 'Postmark',
+            'sendmail' => 'Sendmail',
+            'failover' => 'Failover (tries each mailer in order)',
+            'roundrobin' => 'Round robin (balances across mailers)',
+            'log' => 'Log only (does not send real email)',
+            'array' => 'Test mode (does not send real email)',
+        ];
+
+        $options = ['' => 'Use MAIL_MAILER from environment'];
+
+        foreach (array_keys((array) config('mail.mailers', [])) as $mailer) {
+            $mailer = (string) $mailer;
+            $options[$mailer] = $labels[$mailer] ?? Str::headline($mailer);
+        }
+
+        return $options;
+    }
+
+    /**
      * @return array<int, TextInput>
      */
     private function senderFields(string $key, string $label): array
@@ -373,7 +388,8 @@ class MailSettingsPage extends Page
                 ->label("{$label} From Email")
                 ->email()
                 ->required()
-                ->maxLength(150),
+                ->maxLength(150)
+                ->placeholder('no-reply@sirieducation.com'),
         ];
     }
 }

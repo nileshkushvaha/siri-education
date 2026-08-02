@@ -205,6 +205,28 @@
                             @endif
                         @endwhile
 
+                        {{-- Same security question as registration and login,
+                             on its own session context so the three never
+                             clobber each other. Issued at render time. --}}
+                        @php
+                            $contactCaptchaQuestion = app(\App\Services\Auth\RegistrationCaptchaService::class)
+                                ->issue(\App\Services\Auth\RegistrationCaptchaService::CONTACT);
+                        @endphp
+                        <div>
+                            <label for="contact_captcha_answer" class="block text-sm font-medium mb-1.5">What is {{ $contactCaptchaQuestion }}?</label>
+                            <input
+                                id="contact_captcha_answer"
+                                name="captcha_answer"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                required
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('captcha_answer') border-red-500 @enderror"
+                                placeholder="Your answer">
+                            @error('captcha_answer')
+                                <p class="mt-1.5 text-xs text-red-600" role="alert">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <x-ui.turnstile-static />
 
                         {{-- Submit --}}

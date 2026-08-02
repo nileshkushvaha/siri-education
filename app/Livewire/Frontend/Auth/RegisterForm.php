@@ -159,6 +159,8 @@ final class RegisterForm extends Component
 
         $this->validate();
         $this->throttleLimiter('login', ['email' => $this->email], 'email');
+        // Origin-keyed as well — see the 'register' limiter in AppServiceProvider.
+        $this->throttleLimiter('register', [], 'email');
 
         try {
             $result = $registrationService->register(

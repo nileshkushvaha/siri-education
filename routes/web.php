@@ -128,7 +128,7 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     // (AppServiceProvider). The previous student-only URL is preserved
     // below as a permanent redirect for old bookmarks/SEO.
     Route::get('/register', [RegisterController::class, 'showForm'])->middleware('registration.enabled')->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login')->name('register.store');
+    Route::post('/register', [RegisterController::class, 'store'])->middleware('registration.enabled', 'throttle:login', 'throttle:register')->name('register.store');
 
     // Login — EnsureLoginEnabled blocks POST when login is disabled
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');

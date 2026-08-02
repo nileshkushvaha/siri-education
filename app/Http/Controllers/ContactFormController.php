@@ -7,6 +7,7 @@ use App\Enums\BlockType;
 use App\Models\ContactInquiry;
 use App\Notifications\Cms\ContactFormSubmissionNotification;
 use App\Rules\TurnstileToken;
+use App\Rules\ValidRegistrationCaptcha;
 use App\Services\Mail\TransactionalNotificationService;
 use App\Settings\GeneralSettings;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,12 @@ class ContactFormController extends Controller
             'block_id' => ['required', 'uuid', 'exists:content_blocks,id'],
             'website' => ['nullable', 'max:0'], // Honeypot
             'cf-turnstile-response' => [new TurnstileToken],
+            // Always on: this form is public, unauthenticated and emails staff,
+            // so there is no failure signal to wait for the way login has one.
+            // Turnstile above only engages once Cloudflare keys are configured.
+            'captcha_answer' => ['required', ValidRegistrationCaptcha::forContact()],
+        ], [
+            'captcha_answer.required' => 'Please answer the security question.',
         ]);
 
         /** @var ContentBlock $block */

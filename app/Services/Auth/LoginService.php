@@ -25,6 +25,7 @@ final class LoginService
         private readonly AccountProtectionService $accountProtection,
         private readonly StudentLifecycleService $studentLifecycle,
         private readonly VerificationResendService $verificationResend,
+        private readonly LoginChallengeService $loginChallenge,
     ) {}
 
     public function attempt(
@@ -100,6 +101,10 @@ final class LoginService
                 session()->flash('login_remaining_attempts', $remaining);
             }
 
+            // Only genuine credential failures raise the challenge — an
+            // account-status rejection is not evidence of guessing.
+            $this->loginChallenge->recordFailure($ipAddress);
+
             LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, $result->value, $sessionId);
 
             return $result;
@@ -122,6 +127,7 @@ final class LoginService
         }
 
         // ── Successful login ──────────────────────────────────────────
+        $this->loginChallenge->clear($ipAddress);
         $authenticated->recordSuccessfulLogin($ipAddress, $userAgent);
 
         // Login alert emails (if enabled)

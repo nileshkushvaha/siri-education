@@ -41,7 +41,6 @@
                 <button type="button" wire:click="useResidenceCountry" class="mt-2 min-h-11 text-xs font-semibold text-indigo-300 underline">Use residence country</button>
                 @endif
                 @endif
-                <p class="mt-1.5 text-xs text-slate-400">We’ll verify this number before enabling account-sensitive actions.</p>
                 @error('phone')<p class="mt-1 text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
             </div>
             <x-ui.auth-input label="Referral code (optional)" name="referral_code" wire:model="referral_code" placeholder="e.g. ABCD2345" autocomplete="off" />

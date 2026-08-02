@@ -429,6 +429,25 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->input('email').'|'.$request->ip());
         });
 
+        // Registration is throttled by ORIGIN ALONE. The 'login' limiter above
+        // keys on email|ip, which is right for guessing one account but useless
+        // here: a bot creating fake accounts varies the address every time and
+        // so lands in a fresh bucket on every attempt, never tripping it.
+        // Registration abuse is one origin creating many different accounts, so
+        // the origin is the only stable key.
+        //
+        // Sized to tolerate a shared address — a classroom behind one NAT can
+        // still sign up together — while stopping unattended bulk automation.
+        RateLimiter::for('register', function (Request $request) {
+            $settings = app(LoginSecuritySettings::class);
+
+            if (! $settings->throttling_enabled) {
+                return [];
+            }
+
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
         RateLimiter::for('password.reset', function (Request $request) {
             $settings = app(LoginSecuritySettings::class);
 

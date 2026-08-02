@@ -8,7 +8,9 @@ use App\Enums\LoginResult;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Livewire\Frontend\Auth\Concerns\ThrottlesLivewireRequests;
 use App\Models\User;
+use App\Services\Auth\LoginChallengeService;
 use App\Services\Auth\LoginService;
+use App\Services\Auth\RegistrationCaptchaService;
 use App\Services\Auth\VerificationResendService;
 use App\Services\PortalResolver;
 use Illuminate\Contracts\View\View;
@@ -40,6 +42,38 @@ final class LoginForm extends Component
 
     public ?string $unverifiedEmail = null;
 
+    public string $captcha_answer = '';
+
+    public string $captchaQuestion = '';
+
+    /** Only true once repeated failures from this origin warrant a challenge. */
+    public bool $captchaRequired = false;
+
+    public function mount(RegistrationCaptchaService $captcha, LoginChallengeService $challenge): void
+    {
+        $this->syncChallenge($captcha, $challenge);
+    }
+
+    /**
+     * Issues a question only while one is actually required, so the form stays
+     * short for the normal case and never renders a stale challenge.
+     */
+    private function syncChallenge(RegistrationCaptchaService $captcha, LoginChallengeService $challenge): void
+    {
+        $this->captchaRequired = $challenge->requiresChallenge(request()->ip());
+
+        if ($this->captchaRequired && $this->captchaQuestion === '') {
+            $this->captchaQuestion = $captcha->issue(RegistrationCaptchaService::LOGIN);
+        }
+    }
+
+    public function refreshCaptcha(RegistrationCaptchaService $captcha): void
+    {
+        $this->captcha_answer = '';
+        $this->resetValidation('captcha_answer');
+        $this->captchaQuestion = $captcha->issue(RegistrationCaptchaService::LOGIN);
+    }
+
     /** @return array<string, mixed> */
     protected function rules(): array
     {
@@ -57,8 +91,12 @@ final class LoginForm extends Component
         $this->bannerType = null;
         $this->bannerMessage = null;
 
-        $this->validate();
+        // Throttle BEFORE validating: an attempt must count against the
+        // limiter whether or not the payload is well-formed, otherwise a
+        // deliberately invalid field (now including the security question)
+        // would be a way to keep guessing without ever being throttled.
         $this->throttleLimiter('login', ['email' => $this->email], 'email');
+        $this->validate();
 
         // Admin-portal roles authenticate through /admin/login — one
         // login door per portal. Checked before attempting credentials
@@ -120,6 +158,9 @@ final class LoginForm extends Component
 
             return;
         }
+
+        $this->captchaQuestion = '';
+        $this->syncChallenge(app(RegistrationCaptchaService::class), app(LoginChallengeService::class));
 
         $errorMessage = $result->message();
 

@@ -73,7 +73,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->brandName(fn (): string => $this->brandName())
             ->brandLogo(null)
-            ->favicon(fn (): ?string => $this->faviconUrl())
+            ->favicon(fn (): string => $this->faviconUrl())
             // Filament defaults every page's content to max-w-7xl (1280px)
             // when unset — on wide monitors that leaves a large dead zone
             // next to every form/table. Use the full available width instead.
@@ -195,16 +195,45 @@ class AdminPanelProvider extends PanelProvider
         return app(GeneralSettings::class)->app_name ?: config('app.name');
     }
 
-    private function faviconUrl(): ?string
+    /**
+     * Never null. Returning null left Filament with no favicon at all, and the
+     * usual last-resort fallback does not help here either — public/favicon.ico
+     * is a 0-byte placeholder, so the browser had nothing to fall back to and
+     * showed its generic page icon.
+     */
+    private function faviconUrl(): string
     {
         $path = app(GeneralSettings::class)->favicon ?? null;
 
-        if (blank($path)) {
-            return null;
+        if (filled($path)) {
+            return str_starts_with($path, 'http') || str_starts_with($path, '//')
+                ? $path
+                : Storage::disk('public')->url($path);
         }
 
-        return str_starts_with($path, 'http') || str_starts_with($path, '//')
-            ? $path
-            : Storage::disk('public')->url($path);
+        return $this->defaultFaviconDataUri();
+    }
+
+    /**
+     * A brand-lettered mark generated from the configured application name,
+     * inlined as a data URI.
+     *
+     * Generated rather than shipped as a file so it always tracks the name in
+     * Admin -> Settings -> General, and so no deployment step is needed before
+     * the panel has an icon. An uploaded favicon always wins over this.
+     */
+    private function defaultFaviconDataUri(): string
+    {
+        $letter = mb_strtoupper(mb_substr(trim($this->brandName()), 0, 1));
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+            .'<rect width="64" height="64" rx="14" fill="#4f46e5"/>'
+            .'<text x="32" y="45" text-anchor="middle" fill="#ffffff"'
+            .' font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif"'
+            .' font-size="38" font-weight="700">'
+            .htmlspecialchars($letter !== '' ? $letter : 'A', ENT_QUOTES | ENT_XML1)
+            .'</text></svg>';
+
+        return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
 }

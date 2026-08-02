@@ -40,7 +40,10 @@ class ContactFormTest extends TestCase
     {
         $block = $this->makeBlock();
 
+        session()->put('auth.captcha.contact', '7');
+
         $this->post(route('contact.submit'), [
+            'captcha_answer' => '7',
             'block_id' => $block->id,
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
@@ -56,7 +59,10 @@ class ContactFormTest extends TestCase
     {
         $block = $this->makeBlock();
 
+        session()->put('auth.captcha.contact', '7');
+
         $this->post(route('contact.submit'), [
+            'captcha_answer' => '7',
             'block_id' => $block->id,
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
@@ -74,7 +80,10 @@ class ContactFormTest extends TestCase
 
         $block = $this->makeBlock();
 
+        session()->put('auth.captcha.contact', '7');
+
         $this->post(route('contact.submit'), [
+            'captcha_answer' => '7',
             'block_id' => $block->id,
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
@@ -95,7 +104,10 @@ class ContactFormTest extends TestCase
 
         $block = $this->makeBlock();
 
+        session()->put('auth.captcha.contact', '7');
+
         $this->post(route('contact.submit'), [
+            'captcha_answer' => '7',
             'block_id' => $block->id,
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',

@@ -10,11 +10,26 @@ use Illuminate\Contracts\Validation\ValidationRule;
 
 final class ValidRegistrationCaptcha implements ValidationRule
 {
-    public function __construct(private readonly RegistrationCaptchaService $captcha) {}
+    public function __construct(
+        private readonly RegistrationCaptchaService $captcha,
+        private readonly string $context = RegistrationCaptchaService::REGISTRATION,
+    ) {}
+
+    /** Same rule, verified against the public contact-form challenge. */
+    public static function forContact(): self
+    {
+        return new self(app(RegistrationCaptchaService::class), RegistrationCaptchaService::CONTACT);
+    }
+
+    /** Same rule, verified against the login challenge instead. */
+    public static function forLogin(): self
+    {
+        return new self(app(RegistrationCaptchaService::class), RegistrationCaptchaService::LOGIN);
+    }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! $this->captcha->verify($value)) {
+        if (! $this->captcha->verify($value, $this->context)) {
             $fail('Please solve the security question correctly.');
         }
     }

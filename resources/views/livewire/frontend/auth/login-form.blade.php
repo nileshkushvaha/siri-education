@@ -82,6 +82,31 @@ $authSettings = app(\App\Settings\AuthenticationSettings::class);
             @enderror
         </div>
 
+        {{-- Same security check as registration, shown only after repeated
+             failed attempts from this origin — a normal sign-in never sees it --}}
+        @if($captchaRequired)
+        <fieldset class="rounded-xl border border-white/10 p-4">
+            <legend class="px-1 text-sm font-semibold text-white">Quick security check</legend>
+            <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div class="flex-1">
+                    <label for="captcha_answer" class="auth-label">What is {{ $captchaQuestion }}?</label>
+                    <input id="captcha_answer" wire:model="captcha_answer" inputmode="numeric" autocomplete="off" class="auth-input @error('captcha_answer') error @enderror" placeholder="Your answer" required>
+                </div>
+                <button type="button" wire:click="refreshCaptcha" wire:loading.attr="disabled" wire:target="refreshCaptcha" class="inline-flex min-h-11 min-w-36 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                    <span wire:loading.remove wire:target="refreshCaptcha">New question</span>
+                    <span wire:loading wire:target="refreshCaptcha" class="inline-flex items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Refreshing…
+                    </span>
+                </button>
+            </div>
+            @error('captcha_answer')<p class="mt-2 text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
+        </fieldset>
+        @endif
+
         @if($authSettings->remember_me_enabled)
         <x-ui.auth-checkbox label="Keep me signed in for 30 days" name="remember" wire:model="remember" />
         @endif

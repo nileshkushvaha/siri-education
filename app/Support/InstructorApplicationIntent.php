@@ -12,9 +12,9 @@ namespace App\Support;
  * the plain student dashboard.
  *
  * Session-only, never persisted to the database, and self-clearing —
- * consume() reads it exactly once. If the browser session is lost
- * (different device opens the verification email link, session
- * expires), the intent is silently lost and the user simply lands on
+ * consume() reads it exactly once. If the browser session is lost (the
+ * code is entered on a different device, or the session expires), the
+ * intent is silently lost and the user simply lands on
  * their normal dashboard, where the existing "Become an Instructor"
  * entry points remain reachable manually.
  */

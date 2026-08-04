@@ -101,8 +101,8 @@
                 </button>
 
                 <div class="hidden items-center gap-1.5 lg:flex">
-                    @if(Route::has('instructor.apply'))
-                        <a href="{{ route('instructor.apply') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-100">Teach with us</a>
+                    @if(Route::has('booking.create'))
+                        <a href="{{ route('booking.create') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-slate-600 transition hover:bg-violet-50 hover:text-violet-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-100">Book a Demo Class</a>
                     @endif
                     @auth
                         @if($dashboardUrl)
@@ -162,8 +162,8 @@
                 @endif
 
                 <div class="mt-5 grid grid-cols-2 gap-2 border-t border-slate-200 pt-5">
-                    @if(Route::has('instructor.apply'))
-                        <a href="{{ route('instructor.apply') }}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-center text-sm font-bold text-violet-700">Teach with us</a>
+                    @if(Route::has('booking.create'))
+                        <a href="{{ route('booking.create') }}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-center text-sm font-bold text-violet-700">Book a Demo Class</a>
                     @endif
                     @auth
                         @if($dashboardUrl)

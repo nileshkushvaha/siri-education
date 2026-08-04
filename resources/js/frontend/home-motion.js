@@ -33,6 +33,17 @@ const initialiseHomeMotion = () => {
         heading.setAttribute('aria-label', heading.textContent.trim());
         let characterIndex = 0;
 
+        // `background-clip: text` paints the element's own background
+        // through its own text. Re-wrapping that text in per-character
+        // inline-blocks leaves the characters transparent with nothing
+        // painted behind them — the gradient line simply disappears. Such
+        // an element is animated as a single unit instead of split.
+        const isGradientText = (element) => {
+            const style = window.getComputedStyle(element);
+
+            return (style.webkitBackgroundClip === 'text' || style.backgroundClip === 'text');
+        };
+
         const splitTextNodes = (parent) => {
             Array.from(parent.childNodes).forEach((node) => {
                 if (node.nodeType === 3) {
@@ -69,6 +80,16 @@ const initialiseHomeMotion = () => {
                 }
 
                 if (node.nodeType === 1 && ! node.matches('svg, [aria-hidden="true"]')) {
+                    if (isGradientText(node)) {
+                        // Not `home-split-word` — that pins white-space to
+                        // nowrap, which a full clause must be free to wrap.
+                        node.classList.add('home-split-char');
+                        node.style.setProperty('--home-char-index', characterIndex);
+                        characterIndex += node.textContent.trim().length;
+
+                        return;
+                    }
+
                     splitTextNodes(node);
                 }
             });
@@ -110,6 +131,24 @@ const initialiseHomeMotion = () => {
         return;
     }
 
+    // Everything above the fold intersects on the observer's very first
+    // callback, which can land before the hidden start state has been
+    // painted — the browser then has no earlier value to transition from
+    // and the element snaps straight to its final style. That is why the
+    // hero heading appeared instantly while headings further down the page
+    // animated. Painting the start state first, then observing, gives every
+    // element the same two-step the scrolled-into-view ones already get.
+    const startObserving = (observer) => {
+        void homepage.offsetHeight;
+
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                revealTargets.forEach((element) => observer.observe(element));
+                headingTargets.forEach((element) => observer.observe(element));
+            });
+        });
+    };
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
             if (! entry.isIntersecting) {
@@ -124,8 +163,7 @@ const initialiseHomeMotion = () => {
         threshold: 0.12,
     });
 
-    revealTargets.forEach((element) => observer.observe(element));
-    headingTargets.forEach((element) => observer.observe(element));
+    startObserving(observer);
 };
 
 if (document.readyState === 'loading') {

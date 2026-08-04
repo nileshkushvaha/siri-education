@@ -6,8 +6,9 @@ namespace Tests\Feature\Auth;
 
 use App\Livewire\Frontend\Auth\LoginForm;
 use App\Models\User;
-use App\Notifications\Auth\VerifyEmailNotification;
+use App\Notifications\Auth\EmailVerificationCodeNotification;
 use App\Settings\LoginSecuritySettings;
+use App\Support\PendingEmailVerification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -72,7 +73,7 @@ class LoginFormTest extends TestCase
         $this->assertNotNull($user->fresh()->getRememberToken());
     }
 
-    public function test_unverified_email_shows_banner_and_resend_sends_notification(): void
+    public function test_unverified_email_is_sent_a_code_and_redirected_to_the_code_screen(): void
     {
         Notification::fake();
 
@@ -83,17 +84,19 @@ class LoginFormTest extends TestCase
             'email_verified_at' => null,
         ]);
 
-        $component = Livewire::test(LoginForm::class)
+        Livewire::test(LoginForm::class)
             ->set('email', 'unverified@example.com')
             ->set('password', 'CorrectPass123!')
-            ->call('login');
+            ->call('login')
+            ->assertRedirect(route('auth.verification.notice'));
 
-        $this->assertSame('unverified', $component->get('bannerType'));
         $this->assertGuest();
 
-        $component->call('resendVerification');
+        // The correct password is what allows this session to finish
+        // verification — and to be signed in once the code checks out.
+        $this->assertSame($user->id, PendingEmailVerification::userId());
 
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class);
     }
 
     public function test_named_login_rate_limiter_engages_after_repeated_failures(): void

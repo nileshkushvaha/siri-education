@@ -237,8 +237,11 @@ class GeneralSettingsPage extends Page
                     ]),
 
                 // ── Localization ──────────────────────────────────── right
-                Section::make('Localization')
-                    ->description('Default timezone, language, and date/time formats. Country and locale-switching defaults live under Platform Foundation Settings.')
+                // Timezone and currency are both "what defaults does this
+                // platform assume" — two one-field sections side by side read
+                // as more structure than there is.
+                Section::make('Localization & Application')
+                    ->description('Platform-wide defaults for timezone and currency. Country and locale-switching defaults live under Platform Foundation Settings.')
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
@@ -252,14 +255,7 @@ class GeneralSettingsPage extends Page
                                 ->searchable()
                                 ->native(false)
                                 ->required(),
-                        ]),
-                    ]),
 
-                // ── Application ───────────────────────────────────── left
-                Section::make('Application')
-                    ->description('Default currency for pricing and wallet balances.')
-                    ->schema([
-                        Grid::make(2)->schema([
                             Select::make('default_currency')
                                 ->label('Default Currency')
                                 ->options([
@@ -278,9 +274,10 @@ class GeneralSettingsPage extends Page
                         ]),
                     ]),
 
-                // ── Footer ────────────────────────────────────────── right
+                // ── Footer ────────────────────────────────────── full width
                 Section::make('Footer')
                     ->description('Text displayed in your application\'s footer.')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('footer_copyright')
                             ->label('Copyright Text')

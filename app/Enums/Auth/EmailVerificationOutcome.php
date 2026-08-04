@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Enums\Auth;
 
 /**
- * The result of following a signed email-verification link.
+ * The result of completing email verification (one-time code).
  *
  * Verifying an email address and activating an account are two separate
  * decisions, and this enum keeps them separate. A person who controls
@@ -16,7 +16,7 @@ namespace App\Enums\Auth;
  */
 enum EmailVerificationOutcome: string
 {
-    /** The link was followed again after a successful verification. Not an error. */
+    /** Verification ran again on an already-verified account. Not an error. */
     case AlreadyVerified = 'already_verified';
 
     /** The normal path: a pending registration is now verified and active. */
@@ -32,7 +32,7 @@ enum EmailVerificationOutcome: string
 
     /**
      * Email verified, but the account is blocked or suspended. An old
-     * link must never undo an administrative restriction.
+     * verification must never undo an administrative restriction.
      */
     case VerifiedAccountRestricted = 'verified_account_restricted';
 

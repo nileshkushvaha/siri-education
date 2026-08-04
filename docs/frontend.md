@@ -233,7 +233,7 @@ non-JS fallback rather than being replaced.
 | Register | `RegisterForm` | `register-form` |
 | Forgot password | `ForgotPasswordForm` | `forgot-password-form` |
 | Reset password | `ResetPasswordForm` | `reset-password-form` |
-| Email verification (resend) | `VerifyEmailNotice` | `verify-email-notice` |
+| Email verification (code entry + resend) | `VerifyEmailNotice` | `verify-email-notice` |
 
 Each existing page under `resources/views/auth/` keeps its decorative
 chrome (left panel, testimonials, copy) — only the `<form>` element
@@ -266,11 +266,10 @@ resolves the same named limiters already registered once in
 manually (`RateLimiter::tooManyAttempts()`/`hit()`), so the threshold
 and its settings-driven on/off toggle
 (`LoginSecuritySettings::throttling_enabled`) are still defined in
-exactly one place. `LoginForm`'s guest resend-verification and
-`VerifyEmailNotice`'s authenticated resend use simple inline numeric
-throttles mirroring the two small closure/route-level throttles they
-replace (3/min, 6/min) — not named limiters, so the trait doesn't
-apply there.
+exactly one place. `VerifyEmailNotice`'s code resend uses a simple
+inline numeric throttle mirroring the small closure/route-level throttle
+it replaces (6/min) — not a named limiter, so the trait doesn't apply
+there.
 
 ### Remember me
 

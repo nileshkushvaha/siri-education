@@ -6,7 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Livewire\Frontend\Auth\VerifyEmailNotice;
 use App\Models\User;
-use App\Notifications\Auth\VerifyEmailNotification;
+use App\Notifications\Auth\EmailVerificationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -26,7 +26,7 @@ class VerifyEmailNoticeTest extends TestCase
             ->assertSeeLivewire(VerifyEmailNotice::class);
     }
 
-    public function test_resend_sends_a_new_verification_notification(): void
+    public function test_resend_sends_a_new_verification_code(): void
     {
         Notification::fake();
 
@@ -35,9 +35,9 @@ class VerifyEmailNoticeTest extends TestCase
         Livewire::actingAs($user)
             ->test(VerifyEmailNotice::class)
             ->call('resend')
-            ->assertSet('status', 'verification-link-sent');
+            ->assertSet('status', 'code-sent');
 
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class);
     }
 
     public function test_already_verified_user_is_redirected_instead_of_resending(): void
@@ -51,7 +51,7 @@ class VerifyEmailNoticeTest extends TestCase
             ->call('resend')
             ->assertRedirect(route('dashboard'));
 
-        Notification::assertNotSentTo($user, VerifyEmailNotification::class);
+        Notification::assertNotSentTo($user, EmailVerificationCodeNotification::class);
     }
 
     public function test_rate_limit_blocks_after_six_resends_in_a_minute(): void

@@ -13,6 +13,7 @@ use App\Services\Auth\RegistrationService;
 use App\Services\PortalResolver;
 use App\Services\Security\PasswordRuleBuilder;
 use App\Support\InstructorApplicationIntent;
+use App\Support\PendingEmailVerification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -213,11 +214,12 @@ final class RegisterForm extends Component
             return;
         }
 
-        // Normal flow: log in temporarily so the signed verification URL works.
-        Auth::login($result->user);
-        session()->regenerate();
+        // Normal flow: no session is created yet. The account is verified
+        // by entering the emailed code, and only then signed in — see
+        // PendingEmailVerification.
+        PendingEmailVerification::remember($result->user);
 
-        session()->flash('success', 'Account created! Please check your email to verify your address before signing in.');
+        session()->flash('success', 'Account created! Enter the 6-digit code we just emailed you.');
         $this->redirect(route('auth.verification.notice'), navigate: false);
     }
 

@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\RateLimiter;
  * sends it.
  *
  * The problem this solves: a freshly registered account is created
- * `pending_verification`, and LoginService rejects non-active accounts BEFORE
- * the credential check. So someone who lost the original verification mail hit
- * "Your account is inactive. Please contact support." with no way forward —
- * they could not verify, and could not log in to ask for a new link.
+ * `pending_verification`. LoginService lets that specific state through to the
+ * credential check so a correct password can earn a fresh verification code —
+ * without this service the user would be stuck with no way to verify and no
+ * way to ask for another code.
  *
  * Eligibility is deliberately narrow. Re-sending must never be a way to mail
  * an account an administrator has shut down, so it requires ALL of:

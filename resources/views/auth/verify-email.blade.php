@@ -37,10 +37,10 @@
 
             <h2 class="text-2xl font-bold text-white mb-2">Verify your email</h2>
             <p class="text-slate-400 text-sm leading-relaxed mb-2">
-                We sent a verification link to
+                We sent a 6-digit verification code to
             </p>
             <p class="text-indigo-400 font-semibold text-sm mb-6">
-                {{ auth()->user()->email }}
+                {{ $pendingUser->email }}
             </p>
 
 
@@ -57,13 +57,19 @@
 
             <livewire:frontend.auth.verify-email-notice />
 
-            {{-- Sign out --}}
-            <form method="POST" action="{{ route('auth.logout') }}">
+            {{-- Leave this account --}}
+            @auth
+            <form method="POST" action="{{ route('auth.logout') }}" class="mt-4">
                 @csrf
                 <button type="submit" class="text-sm text-slate-400 hover:text-slate-300 transition">
                     Sign out and use a different account
                 </button>
             </form>
+            @else
+            <a href="{{ route('auth.login') }}" class="mt-4 inline-block text-sm text-slate-400 hover:text-slate-300 transition">
+                Use a different account
+            </a>
+            @endauth
         </div>
 
         <p class="text-center text-xs text-slate-400 mt-5">

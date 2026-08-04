@@ -11,11 +11,9 @@ use App\Models\User;
 use App\Services\Auth\LoginChallengeService;
 use App\Services\Auth\LoginService;
 use App\Services\Auth\RegistrationCaptchaService;
-use App\Services\Auth\VerificationResendService;
 use App\Services\PortalResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
 /**
@@ -36,11 +34,9 @@ final class LoginForm extends Component
 
     public bool $remember = false;
 
-    public ?string $bannerType = null; // 'locked' | 'unverified' | null
+    public ?string $bannerType = null; // 'locked' | null
 
     public ?string $bannerMessage = null;
-
-    public ?string $unverifiedEmail = null;
 
     public string $captcha_answer = '';
 
@@ -130,24 +126,13 @@ final class LoginForm extends Component
             return;
         }
 
+        // The password was correct but the address is unverified:
+        // LoginService has issued a fresh code and marked this session as
+        // allowed to verify the account, so continue on the code screen —
+        // which signs the user in once the code checks out.
         if ($result === LoginResult::EmailUnverified) {
-            $this->bannerType = 'unverified';
-            $this->bannerMessage = $result->message();
-            $this->unverifiedEmail = $this->email;
-
-            return;
-        }
-
-        // A brand-new registration is rejected as "inactive" before its
-        // password is ever checked, and the generic inactive copy ("contact
-        // support") is a dead end for someone who simply lost the mail.
-        // LoginService has already re-sent it by this point, so say so and
-        // offer the resend control rather than the locked banner.
-        if ($result === LoginResult::AccountInactive
-            && app(VerificationResendService::class)->eligible($candidate)) {
-            $this->bannerType = 'unverified';
-            $this->bannerMessage = 'Your email address is not verified yet. We have sent a fresh verification link — please check your inbox.';
-            $this->unverifiedEmail = $this->email;
+            session()->flash('success', 'Your email address is not verified yet. Enter the 6-digit code we just emailed you.');
+            $this->redirect(route('auth.verification.notice'), navigate: false);
 
             return;
         }
@@ -174,32 +159,6 @@ final class LoginForm extends Component
         }
 
         $this->addError('email', $errorMessage);
-    }
-
-    /** Mirrors the existing POST /resend-verification-email closure route (routes/web.php), which stays in place unchanged as the non-JS fallback. */
-    public function resendVerification(): void
-    {
-        $key = 'resend-verification-guest:'.request()->ip();
-
-        if (RateLimiter::tooManyAttempts($key, 3)) {
-            $this->addError('email', 'Too many attempts. Please try again in a minute.');
-
-            return;
-        }
-
-        RateLimiter::hit($key, 60);
-
-        $user = User::where('email', strtolower((string) $this->unverifiedEmail))
-            ->whereNull('email_verified_at')
-            ->first();
-
-        // Never mails a blocked, suspended or previously-active account —
-        // and the message below stays identical either way, so the response
-        // cannot be used to probe an account's status.
-        app(VerificationResendService::class)->resendIfEligible($user);
-
-        $this->bannerType = null;
-        $this->bannerMessage = 'Verification email sent! Please check your inbox.';
     }
 
     public function render(): View

@@ -307,10 +307,14 @@ class AuthenticationSettingsTest extends TestCase
             'email_verified_at' => null,
         ]);
 
+        // Not signed in — sent to the one-time-code screen instead, which
+        // is where an unverified account now completes login.
         $this->post(route('auth.login.store'), [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertSessionHas('unverified');
+        ])->assertRedirect(route('auth.verification.notice'));
+
+        $this->assertGuest();
     }
 
     public function test_unverified_user_can_login_when_verification_not_required(): void

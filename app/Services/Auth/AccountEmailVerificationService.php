@@ -13,15 +13,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The single authoritative owner of "a signed verification link was
- * followed": marking the email verified, deciding whether the account
+ * The single authoritative owner of "email verification succeeded":
+ * marking the email verified, deciding whether the account
  * may be activated, running the student lifecycle transition, and
  * recording the audit entry.
  *
  * It is deliberately independent of the HTTP session. Verification is a
  * property of the mailbox, not of the browser that happened to submit
- * the registration form, so the same call serves a guest on a second
- * device and an already-authenticated user.
+ * the registration form, so the same call serves a guest who has just
+ * entered a code and an already-authenticated user.
  *
  * ── Activation safety ────────────────────────────────────────────────
  * Registration creates exactly two statuses
@@ -37,7 +37,7 @@ use Illuminate\Support\Facades\Log;
  * approval" and the status an administrator sets to disable an account —
  * so this service never activates from it. Every other status
  * (BLOCKED, SUSPENDED, anything unrecognised) is likewise never
- * activated, which is what stops an old link from resurrecting an
+ * activated, which is what stops an old code from resurrecting an
  * account that has since been restricted.
  *
  * ── Concurrency ──────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ use Illuminate\Support\Facades\Log;
 final readonly class AccountEmailVerificationService
 {
     /**
-     * The only account status a verification link may activate.
+     * The only account status verification may activate.
      *
      * @see RegistrationService::register()
      */
@@ -115,7 +115,7 @@ final readonly class AccountEmailVerificationService
             $this->audit->logSystem(
                 'auth',
                 'email_verified',
-                sprintf('Email address verified via signed link (%s).', $outcome->value),
+                sprintf('Email address verified via one-time code (%s).', $outcome->value),
                 $locked,
                 [
                     'outcome' => $outcome->value,

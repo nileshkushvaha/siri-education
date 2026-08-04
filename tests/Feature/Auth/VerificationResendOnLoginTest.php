@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use App\Notifications\Auth\VerifyEmailNotification;
+use App\Notifications\Auth\EmailVerificationCodeNotification;
 use App\Services\Auth\LoginService;
 use App\Services\Auth\VerificationResendService;
 use App\Settings\AuthenticationSettings;
@@ -15,13 +15,14 @@ use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 /**
- * A freshly registered account is created `pending_verification`, and
- * LoginService rejects non-active accounts BEFORE checking the password — so
- * losing the verification mail used to be a dead end: no link to verify with,
- * and no way to log in and ask for another.
+ * A freshly registered account is created `pending_verification`. It is
+ * allowed past the status gate and into the credential check precisely so a
+ * correct password can earn it a fresh verification code — that is the only
+ * way out of the unverified state.
  *
- * The re-send closes that, but it must never become a way to mail an account
- * an administrator has shut down, nor a way to spam an address.
+ * The re-send must never become a way to mail an account an administrator has
+ * shut down, nor a way to spam an address, and it must never fire for someone
+ * who has not proven the password.
  */
 class VerificationResendOnLoginTest extends TestCase
 {
@@ -60,38 +61,43 @@ class VerificationResendOnLoginTest extends TestCase
 
     // ── The stuck user gets unstuck ──────────────────────────────────
 
-    public function test_a_new_registration_that_never_verified_is_sent_a_fresh_link(): void
+    public function test_a_new_registration_that_never_verified_is_sent_a_fresh_code(): void
     {
         $user = $this->register();
 
         $this->attempt($user);
 
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class);
     }
 
-    public function test_it_works_even_with_the_wrong_password(): void
+    public function test_a_wrong_password_never_sends_a_code(): void
     {
-        // The inactive branch runs before the credential check, so the user
-        // does not have to remember their password to get unstuck.
+        // The code is only issued after the credential check, so typing
+        // somebody else's address cannot mail them anything.
         $user = $this->register();
 
         $this->attempt($user, 'not-the-password');
 
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        // (A failed-attempt alert may still be sent — that is a different
+        // notification and not a way back into the account.)
+        Notification::assertNotSentTo($user, EmailVerificationCodeNotification::class);
     }
 
-    public function test_an_account_awaiting_admin_approval_is_also_covered(): void
+    public function test_an_account_awaiting_admin_approval_is_not_sent_a_code(): void
     {
+        // STATUS_INACTIVE is rejected before the credential check: it is
+        // either awaiting approval or switched off by an administrator, and
+        // neither is unblocked by verifying an email address.
         $user = $this->register(['status' => User::STATUS_INACTIVE]);
 
         $this->attempt($user);
 
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertNothingSentTo($user);
     }
 
     // ── Never for restricted accounts ────────────────────────────────
 
-    public function test_a_blocked_account_is_never_sent_a_verification_link(): void
+    public function test_a_blocked_account_is_never_sent_a_verification_code(): void
     {
         $user = $this->register(['status' => User::STATUS_BLOCKED]);
 
@@ -100,7 +106,7 @@ class VerificationResendOnLoginTest extends TestCase
         Notification::assertNothingSentTo($user);
     }
 
-    public function test_a_suspended_account_is_never_sent_a_verification_link(): void
+    public function test_a_suspended_account_is_never_sent_a_verification_code(): void
     {
         $user = $this->register(['status' => User::STATUS_SUSPENDED]);
 
@@ -109,7 +115,7 @@ class VerificationResendOnLoginTest extends TestCase
         Notification::assertNothingSentTo($user);
     }
 
-    public function test_a_locked_account_is_never_sent_a_verification_link(): void
+    public function test_a_locked_account_is_never_sent_a_verification_code(): void
     {
         $user = $this->register([
             'locked_at' => now(),
@@ -136,7 +142,7 @@ class VerificationResendOnLoginTest extends TestCase
         Notification::assertNothingSentTo($user);
     }
 
-    public function test_an_already_verified_account_is_not_sent_another_link(): void
+    public function test_an_already_verified_account_is_not_sent_another_code(): void
     {
         $user = $this->register([
             'status' => User::STATUS_INACTIVE,
@@ -158,7 +164,7 @@ class VerificationResendOnLoginTest extends TestCase
         $this->attempt($user);
         $this->attempt($user);
 
-        Notification::assertSentToTimes($user, VerifyEmailNotification::class, 1);
+        Notification::assertSentToTimes($user, EmailVerificationCodeNotification::class, 1);
     }
 
     // ── The eligibility rule itself ──────────────────────────────────
@@ -201,6 +207,6 @@ class VerificationResendOnLoginTest extends TestCase
 
         $this->attempt($user);
 
-        Notification::assertNotSentTo($user, VerifyEmailNotification::class);
+        Notification::assertNotSentTo($user, EmailVerificationCodeNotification::class);
     }
 }

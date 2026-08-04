@@ -6,13 +6,11 @@ namespace App\Listeners\Auth;
 
 use App\Events\Auth\UserApproved;
 use App\Notifications\Auth\AccountApprovedNotification;
-use App\Notifications\Auth\VerifyEmailNotification;
 use App\Notifications\Auth\WelcomeNotification;
+use App\Services\Auth\EmailVerificationOtpService;
 use App\Settings\RegistrationSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
 use Throwable;
 
 final class SendApprovalNotification implements ShouldQueue
@@ -32,17 +30,9 @@ final class SendApprovalNotification implements ShouldQueue
         $user->notify(new AccountApprovedNotification);
 
         if (! $user->hasVerifiedEmail()) {
-            // Email still needs verification — send the link now that account is active
-            $notification = new VerifyEmailNotification;
-            $notification->verificationUrl = URL::temporarySignedRoute(
-                'auth.verification.verify',
-                Carbon::now()->addMinutes(config('auth.verification.expire', 60)),
-                [
-                    'id' => $user->getKey(),
-                    'hash' => sha1($user->getEmailForVerification()),
-                ]
-            );
-            $user->notify($notification);
+            // Email still needs verification — email the one-time code now
+            // that the account is active.
+            app(EmailVerificationOtpService::class)->issue($user);
 
             return;
         }

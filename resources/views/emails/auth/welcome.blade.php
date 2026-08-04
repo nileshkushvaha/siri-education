@@ -14,9 +14,9 @@
 <div class="hb" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.20);border-radius:14px;padding:20px 24px;margin:24px 0;">
   <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#ffffff;">📋 What happens next?</p>
   <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.60);line-height:1.8;">
-    <span style="color:#a78bfa;font-weight:600;">①</span> &nbsp;Check your inbox for the verification email<br>
-    <span style="color:#a78bfa;font-weight:600;">②</span> &nbsp;Click the verification link to activate your account<br>
-    <span style="color:#a78bfa;font-weight:600;">③</span> &nbsp;Sign in and start your learning journey
+    <span style="color:#a78bfa;font-weight:600;">①</span> &nbsp;Check your inbox for the 6-digit verification code<br>
+    <span style="color:#a78bfa;font-weight:600;">②</span> &nbsp;Enter the code on the verification screen to activate your account<br>
+    <span style="color:#a78bfa;font-weight:600;">③</span> &nbsp;You're signed in — start your learning journey
   </p>
 </div>
 

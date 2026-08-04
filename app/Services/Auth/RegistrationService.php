@@ -75,10 +75,10 @@ final class RegistrationService
             if ($role->name === 'student') {
                 $user->profile?->update(['student_status' => StudentStatus::Registered]);
 
-                // Auto-verified registrations (step 5) never hit the
-                // signed email-verification link, so this is the only
-                // place that trigger fires for them — same idempotent
-                // Registered-only entry point the verification route uses.
+                // Auto-verified registrations (step 5) never enter a
+                // verification code, so this is the only place that
+                // trigger fires for them — same idempotent
+                // Registered-only entry point the code screen uses.
                 if ($autoVerify && ! $requireApproval) {
                     $this->studentLifecycle->activateFromVerification($user);
                 }

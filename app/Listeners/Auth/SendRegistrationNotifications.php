@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Listeners\Auth;
 
 use App\Events\Auth\UserRegistered;
-use App\Models\User;
 use App\Notifications\Auth\RegistrationPendingNotification;
-use App\Notifications\Auth\VerifyEmailNotification;
 use App\Notifications\Auth\WelcomeNotification;
+use App\Services\Auth\EmailVerificationOtpService;
 use App\Settings\RegistrationSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
 use Throwable;
 
 final class SendRegistrationNotifications implements ShouldQueue
@@ -80,17 +77,8 @@ final class SendRegistrationNotifications implements ShouldQueue
             return;
         }
 
-        // ── Default: send email verification link ────────────────────────────
-        $notification = new VerifyEmailNotification;
-        $notification->verificationUrl = URL::temporarySignedRoute(
-            'auth.verification.verify',
-            Carbon::now()->addMinutes(config('auth.verification.expire', 60)),
-            [
-                'id' => $user->getKey(),
-                'hash' => sha1($user->getEmailForVerification()),
-            ]
-        );
-        $user->notify($notification);
+        // ── Default: email the one-time verification code ────────────────────
+        app(EmailVerificationOtpService::class)->issue($user);
     }
 
     public function failed(UserRegistered $event, Throwable $exception): void

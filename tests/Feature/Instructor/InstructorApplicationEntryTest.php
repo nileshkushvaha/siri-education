@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Enums\InstructorStatus;
+use App\Livewire\Frontend\Auth\VerifyEmailNotice;
 use App\Models\AcademicLevel;
 use App\Models\User;
+use App\Notifications\Auth\EmailVerificationCodeNotification;
+use App\Services\Auth\EmailVerificationOtpService;
 use App\Settings\RegistrationSettings;
 use App\Support\InstructorApplicationIntent;
+use App\Support\PendingEmailVerification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -50,15 +55,22 @@ final class InstructorApplicationEntryTest extends TestCase
         $this->assertTrue(InstructorApplicationIntent::pending());
 
         $user = User::factory()->unverified()->create(['status' => User::STATUS_PENDING]);
-        $this->actingAs($user);
 
-        $verificationUrl = URL::temporarySignedRoute(
-            'auth.verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)],
-        );
+        Notification::fake();
+        app(EmailVerificationOtpService::class)->issue($user);
 
-        $this->get($verificationUrl)
+        $code = null;
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class, function ($notification) use (&$code) {
+            $code = $notification->code;
+
+            return true;
+        });
+
+        PendingEmailVerification::remember($user);
+
+        Livewire::test(VerifyEmailNotice::class)
+            ->set('code', $code)
+            ->call('verify')
             ->assertRedirect(route('dashboard.instructor.onboarding'));
 
         $this->assertFalse(InstructorApplicationIntent::pending());

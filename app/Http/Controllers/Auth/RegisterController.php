@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Services\Auth\RegistrationService;
 use App\Services\PortalResolver;
 use App\Support\InstructorApplicationIntent;
+use App\Support\PendingEmailVerification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -63,12 +64,14 @@ final class RegisterController extends Controller
                 ->with('success', 'Welcome to '.config('app.name').'! Your account is ready.');
         }
 
-        // Normal flow: log in temporarily so the signed verification URL works,
-        // then redirect to the verification notice.
-        Auth::login($result->user);
+        // Normal flow: no session is created yet. The account is verified
+        // by entering the emailed code, and only then signed in — see
+        // PendingEmailVerification for why this session is allowed to
+        // finish that verification.
+        PendingEmailVerification::remember($result->user);
 
         return redirect()
             ->route('auth.verification.notice')
-            ->with('success', 'Account created! Please check your email to verify your address before signing in.');
+            ->with('success', 'Account created! Enter the 6-digit code we just emailed you.');
     }
 }

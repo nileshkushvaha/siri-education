@@ -14,6 +14,7 @@ use App\Notifications\Auth\NewDeviceLoginNotification;
 use App\Notifications\Auth\SuspiciousLoginNotification;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\AuthenticationSettings;
+use App\Support\PendingEmailVerification;
 use App\Support\UserAgentParser;
 
 final class LoginService
@@ -61,16 +62,13 @@ final class LoginService
                 return LoginResult::AccountBlocked;
             }
 
-            if (! $user->isActive()) {
-                // A brand-new registration lands here (status is
-                // pending_verification), never reaching the credential check
-                // below — so without this the user is stuck: they cannot
-                // verify without the link, and cannot log in to request one.
-                // The service refuses anything that is not a genuinely new,
-                // unverified, un-restricted registration, and rate-limits per
-                // account since this branch runs before the password check.
-                $this->verificationResend->resendIfEligible($user);
-
+            // A brand-new registration (status pending_verification, email
+            // not yet verified) is NOT rejected here. It falls through to
+            // the credential check so the unverified branch below runs
+            // *after* the password is proven — which is what lets that
+            // branch issue a verification code and hand the visitor the
+            // code screen. Every other inactive state is still a dead stop.
+            if (! $user->isActive() && ! $this->isAwaitingEmailVerification($user)) {
                 LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountInactive->value, $sessionId);
 
                 return LoginResult::AccountInactive;
@@ -113,13 +111,21 @@ final class LoginService
         /** @var User $authenticated */
         $authenticated = auth()->user();
 
-        // Check email verification AFTER successful credential check
-        if ($this->authSettings->email_verification_required && ! $authenticated->hasVerifiedEmail()) {
+        // Check email verification AFTER successful credential check.
+        // A pending_verification account is always handled here, whatever
+        // the setting says — it is the state registration leaves behind,
+        // and there is no other way out of it.
+        if (! $authenticated->hasVerifiedEmail()
+            && ($this->authSettings->email_verification_required || $this->isAwaitingEmailVerification($authenticated))) {
             auth()->logout();
 
             // Reached only after a correct password, so this is provably the
             // account owner asking. Same cooldown applies.
             $this->verificationResend->resendIfEligible($authenticated);
+
+            // The password is proven, so this session may finish
+            // verification and be signed in by the code screen.
+            PendingEmailVerification::remember($authenticated);
 
             LoginFailed::dispatch($authenticated, $email, $ipAddress, $userAgent, LoginResult::EmailUnverified->value, $sessionId);
 
@@ -139,6 +145,16 @@ final class LoginService
     }
 
     // ── Private ───────────────────────────────────────────────────────
+
+    /**
+     * The state registration leaves an account in until its email is
+     * verified. Deliberately narrow: an account an administrator switched
+     * off (STATUS_INACTIVE) must never be routed into this flow.
+     */
+    private function isAwaitingEmailVerification(User $user): bool
+    {
+        return $user->status === User::STATUS_PENDING && ! $user->hasVerifiedEmail();
+    }
 
     private function dispatchLoginAlerts(User $user, string $ip, string $ua): void
     {

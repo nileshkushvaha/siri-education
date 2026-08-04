@@ -27,7 +27,7 @@
 
             <div class="mt-10 max-w-xl xl:mt-12">
                 <p class="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Create your account</p>
-                <h2 id="registration-benefits-title" class="mt-3 text-4xl font-bold leading-tight xl:text-5xl">One account to <span class="bg-gradient-to-r from-cyan-300 via-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">learn, teach, and grow.</span></h2>
+                <h2 id="registration-benefits-title" class="mt-3 text-4xl font-bold leading-tight xl:text-5xl">One account to <span class="text-cyan-300">learn, teach, and grow.</span></h2>
                 <p class="mt-4 max-w-lg text-base leading-relaxed text-slate-300">Access personalized learning, verified instructors, flexible lessons, and your complete education workspace.</p>
             </div>
 

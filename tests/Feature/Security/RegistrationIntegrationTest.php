@@ -11,12 +11,13 @@ use App\Models\Currency;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\Auth\AccountApprovedNotification;
+use App\Notifications\Auth\EmailVerificationCodeNotification;
 use App\Notifications\Auth\RegistrationPendingNotification;
-use App\Notifications\Auth\VerifyEmailNotification;
 use App\Notifications\Auth\WelcomeNotification;
 use App\Settings\AuthenticationSettings;
 use App\Settings\PasswordPolicySettings;
 use App\Settings\RegistrationSettings;
+use App\Support\PendingEmailVerification;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -273,7 +274,7 @@ class RegistrationIntegrationTest extends TestCase
         $this->post(route('auth.register.store'), $this->validPayload());
 
         $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
-        Notification::assertNotSentTo($user, VerifyEmailNotification::class);
+        Notification::assertNotSentTo($user, EmailVerificationCodeNotification::class);
     }
 
     // ── Admin Approval — UserApproved event ──────────────────────────────────
@@ -414,7 +415,7 @@ class RegistrationIntegrationTest extends TestCase
         $this->post(route('auth.register.store'), $this->validPayload());
 
         $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
-        Notification::assertNotSentTo($user, VerifyEmailNotification::class);
+        Notification::assertNotSentTo($user, EmailVerificationCodeNotification::class);
     }
 
     public function test_welcome_email_sent_immediately_when_auto_verified_and_welcome_enabled(): void
@@ -513,15 +514,20 @@ class RegistrationIntegrationTest extends TestCase
         $this->post(route('auth.register.store'), $this->validPayload());
 
         $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class);
     }
 
-    public function test_normal_registration_user_logged_in_and_redirected_to_verification_notice(): void
+    public function test_normal_registration_stays_signed_out_and_redirects_to_the_code_screen(): void
     {
+        // No session is created until the emailed code is entered — the
+        // code screen signs the user in itself.
         $this->post(route('auth.register.store'), $this->validPayload())
             ->assertRedirect(route('auth.verification.notice'));
 
-        $this->assertAuthenticated();
+        $this->assertGuest();
+
+        $user = User::where('email', 'newuser@gmail.com')->firstOrFail();
+        $this->assertSame($user->id, PendingEmailVerification::userId());
     }
 
     // ── Activity Logging ──────────────────────────────────────────────────────

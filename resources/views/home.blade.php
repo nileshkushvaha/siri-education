@@ -30,41 +30,49 @@ $subjectPalettes = [
         <div class="pointer-events-none absolute -right-32 bottom-0 h-[30rem] w-[30rem] rounded-full bg-violet-200/40 blur-3xl" aria-hidden="true"></div>
         <div class="pointer-events-none absolute inset-0 opacity-30" style="background-image:radial-gradient(#818cf8 .7px,transparent .7px);background-size:24px 24px" aria-hidden="true"></div>
 
-        <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-16 lg:grid-cols-[1.04fr_.96fr] lg:px-8 lg:py-20">
+        <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-[1.04fr_.96fr] lg:px-8 lg:py-14">
             <div>
-                <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.15em] text-indigo-700 shadow-sm">
+                <span class="inline-flex items-center gap-2 rounded-full border border-indigo-300 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-5 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-indigo-700 shadow-md shadow-indigo-100 ring-2 ring-indigo-100 sm:text-base">
                     <span class="flex -space-x-1" aria-hidden="true">
                         <span class="h-2.5 w-2.5 rounded-full bg-cyan-400"></span>
                         <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
                         <span class="h-2.5 w-2.5 rounded-full bg-fuchsia-500"></span>
                     </span>
-                    Personalised learning, built around you
+                    One-to-one live online tutoring
                 </span>
 
-                <h1 class="mt-6 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-[4rem] lg:leading-[1.04]">
+                <h1 class="mt-5 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-[4rem] lg:leading-[1.04]">
                     Find the right instructor.
                     <span class="bg-gradient-to-r from-indigo-600 via-violet-600 to-rose-500 bg-clip-text text-transparent">Make real progress.</span>
                 </h1>
-                <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+                <p class="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
                     Discover verified instructors, book flexible one-to-one lessons, manage homework, and follow a learning plan shaped around your goals.
                 </p>
 
-                <div class="mt-8 flex flex-wrap gap-3">
-                    <a href="{{ route('instructors.index') }}" class="inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 px-6 text-sm font-black text-white shadow-xl shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-violet-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">
+                <div class="mt-6 flex flex-wrap gap-2 sm:flex-nowrap">
+                    <a href="{{ route('instructors.index') }}" class="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 px-4 text-sm font-black text-white shadow-xl shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-violet-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">
                         Explore instructors
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" />
                         </svg>
                     </a>
-                    <a href="#how-it-works" class="inline-flex min-h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-cyan-100">
+                    <a href="#how-it-works" class="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white/90 px-4 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-cyan-100">
                         See how it works
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7" />
                         </svg>
                     </a>
+                    @if(Route::has('booking.create'))
+                    <a href="{{ route('booking.create') }}" class="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-violet-200 bg-violet-50 px-4 text-sm font-black text-violet-700 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-100">
+                        Book a Free Demo
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" />
+                        </svg>
+                    </a>
+                    @endif
                 </div>
 
-                <div class="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold text-slate-600">
+                <div class="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold text-slate-600">
                     @foreach(['Verified public profiles', 'Timezone-aware booking', 'Secure wallet and payments'] as $trustPoint)
                     <span class="inline-flex items-center gap-2">
                         <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-hidden="true">✓</span>

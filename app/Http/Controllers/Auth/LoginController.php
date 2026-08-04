@@ -58,12 +58,12 @@ class LoginController extends Controller
             return redirect()->intended($this->portal->loginRedirect(auth()->user()));
         }
 
-        // For email unverified — stay on login page with a clear notice + resend link
+        // Email unverified — the password was correct, so LoginService has
+        // already issued a code and marked this session as allowed to
+        // verify the account. Send them straight to the code screen.
         if ($result === LoginResult::EmailUnverified) {
-            return back()
-                ->withInput($request->only('email', 'remember'))
-                ->with('unverified', $result->message())
-                ->with('unverified_email', $request->input('email'));
+            return redirect()->route('auth.verification.notice')
+                ->with('success', 'Your email address is not verified yet. Enter the 6-digit code we just emailed you.');
         }
 
         $errorMessage = $result->message();

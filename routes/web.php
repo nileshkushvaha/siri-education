@@ -160,39 +160,24 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
         // service — this route only supplies the address.
         app(VerificationResendService::class)->resendIfEligible($user);
 
-        return back()->with('success', 'Verification email sent! Please check your inbox.');
+        return back()->with('success', 'Verification code sent! Please check your inbox.');
     })->middleware('throttle:3,1')->name('verification.resend.guest');
 });
 
-// ── Email verification — deliberately PUBLIC ────────────────────────
+// ── Email verification — one-time code, NOT behind `auth` ───────────
 //
-// These two routes used to live in the `auth` group below, which meant a
-// verification link only worked in the browser that submitted the
-// registration form: opening it on a phone redirected to a login that
-// could not succeed, because registration creates the account
-// `pending_verification` and LoginService rejects any non-active
-// account. Verifying a mailbox must not depend on a browser session.
+// Verification is code-based: registration no longer signs the visitor
+// in, and the login flow sends an unverified account here after its
+// password check succeeds. Neither path has an authenticated session at
+// this point, so the screen resolves its subject from
+// PendingEmailVerification (session-scoped, set only by those two
+// callers) or from the guard when the user IS authenticated — the
+// EnsureEmailVerifiedIfRequired middleware redirects here too.
 //
-// The route NAME and PATH are unchanged (`auth.verification.verify`,
-// `/verify-email/{id}/{hash}`). Signed URLs sign the path, and
-// VerifyEmailNotification generates this exact name, so every link
-// already sitting in an inbox keeps working.
-//
-// Security is unchanged: `signed` still enforces the signature and its
-// expiry, the controller resolves the user from the signed id and
-// constant-time-compares the hash against the account's current email,
-// and throttling limits brute-force probing of the id/hash pair.
+// The route name `auth.verification.notice` is unchanged, so that
+// middleware and every existing redirect keep working.
 Route::name('auth.')->group(function (): void {
-    Route::get('/verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
-
-    // Public because a guest who just verified on a second device has to
-    // be able to read the outcome.
-    Route::get('/email-verified', fn () => view('auth.verified', [
-        'outcome' => null,
-        'accountIsUsable' => true,
-    ]))->name('verified');
+    Route::get('/verify-email', [VerifyEmailController::class, 'show'])->name('verification.notice');
 });
 
 // Permanent redirect for the previous student-only registration URL —
@@ -207,16 +192,6 @@ Route::name('auth.')->middleware('auth')->group(function (): void {
 
     // Logout
     Route::post('/logout', LogoutController::class)->name('logout');
-
-    // Email Verification notice — redirect away if already verified
-    Route::get('/verify-email', function () {
-        $user = auth()->user();
-        if ($user->hasVerifiedEmail()) {
-            return redirect(app(PortalResolver::class)->loginRedirect($user));
-        }
-
-        return view('auth.verify-email');
-    })->name('verification.notice');
 
     Route::post('/resend-verification', function (Request $request) {
         $user = $request->user();

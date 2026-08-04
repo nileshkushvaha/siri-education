@@ -157,7 +157,7 @@ class EventServiceProvider extends ServiceProvider
         UserRegistered::class => [
             SendRegistrationNotifications::class,
         ],
-        // Welcome email fires only after the user clicks the verification link
+        // Welcome email fires only once the emailed code has been verified
         Verified::class => [
             SendWelcomeNotification::class,
         ],

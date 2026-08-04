@@ -14,24 +14,8 @@ $authSettings = app(\App\Settings\AuthenticationSettings::class);
     </div>
     @endif
 
-    {{-- Unverified email notice --}}
-    @if($bannerType === 'unverified')
-    <div class="mb-5 rounded-xl bg-blue-500/10 border border-blue-500/25 p-4" role="alert">
-        <div class="flex items-start gap-3 mb-3">
-            <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <div>
-                <p class="text-blue-300 text-sm font-semibold">Email not verified</p>
-                <p class="text-blue-300/80 text-xs mt-0.5">{{ $bannerMessage }}</p>
-            </div>
-        </div>
-        <button type="button" wire:click="resendVerification" wire:loading.attr="disabled"
-            class="w-full text-center text-xs font-medium text-blue-400 hover:text-white bg-blue-500/15 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg py-2 px-3 transition disabled:opacity-60">
-            ✉ Resend verification email
-        </button>
-    </div>
-    @endif
+    {{-- An unverified account no longer stops here: LoginService issues a
+         verification code and the component redirects to the code screen. --}}
 
     @if(! $bannerType && $bannerMessage)
     <div class="mb-5 flex items-start gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-4" role="status">

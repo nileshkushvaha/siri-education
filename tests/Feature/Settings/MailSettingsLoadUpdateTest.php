@@ -7,7 +7,7 @@ namespace Tests\Feature\Settings;
 use App\Filament\Pages\Settings\MailSettingsPage;
 use App\Models\Activity;
 use App\Models\User;
-use App\Notifications\Auth\VerifyEmailNotification;
+use App\Notifications\Auth\EmailVerificationCodeNotification;
 use App\Services\Mail\TransactionalMailSender;
 use App\Settings\MailSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -112,7 +112,7 @@ class MailSettingsLoadUpdateTest extends TestCase
         $settings->auth_from_name = 'SIRI Education';
         app()->instance(MailSettings::class, $settings);
 
-        $message = (new VerifyEmailNotification)->toMail(
+        $message = (new EmailVerificationCodeNotification('123456', 15))->toMail(
             User::factory()->create(['email' => 'student@example.test']),
         );
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Notifications\Auth\VerifyEmailNotification;
+use App\Services\Auth\EmailVerificationOtpService;
 use App\Services\PortalResolver;
 use App\Support\Media\Concerns\HasStandardImageConversions;
 use App\Support\Media\StandardImageConversion;
@@ -368,9 +368,15 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
 
     // ── Email Verification notification override ─────────────────────
 
+    /**
+     * Verification is code-based, not link-based: every caller of the
+     * framework's contract method (login resend, verification screen,
+     * admin approval) issues a fresh one-time code instead of a signed
+     * URL. EmailVerificationOtpService owns the challenge lifecycle.
+     */
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmailNotification);
+        app(EmailVerificationOtpService::class)->issue($this);
     }
 
     // ── Filament ─────────────────────────────────────────────────────

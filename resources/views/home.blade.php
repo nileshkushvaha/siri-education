@@ -332,27 +332,28 @@ $subjectPalettes = [
         </div>
     </section>
 
-    <section class="relative overflow-hidden bg-[#0b102b] py-16 text-white sm:py-20" aria-labelledby="home-trust-heading">
-        <div class="pointer-events-none absolute left-0 top-0 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute right-0 bottom-0 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" aria-hidden="true"></div>
+    <section class="relative overflow-hidden bg-gradient-to-br from-[#080b24] via-[#151044] to-[#312e81] py-16 text-white sm:py-20" aria-labelledby="home-trust-heading">
+        <div class="pointer-events-none absolute left-1/3 top-0 h-80 w-80 rounded-full bg-fuchsia-500/15 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute right-0 bottom-0 h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl" aria-hidden="true"></div>
         <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-3xl text-center">
-                <p class="text-sm font-black uppercase tracking-[0.15em] text-emerald-300">Trust is a platform feature</p>
-                <h2 id="home-trust-heading" class="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">Designed for educational, identity, and financial trust</h2>
-                <p class="mt-4 leading-7 text-slate-300">The SRS treats trust as an operational requirement: verification, access control, privacy, traceability, and accountable platform actions work together.</p>
+            <div class="mx-auto max-w-4xl text-center">
+                <p class="inline-flex rounded-full border border-cyan-300/35 bg-cyan-400/10 px-5 py-2 text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Built on trust · SIRI Education</p>
+                <h2 id="home-trust-heading" class="mt-6 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">Trust at every step of <span class="bg-gradient-to-r from-cyan-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">the learning journey.</span></h2>
+                <p class="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">Verified instructors, protected student information, secure payments, and traceable platform actions create a safer place to learn and teach.</p>
             </div>
 
-            <div class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 @foreach([
-                ['Instructor verification', 'Teaching access is separated from registration and depends on the configured review lifecycle.', 'text-cyan-300', 'border-cyan-400/20 bg-cyan-400/[0.07]'],
-                ['Privacy by design', 'Student records and private verification documents remain limited to authorised access.', 'text-fuchsia-300', 'border-fuchsia-400/20 bg-fuchsia-400/[0.07]'],
-                ['Traceable finances', 'Wallet transactions, payments, refunds, earnings, and settlements retain auditable records.', 'text-amber-300', 'border-amber-400/20 bg-amber-400/[0.07]'],
-                ['Quality accountability', 'Reviews, feedback, status changes, and administrative actions follow controlled rules.', 'text-emerald-300', 'border-emerald-400/20 bg-emerald-400/[0.07]'],
-                ] as $index => [$title, $description, $accent, $surface])
-                <article class="rounded-3xl border {{ $surface }} p-6 backdrop-blur">
-                    <span class="text-xs font-black uppercase tracking-[0.15em] {{ $accent }}">Trust layer {{ $index + 1 }}</span>
-                    <h3 class="mt-4 text-lg font-black text-white">{{ $title }}</h3>
-                    <p class="mt-3 text-sm leading-6 text-slate-300">{{ $description }}</p>
+                ['◎', '10,000+', 'Students taught'],
+                ['✓', '1.5 Lac+', 'Teaching hours'],
+                ['◷', '10+', 'Years of learning'],
+                ['⌖', '99%', 'Positive feedback'],
+                ['▤', '100+', 'Subjects covered'],
+                ] as [$icon, $value, $label])
+                <article class="flex min-h-56 flex-col items-center justify-center rounded-3xl border border-white/15 bg-white/[0.06] p-6 text-center shadow-xl shadow-slate-950/10 backdrop-blur-sm transition hover:-translate-y-1 hover:border-cyan-300/35 hover:bg-white/[0.09]">
+                    <span class="flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-300/40 bg-violet-400/15 text-lg font-black text-cyan-300" aria-hidden="true">{{ $icon }}</span>
+                    <strong class="mt-6 bg-gradient-to-r from-white to-violet-200 bg-clip-text text-3xl font-black tracking-tight text-transparent">{{ $value }}</strong>
+                    <span class="mt-2 text-xs font-black uppercase tracking-[0.12em] text-slate-300">{{ $label }}</span>
                 </article>
                 @endforeach
             </div>

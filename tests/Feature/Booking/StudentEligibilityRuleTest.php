@@ -8,6 +8,7 @@ use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\DTOs\CreateBookingData;
 use App\Booking\Enums\Weekday;
 use App\Booking\Exceptions\BookingException;
+use App\Enums\StudentStatus;
 use App\Models\BookingType;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
@@ -90,6 +91,34 @@ class StudentEligibilityRuleTest extends TestCase
 
         $this->expectException(BookingException::class);
         $this->expectExceptionMessage('Your account is not active');
+
+        app(BookingServiceInterface::class)->request($this->bookingData($student));
+    }
+
+    public function test_registered_student_is_told_that_booking_access_awaits_activation(): void
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE, 'email_verified_at' => now()]);
+        $student->assignRole('student');
+        UserProfile::updateOrCreate(
+            ['user_id' => $student->id],
+            ['student_status' => StudentStatus::Registered],
+        );
+
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessage('Your student account is awaiting activation.');
+
+        app(BookingServiceInterface::class)->request($this->bookingData($student));
+    }
+
+    public function test_missing_student_profile_is_reported_as_incomplete(): void
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE, 'email_verified_at' => now()]);
+        $student->assignRole('student');
+        $student->profile()->delete();
+        $student->unsetRelation('profile');
+
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessage('Your student profile is incomplete, so booking is currently unavailable.');
 
         app(BookingServiceInterface::class)->request($this->bookingData($student));
     }

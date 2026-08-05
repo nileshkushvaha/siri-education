@@ -81,6 +81,41 @@ class BookingWizardLivewireTest extends TestCase
             ->assertSee('Book a Session');
     }
 
+    public function test_wizard_shows_times_in_the_students_own_timezone_not_the_server_default(): void
+    {
+        $student = $this->student();
+        $student->profile->update(['timezone' => 'Asia/Kolkata']);
+
+        Livewire::actingAs($student)
+            ->test('frontend.booking.booking-wizard')
+            ->assertSet('timezone', 'Asia/Kolkata')
+            ->assertSee('Asia/Kolkata');
+    }
+
+    public function test_browser_detection_never_overrides_the_students_stored_timezone(): void
+    {
+        $student = $this->student();
+        $student->profile->update(['timezone' => 'Asia/Kolkata']);
+
+        // A device reporting UTC (or a VPN, or travel) must not silently
+        // replace the timezone the account actually holds.
+        Livewire::actingAs($student)
+            ->test('frontend.booking.booking-wizard')
+            ->call('setTimezone', 'UTC')
+            ->assertSet('timezone', 'Asia/Kolkata');
+    }
+
+    public function test_browser_detection_fills_in_when_the_account_has_no_stored_timezone(): void
+    {
+        $student = $this->student();
+        $student->profile->update(['timezone' => null]);
+
+        Livewire::actingAs($student)
+            ->test('frontend.booking.booking-wizard')
+            ->call('setTimezone', 'Europe/Berlin')
+            ->assertSet('timezone', 'Europe/Berlin');
+    }
+
     public function test_authenticated_student_can_complete_booking_wizard(): void
     {
         $student = $this->student();

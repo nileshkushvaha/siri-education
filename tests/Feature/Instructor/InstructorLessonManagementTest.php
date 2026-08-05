@@ -14,6 +14,7 @@ use App\Models\BookingMeeting;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Settings\MeetingSettings;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -108,6 +109,23 @@ final class InstructorLessonManagementTest extends TestCase
             ->test(LessonFeedbackManager::class)
             ->assertSee($mine->student->name)
             ->assertDontSee($theirs->id);
+    }
+
+    public function test_lesson_list_displays_times_in_the_instructor_profile_timezone(): void
+    {
+        $this->instructor->profile()->update(['timezone' => 'Asia/Kolkata']);
+        $startsAt = CarbonImmutable::parse('2026-08-05 00:30:00', 'UTC');
+
+        $this->makeLesson($this->instructor, $this->student, [
+            'starts_at' => $startsAt,
+            'ends_at' => $startsAt->addMinutes(30),
+        ]);
+
+        Livewire::actingAs($this->instructor)
+            ->test(LessonFeedbackManager::class)
+            ->assertSee('6:00 AM')
+            ->assertSee('6:30 AM')
+            ->assertDontSee('12:30 AM');
     }
 
     // ── Join ──────────────────────────────────────────────────────────

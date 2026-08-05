@@ -181,7 +181,7 @@ class StudentFinancialVerificationGateTest extends TestCase
         // Deliberately no student_status set (defaults to Registered/null).
 
         $this->expectException(BookingException::class);
-        $this->expectExceptionMessage('Your account is not available for booking. Please contact support.');
+        $this->expectExceptionMessage('Your student profile is incomplete, so booking is currently unavailable.');
 
         $this->bookPaid($student);
     }

@@ -18,7 +18,7 @@
         </div>
         <div>
             <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Date &amp; time</dt>
-            <dd class="text-slate-300">{{ $lesson->starts_at->format('M j, Y g:i A') }}</dd>
+            <dd class="text-slate-300">{{ $lesson->starts_at->copy()->timezone($timezone)->format('M j, Y g:i A') }}</dd>
         </div>
         <div>
             <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Duration</dt>
@@ -133,7 +133,7 @@
                         @endif
                     @endforeach
                 </dl>
-                <p class="mt-4 text-xs text-slate-500">Submitted {{ $feedback->submittedAt->format('M j, Y g:i A') }}. Feedback cannot be edited or deleted.</p>
+                <p class="mt-4 text-xs text-slate-500">Submitted {{ $feedback->submittedAt->copy()->timezone($timezone)->format('M j, Y g:i A') }}. Feedback cannot be edited or deleted.</p>
             @else
                 <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Private feedback &middot; visible only to you</p>
                 <form wire:submit="submitFeedback('{{ $lesson->id }}')" class="space-y-4">

@@ -62,7 +62,15 @@ class UserFactory extends Factory
     {
         return $this->afterCreating(function (User $user): void {
             $user->assignRole('student');
-            $user->profile()->update(['student_status' => StudentStatus::Active]);
+
+            // UTC keeps fixture times literal: anything that renders in the
+            // student's own timezone (the booking wizard, scheduled-time
+            // notifications) then matches the UTC instants tests build.
+            // Tests that care about a specific zone set it explicitly.
+            $user->profile()->update([
+                'student_status' => StudentStatus::Active,
+                'timezone' => 'UTC',
+            ]);
         });
     }
 }

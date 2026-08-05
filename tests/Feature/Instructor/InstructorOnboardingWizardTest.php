@@ -129,6 +129,79 @@ class InstructorOnboardingWizardTest extends TestCase
         ]);
     }
 
+    public function test_saving_a_section_advances_the_wizard_to_the_next_step(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        [$subject, $level, $language] = $this->masterData();
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('step', 2)
+            ->set('profile.headline', 'STEM mentor')
+            ->set('profile.bio', 'I teach STEM with care.')
+            ->set('profile.teaching_experience_summary', 'Ten years teaching robotics.')
+            ->set('profile.teaching_philosophy', 'Students learn by doing.')
+            ->call('saveProfile')
+            ->assertHasNoErrors()
+            ->assertSet('step', 3)
+            ->set('subjectIds', [$subject->id])
+            ->set('academicLevelIds', [$level->id])
+            ->set('teachingLanguageIds', [(string) $language->id])
+            ->call('savePreferences')
+            ->assertHasNoErrors()
+            ->assertSet('step', 4);
+    }
+
+    public function test_save_and_add_another_keeps_the_instructor_on_the_same_step(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('step', 4)
+            ->set('educationForm.institution_name', 'State University')
+            ->set('educationForm.degree', 'Bachelor of Science')
+            ->set('educationForm.education_level', EducationLevel::Bachelor->value)
+            ->set('educationForm.start_date', '2015-01-01')
+            ->set('educationForm.end_date', '2019-01-01')
+            ->call('saveEducation', false)
+            ->assertHasNoErrors()
+            ->assertSet('step', 4)
+            ->set('educationForm.institution_name', 'City College')
+            ->set('educationForm.degree', 'Master of Science')
+            ->set('educationForm.education_level', EducationLevel::Master->value)
+            ->set('educationForm.start_date', '2019-01-01')
+            ->set('educationForm.end_date', '2021-01-01')
+            ->call('saveEducation')
+            ->assertHasNoErrors()
+            ->assertSet('step', 5);
+
+        $this->assertSame(2, $user->educations()->count());
+    }
+
+    public function test_documents_step_advances_only_once_every_required_document_is_uploaded(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+
+        $component = Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('step', 6)
+            ->set('governmentId', UploadedFile::fake()->image('government.jpg'))
+            ->call('uploadDocument', 'government_id')
+            ->assertSet('step', 6)
+            ->set('addressProof', UploadedFile::fake()->image('address.jpg'))
+            ->call('uploadDocument', 'address_proof')
+            ->set('educationCertificate', UploadedFile::fake()->image('education.jpg'))
+            ->call('uploadDocument', 'education_certificate')
+            ->set('teachingCertificate', UploadedFile::fake()->image('teaching.jpg'))
+            ->call('uploadDocument', 'teaching_certificate')
+            ->set('resume', UploadedFile::fake()->image('resume.jpg'))
+            ->call('uploadDocument', 'resume')
+            ->assertHasNoErrors();
+
+        $component->assertSet('step', 7);
+    }
+
     public function test_user_can_add_and_update_education(): void
     {
         $user = User::factory()->create(['status' => 'active']);

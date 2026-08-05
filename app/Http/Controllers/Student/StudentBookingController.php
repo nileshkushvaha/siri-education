@@ -20,6 +20,7 @@ use App\Http\Requests\Api\Student\StudentTeachersRequest;
 use App\Http\Resources\Booking\TimeSlotResource;
 use App\Http\Resources\Student\StudentBookingResource;
 use App\Http\Resources\Student\TeacherOptionResource;
+use App\Support\RecipientTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,7 +82,7 @@ final class StudentBookingController extends Controller
             return TimeSlotResource::collection(collect());
         }
 
-        $timezone = $request->validated('timezone', 'UTC');
+        $timezone = $request->validated('timezone') ?? RecipientTimezoneResolver::resolve($request->user());
         $date = CarbonImmutable::parse($request->validated('date'), $timezone)->startOfDay();
 
         return TimeSlotResource::collection($availability->slots(new AvailabilityQueryData(
@@ -95,7 +96,10 @@ final class StudentBookingController extends Controller
 
     public function store(StoreStudentBookingRequest $request): JsonResponse
     {
-        $timezone = $request->validated('timezone', 'UTC');
+        // Omitted by the caller means "use mine", not "use the server's" —
+        // the student's own stored timezone, same resolution order the
+        // booking wizard and every scheduled-time notification use.
+        $timezone = $request->validated('timezone') ?? RecipientTimezoneResolver::resolve($request->user());
 
         $data = new StudentBookingData(
             typeKey: $request->validated('type'),

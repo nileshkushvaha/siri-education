@@ -197,6 +197,7 @@ final class LessonFeedbackManager extends Component
         MeetingSettings $meetingSettings,
     ): View {
         $instructorId = (int) auth()->id();
+        $timezone = auth()->user()?->profile?->timezone ?: config('app.timezone');
 
         $upcoming = Lesson::query()
             ->forInstructor($instructorId)
@@ -240,6 +241,7 @@ final class LessonFeedbackManager extends Component
             'lessons' => $recent,
             'existingFeedback' => $existingFeedback,
             'completedOutcome' => LessonOutcome::Completed,
+            'timezone' => $timezone,
         ]);
     }
 

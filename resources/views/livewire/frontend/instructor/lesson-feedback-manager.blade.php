@@ -22,6 +22,8 @@
         <x-account.card>
             @forelse ($upcoming as $lesson)
                 @php($join = $joinInfo[$lesson->id] ?? ['availability' => \App\Booking\Enums\MeetingJoinAvailability::Unavailable, 'url' => null])
+                @php($lessonStartsAt = $lesson->starts_at->copy()->timezone($timezone))
+                @php($lessonEndsAt = $lesson->ends_at->copy()->timezone($timezone))
                 <div wire:key="upcoming-lesson-{{ $lesson->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div class="min-w-0">
@@ -31,8 +33,8 @@
                             </div>
                             <p class="text-xs text-slate-400">Student: {{ $lesson->student?->name ?? 'Student' }}</p>
                             <p class="text-xs text-slate-400 mt-1">
-                                {{ $lesson->starts_at->isToday() ? 'Today' : $lesson->starts_at->format('M j, Y') }}
-                                &middot; {{ $lesson->starts_at->format('g:i A') }} - {{ $lesson->ends_at->format('g:i A') }}
+                                {{ $lessonStartsAt->isToday() ? 'Today' : $lessonStartsAt->format('M j, Y') }}
+                                &middot; {{ $lessonStartsAt->format('g:i A') }} - {{ $lessonEndsAt->format('g:i A') }}
                             </p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
@@ -69,6 +71,7 @@
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300">Recent Lessons</h2>
         <x-account.card>
             @forelse ($lessons as $lesson)
+                @php($lessonStartsAt = $lesson->starts_at->copy()->timezone($timezone))
                 <div wire:key="lesson-{{ $lesson->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div class="min-w-0">
@@ -81,7 +84,7 @@
                                 @endif
                             </div>
                             <p class="text-xs text-slate-400">
-                                {{ $lesson->starts_at->format('M j, Y g:i A') }}
+                                {{ $lessonStartsAt->format('M j, Y g:i A') }}
                                 @if ($lesson->outcome === $completedOutcome && $lesson->hasFinalizedOutcome() && ($existingFeedback[$lesson->id] ?? null))
                                     &middot; Feedback submitted
                                 @endif

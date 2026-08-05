@@ -14,9 +14,11 @@ use App\Booking\Services\BookingWizardService;
 use App\Models\Wallet;
 use App\Settings\FeatureSettings;
 use App\Support\MoneyFormatter;
+use App\Support\RecipientTimezoneResolver;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -85,6 +87,10 @@ final class BookingWizard extends Component
 
     public string $timezone = 'UTC';
 
+    /** True when the account has its own stored timezone, which browser detection may not override. */
+    #[Locked]
+    public bool $timezonePinned = false;
+
     public string $notes = '';
 
     public string $banner = '';
@@ -143,7 +149,18 @@ final class BookingWizard extends Component
 
     public function mount(): void
     {
-        $this->timezone = config('app.timezone', 'UTC');
+        // The student's OWN stored timezone (set from their country at
+        // registration) is authoritative — the same resolution order every
+        // scheduled notification uses. `config('app.timezone')` is the
+        // server's storage timezone (UTC) and must never be shown as "your
+        // local timezone"; browser detection only fills in when the account
+        // has no stored timezone of its own.
+        $user = Auth::user();
+        $this->timezonePinned = filled($user?->profile?->timezone);
+        $this->timezone = $user !== null
+            ? RecipientTimezoneResolver::resolve($user)
+            : RecipientTimezoneResolver::PLATFORM_FALLBACK;
+
         $this->month = now($this->timezone)->format('Y-m');
         $this->types = $this->wizard->bookingTypes()->all();
         $this->subjects = $this->wizard->subjects()->all();
@@ -179,10 +196,20 @@ final class BookingWizard extends Component
         }
     }
 
+    /**
+     * Browser-detected timezone, used only when the account has none of
+     * its own. A device reporting UTC (or a VPN, or travel) must not
+     * silently override the timezone the student actually set.
+     */
     public function setTimezone(string $timezone): void
     {
+        if ($this->timezonePinned) {
+            return;
+        }
+
         if (in_array($timezone, timezone_identifiers_list(), true)) {
             $this->timezone = $timezone;
+            $this->month = now($this->timezone)->format('Y-m');
         }
     }
 

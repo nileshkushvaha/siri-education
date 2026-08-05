@@ -8,6 +8,7 @@ use App\Booking\Contracts\BookingRuleInterface;
 use App\Booking\Contracts\BookingTypeInterface;
 use App\Booking\DTOs\CreateBookingData;
 use App\Booking\Exceptions\BookingException;
+use App\Enums\StudentStatus;
 use App\Models\User;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\AuthenticationSettings;
@@ -52,7 +53,14 @@ final class VerifiedActiveStudentRule implements BookingRuleInterface
         // separately by the students:reconcile-lifecycle-status command
         // — see StudentLifecycleService::isEligibleForStudentActions().
         if (! $this->studentLifecycle->isEligibleForStudentActions($user)) {
-            throw new BookingException('Your account is not available for booking. Please contact support.');
+            $message = match ($user->profile?->student_status) {
+                StudentStatus::Registered => 'Your student account is awaiting activation. Please contact support to activate booking access.',
+                StudentStatus::Suspended => 'Your student account is suspended, so booking is currently unavailable. Please contact support for help.',
+                StudentStatus::Archived => 'Your student account has been archived, so booking is unavailable. Please contact support for help.',
+                default => 'Your student profile is incomplete, so booking is currently unavailable. Please contact support to complete your account setup.',
+            };
+
+            throw new BookingException($message);
         }
     }
 }

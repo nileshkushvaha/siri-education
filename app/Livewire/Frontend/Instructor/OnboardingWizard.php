@@ -169,6 +169,7 @@ final class OnboardingWizard extends Component
 
         $this->refreshState();
         session()->flash('success', 'Professional profile saved.');
+        $this->goToStep(3);
     }
 
     public function savePreferences(): void
@@ -199,9 +200,14 @@ final class OnboardingWizard extends Component
 
         $this->refreshState();
         session()->flash('success', 'Teaching preferences saved.');
+        $this->goToStep(4);
     }
 
-    public function saveEducation(): void
+    /**
+     * @param  bool  $advance  False for "Save and add another", which keeps
+     *                         the instructor on this step for a second entry.
+     */
+    public function saveEducation(bool $advance = true): void
     {
         $onboarding = app(InstructorOnboardingService::class);
 
@@ -222,6 +228,10 @@ final class OnboardingWizard extends Component
         $this->resetEducationForm();
         $this->refreshState();
         session()->flash('success', 'Education saved.');
+
+        if ($advance) {
+            $this->goToStep(5);
+        }
     }
 
     public function editEducation(int $educationId): void
@@ -249,7 +259,11 @@ final class OnboardingWizard extends Component
         $this->refreshState();
     }
 
-    public function saveExperience(): void
+    /**
+     * @param  bool  $advance  False for "Save and add another", which keeps
+     *                         the instructor on this step for a second entry.
+     */
+    public function saveExperience(bool $advance = true): void
     {
         $onboarding = app(InstructorOnboardingService::class);
 
@@ -272,6 +286,10 @@ final class OnboardingWizard extends Component
         $this->resetExperienceForm();
         $this->refreshState();
         session()->flash('success', 'Experience saved.');
+
+        if ($advance) {
+            $this->goToStep(6);
+        }
     }
 
     public function editExperience(int $experienceId): void
@@ -329,6 +347,12 @@ final class OnboardingWizard extends Component
         $this->{$property} = null;
         $this->refreshState();
         session()->flash('success', 'Document uploaded.');
+
+        // Only once nothing required is still missing — uploading the first
+        // of three documents must not skip past the other two.
+        if (collect($this->documents())->every(fn (array $document): bool => $document['uploaded'])) {
+            $this->goToStep(7);
+        }
     }
 
     public function submit(): void
@@ -392,9 +416,23 @@ final class OnboardingWizard extends Component
         $this->employmentTypes = array_map(fn (EmploymentType $type): array => ['value' => $type->value, 'label' => $type->label()], EmploymentType::cases());
     }
 
+    /**
+     * Saving a section carries the instructor to the next one, so the wizard
+     * moves forward on its own. The step list stays clickable, so going back
+     * to revise an earlier section is still one click.
+     */
+    private function goToStep(int $step): void
+    {
+        $this->step = $step;
+        $this->dispatch('onboarding-step-changed');
+    }
+
     private function documents(): array
     {
-        $profile = auth()->user()->profile;
+        // Freshly loaded: an upload earlier in this same request would
+        // otherwise be missed by the already-loaded media relation, leaving
+        // a just-uploaded document reported as still outstanding.
+        $profile = auth()->user()->fresh('profile.media')?->profile;
 
         return app(InstructorDocumentRequirementService::class)
             ->activeRequirements()

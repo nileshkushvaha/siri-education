@@ -10,12 +10,12 @@
     ];
 
     $inputClass = 'w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-400 focus:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60';
-    $selectClass = 'w-full rounded-lg border border-white/[0.10] bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60';
-    $buttonClass = 'inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50';
-    $secondaryButtonClass = 'inline-flex items-center justify-center rounded-lg border border-white/[0.10] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-50';
+    $selectClass = 'w-full cursor-pointer rounded-lg border border-white/[0.10] bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60';
+    $buttonClass = 'inline-flex cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50';
+    $secondaryButtonClass = 'inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/[0.10] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-50';
     $helpClass = 'mt-2 text-xs leading-5 text-slate-500';
     $errorClass = 'mt-2 text-xs font-medium text-rose-300';
-    $dropdownButtonClass = 'flex w-full items-center justify-between gap-3 rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-left text-sm text-white outline-none transition hover:bg-white/[0.06] focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60';
+    $dropdownButtonClass = 'flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-left text-sm text-white outline-none transition hover:bg-white/[0.06] focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60';
 
     $selectedSummary = function (array $options, array $selected, string $placeholder): string {
         $selectedIds = array_map('strval', $selected);
@@ -36,7 +36,11 @@
     };
 @endphp
 
-<div class="space-y-6">
+{{-- Saving a section advances the wizard; bring the new step into view
+     rather than leaving the instructor scrolled at the old form's footer. --}}
+<div class="space-y-6"
+     x-data
+     @onboarding-step-changed.window="$el.scrollIntoView({ behavior: 'smooth', block: 'start' })">
     <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div class="min-w-0">
@@ -69,7 +73,7 @@
             @foreach($steps as $number => $stepMeta)
                 <button type="button"
                         wire:click="$set('step', {{ $number }})"
-                        class="group flex min-w-[8.75rem] items-center gap-3 rounded-xl px-3 py-3 text-left transition {{ $step === $number ? 'bg-indigo-500/15 text-white ring-1 ring-indigo-400/30' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white' }}">
+                        class="group flex min-w-[8.75rem] cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition {{ $step === $number ? 'bg-indigo-500/15 text-white ring-1 ring-indigo-400/30' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white' }}">
                     <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold {{ $step === $number ? 'bg-indigo-500 text-white' : 'bg-white/[0.06] text-slate-300 group-hover:bg-white/[0.10]' }}">
                         {{ $number }}
                     </span>
@@ -170,7 +174,7 @@
                             @endif
 
                             @if($progress['next_action'] === 'submit_application')
-                                <button type="button" wire:click="$set('step', 7)" class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+                                <button type="button" wire:click="$set('step', 7)" class="inline-flex cursor-pointer items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
                                     Review & Submit
                                 </button>
                             @endif
@@ -218,21 +222,21 @@
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
                             <label class="mb-3 block text-sm font-medium text-slate-200">Profile Photo</label>
-                            <input type="file" wire:model="profilePhoto" @disabled(! $editable) class="block w-full text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white">
+                            <input type="file" wire:model="profilePhoto" @disabled(! $editable) class="block w-full cursor-pointer text-sm text-slate-300 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
                             <p class="{{ $helpClass }}">Upload a clear headshot. JPG or PNG works best, up to 4 MB.</p>
                             @error('profilePhoto') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
                         </div>
 
                         <div class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
                             <label class="mb-3 block text-sm font-medium text-slate-200">Introduction Video</label>
-                            <input type="file" wire:model="introductionVideo" @disabled(! $editable) class="block w-full text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white">
+                            <input type="file" wire:model="introductionVideo" @disabled(! $editable) class="block w-full cursor-pointer text-sm text-slate-300 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
                             <p class="{{ $helpClass }}">Optional short intro. Supported formats: MP4, WebM, or MOV, up to 50 MB.</p>
                             @error('introductionVideo') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
                     <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">
-                        Save Profile
+                        Save and Continue
                     </button>
                 </form>
             @endif
@@ -257,7 +261,7 @@
                             <div x-show="open" x-transition style="display: none;" class="absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.10] bg-slate-950 p-2 shadow-2xl shadow-black/40">
                                 @forelse($subjects as $subject)
                                     <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06]">
-                                        <input type="checkbox" x-model="selected" value="{{ $subject['id'] }}" @disabled(! $editable) class="rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400">
+                                        <input type="checkbox" x-model="selected" value="{{ $subject['id'] }}" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400 disabled:cursor-not-allowed">
                                         <span>{{ $subject['name'] }}</span>
                                     </label>
                                 @empty
@@ -281,7 +285,7 @@
                             <div x-show="open" x-transition style="display: none;" class="absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.10] bg-slate-950 p-2 shadow-2xl shadow-black/40">
                                 @forelse($academicLevels as $level)
                                     <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06]">
-                                        <input type="checkbox" x-model="selected" value="{{ $level['id'] }}" @disabled(! $editable) class="rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400">
+                                        <input type="checkbox" x-model="selected" value="{{ $level['id'] }}" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400 disabled:cursor-not-allowed">
                                         <span>{{ $level['name'] }}</span>
                                     </label>
                                 @empty
@@ -305,7 +309,7 @@
                             <div x-show="open" x-transition style="display: none;" class="absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.10] bg-slate-950 p-2 shadow-2xl shadow-black/40">
                                 @forelse($skillLevels as $level)
                                     <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06]">
-                                        <input type="checkbox" x-model="selected" value="{{ $level['id'] }}" @disabled(! $editable) class="rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400">
+                                        <input type="checkbox" x-model="selected" value="{{ $level['id'] }}" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400 disabled:cursor-not-allowed">
                                         <span>{{ $level['name'] }}</span>
                                     </label>
                                 @empty
@@ -329,7 +333,7 @@
                             <div x-show="open" x-transition style="display: none;" class="absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.10] bg-slate-950 p-2 shadow-2xl shadow-black/40">
                                 @forelse($languages as $language)
                                     <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06]">
-                                        <input type="checkbox" x-model="selected" value="{{ $language['id'] }}" @disabled(! $editable) class="rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400">
+                                        <input type="checkbox" x-model="selected" value="{{ $language['id'] }}" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400 disabled:cursor-not-allowed">
                                         <span>{{ $language['name'] }}</span>
                                     </label>
                                 @empty
@@ -366,7 +370,7 @@
                     </div>
 
                     <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">
-                        Save Teaching Preferences
+                        Save and Continue
                     </button>
                 </form>
             @endif
@@ -426,8 +430,8 @@
                             </div>
 
                             <div class="lg:col-span-2">
-                                <label class="flex items-center gap-2 text-sm text-slate-300">
-                                    <input type="checkbox" wire:model="educationForm.is_current" @disabled(! $editable) class="rounded border-white/[0.20] bg-white/[0.06]">
+                                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+                                    <input type="checkbox" wire:model="educationForm.is_current" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] disabled:cursor-not-allowed">
                                     Currently studying
                                 </label>
                             </div>
@@ -440,9 +444,14 @@
                             </div>
                         </div>
 
-                        <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">
-                            Save Education
-                        </button>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">
+                                Save and Continue
+                            </button>
+                            <button type="button" wire:click="saveEducation(false)" @disabled(! $editable) class="{{ $secondaryButtonClass }}">
+                                Save and Add Another
+                            </button>
+                        </div>
                     </form>
 
                     <aside class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
@@ -453,8 +462,8 @@
                                     <p class="font-semibold text-white">{{ $education->degree }}</p>
                                     <p class="mt-1 text-sm text-slate-400">{{ $education->institution_name }}</p>
                                     <div class="mt-3 flex gap-3">
-                                        <button type="button" wire:click="editEducation({{ $education->id }})" @disabled(! $editable) class="text-sm font-semibold text-indigo-300 disabled:opacity-50">Edit</button>
-                                        <button type="button" wire:click="deleteEducation({{ $education->id }})" @disabled(! $editable) class="text-sm font-semibold text-rose-300 disabled:opacity-50">Delete</button>
+                                        <button type="button" wire:click="editEducation({{ $education->id }})" @disabled(! $editable) class="cursor-pointer text-sm font-semibold text-indigo-300 transition hover:text-indigo-200 disabled:cursor-not-allowed disabled:opacity-50">Edit</button>
+                                        <button type="button" wire:click="deleteEducation({{ $education->id }})" @disabled(! $editable) class="cursor-pointer text-sm font-semibold text-rose-300 transition hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50">Delete</button>
                                     </div>
                                 </div>
                             @empty
@@ -534,8 +543,8 @@
                             </div>
 
                             <div class="lg:col-span-2">
-                                <label class="flex items-center gap-2 text-sm text-slate-300">
-                                    <input type="checkbox" wire:model="experienceForm.is_current" @disabled(! $editable) class="rounded border-white/[0.20] bg-white/[0.06]">
+                                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+                                    <input type="checkbox" wire:model="experienceForm.is_current" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] disabled:cursor-not-allowed">
                                     Current role
                                 </label>
                             </div>
@@ -548,9 +557,14 @@
                             </div>
                         </div>
 
-                        <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">
-                            Save Experience
-                        </button>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">
+                                Save and Continue
+                            </button>
+                            <button type="button" wire:click="saveExperience(false)" @disabled(! $editable) class="{{ $secondaryButtonClass }}">
+                                Save and Add Another
+                            </button>
+                        </div>
                     </form>
 
                     <aside class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
@@ -561,8 +575,8 @@
                                     <p class="font-semibold text-white">{{ $experience->designation }}</p>
                                     <p class="mt-1 text-sm text-slate-400">{{ $experience->organization_name }}</p>
                                     <div class="mt-3 flex gap-3">
-                                        <button type="button" wire:click="editExperience({{ $experience->id }})" @disabled(! $editable) class="text-sm font-semibold text-indigo-300 disabled:opacity-50">Edit</button>
-                                        <button type="button" wire:click="deleteExperience({{ $experience->id }})" @disabled(! $editable) class="text-sm font-semibold text-rose-300 disabled:opacity-50">Delete</button>
+                                        <button type="button" wire:click="editExperience({{ $experience->id }})" @disabled(! $editable) class="cursor-pointer text-sm font-semibold text-indigo-300 transition hover:text-indigo-200 disabled:cursor-not-allowed disabled:opacity-50">Edit</button>
+                                        <button type="button" wire:click="deleteExperience({{ $experience->id }})" @disabled(! $editable) class="cursor-pointer text-sm font-semibold text-rose-300 transition hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50">Delete</button>
                                     </div>
                                 </div>
                             @empty
@@ -598,7 +612,7 @@
                                 </span>
                             </div>
 
-                            <input type="file" wire:model="{{ $property }}" @disabled(! $editable) class="block w-full text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white">
+                            <input type="file" wire:model="{{ $property }}" @disabled(! $editable) class="block w-full cursor-pointer text-sm text-slate-300 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
                             <p class="{{ $helpClass }}">Use a readable image or PDF-style document. Replace it before submission if needed.</p>
                             @error($property) <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
 
@@ -638,7 +652,7 @@
                         <button type="button"
                                 wire:click="submit"
                                 @disabled($progress['next_action'] !== 'submit_application')
-                                class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
+                                class="mt-5 inline-flex w-full cursor-pointer items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">
                             Submit Application
                         </button>
                     </div>

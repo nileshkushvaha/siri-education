@@ -21,6 +21,11 @@ class AcademicPermissionSeeder extends Seeder
         'AcademicLevel',
         'SkillLevel',
         'InstructorSubjectTopic',
+        'Curriculum',
+        'CurriculumVersion',
+        'CurriculumModule',
+        'EducationSystem',
+        'InstructorCurriculumEligibility',
     ];
 
     private const MANAGER_ACTIONS = [

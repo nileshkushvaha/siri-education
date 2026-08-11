@@ -47,6 +47,9 @@ use App\Filament\Pages\StudentEngagement;
 use App\Filament\Pages\WalletRefunds;
 use App\Filament\Resources\Academic\AcademicCategoryResource;
 use App\Filament\Resources\Academic\AcademicLevelResource;
+use App\Filament\Resources\Academic\CurriculumResource;
+use App\Filament\Resources\Academic\CurriculumVersionResource;
+use App\Filament\Resources\Academic\EducationSystemResource;
 use App\Filament\Resources\Academic\InstructorSubjectTopicResource;
 use App\Filament\Resources\Academic\SkillLevelResource;
 use App\Filament\Resources\Academic\SubjectResource;
@@ -251,6 +254,33 @@ final class NavigationRegistry
                 crossLinkedFrom: 'People → Instructors',
                 previousGroup: 'Academic',
                 previousLabel: 'Instructor Topic Coverage',
+            ),
+            CurriculumResource::class => new NavigationDestination(
+                id: 'academics.curricula',
+                label: 'Curricula',
+                group: 'Academics',
+                subgroup: null,
+                sort: 7,
+                previousGroup: 'Academic',
+                previousLabel: 'Curricula',
+            ),
+            CurriculumVersionResource::class => new NavigationDestination(
+                id: 'academics.curriculum-versions',
+                label: 'Curriculum Versions',
+                group: 'Academics',
+                subgroup: null,
+                sort: 8,
+                previousGroup: 'Academic',
+                previousLabel: 'Curriculum Versions',
+            ),
+            EducationSystemResource::class => new NavigationDestination(
+                id: 'academics.education-systems',
+                label: 'Education Systems',
+                group: 'Academics',
+                subgroup: null,
+                sort: 9,
+                previousGroup: 'Academic',
+                previousLabel: 'Education Systems',
             ),
 
             // ── Operations ───────────────────────────────────────────────

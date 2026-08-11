@@ -115,6 +115,12 @@ class AcademicLevel extends Model
         return $this->hasMany(StudentLearningPlan::class);
     }
 
+    /** EducationSystems this level is mapped into (see EducationSystemAcademicLevel). */
+    public function educationSystemMappings(): HasMany
+    {
+        return $this->hasMany(EducationSystemAcademicLevel::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

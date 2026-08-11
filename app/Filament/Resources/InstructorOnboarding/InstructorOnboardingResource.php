@@ -8,6 +8,7 @@ use App\Enums\InstructorStatus;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\InstructorOnboarding\Pages\EditInstructorOnboarding;
 use App\Filament\Resources\InstructorOnboarding\Pages\ListInstructorOnboarding;
+use App\Filament\Resources\InstructorOnboarding\RelationManagers\CurriculumEligibilityRelationManager;
 use App\Filament\Resources\InstructorOnboarding\Tables\InstructorOnboardingTable;
 use App\Filament\Resources\Users\RelationManagers\ActivityLogRelationManager;
 use App\Filament\Resources\Users\RelationManagers\EducationsRelationManager;
@@ -65,6 +66,7 @@ class InstructorOnboardingResource extends Resource
         return [
             ExperiencesRelationManager::class,
             EducationsRelationManager::class,
+            CurriculumEligibilityRelationManager::class,
             ActivityLogRelationManager::class,
         ];
     }

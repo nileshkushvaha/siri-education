@@ -63,6 +63,12 @@ class Country extends Model
         return $this->belongsToMany(Subject::class, 'subject_country');
     }
 
+    /** EducationSystems mapped into this country (see CountryEducationSystem). */
+    public function educationSystemMappings(): HasMany
+    {
+        return $this->hasMany(CountryEducationSystem::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');

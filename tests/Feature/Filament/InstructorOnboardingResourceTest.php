@@ -8,6 +8,7 @@ use App\Enums\InstructorStatus;
 use App\Filament\Resources\InstructorOnboarding\InstructorOnboardingResource;
 use App\Filament\Resources\InstructorOnboarding\Pages\EditInstructorOnboarding;
 use App\Filament\Resources\InstructorOnboarding\Pages\ListInstructorOnboarding;
+use App\Filament\Resources\InstructorOnboarding\RelationManagers\CurriculumEligibilityRelationManager;
 use App\Filament\Resources\Users\RelationManagers\ActivityLogRelationManager;
 use App\Filament\Resources\Users\RelationManagers\EducationsRelationManager;
 use App\Filament\Resources\Users\RelationManagers\ExperiencesRelationManager;
@@ -218,6 +219,7 @@ final class InstructorOnboardingResourceTest extends TestCase
         $this->assertSame([
             ExperiencesRelationManager::class,
             EducationsRelationManager::class,
+            CurriculumEligibilityRelationManager::class,
             ActivityLogRelationManager::class,
         ], InstructorOnboardingResource::getRelations());
     }

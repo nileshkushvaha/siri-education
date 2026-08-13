@@ -49,6 +49,14 @@ final class PackageEntitlementService
             'paid_quantity' => $proposal->paid_quantity,
             'bonus_quantity' => $proposal->bonus_quantity,
             'total_quantity' => $proposal->total_quantity,
+            // Carried forward from the proposal's snapshot so the
+            // entitlement records the validity that applied at the time.
+            // `expires_at` is deliberately NOT computed here: an
+            // absolute expiry only becomes meaningful once payment
+            // activates the package (Phase 4B.3). Leaving it null now
+            // means "no expiry enforced yet", which is correct while
+            // acceptance still activates the balance directly.
+            'validity_days' => $proposal->validity_days,
             'used_quantity' => 0,
             'status' => PackageEntitlementStatus::Active,
             'activated_at' => now(),

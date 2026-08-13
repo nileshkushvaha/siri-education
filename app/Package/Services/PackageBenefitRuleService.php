@@ -41,12 +41,15 @@ final class PackageBenefitRuleService
 
         $this->assertQuantitiesConsistent($paidQuantity, $bonusQuantity, $totalQuantity);
 
-        return DB::transaction(function () use ($admin, $name, $paidQuantity, $bonusQuantity, $totalQuantity, $data): PackageBenefitRule {
+        $validityDays = $this->normalizeValidityDays($data['validity_days'] ?? null);
+
+        return DB::transaction(function () use ($admin, $name, $paidQuantity, $bonusQuantity, $totalQuantity, $validityDays, $data): PackageBenefitRule {
             $rule = PackageBenefitRule::query()->create([
                 'name' => $name,
                 'paid_quantity' => $paidQuantity,
                 'bonus_quantity' => $bonusQuantity,
                 'total_quantity' => $totalQuantity,
+                'validity_days' => $validityDays,
                 'is_active' => $data['is_active'] ?? true,
                 'created_by' => $admin->id,
                 'updated_by' => $admin->id,
@@ -56,6 +59,7 @@ final class PackageBenefitRuleService
                 'paid_quantity' => $paidQuantity,
                 'bonus_quantity' => $bonusQuantity,
                 'total_quantity' => $totalQuantity,
+                'validity_days' => $validityDays,
             ]);
 
             return $rule->refresh();
@@ -67,7 +71,7 @@ final class PackageBenefitRuleService
     {
         $this->assertCan($admin, 'update', $rule);
 
-        $attributes = collect($data)->only(['name', 'paid_quantity', 'bonus_quantity', 'total_quantity', 'is_active'])->all();
+        $attributes = collect($data)->only(['name', 'paid_quantity', 'bonus_quantity', 'total_quantity', 'validity_days', 'is_active'])->all();
 
         if (array_key_exists('name', $attributes) && trim((string) $attributes['name']) === '') {
             throw ValidationException::withMessages(['name' => 'A name is required.']);
@@ -78,6 +82,10 @@ final class PackageBenefitRuleService
         $totalQuantity = (int) ($attributes['total_quantity'] ?? $rule->total_quantity);
 
         $this->assertQuantitiesConsistent($paidQuantity, $bonusQuantity, $totalQuantity);
+
+        if (array_key_exists('validity_days', $attributes)) {
+            $attributes['validity_days'] = $this->normalizeValidityDays($attributes['validity_days']);
+        }
 
         return DB::transaction(function () use ($admin, $rule, $attributes): PackageBenefitRule {
             $rule->fill([...$attributes, 'updated_by' => $admin->id])->save();
@@ -98,6 +106,32 @@ final class PackageBenefitRuleService
     public function deactivate(User $admin, PackageBenefitRule $rule): PackageBenefitRule
     {
         return $this->update($admin, $rule, ['is_active' => false]);
+    }
+
+    /**
+     * Package validity is "days the student may use the lessons once
+     * the entitlement activates after payment" — never a checkout or
+     * offer-acceptance deadline (see the add_package_validity_columns
+     * migration). NULL means the package never expires; 0 is rejected
+     * so it can never be mistaken for "unlimited".
+     */
+    private function normalizeValidityDays(mixed $validityDays): ?int
+    {
+        if ($validityDays === null || $validityDays === '') {
+            return null;
+        }
+
+        if (! is_numeric($validityDays) || (int) $validityDays != $validityDays) {
+            throw new PackageException('Package validity must be a whole number of days, or blank for no expiry.');
+        }
+
+        $days = (int) $validityDays;
+
+        if ($days < 1) {
+            throw new PackageException('Package validity must be at least 1 day. Leave it blank for no expiry.');
+        }
+
+        return $days;
     }
 
     private function assertQuantitiesConsistent(int $paidQuantity, int $bonusQuantity, int $totalQuantity): void

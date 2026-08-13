@@ -58,10 +58,12 @@ class StudentPackageEntitlement extends Model
         'paid_quantity',
         'bonus_quantity',
         'total_quantity',
+        'validity_days',
         'used_quantity',
         'status',
         'activated_at',
         'completed_at',
+        'expires_at',
     ];
 
     protected function casts(): array
@@ -71,10 +73,12 @@ class StudentPackageEntitlement extends Model
             'paid_quantity' => 'integer',
             'bonus_quantity' => 'integer',
             'total_quantity' => 'integer',
+            'validity_days' => 'integer',
             'used_quantity' => 'integer',
             'remaining_quantity' => 'integer',
             'activated_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
+            'expires_at' => 'immutable_datetime',
         ];
     }
 

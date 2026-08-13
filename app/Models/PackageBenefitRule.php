@@ -49,6 +49,7 @@ class PackageBenefitRule extends Model
         'paid_quantity',
         'bonus_quantity',
         'total_quantity',
+        'validity_days',
         'is_active',
         'created_by',
         'updated_by',
@@ -60,6 +61,7 @@ class PackageBenefitRule extends Model
             'paid_quantity' => 'integer',
             'bonus_quantity' => 'integer',
             'total_quantity' => 'integer',
+            'validity_days' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -100,7 +102,7 @@ class PackageBenefitRule extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'paid_quantity', 'bonus_quantity', 'total_quantity', 'is_active'])
+            ->logOnly(['name', 'paid_quantity', 'bonus_quantity', 'total_quantity', 'validity_days', 'is_active'])
             ->useLogName('package_benefit_rules')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

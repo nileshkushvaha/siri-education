@@ -32,6 +32,10 @@ class PackageBenefitRulesTable
                 TextColumn::make('total_quantity')
                     ->label('Total Lessons')
                     ->sortable(),
+                TextColumn::make('validity_days')
+                    ->label('Validity')
+                    ->formatStateUsing(fn (?int $state): string => $state === null ? 'No expiry' : sprintf('%d days', $state))
+                    ->sortable(),
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),

@@ -11,6 +11,7 @@ use App\Providers\FrontendServiceProvider;
 use App\Providers\HomeworkServiceProvider;
 use App\Providers\LessonServiceProvider;
 use App\Providers\NavigationServiceProvider;
+use App\Providers\PaymentServiceProvider;
 use App\Providers\QualityServiceProvider;
 use App\Providers\ReferralServiceProvider;
 use App\Providers\ReportingServiceProvider;
@@ -26,6 +27,7 @@ return [
     HomeworkServiceProvider::class,
     LessonServiceProvider::class,
     NavigationServiceProvider::class,
+    PaymentServiceProvider::class,
     ReviewServiceProvider::class,
     QualityServiceProvider::class,
     FeedbackServiceProvider::class,

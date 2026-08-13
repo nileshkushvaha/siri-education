@@ -51,6 +51,17 @@ class PackageBenefitRuleForm
                             ->readOnly()
                             ->helperText('Total lessons available to the student — paid + bonus, calculated automatically.'),
                     ]),
+                    // Usage validity for the purchased lessons — NOT a
+                    // checkout deadline and NOT an offer-acceptance
+                    // deadline. The clock only starts once payment
+                    // activates the student's package.
+                    TextInput::make('validity_days')
+                        ->label('Package Validity')
+                        ->numeric()
+                        ->minValue(1)
+                        ->suffix('days')
+                        ->placeholder('e.g. 90')
+                        ->helperText('Number of days the student has to use the package after payment activates it. Leave blank for no expiry.'),
                     Toggle::make('is_active')
                         ->label('Active')
                         ->default(true)

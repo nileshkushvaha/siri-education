@@ -138,6 +138,10 @@ final class InstructorPackageProposalService
                 'paid_quantity' => $rule->paid_quantity,
                 'bonus_quantity' => $rule->bonus_quantity,
                 'total_quantity' => $rule->total_quantity,
+                // Snapshotted alongside the quantities, for the same
+                // reason: a later admin edit to the offer's validity
+                // must never change an already-created proposal.
+                'validity_days' => $rule->validity_days,
                 'calculated_price_minor' => $price->calculatedPriceMinor,
                 'final_price_minor' => $price->calculatedPriceMinor,
                 'status' => InstructorPackageProposalStatus::Draft,

@@ -108,6 +108,18 @@ class InstructorPackageProposalPolicy
             && $this->hasPermission($user, 'Accept:InstructorPackageProposal');
     }
 
+    /**
+     * The student declining an offer made to them. Gated by the same
+     * Accept permission — deciding on your own offer is one capability,
+     * and a student who may accept may obviously also refuse.
+     */
+    public function decline(User $user, InstructorPackageProposal $proposal): bool
+    {
+        return $user->id === $proposal->student_id
+            && $proposal->status === InstructorPackageProposalStatus::Approved
+            && $this->hasPermission($user, 'Accept:InstructorPackageProposal');
+    }
+
     private function hasPermission(User $user, string $permission): bool
     {
         try {

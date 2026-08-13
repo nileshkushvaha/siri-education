@@ -50,6 +50,22 @@ class PackagePermissionSeeder extends Seeder
         'Accept:InstructorPackageProposal',
     ];
 
+    /**
+     * Phase 4A — entitlements are read-only for every role (created by
+     * acceptance, mutated only by PackageEntitlementService), so there
+     * are deliberately no Create/Update/Delete permissions at all.
+     * `ViewAny` is the admin-wide listing; `View` is the row-level
+     * ability the policy narrows to own-student / own-instructor.
+     */
+    private const ENTITLEMENT_MANAGER_PERMISSIONS = [
+        'ViewAny:StudentPackageEntitlement',
+        'View:StudentPackageEntitlement',
+    ];
+
+    private const ENTITLEMENT_PARTICIPANT_PERMISSIONS = [
+        'View:StudentPackageEntitlement',
+    ];
+
     public function run(): void
     {
         $ruleManagerPermissions = [];
@@ -62,13 +78,15 @@ class PackagePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => "{$action}:PackageBenefitRule", 'guard_name' => 'web']);
         }
 
-        $allProposalPermissions = array_unique([
+        $allPackagePermissions = array_unique([
             ...self::PROPOSAL_MANAGER_PERMISSIONS,
             ...self::PROPOSAL_INSTRUCTOR_PERMISSIONS,
             ...self::PROPOSAL_STUDENT_PERMISSIONS,
+            ...self::ENTITLEMENT_MANAGER_PERMISSIONS,
+            ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS,
         ]);
 
-        foreach ([...$ruleManagerPermissions, ...$allProposalPermissions] as $permission) {
+        foreach ([...$ruleManagerPermissions, ...$allPackagePermissions] as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
@@ -81,13 +99,13 @@ class PackagePermissionSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web'])
-            ->givePermissionTo([...$ruleManagerPermissions, ...self::PROPOSAL_MANAGER_PERMISSIONS]);
+            ->givePermissionTo([...$ruleManagerPermissions, ...self::PROPOSAL_MANAGER_PERMISSIONS, ...self::ENTITLEMENT_MANAGER_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web'])
-            ->givePermissionTo(self::PROPOSAL_INSTRUCTOR_PERMISSIONS);
+            ->givePermissionTo([...self::PROPOSAL_INSTRUCTOR_PERMISSIONS, ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web'])
-            ->givePermissionTo(self::PROPOSAL_STUDENT_PERMISSIONS);
+            ->givePermissionTo([...self::PROPOSAL_STUDENT_PERMISSIONS, ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

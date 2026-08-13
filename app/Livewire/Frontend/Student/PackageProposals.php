@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Frontend\Student;
 
 use App\Models\InstructorPackageProposal;
+use App\Models\StudentPackageEntitlement;
 use App\Package\Exceptions\PackageException;
 use App\Package\Services\InstructorPackageProposalService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -14,12 +15,16 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Student-facing read-only package view. The list query is inherently
- * ownership + visibility scoped (own proposals, Approved/Accepted
- * only — never Draft/Submitted/Rejected) — mirrors BookingHistory:
- * server-scoped list + Gate::authorize() per action, no ownership
- * logic duplicated here. "Accept" is a placeholder per this phase's
- * explicit scope: no payment flow exists behind it yet.
+ * Student-facing package view. The list query is inherently ownership +
+ * visibility scoped (own proposals, Approved/Accepted only — never
+ * Draft/Submitted/Rejected) — mirrors BookingHistory: server-scoped
+ * list + Gate::authorize() per action, no ownership logic duplicated
+ * here.
+ *
+ * Phase 4A: accepting now grants a StudentPackageEntitlement (the
+ * lesson balance shown alongside each accepted package). Payment is
+ * still out of scope — accepting records agreement and grants the
+ * balance; no money moves and no lesson is scheduled here.
  */
 final class PackageProposals extends Component
 {
@@ -37,17 +42,34 @@ final class PackageProposals extends Component
 
     public function accept(string $proposalId): void
     {
-        $proposal = InstructorPackageProposal::query()
-            ->forStudent((int) auth()->id())
-            ->findOrFail($proposalId);
+        $proposal = $this->ownProposal($proposalId);
 
         if (! $this->authorizeOrDeny('accept', $proposal)) {
             return;
         }
 
         try {
-            $this->proposals->accept($proposal, auth()->user());
-            $this->statusMessage = 'Package accepted. Payment and lesson access are handled separately.';
+            $accepted = $this->proposals->acceptProposal($proposal, auth()->user());
+            $this->statusMessage = sprintf(
+                'Package accepted — %d lessons are now available. Payment is handled separately.',
+                $accepted->total_quantity,
+            );
+        } catch (PackageException $e) {
+            $this->addError('form', $e->getMessage());
+        }
+    }
+
+    public function decline(string $proposalId): void
+    {
+        $proposal = $this->ownProposal($proposalId);
+
+        if (! $this->authorizeOrDeny('decline', $proposal)) {
+            return;
+        }
+
+        try {
+            $this->proposals->declineProposal($proposal, auth()->user());
+            $this->statusMessage = 'Package declined.';
         } catch (PackageException $e) {
             $this->addError('form', $e->getMessage());
         }
@@ -55,14 +77,29 @@ final class PackageProposals extends Component
 
     public function render(): View
     {
+        $studentId = (int) auth()->id();
+
         return view('livewire.frontend.student.package-proposals', [
             'proposals' => InstructorPackageProposal::query()
-                ->forStudent((int) auth()->id())
+                ->forStudent($studentId)
                 ->visibleToStudent()
                 ->with(['instructor', 'packageBenefitRule'])
                 ->orderByDesc('approved_at')
                 ->paginate(10),
+            // Keyed by proposal_id so the blade can show the live lesson
+            // balance next to an accepted package without an N+1.
+            'entitlements' => StudentPackageEntitlement::query()
+                ->forStudent($studentId)
+                ->get()
+                ->keyBy('proposal_id'),
         ]);
+    }
+
+    private function ownProposal(string $proposalId): InstructorPackageProposal
+    {
+        return InstructorPackageProposal::query()
+            ->forStudent((int) auth()->id())
+            ->findOrFail($proposalId);
     }
 
     private function authorizeOrDeny(string $ability, mixed $arg): bool

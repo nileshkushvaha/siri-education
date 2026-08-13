@@ -274,7 +274,7 @@ class InstructorPackageProposalTest extends TestCase
     {
         $proposal = $this->submittedProposal();
         $approved = $this->service()->approve($proposal, $this->manager, null, null);
-        $accepted = $this->service()->accept($approved, $approved->student);
+        $accepted = $this->service()->acceptProposal($approved, $approved->student);
 
         $this->assertSame('accepted', $accepted->status->value);
 

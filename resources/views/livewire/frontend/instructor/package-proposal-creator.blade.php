@@ -109,22 +109,34 @@
     <x-account.card>
         <div class="divide-y divide-white/[0.06]">
             @forelse ($proposals as $proposal)
-                <div class="py-4 flex items-center justify-between gap-4">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-white truncate">{{ $proposal->student?->name }} — {{ $proposal->packageBenefitRule?->name }}</p>
-                        <p class="text-xs text-slate-400 mt-0.5">
-                            {{ \App\Support\MoneyFormatter::format($proposal->final_price_minor ?? $proposal->calculated_price_minor, $proposal->currency_code ?? 'USD') }}
-                        </p>
+                @php($entitlement = $entitlements->get($proposal->id))
+                <div class="py-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-white truncate">{{ $proposal->student?->name }} — {{ $proposal->packageBenefitRule?->name }}</p>
+                            <p class="text-xs text-slate-400 mt-0.5">
+                                {{ \App\Support\MoneyFormatter::format($proposal->final_price_minor ?? $proposal->calculated_price_minor, $proposal->currency_code ?? 'USD') }}
+                            </p>
+                        </div>
+                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold
+                            @class([
+                                'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200' => in_array($proposal->status->value, ['approved', 'accepted']),
+                                'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200' => $proposal->status->value === 'submitted',
+                                'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200' => in_array($proposal->status->value, ['rejected', 'expired']),
+                                'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300' => in_array($proposal->status->value, ['draft', 'cancelled']),
+                            ])">
+                            {{ $proposal->status->label() }}
+                        </span>
                     </div>
-                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold
-                        @class([
-                            'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200' => in_array($proposal->status->value, ['approved', 'accepted']),
-                            'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200' => $proposal->status->value === 'submitted',
-                            'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200' => in_array($proposal->status->value, ['rejected', 'expired']),
-                            'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300' => in_array($proposal->status->value, ['draft', 'cancelled']),
-                        ])">
-                        {{ $proposal->status->label() }}
-                    </span>
+
+                    {{-- Read-only lesson balance for an accepted package. Instructors can never modify an entitlement. --}}
+                    @if ($entitlement)
+                        <dl class="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-sm">
+                            <div><dt class="text-xs text-slate-500">Total lessons</dt><dd class="text-white font-semibold">{{ $entitlement->total_quantity }}</dd></div>
+                            <div><dt class="text-xs text-slate-500">Used</dt><dd class="text-white font-semibold">{{ $entitlement->used_quantity }}</dd></div>
+                            <div><dt class="text-xs text-slate-500">Remaining</dt><dd class="text-emerald-400 font-bold">{{ $entitlement->remaining_quantity }}</dd></div>
+                        </dl>
+                    @endif
                 </div>
             @empty
                 <div class="flex flex-col items-center justify-center py-8 text-center">

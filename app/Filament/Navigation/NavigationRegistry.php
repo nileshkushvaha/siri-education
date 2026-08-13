@@ -106,6 +106,7 @@ use App\Filament\Resources\States\StateResource;
 use App\Filament\Resources\StudentLearningGoals\StudentLearningGoalResource;
 use App\Filament\Resources\StudentLearningPlans\StudentLearningPlanResource;
 use App\Filament\Resources\StudentLessonPrices\StudentLessonPriceResource;
+use App\Filament\Resources\StudentPackageEntitlements\StudentPackageEntitlementResource;
 use App\Filament\Resources\SupportCases\SupportCaseResource;
 use App\Filament\Resources\SuspiciousActivityFlags\SuspiciousActivityFlagResource;
 use App\Filament\Resources\Tags\TagResource;
@@ -309,6 +310,15 @@ final class NavigationRegistry
                 sort: 13,
                 previousGroup: 'Finance',
                 previousLabel: 'Package Proposals',
+            ),
+            // Phase 4A — read-only student lesson balances granted by an
+            // accepted proposal. New resource, no prior location.
+            StudentPackageEntitlementResource::class => new NavigationDestination(
+                id: 'academics.learning-management.package-entitlements',
+                label: 'Student Package Entitlements',
+                group: 'Academics',
+                subgroup: 'Learning Management',
+                sort: 14,
             ),
 
             // ── Operations ───────────────────────────────────────────────

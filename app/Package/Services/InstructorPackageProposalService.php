@@ -43,6 +43,7 @@ final class InstructorPackageProposalService
         private readonly AuditTrailService $audit,
         private readonly PackagePricingService $pricing,
         private readonly BookingTypeRepositoryInterface $bookingTypes,
+        private readonly PackageEntitlementService $entitlements,
     ) {}
 
     /**
@@ -290,23 +291,70 @@ final class InstructorPackageProposalService
     }
 
     /**
-     * Approved -> Accepted. Placeholder only, per this phase's explicit
-     * scope: no payment is collected and no lesson entitlement is
-     * created here — both are deferred to a later phase. This only
-     * records the student's agreement and freezes the row.
+     * Approved -> Accepted, and — Phase 4A — creates the student's
+     * StudentPackageEntitlement in the SAME transaction. A proposal can
+     * never be Accepted without its entitlement existing, and vice
+     * versa.
+     *
+     * Duplicate acceptance is impossible on two independent levels: the
+     * status guard (Accepted is terminal, so a second call fails
+     * assertTransition) and a UNIQUE index on
+     * student_package_entitlements.proposal_id.
+     *
+     * Payment is still explicitly out of scope: accepting records the
+     * student's agreement and grants the lesson balance; no money moves
+     * and no Booking/Lesson is created here.
      */
-    public function accept(InstructorPackageProposal $proposal, User $student): InstructorPackageProposal
+    public function acceptProposal(InstructorPackageProposal $proposal, User $student): InstructorPackageProposal
     {
         return DB::transaction(function () use ($proposal, $student): InstructorPackageProposal {
             $proposal = InstructorPackageProposal::query()->whereKey($proposal->id)->lockForUpdate()->firstOrFail();
             $this->assertTransition($proposal, InstructorPackageProposalStatus::Accepted);
+
+            if ($proposal->student_id !== $student->id) {
+                throw new PackageException('This package was not offered to you.');
+            }
 
             $proposal->fill([
                 'status' => InstructorPackageProposalStatus::Accepted,
                 'accepted_at' => now(),
             ])->save();
 
-            $this->audit->logUser($student, self::LOG_NAME, 'package_accepted', 'Package proposal accepted by student.', $proposal, $this->metadata($proposal));
+            $entitlement = $this->entitlements->createFromProposal($proposal->refresh());
+
+            $this->audit->logUser($student, self::LOG_NAME, 'package_accepted', 'Package proposal accepted by student.', $proposal, [
+                ...$this->metadata($proposal),
+                'entitlement_id' => $entitlement->id,
+                'total_quantity' => $entitlement->total_quantity,
+            ]);
+
+            return $proposal->refresh();
+        });
+    }
+
+    /**
+     * Approved -> Cancelled, initiated by the student declining the
+     * offer. Deliberately reuses the existing Cancelled state rather
+     * than adding a student-specific "declined" status — the proposal
+     * is simply off the table, and the instructor may submit a new one.
+     * No entitlement is created.
+     */
+    public function declineProposal(InstructorPackageProposal $proposal, User $student): InstructorPackageProposal
+    {
+        return DB::transaction(function () use ($proposal, $student): InstructorPackageProposal {
+            $proposal = InstructorPackageProposal::query()->whereKey($proposal->id)->lockForUpdate()->firstOrFail();
+            $this->assertTransition($proposal, InstructorPackageProposalStatus::Cancelled);
+
+            if ($proposal->student_id !== $student->id) {
+                throw new PackageException('This package was not offered to you.');
+            }
+
+            $proposal->fill([
+                'status' => InstructorPackageProposalStatus::Cancelled,
+                'cancelled_at' => now(),
+            ])->save();
+
+            $this->audit->logUser($student, self::LOG_NAME, 'package_declined', 'Package proposal declined by student.', $proposal, $this->metadata($proposal));
 
             return $proposal->refresh();
         });

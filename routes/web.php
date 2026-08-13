@@ -34,6 +34,7 @@ use App\Http\Controllers\Instructor\InstructorHomeworkResourceController;
 use App\Http\Controllers\Instructor\InstructorLearningPlanController;
 use App\Http\Controllers\Instructor\InstructorLessonsController;
 use App\Http\Controllers\Instructor\InstructorOnboardingController;
+use App\Http\Controllers\Instructor\InstructorPackageProposalController;
 use App\Http\Controllers\Instructor\InstructorPayoutController;
 use App\Http\Controllers\Instructor\InstructorQualityInsightsController;
 use App\Http\Controllers\Instructor\InstructorStudentController;
@@ -60,6 +61,7 @@ use App\Http\Controllers\Student\StudentLearningGoalController;
 use App\Http\Controllers\Student\StudentLearningPlanController;
 use App\Http\Controllers\Student\StudentNotificationsController;
 use App\Http\Controllers\Student\StudentOrdersController;
+use App\Http\Controllers\Student\StudentPackageProposalController;
 use App\Http\Controllers\Student\StudentPaymentsController;
 use App\Http\Controllers\Student\StudentProgressController;
 use App\Http\Controllers\Student\StudentReferralController;
@@ -224,6 +226,8 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::get('/wishlist', [StudentWishlistController::class,     'index'])->name('wishlist');
     Route::get('/learning-goals', [StudentLearningGoalController::class, 'index'])->name('learning-goals');
     Route::get('/learning-plans', [StudentLearningPlanController::class, 'index'])->name('learning-plans');
+    // Personalized Instructor Package Proposal & Admin Approval — view/accept only, no payment flow yet.
+    Route::get('/packages', [StudentPackageProposalController::class, 'index'])->name('packages');
     Route::post('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'store'])->name('favorite-instructors.store');
     Route::delete('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'destroy'])->name('favorite-instructors.destroy');
     Route::get('/waitlist', [StudentWaitlistController::class, 'index'])->name('waitlist');
@@ -275,6 +279,9 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
         // can move money.
         Route::get('/instructor/payout-methods', [InstructorPayoutController::class, 'payoutMethods'])->name('instructor.payout-methods');
         Route::get('/instructor/withdrawals', [InstructorPayoutController::class, 'withdrawals'])->name('instructor.withdrawals');
+        // Personalized Instructor Package Proposal & Admin Approval —
+        // proposal creation only; no payment/entitlement route exists here.
+        Route::get('/instructor/packages', [InstructorPackageProposalController::class, 'index'])->name('instructor.packages');
     });
 
     Route::post('/instructor/start', [InstructorOnboardingController::class, 'start'])->name('instructor.start');

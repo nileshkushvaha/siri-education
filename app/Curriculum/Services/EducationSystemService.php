@@ -13,6 +13,7 @@ use App\Models\Curriculum;
 use App\Models\CurriculumEducationSystem;
 use App\Models\EducationSystem;
 use App\Models\EducationSystemAcademicLevel;
+use App\Models\EducationSystemLevel;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -71,6 +72,8 @@ final class EducationSystemService
                 'description' => $data['description'] ?? null,
                 'status' => $data['status'] ?? AcademicStatus::Active->value,
                 'display_order' => $data['display_order'] ?? 0,
+                'level_term_singular' => $data['level_term_singular'] ?? null,
+                'level_term_plural' => $data['level_term_plural'] ?? null,
                 'created_by' => $admin->id,
                 'updated_by' => $admin->id,
             ]);
@@ -88,7 +91,7 @@ final class EducationSystemService
     {
         $this->assertCan($admin, 'update', $system);
 
-        $attributes = collect($data)->only(['name', 'slug', 'code', 'description', 'status', 'display_order'])->all();
+        $attributes = collect($data)->only(['name', 'slug', 'code', 'description', 'status', 'display_order', 'level_term_singular', 'level_term_plural'])->all();
 
         if (array_key_exists('name', $attributes) && trim((string) $attributes['name']) === '') {
             throw ValidationException::withMessages(['name' => 'A name is required.']);
@@ -203,6 +206,115 @@ final class EducationSystemService
         });
     }
 
+    // ── EducationSystemLevel (Phase 3.1 §18) ─────────────────────────────
+    //
+    // The exact, student-selectable level within a system (Class 10 /
+    // Grade 10 / Year 10) — distinct from the broad AcademicLevel
+    // mapping above. Mutations always go through this service, never a
+    // raw Filament attach/detach, mirroring every other mapping in this
+    // class.
+
+    /**
+     * @param  array{academic_level_id: string, value: string, display_label: string, normalized_grade?: int|null, is_active?: bool, display_order?: int}  $data
+     */
+    public function addLevel(User $admin, EducationSystem $system, array $data): EducationSystemLevel
+    {
+        $this->assertCan($admin, 'update', $system);
+
+        $level = AcademicLevel::query()->find($data['academic_level_id'] ?? null);
+
+        if ($level === null) {
+            throw ValidationException::withMessages(['academic_level_id' => 'An academic level is required.']);
+        }
+
+        $value = trim((string) ($data['value'] ?? ''));
+        $displayLabel = trim((string) ($data['display_label'] ?? ''));
+
+        if ($value === '' || $displayLabel === '') {
+            throw ValidationException::withMessages(['value' => 'A value and display label are required.']);
+        }
+
+        return DB::transaction(function () use ($admin, $system, $level, $value, $displayLabel, $data): EducationSystemLevel {
+            $this->assertUniqueLevelValue($system, $value);
+
+            $educationSystemLevel = EducationSystemLevel::query()->create([
+                'education_system_id' => $system->id,
+                'academic_level_id' => $level->id,
+                'value' => $value,
+                'display_label' => $displayLabel,
+                'normalized_grade' => $data['normalized_grade'] ?? null,
+                'is_active' => $data['is_active'] ?? true,
+                'display_order' => $data['display_order'] ?? 0,
+                'created_by' => $admin->id,
+                'updated_by' => $admin->id,
+            ]);
+
+            $this->audit->logUser($admin, self::LOG_NAME, 'level_added', sprintf('Level "%s" added to education system "%s".', $displayLabel, $system->name), $educationSystemLevel, [
+                'education_system_id' => $system->id,
+                'academic_level_id' => $level->id,
+            ]);
+
+            return $educationSystemLevel;
+        });
+    }
+
+    /**
+     * @param  array{academic_level_id?: string, value?: string, display_label?: string, normalized_grade?: int|null, is_active?: bool, display_order?: int}  $data
+     */
+    public function updateLevel(User $admin, EducationSystemLevel $educationSystemLevel, array $data): EducationSystemLevel
+    {
+        $this->assertCan($admin, 'update', $educationSystemLevel->educationSystem);
+
+        $attributes = collect($data)->only(['academic_level_id', 'value', 'display_label', 'normalized_grade', 'is_active', 'display_order'])->all();
+
+        if (array_key_exists('value', $attributes) && trim((string) $attributes['value']) === '') {
+            throw ValidationException::withMessages(['value' => 'A value is required.']);
+        }
+
+        if (array_key_exists('display_label', $attributes) && trim((string) $attributes['display_label']) === '') {
+            throw ValidationException::withMessages(['display_label' => 'A display label is required.']);
+        }
+
+        return DB::transaction(function () use ($admin, $educationSystemLevel, $attributes): EducationSystemLevel {
+            if (array_key_exists('value', $attributes)) {
+                $this->assertUniqueLevelValue($educationSystemLevel->educationSystem, (string) $attributes['value'], $educationSystemLevel->id);
+            }
+
+            if (array_key_exists('academic_level_id', $attributes) && AcademicLevel::query()->find($attributes['academic_level_id']) === null) {
+                throw ValidationException::withMessages(['academic_level_id' => 'An academic level is required.']);
+            }
+
+            $educationSystemLevel->fill([...$attributes, 'updated_by' => $admin->id])->save();
+
+            $this->audit->logUser($admin, self::LOG_NAME, 'level_updated', sprintf('Level "%s" updated on education system "%s".', $educationSystemLevel->display_label, $educationSystemLevel->educationSystem->name), $educationSystemLevel, [
+                'changed_fields' => array_keys($attributes),
+            ]);
+
+            return $educationSystemLevel->refresh();
+        });
+    }
+
+    public function removeLevel(User $admin, EducationSystemLevel $educationSystemLevel): void
+    {
+        $this->assertCan($admin, 'update', $educationSystemLevel->educationSystem);
+
+        DB::transaction(function () use ($admin, $educationSystemLevel): void {
+            $systemName = $educationSystemLevel->educationSystem?->name ?? (string) $educationSystemLevel->education_system_id;
+            $displayLabel = $educationSystemLevel->display_label;
+            $educationSystemId = $educationSystemLevel->education_system_id;
+
+            // Soft delete — booking history (BookingAcademicContext)
+            // denormalizes its own display values, so an existing
+            // Booking's historical display is never affected by
+            // removing/deactivating a level later (§40).
+            $educationSystemLevel->delete();
+
+            $this->audit->logUser($admin, self::LOG_NAME, 'level_removed', sprintf('Level "%s" removed from education system "%s".', $displayLabel, $systemName), null, [
+                'education_system_id' => $educationSystemId,
+            ]);
+        });
+    }
+
     // ── Curriculum mapping ───────────────────────────────────────────────
 
     public function mapToCurriculum(User $admin, EducationSystem $system, Curriculum $curriculum): CurriculumEducationSystem
@@ -259,6 +371,19 @@ final class EducationSystemService
 
         if ($exists) {
             throw ValidationException::withMessages(['slug' => 'An education system with this slug already exists.']);
+        }
+    }
+
+    private function assertUniqueLevelValue(EducationSystem $system, string $value, ?string $ignoreId = null): void
+    {
+        $exists = EducationSystemLevel::query()
+            ->where('education_system_id', $system->id)
+            ->where('value', $value)
+            ->when($ignoreId !== null, fn ($q) => $q->whereKeyNot($ignoreId))
+            ->exists();
+
+        if ($exists) {
+            throw new AcademicContextException(sprintf('"%s" already has a level with value "%s".', $system->name, $value));
         }
     }
 

@@ -49,6 +49,17 @@ class FeatureSettings extends Settings
     /** SRS §16.35 "Promotional credit permissions" — the global on/off switch (§20.17 "Promotional credit enabled/disabled"). */
     public bool $promotional_credit_enabled;
 
+    /**
+     * Phase 3 — master switch for the country-aware Education-System/
+     * Curriculum academic Demo booking flow (CountryFeature::CountryAcademicBooking).
+     * Off by default: enabling requires a country to also have its
+     * Education Systems, Levels, Curricula, Published CurriculumVersions,
+     * and Instructor eligibilities configured first (see
+     * DemoAcademicContextResolver) — flipping this on alone does not
+     * create any reference data.
+     */
+    public bool $country_academic_booking_enabled;
+
     public static function group(): string
     {
         return 'features';

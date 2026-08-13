@@ -13,12 +13,29 @@ use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Types\FreeDemoType;
+use App\Curriculum\DTOs\AcademicContextData;
+use App\Curriculum\Exceptions\AcademicContextException;
+use App\Curriculum\Services\AcademicContextResolver;
 use App\Enums\InstructorStatus;
 use App\Models\Booking;
+use App\Models\Country;
+use App\Models\Curriculum;
+use App\Models\EducationSystem;
+use App\Models\EducationSystemLevel;
+use App\Models\Subject;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
+/**
+ * Phase 3: also exposes the country-aware academic progressive-loading
+ * surface BookingWizard needs — always delegating to
+ * DemoAcademicContextResolver (which itself composes
+ * AcademicContextResolver/InstructorAcademicEligibilityResolver) rather
+ * than querying Curriculum-domain models directly. This keeps
+ * BookingWizard a thin Livewire component: it only ever calls this
+ * service, never a Curriculum-domain resolver directly.
+ */
 final class BookingWizardService
 {
     public function __construct(
@@ -26,6 +43,8 @@ final class BookingWizardService
         private readonly BookingTypeRepositoryInterface $types,
         private readonly TeacherCandidateRepositoryInterface $teachers,
         private readonly DemoAvailabilityResolver $demoAvailability,
+        private readonly DemoAcademicContextResolver $demoAcademicContext,
+        private readonly AcademicContextResolver $academicContextResolver,
     ) {}
 
     /**
@@ -60,21 +79,157 @@ final class BookingWizardService
     }
 
     /** @return Collection<int, string> */
-    public function availableDates(string $typeKey, string $subject, int $grade, CarbonImmutable $from, CarbonImmutable $to, string $timezone, ?int $teacherId = null): Collection
+    public function availableDates(string $typeKey, string $subject, int $grade, CarbonImmutable $from, CarbonImmutable $to, string $timezone, ?int $teacherId = null, ?AcademicContextData $academicContext = null): Collection
     {
-        return $this->bookings->availableDates($typeKey, $subject, $grade, $from, $to, $timezone, $teacherId);
+        return $this->bookings->availableDates($typeKey, $subject, $grade, $from, $to, $timezone, $teacherId, $academicContext);
     }
 
     /** @return Collection<int, array<string, mixed>> */
-    public function availableSlots(string $typeKey, string $subject, int $grade, CarbonImmutable $date, string $timezone, ?int $teacherId = null): Collection
+    public function availableSlots(string $typeKey, string $subject, int $grade, CarbonImmutable $date, string $timezone, ?int $teacherId = null, ?AcademicContextData $academicContext = null): Collection
     {
         return $this->bookings
-            ->availableSlots($typeKey, $subject, $grade, $date, $timezone, $teacherId)
+            ->availableSlots($typeKey, $subject, $grade, $date, $timezone, $teacherId, $academicContext)
             ->map(fn (TimeSlotData $slot): array => [
                 'starts_at' => $slot->startsAt->toIso8601String(),
                 'ends_at' => $slot->endsAt->toIso8601String(),
             ])
             ->values();
+    }
+
+    // ── Phase 3 — country-aware academic progressive loading (§7/§9) ────────
+
+    public function academicBookingEnabledGlobally(): bool
+    {
+        return $this->demoAcademicContext->isEnabledGlobally();
+    }
+
+    /** Server-resolved student Country — never trusted from client input (§6). */
+    public function studentCountry(User $student): ?Country
+    {
+        return $this->demoAcademicContext->studentCountry($student);
+    }
+
+    public function academicBookingEnabledForCountry(?Country $country): bool
+    {
+        return $this->demoAcademicContext->isEnabledForCountry($country);
+    }
+
+    /** @return list<array{id:string,name:string}> */
+    public function educationSystems(Country $country, ?int $lockedInstructorId = null): array
+    {
+        return $this->demoAcademicContext
+            ->educationSystemsFor($country, $this->instructorOrNull($lockedInstructorId))
+            ->map(fn (EducationSystem $s): array => ['id' => $s->id, 'name' => $s->name])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Phase 3.1 — the exact, student-selectable levels for this system
+     * (§7: no min/max-band synthesis, no 1..12 fallback — an empty
+     * array means "not currently configured").
+     *
+     * @return list<array{id:string,value:string,display_label:string,normalized_grade:?int}>
+     */
+    public function levels(Country $country, string $educationSystemId): array
+    {
+        $system = EducationSystem::find($educationSystemId);
+
+        if ($system === null) {
+            return [];
+        }
+
+        try {
+            return $this->demoAcademicContext
+                ->levelsFor($country, $system)
+                ->map(fn (EducationSystemLevel $l): array => [
+                    'id' => $l->id,
+                    'value' => $l->value,
+                    'display_label' => $l->display_label,
+                    'normalized_grade' => $l->normalized_grade,
+                ])
+                ->values()
+                ->all();
+        } catch (AcademicContextException) {
+            return [];
+        }
+    }
+
+    /** @return list<array{id:string,name:string}> */
+    public function academicSubjects(Country $country, string $educationSystemId, string $educationSystemLevelId): array
+    {
+        $system = EducationSystem::find($educationSystemId);
+        $level = EducationSystemLevel::find($educationSystemLevelId);
+
+        if ($system === null || $level === null) {
+            return [];
+        }
+
+        try {
+            return $this->demoAcademicContext
+                ->subjectsFor($country, $system, $level)
+                ->map(fn (Subject $s): array => ['id' => $s->id, 'name' => $s->name])
+                ->values()
+                ->all();
+        } catch (AcademicContextException) {
+            return [];
+        }
+    }
+
+    /** @return list<array{id:string,name:string}> */
+    public function curricula(Country $country, string $educationSystemId, string $educationSystemLevelId, string $academicSubjectId, ?int $lockedInstructorId = null): array
+    {
+        $system = EducationSystem::find($educationSystemId);
+        $level = EducationSystemLevel::find($educationSystemLevelId);
+        $subject = Subject::find($academicSubjectId);
+
+        if ($system === null || $level === null || $subject === null) {
+            return [];
+        }
+
+        try {
+            return $this->demoAcademicContext
+                ->curriculaFor($country, $system, $level, $subject, $this->instructorOrNull($lockedInstructorId))
+                ->map(fn (Curriculum $c): array => ['id' => $c->id, 'name' => $c->name])
+                ->values()
+                ->all();
+        } catch (AcademicContextException) {
+            return [];
+        }
+    }
+
+    /**
+     * Non-throwing, listing-purpose resolution used only to narrow the
+     * candidate teacher SET while browsing dates/slots (§7/§10) — the
+     * authoritative, throwing resolution that actually gates Booking
+     * creation is DemoAcademicContextResolver::resolveForDemo(), called
+     * again (never trusted from here) inside WizardBookingService::book().
+     */
+    public function resolveAcademicContextForBrowsing(Country $country, ?string $educationSystemId, ?string $educationSystemLevelId, ?string $subjectId, ?string $curriculumId): ?AcademicContextData
+    {
+        if ($educationSystemId === null || $educationSystemLevelId === null || $subjectId === null || $curriculumId === null) {
+            return null;
+        }
+
+        $system = EducationSystem::find($educationSystemId);
+        $level = EducationSystemLevel::find($educationSystemLevelId);
+        $subject = Subject::find($subjectId);
+        $curriculum = Curriculum::find($curriculumId);
+
+        if ($system === null || $level === null || $subject === null || $curriculum === null) {
+            return null;
+        }
+
+        try {
+            return $this->academicContextResolver->resolveContextForLevel($country, $system, $level, $subject, $curriculum);
+        } catch (AcademicContextException) {
+            return null;
+        }
+    }
+
+    private function instructorOrNull(?int $id): ?User
+    {
+        return $id !== null ? User::find($id) : null;
     }
 
     /** @param array<string, mixed> $data */
@@ -103,6 +258,10 @@ final class BookingWizardService
             timezone: $data['timezone'],
             notes: $data['notes'] ?? null,
             teacherId: $data['teacher_id'] ?? null,
+            educationSystemId: $data['education_system_id'] ?? null,
+            educationSystemLevelId: $data['education_system_level_id'] ?? null,
+            subjectId: $data['academic_subject_id'] ?? null,
+            curriculumId: $data['curriculum_id'] ?? null,
         );
     }
 

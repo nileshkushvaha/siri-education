@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\PackageBenefitRules\Tables;
+
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\RestoreAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Tables\Table;
+
+class PackageBenefitRulesTable
+{
+    public static function configure(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->label('Offer Name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('paid_quantity')
+                    ->label('Paid Lessons')
+                    ->sortable(),
+                TextColumn::make('bonus_quantity')
+                    ->label('Bonus Lessons')
+                    ->sortable(),
+                TextColumn::make('total_quantity')
+                    ->label('Total Lessons')
+                    ->sortable(),
+                IconColumn::make('is_active')
+                    ->label('Active')
+                    ->boolean(),
+                TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                TernaryFilter::make('is_active'),
+                TrashedFilter::make(),
+            ])
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
+                RestoreAction::make(),
+            ])
+            ->defaultSort('name');
+    }
+}

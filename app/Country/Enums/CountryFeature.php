@@ -25,6 +25,18 @@ enum CountryFeature: string
     case Homework = 'homework';
     case RecordingAvailability = 'recording_availability';
 
+    /**
+     * Phase 3 — gates the country-aware Education-System/Curriculum
+     * academic selection flow for Free Demo booking (see
+     * app/Booking/Services/DemoAcademicContextResolver.php). Disabled
+     * for a country means legacy free-text subject/grade Demo booking
+     * remains unchanged; enabled means the full academic context
+     * (education system, level, subject, curriculum, published
+     * curriculum version, instructor eligibility) becomes mandatory —
+     * never a silent fallback once enabled (Phase 3 spec §10/§26).
+     */
+    case CountryAcademicBooking = 'country_academic_booking';
+
     public function label(): string
     {
         return match ($this) {
@@ -37,6 +49,7 @@ enum CountryFeature: string
             self::Waitlist => 'Waitlist',
             self::Homework => 'Homework',
             self::RecordingAvailability => 'Recording Availability',
+            self::CountryAcademicBooking => 'Country-Aware Academic Booking',
         };
     }
 
@@ -54,6 +67,7 @@ enum CountryFeature: string
         return match ($this) {
             self::WalletRecharge => [self::Wallet],
             self::PromotionalCredits => [self::Wallet],
+            self::CountryAcademicBooking => [self::DemoLessons],
             default => [],
         };
     }

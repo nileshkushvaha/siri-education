@@ -59,6 +59,22 @@ class EducationSystemForm
                         ->maxLength(2000)
                         ->columnSpanFull()
                         ->placeholder('Brief overview of this education system…'),
+                    // Phase 3.1 — what the country-aware booking wizard
+                    // calls the level a student picks under this system
+                    // (Class 6.., Grade 6.., Year 6..). Never hardcoded
+                    // in PHP/Blade; blank falls back to "Level"/"Levels".
+                    Grid::make(2)->schema([
+                        TextInput::make('level_term_singular')
+                            ->label('Level term (singular)')
+                            ->maxLength(30)
+                            ->placeholder('e.g. Class, Grade, Year')
+                            ->helperText('Shown as "Choose a Class" in the booking wizard. Falls back to "Level" when blank.'),
+                        TextInput::make('level_term_plural')
+                            ->label('Level term (plural)')
+                            ->maxLength(30)
+                            ->placeholder('e.g. Classes, Grades, Years')
+                            ->helperText('Falls back to "Levels" when blank.'),
+                    ]),
                     TextInput::make('display_order')
                         ->numeric()
                         ->default(0)

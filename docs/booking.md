@@ -62,6 +62,22 @@ teacher's daily cap (`BookingSettings::max_daily_bookings_per_teacher`).
   form today — the banner text is scoped accordingly.
 - `ensureAvailable()` applies the same checks for a single slot and
   is re-run under the host lock on create/reschedule.
+- **Student-facing display timezone** (Phase 3.1 §23-§30 audit): the
+  student always sees dates/slots in their OWN timezone, never the
+  instructor's or the server's. `App\Support\RecipientTimezoneResolver::resolve()`
+  (student's stored `user_profiles.timezone` → `GeneralSettings::default_timezone`
+  → `UTC`) feeds `BookingWizard::$timezone`, which flows unchanged
+  through `WizardBookingService::availableDates()/availableSlots()` into
+  `AvailabilityQueryData::$timezone` — the same parameter
+  `AvailabilityService::slots()` already converts into at the final
+  step above. Instructor timezone is used only to expand weekly
+  windows into UTC instants; it never becomes the student's display
+  timezone. `Booking::timezone` freezes the student's timezone at
+  submit time — a later profile timezone change never reinterprets a
+  past booking's historical display. Dedicated coverage:
+  `tests/Feature/Booking/BookingWizardStudentTimezoneSlotsTest.php`
+  (same/different timezone, date crossover both directions, DST,
+  submission instant equality, historical-display stability).
 
 ## Admin Panel (Filament)
 
@@ -207,6 +223,69 @@ Every booking is exclusive: one instructor + one exact time admits exactly one a
 `BookingService::request()` rejects any type key that isn't an active `booking_types` row, independent of what the Livewire UI offers.
 
 Regression coverage: `tests/Architecture/BookingTypeScopeGuardTest.php` (asserts the registry/seeded set is exactly `free_demo`, `paid_one_to_one`, and that no shared-slot/capacity mechanism has reappeared) and `tests/Feature/Booking/BookingTypeScopeTest.php` (behavioral scope: explicit selection, CTAs, recurrence, service-level rejection).
+
+## Country-Aware Academic Demo Booking (Phase 3 / 3.1)
+
+Free Demo only, gated by `CountryFeature::CountryAcademicBooking`
+(`FeatureSettings::country_academic_booking_enabled`, resolved per
+student-country via `CountryFeatureResolver` — off by default). When in
+effect for a student's server-resolved Country, the Demo wizard walks
+`Education System → Level → Subject → Curriculum` instead of the
+legacy free-text `Subject → Grade` phases; when not in effect (globally
+off, or disabled for that specific country), the legacy flow is
+unchanged. Never a silent per-request fallback: once the feature is on
+for a country, a missing/inactive student Country or an incomplete
+selection throws `BookingException` rather than degrading to legacy.
+
+- **`EducationSystemLevel`** (`app/Models/EducationSystemLevel.php`) is
+  the exact, student-selectable level under an Education System (CBSE
+  "Class 10", US "Grade 10", UK "Year 10") — see
+  `docs/architecture/phase-3.1-education-system-levels.md` for the full
+  model rationale. Selecting one implies both the broad `AcademicLevel`
+  band and a `normalized_grade` (nullable — a level with none is
+  currently unsupported for Demo booking, since candidate matching is
+  numeric-grade-based throughout this codebase).
+- **`App\Booking\Services\DemoAcademicContextResolver`** — the Booking
+  domain's composition layer. `resolveForDemo()` is the authoritative,
+  throwing resolution (re-run at candidate-narrowing time AND again
+  immediately before persistence — never trusted across the two calls).
+  `levelsFor()`/`subjectsFor()`/`curriculaFor()`/`educationSystemsFor()`
+  are thin, non-throwing progressive-loading wrappers over
+  `App\Curriculum\Services\AcademicContextResolver`, optionally narrowed
+  to a locked instructor's eligibility.
+- **`App\Models\BookingAcademicContext`** (`booking_academic_contexts`
+  table) — the immutable, per-Booking academic snapshot, created
+  atomically with the `Booking` row inside `CreateBookingAction`'s
+  transaction (never asynchronously). Carries denormalized display
+  values (country/system/subject/curriculum names, curriculum version
+  number, and the Phase 3.1 level fields `education_system_level_id`/
+  `level_term`/`level_value`/`level_display`/`normalized_grade`) so a
+  later admin rename never rewrites a booking's historical display.
+  `PreventsHardDeletion` + `PreventsUpdates`; no admin CRUD editing
+  exists for this model. `bookings.meta.grade` continues to be written
+  for legacy downstream readers, sourced from the resolved level's
+  `normalized_grade`.
+- **Candidate narrowing**: when an academic context is present,
+  `TeacherCandidateRepository` intersects the base
+  `TeacherSubject`-matched candidate set with
+  `InstructorCurriculumEligibility` (via
+  `InstructorAcademicEligibilityResolver`) — narrowing the SET itself
+  before auto-assignment, never a pick-then-reject-afterward pattern.
+  A locked instructor who fails this check is rejected at final submit
+  even if their `TeacherSubject` range matches.
+- A legacy Booking (pre-Phase-3, or created while the feature was off
+  for its country) simply has no `BookingAcademicContext` row —
+  `Booking::academicContext()` is nullable by design; `booking-history.blade.php`
+  falls back to the legacy `meta.grade` display for those rows.
+
+Regression coverage: `tests/Feature/Booking/CountryAcademicDemoBookingTest.php`
+(service/domain-level: feature gating, candidate filtering, snapshot
+creation/immutability/idempotency, transaction rollback, the one-free-demo
+lifetime rule under academic variation, normalized-grade candidate
+compatibility, historical display after a level rename),
+`tests/Feature/Booking/BookingWizardAcademicFlowTest.php` (Livewire UI:
+progressive selection, stale-state reset, locked-instructor narrowing,
+dynamic per-system terminology), `tests/Feature/Academic/EducationSystemLevelTest.php`.
 
 ## Analytics
 

@@ -9,6 +9,7 @@ use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Exceptions\BookingException;
+use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\Booking;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -25,7 +26,12 @@ use Illuminate\Support\Collection;
  */
 interface WizardBookingServiceInterface
 {
-    /** @return Collection<int, string> dates (Y-m-d, in $timezone) with at least one open slot */
+    /**
+     * @param  AcademicContextData|null  $academicContext  Phase 3 (§7/§10) — when supplied (country-aware Free
+     *                                                     Demo only), narrows the candidate teacher SET itself to academically-eligible instructors
+     *                                                     before availability is expanded, never a pick-then-reject-afterward pattern.
+     * @return Collection<int, string> dates (Y-m-d, in $timezone) with at least one open slot
+     */
     public function availableDates(
         string $typeKey,
         string $subject,
@@ -34,6 +40,7 @@ interface WizardBookingServiceInterface
         CarbonImmutable $to,
         string $timezone = 'UTC',
         ?int $teacherId = null,
+        ?AcademicContextData $academicContext = null,
     ): Collection;
 
     /** @return Collection<int, TimeSlotData> deduplicated across teachers, in $timezone */
@@ -44,6 +51,7 @@ interface WizardBookingServiceInterface
         CarbonImmutable $date,
         string $timezone = 'UTC',
         ?int $teacherId = null,
+        ?AcademicContextData $academicContext = null,
     ): Collection;
 
     /** @throws BookingException */

@@ -12,6 +12,7 @@ use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\DTOs\AssignmentCriteriaData;
 use App\Booking\DTOs\AvailabilityQueryData;
+use App\Booking\DTOs\BookingAcademicContextData;
 use App\Booking\DTOs\CreateBookingData;
 use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\RecurringBookingResult;
@@ -21,6 +22,8 @@ use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Types\FreeDemoType;
 use App\Contracts\StudentFinancialVerificationGate;
+use App\Curriculum\DTOs\AcademicContextData;
+use App\Curriculum\Services\InstructorAcademicEligibilityResolver;
 use App\Models\Booking;
 use App\Models\BookingType;
 use App\Models\User;
@@ -34,6 +37,16 @@ use Illuminate\Support\Str;
  * lock a specific one) is what distinguishes this from
  * StudentBookingServiceInterface, which always requires an explicit
  * teacher choice.
+ *
+ * Phase 3: for `free_demo` only, also resolves the country-aware
+ * academic context (DemoAcademicContextResolver) BEFORE candidate
+ * selection — so an automatically-assigned teacher is drawn from an
+ * already-narrowed eligible SET — and again immediately before
+ * CreateBookingData is built, so the persisted snapshot always reflects
+ * the currently-Published CurriculumVersion and current instructor
+ * eligibility, never a value cached earlier in the request/session
+ * (§27/§28). Paid/recurring bookings never resolve an academic context
+ * in this phase (resolveAcademicContext() short-circuits on type key).
  */
 final class WizardBookingService implements WizardBookingServiceInterface
 {
@@ -45,6 +58,8 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly AvailabilityServiceInterface $availability,
         private readonly StudentFinancialVerificationGate $financialVerification,
         private readonly DemoAvailabilityResolver $demoAvailability,
+        private readonly DemoAcademicContextResolver $demoAcademicContext,
+        private readonly InstructorAcademicEligibilityResolver $instructorEligibility,
     ) {}
 
     public function availableDates(
@@ -55,6 +70,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
         CarbonImmutable $to,
         string $timezone = 'UTC',
         ?int $teacherId = null,
+        ?AcademicContextData $academicContext = null,
     ): Collection {
         $type = $this->types->requireActiveByKey($typeKey);
         $totalDays = (int) $from->startOfDay()->diffInDays($to->endOfDay()) + 1;
@@ -63,7 +79,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
         // slot objects — and stop as soon as every day is covered.
         $found = [];
 
-        foreach ($this->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes, $teacherId) as $teacher) {
+        foreach ($this->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes, $teacherId, $academicContext) as $teacher) {
             $slots = $this->availability->slots(
                 new AvailabilityQueryData($teacher->id, $typeKey, $from, $to, $timezone),
             );
@@ -87,11 +103,12 @@ final class WizardBookingService implements WizardBookingServiceInterface
         CarbonImmutable $date,
         string $timezone = 'UTC',
         ?int $teacherId = null,
+        ?AcademicContextData $academicContext = null,
     ): Collection {
         $from = $date->setTimezone($timezone)->startOfDay();
 
         return $this
-            ->slotsAcrossTeachers($typeKey, $subject, $grade, $from, $from->addDay(), $timezone, $teacherId)
+            ->slotsAcrossTeachers($typeKey, $subject, $grade, $from, $from->addDay(), $timezone, $teacherId, $academicContext)
             ->unique(fn (TimeSlotData $slot): int => $slot->startsAt->getTimestamp())
             ->sortBy(fn (TimeSlotData $slot): int => $slot->startsAt->getTimestamp())
             ->values();
@@ -102,9 +119,26 @@ final class WizardBookingService implements WizardBookingServiceInterface
         $this->assertAuthenticated();
         $type = $this->types->requireActiveByKey($data->typeKey);
         $this->financialVerification->assertEligible(auth()->user(), $type);
-        $teacherId = $this->resolveTeacher($data, $type);
 
-        return $this->bookings->request($this->occurrenceData($data, $type, $data->startsAt, $teacherId));
+        // First resolve so an auto-assigned teacher is drawn from an
+        // already-narrowed eligible candidate SET (§14).
+        $academicContext = $this->resolveAcademicContext($data);
+        $grade = $academicContext?->normalizedGrade ?? $data->grade;
+        $teacherId = $this->resolveTeacher($data, $type, $grade, $academicContext?->toAcademicContextData());
+
+        // Re-resolve immediately before persistence (§27/§28): never
+        // trust the context resolved a moment ago for candidate
+        // narrowing — the currently-Published CurriculumVersion and
+        // instructor eligibility must be current AT booking creation.
+        $academicContext = $this->resolveAcademicContext($data);
+        $grade = $academicContext?->normalizedGrade ?? $data->grade;
+
+        if ($academicContext !== null) {
+            $instructor = User::findOrFail($teacherId);
+            $this->instructorEligibility->assertEligible($instructor, $academicContext->toAcademicContextData());
+        }
+
+        return $this->bookings->request($this->occurrenceData($data, $type, $data->startsAt, $teacherId, $grade, $academicContext));
     }
 
     /**
@@ -123,7 +157,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
             throw new BookingException('Recurring sessions are only available for paid booking types.');
         }
 
-        $teacherId = $this->resolveTeacher($data, $type);
+        $teacherId = $this->resolveTeacher($data, $type, $data->grade, null);
         $occurrences = max(2, min($recurrence->occurrences, RecurrenceData::MAX_OCCURRENCES));
         $groupId = (string) Str::uuid();
 
@@ -134,7 +168,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
             $startsAt = $recurrence->nextStartsAt($data->startsAt, $i);
 
             try {
-                $booked->push($this->bookings->request($this->occurrenceData($data, $type, $startsAt, $teacherId, ['recurring_group' => $groupId], $recurrence->frequency)));
+                $booked->push($this->bookings->request($this->occurrenceData($data, $type, $startsAt, $teacherId, $data->grade, extraMeta: ['recurring_group' => $groupId], recurrenceFrequency: $recurrence->frequency)));
             } catch (BookingException $e) {
                 $failures[$startsAt->toIso8601String()] = $e->getMessage();
             }
@@ -159,15 +193,16 @@ final class WizardBookingService implements WizardBookingServiceInterface
         }
     }
 
-    private function resolveTeacher(WizardBookingData $data, BookingType $type): int
+    private function resolveTeacher(WizardBookingData $data, BookingType $type, int $grade, ?AcademicContextData $academicContext): int
     {
         $criteria = new AssignmentCriteriaData(
             typeKey: $data->typeKey,
             subject: $data->subject,
-            grade: $data->grade,
+            grade: $grade,
             startsAt: $data->startsAt,
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
+            academicContext: $academicContext,
         );
 
         if ($data->teacherId !== null) {
@@ -181,8 +216,32 @@ final class WizardBookingService implements WizardBookingServiceInterface
         return $this->assigner->assign($criteria)->id;
     }
 
+    /**
+     * Resolves the country-aware academic context for a Free Demo
+     * request, or null for every other type / legacy student — see
+     * DemoAcademicContextResolver's class docblock for the full gating
+     * rules (§10/§26/§41). Never caches its own result across calls —
+     * intentionally re-run at each call site in book() so a race
+     * (Education System deactivated, Curriculum archived, version
+     * superseded, etc.) between UI render and submit is caught (§28).
+     */
+    private function resolveAcademicContext(WizardBookingData $data): ?BookingAcademicContextData
+    {
+        if ($data->typeKey !== FreeDemoType::KEY) {
+            return null;
+        }
+
+        return $this->demoAcademicContext->resolveForDemo(
+            auth()->user(),
+            $data->educationSystemId,
+            $data->educationSystemLevelId,
+            $data->subjectId,
+            $data->curriculumId,
+        );
+    }
+
     /** @param array<string, mixed> $extraMeta */
-    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null): CreateBookingData
+    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, int $grade, ?BookingAcademicContextData $academicContext = null, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null): CreateBookingData
     {
         return new CreateBookingData(
             typeKey: $data->typeKey,
@@ -192,8 +251,15 @@ final class WizardBookingService implements WizardBookingServiceInterface
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
             notes: $data->notes,
-            meta: ['subject' => $data->subject, 'grade' => $data->grade, ...$extraMeta],
+            // §21/§24: legacy meta.subject/meta.grade continue to be
+            // written for every booking (existing readers must not
+            // break) — for a country-aware Demo, subject is derived from
+            // the validated Subject master and grade from the resolved
+            // EducationSystemLevel.normalized_grade, never the raw
+            // client-submitted strings.
+            meta: ['subject' => $academicContext?->subjectName ?? $data->subject, 'grade' => $grade, ...$extraMeta],
             recurrenceFrequency: $recurrenceFrequency,
+            academicContext: $academicContext,
         );
     }
 
@@ -206,11 +272,12 @@ final class WizardBookingService implements WizardBookingServiceInterface
         CarbonImmutable $to,
         string $timezone,
         ?int $teacherId = null,
+        ?AcademicContextData $academicContext = null,
     ): Collection {
         $type = $this->types->requireActiveByKey($typeKey);
 
         return $this
-            ->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes, $teacherId)
+            ->eligibleTeachers($typeKey, $subject, $grade, $from, $type->duration_minutes, $teacherId, $academicContext)
             ->flatMap(fn (User $teacher): Collection => $this->availability->slots(
                 new AvailabilityQueryData($teacher->id, $typeKey, $from, $to, $timezone),
             ));
@@ -228,13 +295,13 @@ final class WizardBookingService implements WizardBookingServiceInterface
      *
      * @return Collection<int, User>
      */
-    private function eligibleTeachers(string $typeKey, string $subject, int $grade, CarbonImmutable $startsAt, int $duration, ?int $teacherId = null): Collection
+    private function eligibleTeachers(string $typeKey, string $subject, int $grade, CarbonImmutable $startsAt, int $duration, ?int $teacherId = null, ?AcademicContextData $academicContext = null): Collection
     {
         if ($typeKey === FreeDemoType::KEY && ! $this->demoAvailability->isAvailable()) {
             return new Collection;
         }
 
-        $criteria = new AssignmentCriteriaData($typeKey, $subject, $grade, $startsAt, $duration);
+        $criteria = new AssignmentCriteriaData($typeKey, $subject, $grade, $startsAt, $duration, academicContext: $academicContext);
 
         if ($teacherId === null) {
             return $this->candidates->eligible($criteria);

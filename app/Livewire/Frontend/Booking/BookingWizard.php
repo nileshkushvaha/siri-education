@@ -11,6 +11,10 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
+use App\Booking\Types\FreeDemoType;
+use App\Curriculum\DTOs\AcademicContextData;
+use App\Models\Country;
+use App\Models\EducationSystem;
 use App\Models\Wallet;
 use App\Settings\FeatureSettings;
 use App\Support\MoneyFormatter;
@@ -41,6 +45,15 @@ final class BookingWizard extends Component
     private const array PHASE_LABELS = [
         'mode' => 'Session type',
         'subject' => 'Subject',
+        'education_system' => 'Education system',
+        // 'level' is deliberately absent here — its label is always the
+        // selected EducationSystem's configured terminology ("Class" /
+        // "Grade" / "Year"), computed dynamically in steps(), never a
+        // static string (Phase 3.1 §13: no hardcoded country-aware copy).
+        'academic_subject' => 'Subject',
+        'curriculum' => 'Curriculum',
+        // Legacy (non-academic) flow only — the country-aware flow never
+        // visits this phase (§12: level implies grade).
         'grade' => 'Grade',
         'billing_mode' => 'Schedule',
         'frequency' => 'Frequency',
@@ -58,7 +71,15 @@ final class BookingWizard extends Component
     /** @var list<string> */
     public array $subjects = [];
 
-    /** @var list<int> */
+    /**
+     * Legacy (non-academic) Demo/Paid flow only — offered when the
+     * country-aware academic flow is inactive (feature off globally or
+     * for this student's country, per §14). The country-aware flow
+     * never reads this array; its selectable levels come exclusively
+     * from EducationSystemLevel (see $levels below).
+     *
+     * @var list<int>
+     */
     public array $grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
     /** @var list<string> */
@@ -127,6 +148,63 @@ final class BookingWizard extends Component
     #[Locked]
     public ?string $lockedInstructorName = null;
 
+    // ── Phase 3 — country-aware academic Demo booking (§5-§13) ──────────────
+    //
+    // Country is always server-resolved (§6) — #[Locked] rejects any
+    // client-submitted override, exactly like $lockedInstructorId. The
+    // three flags below are mutually informative, never redundant:
+    // academicFlowActive = "the wizard is walking the System/Level/
+    // Subject/Curriculum chain instead of the legacy free-text
+    // subject/grade phase"; academicFlowBlocked = "feature is in effect
+    // but this student has no usable Country — the whole free_demo mode
+    // is refused, never silently downgraded to legacy" (§6/§10);
+    // academicFlowUnavailable = "feature is in effect and Country is
+    // fine, but admin configuration for this Country is incomplete
+    // (e.g. no Education Systems mapped yet)" — the flow stays active
+    // but shows a configuration-missing message and never falls back to
+    // legacy subject/grade (§13/§25).
+    public bool $academicFlowActive = false;
+
+    public bool $academicFlowBlocked = false;
+
+    public bool $academicFlowUnavailable = false;
+
+    #[Locked]
+    public ?int $studentCountryId = null;
+
+    #[Locked]
+    public ?string $studentCountryName = null;
+
+    /** @var list<array{id:string,name:string}> */
+    public array $educationSystems = [];
+
+    /**
+     * Phase 3.1 — the exact, student-selectable levels under the chosen
+     * Education System (Class 6..12 / Grade 6..12 / Year 6..12, ...).
+     * Replaces the old academicLevels/grade two-step choice entirely —
+     * see selectLevel(). Never synthesized from min/max bands or a
+     * hardcoded 1..12 fallback (§7/§39): an empty array after selecting
+     * a system means the flow is unavailable for it.
+     *
+     * @var list<array{id:string,value:string,display_label:string,normalized_grade:?int}>
+     */
+    public array $levels = [];
+
+    /** @var list<array{id:string,name:string}> */
+    public array $academicSubjects = [];
+
+    /** @var list<array{id:string,name:string}> */
+    public array $curricula = [];
+
+    public ?string $educationSystemId = null;
+
+    /** The single student-facing level choice — implies both academic_level_id and normalized_grade once resolved server-side (§12). */
+    public ?string $educationSystemLevelId = null;
+
+    public ?string $academicSubjectId = null;
+
+    public ?string $curriculumId = null;
+
     private BookingWizardService $wizard;
 
     private BookingRepositoryInterface $bookings;
@@ -190,9 +268,25 @@ final class BookingWizard extends Component
         }
 
         // Jump ahead exactly as far as valid query params carry us —
-        // never further, never guessed from array/DB ordering.
+        // never further, never guessed from array/DB ordering. A
+        // preselected ?subject= is legacy-only (free-text) and never
+        // applies to the academic flow — a country-aware Demo student
+        // always walks the System/Level/Subject/Curriculum chain from
+        // the top, even when arriving via a deep link.
         if ($this->type !== null) {
-            $this->goToPhase($this->subject !== null ? 'grade' : 'subject');
+            if ($this->type === FreeDemoType::KEY) {
+                $this->initializeAcademicFlow();
+
+                if ($this->academicFlowBlocked) {
+                    // Stay on the mode step; banner already set.
+                } elseif ($this->academicFlowActive) {
+                    $this->goToPhase('education_system');
+                } else {
+                    $this->goToPhase($this->subject !== null ? 'grade' : 'subject');
+                }
+            } else {
+                $this->goToPhase($this->subject !== null ? 'grade' : 'subject');
+            }
         }
     }
 
@@ -219,10 +313,29 @@ final class BookingWizard extends Component
             return;
         }
 
+        $this->banner = '';
         $this->type = $type;
         $this->recurring = false;
         $this->frequency = null;
         $this->resetAvailability();
+        $this->resetAcademicSelection();
+
+        if ($type === FreeDemoType::KEY) {
+            $this->initializeAcademicFlow();
+
+            if ($this->academicFlowBlocked) {
+                // Stay on the mode step — banner already carries the
+                // actionable message (§6/§10: never fall back silently).
+                return;
+            }
+
+            if ($this->academicFlowActive) {
+                $this->goToPhase('education_system');
+
+                return;
+            }
+        }
+
         $this->goToPhase('subject');
     }
 
@@ -234,6 +347,124 @@ final class BookingWizard extends Component
         $this->goToPhase('grade');
     }
 
+    // ── Phase 3 — progressive academic selection (§7/§8) ─────────────────
+
+    public function selectEducationSystem(string $educationSystemId): void
+    {
+        if (! collect($this->educationSystems)->pluck('id')->contains($educationSystemId)) {
+            return;
+        }
+
+        $this->educationSystemId = $educationSystemId;
+        $this->educationSystemLevelId = null;
+        $this->academicSubjectId = null;
+        $this->curriculumId = null;
+        $this->levels = [];
+        $this->academicSubjects = [];
+        $this->curricula = [];
+        $this->resetAvailability();
+
+        $country = $this->currentCountry();
+
+        if ($country === null) {
+            return;
+        }
+
+        $this->levels = $this->wizard->levels($country, $educationSystemId);
+        $this->goToPhase('level');
+    }
+
+    /**
+     * The single student-facing level choice (§12) — replaces the old
+     * separate Academic Level + Grade phases entirely. Selecting a
+     * level implies both academic_level_id and normalized_grade; a
+     * level with no normalized_grade is currently unsupported for Demo
+     * booking (§9 — no invented subject-only fallback) and is refused
+     * here with the same message DemoAcademicContextResolver would
+     * throw at submit time.
+     */
+    public function selectLevel(string $educationSystemLevelId): void
+    {
+        $selected = collect($this->levels)->firstWhere('id', $educationSystemLevelId);
+
+        if ($selected === null) {
+            return;
+        }
+
+        if ($selected['normalized_grade'] === null) {
+            $this->banner = 'This level is not currently supported for demo booking. Please select a different level.';
+
+            return;
+        }
+
+        $this->educationSystemLevelId = $educationSystemLevelId;
+        $this->grade = (int) $selected['normalized_grade'];
+        $this->academicSubjectId = null;
+        $this->curriculumId = null;
+        $this->academicSubjects = [];
+        $this->curricula = [];
+        $this->resetAvailability();
+
+        $country = $this->currentCountry();
+
+        if ($country === null || $this->educationSystemId === null) {
+            return;
+        }
+
+        $this->academicSubjects = $this->wizard->academicSubjects($country, $this->educationSystemId, $educationSystemLevelId);
+        $this->goToPhase('academic_subject');
+    }
+
+    public function selectAcademicSubject(string $academicSubjectId): void
+    {
+        if (! collect($this->academicSubjects)->pluck('id')->contains($academicSubjectId)) {
+            return;
+        }
+
+        $this->academicSubjectId = $academicSubjectId;
+        $this->curriculumId = null;
+        $this->curricula = [];
+        $this->resetAvailability();
+
+        // Legacy-compat: $subject (the free-text field TeacherSubject /
+        // meta.subject / candidate matching already reads) is derived
+        // from the validated Subject master, never trusted as its own
+        // client input (§20 — legacy fields stay populated but are
+        // never authoritative for the new academic history).
+        $this->subject = collect($this->academicSubjects)->firstWhere('id', $academicSubjectId)['name'] ?? null;
+
+        $country = $this->currentCountry();
+
+        if ($country === null || $this->educationSystemId === null || $this->educationSystemLevelId === null) {
+            return;
+        }
+
+        $this->curricula = $this->wizard->curricula($country, $this->educationSystemId, $this->educationSystemLevelId, $academicSubjectId, $this->lockedInstructorId);
+        $this->goToPhase('curriculum');
+    }
+
+    /** Finalizes the country-aware academic selection — mirrors what selectGrade() does for the legacy flow. */
+    public function selectCurriculum(string $curriculumId): void
+    {
+        if (! collect($this->curricula)->pluck('id')->contains($curriculumId)) {
+            return;
+        }
+
+        $this->curriculumId = $curriculumId;
+        $this->resetAvailability();
+        $this->validateSelection(['educationSystemId', 'educationSystemLevelId', 'academicSubjectId', 'curriculumId']);
+
+        if ($this->isPaidType()) {
+            $this->goToPhase('billing_mode');
+
+            return;
+        }
+
+        $this->loadDates();
+        $this->goToPhase('date');
+    }
+
+    /** Legacy (non-academic) flow only — the country-aware flow finalizes its selection in selectCurriculum() instead. */
     public function selectGrade(int $grade): void
     {
         $this->grade = $grade;
@@ -322,6 +553,15 @@ final class BookingWizard extends Component
             'timezone' => $this->timezone,
             'notes' => filled($this->notes) ? $this->notes : null,
             'teacher_id' => $this->lockedInstructorId,
+            // Phase 3/3.1 (§14) — these raw ids are re-resolved and
+            // re-validated server-side (WizardBookingService ->
+            // DemoAcademicContextResolver -> AcademicContextResolver)
+            // immediately before persistence; nothing here is trusted
+            // as-is. Null for every legacy/paid submission.
+            'education_system_id' => $this->academicFlowActive ? $this->educationSystemId : null,
+            'education_system_level_id' => $this->academicFlowActive ? $this->educationSystemLevelId : null,
+            'academic_subject_id' => $this->academicFlowActive ? $this->academicSubjectId : null,
+            'curriculum_id' => $this->academicFlowActive ? $this->curriculumId : null,
         ];
 
         try {
@@ -579,6 +819,13 @@ final class BookingWizard extends Component
             'paymentBanner',
         ]);
 
+        $this->resetAcademicSelection();
+        $this->academicFlowActive = false;
+        $this->academicFlowBlocked = false;
+        $this->academicFlowUnavailable = false;
+        $this->studentCountryId = null;
+        $this->studentCountryName = null;
+
         $this->step = 1;
         $this->occurrences = 4;
         $this->month = now($this->timezone)->format('Y-m');
@@ -596,6 +843,8 @@ final class BookingWizard extends Component
             'steps' => $this->steps(),
             'canGoPreviousMonth' => $this->monthDate()->greaterThan(now($this->timezone)->startOfMonth()),
             'canGoNextMonth' => $this->monthDate()->lessThan(now($this->timezone)->addDays(90)->startOfMonth()),
+            'levelTermSingular' => $this->levelTermSingular(),
+            'levelTermPlural' => $this->levelTermPlural(),
         ]);
     }
 
@@ -624,11 +873,111 @@ final class BookingWizard extends Component
         $this->selectedSlotStartsAt = null;
     }
 
+    /**
+     * Phase 3 (§8) — clears every selection that depends on a phase the
+     * student is (re)entering. Called on selectMode() (fresh start) and
+     * restart(); the individual select*() methods above additionally
+     * clear their own narrower downstream slice (System change clears
+     * Level/Subject/Curriculum, Level change clears Subject/Curriculum,
+     * Subject change clears Curriculum) so a stale, incompatible
+     * selection can never survive an upstream change.
+     */
+    private function resetAcademicSelection(): void
+    {
+        $this->educationSystemId = null;
+        $this->educationSystemLevelId = null;
+        $this->academicSubjectId = null;
+        $this->curriculumId = null;
+        $this->educationSystems = [];
+        $this->levels = [];
+        $this->academicSubjects = [];
+        $this->curricula = [];
+    }
+
+    /**
+     * Phase 3 (§5/§6/§13) — the single entry point that decides, for the
+     * current authenticated student, whether Free Demo goes through the
+     * country-aware academic flow, the legacy free-text flow, or must be
+     * blocked outright. Always re-derives the student's Country
+     * server-side (never trusts prior component state).
+     */
+    private function initializeAcademicFlow(): void
+    {
+        $this->academicFlowActive = false;
+        $this->academicFlowBlocked = false;
+        $this->academicFlowUnavailable = false;
+        $this->studentCountryId = null;
+        $this->studentCountryName = null;
+
+        if (! $this->wizard->academicBookingEnabledGlobally()) {
+            return;
+        }
+
+        $user = Auth::user();
+        $country = $user !== null ? $this->wizard->studentCountry($user) : null;
+
+        if ($country === null || $country->status !== 'active') {
+            $this->academicFlowBlocked = true;
+            $this->banner = 'Please complete your profile country before booking a demo lesson.';
+
+            return;
+        }
+
+        $this->studentCountryId = $country->id;
+        $this->studentCountryName = $country->name;
+
+        if (! $this->wizard->academicBookingEnabledForCountry($country)) {
+            // Per-country rollout: legacy free-text subject/grade Demo
+            // flow remains unchanged for this student's country.
+            return;
+        }
+
+        $this->academicFlowActive = true;
+        $this->educationSystems = $this->wizard->educationSystems($country, $this->lockedInstructorId);
+
+        if (empty($this->educationSystems)) {
+            // §13/§25: enabled but not yet configured for this country —
+            // never fall back to legacy, show an unavailable state.
+            $this->academicFlowUnavailable = true;
+        }
+    }
+
+    private function currentCountry(): ?Country
+    {
+        if ($this->studentCountryId === null) {
+            return null;
+        }
+
+        return Country::find($this->studentCountryId);
+    }
+
+    /** The selected EducationSystem's configured level term ("Class"/"Grade"/"Year"), or the generic "Level" fallback (§13). */
+    private function levelTermSingular(): string
+    {
+        return $this->currentEducationSystem()?->levelTermSingular() ?? 'Level';
+    }
+
+    private function levelTermPlural(): string
+    {
+        return $this->currentEducationSystem()?->levelTermPlural() ?? 'Levels';
+    }
+
+    private function currentEducationSystem(): ?EducationSystem
+    {
+        return $this->educationSystemId !== null ? EducationSystem::find($this->educationSystemId) : null;
+    }
+
     private function loadDates(): void
     {
         $this->banner = '';
 
         if (! $this->type || ! $this->subject || ! $this->grade) {
+            $this->dates = [];
+
+            return;
+        }
+
+        if ($this->academicFlowActive && ($this->curriculumId === null)) {
             $this->dates = [];
 
             return;
@@ -646,7 +995,7 @@ final class BookingWizard extends Component
 
         try {
             $this->dates = $this->wizard
-                ->availableDates($this->type, $this->subject, (int) $this->grade, $from, $to, $this->timezone, $this->lockedInstructorId)
+                ->availableDates($this->type, $this->subject, (int) $this->grade, $from, $to, $this->timezone, $this->lockedInstructorId, $this->browsingAcademicContext())
                 ->all();
         } catch (BookingException $exception) {
             $this->dates = [];
@@ -666,7 +1015,7 @@ final class BookingWizard extends Component
 
         try {
             $this->availableSlots = $this->wizard
-                ->availableSlots($this->type, $this->subject, (int) $this->grade, CarbonImmutable::parse($this->date, $this->timezone), $this->timezone, $this->lockedInstructorId)
+                ->availableSlots($this->type, $this->subject, (int) $this->grade, CarbonImmutable::parse($this->date, $this->timezone), $this->timezone, $this->lockedInstructorId, $this->browsingAcademicContext())
                 ->all();
         } catch (BookingException $exception) {
             $this->availableSlots = [];
@@ -674,12 +1023,46 @@ final class BookingWizard extends Component
         }
     }
 
+    /**
+     * Non-authoritative narrowing context for date/slot browsing only
+     * (§7/§10) — never what actually gates Booking creation. See
+     * BookingWizardService::resolveAcademicContextForBrowsing()'s
+     * docblock.
+     */
+    private function browsingAcademicContext(): ?AcademicContextData
+    {
+        if (! $this->academicFlowActive) {
+            return null;
+        }
+
+        $country = $this->currentCountry();
+
+        if ($country === null) {
+            return null;
+        }
+
+        return $this->wizard->resolveAcademicContextForBrowsing($country, $this->educationSystemId, $this->educationSystemLevelId, $this->academicSubjectId, $this->curriculumId);
+    }
+
     /** @return array<string, mixed> */
     private function fieldRules(): array
     {
         return [
             'type' => ['required', 'string', Rule::in(collect($this->types)->pluck('key')->all())],
-            'subject' => ['required', 'string', Rule::in($this->subjects)],
+            // Phase 3 (§20): under the academic flow, $subject is
+            // derived server-side from the validated Subject master
+            // (selectAcademicSubject()) rather than chosen from the
+            // legacy free-text list — it is still required, but not
+            // checked against $subjects, which only ever lists legacy
+            // TeacherSubject free-text values.
+            'subject' => $this->academicFlowActive
+                ? ['required', 'string']
+                : ['required', 'string', Rule::in($this->subjects)],
+            // Legacy (non-academic) Demo/Paid flow only — the
+            // country-aware flow never submits 'grade' as an
+            // independent field; it derives from educationSystemLevelId
+            // instead and is never checked against a hardcoded 1-12
+            // bound here (§34 cleanup).
             'grade' => ['required', 'integer', 'min:1', 'max:12'],
             'date' => ['required', 'date_format:Y-m-d', Rule::in($this->dates)],
             'selectedSlotStartsAt' => ['required', 'string', Rule::in(collect($this->availableSlots)->pluck('starts_at')->all())],
@@ -687,6 +1070,10 @@ final class BookingWizard extends Component
             'notes' => ['nullable', 'string', 'max:1000'],
             'frequency' => ['required', Rule::in(['daily', 'weekly'])],
             'occurrences' => ['required', 'integer', 'between:2,'.RecurrenceData::MAX_OCCURRENCES],
+            'educationSystemId' => ['required', 'string', Rule::in(collect($this->educationSystems)->pluck('id')->all())],
+            'educationSystemLevelId' => ['required', 'string', Rule::in(collect($this->levels)->pluck('id')->all())],
+            'academicSubjectId' => ['required', 'string', Rule::in(collect($this->academicSubjects)->pluck('id')->all())],
+            'curriculumId' => ['required', 'string', Rule::in(collect($this->curricula)->pluck('id')->all())],
         ];
     }
 
@@ -694,8 +1081,14 @@ final class BookingWizard extends Component
     private function rulesForSubmit(): array
     {
         $rules = collect($this->fieldRules())->only([
-            'type', 'subject', 'grade', 'date', 'selectedSlotStartsAt', 'timezone', 'notes',
+            'type', 'date', 'selectedSlotStartsAt', 'timezone', 'notes',
         ])->all();
+
+        if ($this->academicFlowActive) {
+            $rules += collect($this->fieldRules())->only(['educationSystemId', 'educationSystemLevelId', 'academicSubjectId', 'curriculumId'])->all();
+        } else {
+            $rules += collect($this->fieldRules())->only(['subject', 'grade'])->all();
+        }
 
         if ($this->recurring) {
             $rules += collect($this->fieldRules())->only(['frequency', 'occurrences'])->all();
@@ -722,7 +1115,9 @@ final class BookingWizard extends Component
      */
     private function phases(): array
     {
-        $phases = ['mode', 'subject', 'grade'];
+        $phases = $this->type === FreeDemoType::KEY && $this->academicFlowActive
+            ? ['mode', 'education_system', 'level', 'academic_subject', 'curriculum']
+            : ['mode', 'subject', 'grade'];
 
         if ($this->isPaidType()) {
             $phases[] = 'billing_mode';
@@ -784,7 +1179,11 @@ final class BookingWizard extends Component
             ->values()
             ->map(fn (string $phase, int $i): array => [
                 'number' => $i + 1,
-                'label' => $phase === 'confirmed' ? $this->finalPhaseLabel() : self::PHASE_LABELS[$phase],
+                'label' => match ($phase) {
+                    'confirmed' => $this->finalPhaseLabel(),
+                    'level' => $this->levelTermSingular(),
+                    default => self::PHASE_LABELS[$phase],
+                },
             ])
             ->all();
     }

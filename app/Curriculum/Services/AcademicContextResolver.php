@@ -13,6 +13,7 @@ use App\Models\Country;
 use App\Models\Curriculum;
 use App\Models\CurriculumVersion;
 use App\Models\EducationSystem;
+use App\Models\EducationSystemLevel;
 use App\Models\Subject;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -112,6 +113,52 @@ final class AcademicContextResolver
             ->orderBy('display_order')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Phase 3.1 — the exact, student-selectable levels under the given
+     * system (Class 6..12 / Grade 6..12 / Year 6..12, ...), in place of
+     * the broad AcademicLevel band a student never chooses directly.
+     * Returns an empty Collection when none are configured — callers
+     * must never synthesize a 1..12 fallback (§7/§39).
+     */
+    public function levelsForSystem(Country $country, EducationSystem $system): Collection
+    {
+        $this->assertSystemAvailableInCountry($country, $system);
+
+        return EducationSystemLevel::query()
+            ->active()
+            ->where('education_system_id', $system->id)
+            ->whereHas('academicLevel', fn ($q) => $q->where('status', AcademicStatus::Active))
+            ->orderBy('display_order')
+            ->orderBy('value')
+            ->get();
+    }
+
+    /**
+     * Phase 3.1 — resolves academic context from a student-selected
+     * EducationSystemLevel instead of requiring the caller to
+     * independently supply an AcademicLevel. Derives the AcademicLevel
+     * from the level and delegates entirely to resolveContext() — no
+     * parallel resolution logic.
+     */
+    public function resolveContextForLevel(Country $country, EducationSystem $system, EducationSystemLevel $level, Subject $subject, Curriculum $curriculum): AcademicContextData
+    {
+        if ($level->education_system_id !== $system->id) {
+            throw new AcademicContextException('Selected level does not belong to the selected education system.');
+        }
+
+        if (! $level->is_active) {
+            throw new AcademicContextException(sprintf('Level "%s" is not active.', $level->display_label));
+        }
+
+        $academicLevel = $level->academicLevel;
+
+        if ($academicLevel === null || $academicLevel->status !== AcademicStatus::Active) {
+            throw new AcademicContextException(sprintf('Level "%s" is not linked to an active academic level.', $level->display_label));
+        }
+
+        return $this->resolveContext($country, $system, $academicLevel, $subject, $curriculum);
     }
 
     /**

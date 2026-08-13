@@ -63,20 +63,26 @@ class AcademicLevelForm
                             ->placeholder('Brief overview of this academic level…')
                             ->columnSpanFull(),
 
-                        // Grade range — a logical pair.
+                        // Internal normalized grade-band metadata only
+                        // (Phase 3.1 §17) — no longer the source of
+                        // truth for the country-aware booking wizard's
+                        // selectable Class/Grade/Year options, which
+                        // come from EducationSystemLevel instead (see
+                        // EducationSystemResource's "Levels" tab). Kept
+                        // for internal reporting/broad-band metadata;
+                        // no hardcoded 1-12 ceiling so future bands
+                        // (e.g. spanning Year 13) remain representable.
                         Grid::make(2)->schema([
                             TextInput::make('min_grade')
-                                ->label('Min Grade')
+                                ->label('Min Grade (internal)')
                                 ->numeric()
                                 ->minValue(1)
-                                ->maxValue(12)
                                 ->placeholder('e.g. 6')
-                                ->helperText('Leave blank for levels not bound to a grade range (e.g. Undergraduate).'),
+                                ->helperText('Internal grade-band metadata, not the booking wizard\'s level options. Leave blank for levels not bound to a grade range (e.g. Undergraduate).'),
                             TextInput::make('max_grade')
-                                ->label('Max Grade')
+                                ->label('Max Grade (internal)')
                                 ->numeric()
                                 ->minValue(1)
-                                ->maxValue(12)
                                 ->placeholder('e.g. 8'),
                         ]),
 

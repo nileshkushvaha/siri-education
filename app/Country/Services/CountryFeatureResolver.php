@@ -84,6 +84,7 @@ final class CountryFeatureResolver
             CountryFeature::Waitlist => $this->features->waitlist_enabled,
             CountryFeature::Homework => $this->features->homework_enabled,
             CountryFeature::RecordingAvailability => $this->features->recording_enabled,
+            CountryFeature::CountryAcademicBooking => $this->features->country_academic_booking_enabled,
         };
     }
 

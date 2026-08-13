@@ -68,7 +68,10 @@ final class BookingRepository implements BookingRepositoryInterface
 
     public function reschedule(Booking $booking, CarbonImmutable $startsAt, CarbonImmutable $endsAt): Booking
     {
-        $booking->fill(['starts_at' => $startsAt, 'ends_at' => $endsAt]);
+        // Normalized to UTC — see CreateBookingData::__construct() for
+        // why a non-UTC Carbon instance must never reach a
+        // datetime-cast column directly.
+        $booking->fill(['starts_at' => $startsAt->utc(), 'ends_at' => $endsAt->utc()]);
         $booking->save();
 
         return $booking->refresh();
@@ -163,7 +166,7 @@ final class BookingRepository implements BookingRepositoryInterface
     {
         return Booking::withTrashed()
             ->forStudent($userId)
-            ->with(['type', 'instructor', 'meeting'])
+            ->with(['type', 'instructor', 'meeting', 'academicContext'])
             ->when($status, fn (Builder $q) => $q->withStatus($status))
             ->orderByDesc('starts_at')
             ->paginate($perPage);

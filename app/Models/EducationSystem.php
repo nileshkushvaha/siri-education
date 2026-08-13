@@ -63,9 +63,16 @@ class EducationSystem extends Model
         'description',
         'status',
         'display_order',
+        'level_term_singular',
+        'level_term_plural',
         'created_by',
         'updated_by',
     ];
+
+    /** Generic fallback when an admin hasn't configured this system's terminology yet. */
+    private const string DEFAULT_LEVEL_TERM_SINGULAR = 'Level';
+
+    private const string DEFAULT_LEVEL_TERM_PLURAL = 'Levels';
 
     protected function casts(): array
     {
@@ -97,6 +104,12 @@ class EducationSystem extends Model
         return $this->hasMany(EducationSystemAcademicLevel::class);
     }
 
+    /** The exact, student-selectable levels under this system (Class 6..12, Grade 6..12, Year 6..12, ...). */
+    public function levels(): HasMany
+    {
+        return $this->hasMany(EducationSystemLevel::class);
+    }
+
     public function curriculumMappings(): HasMany
     {
         return $this->hasMany(CurriculumEducationSystem::class);
@@ -124,10 +137,21 @@ class EducationSystem extends Model
         return $query->where('status', AcademicStatus::Active);
     }
 
+    /** The term this system uses for a student-selectable level (e.g. "Class", "Grade", "Year"); "Level" when unconfigured. */
+    public function levelTermSingular(): string
+    {
+        return filled($this->level_term_singular) ? $this->level_term_singular : self::DEFAULT_LEVEL_TERM_SINGULAR;
+    }
+
+    public function levelTermPlural(): string
+    {
+        return filled($this->level_term_plural) ? $this->level_term_plural : self::DEFAULT_LEVEL_TERM_PLURAL;
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'slug', 'code', 'description', 'status', 'display_order'])
+            ->logOnly(['name', 'slug', 'code', 'description', 'status', 'display_order', 'level_term_singular', 'level_term_plural'])
             ->useLogName('academic_systems')
             ->logOnlyDirty()
             ->dontLogIfAttributesChangedOnly(['updated_at']);

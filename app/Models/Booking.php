@@ -112,6 +112,19 @@ class Booking extends Model
         return $this->hasOne(Lesson::class);
     }
 
+    /**
+     * Phase 3 — the immutable academic-context snapshot, present only
+     * for country-aware Free Demo bookings created while
+     * CountryFeature::CountryAcademicBooking was enabled for the
+     * student's country. Null for every legacy/paid/non-academic
+     * booking — callers must handle the null case, never assume it
+     * exists.
+     */
+    public function academicContext(): HasOne
+    {
+        return $this->hasOne(BookingAcademicContext::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(BookingPayment::class);

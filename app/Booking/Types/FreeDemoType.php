@@ -7,6 +7,7 @@ namespace App\Booking\Types;
 use App\Booking\Contracts\BookingTypeInterface;
 use App\Booking\Validation\Rules\DemoLessonsEnabledRule;
 use App\Booking\Validation\Rules\OneFreeDemoPerInstructorRule;
+use App\Booking\Validation\Rules\ValidAcademicContextRule;
 
 final class FreeDemoType implements BookingTypeInterface
 {
@@ -44,6 +45,7 @@ final class FreeDemoType implements BookingTypeInterface
             // per-instructor eligibility check ever runs.
             DemoLessonsEnabledRule::class,
             OneFreeDemoPerInstructorRule::class,
+            ValidAcademicContextRule::class,
         ];
     }
 

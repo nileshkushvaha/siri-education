@@ -11,6 +11,7 @@ use App\Filament\Resources\Academic\Pages\ListEducationSystems;
 use App\Filament\Resources\Academic\RelationManagers\AcademicLevelMappingsRelationManager;
 use App\Filament\Resources\Academic\RelationManagers\CountryMappingsRelationManager;
 use App\Filament\Resources\Academic\RelationManagers\CurriculumMappingsRelationManager;
+use App\Filament\Resources\Academic\RelationManagers\EducationSystemLevelsRelationManager;
 use App\Filament\Resources\Academic\Schemas\EducationSystemForm;
 use App\Filament\Resources\Academic\Tables\EducationSystemsTable;
 use App\Models\EducationSystem;
@@ -57,6 +58,7 @@ class EducationSystemResource extends Resource
         return [
             CountryMappingsRelationManager::class,
             AcademicLevelMappingsRelationManager::class,
+            EducationSystemLevelsRelationManager::class,
             CurriculumMappingsRelationManager::class,
         ];
     }

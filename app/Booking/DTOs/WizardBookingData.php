@@ -25,5 +25,21 @@ final readonly class WizardBookingData
         public string $timezone,
         public ?string $notes = null,
         public ?int $teacherId = null,
+        /**
+         * Phase 3/3.1 — set only by the country-aware Free Demo academic
+         * flow (BookingWizard's education-system/level/subject/
+         * curriculum phases). $subject/$grade above remain populated
+         * (for meta/legacy-compat and TeacherSubject matching) even in
+         * this flow — see WizardBookingService::resolveAcademicContext()
+         * for how these raw, UNTRUSTED ids are re-resolved and
+         * validated server-side before ever reaching a Booking.
+         * educationSystemLevelId (not academicLevelId — students never
+         * choose the broad AcademicLevel band directly) implies both
+         * academic_level_id and normalized_grade once resolved.
+         */
+        public ?string $educationSystemId = null,
+        public ?string $educationSystemLevelId = null,
+        public ?string $subjectId = null,
+        public ?string $curriculumId = null,
     ) {}
 }

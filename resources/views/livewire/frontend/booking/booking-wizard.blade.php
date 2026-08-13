@@ -41,7 +41,7 @@
                     <div class="mt-4 space-y-3 text-sm text-slate-300">
                         <div class="flex gap-3">
                             <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-black text-indigo-100">1</span>
-                            <p>Select subject, grade, and time.</p>
+                            <p>Select your session details and a time that works for you.</p>
                         </div>
                         <div class="flex gap-3">
                             <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-100">2</span>
@@ -120,6 +120,115 @@
                                             <span class="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide {{ $typeOption['is_paid'] ? 'bg-fuchsia-500/15 text-fuchsia-200' : 'bg-emerald-500/15 text-emerald-200' }}">
                                                 {{ $typeOption['is_paid'] ? 'Paid' : 'Free' }}
                                             </span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- Phase 3.1: country-aware academic Demo flow (Education System -> Level -> Subject -> Curriculum) --}}
+                    @if($currentPhase === 'education_system')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose an education system</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">
+                                @if($studentCountryName)
+                                    Available education systems for {{ $studentCountryName }}.
+                                @else
+                                    Available education systems.
+                                @endif
+                            </p>
+
+                            @if($academicFlowUnavailable)
+                                <x-ui.empty-state title="Not available yet" description="Country-aware demo booking isn't configured for your country yet. Please check back soon, or contact support." class="mt-6" />
+                            @elseif(empty($educationSystems))
+                                <x-ui.empty-state title="No education systems available" description="Please check back soon." class="mt-6" />
+                            @else
+                                <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    @foreach($educationSystems as $systemOption)
+                                        <button
+                                            type="button"
+                                            wire:click="selectEducationSystem(@js($systemOption['id']))"
+                                            aria-pressed="{{ $educationSystemId === $systemOption['id'] ? 'true' : 'false' }}"
+                                            class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                                {{ $educationSystemId === $systemOption['id'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                        >
+                                            <span class="block text-lg font-bold text-white">{{ $systemOption['name'] }}</span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'level')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a {{ $levelTermSingular }}</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Pick the {{ \Illuminate\Support\Str::lower($levelTermSingular) }} that matches the student.</p>
+
+                            @if(empty($levels))
+                                <x-ui.empty-state title="Not configured yet" description="Levels are not currently configured for this education system." class="mt-6" />
+                            @else
+                                <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                    @foreach($levels as $levelOption)
+                                        <button
+                                            type="button"
+                                            wire:click="selectLevel(@js($levelOption['id']))"
+                                            aria-pressed="{{ $educationSystemLevelId === $levelOption['id'] ? 'true' : 'false' }}"
+                                            class="min-h-20 rounded-2xl border px-4 py-3 text-center transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                                {{ $educationSystemLevelId === $levelOption['id'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                        >
+                                            <span class="block text-lg font-bold text-white">{{ $levelOption['display_label'] }}</span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'academic_subject')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a subject</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Start with the area where the student needs support.</p>
+
+                            @if(empty($academicSubjects))
+                                <x-ui.empty-state title="No subjects available" description="Please choose a different academic level, or check back soon." class="mt-6" />
+                            @else
+                                <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                    @foreach($academicSubjects as $subjectOption)
+                                        <button
+                                            type="button"
+                                            wire:click="selectAcademicSubject(@js($subjectOption['id']))"
+                                            aria-pressed="{{ $academicSubjectId === $subjectOption['id'] ? 'true' : 'false' }}"
+                                            class="min-h-20 rounded-2xl border px-4 py-3 text-center text-sm font-bold transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                                {{ $academicSubjectId === $subjectOption['id'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                        >
+                                            {{ $subjectOption['name'] }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if($currentPhase === 'curriculum')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a curriculum</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">The curriculum determines which instructors can teach this session.</p>
+
+                            @if(empty($curricula))
+                                <x-ui.empty-state title="No curricula available" description="No published curriculum (or eligible instructor) is currently available for this selection. Please choose a different subject, or check back soon." class="mt-6" />
+                            @else
+                                <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    @foreach($curricula as $curriculumOption)
+                                        <button
+                                            type="button"
+                                            wire:click="selectCurriculum(@js($curriculumOption['id']))"
+                                            aria-pressed="{{ $curriculumId === $curriculumOption['id'] ? 'true' : 'false' }}"
+                                            class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
+                                                {{ $curriculumId === $curriculumOption['id'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
+                                        >
+                                            <span class="block text-lg font-bold text-white">{{ $curriculumOption['name'] }}</span>
                                         </button>
                                     @endforeach
                                 </div>
@@ -258,12 +367,12 @@
                                 {{ \Carbon\CarbonImmutable::parse($month . '-01')->format('F Y') }}
                             </div>
 
-                            <div wire:loading.flex wire:target="selectGrade,previousMonth,nextMonth" class="mt-6 items-center justify-center gap-3 text-sm text-slate-400">
+                            <div wire:loading.flex wire:target="selectGrade,selectCurriculum,previousMonth,nextMonth" class="mt-6 items-center justify-center gap-3 text-sm text-slate-400">
                                 <x-ui.spinner size="sm" />
                                 Checking availability...
                             </div>
 
-                            <div wire:loading.remove wire:target="selectGrade,previousMonth,nextMonth" class="mt-4">
+                            <div wire:loading.remove wire:target="selectGrade,selectCurriculum,previousMonth,nextMonth" class="mt-4">
                                 <div class="grid grid-cols-7 text-center text-xs font-bold uppercase tracking-wide text-slate-500" aria-hidden="true">
                                     @foreach(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $day)
                                         <span class="py-2">{{ $day }}</span>
@@ -347,7 +456,11 @@
                                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Session</dt><dd class="mt-1 font-semibold text-white">{{ $selectedType['name'] }}</dd></div>
                                 @endif
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</dt><dd class="mt-1 font-semibold capitalize text-white">{{ str_replace(['_', '-'], ' ', (string) $subject) }}</dd></div>
-                                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</dt><dd class="mt-1 font-semibold text-white">{{ $grade }}</dd></div>
+                                @if($academicFlowActive)
+                                    <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $levelTermSingular }}</dt><dd class="mt-1 font-semibold text-white">{{ collect($levels)->firstWhere('id', $educationSystemLevelId)['display_label'] ?? $grade }}</dd></div>
+                                @else
+                                    <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</dt><dd class="mt-1 font-semibold text-white">{{ $grade }}</dd></div>
+                                @endif
                                 @if($lockedInstructorName)
                                     <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructor</dt><dd class="mt-1 font-semibold text-white">{{ $lockedInstructorName }}</dd></div>
                                 @endif
@@ -540,8 +653,8 @@
                                 <dd class="text-right font-semibold capitalize text-white">{{ $subject ? str_replace(['_', '-'], ' ', $subject) : '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-3">
-                                <dt class="text-slate-400">Grade</dt>
-                                <dd class="text-right font-semibold text-white">{{ $grade ?? '-' }}</dd>
+                                <dt class="text-slate-400">{{ $academicFlowActive ? $levelTermSingular : 'Grade' }}</dt>
+                                <dd class="text-right font-semibold text-white">{{ $academicFlowActive ? (collect($levels)->firstWhere('id', $educationSystemLevelId)['display_label'] ?? '-') : ($grade ?? '-') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-3">
                                 <dt class="text-slate-400">Date</dt>

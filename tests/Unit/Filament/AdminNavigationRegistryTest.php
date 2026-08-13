@@ -10,6 +10,10 @@ use App\Filament\Pages\ReviewsQualityDashboard;
 use App\Filament\Pages\Settings\InstructorEarningSettingsPage;
 use App\Filament\Pages\Settings\ReviewQualitySettingsPage;
 use App\Filament\Resources\InstructorEarnings\InstructorEarningResource;
+use App\Filament\Resources\InstructorPackageProposals\InstructorPackageProposalResource;
+use App\Filament\Resources\PackageBenefitRules\PackageBenefitRuleResource;
+use App\Filament\Resources\StudentLearningGoals\StudentLearningGoalResource;
+use App\Filament\Resources\StudentLearningPlans\StudentLearningPlanResource;
 use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
@@ -173,6 +177,69 @@ class AdminNavigationRegistryTest extends TestCase
         $this->assertSame('Finance', $settings->group);
         $this->assertSame('Instructor Earnings & Payouts', $ledger->subgroup);
         $this->assertSame('Finance Configuration', $settings->subgroup);
+    }
+
+    /**
+     * Phase 3.2 — a package is a learning offer, not a finance record.
+     * Both package resources (and Learning Plans, which belongs with
+     * them) live under Academics > Learning Management; Finance keeps
+     * payment/wallet/settlement/earnings only. Asserted explicitly so a
+     * future "it's money-ish, put it in Finance" move fails CI.
+     */
+    public function test_package_resources_live_under_academics_learning_management(): void
+    {
+        $destinations = NavigationRegistry::destinations();
+
+        $expected = [
+            StudentLearningGoalResource::class,
+            StudentLearningPlanResource::class,
+            PackageBenefitRuleResource::class,
+            InstructorPackageProposalResource::class,
+        ];
+
+        foreach ($expected as $class) {
+            $this->assertSame('Academics', $destinations[$class]->group, "[{$class}] must sit under Academics.");
+            $this->assertSame('Learning Management', $destinations[$class]->subgroup, "[{$class}] must sit under the Learning Management subgroup.");
+        }
+
+        // Learning Goals sits directly above Learning Plans.
+        $this->assertLessThan(
+            $destinations[StudentLearningPlanResource::class]->sort,
+            $destinations[StudentLearningGoalResource::class]->sort,
+            'Learning Goals must sort above Learning Plans.'
+        );
+    }
+
+    public function test_no_package_resource_appears_under_finance(): void
+    {
+        foreach (NavigationRegistry::destinations() as $class => $destination) {
+            if (! str_contains($class, 'Package')) {
+                continue;
+            }
+
+            $this->assertNotSame(
+                'Finance',
+                $destination->group,
+                "[{$class}] must not be grouped under Finance — packages are learning offers, not finance records."
+            );
+        }
+    }
+
+    /** Phase 3.2 — user-facing wording is "Package Offer"; "Rule" is internal-only jargon. */
+    public function test_package_navigation_labels_use_offer_terminology(): void
+    {
+        $destinations = NavigationRegistry::destinations();
+
+        $this->assertSame('Package Offers', $destinations[PackageBenefitRuleResource::class]->label);
+        $this->assertSame('Instructor Package Proposals', $destinations[InstructorPackageProposalResource::class]->label);
+
+        foreach ([PackageBenefitRuleResource::class, InstructorPackageProposalResource::class] as $class) {
+            $this->assertStringNotContainsStringIgnoringCase(
+                'rule',
+                $destinations[$class]->label,
+                "[{$class}] navigation label must not expose internal \"rule\" terminology."
+            );
+        }
     }
 
     public function test_review_operations_and_review_settings_are_distinct_destinations(): void

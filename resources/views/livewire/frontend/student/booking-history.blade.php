@@ -80,7 +80,19 @@
                 @if(($booking->meta['subject'] ?? null) !== null)
                     <div>
                         <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Subject</dt>
-                        <dd class="mt-1 font-semibold capitalize text-white">{{ str_replace(['_', '-'], ' ', $booking->meta['subject']) }} @if($booking->meta['grade'] ?? null) &middot; Grade {{ $booking->meta['grade'] }} @endif</dd>
+                        <dd class="mt-1 font-semibold capitalize text-white">
+                            {{ str_replace(['_', '-'], ' ', $booking->meta['subject']) }}
+                            {{-- Phase 3.1: a country-aware academic booking carries its own
+                                 immutable snapshot (e.g. "Class 10") — prefer it over the
+                                 legacy "Grade {n}" fallback, and never reconstruct it from
+                                 current EducationSystem config (the snapshot IS the historical
+                                 record, even after an admin later renames the level). --}}
+                            @if($booking->academicContext)
+                                &middot; {{ $booking->academicContext->level_display }}
+                            @elseif($booking->meta['grade'] ?? null)
+                                &middot; Grade {{ $booking->meta['grade'] }}
+                            @endif
+                        </dd>
                     </div>
                 @endif
                 <div>

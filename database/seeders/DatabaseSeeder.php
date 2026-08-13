@@ -74,6 +74,8 @@ class DatabaseSeeder extends Seeder
             WhatsAppSettingsPermissionSeeder::class,
             // Public newsletter subscribers (read-only admin viewing).
             NewsletterSubscriberPermissionSeeder::class,
+            // Personalized Instructor Package Proposal & Admin Approval.
+            PackagePermissionSeeder::class,
         ]);
     }
 }

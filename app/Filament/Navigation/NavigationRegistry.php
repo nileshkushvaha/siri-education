@@ -71,6 +71,7 @@ use App\Filament\Resources\InstructorCompensationExceptions\InstructorCompensati
 use App\Filament\Resources\InstructorDocumentRequirements\InstructorDocumentRequirementResource;
 use App\Filament\Resources\InstructorEarnings\InstructorEarningResource;
 use App\Filament\Resources\InstructorOnboarding\InstructorOnboardingResource;
+use App\Filament\Resources\InstructorPackageProposals\InstructorPackageProposalResource;
 use App\Filament\Resources\InstructorPayoutAttempts\InstructorPayoutAttemptResource;
 use App\Filament\Resources\InstructorPayoutMethods\InstructorPayoutMethodResource;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\InstructorPayoutReconciliationIssueResource;
@@ -85,6 +86,7 @@ use App\Filament\Resources\Navigation\NavigationResource;
 use App\Filament\Resources\NewsletterSubscribers\NewsletterSubscriberResource;
 use App\Filament\Resources\NotificationTemplates\NotificationTemplateResource;
 use App\Filament\Resources\OperationalAlerts\OperationalAlertResource;
+use App\Filament\Resources\PackageBenefitRules\PackageBenefitRuleResource;
 use App\Filament\Resources\PageBlocks\PageBlockResource;
 use App\Filament\Resources\Pages\PageResource;
 use App\Filament\Resources\Permissions\PermissionResource;
@@ -178,24 +180,6 @@ final class NavigationRegistry
                 previousGroup: 'Instructor',
                 previousLabel: 'Document Requirements',
             ),
-            StudentLearningGoalResource::class => new NavigationDestination(
-                id: 'people.students.learning-goals',
-                label: 'Learning Goals',
-                group: 'People',
-                subgroup: 'Students',
-                sort: 4,
-                previousGroup: 'Students',
-                previousLabel: 'Learning Goals',
-            ),
-            StudentLearningPlanResource::class => new NavigationDestination(
-                id: 'people.students.learning-plans',
-                label: 'Learning Plans',
-                group: 'People',
-                subgroup: 'Students',
-                sort: 5,
-                previousGroup: 'Students',
-                previousLabel: 'Learning Plans',
-            ),
 
             // ── Academics ────────────────────────────────────────────────
             AcademicCategoryResource::class => new NavigationDestination(
@@ -281,6 +265,50 @@ final class NavigationRegistry
                 sort: 9,
                 previousGroup: 'Academic',
                 previousLabel: 'Education Systems',
+            ),
+
+            // Learning Management — the commercial/delivery side of
+            // learning (what a student is signed up for and what an
+            // instructor may offer them), as distinct from the academic
+            // taxonomy above (what may be taught). Deliberately NOT under
+            // Finance: a package is a learning offer, not a finance
+            // record — Finance owns payment/wallet/settlement/earnings
+            // only (see docs/architecture/domain-registry.md).
+            StudentLearningGoalResource::class => new NavigationDestination(
+                id: 'academics.learning-management.learning-goals',
+                label: 'Learning Goals',
+                group: 'Academics',
+                subgroup: 'Learning Management',
+                sort: 10,
+                previousGroup: 'People',
+                previousLabel: 'Learning Goals',
+            ),
+            StudentLearningPlanResource::class => new NavigationDestination(
+                id: 'academics.learning-management.learning-plans',
+                label: 'Learning Plans',
+                group: 'Academics',
+                subgroup: 'Learning Management',
+                sort: 11,
+                previousGroup: 'People',
+                previousLabel: 'Learning Plans',
+            ),
+            PackageBenefitRuleResource::class => new NavigationDestination(
+                id: 'academics.learning-management.package-offers',
+                label: 'Package Offers',
+                group: 'Academics',
+                subgroup: 'Learning Management',
+                sort: 12,
+                previousGroup: 'Finance',
+                previousLabel: 'Package Rules',
+            ),
+            InstructorPackageProposalResource::class => new NavigationDestination(
+                id: 'academics.learning-management.package-proposals',
+                label: 'Instructor Package Proposals',
+                group: 'Academics',
+                subgroup: 'Learning Management',
+                sort: 13,
+                previousGroup: 'Finance',
+                previousLabel: 'Package Proposals',
             ),
 
             // ── Operations ───────────────────────────────────────────────
@@ -570,7 +598,6 @@ final class NavigationRegistry
                 previousGroup: 'Platform',
                 previousLabel: 'RazorpayX Payouts',
             ),
-
             // ── Growth ───────────────────────────────────────────────────
             ReferralCampaignResource::class => new NavigationDestination(
                 id: 'growth.referrals.campaigns',

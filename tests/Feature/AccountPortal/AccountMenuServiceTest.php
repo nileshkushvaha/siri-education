@@ -7,6 +7,7 @@ namespace Tests\Feature\AccountPortal;
 use App\Enums\InstructorStatus;
 use App\Models\User;
 use App\Services\Account\AccountMenuService;
+use Database\Seeders\PackagePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
@@ -117,6 +118,39 @@ class AccountMenuServiceTest extends TestCase
         $this->assertContains('My Bookings', $labels);
         $this->assertContains('Payments', $labels);
         $this->assertContains('Homework', $labels);
+    }
+
+    /**
+     * Phase 3.2 — the instructor picks an admin-authored offer template,
+     * so their menu says "Package Offers"; the student receives an actual
+     * package, so theirs stays "Packages". Both are permission-gated, so
+     * the roles need their Package permissions to see either.
+     */
+    public function test_instructor_menu_uses_package_offers_label(): void
+    {
+        $this->seed(PackagePermissionSeeder::class);
+
+        $instructor = $this->makeUser();
+        $instructor->assignRole('instructor');
+        $instructor->profile()->update(['instructor_status' => InstructorStatus::Active]);
+
+        $labels = $this->labels($instructor);
+
+        $this->assertContains('Package Offers', $labels);
+        $this->assertNotContains('Packages', $labels);
+    }
+
+    public function test_student_menu_keeps_plain_packages_label(): void
+    {
+        $this->seed(PackagePermissionSeeder::class);
+
+        $student = $this->makeUser();
+        $student->assignRole('student');
+
+        $labels = $this->labels($student);
+
+        $this->assertContains('Packages', $labels);
+        $this->assertNotContains('Package Offers', $labels);
     }
 
     public function test_items_have_expected_shape_for_future_nesting_and_badges(): void

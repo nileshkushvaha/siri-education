@@ -6,8 +6,10 @@ namespace App\Livewire\Frontend\Student;
 
 use App\Models\InstructorPackageProposal;
 use App\Models\StudentPackageEntitlement;
+use App\Models\StudentPackagePurchase;
 use App\Package\Exceptions\PackageException;
 use App\Package\Services\InstructorPackageProposalService;
+use App\Package\Services\PackagePurchaseService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -21,10 +23,15 @@ use Livewire\WithPagination;
  * list + Gate::authorize() per action, no ownership logic duplicated
  * here.
  *
- * Phase 4A: accepting now grants a StudentPackageEntitlement (the
- * lesson balance shown alongside each accepted package). Payment is
- * still out of scope — accepting records agreement and grants the
- * balance; no money moves and no lesson is scheduled here.
+ * Phase 4B.2: accepting no longer grants lessons. It creates a
+ * PendingPayment StudentPackagePurchase, and the student then pays for
+ * it. Checkout stops at a live gateway payload — settlement and the
+ * resulting lesson balance arrive in Phase 4B.3, so an accepted-but-
+ * unpaid package deliberately shows no entitlement at all.
+ *
+ * Amount, currency, and provider are never accepted from the browser;
+ * every action passes only a purchase id and re-resolves the rest
+ * server-side.
  */
 final class PackageProposals extends Component
 {
@@ -33,11 +40,17 @@ final class PackageProposals extends Component
 
     public string $statusMessage = '';
 
+    /** Local/testing only — the fake provider has no hosted checkout to hand off to. */
+    public ?array $pendingFakeCheckout = null;
+
     private InstructorPackageProposalService $proposals;
 
-    public function boot(InstructorPackageProposalService $proposals): void
+    private PackagePurchaseService $purchases;
+
+    public function boot(InstructorPackageProposalService $proposals, PackagePurchaseService $purchases): void
     {
         $this->proposals = $proposals;
+        $this->purchases = $purchases;
     }
 
     public function accept(string $proposalId): void
@@ -49,11 +62,8 @@ final class PackageProposals extends Component
         }
 
         try {
-            $accepted = $this->proposals->acceptProposal($proposal, auth()->user());
-            $this->statusMessage = sprintf(
-                'Package accepted — %d lessons are now available. Payment is handled separately.',
-                $accepted->total_quantity,
-            );
+            $this->proposals->acceptProposal($proposal, auth()->user());
+            $this->statusMessage = 'Package accepted. Complete payment to activate your lessons.';
         } catch (PackageException $e) {
             $this->addError('form', $e->getMessage());
         }
@@ -75,9 +85,82 @@ final class PackageProposals extends Component
         }
     }
 
+    /** Starts checkout, or safely resumes the attempt already in progress. */
+    public function pay(string $purchaseId): void
+    {
+        $this->statusMessage = '';
+        $this->pendingFakeCheckout = null;
+
+        $purchase = $this->ownPurchase($purchaseId);
+
+        if (! $this->authorizeOrDeny('pay', $purchase)) {
+            return;
+        }
+
+        try {
+            $checkout = $this->purchases->startCheckout($purchase, auth()->user());
+        } catch (PackageException $e) {
+            $this->addError('form', $e->getMessage());
+
+            return;
+        }
+
+        if ($checkout->provider === 'razorpay') {
+            $this->dispatch(
+                'package-checkout-ready',
+                orderId: $checkout->checkoutPayload['order_id'],
+                keyId: $checkout->checkoutPayload['key_id'],
+                amountMinor: $checkout->amountMinor,
+                currency: $checkout->currencyCode,
+            );
+
+            return;
+        }
+
+        if ($checkout->provider === 'stripe') {
+            $this->dispatch(
+                'package-stripe-checkout-ready',
+                clientSecret: $checkout->checkoutPayload['client_secret'],
+                publishableKey: $checkout->checkoutPayload['publishable_key'],
+                amountMinor: $checkout->amountMinor,
+                currency: $checkout->currencyCode,
+            );
+
+            return;
+        }
+
+        $this->pendingFakeCheckout = ['reference' => $checkout->reference];
+    }
+
+    /** Abandons the open attempt. The purchase itself stays payable. */
+    public function cancelPaymentAttempt(string $purchaseId): void
+    {
+        $this->statusMessage = '';
+        $this->pendingFakeCheckout = null;
+
+        $purchase = $this->ownPurchase($purchaseId);
+
+        if (! $this->authorizeOrDeny('cancelPaymentAttempt', $purchase)) {
+            return;
+        }
+
+        try {
+            $this->purchases->cancelOpenAttempt($purchase, auth()->user());
+            $this->statusMessage = 'Payment cancelled. You can start a new payment whenever you are ready.';
+        } catch (PackageException $e) {
+            $this->addError('form', $e->getMessage());
+        }
+    }
+
     public function render(): View
     {
         $studentId = (int) auth()->id();
+
+        $purchases = StudentPackagePurchase::query()
+            ->forStudent($studentId)
+            ->with('payments')
+            ->get()
+            ->keyBy('proposal_id');
 
         return view('livewire.frontend.student.package-proposals', [
             'proposals' => InstructorPackageProposal::query()
@@ -86,8 +169,10 @@ final class PackageProposals extends Component
                 ->with(['instructor', 'packageBenefitRule'])
                 ->orderByDesc('approved_at')
                 ->paginate(10),
-            // Keyed by proposal_id so the blade can show the live lesson
-            // balance next to an accepted package without an N+1.
+            'purchases' => $purchases,
+            // Keyed by proposal_id so the blade can show a live lesson
+            // balance without an N+1. Empty until Phase 4B.3 activates
+            // entitlements on settlement.
             'entitlements' => StudentPackageEntitlement::query()
                 ->forStudent($studentId)
                 ->get()
@@ -100,6 +185,13 @@ final class PackageProposals extends Component
         return InstructorPackageProposal::query()
             ->forStudent((int) auth()->id())
             ->findOrFail($proposalId);
+    }
+
+    private function ownPurchase(string $purchaseId): StudentPackagePurchase
+    {
+        return StudentPackagePurchase::query()
+            ->forStudent((int) auth()->id())
+            ->findOrFail($purchaseId);
     }
 
     private function authorizeOrDeny(string $ability, mixed $arg): bool

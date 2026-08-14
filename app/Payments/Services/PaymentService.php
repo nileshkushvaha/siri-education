@@ -95,6 +95,36 @@ final class PaymentService
     }
 
     /**
+     * Records the provider-side order/intent id on an attempt that is
+     * still Pending — the one write that is NOT a status change.
+     *
+     * Creating a gateway order does not advance the attempt's lifecycle
+     * (the student has not paid anything yet; the provider has merely
+     * been told what to collect), so forcing it through transition()
+     * would mean inventing a fake Pending -> Pending edge.
+     *
+     * @throws PaymentException when the attempt has already settled, or already carries a different order id
+     */
+    public function recordProviderOrder(Payment $payment, string $providerOrderId): Payment
+    {
+        return DB::transaction(function () use ($payment, $providerOrderId): Payment {
+            $payment = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($payment->status->isTerminal()) {
+                throw new PaymentException('A settled payment attempt cannot be given a new provider order.');
+            }
+
+            if ($payment->provider_order_id !== null && $payment->provider_order_id !== $providerOrderId) {
+                throw new PaymentException('This payment attempt already points at a different provider order.');
+            }
+
+            $payment->fill(['provider_order_id' => $providerOrderId])->save();
+
+            return $payment->refresh();
+        });
+    }
+
+    /**
      * Moves an attempt to a settled/in-flight state. Provider references
      * are recorded here rather than guessed later.
      *

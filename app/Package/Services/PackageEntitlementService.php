@@ -13,16 +13,16 @@ use App\Services\AuditTrailService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Phase 4A — the sole reader/writer of a StudentPackageEntitlement's
- * balance, and the deliberate service boundary the future booking
- * integration will call.
+ * The sole reader/writer of a StudentPackageEntitlement's balance, and
+ * the deliberate service boundary the future booking integration will
+ * call.
  *
- * IMPORTANT (Phase 4A scope): `consumeLesson()` is the only method that
- * mutates anything, and NOTHING calls it yet. Booking/Lesson
- * integration is explicitly out of scope for this phase — the method
- * exists so the boundary is designed and tested now, not so it can be
- * wired in early. `hasAvailableLessons()`/`remainingLessons()` are pure
- * reads.
+ * Nothing calls this service in production yet, by design.
+ * `createFromProposal()` waits for Phase 4B.3's settlement handler
+ * (Phase 4B.2 unwired it from acceptance), and `consumeLesson()` waits
+ * for Booking/Lesson integration. Both exist so the boundary is
+ * designed and tested now, not so they can be wired in early.
+ * `hasAvailableLessons()`/`remainingLessons()` are pure reads.
  *
  * `remaining_quantity` is never computed in PHP here: it is a stored
  * generated column (total - used) so the database is the single source
@@ -36,10 +36,22 @@ final class PackageEntitlementService
         private readonly AuditTrailService $audit,
     ) {}
 
-    /** Creates the Active entitlement for a just-accepted proposal. Called only by InstructorPackageProposalService::acceptProposal(). */
+    /**
+     * Creates the Active entitlement for a proposal.
+     *
+     * Phase 4B.2 UNWIRED this: acceptance no longer calls it, because
+     * accepting an offer no longer grants lessons — a
+     * StudentPackagePurchase is created instead and the balance appears
+     * only after verified settlement. The method stays because Phase
+     * 4B.3's settlement handler is its next (and only) caller, at which
+     * point it also gains the `expires_at` calculation described below.
+     */
     public function createFromProposal(InstructorPackageProposal $proposal): StudentPackageEntitlement
     {
-        return StudentPackageEntitlement::query()->create([
+        // Refreshed before returning: `remaining_quantity` is a STORED
+        // GENERATED column, so it is null on the freshly-created model
+        // until it is read back from the database.
+        $entitlement = StudentPackageEntitlement::query()->create([
             'student_id' => $proposal->student_id,
             'instructor_id' => $proposal->instructor_id,
             'proposal_id' => $proposal->id,
@@ -53,14 +65,15 @@ final class PackageEntitlementService
             // entitlement records the validity that applied at the time.
             // `expires_at` is deliberately NOT computed here: an
             // absolute expiry only becomes meaningful once payment
-            // activates the package (Phase 4B.3). Leaving it null now
-            // means "no expiry enforced yet", which is correct while
-            // acceptance still activates the balance directly.
+            // activates the package, so Phase 4B.3 computes it here
+            // from `validity_days` at the moment of settlement.
             'validity_days' => $proposal->validity_days,
             'used_quantity' => 0,
             'status' => PackageEntitlementStatus::Active,
             'activated_at' => now(),
         ]);
+
+        return $entitlement->refresh();
     }
 
     public function hasAvailableLessons(StudentPackageEntitlement $entitlement): bool
@@ -81,7 +94,7 @@ final class PackageEntitlementService
      * backstop if that lock is ever bypassed. Auto-completes the
      * entitlement when the last lesson is drawn.
      *
-     * Not called from Booking in Phase 4A — see class docblock.
+     * Not called from Booking yet — see class docblock.
      *
      * @throws PackageException when the entitlement is not Active or has no lessons left
      */

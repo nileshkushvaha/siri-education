@@ -19,10 +19,10 @@ namespace App\Payments\Contracts;
  *   - checkout markup
  *   - any domain lifecycle (entitlements, bookings, …)
  *
- * Transitional note: `Booking` and `WalletRecharge` deliberately do NOT
- * implement this yet — their legacy payment paths are untouched (see
- * docs/architecture/payment-domain.md). The first implementer will be
- * StudentPackagePurchase in Phase 4B.2.
+ * Transitional note: `Booking` and `WalletRecharge` deliberately do
+ * NOT implement this — their legacy payment paths are untouched (see
+ * docs/generic-payable-payment-foundation.md). The first and currently
+ * only implementer is App\Models\StudentPackagePurchase.
  */
 interface Payable
 {

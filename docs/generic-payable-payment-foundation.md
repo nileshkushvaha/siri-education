@@ -1,4 +1,4 @@
-# Generic Payable / Payment Attempt Foundation (Phase 4B.1)
+# Generic Payable / Payment Attempt Foundation (Phases 4B.1–4B.2)
 
 The canonical reference for the wider financial domain remains
 [docs/financial-domain-architecture.md](financial-domain-architecture.md),
@@ -9,8 +9,55 @@ This document records one narrower thing: the **generic
 (starting with package purchases in Phase 4B.2) do not each grow their
 own bespoke payment-record table, status enum, and state machine.
 
-It is a **foundation only**. Phase 4B.1 ships no package checkout, no
-gateway redirect, no webhook settlement, and no entitlement activation.
+Phase 4B.1 built the foundation; Phase 4B.2 gave it its first real
+consumer, `StudentPackagePurchase`, and package checkout. Settlement is
+still deliberately absent: nothing here moves a payment to Paid,
+marks a purchase Paid, or activates an entitlement. That is Phase 4B.3.
+
+## 0. The package money lifecycle
+
+```
+PackageBenefitRule          admin-defined offer template
+        ↓
+InstructorPackageProposal   personalized commercial offer
+        ↓ admin approves, student accepts
+StudentPackagePurchase      the accepted purchase  (pending_payment)
+        ↓ 1:N  — it is the Payable
+Payment attempts            #1 failed · #2 cancelled · #3 pending
+        ↓ verified settlement (Phase 4B.3)
+StudentPackageEntitlement   the usable lesson balance
+```
+
+Each row in that chain is a separate record on purpose. Collapsing any
+two of them loses something real: the offer template is reusable, the
+proposal is a negotiation, the purchase is what was agreed, an attempt
+is one try at collecting, and the entitlement is a balance that gets
+drawn down.
+
+### Purchase failure ≠ payment-attempt failure
+
+This is the distinction the whole design turns on:
+
+```
+Purchase  pending_payment
+ ├── Payment attempt #1  failed
+ ├── Payment attempt #2  cancelled
+ └── Payment attempt #3  pending
+```
+
+A declined card does not fail the purchase. The student still owes the
+same amount for the same accepted proposal and may simply try again, so
+`PackagePurchaseStatus` has no `Failed` case at all. A retry is a NEW
+attempt against the SAME purchase — never a second purchase, which
+`UNIQUE(proposal_id)` forbids outright.
+
+### Entitlement activation is deferred
+
+Accepting an approved proposal used to activate a lesson balance
+immediately (Phase 4A). Since Phase 4B.2 it does not: acceptance
+creates a `pending_payment` purchase and nothing usable. The balance is
+granted only by verified settlement, so a student can no longer obtain
+lessons by accepting an offer they have not paid for.
 
 ## 1. The transitional architecture (read this first)
 
@@ -21,7 +68,7 @@ of them are frozen:
 |---|---|---|
 | Booking checkout | `booking_payments` | **LEGACY — frozen.** Not migrated, not modified. |
 | Wallet recharge | `wallet_recharges` | **LEGACY — frozen.** Not migrated, not modified. |
-| Anything implementing `Payable` | `payments` | **NEW.** The path all future paid things use. |
+| Package purchase (`StudentPackagePurchase`) | `payments` | **NEW.** The path all future paid things use. |
 
 This is a transition, not a permanent triplication. The decision (see
 §2) was to build the generic abstraction now but apply it **only to new
@@ -57,8 +104,9 @@ that boilerplate layer and nothing else.
 
 **No duplicate SDK or signature layer exists or may be created.** There
 is no package-specific Razorpay or Stripe client, and no second webhook
-signature verification. When Phase 4B.2 adds package checkout it reuses
-the existing gateway clients and the existing signature service.
+signature verification: package checkout reuses the existing gateway
+clients, and Phase 4B.3's settlement will reuse the existing signature
+service.
 
 ## 3. `Payable` — the contract
 
@@ -114,15 +162,34 @@ credentials, no raw webhook signatures, no secret provider payloads.
 A test (`PaymentFoundationTest`) asserts the column list contains no
 such column, so this stays true as the table evolves.
 
+### `student_package_purchases` holds no gateway state
+
+The purchase table deliberately has no `provider`, `provider_order_id`,
+`provider_payment_id`, `idempotency_key`, `failure_code`, or
+`failure_message`. All of those describe ONE attempt, and a purchase
+has many; storing any of them on the purchase would be wrong the moment
+a student retries, and would duplicate state the generic payment layer
+already owns.
+
+What it does hold is the accepted commercial snapshot — `reference`,
+`amount_minor`, `currency_id`/`currency_code`, `status`, `accepted_at`,
+`paid_at` — plus `UNIQUE(proposal_id)` and `CHECK (amount_minor > 0)`.
+The snapshot is copied from the approved proposal's `final_price_minor`
+and currency and is never re-resolved: an admin override of £300 down
+to £275 is what the student pays, even if the pricing matrix changes a
+second later. The model enforces this too, refusing any update that
+touches the proposal, student, reference, amount, or currency.
+
 ### Morph aliases
 
 `payable_type` stores a stable alias (`package_purchase`), never a PHP
 FQCN — class names are refactorable, database rows are not. The map
-lives in `App\Providers\PaymentServiceProvider::PAYABLE_MORPH_MAP` and
-is currently empty (its first entry arrives with Phase 4B.2).
-`Relation::morphMap()` **merges** by default, so this coexists with the
-CMS aliases registered elsewhere; do not re-register the same aliases
-in a second provider.
+lives in `App\Providers\PaymentServiceProvider::PAYABLE_MORPH_MAP`;
+its single entry today is `package_purchase => StudentPackagePurchase`,
+declared from `StudentPackagePurchase::PAYABLE_TYPE` so the model and
+the map cannot drift apart. `Relation::morphMap()` **merges** by
+default, so this coexists with the CMS aliases registered elsewhere; do
+not re-register the same aliases in a second provider.
 
 ## 5. `PaymentStatus`
 
@@ -154,9 +221,64 @@ attempts. Nothing else may insert into or update `payments`.
 - `transition(Payment, PaymentStatus, array $attributes)` — row-locked,
   enum-guarded, sets `paid_at` / `failed_at`.
 
+`recordProviderOrder()` is the one write that is not a status change:
+creating a gateway order does not advance an attempt's lifecycle, so
+forcing it through `transition()` would mean inventing a fake
+Pending → Pending edge.
+
 Audit entries go through `AuditTrailService::logSystem()`, never raw
 `activity()`. Failures raise `App\Payments\Exceptions\PaymentException`
 (distinct from `BookingException`).
+
+## 6a. `PaymentCheckoutService` — attempt to gateway order
+
+Turns any `Payable` into a live checkout using the **same** gateway
+clients Booking and Wallet already use. There is no package-specific
+Razorpay/Stripe client, no second SDK wrapper, and no duplicate webhook
+signature verification.
+
+```
+{domain} service        who may pay, for what, in which currency
+PaymentCheckoutService  attempt <-> provider-order orchestration
+PaymentService          attempt record mechanics
+*GatewayClient          the external provider API
+```
+
+Ordering mirrors `WalletRechargeService::initiate()`: the local attempt
+row is written first, then the provider is called. A gateway failure
+therefore leaves a durable `Failed` attempt (`failure_code =
+provider_order_failed`) rather than an invisible one, and can never
+leave a provider order with no local record.
+
+Provider **selection** is not this service's job. The calling domain
+service resolves it through the existing `PaymentProviderResolver`
+(country routing → default provider → booking setting, plus the
+platform kill switch, allowed-provider list, and credential
+validation). No package-specific routing policy exists.
+
+### Repeat clicks: resume, don't duplicate
+
+`PaymentService::startAttempt()` refuses to open a second attempt while
+one is still open, so the checkout entry point resolves that
+deliberately rather than letting a double-clicked Pay button fail:
+
+```
+Pay clicked → open attempt exists? → yes → resume it
+                                   → no  → new attempt
+```
+
+Resuming is safe for every supported provider because **no new
+provider-side order is created**: Razorpay's order id is stored on the
+attempt, and Stripe's intent is re-fetched for its `client_secret`
+(which is deliberately never persisted). An explicit **Cancel Payment
+Attempt** also exists, for the case where an open attempt can no longer
+be presented at all — cancelling marks the local attempt `Cancelled`
+and leaves the purchase `pending_payment`, free to retry.
+
+There is deliberately **no time-based attempt expiry**: no scheduler,
+no arbitrary timeout, and no `Expired` status. Explicit resume and
+cancel cover the practical cases; real gateway expiry semantics can be
+designed later from what the providers actually report.
 
 ## 7. Package validity is **not** a payment concept
 
@@ -218,8 +340,13 @@ required.
   validity ownership, snapshot semantics, NULL handling, invalid-value
   rejection at both layers, and the deliberate absence of any
   auto-expiry.
+- `tests/Feature/Package/StudentPackagePurchaseTest.php` — 39 tests over
+  purchase creation, the price snapshot, the morph round-trip, checkout,
+  retry/resume/cancel, gateway reuse, immutability, and authorization.
 
-The foundation is exercised against `tests/Support/Payments/FakePayable`
-— a plain, non-Eloquent object — because the first production consumer
-does not exist until Phase 4B.2. That it need not be an Eloquent model
-is itself meaningful: `payments` has no FK to the payable.
+The generic foundation is still exercised against
+`tests/Support/Payments/FakePayable`, a plain non-Eloquent object —
+proof that a payable need not be an Eloquent model at all, which
+matches `payments` having no FK to the payable. The real Eloquent
+round-trip (`Payment → payable → StudentPackagePurchase`) is covered
+separately in the purchase tests.

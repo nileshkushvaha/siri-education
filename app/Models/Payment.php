@@ -28,7 +28,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * `WalletRecharge` records, which are untouched by this phase. The
  * shared gateway/signature layer is common to all three, so no
  * Razorpay/Stripe SDK logic is duplicated — see
- * docs/architecture/payment-domain.md.
+ * docs/generic-payable-payment-foundation.md.
  *
  * PreventsHardDeletion, no SoftDeletes: a payment attempt is financial
  * history and is never removed.

@@ -82,7 +82,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 |---|---|
 | Resend transactional email | `resend.md` |
 | Payment collection & payout provider routing architecture | `payment-collection-and-payout-provider-routing.md` |
-| Generic Payable / payment attempt foundation + package validity (transitional: booking & wallet stay legacy) | `generic-payable-payment-foundation.md` |
+| Generic Payable / payment attempts, package purchase & checkout, package validity (transitional: booking & wallet stay legacy) | `generic-payable-payment-foundation.md` |
 | Razorpay checkout & payment capture (detailed record) | `architecture/phase-10-razorpay-checkout-payment-capture.md` |
 | Payout execution & reconciliation foundation (detailed record) | `phase-16a-payout-execution-reconciliation-foundation.md` |
 | RazorpayX India/INR instructor payout adapter (detailed record) | `phase-16b-razorpayx-india-inr-payout-adapter.md` |

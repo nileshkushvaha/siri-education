@@ -30,10 +30,13 @@ use Illuminate\Support\Facades\DB;
  * InstructorWithdrawalService's shape: row-locked transactions, an
  * enum-owned transition guard, AuditTrailService on every mutation.
  *
- * Deliberately does not touch payment, wallet, instructor compensation,
- * or lesson/booking entitlement creation — all explicitly out of scope
- * for this phase (see docs/architecture/domain-registry.md
- * "Personalized Packages").
+ * Acceptance hands off to PackagePurchaseService (Phase 4B.2): this
+ * service still owns every proposal transition, but the commercial
+ * record that follows acceptance, and the gateway checkout behind it,
+ * belong to the purchase/payment layers — see
+ * docs/generic-payable-payment-foundation.md. Entitlement creation is
+ * no longer reachable from here at all; it moves to verified
+ * settlement in Phase 4B.3.
  */
 final class InstructorPackageProposalService
 {
@@ -43,7 +46,7 @@ final class InstructorPackageProposalService
         private readonly AuditTrailService $audit,
         private readonly PackagePricingService $pricing,
         private readonly BookingTypeRepositoryInterface $bookingTypes,
-        private readonly PackageEntitlementService $entitlements,
+        private readonly PackagePurchaseService $purchases,
     ) {}
 
     /**
@@ -295,19 +298,21 @@ final class InstructorPackageProposalService
     }
 
     /**
-     * Approved -> Accepted, and — Phase 4A — creates the student's
-     * StudentPackageEntitlement in the SAME transaction. A proposal can
-     * never be Accepted without its entitlement existing, and vice
-     * versa.
+     * Approved -> Accepted, creating the student's
+     * StudentPackagePurchase in the SAME transaction. A proposal can
+     * never be Accepted without its purchase existing, and vice versa.
+     *
+     * Phase 4B.2 CHANGED what acceptance produces. It used to activate
+     * a StudentPackageEntitlement immediately; it now creates a
+     * PendingPayment purchase and NOTHING usable. The lesson balance is
+     * created only after verified settlement (Phase 4B.3), so a student
+     * can no longer obtain lessons by accepting an offer they have not
+     * paid for.
      *
      * Duplicate acceptance is impossible on two independent levels: the
      * status guard (Accepted is terminal, so a second call fails
      * assertTransition) and a UNIQUE index on
-     * student_package_entitlements.proposal_id.
-     *
-     * Payment is still explicitly out of scope: accepting records the
-     * student's agreement and grants the lesson balance; no money moves
-     * and no Booking/Lesson is created here.
+     * student_package_purchases.proposal_id.
      */
     public function acceptProposal(InstructorPackageProposal $proposal, User $student): InstructorPackageProposal
     {
@@ -319,17 +324,28 @@ final class InstructorPackageProposalService
                 throw new PackageException('This package was not offered to you.');
             }
 
+            // Honours the proposal's existing acceptance-expiry column
+            // rather than redesigning it: nothing sets `expires_at`
+            // today, but if an offer ever carries a deadline, a lapsed
+            // one must not still be acceptable. This is the OFFER
+            // deadline — unrelated to `validity_days` (how long the
+            // lessons stay usable once paid for).
+            if ($proposal->expires_at !== null && $proposal->expires_at->isPast()) {
+                throw new PackageException('This package offer has expired.');
+            }
+
             $proposal->fill([
                 'status' => InstructorPackageProposalStatus::Accepted,
                 'accepted_at' => now(),
             ])->save();
 
-            $entitlement = $this->entitlements->createFromProposal($proposal->refresh());
+            $purchase = $this->purchases->createFromAcceptedProposal($proposal->refresh());
 
-            $this->audit->logUser($student, self::LOG_NAME, 'package_accepted', 'Package proposal accepted by student.', $proposal, [
+            $this->audit->logUser($student, self::LOG_NAME, 'package_accepted', 'Package proposal accepted by student — payment pending.', $proposal, [
                 ...$this->metadata($proposal),
-                'entitlement_id' => $entitlement->id,
-                'total_quantity' => $entitlement->total_quantity,
+                'purchase_id' => $purchase->id,
+                'purchase_reference' => $purchase->reference,
+                'purchase_status' => $purchase->status->value,
             ]);
 
             return $proposal->refresh();

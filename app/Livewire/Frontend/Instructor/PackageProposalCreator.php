@@ -8,6 +8,7 @@ use App\Models\AcademicLevel;
 use App\Models\InstructorPackageProposal;
 use App\Models\PackageBenefitRule;
 use App\Models\StudentPackageEntitlement;
+use App\Models\StudentPackagePurchase;
 use App\Models\Subject;
 use App\Models\User;
 use App\Package\DTOs\CreatePackageProposalData;
@@ -126,6 +127,16 @@ final class PackageProposalCreator extends Component
                 ->with(['student', 'packageBenefitRule'])
                 ->orderByDesc('created_at')
                 ->paginate(10),
+            // Read-only commercial status of this instructor's own
+            // accepted packages, keyed by proposal_id. Strictly view
+            // only: an instructor can never pay for, cancel, or settle
+            // a student's purchase.
+            'purchases' => StudentPackagePurchase::query()
+                ->whereIn('proposal_id', InstructorPackageProposal::query()
+                    ->forInstructor((int) $instructor->id)
+                    ->select('id'))
+                ->get()
+                ->keyBy('proposal_id'),
             // Read-only lesson balances for this instructor's own
             // accepted packages, keyed by proposal_id. The instructor may
             // never modify an entitlement — only view it.

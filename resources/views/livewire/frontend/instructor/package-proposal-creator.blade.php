@@ -110,6 +110,7 @@
         <div class="divide-y divide-white/[0.06]">
             @forelse ($proposals as $proposal)
                 @php($entitlement = $entitlements->get($proposal->id))
+                @php($purchase = $purchases->get($proposal->id))
                 <div class="py-4">
                     <div class="flex items-center justify-between gap-4">
                         <div class="min-w-0">
@@ -125,7 +126,8 @@
                                 'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200' => in_array($proposal->status->value, ['rejected', 'expired']),
                                 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300' => in_array($proposal->status->value, ['draft', 'cancelled']),
                             ])">
-                            {{ $proposal->status->label() }}
+                            {{-- Once accepted, the payment state is the informative half of the story. --}}
+                            {{ $purchase ? 'Accepted — '.$purchase->status->label() : $proposal->status->label() }}
                         </span>
                     </div>
 

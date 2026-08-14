@@ -23,7 +23,7 @@ namespace App\Payments\Enums;
  *    mutation of the original attempt — deferred deliberately.
  *  - `Expired` is NOT included: gateway-attempt expiry is a distinct
  *    concern from package validity and is explicitly out of scope
- *    (see docs/architecture/payment-domain.md).
+ *    (see docs/generic-payable-payment-foundation.md).
  */
 enum PaymentStatus: string
 {

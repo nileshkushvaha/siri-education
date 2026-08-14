@@ -107,6 +107,7 @@ use App\Filament\Resources\StudentLearningGoals\StudentLearningGoalResource;
 use App\Filament\Resources\StudentLearningPlans\StudentLearningPlanResource;
 use App\Filament\Resources\StudentLessonPrices\StudentLessonPriceResource;
 use App\Filament\Resources\StudentPackageEntitlements\StudentPackageEntitlementResource;
+use App\Filament\Resources\StudentPackagePurchases\StudentPackagePurchaseResource;
 use App\Filament\Resources\SupportCases\SupportCaseResource;
 use App\Filament\Resources\SuspiciousActivityFlags\SuspiciousActivityFlagResource;
 use App\Filament\Resources\Tags\TagResource;
@@ -319,6 +320,16 @@ final class NavigationRegistry
                 group: 'Academics',
                 subgroup: 'Learning Management',
                 sort: 14,
+            ),
+            // Phase 4B.2 — read-only visibility into accepted packages
+            // awaiting (or having completed) payment. New resource, no
+            // prior location.
+            StudentPackagePurchaseResource::class => new NavigationDestination(
+                id: 'academics.learning-management.package-purchases',
+                label: 'Student Package Purchases',
+                group: 'Academics',
+                subgroup: 'Learning Management',
+                sort: 15,
             ),
 
             // ── Operations ───────────────────────────────────────────────

@@ -66,6 +66,29 @@ class PackagePermissionSeeder extends Seeder
         'View:StudentPackageEntitlement',
     ];
 
+    /**
+     * Phase 4B.2 — purchases are financial records. Nobody, at any
+     * level, gets Create/Update/Delete: a purchase is written by
+     * acceptance and settled by a verified webhook, both inside trusted
+     * services. `Pay` is the student's own checkout capability (it also
+     * covers cancelling their own open attempt) and is deliberately not
+     * granted to instructors or managers — no role may pay on a
+     * student's behalf.
+     */
+    private const PURCHASE_MANAGER_PERMISSIONS = [
+        'ViewAny:StudentPackagePurchase',
+        'View:StudentPackagePurchase',
+    ];
+
+    private const PURCHASE_INSTRUCTOR_PERMISSIONS = [
+        'View:StudentPackagePurchase',
+    ];
+
+    private const PURCHASE_STUDENT_PERMISSIONS = [
+        'View:StudentPackagePurchase',
+        'Pay:StudentPackagePurchase',
+    ];
+
     public function run(): void
     {
         $ruleManagerPermissions = [];
@@ -84,6 +107,9 @@ class PackagePermissionSeeder extends Seeder
             ...self::PROPOSAL_STUDENT_PERMISSIONS,
             ...self::ENTITLEMENT_MANAGER_PERMISSIONS,
             ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS,
+            ...self::PURCHASE_MANAGER_PERMISSIONS,
+            ...self::PURCHASE_INSTRUCTOR_PERMISSIONS,
+            ...self::PURCHASE_STUDENT_PERMISSIONS,
         ]);
 
         foreach ([...$ruleManagerPermissions, ...$allPackagePermissions] as $permission) {
@@ -99,13 +125,13 @@ class PackagePermissionSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web'])
-            ->givePermissionTo([...$ruleManagerPermissions, ...self::PROPOSAL_MANAGER_PERMISSIONS, ...self::ENTITLEMENT_MANAGER_PERMISSIONS]);
+            ->givePermissionTo([...$ruleManagerPermissions, ...self::PROPOSAL_MANAGER_PERMISSIONS, ...self::ENTITLEMENT_MANAGER_PERMISSIONS, ...self::PURCHASE_MANAGER_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web'])
-            ->givePermissionTo([...self::PROPOSAL_INSTRUCTOR_PERMISSIONS, ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS]);
+            ->givePermissionTo([...self::PROPOSAL_INSTRUCTOR_PERMISSIONS, ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS, ...self::PURCHASE_INSTRUCTOR_PERMISSIONS]);
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web'])
-            ->givePermissionTo([...self::PROPOSAL_STUDENT_PERMISSIONS, ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS]);
+            ->givePermissionTo([...self::PROPOSAL_STUDENT_PERMISSIONS, ...self::ENTITLEMENT_PARTICIPANT_PERMISSIONS, ...self::PURCHASE_STUDENT_PERMISSIONS]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

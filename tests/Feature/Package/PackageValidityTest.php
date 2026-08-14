@@ -8,12 +8,12 @@ use App\Booking\Types\PaidOneToOneType;
 use App\Models\Booking;
 use App\Models\InstructorPackageProposal;
 use App\Models\PackageBenefitRule;
-use App\Models\StudentPackageEntitlement;
 use App\Models\User;
 use App\Package\DTOs\CreatePackageProposalData;
 use App\Package\Exceptions\PackageException;
 use App\Package\Services\InstructorPackageProposalService;
 use App\Package\Services\PackageBenefitRuleService;
+use App\Package\Services\PackageEntitlementService;
 use Database\Seeders\PackagePermissionSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
@@ -235,41 +235,53 @@ class PackageValidityTest extends TestCase
 
     // ── 18. Entitlement supports expiry but nothing auto-expires yet ──────
 
-    public function test_entitlement_carries_validity_but_no_absolute_expiry_is_computed_yet(): void
+    /**
+     * Phase 4B.2 regression: acceptance creates a PendingPayment
+     * purchase and NO entitlement, so there is nothing yet for an
+     * expiry to apply to — while the validity snapshot itself survives
+     * the acceptance untouched.
+     */
+    public function test_acceptance_creates_no_entitlement_and_leaves_the_validity_snapshot_intact(): void
     {
         $rule = $this->rule(90);
-        $proposal = $this->proposals()->approve(
-            $this->proposals()->submit($this->proposalFor($rule), $this->proposalInstructor($rule)),
-            $this->manager,
-            null,
-            null,
-        );
+        $accepted = $this->acceptApproved($rule);
 
-        $accepted = $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $accepted->id)->firstOrFail();
+        $this->assertSame(90, $accepted->validity_days);
+        $this->assertDatabaseCount('student_package_entitlements', 0);
+        $this->assertDatabaseHas('student_package_purchases', [
+            'proposal_id' => $accepted->id,
+            'status' => 'pending_payment',
+        ]);
+    }
+
+    public function test_a_granted_entitlement_carries_validity_but_no_absolute_expiry_is_computed_yet(): void
+    {
+        $rule = $this->rule(90);
+        $accepted = $this->acceptApproved($rule);
+
+        // Stands in for Phase 4B.3's settlement step — the only thing
+        // that will ever grant a balance.
+        $entitlement = app(PackageEntitlementService::class)->createFromProposal($accepted);
 
         // Validity travels forward…
         $this->assertSame(90, $entitlement->validity_days);
-        // …but the absolute instant is deliberately NOT set in this
-        // phase — activation-time calculation belongs to Phase 4B.3.
+        // …but the absolute instant is still deliberately NOT set, and
+        // no scheduler flips Active -> Expired.
         $this->assertNull($entitlement->expires_at);
+        $this->assertSame('active', $entitlement->status->value);
     }
 
-    public function test_entitlement_expires_at_is_nullable_and_nothing_auto_expires(): void
+    /** Submit -> approve -> accept, returning the accepted proposal. */
+    private function acceptApproved(PackageBenefitRule $rule): InstructorPackageProposal
     {
-        $rule = $this->rule(90);
         $proposal = $this->proposals()->approve(
             $this->proposals()->submit($this->proposalFor($rule), $this->proposalInstructor($rule)),
             $this->manager,
             null,
             null,
         );
-        $accepted = $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $accepted->id)->firstOrFail();
 
-        // No scheduler/observer flips Active -> Expired in this phase.
-        $this->assertSame('active', $entitlement->status->value);
-        $this->assertNull($entitlement->expires_at);
+        return $this->proposals()->acceptProposal($proposal, $proposal->student);
     }
 
     /** The proposal's own instructor — submit() requires the acting instructor. */

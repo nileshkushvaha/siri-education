@@ -24,10 +24,18 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Phase 4A — StudentPackageEntitlement: the consumed-value side of the
- * package domain. Covers creation-on-acceptance, quantity integrity
- * (including the DB-level guarantees), duplicate-acceptance prevention,
- * consumption, and the read-only authorization matrix.
+ * StudentPackageEntitlement: the consumed-value side of the package
+ * domain. Covers quantity integrity (including the DB-level
+ * guarantees), consumption, and the read-only authorization matrix.
+ *
+ * Phase 4B.2 changed how an entitlement comes into existence. Accepting
+ * a proposal no longer creates one — it creates a PendingPayment
+ * StudentPackagePurchase, and the balance is granted only after
+ * verified settlement (Phase 4B.3). The tests below therefore create
+ * the entitlement explicitly through acceptedEntitlement(), which
+ * stands in for that future settlement step rather than pretending
+ * acceptance still activates anything. Acceptance's own behaviour is
+ * covered by StudentPackagePurchaseTest.
  */
 class StudentPackageEntitlementTest extends TestCase
 {
@@ -57,6 +65,19 @@ class StudentPackageEntitlementTest extends TestCase
     private function entitlements(): PackageEntitlementService
     {
         return app(PackageEntitlementService::class);
+    }
+
+    /**
+     * Accept the proposal, then grant the balance the way Phase 4B.3's
+     * settlement handler will. Deliberately explicit: acceptance alone
+     * no longer produces an entitlement, and no test here should imply
+     * otherwise.
+     */
+    private function acceptedEntitlement(InstructorPackageProposal $proposal): StudentPackageEntitlement
+    {
+        $accepted = $this->proposals()->acceptProposal($proposal, $proposal->student);
+
+        return $this->entitlements()->createFromProposal($accepted);
     }
 
     /** A Submitted proposal from a genuinely related instructor/student pair. */
@@ -98,15 +119,13 @@ class StudentPackageEntitlementTest extends TestCase
         return $this->proposals()->approve($this->submittedProposal($paid, $bonus), $this->manager, null, null);
     }
 
-    // ── Creation on acceptance ────────────────────────────────────────────
+    // ── Creation (post-settlement, once granted) ──────────────────────────
 
-    public function test_accepting_an_approved_proposal_creates_an_entitlement(): void
+    public function test_a_granted_entitlement_carries_the_proposals_participants_and_is_active(): void
     {
         $proposal = $this->approvedProposal(20, 5);
 
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertSame($proposal->student_id, $entitlement->student_id);
         $this->assertSame($proposal->instructor_id, $entitlement->instructor_id);
@@ -118,8 +137,7 @@ class StudentPackageEntitlementTest extends TestCase
     {
         $proposal = $this->approvedProposal(20, 5);
 
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertSame(20, $entitlement->paid_quantity);
         $this->assertSame(5, $entitlement->bonus_quantity);
@@ -128,7 +146,7 @@ class StudentPackageEntitlementTest extends TestCase
         $this->assertSame(25, $entitlement->remaining_quantity);
     }
 
-    public function test_a_proposal_that_is_not_approved_cannot_be_accepted_and_creates_no_entitlement(): void
+    public function test_a_proposal_that_is_not_approved_cannot_be_accepted(): void
     {
         $proposal = $this->submittedProposal(); // still Submitted, never approved
 
@@ -142,7 +160,7 @@ class StudentPackageEntitlementTest extends TestCase
         $this->assertDatabaseCount('student_package_entitlements', 0);
     }
 
-    public function test_a_rejected_proposal_cannot_be_accepted_and_creates_no_entitlement(): void
+    public function test_a_rejected_proposal_cannot_be_accepted(): void
     {
         $rejected = $this->proposals()->reject($this->submittedProposal(), $this->manager, 'Not a fit.');
 
@@ -191,26 +209,11 @@ class StudentPackageEntitlementTest extends TestCase
 
     // ── Duplicate acceptance ──────────────────────────────────────────────
 
-    public function test_accepting_twice_does_not_create_a_second_entitlement(): void
-    {
-        $proposal = $this->approvedProposal();
-        $accepted = $this->proposals()->acceptProposal($proposal, $proposal->student);
-
-        try {
-            $this->proposals()->acceptProposal($accepted, $accepted->student);
-            $this->fail('Expected a second acceptance to be rejected.');
-        } catch (PackageException) {
-            // expected — Accepted is terminal, so the transition guard fires.
-        }
-
-        $this->assertSame(1, StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->count());
-    }
-
-    /** The DB is the real guard, independent of the service's status check. */
+    /** The DB is the real guard, independent of any service-level status check. */
     public function test_a_second_entitlement_for_the_same_proposal_is_rejected_at_database_level(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
+        $this->acceptedEntitlement($proposal);
 
         $this->expectException(QueryException::class);
         StudentPackageEntitlement::query()->create([
@@ -228,8 +231,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_remaining_quantity_is_database_generated_and_cannot_be_forged(): void
     {
         $proposal = $this->approvedProposal(20, 5);
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         // remaining_quantity is a STORED GENERATED column, so MySQL
         // refuses the write outright rather than accepting a forged
@@ -248,8 +250,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_remaining_quantity_tracks_used_quantity_automatically(): void
     {
         $proposal = $this->approvedProposal(3, 0);
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertSame(3, $entitlement->remaining_quantity);
 
@@ -280,8 +281,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_consuming_a_lesson_decrements_remaining_and_increments_used(): void
     {
         $proposal = $this->approvedProposal(20, 5);
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $updated = $this->entitlements()->consumeLesson($entitlement);
 
@@ -293,8 +293,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_consuming_the_last_lesson_completes_the_entitlement(): void
     {
         $proposal = $this->approvedProposal(2, 0);
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->entitlements()->consumeLesson($entitlement);
         $completed = $this->entitlements()->consumeLesson($entitlement->fresh());
@@ -308,8 +307,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_consuming_beyond_the_balance_is_rejected(): void
     {
         $proposal = $this->approvedProposal(1, 0);
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->entitlements()->consumeLesson($entitlement);
 
@@ -320,8 +318,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_has_available_lessons_and_remaining_lessons_reflect_the_balance(): void
     {
         $proposal = $this->approvedProposal(1, 0);
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->where('proposal_id', $proposal->id)->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertTrue($this->entitlements()->hasAvailableLessons($entitlement));
         $this->assertSame(1, $this->entitlements()->remainingLessons($entitlement));
@@ -334,7 +331,7 @@ class StudentPackageEntitlementTest extends TestCase
 
     // ── Student decline ───────────────────────────────────────────────────
 
-    public function test_student_can_decline_an_approved_proposal_without_creating_an_entitlement(): void
+    public function test_student_can_decline_an_approved_proposal_without_creating_an_entitlement_or_purchase(): void
     {
         $proposal = $this->approvedProposal();
 
@@ -344,6 +341,7 @@ class StudentPackageEntitlementTest extends TestCase
 
         $this->assertSame('cancelled', $declined->status->value);
         $this->assertDatabaseCount('student_package_entitlements', 0);
+        $this->assertDatabaseCount('student_package_purchases', 0);
     }
 
     public function test_another_student_cannot_decline_someone_elses_proposal(): void
@@ -363,8 +361,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_admin_can_view_any_entitlement(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertTrue($this->manager->can('viewAny', StudentPackageEntitlement::class));
         $this->assertTrue($this->manager->can('view', $entitlement));
@@ -373,8 +370,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_student_can_view_their_own_entitlement(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertTrue($proposal->student->can('view', $entitlement));
     }
@@ -382,8 +378,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_student_cannot_view_another_students_entitlement(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $otherStudent = User::factory()->create(['status' => 'active']);
         $otherStudent->assignRole('student');
@@ -394,8 +389,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_instructor_can_view_only_their_own_students_entitlement(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->assertTrue($proposal->instructor->can('view', $entitlement));
 
@@ -407,8 +401,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_nobody_may_create_update_or_delete_an_entitlement_directly(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         foreach ([$this->manager, $proposal->student, $proposal->instructor] as $user) {
             $this->assertFalse($user->can('create', StudentPackageEntitlement::class));
@@ -420,8 +413,7 @@ class StudentPackageEntitlementTest extends TestCase
     public function test_entitlement_cannot_be_hard_deleted(): void
     {
         $proposal = $this->approvedProposal();
-        $this->proposals()->acceptProposal($proposal, $proposal->student);
-        $entitlement = StudentPackageEntitlement::query()->firstOrFail();
+        $entitlement = $this->acceptedEntitlement($proposal);
 
         $this->expectException(HistoricalRecordCannotBeDeletedException::class);
         $entitlement->delete();

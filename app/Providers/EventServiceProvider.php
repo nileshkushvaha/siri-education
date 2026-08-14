@@ -66,6 +66,8 @@ use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
 use App\Listeners\Package\ConsumePackageEntitlementOnLessonCompleted;
+use App\Listeners\Package\ReleasePackageReservationOnBookingCancelled;
+use App\Listeners\Package\ReleasePackageReservationOnNonConsumingOutcome;
 use App\Listeners\Payment\GenerateInvoiceOnBookingPaymentSucceeded;
 use App\Listeners\Quality\DetectInstructorCancellationQualityRiskOnBookingCancelled;
 use App\Listeners\Quality\DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized;
@@ -232,6 +234,10 @@ class EventServiceProvider extends ServiceProvider
             DetectInstructorCancellationQualityRiskOnBookingCancelled::class,
             ProcessWaitlistOnBookingCancelled::class,
             EvaluateExcessiveBookingCancellationsOnBookingCancelled::class,
+            // Returns a cancelled package-funded booking's reserved
+            // lesson to the student's available balance. Never touches
+            // used_quantity — a cancelled lesson consumed nothing.
+            ReleasePackageReservationOnBookingCancelled::class,
         ],
         BookingRescheduled::class => [
             [SendBookingNotifications::class, 'handleRescheduled'],
@@ -292,6 +298,12 @@ class EventServiceProvider extends ServiceProvider
             // The only automatic referral-reward trigger.
             EvaluateReferralRewardOnLessonOutcomeFinalized::class,
             RecalculateLearningPlanProgressOnLessonOutcomeFinalized::class,
+            // Frees a package unit committed to a lesson that reached a
+            // NON-consuming final outcome (no-show, technical issue,
+            // cancelled). Completed is excluded inside the listener and
+            // stays exclusively with ConsumePackageEntitlementOnLessonCompleted,
+            // which claims the same reservation atomically.
+            ReleasePackageReservationOnNonConsumingOutcome::class,
         ],
         LessonOutcomeOverridden::class => [
             ReevaluateLessonFinancialDisposition::class,

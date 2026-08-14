@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -110,6 +112,38 @@ class StudentPackageEntitlement extends Model
     public function bookingType(): BelongsTo
     {
         return $this->belongsTo(BookingType::class);
+    }
+
+    /**
+     * Phase 4D — units committed to future bookings. Capacity is
+     * counted through PackageEntitlementService::availableToBook(),
+     * never by reading this relation's size in business code.
+     */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(StudentPackageEntitlementReservation::class, 'entitlement_id');
+    }
+
+    public function consumptions(): HasMany
+    {
+        return $this->hasMany(StudentPackageEntitlementConsumption::class, 'entitlement_id');
+    }
+
+    /**
+     * Phase 4D — the package's structured academic identity, reached
+     * THROUGH the proposal rather than copied onto every entitlement
+     * (spec §2: one academic truth per package, not four).
+     */
+    public function academicContext(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            PackageAcademicContext::class,
+            InstructorPackageProposal::class,
+            'id',           // proposals.id
+            'proposal_id',  // package_academic_contexts.proposal_id
+            'proposal_id',  // entitlements.proposal_id
+            'id',           // proposals.id
+        );
     }
 
     public function scopeForStudent(Builder $query, int $studentId): Builder

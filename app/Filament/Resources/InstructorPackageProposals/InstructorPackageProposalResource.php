@@ -52,7 +52,7 @@ class InstructorPackageProposalResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['instructor', 'student', 'packageBenefitRule']);
+            ->with(['instructor', 'student', 'packageBenefitRule', 'academicContext']);
     }
 
     public static function getNavigationBadge(): ?string

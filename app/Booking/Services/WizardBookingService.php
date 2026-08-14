@@ -20,13 +20,17 @@ use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Support\AcademicFlowCopy;
 use App\Booking\Types\FreeDemoType;
 use App\Contracts\StudentFinancialVerificationGate;
+use App\Country\Enums\CountryFeature;
 use App\Curriculum\DTOs\AcademicContextData;
 use App\Curriculum\Services\InstructorAcademicEligibilityResolver;
 use App\Models\Booking;
 use App\Models\BookingType;
+use App\Models\StudentPackageEntitlement;
 use App\Models\User;
+use App\Package\Services\PackageBookingEntitlementResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -45,8 +49,27 @@ use Illuminate\Support\Str;
  * CreateBookingData is built, so the persisted snapshot always reflects
  * the currently-Published CurriculumVersion and current instructor
  * eligibility, never a value cached earlier in the request/session
- * (§27/§28). Paid/recurring bookings never resolve an academic context
- * in this phase (resolveAcademicContext() short-circuits on type key).
+ * (§27/§28).
+ *
+ * Phase 4D extends that same country-aware resolution to `paid_one_to_one`,
+ * gated by CountryFeature::CountryAcademicPackages, and adds explicit
+ * package funding. Two properties of that extension matter:
+ *
+ *  - It is ADDITIVE. A paid booking that sends no structured academic
+ *    selections resolves no context and behaves exactly as it did
+ *    before — ordinary paid booking is untouched, and owning a
+ *    compatible package never forces its use (§31).
+ *  - Funding is EXPLICIT. `packageEntitlementId` is only ever what the
+ *    student deliberately chose; this service never searches for a
+ *    package that happens to match. A chosen entitlement is
+ *    re-validated server-side (ownership, instructor, academic
+ *    identity, capacity, expiry-vs-lesson-end) before it can reach a
+ *    Booking, and the resulting booking's academic snapshot is taken
+ *    from the PACKAGE's frozen context rather than a fresh resolve, so
+ *    a newly published CurriculumVersion can never retroactively
+ *    rewrite what a purchased package bought (§38).
+ *
+ * Recurring bookings remain outside the package path entirely.
  */
 final class WizardBookingService implements WizardBookingServiceInterface
 {
@@ -60,6 +83,8 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly DemoAvailabilityResolver $demoAvailability,
         private readonly DemoAcademicContextResolver $demoAcademicContext,
         private readonly InstructorAcademicEligibilityResolver $instructorEligibility,
+        private readonly BookingAcademicContextResolver $academicContextResolver,
+        private readonly PackageBookingEntitlementResolver $packageEntitlements,
     ) {}
 
     public function availableDates(
@@ -138,7 +163,76 @@ final class WizardBookingService implements WizardBookingServiceInterface
             $this->instructorEligibility->assertEligible($instructor, $academicContext->toAcademicContextData());
         }
 
-        return $this->bookings->request($this->occurrenceData($data, $type, $data->startsAt, $teacherId, $grade, $academicContext));
+        // Phase 4D — a package-funded booking derives its academic
+        // snapshot from the PACKAGE's frozen context, not from this
+        // fresh resolve (§38). That is what keeps a booking funded by a
+        // package sold under Curriculum v2 recorded as v2 even after v3
+        // is published. Whether the instructor can DELIVER the lesson
+        // right now is a separate question, still answered by the
+        // eligibility/availability checks above — historical package
+        // context and current delivery capability never merge.
+        $packageEntitlementId = null;
+
+        if ($data->packageEntitlementId !== null) {
+            $entitlement = $this->requireEligibleEntitlement($data, $type, $teacherId, $academicContext);
+
+            $packageEntitlementId = (string) $entitlement->id;
+            $academicContext = $entitlement->proposal?->academicContext?->toSnapshotData() ?? $academicContext;
+            $grade = $academicContext?->normalizedGrade ?? $grade;
+        }
+
+        return $this->bookings->request($this->occurrenceData($data, $type, $data->startsAt, $teacherId, $grade, $academicContext, packageEntitlementId: $packageEntitlementId));
+    }
+
+    /**
+     * Turns the student's raw, posted entitlement id into a trusted one
+     * — or refuses.
+     *
+     * Every check is server-side and re-run here at submit time: the
+     * entitlement must be the AUTHENTICATED student's own, belong to
+     * the instructor actually being booked, match the resolved academic
+     * context on stable ids, still have available-to-book capacity, and
+     * still be valid for a lesson that FINISHES before it expires.
+     * PackageBookingEntitlementResolver owns all of those rules so the
+     * list the student was shown and the rule their submission is
+     * judged by cannot drift apart.
+     *
+     * @throws BookingException when the chosen package may not fund this booking
+     */
+    private function requireEligibleEntitlement(WizardBookingData $data, BookingType $type, int $teacherId, ?BookingAcademicContextData $academicContext): StudentPackageEntitlement
+    {
+        if ($academicContext === null) {
+            throw new BookingException('Package lessons require a complete academic selection. Please choose your education system, level, and subject.');
+        }
+
+        // Version 1 rule, stated explicitly rather than left implicit:
+        //
+        //     package-funded booking  → requires a chosen instructor
+        //     auto-assigned booking   → ordinary paid booking only
+        //
+        // This is not a technical limitation, it follows from the
+        // product: a personalized package is a contract with ONE
+        // instructor, so "which of my packages can fund this?" has no
+        // answer until that instructor is known. The alternatives —
+        // searching every instructor's packages, or letting entitlement
+        // availability pick the instructor — would both make the
+        // package, not the student, choose who teaches. If packages ever
+        // become transferable across instructors that is a separate
+        // commercial feature, designed on its own terms.
+        if ($data->teacherId === null) {
+            throw new BookingException('Choose your instructor to use a package — a package is tied to the instructor it was created with.');
+        }
+
+        $student = auth()->user();
+        $endsAt = $data->startsAt->addMinutes((int) $type->duration_minutes);
+
+        if (! $this->packageEntitlements->isEligible($student, $teacherId, $academicContext, $data->packageEntitlementId, $endsAt)) {
+            throw new BookingException('The selected package cannot be used for this lesson. Please choose another package or pay for this lesson.');
+        }
+
+        return StudentPackageEntitlement::query()
+            ->with('proposal.academicContext')
+            ->findOrFail($data->packageEntitlementId);
     }
 
     /**
@@ -227,21 +321,45 @@ final class WizardBookingService implements WizardBookingServiceInterface
      */
     private function resolveAcademicContext(WizardBookingData $data): ?BookingAcademicContextData
     {
-        if ($data->typeKey !== FreeDemoType::KEY) {
+        if ($data->typeKey === FreeDemoType::KEY) {
+            return $this->demoAcademicContext->resolveForDemo(
+                auth()->user(),
+                $data->educationSystemId,
+                $data->educationSystemLevelId,
+                $data->subjectId,
+                $data->curriculumId,
+            );
+        }
+
+        // Phase 4D — a PAID booking resolves an academic context only
+        // when the student is actually taking the country-aware path,
+        // i.e. they sent structured selections. An ordinary paid
+        // booking sends none and continues to behave exactly as before,
+        // with no academic context and no package involvement (§31/§57)
+        // — this is deliberately additive, never a redirection of the
+        // existing paid flow.
+        //
+        // Gated by CountryAcademicPackages rather than the demo flow's
+        // own feature, so a country that has switched off free demos
+        // can still sell and book packages.
+        if ($data->educationSystemId === null && $data->educationSystemLevelId === null && $data->subjectId === null) {
             return null;
         }
 
-        return $this->demoAcademicContext->resolveForDemo(
-            auth()->user(),
-            $data->educationSystemId,
-            $data->educationSystemLevelId,
-            $data->subjectId,
-            $data->curriculumId,
+        return $this->academicContextResolver->resolve(
+            student: auth()->user(),
+            feature: CountryFeature::CountryAcademicPackages,
+            copy: AcademicFlowCopy::forPackageBooking(),
+            educationSystemId: $data->educationSystemId,
+            educationSystemLevelId: $data->educationSystemLevelId,
+            subjectId: $data->subjectId,
+            curriculumId: $data->curriculumId,
+            autoResolveCurriculum: $data->curriculumId === null,
         );
     }
 
     /** @param array<string, mixed> $extraMeta */
-    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, int $grade, ?BookingAcademicContextData $academicContext = null, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null): CreateBookingData
+    private function occurrenceData(WizardBookingData $data, BookingType $type, CarbonImmutable $startsAt, int $teacherId, int $grade, ?BookingAcademicContextData $academicContext = null, array $extraMeta = [], ?RecurrenceFrequency $recurrenceFrequency = null, ?string $packageEntitlementId = null): CreateBookingData
     {
         return new CreateBookingData(
             typeKey: $data->typeKey,
@@ -260,6 +378,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
             meta: ['subject' => $academicContext?->subjectName ?? $data->subject, 'grade' => $grade, ...$extraMeta],
             recurrenceFrequency: $recurrenceFrequency,
             academicContext: $academicContext,
+            packageEntitlementId: $packageEntitlementId,
         );
     }
 

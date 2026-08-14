@@ -21,6 +21,23 @@ final readonly class CreatePackageProposalData
         public int $studentId,
         public string $packageBenefitRuleId,
         public string $subjectId,
+        /**
+         * Legacy path only. Once the country-aware packages feature is
+         * in effect for the student's country, the AcademicLevel is
+         * DERIVED from $educationSystemLevelId (a student never picks
+         * the broad band directly) and anything supplied here is
+         * ignored — the derived value always wins, so a forged id
+         * cannot widen or shift the package's academic identity.
+         */
         public ?string $academicLevelId,
+        /**
+         * Phase 4D — the instructor's structured selection. Both are
+         * raw, UNTRUSTED client ids: they are re-resolved and validated
+         * server-side (country served from CountryResolver, never from
+         * the browser) before anything is persisted, and re-resolved a
+         * second time at submit before the snapshot is frozen.
+         */
+        public ?string $educationSystemId = null,
+        public ?string $educationSystemLevelId = null,
     ) {}
 }

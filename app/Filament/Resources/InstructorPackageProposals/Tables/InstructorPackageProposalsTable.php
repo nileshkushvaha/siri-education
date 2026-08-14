@@ -74,11 +74,38 @@ class InstructorPackageProposalsTable
                     ),
             ])
             ->recordActions([
+                // Phase 4D — a package now carries a full academic
+                // identity (country, education system, level, subject,
+                // curriculum, published version) that no longer fits in
+                // table columns. Approving on "Maths / Level 10" alone
+                // would waste that identity, so the whole frozen
+                // snapshot is available read-only before deciding.
+                Action::make('review')
+                    ->label('Review')
+                    ->icon('heroicon-m-document-magnifying-glass')
+                    ->color('gray')
+                    ->modalHeading('Package proposal')
+                    ->modalDescription('The frozen offer exactly as the student will receive it. Read-only — use Approve or Reject to act on it.')
+                    ->modalContent(fn (InstructorPackageProposal $record) => view(
+                        'filament.package.proposal-review',
+                        ['record' => $record->loadMissing(['academicContext', 'student', 'instructor', 'packageBenefitRule', 'subject', 'academicLevel'])],
+                    ))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->authorize(fn (InstructorPackageProposal $record): bool => auth()->user()?->can('view', $record) ?? false),
+
                 Action::make('approve')
                     ->icon('heroicon-m-check-badge')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalDescription('Approves the proposal. Optionally override the final price shown to the student — an override always requires a reason and is fully audited.')
+                    // The academic identity is repeated here, not only in
+                    // the Review modal: approval is the decision point,
+                    // and an admin must be able to see WHAT they are
+                    // approving without first opening another dialog.
+                    ->modalDescription(fn (InstructorPackageProposal $record): string => sprintf(
+                        '%s Approves the proposal. Optionally override the final price shown to the student — an override always requires a reason and is fully audited.',
+                        self::contextSummary($record),
+                    ))
                     ->authorize(fn (InstructorPackageProposal $record): bool => auth()->user()?->can('approve', $record) ?? false)
                     ->visible(fn (InstructorPackageProposal $record): bool => $record->status->canTransitionTo(InstructorPackageProposalStatus::Approved))
                     ->form([
@@ -125,6 +152,39 @@ class InstructorPackageProposalsTable
                     )),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    /**
+     * A one-line rendering of the proposal's FROZEN academic identity,
+     * for the approve dialog.
+     *
+     * Reads the snapshot, never live master data — an admin must see the
+     * offer as the student will receive it, not as the current
+     * Curriculum/Education System happens to read today. A legacy
+     * proposal (created before country-aware packages applied to this
+     * student's country) says so plainly rather than being dressed up
+     * with a guessed context.
+     */
+    private static function contextSummary(InstructorPackageProposal $record): string
+    {
+        $context = $record->academicContext;
+
+        if ($context === null) {
+            return sprintf(
+                'Legacy proposal — %s, no structured academic context.',
+                $record->subject?->name ?? 'no subject',
+            );
+        }
+
+        return sprintf(
+            '%s · %s · %s · %s · %s (v%s).',
+            $context->country_name,
+            $context->education_system_name,
+            $context->level_display,
+            $context->subject_name,
+            $context->curriculum_name,
+            $context->curriculum_version_number,
+        );
     }
 
     private static function isOverride(mixed $finalPrice, InstructorPackageProposal $record): bool

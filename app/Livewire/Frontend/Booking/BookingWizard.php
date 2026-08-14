@@ -59,6 +59,8 @@ final class BookingWizard extends Component
         'frequency' => 'Frequency',
         'date' => 'Date',
         'time' => 'Time',
+        // Phase 4D — only present when a qualifying package exists.
+        'funding' => 'Payment',
         'review' => 'Review',
         'confirmed' => 'Confirmed',
     ];
@@ -168,6 +170,20 @@ final class BookingWizard extends Component
     public bool $academicFlowBlocked = false;
 
     public bool $academicFlowUnavailable = false;
+
+    // ── Phase 4D — package funding (§33) ───────────────────────────────────
+    //
+    // The student's explicit funding choice. NULL means "pay normally",
+    // which is both the default and the behavior when no package
+    // qualifies — owning a compatible package never forces its use
+    // (§31). Deliberately NOT #[Locked]: unlike Country, this IS a
+    // student choice. It is re-validated server-side against ownership,
+    // instructor, academic identity, capacity and expiry before it can
+    // reach a Booking (§40), so a forged value is rejected there.
+    public ?string $packageEntitlementId = null;
+
+    /** @var list<array<string, mixed>> every qualifying package — never auto-narrowed to one (§29) */
+    public array $fundingOptions = [];
 
     #[Locked]
     public ?int $studentCountryId = null;
@@ -537,6 +553,26 @@ final class BookingWizard extends Component
     {
         $this->selectedSlotStartsAt = $startsAt;
         $this->validateSelection(['selectedSlotStartsAt']);
+
+        // Phase 4D — funding options depend on the chosen SLOT, not just
+        // the academic context: an entitlement is only offered when the
+        // lesson would finish before it expires (§26). They are therefore
+        // loaded here, once a concrete instant exists.
+        $this->loadFundingOptions();
+
+        $this->goToPhase($this->fundingOptions === [] ? 'review' : 'funding');
+    }
+
+    /**
+     * Records the student's EXPLICIT funding choice.
+     *
+     * '' means "pay normally" and is the default — a compatible package
+     * is never preselected and never auto-applied (§31/§33). A posted id
+     * is re-validated server-side at submit; nothing here is trusted.
+     */
+    public function selectFunding(string $entitlementId): void
+    {
+        $this->packageEntitlementId = $entitlementId !== '' ? $entitlementId : null;
         $this->goToPhase('review');
     }
 
@@ -562,6 +598,12 @@ final class BookingWizard extends Component
             'education_system_level_id' => $this->academicFlowActive ? $this->educationSystemLevelId : null,
             'academic_subject_id' => $this->academicFlowActive ? $this->academicSubjectId : null,
             'curriculum_id' => $this->academicFlowActive ? $this->curriculumId : null,
+            // Phase 4D (§40) — the student's explicit choice, raw and
+            // untrusted. WizardBookingService re-checks it against their
+            // own ownership, the instructor, the resolved academic
+            // identity, available-to-book capacity and expiry before it
+            // can fund anything. Null for every ordinary paid booking.
+            'package_entitlement_id' => $this->packageEntitlementId,
         ];
 
         try {
@@ -1024,6 +1066,46 @@ final class BookingWizard extends Component
     }
 
     /**
+     * Loads every package that could fund the currently-selected lesson.
+     *
+     * Requires a locked instructor: a package entitlement belongs to one
+     * specific instructor, so "which of my packages apply" is
+     * unanswerable while the assignment engine may still pick anyone.
+     * An auto-assigned booking therefore simply offers no packages and
+     * proceeds as an ordinary paid booking — a deliberate, fail-closed
+     * limit rather than a guess at who will be assigned.
+     *
+     * Never preselects: `$packageEntitlementId` stays null so "pay
+     * normally" remains the default until the student chooses (§33).
+     */
+    private function loadFundingOptions(): void
+    {
+        $this->fundingOptions = [];
+        $this->packageEntitlementId = null;
+
+        $user = Auth::user();
+
+        if ($user === null || $this->lockedInstructorId === null || $this->selectedSlotStartsAt === null) {
+            return;
+        }
+
+        if (! $this->isPaidType()) {
+            return;
+        }
+
+        $this->fundingOptions = $this->wizard->fundingOptions(
+            $user,
+            $this->lockedInstructorId,
+            $this->educationSystemId,
+            $this->educationSystemLevelId,
+            $this->academicSubjectId,
+            $this->curriculumId,
+            CarbonImmutable::parse($this->selectedSlotStartsAt, $this->timezone),
+            (string) $this->type,
+        );
+    }
+
+    /**
      * Non-authoritative narrowing context for date/slot browsing only
      * (§7/§10) — never what actually gates Booking creation. See
      * BookingWizardService::resolveAcademicContextForBrowsing()'s
@@ -1129,6 +1211,15 @@ final class BookingWizard extends Component
 
         $phases[] = 'date';
         $phases[] = 'time';
+
+        // Phase 4D — the funding step exists only when the student
+        // actually has a qualifying package for this exact lesson.
+        // Nobody is asked "how would you like to pay?" when there is
+        // only one answer.
+        if ($this->fundingOptions !== []) {
+            $phases[] = 'funding';
+        }
+
         $phases[] = 'review';
         $phases[] = 'confirmed';
 

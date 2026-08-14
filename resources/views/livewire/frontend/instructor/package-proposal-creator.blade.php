@@ -38,6 +38,50 @@
                     @endif
                 </div>
 
+                {{-- Country is SERVER-RESOLVED from the student's profile and shown locked —
+                     an instructor never chooses their student's country, and nothing here is submitted. --}}
+                @if ($studentCountryName)
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Country</label>
+                        <div class="w-full rounded-xl bg-white/[0.02] border border-white/[0.06] text-sm text-slate-300 px-3 py-2 flex items-center justify-between">
+                            <span>{{ $studentCountryName }}</span>
+                            <span class="text-xs text-slate-500">From student profile</span>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($structuredFlow)
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Education System</label>
+                            <select wire:model.live="educationSystemId" class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                                <option value="">Select an education system…</option>
+                                @foreach ($educationSystems as $system)
+                                    <option value="{{ $system->id }}">{{ $system->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('educationSystemId') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
+                            @if ($educationSystems->isEmpty())
+                                <p class="mt-1.5 text-xs text-slate-500">You are not approved to teach under any education system available in this student's country.</p>
+                            @endif
+                        </div>
+                        <div>
+                            {{-- Terminology comes from the Education System itself: Class / Grade / Year. --}}
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">{{ $levelTerm }}</label>
+                            <select wire:model.live="educationSystemLevelId" @disabled($educationSystemId === '') class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40 disabled:opacity-50">
+                                <option value="">Select a {{ strtolower($levelTerm) }}…</option>
+                                @foreach ($educationSystemLevels as $level)
+                                    <option value="{{ $level->id }}">{{ $level->display_label }}</option>
+                                @endforeach
+                            </select>
+                            @error('educationSystemLevelId') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
+                            @if ($educationSystemId !== '' && $educationSystemLevels->isEmpty())
+                                <p class="mt-1.5 text-xs text-slate-500">No {{ strtolower($levelTerm) }} options are configured for this education system yet.</p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Package Offer</label>
                     <select wire:model.live="packageBenefitRuleId" class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
@@ -55,7 +99,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Subject</label>
-                        <select wire:model.live="subjectId" class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                        <select wire:model.live="subjectId" @disabled($structuredFlow && $educationSystemLevelId === '') class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40 disabled:opacity-50">
                             <option value="">Select a subject…</option>
                             @foreach ($subjects as $subject)
                                 <option value="{{ $subject->id }}">{{ $subject->name }}</option>
@@ -63,16 +107,35 @@
                         </select>
                         @error('subjectId') <p class="mt-1 text-xs text-rose-300">{{ $message }}</p> @enderror
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Academic Level <span class="font-normal text-slate-500">(optional)</span></label>
-                        <select wire:model.live="academicLevelId" class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
-                            <option value="">Any level</option>
-                            @foreach ($academicLevels as $level)
-                                <option value="{{ $level->id }}">{{ $level->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    {{-- The broad AcademicLevel band is only an instructor choice on the legacy path.
+                         In the structured flow it is DERIVED from the selected Class/Grade/Year. --}}
+                    @unless ($structuredFlow)
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Academic Level <span class="font-normal text-slate-500">(optional)</span></label>
+                            <select wire:model.live="academicLevelId" class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                                <option value="">Any level</option>
+                                @foreach ($academicLevels as $level)
+                                    <option value="{{ $level->id }}">{{ $level->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endunless
                 </div>
+
+                {{-- Resolved context, not another dropdown: the curriculum is determined by the
+                     selections above whenever exactly one is valid. Names only, never internal ids. --}}
+                @if ($contextPreview)
+                    <div class="rounded-xl border border-indigo-400/20 bg-indigo-500/[0.06] p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-300 mb-2">Resolved academic context</p>
+                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            <div class="flex justify-between sm:block"><dt class="text-slate-500">Country</dt><dd class="text-slate-200">{{ $contextPreview['country_name'] }}</dd></div>
+                            <div class="flex justify-between sm:block"><dt class="text-slate-500">Education System</dt><dd class="text-slate-200">{{ $contextPreview['education_system_name'] }}</dd></div>
+                            <div class="flex justify-between sm:block"><dt class="text-slate-500">{{ $contextPreview['level_term'] }}</dt><dd class="text-slate-200">{{ $contextPreview['level_display'] }}</dd></div>
+                            <div class="flex justify-between sm:block"><dt class="text-slate-500">Subject</dt><dd class="text-slate-200">{{ $contextPreview['subject_name'] }}</dd></div>
+                            <div class="flex justify-between sm:block sm:col-span-2"><dt class="text-slate-500">Curriculum</dt><dd class="text-slate-200">{{ $contextPreview['curriculum_name'] }} <span class="text-slate-500">(v{{ $contextPreview['curriculum_version_number'] }})</span></dd></div>
+                        </dl>
+                    </div>
+                @endif
 
                 {{-- Price is always read-only/server-computed — the instructor can only submit, never edit it. --}}
                 <div class="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
@@ -85,8 +148,11 @@
                             <div><dt class="text-slate-500">Pay for</dt><dd class="text-white font-semibold">{{ $preview['paid_quantity'] }}</dd></div>
                             <div><dt class="text-slate-500">Unit price</dt><dd class="text-white font-semibold">{{ \App\Support\MoneyFormatter::format($preview['unit_price_minor'], $preview['currency_code']) }}</dd></div>
                             <div><dt class="text-slate-500">Estimated total</dt><dd class="text-emerald-400 font-bold">{{ \App\Support\MoneyFormatter::format($preview['calculated_price_minor'], $preview['currency_code']) }}</dd></div>
+                            @if ($preview['validity_days'])
+                                <div><dt class="text-slate-500">Valid for</dt><dd class="text-white font-semibold">{{ $preview['validity_days'] }} days</dd></div>
+                            @endif
                         </dl>
-                        <p class="mt-2 text-xs text-slate-500">Read-only — the final price is set by admin review, not by you.</p>
+                        <p class="mt-2 text-xs text-slate-500">Read-only — price, quantities and validity are all set by the admin-approved package offer and admin review, not by you.</p>
                     @else
                         <p class="text-sm text-slate-500">Select a student, package offer, and subject to see the estimated price.</p>
                     @endif

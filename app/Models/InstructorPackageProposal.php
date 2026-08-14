@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -52,6 +53,8 @@ class InstructorPackageProposal extends Model
         'package_benefit_rule_id',
         'subject_id',
         'academic_level_id',
+        'education_system_id',
+        'education_system_level_id',
         'booking_type_id',
         'duration_minutes',
         'country_id',
@@ -150,6 +153,28 @@ class InstructorPackageProposal extends Model
     public function bookingType(): BelongsTo
     {
         return $this->belongsTo(BookingType::class);
+    }
+
+    public function educationSystem(): BelongsTo
+    {
+        return $this->belongsTo(EducationSystem::class);
+    }
+
+    public function educationSystemLevel(): BelongsTo
+    {
+        return $this->belongsTo(EducationSystemLevel::class);
+    }
+
+    /**
+     * Phase 4D — the frozen structured academic identity of this
+     * package, written once at submission and immutable thereafter.
+     * Null for a legacy proposal created while the packages feature was
+     * off for the student's country; such a proposal is deliberately
+     * ineligible for the structured package-funded booking path.
+     */
+    public function academicContext(): HasOne
+    {
+        return $this->hasOne(PackageAcademicContext::class, 'proposal_id');
     }
 
     public function country(): BelongsTo

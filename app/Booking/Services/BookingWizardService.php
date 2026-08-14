@@ -7,12 +7,16 @@ namespace App\Booking\Services;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\Contracts\WizardBookingServiceInterface;
+use App\Booking\DTOs\BookingAcademicContextData;
 use App\Booking\DTOs\RecurrenceData;
 use App\Booking\DTOs\RecurringBookingResult;
 use App\Booking\DTOs\TimeSlotData;
 use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Enums\RecurrenceFrequency;
+use App\Booking\Exceptions\BookingException;
+use App\Booking\Support\AcademicFlowCopy;
 use App\Booking\Types\FreeDemoType;
+use App\Country\Enums\CountryFeature;
 use App\Curriculum\DTOs\AcademicContextData;
 use App\Curriculum\Exceptions\AcademicContextException;
 use App\Curriculum\Services\AcademicContextResolver;
@@ -22,8 +26,11 @@ use App\Models\Country;
 use App\Models\Curriculum;
 use App\Models\EducationSystem;
 use App\Models\EducationSystemLevel;
+use App\Models\StudentPackageEntitlement;
 use App\Models\Subject;
 use App\Models\User;
+use App\Package\Services\PackageBookingEntitlementResolver;
+use App\Package\Services\PackageEntitlementService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -45,6 +52,9 @@ final class BookingWizardService
         private readonly DemoAvailabilityResolver $demoAvailability,
         private readonly DemoAcademicContextResolver $demoAcademicContext,
         private readonly AcademicContextResolver $academicContextResolver,
+        private readonly BookingAcademicContextResolver $academicContext,
+        private readonly PackageBookingEntitlementResolver $packageEntitlements,
+        private readonly PackageEntitlementService $entitlements,
     ) {}
 
     /**
@@ -262,7 +272,106 @@ final class BookingWizardService
             educationSystemLevelId: $data['education_system_level_id'] ?? null,
             subjectId: $data['academic_subject_id'] ?? null,
             curriculumId: $data['curriculum_id'] ?? null,
+            packageEntitlementId: $data['package_entitlement_id'] ?? null,
         );
+    }
+
+    // ── Phase 4D — package funding (§33) ───────────────────────────────────
+
+    /** Whether country-aware ACADEMIC PACKAGES are enabled at all (distinct from the demo flow's own switch). */
+    public function academicPackagesEnabledGlobally(): bool
+    {
+        return $this->academicContext->isEnabledGlobally(CountryFeature::CountryAcademicPackages);
+    }
+
+    public function academicPackagesEnabledForCountry(?Country $country): bool
+    {
+        return $this->academicContext->isEnabledForCountry(CountryFeature::CountryAcademicPackages, $country);
+    }
+
+    /**
+     * The student's packages that could fund this exact lesson, as
+     * display rows for the funding step.
+     *
+     * Returns EVERY qualifying package — never a preselected one (§29).
+     * `available_to_book` (remaining − already scheduled) is what the
+     * student is shown, because that is the number that actually
+     * determines whether another lesson can be booked.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function fundingOptions(
+        User $student,
+        int $instructorId,
+        ?string $educationSystemId,
+        ?string $educationSystemLevelId,
+        ?string $subjectId,
+        ?string $curriculumId,
+        ?CarbonImmutable $startsAt,
+        string $typeKey,
+    ): array {
+        if ($startsAt === null || $educationSystemId === null || $educationSystemLevelId === null || $subjectId === null) {
+            return [];
+        }
+
+        $country = $this->studentCountry($student);
+
+        if (! $this->academicPackagesEnabledForCountry($country)) {
+            return [];
+        }
+
+        $snapshot = $this->packageBookingContext($student, $educationSystemId, $educationSystemLevelId, $subjectId, $curriculumId);
+
+        if ($snapshot === null) {
+            return [];
+        }
+
+        $type = $this->types->requireActiveByKey($typeKey);
+        $endsAt = $startsAt->addMinutes((int) $type->duration_minutes);
+
+        return $this->packageEntitlements
+            ->eligibleFor($student, $instructorId, $snapshot, $endsAt)
+            ->map(fn (StudentPackageEntitlement $entitlement): array => [
+                'id' => (string) $entitlement->id,
+                'name' => $entitlement->proposal?->packageBenefitRule?->name ?? 'Package',
+                'subject_name' => $entitlement->proposal?->academicContext?->subject_name,
+                'level_display' => $entitlement->proposal?->academicContext?->level_display,
+                'total_quantity' => (int) $entitlement->total_quantity,
+                'available_to_book' => $this->entitlements->availableToBook($entitlement),
+                'scheduled' => $this->entitlements->reservedQuantity($entitlement),
+                'expires_at' => $entitlement->expires_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The full snapshot DTO for the student's current browsing
+     * selection — what entitlement matching compares against.
+     *
+     * Deliberately reuses the same resolver the booking path uses, so
+     * the packages a student is OFFERED and the packages the server
+     * will ACCEPT are decided by one rule.
+     */
+    private function packageBookingContext(User $student, string $educationSystemId, string $educationSystemLevelId, string $subjectId, ?string $curriculumId): ?BookingAcademicContextData
+    {
+        try {
+            return $this->academicContext->resolve(
+                student: $student,
+                feature: CountryFeature::CountryAcademicPackages,
+                copy: AcademicFlowCopy::forPackageBooking(),
+                educationSystemId: $educationSystemId,
+                educationSystemLevelId: $educationSystemLevelId,
+                subjectId: $subjectId,
+                curriculumId: $curriculumId,
+                autoResolveCurriculum: $curriculumId === null,
+            );
+        } catch (BookingException) {
+            // A selection that cannot resolve simply offers no packages —
+            // the student can still pay normally, and the authoritative
+            // failure (if any) surfaces at submit.
+            return null;
+        }
     }
 
     /** @return array{id:int,name:string}|null */

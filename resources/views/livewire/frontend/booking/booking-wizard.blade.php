@@ -440,6 +440,48 @@
                         </div>
                     @endif
 
+                    {{-- Phase 4D — explicit funding choice. Shown only when the student
+                         actually holds a package that qualifies for THIS lesson. "Pay normally"
+                         is always offered and nothing is preselected: a package is never
+                         auto-applied just because it matches. --}}
+                    @if($currentPhase === 'funding')
+                        <div>
+                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">How would you like to pay?</h2>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">
+                                You have a package that covers this lesson. Use it, or pay for this lesson on its own.
+                            </p>
+
+                            <div class="mt-6 space-y-3">
+                                @foreach($fundingOptions as $option)
+                                    <button type="button" wire:click="selectFunding('{{ $option['id'] }}')"
+                                        class="block w-full rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-left transition hover:border-indigo-400/50 hover:bg-slate-900">
+                                        <span class="block font-bold text-white">Use package — {{ $option['name'] }}</span>
+                                        <span class="mt-1 block text-sm text-slate-400">
+                                            {{ $option['subject_name'] }}@if($option['level_display']) · {{ $option['level_display'] }}@endif
+                                        </span>
+                                        <span class="mt-2 block text-sm font-semibold text-emerald-300">
+                                            {{ $option['available_to_book'] }} {{ \Illuminate\Support\Str::plural('lesson', $option['available_to_book']) }} available to book
+                                        </span>
+                                        @if($option['scheduled'] > 0)
+                                            <span class="block text-xs text-slate-500">{{ $option['scheduled'] }} already scheduled</span>
+                                        @endif
+                                        @if($option['expires_at'])
+                                            <span class="mt-1 block text-xs text-slate-500">
+                                                Valid until {{ \Carbon\CarbonImmutable::parse($option['expires_at'])->timezone($timezone)->format('j F Y') }}
+                                            </span>
+                                        @endif
+                                    </button>
+                                @endforeach
+
+                                <button type="button" wire:click="selectFunding('')"
+                                    class="block w-full rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-left transition hover:border-indigo-400/50 hover:bg-slate-900">
+                                    <span class="block font-bold text-white">Pay for this lesson</span>
+                                    <span class="mt-1 block text-sm text-slate-400">Keep your package for another time.</span>
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+
                     @if($currentPhase === 'review')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Review your booking</h2>
@@ -470,6 +512,10 @@
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $recurring ? 'First date' : 'Date' }}</dt><dd class="mt-1 font-semibold text-white">{{ $date ? \Carbon\CarbonImmutable::parse($date)->format('M j, Y') : '' }}</dd></div>
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Time</dt><dd class="mt-1 font-semibold text-white">{{ $selectedSlotStartsAt ? \Carbon\CarbonImmutable::parse($selectedSlotStartsAt)->timezone($timezone)->format('g:i A') : '' }}</dd></div>
                                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Student</dt><dd class="mt-1 font-semibold text-white">{{ auth()->user()?->name }}</dd></div>
+                                {{-- A package lesson is PREPAID, never "free" (§30). --}}
+                                @if($packageEntitlementId)
+                                    <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment</dt><dd class="mt-1 font-semibold text-emerald-300">Covered by package</dd></div>
+                                @endif
                             </dl>
 
                             <div class="mt-6">

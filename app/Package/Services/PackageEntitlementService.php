@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Package\Services;
 
+use App\Models\Booking;
 use App\Models\InstructorPackageProposal;
 use App\Models\Lesson;
 use App\Models\StudentPackageEntitlement;
 use App\Models\StudentPackageEntitlementConsumption;
+use App\Models\StudentPackageEntitlementReservation;
 use App\Models\User;
+use App\Package\Enums\PackageEntitlementReservationStatus;
 use App\Package\Enums\PackageEntitlementStatus;
 use App\Package\Exceptions\PackageException;
 use App\Services\AuditTrailService;
@@ -31,6 +34,19 @@ use Illuminate\Support\Facades\DB;
  * `remaining_quantity` is never computed in PHP here: it is a stored
  * generated column (total - used) so the database is the single source
  * of that number. This service only ever moves `used_quantity`.
+ *
+ * Phase 4D adds the reservation half of the balance. Three distinct
+ * numbers now exist and must never be conflated (spec §19):
+ *
+ *      remaining_quantity  purchased units not yet CONSUMED
+ *                          (DB generated column — unchanged meaning)
+ *      reserved_quantity   units committed to future bookings
+ *      available_to_book   remaining - reserved
+ *
+ * `remaining_quantity` is deliberately NOT redefined to mean available
+ * capacity; `availableToBook()` is the new, separate concept. This
+ * service is the sole writer of reservations as well as balance, so a
+ * unit can only be committed, released, or consumed through one place.
  */
 final class PackageEntitlementService
 {
@@ -127,12 +143,28 @@ final class PackageEntitlementService
 
             $entitlement->fill(['status' => PackageEntitlementStatus::Expired])->save();
 
+            // Phase 4D §28: an expired entitlement must not leave
+            // reservations stranded in Reserved forever. Under the
+            // approved "delivered before expiry" policy those units can
+            // never legitimately be consumed, so the honest state is
+            // Released — recorded, not deleted, so the history of what
+            // was scheduled and why it lapsed stays auditable. The
+            // affected bookings themselves are NOT cancelled here: this
+            // service owns package balance, not the booking lifecycle,
+            // and a lesson may still be delivered as a goodwill
+            // gesture — it simply will not consume a package unit
+            // (consumeForLesson()'s expiry guard still refuses).
+            $releasedReservations = $this->releaseAllReservations($entitlement, 'entitlement_expired');
+
             $this->audit->logSystem(
                 self::LOG_NAME,
                 'package_entitlement_expired',
                 sprintf('Package entitlement expired with %d unused lesson(s).', $entitlement->remaining_quantity),
                 $entitlement,
-                $this->metadata($entitlement) + ['expires_at' => $entitlement->expires_at?->toIso8601String()],
+                $this->metadata($entitlement) + [
+                    'expires_at' => $entitlement->expires_at?->toIso8601String(),
+                    'released_reservations' => $releasedReservations,
+                ],
             );
 
             return $entitlement->refresh();
@@ -164,6 +196,154 @@ final class PackageEntitlementService
             });
 
         return $expired;
+    }
+
+    // ── Reservations (Phase 4D) ───────────────────────────────────────────
+
+    /** Units committed to future bookings but not yet consumed. */
+    public function reservedQuantity(StudentPackageEntitlement $entitlement): int
+    {
+        return StudentPackageEntitlementReservation::query()
+            ->forEntitlement((string) $entitlement->id)
+            ->holdingCapacity()
+            ->count();
+    }
+
+    /**
+     * How many NEW bookings this entitlement can still fund (spec §19).
+     *
+     * Deliberately distinct from `remaining_quantity`: with 15 total, 5
+     * consumed and 3 scheduled, remaining is 10 but only 7 may be
+     * booked. Never negative — a clamp rather than a signed number,
+     * because "how many may I book" has no meaningful negative answer
+     * and callers compare it against 1.
+     */
+    public function availableToBook(StudentPackageEntitlement $entitlement): int
+    {
+        return max(0, $this->remainingLessons($entitlement) - $this->reservedQuantity($entitlement));
+    }
+
+    /**
+     * Commits exactly one unit to $booking. The ONLY way a reservation
+     * is created.
+     *
+     * Called from inside BookingService's creation transaction, so a
+     * booking and its reservation are all-or-nothing: a package-funded
+     * Booking can never exist without the unit behind it, and a
+     * reservation can never outlive a rolled-back Booking.
+     *
+     * Concurrency (spec §21): the entitlement row is locked FOR UPDATE
+     * before capacity is computed, so two racing requests for a single
+     * last unit serialize — the first commits, the second recomputes
+     * availability under the lock and is refused. UNIQUE(booking_id) is
+     * the independent backstop if that lock is ever bypassed.
+     *
+     * @throws PackageException when the entitlement cannot fund another booking
+     */
+    public function reserveForBooking(StudentPackageEntitlement $entitlement, Booking $booking, ?User $actor = null): StudentPackageEntitlementReservation
+    {
+        // Expired FIRST, in its own transaction, so the status change
+        // survives the refusal below (same reasoning as consumeLesson()).
+        $entitlement = $this->expireIfNeeded($entitlement);
+
+        return DB::transaction(function () use ($entitlement, $booking, $actor): StudentPackageEntitlementReservation {
+            $entitlement = StudentPackageEntitlement::query()->whereKey($entitlement->id)->lockForUpdate()->firstOrFail();
+
+            // A retried creation for the same booking returns the
+            // existing commitment rather than taking a second unit.
+            $existing = StudentPackageEntitlementReservation::query()->forBooking((string) $booking->id)->first();
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            // Re-checked under the lock — never trust values read before it.
+            if ($this->hasLapsed($entitlement)) {
+                throw new PackageException('This package has expired and can no longer be used.');
+            }
+
+            if (! $entitlement->status->isConsumable()) {
+                throw new PackageException(sprintf('This package is %s and can no longer be used.', $entitlement->status->label()));
+            }
+
+            if ($this->availableToBook($entitlement) < 1) {
+                throw new PackageException('This package has no lessons left to schedule. Cancel a scheduled lesson to free one up.');
+            }
+
+            $reservation = StudentPackageEntitlementReservation::query()->create([
+                'entitlement_id' => $entitlement->id,
+                'booking_id' => $booking->id,
+                'status' => PackageEntitlementReservationStatus::Reserved,
+                'reserved_at' => now(),
+            ]);
+
+            $this->audit->logUser(
+                $actor ?? $entitlement->student,
+                self::LOG_NAME,
+                'package_entitlement_reserved',
+                'One lesson reserved from package entitlement for a scheduled booking.',
+                $entitlement,
+                $this->metadata($entitlement) + ['booking_id' => $booking->id, 'reservation_id' => $reservation->id],
+            );
+
+            return $reservation;
+        });
+    }
+
+    /**
+     * Returns a committed unit to available capacity — Reserved →
+     * Released.
+     *
+     * Idempotent and deliberately forgiving: a booking with no
+     * reservation, or one already Released/Consumed, returns null
+     * rather than throwing. Release is driven by lifecycle events
+     * (cancellation, non-consuming outcomes, expiry) that may legitimately
+     * fire more than once or for bookings that never had a reservation,
+     * and none of them should be able to fail a cancellation.
+     *
+     * A Consumed reservation is never released: the lesson was
+     * delivered and the unit is genuinely spent.
+     */
+    public function releaseForBooking(Booking $booking, string $reason, ?User $actor = null): ?StudentPackageEntitlementReservation
+    {
+        $reservation = StudentPackageEntitlementReservation::query()->forBooking((string) $booking->id)->first();
+
+        if ($reservation === null || $reservation->status->isTerminal()) {
+            return $reservation;
+        }
+
+        return DB::transaction(function () use ($reservation, $reason, $actor): StudentPackageEntitlementReservation {
+            $entitlement = StudentPackageEntitlement::query()->whereKey($reservation->entitlement_id)->lockForUpdate()->firstOrFail();
+
+            // Re-read under the entitlement lock: a concurrent
+            // consumption may have claimed this reservation already.
+            $reservation = StudentPackageEntitlementReservation::query()->whereKey($reservation->id)->firstOrFail();
+
+            if ($reservation->status->isTerminal()) {
+                return $reservation;
+            }
+
+            $reservation->fill([
+                'status' => PackageEntitlementReservationStatus::Released,
+                'released_at' => now(),
+                'release_reason' => $reason,
+            ])->save();
+
+            $this->audit->logUser(
+                $actor ?? $entitlement->student,
+                self::LOG_NAME,
+                'package_entitlement_reservation_released',
+                'A reserved package lesson was released back to the student\'s balance.',
+                $entitlement,
+                $this->metadata($entitlement) + [
+                    'booking_id' => $reservation->booking_id,
+                    'reservation_id' => $reservation->id,
+                    'release_reason' => $reason,
+                ],
+            );
+
+            return $reservation->refresh();
+        });
     }
 
     /**
@@ -232,6 +412,15 @@ final class PackageEntitlementService
                 'consumed_at' => $consumedAt,
             ]);
 
+            // Phase 4D §24: the unit this lesson was holding is now
+            // genuinely spent — Reserved → Consumed, inside the SAME
+            // transaction as the ledger row and the used_quantity
+            // increment, so capacity can never briefly count the unit
+            // twice (still reserved AND already used) or not at all.
+            // Deliberately extends the existing consumption path rather
+            // than adding a second listener.
+            $reservation = $this->consumeReservationFor($lesson, $consumedAt);
+
             $used = $entitlement->used_quantity + 1;
             $isNowComplete = $used >= $entitlement->total_quantity;
 
@@ -251,11 +440,68 @@ final class PackageEntitlementService
                     ? 'Package entitlement fully consumed.'
                     : 'One lesson consumed from package entitlement.',
                 $entitlement,
-                $this->metadata($entitlement) + ['lesson_id' => $lesson->id, 'consumption_id' => $consumption->id],
+                $this->metadata($entitlement) + [
+                    'lesson_id' => $lesson->id,
+                    'consumption_id' => $consumption->id,
+                    'reservation_id' => $reservation?->id,
+                ],
             );
 
             return $consumption;
         });
+    }
+
+    /**
+     * Releases every capacity-holding reservation for an entitlement.
+     * Called only from expireIfNeeded(), already inside its lock.
+     *
+     * @return int how many reservations were released
+     */
+    private function releaseAllReservations(StudentPackageEntitlement $entitlement, string $reason): int
+    {
+        return StudentPackageEntitlementReservation::query()
+            ->forEntitlement((string) $entitlement->id)
+            ->holdingCapacity()
+            ->update([
+                'status' => PackageEntitlementReservationStatus::Released,
+                'released_at' => now(),
+                'release_reason' => $reason,
+            ]);
+    }
+
+    /**
+     * Reserved → Consumed for the reservation this lesson's booking
+     * holds. Called only from inside consumeForLesson()'s transaction.
+     *
+     * Returns null when there is no reservation to convert, which is a
+     * legitimate state rather than an error: a package-funded booking
+     * created before this phase, or one whose reservation was already
+     * released (the entitlement expiry sweep) and then delivered
+     * anyway. Consumption's own guards in assertConsumableFor() decide
+     * whether that delivery may consume at all — this method only
+     * records what happened to the reservation.
+     */
+    private function consumeReservationFor(Lesson $lesson, \DateTimeInterface $consumedAt): ?StudentPackageEntitlementReservation
+    {
+        if ($lesson->booking_id === null) {
+            return null;
+        }
+
+        $reservation = StudentPackageEntitlementReservation::query()
+            ->forBooking((string) $lesson->booking_id)
+            ->holdingCapacity()
+            ->first();
+
+        if ($reservation === null) {
+            return null;
+        }
+
+        $reservation->fill([
+            'status' => PackageEntitlementReservationStatus::Consumed,
+            'consumed_at' => $consumedAt,
+        ])->save();
+
+        return $reservation;
     }
 
     /**

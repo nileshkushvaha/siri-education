@@ -41,6 +41,14 @@ final readonly class CreateBookingData
     public ?BookingAcademicContextData $academicContext;
 
     /**
+     * Phase 4D — the package entitlement the student EXPLICITLY chose
+     * to fund this booking with, already validated server-side against
+     * their own ownership and the resolved academic context. Null means
+     * an ordinary paid booking, never "go and find a matching package".
+     */
+    public ?string $packageEntitlementId;
+
+    /**
      * @param  array<string, mixed>  $meta  type-specific payload (subject, grade, recurring_group, …)
      * @param  RecurrenceFrequency|null  $recurrenceFrequency  Data-provenance field — set only by
      *                                                         the recurring-booking creation path (never inferred later), null for every single/non-recurring
@@ -62,6 +70,7 @@ final readonly class CreateBookingData
         array $meta = [],
         ?RecurrenceFrequency $recurrenceFrequency = null,
         ?BookingAcademicContextData $academicContext = null,
+        ?string $packageEntitlementId = null,
     ) {
         $this->typeKey = $typeKey;
         $this->studentId = $studentId;
@@ -84,6 +93,13 @@ final readonly class CreateBookingData
         $this->meta = $meta;
         $this->recurrenceFrequency = $recurrenceFrequency;
         $this->academicContext = $academicContext;
+        $this->packageEntitlementId = $packageEntitlementId;
+    }
+
+    /** Whether this booking is funded by a package rather than a payment. */
+    public function isPackageFunded(): bool
+    {
+        return $this->packageEntitlementId !== null;
     }
 
     public function endsAt(): CarbonImmutable

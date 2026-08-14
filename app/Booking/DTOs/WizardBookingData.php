@@ -41,5 +41,17 @@ final readonly class WizardBookingData
         public ?string $educationSystemLevelId = null,
         public ?string $subjectId = null,
         public ?string $curriculumId = null,
+        /**
+         * Phase 4D — the package entitlement the student EXPLICITLY
+         * chose to fund this booking with, raw and UNTRUSTED. Null
+         * means "pay normally", which stays the default: owning a
+         * compatible package never forces its use (§31).
+         *
+         * WizardBookingService re-validates this against the student's
+         * own ownership, the selected instructor, and the resolved
+         * academic context before it can reach a Booking — a forged
+         * UUID gets no further than that check (§40).
+         */
+        public ?string $packageEntitlementId = null,
     ) {}
 }

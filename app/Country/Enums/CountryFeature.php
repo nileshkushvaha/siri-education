@@ -37,6 +37,28 @@ enum CountryFeature: string
      */
     case CountryAcademicBooking = 'country_academic_booking';
 
+    /**
+     * Phase 4D — gates the country-aware academic flow for PERSONALIZED
+     * PACKAGES: the instructor proposal's structured academic context
+     * (PackageAcademicContext) and the student's package-funded
+     * paid_one_to_one booking path.
+     *
+     * Deliberately a SEPARATE key from CountryAcademicBooking rather
+     * than a reuse of it. That flag declares `DemoLessons` as a
+     * dependency, so it is switched off platform-wide whenever free
+     * demos are switched off — correct for a demo flow, but it would
+     * mean an admin disabling free demos silently made every paid
+     * package unbookable. Packages are a paid product and must not
+     * hang off the demo switch; this case therefore declares no
+     * dependency on DemoLessons.
+     *
+     * Same fail-closed semantics as its demo sibling: off means the
+     * structured package flow is simply not offered; on makes the full
+     * academic context mandatory for new proposals and for package-
+     * funded booking, never a fuzzy fallback (Phase 4D spec §35).
+     */
+    case CountryAcademicPackages = 'country_academic_packages';
+
     public function label(): string
     {
         return match ($this) {
@@ -50,6 +72,7 @@ enum CountryFeature: string
             self::Homework => 'Homework',
             self::RecordingAvailability => 'Recording Availability',
             self::CountryAcademicBooking => 'Country-Aware Academic Booking',
+            self::CountryAcademicPackages => 'Country-Aware Academic Packages',
         };
     }
 
@@ -68,6 +91,14 @@ enum CountryFeature: string
             self::WalletRecharge => [self::Wallet],
             self::PromotionalCredits => [self::Wallet],
             self::CountryAcademicBooking => [self::DemoLessons],
+            // CountryAcademicPackages deliberately declares NO
+            // dependency. PaidBookings would be the tempting one, but
+            // it maps to the payment-gateway switch: an already-settled
+            // entitlement must remain spendable on a booking even while
+            // new collection is paused, and coupling the two would
+            // recreate exactly the demo-flag trap this case was split
+            // out to avoid. Purchase-time collection is gated by the
+            // payment domain's own checks, where it belongs.
             default => [],
         };
     }

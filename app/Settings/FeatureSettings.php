@@ -60,6 +60,21 @@ class FeatureSettings extends Settings
      */
     public bool $country_academic_booking_enabled;
 
+    /**
+     * Phase 4D — master switch for the country-aware academic flow on
+     * PERSONALIZED PACKAGES (structured instructor proposals and
+     * package-funded paid booking), CountryFeature::CountryAcademicPackages.
+     *
+     * Separate from country_academic_booking_enabled on purpose: that
+     * switch's feature declares a DemoLessons dependency, so turning
+     * free demos off would otherwise have made every paid package
+     * unbookable. Off by default for the same reason as its demo
+     * sibling — enabling assumes Education Systems, Levels, Curricula,
+     * Published CurriculumVersions and instructor eligibilities are
+     * already configured for the countries concerned.
+     */
+    public bool $country_academic_packages_enabled;
+
     public static function group(): string
     {
         return 'features';

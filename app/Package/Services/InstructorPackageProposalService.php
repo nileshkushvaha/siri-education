@@ -5,12 +5,20 @@ declare(strict_types=1);
 namespace App\Package\Services;
 
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
+use App\Booking\DTOs\BookingAcademicContextData;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Exceptions\BookingException;
+use App\Booking\Services\BookingAcademicContextResolver;
+use App\Booking\Support\AcademicFlowCopy;
 use App\Booking\Types\PaidOneToOneType;
+use App\Country\Enums\CountryFeature;
+use App\Curriculum\Exceptions\InstructorAcademicEligibilityException;
+use App\Curriculum\Services\InstructorAcademicEligibilityResolver;
 use App\Models\AcademicLevel;
 use App\Models\Booking;
 use App\Models\InstructorPackageProposal;
+use App\Models\PackageAcademicContext;
 use App\Models\PackageBenefitRule;
 use App\Models\Subject;
 use App\Models\User;
@@ -47,7 +55,28 @@ final class InstructorPackageProposalService
         private readonly PackagePricingService $pricing,
         private readonly BookingTypeRepositoryInterface $bookingTypes,
         private readonly PackagePurchaseService $purchases,
+        private readonly BookingAcademicContextResolver $academicContext,
+        private readonly InstructorAcademicEligibilityResolver $instructorEligibility,
     ) {}
+
+    /**
+     * Whether this student must go through the structured
+     * country-aware package flow. Gated by
+     * CountryFeature::CountryAcademicPackages — deliberately NOT the
+     * demo flow's CountryAcademicBooking, which would tie packages to
+     * the demo-lessons switch (see that enum case).
+     */
+    public function structuredContextRequiredFor(User $student): bool
+    {
+        if (! $this->academicContext->isEnabledGlobally(CountryFeature::CountryAcademicPackages)) {
+            return false;
+        }
+
+        return $this->academicContext->isEnabledForCountry(
+            CountryFeature::CountryAcademicPackages,
+            $this->academicContext->studentCountry($student),
+        );
+    }
 
     /**
      * A student is eligible only once they have an existing, real
@@ -97,6 +126,20 @@ final class InstructorPackageProposalService
         return $this->pricing->resolve($student, $instructor, $bookingType, $subject, $academicLevel, (int) $bookingType->duration_minutes, $rule->paid_quantity);
     }
 
+    /**
+     * Non-persisted academic-context preview for the instructor's
+     * Livewire form — the same resolution submit() performs, so the
+     * context shown and the context frozen can differ only in timing,
+     * never in method. Returns null when the structured flow does not
+     * apply to this student.
+     *
+     * @throws PackageException on an incomplete/stale/ineligible selection
+     */
+    public function previewContext(User $student, User $instructor, ?string $educationSystemId, ?string $educationSystemLevelId, Subject $subject): ?BookingAcademicContextData
+    {
+        return $this->resolveStructuredContext($student, $instructor, $educationSystemId, $educationSystemLevelId, $subject);
+    }
+
     /** @throws PackageException on any ineligible input (relationship, inactive rule, unresolvable price) */
     public function create(CreatePackageProposalData $data): InstructorPackageProposal
     {
@@ -119,19 +162,34 @@ final class InstructorPackageProposalService
             throw new PackageException('The selected subject is not available.');
         }
 
-        $academicLevel = $data->academicLevelId !== null ? AcademicLevel::query()->find($data->academicLevelId) : null;
+        // Structured flow: the academic context is resolved server-side
+        // and the AcademicLevel is DERIVED from it, so the instructor's
+        // posted academicLevelId is never what decides the package's
+        // identity. Legacy flow (feature off for this student's
+        // country) keeps the previous free Subject+AcademicLevel shape.
+        $context = $this->resolveStructuredContext($student, $instructor, $data->educationSystemId, $data->educationSystemLevelId, $subject);
+
+        $academicLevel = $context !== null
+            ? AcademicLevel::query()->find($context->academicLevelId)
+            : ($data->academicLevelId !== null ? AcademicLevel::query()->find($data->academicLevelId) : null);
+
         $bookingType = $this->bookingTypes->requireActiveByKey(PaidOneToOneType::KEY);
         $durationMinutes = (int) $bookingType->duration_minutes;
 
         $price = $this->pricing->resolve($student, $instructor, $bookingType, $subject, $academicLevel, $durationMinutes, $rule->paid_quantity);
 
-        return DB::transaction(function () use ($instructor, $student, $rule, $subject, $academicLevel, $bookingType, $durationMinutes, $price): InstructorPackageProposal {
+        return DB::transaction(function () use ($instructor, $student, $rule, $subject, $academicLevel, $context, $bookingType, $durationMinutes, $price): InstructorPackageProposal {
             $proposal = InstructorPackageProposal::query()->create([
                 'instructor_id' => $instructor->id,
                 'student_id' => $student->id,
                 'package_benefit_rule_id' => $rule->id,
                 'subject_id' => $subject->id,
                 'academic_level_id' => $academicLevel?->id,
+                // The instructor's structured SELECTION, kept so
+                // submit() can re-resolve from stable ids rather than
+                // trusting stale browser state (§13).
+                'education_system_id' => $context?->educationSystemId,
+                'education_system_level_id' => $context?->educationSystemLevelId,
                 'booking_type_id' => $bookingType->id,
                 'duration_minutes' => $durationMinutes,
                 'country_id' => $price->countryId,
@@ -182,12 +240,39 @@ final class InstructorPackageProposalService
         });
     }
 
-    /** Draft -> Submitted. Re-resolves price once more immediately before persistence — never trusts an earlier resolve (mirrors the Booking Demo flow's same rule). */
+    /**
+     * Draft -> Submitted, and the moment the package's identity becomes
+     * history.
+     *
+     * Follows the Demo flow's "resolve twice" rule (§13): everything
+     * shown during drafting was a preview, and NONE of it is trusted
+     * here. Immediately before persistence this re-resolves the
+     * academic context from stable ids, re-checks that the instructor
+     * is still eligible to teach it, and re-resolves the price — then
+     * freezes all three, atomically. If configuration changed between
+     * preview and submit, the submit-time result is authoritative and a
+     * now-invalid selection fails rather than persisting silently.
+     *
+     * The frozen PackageAcademicContext is what every later booking
+     * matches against, so it is written here and never again.
+     */
     public function submit(InstructorPackageProposal $proposal, User $instructor): InstructorPackageProposal
     {
         return DB::transaction(function () use ($proposal, $instructor): InstructorPackageProposal {
             $proposal = InstructorPackageProposal::query()->whereKey($proposal->id)->lockForUpdate()->firstOrFail();
             $this->assertTransition($proposal, InstructorPackageProposalStatus::Submitted);
+
+            $subject = Subject::query()->findOrFail($proposal->subject_id);
+
+            // Re-resolved from the proposal's own stored ids, never
+            // from anything the browser still holds.
+            $context = $this->resolveStructuredContext(
+                $proposal->student,
+                $proposal->instructor,
+                $proposal->education_system_id,
+                $proposal->education_system_level_id,
+                $subject,
+            );
 
             $price = $this->resolvePriceFor($proposal);
 
@@ -198,9 +283,17 @@ final class InstructorPackageProposalService
                 'unit_price_minor' => $price->unitPriceMinor,
                 'calculated_price_minor' => $price->calculatedPriceMinor,
                 'final_price_minor' => $price->calculatedPriceMinor,
+                // Kept in lockstep with the frozen snapshot so the
+                // legacy compatibility column can never disagree with
+                // the authoritative academic truth (§2).
+                'academic_level_id' => $context?->academicLevelId ?? $proposal->academic_level_id,
                 'status' => InstructorPackageProposalStatus::Submitted,
                 'submitted_at' => now(),
             ])->save();
+
+            if ($context !== null) {
+                $this->freezeAcademicContext($proposal, $context);
+            }
 
             $this->audit->logUser($instructor, self::LOG_NAME, 'package_submitted', 'Package proposal submitted for admin review.', $proposal, $this->metadata($proposal));
 
@@ -378,6 +471,98 @@ final class InstructorPackageProposalService
 
             return $proposal->refresh();
         });
+    }
+
+    /**
+     * Resolves the structured academic context for a package, or null
+     * when the country-aware packages feature is not in effect for this
+     * student's country (legacy Subject+AcademicLevel path).
+     *
+     * The student's Country is always server-resolved — an instructor
+     * never chooses it, and a posted country/currency is never trusted
+     * (§4). The Curriculum is RESOLVED rather than selected: the
+     * shared resolver auto-resolves it when the context determines
+     * exactly one, and refuses rather than guessing otherwise (§11).
+     *
+     * Instructor eligibility is enforced HERE, at proposal time, not
+     * deferred to booking (§10) — and again on every call, so submit()
+     * re-checks it independently of whatever create() saw.
+     *
+     * @throws PackageException on an incomplete/stale/ineligible selection
+     */
+    private function resolveStructuredContext(
+        User $student,
+        User $instructor,
+        ?string $educationSystemId,
+        ?string $educationSystemLevelId,
+        Subject $subject,
+    ): ?BookingAcademicContextData {
+        try {
+            $context = $this->academicContext->resolve(
+                student: $student,
+                feature: CountryFeature::CountryAcademicPackages,
+                copy: AcademicFlowCopy::forPackage(),
+                educationSystemId: $educationSystemId,
+                educationSystemLevelId: $educationSystemLevelId,
+                subjectId: $subject->id,
+                curriculumId: null,
+                autoResolveCurriculum: true,
+            );
+        } catch (BookingException $e) {
+            throw new PackageException($e->getMessage());
+        }
+
+        if ($context === null) {
+            return null;
+        }
+
+        try {
+            $this->instructorEligibility->assertEligible($instructor, $context->toAcademicContextData());
+        } catch (InstructorAcademicEligibilityException $e) {
+            throw new PackageException($e->getMessage());
+        }
+
+        return $context;
+    }
+
+    /**
+     * Writes the package's immutable academic identity exactly once.
+     *
+     * firstOrCreate on the unique proposal_id: a retried submit returns
+     * the existing snapshot rather than violating the constraint. The
+     * row is PreventsUpdates, so even this service cannot rewrite it
+     * afterwards — that is the mechanism behind "a later rename or a
+     * newly published CurriculumVersion never rewrites an existing
+     * package" (§3/§16).
+     */
+    private function freezeAcademicContext(InstructorPackageProposal $proposal, BookingAcademicContextData $context): PackageAcademicContext
+    {
+        return PackageAcademicContext::query()->firstOrCreate(
+            ['proposal_id' => $proposal->id],
+            [
+                'country_id' => $context->countryId,
+                'country_code' => $context->countryCode,
+                'country_name' => $context->countryName,
+                'education_system_id' => $context->educationSystemId,
+                'education_system_code' => $context->educationSystemCode,
+                'education_system_name' => $context->educationSystemName,
+                'academic_level_id' => $context->academicLevelId,
+                'academic_level_name' => $context->academicLevelName,
+                'education_system_level_id' => $context->educationSystemLevelId,
+                'level_term' => $context->levelTerm,
+                'level_value' => $context->levelValue,
+                'level_display' => $context->levelDisplay,
+                'normalized_grade' => $context->normalizedGrade,
+                'subject_id' => $context->subjectId,
+                'subject_name' => $context->subjectName,
+                'subject_slug' => $context->subjectSlug,
+                'curriculum_id' => $context->curriculumId,
+                'curriculum_name' => $context->curriculumName,
+                'curriculum_slug' => $context->curriculumSlug,
+                'curriculum_version_id' => $context->curriculumVersionId,
+                'curriculum_version_number' => $context->curriculumVersionNumber,
+            ],
+        );
     }
 
     private function resolvePriceFor(InstructorPackageProposal $proposal): ResolvedPackagePriceData

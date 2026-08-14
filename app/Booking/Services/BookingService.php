@@ -38,7 +38,9 @@ use App\Booking\Validation\Rules\SelfBookingRule;
 use App\Booking\Validation\Rules\TeacherAvailabilityRule;
 use App\Booking\Validation\Rules\VerifiedActiveStudentRule;
 use App\Models\Booking;
+use App\Models\StudentPackageEntitlement;
 use App\Models\User;
+use App\Package\Services\PackageEntitlementService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\BookingSettings;
 use Illuminate\Support\Facades\Auth;
@@ -87,6 +89,7 @@ final class BookingService implements BookingServiceInterface
         private readonly CancellationRefundPolicy $refundPolicy,
         private readonly RescheduleLimitPolicy $reschedulePolicy,
         private readonly StudentLifecycleService $studentLifecycle,
+        private readonly PackageEntitlementService $packageEntitlements,
     ) {}
 
     public function request(CreateBookingData $data): Booking
@@ -138,20 +141,52 @@ final class BookingService implements BookingServiceInterface
                     $data->meta['grade'] ?? null,
                     $data->instructorId,
                 );
-                $autoConfirm = ! $type->requires_approval && $price->isFreeBooking;
+
+                // Phase 4D — a package-funded booking is PREPAID, not
+                // free and not pending. It keeps the lesson's real
+                // price/currency so revenue reporting still sees its
+                // commercial value (§30: never a fake £0), but takes no
+                // payment hold: there is nothing to collect, so there is
+                // nothing for booking:release-expired to lapse.
+                // Confirmation follows the type's normal approval rule
+                // rather than the free-booking shortcut.
+                $packageFunded = $data->isPackageFunded();
+
+                $autoConfirm = ! $type->requires_approval && ($price->isFreeBooking || $packageFunded);
                 $status = $autoConfirm ? BookingStatus::Confirmed : BookingStatus::Pending;
+
+                $paymentStatus = match (true) {
+                    $packageFunded => BookingPaymentStatus::PackageFunded,
+                    $price->requiresPayment => BookingPaymentStatus::Pending,
+                    default => BookingPaymentStatus::NotRequired,
+                };
 
                 $booking = $this->createAction->execute($data, $status, [
                     'booking_type_id' => $type->id,
-                    'payment_status' => $price->requiresPayment ? BookingPaymentStatus::Pending : BookingPaymentStatus::NotRequired,
+                    'payment_status' => $paymentStatus,
                     'price' => $price->requiresPayment ? $price->payableAmount : null,
                     'currency' => $price->requiresPayment ? $price->currency : null,
-                    'reserved_until' => $price->requiresPayment
+                    'reserved_until' => $price->requiresPayment && ! $packageFunded
                         ? now()->addMinutes($this->settings->payment_reservation_minutes)
                         : null,
                     'confirmed_at' => $autoConfirm ? now() : null,
                     'created_by' => Auth::id(),
+                    'package_entitlement_id' => $data->packageEntitlementId,
                 ]);
+
+                // Commits the entitlement unit INSIDE the booking
+                // transaction (§20): the reservation and the booking are
+                // all-or-nothing. reserveForBooking() re-locks the
+                // entitlement and recomputes available-to-book under
+                // that lock, so a concurrent race for a last remaining
+                // unit produces exactly one winner and the loser's whole
+                // booking rolls back rather than overbooking (§21).
+                if ($packageFunded) {
+                    $this->packageEntitlements->reserveForBooking(
+                        $this->requirePackageEntitlement($data),
+                        $booking,
+                    );
+                }
 
                 [$actorType, $actorId] = $this->actorFor($booking);
 
@@ -330,6 +365,37 @@ final class BookingService implements BookingServiceInterface
     private function attendeeFor(CreateBookingData $data): ?User
     {
         return $data->studentId !== null ? User::find($data->studentId) : null;
+    }
+
+    /**
+     * The entitlement a package-funded request names, re-read from the
+     * database at creation time.
+     *
+     * Ownership was already verified by the caller
+     * (PackageBookingEntitlementResolver), but this is the last point
+     * before persistence and a posted UUID is never trusted on its own
+     * (§40) — student and instructor are re-checked here so a booking
+     * can never be attributed to someone else's package even if some
+     * future caller reaches this service without going through the
+     * resolver.
+     */
+    private function requirePackageEntitlement(CreateBookingData $data): StudentPackageEntitlement
+    {
+        $entitlement = StudentPackageEntitlement::query()->find($data->packageEntitlementId);
+
+        if ($entitlement === null) {
+            throw new BookingException('The selected package is no longer available.');
+        }
+
+        if ((int) $entitlement->student_id !== $data->studentId) {
+            throw new BookingException('This package belongs to a different student.');
+        }
+
+        if ((int) $entitlement->instructor_id !== $data->instructorId) {
+            throw new BookingException('This package is for a different instructor.');
+        }
+
+        return $entitlement;
     }
 
     /**

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Earnings\Services;
 
-use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Earnings\Actions\CreateDemoConversionIncentiveEarningAction;
 use App\Earnings\Actions\CreateInstructorEarningFromLessonAction;
@@ -174,7 +173,7 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
             throw new EarningException('A cancelled or missing booking cannot grow a reconciliation earning.');
         }
 
-        if (! in_array($booking->payment_status, [BookingPaymentStatus::Paid, BookingPaymentStatus::NotRequired], strict: true)) {
+        if (! $booking->payment_status->permitsDelivery()) {
             throw new EarningException('The booking payment is not settled — no compensation applies.');
         }
 
@@ -481,7 +480,12 @@ final class InstructorEarningService implements InstructorEarningServiceInterfac
             return 'booking is not confirmed/completed';
         }
 
-        if (! in_array($booking->payment_status, [BookingPaymentStatus::Paid, BookingPaymentStatus::NotRequired], strict: true)) {
+        // permitsDelivery() rather than a status list: a package-funded
+        // lesson is prepaid and therefore normally compensable. Getting
+        // this wrong is not merely a skipped earning — createFromLesson()
+        // treats an ineligibility reason as PERMANENT and closes the
+        // recovery queue against the lesson.
+        if (! $booking->payment_status->permitsDelivery()) {
             return 'booking payment is not settled';
         }
 

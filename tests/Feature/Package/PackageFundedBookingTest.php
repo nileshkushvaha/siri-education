@@ -108,9 +108,18 @@ class PackageFundedBookingTest extends TestCase
      * added: reservation, entitlement selection and package-funded
      * booking must not reach into compensation either.
      *
-     * Structural rather than behavioral on purpose — the earnings
-     * pipeline has its own suite, and what matters here is that no
-     * dependency exists to go wrong in the first place.
+     * Structural rather than behavioral on purpose — what matters here
+     * is that no dependency exists to go wrong in the first place.
+     *
+     * NOT SUFFICIENT ON ITS OWN, and Phase 4E proved why: this
+     * assertion passes most strongly when the earnings integration is
+     * most ABSENT, so it stayed green through the entire period in which
+     * a package-funded lesson earned the instructor nothing. The
+     * behavioral counterpart — that a completed package-funded lesson
+     * actually produces an InstructorEarning, for paid and bonus units
+     * alike — lives in PackageFundedDeliveryIntegrationTest and is the
+     * test that would fail if the seam broke again. Keep both: this one
+     * pins the direction of the dependency, that one pins the outcome.
      */
     public function test_the_new_package_surfaces_never_touch_instructor_earnings(): void
     {

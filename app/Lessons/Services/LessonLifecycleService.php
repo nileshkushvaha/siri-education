@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Lessons\Services;
 
 use App\Booking\Contracts\BookingServiceInterface;
-use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Enums\ActivityActorType;
@@ -86,8 +85,13 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
     /**
      * A lesson exists only for a valid confirmed booking: both real
      * participants, a concrete time range, and settled payment terms
-     * (free or paid — never a pending/failed/refunded hold). Guest
-     * bookings never grow lessons.
+     * (free, paid, or prepaid through a package — never a
+     * pending/failed/refunded hold). Guest bookings never grow lessons.
+     *
+     * The payment test is delegated to BookingPaymentStatus::permitsDelivery()
+     * rather than restated here, so this service cannot fall behind when
+     * a new settled state appears — which is exactly what happened to
+     * package-funded bookings when this read `[NotRequired, Paid]`.
      */
     public function isEligible(Booking $booking): bool
     {
@@ -96,7 +100,7 @@ final class LessonLifecycleService implements LessonLifecycleServiceInterface
             && $booking->instructor_id !== null
             && $booking->starts_at !== null
             && $booking->ends_at !== null
-            && in_array($booking->payment_status, [BookingPaymentStatus::NotRequired, BookingPaymentStatus::Paid], strict: true);
+            && $booking->payment_status->permitsDelivery();
     }
 
     public function markLive(Lesson $lesson, ?User $actor = null): Lesson

@@ -233,11 +233,25 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
     private function applyEvaluation(LessonFinancialDisposition $disposition, Lesson $lesson, LessonOutcome $outcome, bool $override = false): void
     {
         $booking = $lesson->booking;
-        $paid = $booking?->payment_status === BookingPaymentStatus::Paid;
+
+        // One question used to serve two purposes here, and they diverge
+        // for a package-funded lesson:
+        //
+        //   $costCovered  the lesson had commercial value that was
+        //                 secured (collected, or prepaid via a package)
+        //                 — decides compensable vs demo
+        //   $refundable   money was collected through the BOOKING payment
+        //                 pipeline and could therefore be refunded
+        //                 — decides whether a refund disposition stands
+        //
+        // A package-funded lesson is the case that separates them: its
+        // cost is covered, but not by anything this domain can refund.
+        $costCovered = $booking?->payment_status->isSettled() ?? false;
+        $refundable = $booking?->payment_status === BookingPaymentStatus::Paid;
         $earning = $this->earnings->findForLesson($lesson);
 
         [$student, $instructor, $status, $reason] = match ($outcome) {
-            LessonOutcome::Completed => $paid
+            LessonOutcome::Completed => $costCovered
                 ? [LessonStudentDisposition::None, LessonInstructorDisposition::ExistingCompletionEarning, LessonFinancialDispositionStatus::NoAction, 'completed_paid']
                 : [LessonStudentDisposition::None, LessonInstructorDisposition::NoEarning, LessonFinancialDispositionStatus::NoAction, 'completed_demo'],
             LessonOutcome::StudentNoShow => match ($this->settings->student_no_show_compensation_policy) {
@@ -257,7 +271,18 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
         };
 
         // Unpaid demo money never needs a refund — students paid nothing.
-        if (! $paid && $student === LessonStudentDisposition::FullWalletRefundRequired) {
+        //
+        // Deliberately keyed on $refundable, NOT $costCovered: this
+        // guard governs a WALLET refund, and a package-funded lesson has
+        // no wallet/booking payment behind it to refund. Using
+        // $costCovered here would send package no-shows into a refund
+        // path with no money to move. The correct remedy for a
+        // package-funded no-show (unit restoration vs wallet credit vs
+        // replacement) is an unresolved policy question and is
+        // deliberately NOT decided here — Phase 4E.3 owns it. Behaviour
+        // for package-funded no-shows is therefore unchanged by this
+        // phase; only the completed-lesson classification above moves.
+        if (! $refundable && $student === LessonStudentDisposition::FullWalletRefundRequired) {
             [$student, $status, $reason] = [LessonStudentDisposition::None, $instructor === LessonInstructorDisposition::NoEarning ? LessonFinancialDispositionStatus::NoAction : $status, $reason.'_unpaid'];
         }
 
@@ -279,7 +304,7 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
 
         // Override to Completed with no earning yet: creation belongs to a
         // later reconciliation phase — record it, never create it here.
-        if ($override && $outcome === LessonOutcome::Completed && $paid && $earning === null) {
+        if ($override && $outcome === LessonOutcome::Completed && $costCovered && $earning === null) {
             [$status, $reason] = [LessonFinancialDispositionStatus::ManualReview, 'earning_reconciliation_required'];
         }
 

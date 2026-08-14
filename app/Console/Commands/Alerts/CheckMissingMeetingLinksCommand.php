@@ -46,7 +46,11 @@ final class CheckMissingMeetingLinksCommand extends Command
         Booking::query()
             ->where('status', BookingStatus::Confirmed)
             ->where('location_type', BookingLocationType::Online)
-            ->whereIn('payment_status', [BookingPaymentStatus::Paid, BookingPaymentStatus::NotRequired])
+            // Every booking that may be delivered needs a working link —
+            // including package-funded ones, which would otherwise go
+            // unmonitored precisely because nothing was collected at
+            // booking time.
+            ->whereIn('payment_status', BookingPaymentStatus::deliverable())
             ->where('starts_at', '>', Carbon::now())
             ->where('starts_at', '<=', $threshold)
             ->whereDoesntHave('meeting', fn ($query) => $query

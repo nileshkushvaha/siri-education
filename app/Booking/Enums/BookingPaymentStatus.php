@@ -70,6 +70,13 @@ enum BookingPaymentStatus: string
      * normally or prepaid through a package. The question
      * "may this booking proceed financially?" must use this rather than
      * `=== Paid`, so package-funded bookings are not mistaken for unpaid.
+     *
+     * Deliberately EXCLUDES NotRequired: a free demo costs nothing, so
+     * there is no covered cost to speak of. Use this only where the
+     * question is genuinely "was money secured for this lesson?" — the
+     * paid-vs-demo distinction in LessonFinancialDispositionService is
+     * the canonical example. For "may this booking be delivered?", use
+     * permitsDelivery() instead.
      */
     public function isSettled(): bool
     {
@@ -77,5 +84,49 @@ enum BookingPaymentStatus: string
             self::Paid, self::PackageFunded => true,
             default => false,
         };
+    }
+
+    /**
+     * Whether this booking has satisfied its financial prerequisite for
+     * DELIVERY — the single question the Lesson, Meeting and Earnings
+     * lifecycles all ask before letting a confirmed booking proceed.
+     *
+     * Three states qualify, for three different reasons:
+     *  - NotRequired  nothing was ever owed (free demo);
+     *  - Paid         collected through the booking payment pipeline;
+     *  - PackageFunded prepaid earlier through a package entitlement.
+     * Pending/Failed/Refunded never qualify — delivery must not outrun
+     * collection.
+     *
+     * This is the one owner of that concept. Domains must not restate it
+     * as `in_array([Paid, NotRequired])` or grow their own
+     * isPaidOrPackageFunded()-style helper: that duplication is exactly
+     * what left package-funded bookings invisible to Lesson, Meeting and
+     * Earnings after Phase 4D.
+     *
+     * Distinct from isSettled() on purpose. "May we deliver?" and "was
+     * money secured?" give different answers for a free demo, and
+     * collapsing them would either block demos or bill them.
+     */
+    public function permitsDelivery(): bool
+    {
+        return match ($this) {
+            self::NotRequired, self::Paid, self::PackageFunded => true,
+            default => false,
+        };
+    }
+
+    /**
+     * The same rule in the form a query builder can consume, so a
+     * `whereIn` cannot drift from the predicate above.
+     *
+     * @return list<self>
+     */
+    public static function deliverable(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $status): bool => $status->permitsDelivery(),
+        ));
     }
 }

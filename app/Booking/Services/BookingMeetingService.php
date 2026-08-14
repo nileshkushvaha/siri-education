@@ -251,9 +251,14 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
             return false;
         }
 
-        return match ($booking->payment_status) {
-            BookingPaymentStatus::NotRequired => $this->settings->create_after_demo_booking_confirmation,
-            BookingPaymentStatus::Paid => $this->settings->create_after_paid_booking_confirmation,
+        // A package-funded booking is a prepaid paid lesson, so it
+        // follows the PAID timing setting, not the demo one — the demo
+        // arm stays pinned to NotRequired so a package lesson can never
+        // inherit demo meeting behaviour. Anything that does not permit
+        // delivery (pending, failed, refunded) still gets no meeting.
+        return match (true) {
+            $booking->payment_status === BookingPaymentStatus::NotRequired => $this->settings->create_after_demo_booking_confirmation,
+            $booking->payment_status->permitsDelivery() => $this->settings->create_after_paid_booking_confirmation,
             default => false,
         };
     }

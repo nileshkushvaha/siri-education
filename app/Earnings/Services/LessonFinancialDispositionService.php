@@ -248,6 +248,7 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
         // cost is covered, but not by anything this domain can refund.
         $costCovered = $booking?->payment_status->isSettled() ?? false;
         $refundable = $booking?->payment_status === BookingPaymentStatus::Paid;
+        $packageFunded = $booking?->payment_status === BookingPaymentStatus::PackageFunded;
         $earning = $this->earnings->findForLesson($lesson);
 
         [$student, $instructor, $status, $reason] = match ($outcome) {
@@ -270,20 +271,35 @@ final class LessonFinancialDispositionService implements LessonFinancialDisposit
             LessonOutcome::Pending => throw new EarningException('A pending outcome has no financial disposition.'),
         };
 
-        // Unpaid demo money never needs a refund — students paid nothing.
+        // A refund can only be owed where money was actually collected
+        // through the booking pipeline. Two very different cases land
+        // here, and Phase 4E.3 separates their REASONS because the
+        // records are read by humans:
         //
-        // Deliberately keyed on $refundable, NOT $costCovered: this
-        // guard governs a WALLET refund, and a package-funded lesson has
-        // no wallet/booking payment behind it to refund. Using
-        // $costCovered here would send package no-shows into a refund
-        // path with no money to move. The correct remedy for a
-        // package-funded no-show (unit restoration vs wallet credit vs
-        // replacement) is an unresolved policy question and is
-        // deliberately NOT decided here — Phase 4E.3 owns it. Behaviour
-        // for package-funded no-shows is therefore unchanged by this
-        // phase; only the completed-lesson classification above moves.
+        //   demo (NotRequired)  the student paid nothing, so
+        //                       "_unpaid" is the truth;
+        //   package-funded      the student DID pay — earlier, for the
+        //                       package — so calling it unpaid is a lie.
+        //                       Their remedy is the reserved unit
+        //                       returning to available capacity, which
+        //                       ReleasePackageReservationOnNonConsumingOutcome
+        //                       has already performed off the canonical
+        //                       LessonOutcomeFinalized event. Nothing
+        //                       monetary is owed and nothing monetary is
+        //                       invented here (spec Part 19): no wallet
+        //                       credit, no booking refund, no package
+        //                       payment reversal.
+        //
+        // LessonStudentDisposition::None is the correct existing
+        // disposition for both — it means "no student-side monetary
+        // action" — so no new enum case, column or migration is needed.
+        // Only the reason code has to stop misdescribing what happened.
         if (! $refundable && $student === LessonStudentDisposition::FullWalletRefundRequired) {
-            [$student, $status, $reason] = [LessonStudentDisposition::None, $instructor === LessonInstructorDisposition::NoEarning ? LessonFinancialDispositionStatus::NoAction : $status, $reason.'_unpaid'];
+            [$student, $status, $reason] = [
+                LessonStudentDisposition::None,
+                $instructor === LessonInstructorDisposition::NoEarning ? LessonFinancialDispositionStatus::NoAction : $status,
+                $reason.($packageFunded ? '_package_unit_restored' : '_unpaid'),
+            ];
         }
 
         // ── Earning conflicts (holds, settled money, reconciliation) ──

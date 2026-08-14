@@ -506,6 +506,19 @@ final class BookingWizard extends Component
         $this->recurring = $mode === 'recurring';
 
         if ($this->recurring) {
+            // Phase 4E.3 — package funding is single-lesson only in
+            // Version 1. Switching to recurring therefore CLEARS an
+            // already-made package choice and says so, rather than
+            // carrying it to a service that would quietly ignore it and
+            // bill the student instead (PKG-AUD-007). A commercial
+            // choice must never be discarded silently.
+            if ($this->packageEntitlementId !== null) {
+                $this->banner = 'Package lessons are booked one at a time, so your package has not been applied to this recurring series. Each session will be charged normally.';
+            }
+
+            $this->packageEntitlementId = null;
+            $this->fundingOptions = [];
+
             $this->goToPhase('frequency');
 
             return;
@@ -1090,6 +1103,15 @@ final class BookingWizard extends Component
         }
 
         if (! $this->isPaidType()) {
+            return;
+        }
+
+        // Phase 4E.3 — Version 1 package funding covers a single lesson,
+        // so a recurring series is never offered the choice at all. The
+        // funding step is skipped entirely rather than shown and then
+        // ignored (PKG-AUD-007); WizardBookingService refuses the
+        // combination server-side regardless of what the browser sends.
+        if ($this->recurring) {
             return;
         }
 

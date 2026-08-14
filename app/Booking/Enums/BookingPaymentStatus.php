@@ -129,4 +129,18 @@ enum BookingPaymentStatus: string
             static fn (self $status): bool => $status->permitsDelivery(),
         ));
     }
+
+    /**
+     * isSettled() in query form — the statuses whose cost has actually
+     * been covered. Free demos are excluded, exactly as in the predicate.
+     *
+     * @return list<self>
+     */
+    public static function settled(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $status): bool => $status->isSettled(),
+        ));
+    }
 }

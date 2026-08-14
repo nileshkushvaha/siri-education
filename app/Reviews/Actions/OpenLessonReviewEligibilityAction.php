@@ -182,7 +182,14 @@ final class OpenLessonReviewEligibilityAction
         $isPaidType = (bool) ($booking->type?->is_paid ?? false);
 
         if ($isPaidType) {
-            if ($booking->payment_status !== BookingPaymentStatus::Paid) {
+            // Phase 4E.3 (PKG-AUD-009) — the question is "was this paid
+            // lesson financially covered?", not "did money arrive
+            // through the booking pipeline?". A package-funded lesson
+            // was paid for earlier, at package purchase, so it earns the
+            // same public review as any other delivered paid lesson.
+            // isSettled() is the owner of that distinction and keeps
+            // Pending/Failed correctly ineligible.
+            if (! $booking->payment_status->isSettled()) {
                 return null;
             }
 

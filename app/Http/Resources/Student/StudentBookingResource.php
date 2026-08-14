@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Resources\Student;
 
 use App\Booking\Contracts\BookingMeetingServiceInterface;
-use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Models\Booking;
 use Illuminate\Http\Request;
@@ -43,7 +42,20 @@ final class StudentBookingResource extends JsonResource
             'payment_status' => $this->payment_status->value,
             'price' => $this->price,
             'currency' => $this->currency,
-            'requires_payment' => $this->payment_status !== BookingPaymentStatus::NotRequired,
+            // Phase 4E.3 (PKG-AUD-011) — this field answers "does the
+            // student still owe money on this booking?", so it must be
+            // the payable predicate, not "is it non-free". The old
+            // `!== NotRequired` reading told a student their PREPAID
+            // package lesson still required payment. isPayable() is
+            // already the owner of that question: true for
+            // Pending/Failed, false for Paid, NotRequired and
+            // PackageFunded alike.
+            'requires_payment' => $this->payment_status->isPayable(),
+            // The real commercial value is unchanged and still exposed
+            // above; only the collection expectation differs. The label
+            // comes from the enum so there is no second funding-label
+            // system to keep in step.
+            'payment_status_label' => $this->payment_status->label(),
             'is_free_booking' => $this->price === null || (float) $this->price <= 0,
             'subject' => $this->meta['subject'] ?? null,
             'grade' => $this->meta['grade'] ?? null,

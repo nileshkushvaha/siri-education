@@ -251,6 +251,24 @@ final class WizardBookingService implements WizardBookingServiceInterface
             throw new BookingException('Recurring sessions are only available for paid booking types.');
         }
 
+        // Phase 4E.3 (PKG-AUD-007) — an EXPLICIT refusal, never a silent
+        // downgrade. Before this, a forged (or merely stale) recurring
+        // request carrying a package entitlement was accepted and the
+        // entitlement was quietly dropped on the floor: the student
+        // chose "use my package" and received N payment demands instead.
+        //
+        // Version 1 package funding is single-lesson only. Supporting a
+        // recurring series would need its own commercial design —
+        // reserving N units, partial-reservation failure, a recurrence
+        // running past entitlement expiry, cancelling one occurrence,
+        // and exhaustion midway — which is a feature, not a bug fix.
+        // Refusing here, before any occurrence is attempted, is what
+        // guarantees zero bookings, zero reservations and zero payment
+        // side effects from the attempt.
+        if ($data->packageEntitlementId !== null) {
+            throw new BookingException('Package lessons are booked one at a time. Please book these sessions individually to use your package, or continue without it.');
+        }
+
         $teacherId = $this->resolveTeacher($data, $type, $data->grade, null);
         $occurrences = max(2, min($recurrence->occurrences, RecurrenceData::MAX_OCCURRENCES));
         $groupId = (string) Str::uuid();

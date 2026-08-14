@@ -30,7 +30,17 @@ namespace App\Reporting\DTOs\Finance;
  *
  * @param  array<string, int>  $capturedAmountByCurrency  minor units
  * @param  array<string, int>  $averageCapturedByCurrency  minor units (integer division, floor)
+ *                                                         - `packagePurchaseCollectedByCurrency` = money collected for
+ *                                                         PERSONALIZED PACKAGES: SUM(student_package_purchases.amount_minor)
+ *                                                         where `status = paid`, by `paid_at`. A distinct collection source
+ *                                                         from `booking_payments`, because packages settle through the
+ *                                                         generic `payments` path. Counted ONCE per settled purchase, never
+ *                                                         per payment attempt and never allocated across the package's
+ *                                                         lessons — the sale is one commercial event. Never added to
+ *                                                         `grossPaidBookingValueByCurrency`: a package-funded booking's value
+ *                                                         was already collected here, so summing both would double-count.
  * @param  array<string, int>  $grossPaidBookingValueByCurrency  minor units
+ * @param  array<string, int>  $packagePurchaseCollectedByCurrency  minor units
  * @param  list<array{provider: string, status: string, count: int}>  $byProviderStatus
  */
 final readonly class PaymentFinancialSummaryData
@@ -45,6 +55,8 @@ final readonly class PaymentFinancialSummaryData
         public array $capturedAmountByCurrency,
         public array $averageCapturedByCurrency,
         public array $grossPaidBookingValueByCurrency,
+        public array $packagePurchaseCollectedByCurrency,
+        public int $packagePurchasesSold,
         public array $byProviderStatus,
         public int $duplicateProviderEvents,
         public int $openReconciliationIssues,

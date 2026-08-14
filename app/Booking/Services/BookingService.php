@@ -43,6 +43,7 @@ use App\Models\User;
 use App\Package\Services\PackageEntitlementService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\BookingSettings;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -254,6 +255,18 @@ final class BookingService implements BookingServiceInterface
                     throw RescheduleLimitReachedException::make();
                 }
 
+                // Phase 4E.3 (PKG-AUD-008) — booking-time slot filtering
+                // already refuses a slot that would finish after the
+                // package expires, but nothing re-checked it on the way
+                // OUT. A student could book inside the window and then
+                // reschedule past expiry: the reservation followed the
+                // booking, the lesson was delivered, and consumption
+                // then refused with "expired before delivery" — leaving
+                // the unit neither consumed nor returned. Enforced here,
+                // in the canonical service, so every reschedule path
+                // (student, instructor, admin, Filament) inherits it.
+                $this->assertPackageEntitlementCoversReschedule($booking, $endsAt);
+
                 $this->availability->ensureAvailable(
                     $booking->instructor_id,
                     $data->startsAt,
@@ -365,6 +378,53 @@ final class BookingService implements BookingServiceInterface
     private function attendeeFor(CreateBookingData $data): ?User
     {
         return $data->studentId !== null ? User::find($data->studentId) : null;
+    }
+
+    /**
+     * A package-funded lesson must still FINISH inside its package's
+     * validity after being moved (approved policy: delivered before
+     * expiry, not merely booked before it).
+     *
+     * Deliberately read-only: it re-reads the entitlement, expires it
+     * synchronously if it has lapsed, and either allows the reschedule
+     * or throws. It never takes a second reservation and never releases
+     * the existing one — the booking keeps the exact unit it already
+     * holds, so a refused reschedule leaves schedule, reservation and
+     * balance completely untouched (spec Part 7).
+     *
+     * Compared as absolute UTC instants including the lesson's real
+     * duration; the participants' timezones are a display concern and
+     * never enter this comparison.
+     *
+     * @throws BookingException when the new time would finish after the package expires
+     */
+    private function assertPackageEntitlementCoversReschedule(Booking $booking, CarbonImmutable $endsAt): void
+    {
+        if ($booking->package_entitlement_id === null) {
+            return;
+        }
+
+        $entitlement = StudentPackageEntitlement::query()->find($booking->package_entitlement_id);
+
+        if ($entitlement === null) {
+            throw new BookingException('The package funding this lesson is no longer available.');
+        }
+
+        // Enforced synchronously rather than trusting the daily sweep,
+        // exactly as booking-time selection does.
+        $entitlement = $this->packageEntitlements->expireIfNeeded($entitlement);
+
+        if ($entitlement->expires_at === null) {
+            // No time limit — nothing to violate.
+            return;
+        }
+
+        if ($endsAt->utc()->greaterThan(CarbonImmutable::instance($entitlement->expires_at)->utc())) {
+            throw new BookingException(sprintf(
+                'This lesson is covered by a package that expires on %s, so it cannot be moved to a time that finishes after then. Please choose an earlier slot.',
+                $entitlement->expires_at->format('j M Y'),
+            ));
+        }
     }
 
     /**

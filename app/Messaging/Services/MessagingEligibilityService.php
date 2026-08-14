@@ -81,11 +81,18 @@ final class MessagingEligibilityService
      */
     public function findEligibleContext(User $student, User $instructor): ?array
     {
+        // Phase 4E.3 (PKG-AUD-010) — a confirmed booking whose cost is
+        // covered is the relationship signal here, and a package-funded
+        // booking is covered (prepaid at purchase). Scoped deliberately
+        // to THIS student/instructor pair and to an actual booking:
+        // owning an entitlement, or an unpaid proposal/purchase, grants
+        // nothing on its own, and a package with another instructor
+        // grants nothing here either.
         $booking = Booking::query()
             ->where('student_id', $student->id)
             ->where('instructor_id', $instructor->id)
             ->where('status', BookingStatus::Confirmed)
-            ->where('payment_status', BookingPaymentStatus::Paid)
+            ->whereIn('payment_status', BookingPaymentStatus::settled())
             ->latest('starts_at')
             ->first();
 

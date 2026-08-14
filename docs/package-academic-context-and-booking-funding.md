@@ -378,3 +378,103 @@ Architecture guards follow the principle adopted after Phase 4B.1: assert that a
 operation leaves shared financial tables **untouched**, rather than that those
 tables must not exist. `payments`, `booking_payments` and the wallet ledger are
 legitimate shared infrastructure — the invariant is about side effects.
+
+---
+
+## Downstream semantics (Phase 4E.3)
+
+The Phase 4E audit found that `PackageFunded` was introduced correctly but that
+seven downstream domains still asked `=== Paid` when the real question was about
+financial coverage. These are the resulting explicit policies. None of them
+changes how packages work; each fixes which question a call site asks.
+
+### Recurring booking is out of scope for package funding
+
+Version 1 package funding covers **one lesson at a time**. Recurring series must
+be paid for normally.
+
+This is a product boundary, not a technical limitation. Supporting it would need
+its own commercial design: reserving N units atomically, partial-reservation
+failure, a recurrence extending past entitlement expiry, cancelling a single
+occurrence, editing the recurrence, and exhaustion midway through the series.
+
+What matters operationally is that the refusal is **visible**. The wizard hides
+the funding step for recurring bookings and clears any package already chosen
+with an explanation, and `WizardBookingService::bookRecurring()` throws when a
+request carries an entitlement — before any occurrence is attempted, so a
+refused request leaves zero bookings, zero reservations and zero payment side
+effects. The previous behaviour silently discarded the choice and billed the
+student instead.
+
+### A package lesson must finish inside the package's validity
+
+The approved rule has always been *delivered* before expiry, not merely booked
+before it. Booking-time slot filtering enforced this; rescheduling did not, so a
+lesson could be moved past expiry and then refuse to consume — leaving the unit
+neither spent nor returned.
+
+`BookingService::reschedule()` now re-checks it in the canonical path, so every
+caller inherits it. Compared as absolute UTC instants including the lesson's real
+duration; participant timezones are display only. A refused reschedule changes
+nothing — same schedule, same reservation, same balance — and never takes or
+releases a unit. `expires_at = NULL` imposes no restriction.
+
+### Package-funded is prepaid, not free
+
+- **Reviews** — a delivered package-funded lesson earns the same public review as
+  any other delivered paid lesson (`isSettled()`).
+- **Messaging** — a confirmed package-funded booking is the same
+  relationship evidence a paid booking already was, scoped to that
+  student/instructor pair. Owning an entitlement, or an unpaid
+  proposal/purchase, still grants nothing.
+- **Student API** — `requires_payment` now answers "does the student still owe
+  money?" via `isPayable()`, so a prepaid lesson stops asking to be paid for
+  again. The booking's real price and currency remain exposed, and the funding
+  label comes from the enum rather than a second labelling system.
+
+### Package revenue is recognized once, at settlement
+
+Operational marketplace reporting, not formal accounting.
+
+- **Booking collection metrics** count only money that came through the booking
+  pipeline. A package-funded booking contributes **zero** — its money was
+  collected earlier.
+- **Package sales** are their own source:
+  `PaymentFinancialReportRepository::packagePurchaseCollectedByCurrency()`, read
+  from settled `student_package_purchases` rather than from payment attempts, so
+  a purchase paid after two declines is one sale rather than three.
+- The two are **never added into the same figure**, which is what would
+  double-count.
+- There is deliberately **no per-lesson allocation** (`amount / total_quantity`)
+  and no paid-versus-bonus revenue split: the package is one commercial sale.
+- Currencies stay separate. No FX conversion exists, and reporting the split is
+  better than inventing a rate.
+
+### Non-consuming outcomes restore capacity — they do not refund money
+
+Only a completed lesson consumes a unit (Phase 4C). For every non-consuming
+outcome the reservation is released and the unit becomes bookable again, which
+**is** the student's remedy.
+
+No wallet credit, no booking refund and no package payment reversal is created,
+because no booking payment was ever collected. `LessonFinancialDispositionService`
+records `LessonStudentDisposition::None` — the existing disposition meaning "no
+student-side monetary action" — with a `_package_unit_restored` reason instead of
+the misleading `_unpaid`, which would claim a student who *had* paid did not.
+
+Package purchase refunds remain out of scope.
+
+### Deliberately unchanged
+
+- `BookingStatsWidget`'s "Revenue (paid)" means booking-collection revenue, so
+  `PackageFunded` is correctly excluded.
+- `DemoConversionIncentiveEligibilityResolver` still requires a normal paid
+  booking. Whether a package purchase counts as a demo conversion is an
+  incentive-payout policy question with no SRS basis, so it is reported rather
+  than decided here.
+- `InstructorPackageProposalService::hasValidRelationship()` remains separate
+  from `InstructorStudentService` — the package rule is deliberately stricter.
+
+> **SRS note.** These are approved-extension policies, not SRS text. `docs/SRS.md`
+> still describes lesson packages as future scope; an addendum should be raised
+> at final package closure rather than editing the SRS here.

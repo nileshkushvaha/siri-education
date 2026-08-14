@@ -7,6 +7,7 @@ namespace App\Reporting\Repositories;
 use App\Filament\Resources\BookingPaymentReconciliationIssues\BookingPaymentReconciliationIssueResource;
 use App\Models\BookingPaymentReconciliationIssue;
 use App\Models\User;
+use App\Package\Enums\PackagePurchaseStatus;
 use App\Reporting\DTOs\Finance\PaymentFinancialSummaryData;
 use App\Reporting\DTOs\Finance\ReconciliationIssueRow;
 use App\Reporting\Filters\ReportFilters;
@@ -63,6 +64,8 @@ final class PaymentFinancialReportRepository
                 ->mapWithKeys(fn ($row) => [(string) $row->currency_code => (int) $row->aggregate > 0 ? intdiv((int) $row->amount, (int) $row->aggregate) : 0])
                 ->all(),
             grossPaidBookingValueByCurrency: $this->grossPaidBookingValueByCurrency($period, $filters),
+            packagePurchaseCollectedByCurrency: $this->packagePurchaseCollectedByCurrency($period, $filters),
+            packagePurchasesSold: $this->packagePurchasesSold($period, $filters),
             byProviderStatus: $this->scopedAttempts($period, $filters)
                 ->selectRaw('provider, status, count(*) as aggregate')
                 ->groupBy('provider', 'status')
@@ -111,6 +114,75 @@ final class PaymentFinancialReportRepository
         }
 
         return $result;
+    }
+
+    /**
+     * Phase 4E.3 (PKG-AUD-012) — money actually collected for
+     * PERSONALIZED PACKAGES, by currency, in minor units.
+     *
+     * Package sales were invisible to every financial report. Package
+     * purchases settle through the generic `payments` path, not
+     * `booking_payments`, so collections never saw them; and their
+     * lessons book as PackageFunded, which booking-value metrics
+     * correctly exclude. The result was real revenue that appeared
+     * nowhere.
+     *
+     * RECOGNIZED ONCE, AT SETTLEMENT. The source is the PURCHASE, not
+     * its payment attempts: a purchase may accumulate many attempts
+     * (a declined card, then a successful retry), and summing attempts
+     * would count a single sale several times. `status = paid` is
+     * reachable only through verified settlement, and
+     * UNIQUE(proposal_id) means one proposal yields one purchase — so
+     * one sale contributes exactly one amount, forever.
+     *
+     * DELIBERATELY NOT ALLOCATED PER LESSON. No
+     * `amount / total_quantity` figure is produced, and paid versus
+     * bonus units are not distinguished: the package is one commercial
+     * sale, and splitting it across deliveries would invent an accrual
+     * policy nobody approved. It is likewise never added to
+     * `grossPaidBookingValueByCurrency` — that metric counts bookings
+     * whose money came through the booking pipeline, and a
+     * package-funded booking's value was already collected here.
+     *
+     * `amount_minor` is already integer minor units (unlike
+     * `bookings.price`, which is decimal major units), so no
+     * MoneyFormatter conversion is needed. Grouped by `currency_code`
+     * for the same reason every other figure here is: currencies are
+     * never summed together, and no FX conversion exists.
+     *
+     * @return array<string, int> currency code => minor units
+     */
+    public function packagePurchaseCollectedByCurrency(ReportingPeriod $period, ReportFilters $filters): array
+    {
+        $rows = DB::table('student_package_purchases')
+            ->where('status', PackagePurchaseStatus::Paid->value)
+            ->whereNotNull('paid_at')
+            ->where('paid_at', '>=', $period->startUtc)
+            ->where('paid_at', '<', $period->endUtcExclusive)
+            ->when($filters->currencyCode !== null, fn ($q) => $q->where('currency_code', $filters->currencyCode))
+            ->selectRaw('currency_code, SUM(amount_minor) as total')
+            ->groupBy('currency_code')
+            ->get();
+
+        $result = [];
+
+        foreach ($rows as $row) {
+            $result[(string) $row->currency_code] = (int) $row->total;
+        }
+
+        return $result;
+    }
+
+    /** How many personalized packages were sold in the period — one per settled purchase. */
+    public function packagePurchasesSold(ReportingPeriod $period, ReportFilters $filters): int
+    {
+        return (int) DB::table('student_package_purchases')
+            ->where('status', PackagePurchaseStatus::Paid->value)
+            ->whereNotNull('paid_at')
+            ->where('paid_at', '>=', $period->startUtc)
+            ->where('paid_at', '<', $period->endUtcExclusive)
+            ->when($filters->currencyCode !== null, fn ($q) => $q->where('currency_code', $filters->currencyCode))
+            ->count();
     }
 
     /** Bounded, paginated open payment reconciliation issues — severity/age first. */

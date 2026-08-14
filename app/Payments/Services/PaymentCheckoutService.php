@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Payments\Contracts\Payable;
 use App\Payments\DTOs\PaymentCheckoutData;
 use App\Payments\Enums\PaymentStatus;
+use App\Payments\Exceptions\PaymentAttemptAlreadyOpenException;
 use App\Payments\Exceptions\PaymentException;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
@@ -44,6 +45,17 @@ use Illuminate\Support\Str;
  */
 final class PaymentCheckoutService
 {
+    /**
+     * How long a non-initializing caller waits for the initializing
+     * worker's order id — 10 x 100ms. Sized to one gateway round-trip,
+     * deliberately not an open-ended poll: waiting longer would hold a
+     * web request hostage to a provider that may never answer, and the
+     * safe fallback (ask the student to try again) costs nothing.
+     */
+    private const int INITIALIZATION_WAIT_ATTEMPTS = 10;
+
+    private const int INITIALIZATION_WAIT_MICROSECONDS = 100_000;
+
     public function __construct(
         private readonly PaymentService $payments,
         private readonly PaymentGatewaySettings $gatewaySettings,
@@ -72,7 +84,16 @@ final class PaymentCheckoutService
             return $this->resume($open, $payable);
         }
 
-        $payment = $this->payments->startAttempt($payable, $provider, $this->newIdempotencyKey());
+        try {
+            $payment = $this->payments->startAttempt($payable, $provider, $this->newIdempotencyKey());
+        } catch (PaymentAttemptAlreadyOpenException $e) {
+            // Phase 4E.2 (spec Part 4) — we lost the race to open the
+            // first attempt. The winner's attempt is the one true
+            // checkout for this payable, so converge on it rather than
+            // failing: the student double-clicked, they did not do
+            // anything wrong.
+            return $this->resume($e->attempt, $payable);
+        }
 
         try {
             $payload = $this->createProviderOrder($payment, $payable);
@@ -166,15 +187,78 @@ final class PaymentCheckoutService
         );
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Creates the provider-side order for an attempt — but only if this
+     * caller wins the initialization claim.
+     *
+     * This is the Race B guard (spec Part 5). Closing the open-attempt
+     * race leaves a narrower but equally expensive one: two requests
+     * holding the SAME attempt, both seeing `provider_order_id = NULL`,
+     * both calling the gateway. One local row, two live external
+     * orders. The claim makes exactly one caller the initializer; every
+     * other caller waits for that caller's order id and resumes it.
+     *
+     * @return array<string, mixed>
+     */
     private function createProviderOrder(Payment $payment, Payable $payable): array
     {
+        if (! $this->payments->claimInitialization($payment)) {
+            // Either another worker is mid-initialization, or an order
+            // already exists. Both mean the same thing here: do NOT
+            // call the provider.
+            return $this->awaitProviderOrder($payment);
+        }
+
         return match ($payment->provider) {
             'razorpay' => $this->createRazorpayOrder($payment, $payable),
             'stripe' => $this->createStripeIntent($payment, $payable),
             FakePaymentProvider::KEY => $this->createFakeOrder($payment),
             default => throw new PaymentException(sprintf('Checkout is not available through "%s" yet.', $payment->provider)),
         };
+    }
+
+    /**
+     * Waits briefly for the initializing worker to publish its order
+     * id, then builds the payload from it.
+     *
+     * Bounded and short on purpose: the wait covers the gap between one
+     * worker claiming initialization and it persisting the order id —
+     * a single gateway round-trip, not an open-ended poll. If the id
+     * never appears, the initializer failed or is still in flight, and
+     * the honest answer is "try again" rather than creating a second
+     * external order behind its back.
+     *
+     * @return array<string, mixed>
+     */
+    private function awaitProviderOrder(Payment $payment): array
+    {
+        for ($attempt = 0; $attempt < self::INITIALIZATION_WAIT_ATTEMPTS; $attempt++) {
+            $fresh = $payment->fresh();
+
+            if ($fresh === null) {
+                break;
+            }
+
+            if ($fresh->provider_order_id !== null) {
+                return match ($fresh->provider) {
+                    'razorpay' => $this->razorpayPayload($fresh),
+                    'stripe' => $this->resumeStripePayload($fresh),
+                    FakePaymentProvider::KEY => $this->fakePayload($fresh),
+                    default => throw new PaymentException(sprintf('Checkout cannot be resumed through "%s".', $fresh->provider)),
+                };
+            }
+
+            if ($fresh->status->isTerminal()) {
+                // The initializer failed and closed the attempt. A new
+                // attempt is now permitted by the open-attempt
+                // invariant, so the student can simply start again.
+                throw new PaymentException('Your payment could not be started. Please try again.');
+            }
+
+            usleep(self::INITIALIZATION_WAIT_MICROSECONDS);
+        }
+
+        throw new PaymentException('Your payment is still being set up. Please try again in a moment.');
     }
 
     /** @return array<string, mixed> */

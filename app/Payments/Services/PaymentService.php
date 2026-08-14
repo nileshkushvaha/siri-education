@@ -7,9 +7,11 @@ namespace App\Payments\Services;
 use App\Models\Payment;
 use App\Payments\Contracts\Payable;
 use App\Payments\Enums\PaymentStatus;
+use App\Payments\Exceptions\PaymentAttemptAlreadyOpenException;
 use App\Payments\Exceptions\PaymentException;
 use App\Services\AuditTrailService;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -43,7 +45,16 @@ final class PaymentService
      * retry after a Failed/Cancelled attempt is allowed and creates a
      * NEW row — settled attempts are never mutated or reused.
      *
-     * @throws PaymentException when an attempt is already open, or the amount is not collectable
+     * Phase 4E.2: the pre-check below is now only a fast path with a
+     * friendly message. The ACTUAL guarantee is
+     * UNIQUE(payable_type, payable_id, open_attempt_marker) — the
+     * previous read-then-insert took no lock (there is no row to lock),
+     * so two concurrent requests both saw zero open attempts and both
+     * inserted, producing two live gateway orders. A pre-request check
+     * can never close that window; only the database can.
+     *
+     * @throws PaymentAttemptAlreadyOpenException when another attempt is already open
+     * @throws PaymentException when the amount is not collectable
      */
     public function startAttempt(Payable $payable, string $provider, ?string $idempotencyKey = null): Payment
     {
@@ -51,29 +62,88 @@ final class PaymentService
             throw new PaymentException('A payment attempt requires a positive amount.');
         }
 
-        return DB::transaction(function () use ($payable, $provider, $idempotencyKey): Payment {
-            $open = $this->attemptsFor($payable)->firstWhere(fn (Payment $p): bool => $p->status->isOpen());
+        try {
+            return DB::transaction(function () use ($payable, $provider, $idempotencyKey): Payment {
+                $open = $this->attemptsFor($payable)->firstWhere(fn (Payment $p): bool => $p->status->isOpen());
 
-            if ($open !== null) {
-                throw new PaymentException('A payment attempt is already in progress for this item.');
+                if ($open !== null) {
+                    throw PaymentAttemptAlreadyOpenException::for($open);
+                }
+
+                $payment = Payment::query()->create([
+                    'payable_type' => $payable->paymentPayableType(),
+                    'payable_id' => $payable->paymentPayableId(),
+                    'user_id' => $payable->paymentUserId(),
+                    'provider' => $provider,
+                    'amount_minor' => $payable->paymentAmountMinor(),
+                    'currency_code' => $payable->paymentCurrencyCode(),
+                    'status' => PaymentStatus::Pending,
+                    'idempotency_key' => $idempotencyKey,
+                    'metadata' => $payable->paymentMetadata() ?: null,
+                ]);
+
+                $this->audit->logSystem(self::LOG_NAME, 'payment_attempt_started', sprintf('Payment attempt opened for %s.', $payable->paymentReference()), $payment, $this->metadata($payment));
+
+                return $payment;
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // `payments` carries several unique indexes, and only ONE of
+            // them means "you lost the open-attempt race". An
+            // idempotency-key or provider-reference collision is a
+            // genuinely different fault and must keep surfacing as
+            // itself rather than being reported as a concurrent
+            // checkout.
+            //
+            // The winner is looked up HERE, deliberately OUTSIDE the
+            // failed transaction. Re-querying inside it returns nothing:
+            // the transaction's REPEATABLE READ snapshot was taken
+            // before the winner committed, so it cannot see the very row
+            // that just rejected us — and the caller would get a bare
+            // error instead of converging on the live checkout.
+            $winner = $this->attemptsFor($payable)->firstWhere(fn (Payment $p): bool => $p->status->isOpen());
+
+            if ($winner === null) {
+                throw $e;
             }
 
-            $payment = Payment::query()->create([
-                'payable_type' => $payable->paymentPayableType(),
-                'payable_id' => $payable->paymentPayableId(),
-                'user_id' => $payable->paymentUserId(),
-                'provider' => $provider,
-                'amount_minor' => $payable->paymentAmountMinor(),
-                'currency_code' => $payable->paymentCurrencyCode(),
-                'status' => PaymentStatus::Pending,
-                'idempotency_key' => $idempotencyKey,
-                'metadata' => $payable->paymentMetadata() ?: null,
-            ]);
+            throw PaymentAttemptAlreadyOpenException::for($winner);
+        }
+    }
 
-            $this->audit->logSystem(self::LOG_NAME, 'payment_attempt_started', sprintf('Payment attempt opened for %s.', $payable->paymentReference()), $payment, $this->metadata($payment));
+    /**
+     * Atomically claims the right to create this attempt's provider
+     * order — the second half of PKG-AUD-004.
+     *
+     * Closing Race A leaves Race B open: with ONE local attempt, two
+     * concurrent requests could still both read `provider_order_id IS
+     * NULL` and each call createOrder()/createPaymentIntent(). One
+     * local row, two external orders — still a double charge.
+     *
+     * The conditional UPDATE is the claim. MySQL evaluates the WHERE
+     * under a row lock, so exactly one caller can observe an affected
+     * row count of 1; every other caller gets 0 and must NOT talk to
+     * the provider.
+     *
+     * The claim is deliberately permanent for the life of the attempt.
+     * An attempt that was claimed but never recorded an order id is
+     * AMBIGUOUS — the provider may have created an order whose response
+     * we lost — so re-claiming it could issue a second external order
+     * against one that already exists. Such an attempt is closed as
+     * Failed instead, and the student opens a fresh one (which the
+     * open-attempt invariant then permits).
+     *
+     * @return bool true when THIS caller owns provider initialization
+     */
+    public function claimInitialization(Payment $payment): bool
+    {
+        $claimed = Payment::query()
+            ->whereKey($payment->id)
+            ->whereNull('provider_order_id')
+            ->whereNull('initialization_claimed_at')
+            ->where('status', PaymentStatus::Pending)
+            ->update(['initialization_claimed_at' => now()]);
 
-            return $payment;
-        });
+        return $claimed === 1;
     }
 
     /** @return Collection<int, Payment> every attempt for this payable, newest first */

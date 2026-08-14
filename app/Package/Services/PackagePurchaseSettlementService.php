@@ -12,7 +12,9 @@ use App\Package\Enums\PackagePurchaseStatus;
 use App\Package\Exceptions\PackageException;
 use App\Payments\DTOs\VerifiedPaymentEvent;
 use App\Payments\Enums\PaymentEventType;
+use App\Payments\Enums\PaymentReconciliationIssueType;
 use App\Payments\Enums\PaymentStatus;
+use App\Payments\Services\PaymentReconciliationIssueService;
 use App\Services\AuditTrailService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +64,7 @@ final class PackagePurchaseSettlementService
     public function __construct(
         private readonly AuditTrailService $audit,
         private readonly PackageEntitlementService $entitlements,
+        private readonly PaymentReconciliationIssueService $issues,
     ) {}
 
     /**
@@ -164,6 +167,15 @@ final class PackagePurchaseSettlementService
 
         if ($result->settled) {
             $this->auditSettlement($result, $settledAt);
+
+            // Phase 4E.2 — a successful settlement proves any earlier
+            // discrepancy on this attempt is over (transient, or
+            // corrected upstream). Closing it automatically is what
+            // keeps the queue worth reading: an operator must only ever
+            // see problems that are still real. Deliberately AFTER the
+            // transaction commits, so a rolled-back settlement can never
+            // leave an issue closed against money that never landed.
+            $this->issues->resolveOpenIssuesFor($result->payment ?? $payment);
         }
 
         return $result;
@@ -213,6 +225,24 @@ final class PackagePurchaseSettlementService
     private function validateAmountAndCurrency(Payment $payment, StudentPackagePurchase $purchase, VerifiedPaymentEvent $event): ?PackageSettlementResult
     {
         if ($event->amountMinor !== null && ($event->amountMinor !== (int) $payment->amount_minor || $event->amountMinor !== (int) $purchase->amount_minor)) {
+            // Phase 4E.2 (PKG-AUD-014) — this refusal used to leave only
+            // an activity-log line while the provider potentially held
+            // real money. It now also raises a durable operator-visible
+            // issue. Recorded HERE, in the one validator both the
+            // webhook and the reconciliation sweep pass through, so
+            // there is exactly one discrepancy detector rather than two
+            // that must agree.
+            $this->issues->record(
+                $payment,
+                PaymentReconciliationIssueType::AmountMismatch,
+                [
+                    'expected_amount_minor' => (int) $purchase->amount_minor,
+                    'observed_amount_minor' => $event->amountMinor,
+                    'expected_currency' => strtoupper((string) $purchase->currency_code),
+                ],
+                $event->source,
+            );
+
             return $this->ignore($payment, $purchase, 'amount_mismatch', sprintf(
                 'The provider reported %d but the attempt is %d and the purchase is %d.',
                 $event->amountMinor,
@@ -227,6 +257,17 @@ final class PackagePurchaseSettlementService
             $eventCurrency = strtoupper($event->currencyCode);
 
             if ($eventCurrency !== strtoupper((string) $payment->currency_code) || $eventCurrency !== strtoupper((string) $purchase->currency_code)) {
+                $this->issues->record(
+                    $payment,
+                    PaymentReconciliationIssueType::CurrencyMismatch,
+                    [
+                        'expected_currency' => strtoupper((string) $purchase->currency_code),
+                        'observed_currency' => $eventCurrency,
+                        'expected_amount_minor' => (int) $purchase->amount_minor,
+                    ],
+                    $event->source,
+                );
+
                 return $this->ignore($payment, $purchase, 'currency_mismatch', sprintf(
                     'The provider reported %s but the attempt is %s and the purchase is %s.',
                     $eventCurrency,

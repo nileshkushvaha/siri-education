@@ -42,8 +42,10 @@ use App\Models\LessonReviewEligibility;
 use App\Models\ReferralAttribution;
 use App\Models\ReferralCode;
 use App\Models\ReferralReward;
+use App\Models\StudentPackagePurchase;
 use App\Models\TeacherAvailability;
 use App\Models\User;
+use App\Payments\Services\PaymentCheckoutService;
 use App\Queue\Services\FailedJobRetryService;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
 use App\Referral\Contracts\ReferralCodeServiceInterface;
@@ -67,6 +69,7 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Support\CountingRazorpayConcurrencyFakeClient;
 use Tests\Support\RazorpayConcurrencyFakeClient;
 use Tests\Support\RazorpayXConcurrencyFakeClient;
 use Tests\Support\StripeConcurrencyFakeClient;
@@ -338,6 +341,31 @@ try {
             $response = $app->make(HttpKernel::class)->handle($request);
 
             return ['status_code' => $response->getStatusCode(), 'content' => $response->getContent()];
+        })(),
+
+        // Phase 4E.2 — the generic-payment checkout race (PKG-AUD-004).
+        // Both races live inside PaymentCheckoutService::start(), so
+        // that is what competes here: the open-attempt insert (Race A)
+        // and the provider-order creation for one attempt (Race B).
+        // The counting client records every createOrder() to a shared
+        // file so the parent can assert the gateway was called exactly
+        // once ACROSS processes — a plain fake would hide a second
+        // external order behind a single stored order id.
+        'package-checkout-start' => (function () use ($args) {
+            app()->instance(RazorpayGatewayClient::class, new CountingRazorpayConcurrencyFakeClient(
+                logPath: $args['order_log'],
+                simulateTimeoutOnCreate: (bool) ($args['simulate_timeout'] ?? false),
+            ));
+
+            $purchase = StudentPackagePurchase::query()->findOrFail($args['purchase_id']);
+
+            $checkout = app(PaymentCheckoutService::class)->start($purchase, 'razorpay');
+
+            return [
+                'payment_id' => $checkout->paymentId,
+                'resumed' => $checkout->resumed,
+                'order_id' => $checkout->checkoutPayload['order_id'] ?? null,
+            ];
         })(),
 
         'reconcile-booking-payment' => (function () use ($args) {

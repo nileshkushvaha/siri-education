@@ -34,6 +34,16 @@ final readonly class VerifiedPaymentEvent
         public ?string $currencyCode = null,
         public ?Carbon $occurredAt = null,
         public ?string $reason = null,
+        /**
+         * Which authenticated route produced this event — `webhook` or
+         * `reconciliation`. Phase 4E.2 only: it is recorded as
+         * discrepancy metadata so an operator can tell a provider
+         * redelivery apart from a sweep re-detection. It must never
+         * become a rule input: both routes are equally authenticated and
+         * settle through identical logic, and branching on this would
+         * recreate the two-code-paths problem this DTO exists to prevent.
+         */
+        public string $source = 'webhook',
     ) {}
 
     /** Reconstructs the event a reconciliation poll proves, from the attempt's own trusted local values. */
@@ -56,6 +66,7 @@ final readonly class VerifiedPaymentEvent
             currencyCode: $currencyCode,
             occurredAt: now(),
             reason: 'Confirmed by reconciliation poll.',
+            source: 'reconciliation',
         );
     }
 }

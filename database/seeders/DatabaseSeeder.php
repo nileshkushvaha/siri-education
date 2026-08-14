@@ -76,6 +76,8 @@ class DatabaseSeeder extends Seeder
             NewsletterSubscriberPermissionSeeder::class,
             // Personalized Instructor Package Proposal & Admin Approval.
             PackagePermissionSeeder::class,
+            // Generic payment discrepancy queue (Payable/payments path).
+            PaymentReconciliationPermissionSeeder::class,
         ]);
     }
 }

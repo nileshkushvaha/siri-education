@@ -15,6 +15,7 @@ use App\Package\Exceptions\PackageException;
 use App\Payments\DTOs\PaymentCheckoutData;
 use App\Payments\Exceptions\PaymentException;
 use App\Payments\Services\PaymentCheckoutService;
+use App\Payments\Services\PaymentService;
 use App\Services\AuditTrailService;
 use Illuminate\Support\Str;
 
@@ -28,9 +29,9 @@ use Illuminate\Support\Str;
  * shared gateway clients. No Razorpay/Stripe detail appears here.
  *
  * PENDING vs PAID: this service never marks a purchase Paid. That
- * transition requires verified settlement and arrives in Phase 4B.3
- * together with entitlement activation, because the two must happen
- * atomically.
+ * transition belongs to PackagePurchaseSettlementService, which does it
+ * atomically with entitlement activation from a verified provider
+ * event. Nothing student-initiated may settle a payment.
  */
 final class PackagePurchaseService
 {
@@ -40,6 +41,7 @@ final class PackagePurchaseService
         private readonly AuditTrailService $audit,
         private readonly PaymentCheckoutService $checkout,
         private readonly PaymentProviderResolver $providers,
+        private readonly PaymentService $payments,
     ) {}
 
     /**
@@ -149,6 +151,21 @@ final class PackagePurchaseService
         return $this->checkout->openAttemptFor($purchase);
     }
 
+    /**
+     * A payment the provider has confirmed, on a purchase that has not
+     * caught up yet.
+     *
+     * This is the interrupted-settlement window: settlement rolled back
+     * after a Paid attempt was recorded, or a webhook is still in
+     * flight. It is brief and self-healing (the reconciliation sweep
+     * closes it), but while it lasts the student must see "activating",
+     * never a Pay button.
+     */
+    public function isAwaitingActivation(StudentPackagePurchase $purchase): bool
+    {
+        return $purchase->status->isPayable() && $this->payments->isPaid($purchase);
+    }
+
     /** @throws PackageException */
     private function assertOwnedAndPayable(StudentPackagePurchase $purchase, User $student): void
     {
@@ -158,6 +175,16 @@ final class PackagePurchaseService
 
         if (! $purchase->status->isPayable()) {
             throw new PackageException(sprintf('This package is %s and cannot be paid for again.', $purchase->status->label()));
+        }
+
+        // The purchase status is NOT a sufficient paid-guard on its
+        // own. If a settled attempt exists, the money is already
+        // collected — charging again would be the worst error this
+        // domain can make, so no new gateway order is ever created here
+        // even though the purchase still reads pending_payment.
+        // Reconciliation resolves the lag; the student waits.
+        if ($this->payments->isPaid($purchase)) {
+            throw new PackageException('We have already received your payment for this package. It is being activated now — please check back shortly.');
         }
 
         if ($purchase->amount_minor < 1) {

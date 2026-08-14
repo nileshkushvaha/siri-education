@@ -1,4 +1,4 @@
-# Generic Payable / Payment Attempt Foundation (Phases 4B.1–4B.2)
+# Generic Payable / Payment Attempts, Package Checkout & Settlement (Phases 4B.1–4B.3)
 
 The canonical reference for the wider financial domain remains
 [docs/financial-domain-architecture.md](financial-domain-architecture.md),
@@ -10,9 +10,9 @@ This document records one narrower thing: the **generic
 own bespoke payment-record table, status enum, and state machine.
 
 Phase 4B.1 built the foundation; Phase 4B.2 gave it its first real
-consumer, `StudentPackagePurchase`, and package checkout. Settlement is
-still deliberately absent: nothing here moves a payment to Paid,
-marks a purchase Paid, or activates an entitlement. That is Phase 4B.3.
+consumer, `StudentPackagePurchase`, and package checkout; Phase 4B.3
+closed the loop with verified settlement, entitlement activation, and
+recovery.
 
 ## 0. The package money lifecycle
 
@@ -23,9 +23,9 @@ InstructorPackageProposal   personalized commercial offer
         ↓ admin approves, student accepts
 StudentPackagePurchase      the accepted purchase  (pending_payment)
         ↓ 1:N  — it is the Payable
-Payment attempts            #1 failed · #2 cancelled · #3 pending
-        ↓ verified settlement (Phase 4B.3)
-StudentPackageEntitlement   the usable lesson balance
+Payment attempts            #1 failed · #2 cancelled · #3 paid
+        ↓ verified settlement
+StudentPackageEntitlement   the usable lesson balance (+ expires_at)
 ```
 
 Each row in that chain is a separate record on purpose. Collapsing any
@@ -51,13 +51,88 @@ same amount for the same accepted proposal and may simply try again, so
 attempt against the SAME purchase — never a second purchase, which
 `UNIQUE(proposal_id)` forbids outright.
 
-### Entitlement activation is deferred
+### Entitlement activation is deferred until payment
 
 Accepting an approved proposal used to activate a lesson balance
 immediately (Phase 4A). Since Phase 4B.2 it does not: acceptance
 creates a `pending_payment` purchase and nothing usable. The balance is
-granted only by verified settlement, so a student can no longer obtain
-lessons by accepting an offer they have not paid for.
+granted only by verified settlement, so a student cannot obtain lessons
+by accepting an offer they have not paid for.
+
+## 0a. Settlement — the invariant
+
+These three facts are written in ONE transaction and are therefore
+always true together, or not at all:
+
+```
+Payment      -> paid
+Purchase     -> paid  (+ paid_at)
+Entitlement  -> exists, active  (+ activated_at, expires_at)
+```
+
+`App\Package\Services\PackagePurchaseSettlementService` is the only
+place this happens, and both entry points — the verified webhook and
+the reconciliation sweep — call the same `settle()` with the same
+`VerifiedPaymentEvent`. There is one settlement code path, not two that
+must be kept in agreement.
+
+**There is deliberately no intermediate "paid but not activated"
+state.** The wallet domain has `CreditPending`/`CreditFailed` because
+crediting a wallet can fail for reasons that persist (a frozen or
+closed wallet); entitlement creation has no equivalent business-level
+failure, so its only realistic failures are transient. If activation
+throws, the whole transaction rolls back, the attempt stays `pending`
+locally, and the webhook answers **500** so the provider retries.
+Adding a durable failure status would manufacture a stuck state that
+nothing in the domain can legitimately produce.
+
+The recovery ladder, in order:
+
+1. **Atomic transaction** — the usual case; all or nothing.
+2. **Provider retry** — driven by the 500 response.
+3. **Reconciliation sweep** — `package-purchases:reconcile`, every five
+   minutes, `withoutOverlapping()->onOneServer()`, matching the booking
+   and wallet sweeps. It asks the provider directly and, only on an
+   explicit `paid`/`succeeded`, calls the same `settle()`.
+
+### Settlement validation
+
+A valid signature proves the message came from the provider; it proves
+nothing about *what* was collected. Provider, attempt, and purchase
+must agree on both amount and currency before any lesson is granted.
+Currencies are never converted — a mismatch is a discrepancy to
+investigate, audited and refused, not arithmetic to perform.
+
+### Replay and out-of-order events
+
+Providers retry, duplicate, and reorder. A replayed success answers
+`replayed` (a *success* that did no new work — never a failure, which
+would invite a retry storm); a `failed` event arriving after a capture
+never reverses it; a success for an unknown reference is acknowledged
+and creates nothing. Commercial records are never invented from a
+webhook payload.
+
+### Expiry activation
+
+`expires_at = activated_at + validity_days`, computed at settlement
+from the proposal's snapshot, or `NULL` when the offer carried no
+limit. One captured timestamp feeds `purchase.paid_at`,
+`entitlement.activated_at`, and the expiry, so the three cannot drift.
+
+The clock starts when the paid lessons become usable — never at
+proposal creation, approval, acceptance, or attempt creation. A student
+who accepts today and pays next week gets the full window from next
+week. Paid and bonus lessons share one window (intended V1 behaviour);
+nothing auto-transitions an entitlement to `Expired` yet.
+
+### Double-payment protection
+
+Purchase status alone is not a sufficient paid-guard. If a settled
+attempt exists while the purchase still reads `pending_payment` — the
+brief interrupted-settlement window — `startCheckout()` refuses, and
+the student sees "Payment received. Your package is being activated"
+instead of a Pay button. No second gateway order is ever created after
+confirmed payment; reconciliation closes the gap.
 
 ## 1. The transitional architecture (read this first)
 
@@ -230,6 +305,29 @@ Audit entries go through `AuditTrailService::logSystem()`, never raw
 `activity()`. Failures raise `App\Payments\Exceptions\PaymentException`
 (distinct from `BookingException`).
 
+## 6b. Webhook transport
+
+`POST /api/webhooks/packages/purchases/{provider}` — its own route and
+controller, per the house convention (booking payments and wallet
+recharges each have theirs). A package is never settled by pretending
+it is a Booking.
+
+The controller is transport only: authenticity via the shared
+`PaymentWebhookSignatureService` (no package-specific verifier exists),
+parsing via `PaymentWebhookEventParser` in the generic payment layer,
+and every financial decision in the settlement service. Its response
+contract differs from the wallet controller in one deliberate way:
+
+| Code | Meaning |
+|---|---|
+| 401 | unverifiable or malformed — nothing read, nothing written |
+| 404 | unknown provider |
+| 200 | processed / replayed / ignored — provider should stop |
+| **500** | **settlement rolled back and MUST be retried** |
+
+That last row is the point. A blanket 200 would tell the provider to
+stop retrying money it has already collected.
+
 ## 6a. `PaymentCheckoutService` — attempt to gateway order
 
 Turns any `Payable` into a live checkout using the **same** gateway
@@ -343,6 +441,14 @@ required.
 - `tests/Feature/Package/StudentPackagePurchaseTest.php` — 39 tests over
   purchase creation, the price snapshot, the morph round-trip, checkout,
   retry/resume/cancel, gateway reuse, immutability, and authorization.
+- `tests/Feature/Package/PackagePurchaseSettlementTest.php` — 36 tests
+  over the settlement invariant, amount/currency validation, expiry
+  activation, idempotency, out-of-order events, rollback-on-failure,
+  reconciliation recovery, and double-payment protection.
+- `tests/Feature/Package/PackagePurchaseWebhookTest.php` — 19 tests over
+  the webhook contract: signature enforcement, no mutation from an
+  unverifiable request, replay handling, the retryable 500, and the
+  student UI states that follow settlement.
 
 The generic foundation is still exercised against
 `tests/Support/Payments/FakePayable`, a plain non-Eloquent object —

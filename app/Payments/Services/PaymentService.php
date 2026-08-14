@@ -85,6 +85,60 @@ final class PaymentService
             ->get();
     }
 
+    /**
+     * Resolves the attempt a verified provider event refers to.
+     *
+     * Order matters. Our own reference (carried as Razorpay `notes` /
+     * Stripe `metadata` and stored as `idempotency_key`) is the most
+     * specific signal, so it is tried first; the provider order id is
+     * the fallback for events that lost the metadata. Both lookups are
+     * scoped by provider, matching the `(provider, …)` unique indexes —
+     * a Razorpay id can never resolve a Stripe attempt.
+     *
+     * Returns null rather than throwing: an unknown reference is a
+     * normal webhook outcome (another environment's traffic, a
+     * different domain's payment), never an error condition.
+     */
+    public function findByProviderReference(
+        string $provider,
+        ?string $reference,
+        ?string $providerOrderId,
+        ?string $providerPaymentId = null,
+    ): ?Payment {
+        if ($reference !== null) {
+            $byReference = Payment::query()
+                ->where('provider', $provider)
+                ->where('idempotency_key', $reference)
+                ->first();
+
+            if ($byReference !== null) {
+                return $byReference;
+            }
+        }
+
+        foreach ([['provider_order_id', $providerOrderId], ['provider_payment_id', $providerPaymentId]] as [$column, $value]) {
+            if ($value === null) {
+                continue;
+            }
+
+            $match = Payment::query()->where('provider', $provider)->where($column, $value)->first();
+
+            if ($match !== null) {
+                return $match;
+            }
+        }
+
+        return null;
+    }
+
+    /** Records that the provider was polled about this attempt, whatever the answer was. */
+    public function markSynced(Payment $payment): Payment
+    {
+        $payment->forceFill(['last_synced_at' => now()])->save();
+
+        return $payment;
+    }
+
     /** Whether any attempt for this payable has settled as Paid. */
     public function isPaid(Payable $payable): bool
     {

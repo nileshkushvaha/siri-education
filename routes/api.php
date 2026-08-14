@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\MeetingAttendanceWebhookController;
+use App\Http\Controllers\Api\PackagePurchaseWebhookController;
 use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
 use App\Http\Controllers\Api\WalletRechargeWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
@@ -27,6 +28,14 @@ Route::post('/webhooks/bookings/payments/{provider}', BookingPaymentWebhookContr
 Route::post('/webhooks/wallets/recharges/{provider}', WalletRechargeWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('api.wallets.recharges.webhook');
+
+// Package purchase provider notifications — the generic Payable
+// settlement path. A package is not a Booking, so it never shares the
+// booking route/controller; it does share the signature service and
+// gateway clients, which are the parts worth sharing.
+Route::post('/webhooks/packages/purchases/{provider}', PackagePurchaseWebhookController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.packages.purchases.webhook');
 
 // Meeting attendance provider notifications — signature verified
 // before parsing; gated by meeting.attendance_webhooks_enabled;

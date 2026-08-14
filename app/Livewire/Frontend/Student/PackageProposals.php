@@ -23,11 +23,12 @@ use Livewire\WithPagination;
  * list + Gate::authorize() per action, no ownership logic duplicated
  * here.
  *
- * Phase 4B.2: accepting no longer grants lessons. It creates a
- * PendingPayment StudentPackagePurchase, and the student then pays for
- * it. Checkout stops at a live gateway payload — settlement and the
- * resulting lesson balance arrive in Phase 4B.3, so an accepted-but-
- * unpaid package deliberately shows no entitlement at all.
+ * Accepting creates a PendingPayment StudentPackagePurchase; the
+ * student then pays for it, and verified settlement (Phase 4B.3)
+ * activates the lesson balance. Three display states follow from that:
+ * payment pending (pay/continue/cancel), payment received but
+ * activation still catching up (no Pay button at all — see
+ * isAwaitingActivation()), and active with a live balance and expiry.
  *
  * Amount, currency, and provider are never accepted from the browser;
  * every action passes only a purchase id and re-resolves the rest
@@ -170,9 +171,15 @@ final class PackageProposals extends Component
                 ->orderByDesc('approved_at')
                 ->paginate(10),
             'purchases' => $purchases,
+            // A confirmed payment on a not-yet-activated purchase must
+            // never show a Pay button; reconciliation closes the gap.
+            'awaitingActivation' => $purchases
+                ->filter(fn (StudentPackagePurchase $purchase): bool => $this->purchases->isAwaitingActivation($purchase))
+                ->keys()
+                ->all(),
             // Keyed by proposal_id so the blade can show a live lesson
-            // balance without an N+1. Empty until Phase 4B.3 activates
-            // entitlements on settlement.
+            // balance and expiry without an N+1. Populated only once a
+            // payment has actually settled.
             'entitlements' => StudentPackageEntitlement::query()
                 ->forStudent($studentId)
                 ->get()

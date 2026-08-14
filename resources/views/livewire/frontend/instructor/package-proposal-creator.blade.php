@@ -131,12 +131,13 @@
                         </span>
                     </div>
 
-                    {{-- Read-only lesson balance for an accepted package. Instructors can never modify an entitlement. --}}
+                    {{-- Read-only lesson balance for a paid, activated package. Instructors can never modify an entitlement, settle a payment, or extend an expiry. --}}
                     @if ($entitlement)
-                        <dl class="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-sm">
+                        <dl class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-sm">
                             <div><dt class="text-xs text-slate-500">Total lessons</dt><dd class="text-white font-semibold">{{ $entitlement->total_quantity }}</dd></div>
                             <div><dt class="text-xs text-slate-500">Used</dt><dd class="text-white font-semibold">{{ $entitlement->used_quantity }}</dd></div>
                             <div><dt class="text-xs text-slate-500">Remaining</dt><dd class="text-emerald-400 font-bold">{{ $entitlement->remaining_quantity }}</dd></div>
+                            <div><dt class="text-xs text-slate-500">Valid until</dt><dd class="text-white font-semibold">{{ $entitlement->expires_at?->format('j M Y') ?? 'No expiry' }}</dd></div>
                         </dl>
                     @endif
                 </div>

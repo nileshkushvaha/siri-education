@@ -1,0 +1,61 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Payments\DTOs;
+
+use App\Payments\Enums\PaymentEventType;
+use Illuminate\Support\Carbon;
+
+/**
+ * A provider settlement signal that has ALREADY been authenticated —
+ * either by webhook signature verification or by an authenticated
+ * provider fetch during reconciliation.
+ *
+ * This is the only shape any settlement service ever sees. Domain code
+ * never parses a raw Stripe or Razorpay payload, and the same DTO is
+ * produced by both the webhook path and the reconciliation path, so
+ * there is exactly one settlement code path rather than two that must
+ * be kept in agreement.
+ *
+ * Deliberately minimal: only the fields needed to identify the attempt
+ * and to prove what was collected. No raw payload, no signature, no
+ * provider secret is carried here or persisted anywhere.
+ */
+final readonly class VerifiedPaymentEvent
+{
+    public function __construct(
+        public string $provider,
+        public PaymentEventType $type,
+        public ?string $reference = null,
+        public ?string $providerOrderId = null,
+        public ?string $providerPaymentId = null,
+        public ?int $amountMinor = null,
+        public ?string $currencyCode = null,
+        public ?Carbon $occurredAt = null,
+        public ?string $reason = null,
+    ) {}
+
+    /** Reconstructs the event a reconciliation poll proves, from the attempt's own trusted local values. */
+    public static function reconciled(
+        string $provider,
+        PaymentEventType $type,
+        ?string $reference,
+        ?string $providerOrderId,
+        ?string $providerPaymentId,
+        int $amountMinor,
+        string $currencyCode,
+    ): self {
+        return new self(
+            provider: $provider,
+            type: $type,
+            reference: $reference,
+            providerOrderId: $providerOrderId,
+            providerPaymentId: $providerPaymentId,
+            amountMinor: $amountMinor,
+            currencyCode: $currencyCode,
+            occurredAt: now(),
+            reason: 'Confirmed by reconciliation poll.',
+        );
+    }
+}

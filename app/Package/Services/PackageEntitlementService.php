@@ -17,12 +17,11 @@ use Illuminate\Support\Facades\DB;
  * the deliberate service boundary the future booking integration will
  * call.
  *
- * Nothing calls this service in production yet, by design.
- * `createFromProposal()` waits for Phase 4B.3's settlement handler
- * (Phase 4B.2 unwired it from acceptance), and `consumeLesson()` waits
- * for Booking/Lesson integration. Both exist so the boundary is
- * designed and tested now, not so they can be wired in early.
- * `hasAvailableLessons()`/`remainingLessons()` are pure reads.
+ * `createFromProposal()` is called by settlement (Phase 4B.3).
+ * `consumeLesson()` still waits for Booking/Lesson integration — it
+ * exists so the boundary is designed and tested now, not so it can be
+ * wired in early. `hasAvailableLessons()`/`remainingLessons()` are
+ * pure reads.
  *
  * `remaining_quantity` is never computed in PHP here: it is a stored
  * generated column (total - used) so the database is the single source

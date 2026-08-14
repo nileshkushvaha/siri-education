@@ -16,6 +16,7 @@ use App\Console\Commands\ProcessLessonRefunds;
 use App\Console\Commands\PublishScheduledContent;
 use App\Console\Commands\ReconcileBookingPayments;
 use App\Console\Commands\ReconcileInstructorPayouts;
+use App\Console\Commands\ReconcilePackagePurchases;
 use App\Console\Commands\ReconcileWalletRecharges;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
@@ -161,6 +162,19 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/wallet-recharges-reconcile.log'));
+
+// Reconcile due package payment attempts against the provider — the
+// package-domain counterpart of the two sweeps above. This is the
+// recovery path for a lost webhook, and for the rarer case where
+// settlement rolled back after the provider had already collected:
+// both are resolved by re-running the one settlement service, which is
+// idempotent, so an overlapping run cannot activate a package twice.
+app(Schedule::class)
+    ->command(ReconcilePackagePurchases::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/package-purchases-reconcile.log'));
 
 // Re-sync meetings whose Google conference creation is still pending —
 // conference creation is asynchronous, so an event insert can succeed

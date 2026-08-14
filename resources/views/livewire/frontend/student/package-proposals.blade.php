@@ -23,6 +23,7 @@
                 @php($purchase = $purchases->get($proposal->id))
                 @php($entitlement = $entitlements->get($proposal->id))
                 @php($openAttempt = $purchase?->payments->first(fn ($payment) => $payment->status->isOpen()))
+                @php($isActivating = $purchase && in_array($purchase->proposal_id, $awaitingActivation, true))
                 <div class="py-4">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
@@ -47,11 +48,23 @@
                     @if ($entitlement)
                         <div class="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Your lessons</p>
-                            <dl class="grid grid-cols-3 gap-3 text-sm">
+                            <dl class="grid grid-cols-4 gap-3 text-sm">
                                 <div><dt class="text-xs text-slate-500">Total</dt><dd class="text-white font-semibold">{{ $entitlement->total_quantity }}</dd></div>
                                 <div><dt class="text-xs text-slate-500">Used</dt><dd class="text-white font-semibold">{{ $entitlement->used_quantity }}</dd></div>
                                 <div><dt class="text-xs text-slate-500">Remaining</dt><dd class="text-emerald-400 font-bold">{{ $entitlement->remaining_quantity }}</dd></div>
+                                {{-- The validity clock started when payment activated the package. --}}
+                                <div>
+                                    <dt class="text-xs text-slate-500">Valid until</dt>
+                                    <dd class="text-white font-semibold">{{ $entitlement->expires_at?->format('j F Y') ?? 'No expiry' }}</dd>
+                                </div>
                             </dl>
+                        </div>
+                    @endif
+
+                    {{-- Money confirmed, activation still catching up. Never offer to pay again. --}}
+                    @if ($isActivating)
+                        <div class="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                            Payment received. Your package is being activated — this usually takes a moment.
                         </div>
                     @endif
 
@@ -70,7 +83,7 @@
                         </div>
                     @endif
 
-                    @if ($purchase && $purchase->status->isPayable())
+                    @if ($purchase && $purchase->status->isPayable() && ! $isActivating)
                         <div class="mt-4 flex flex-wrap items-center gap-3">
                             <button type="button" wire:click="pay('{{ $purchase->id }}')" wire:loading.attr="disabled" wire:target="pay('{{ $purchase->id }}')"
                                 class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-400 transition disabled:opacity-50">

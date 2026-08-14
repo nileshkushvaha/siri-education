@@ -61,6 +61,7 @@ class Payment extends Model
         'metadata',
         'paid_at',
         'failed_at',
+        'last_synced_at',
     ];
 
     protected function casts(): array
@@ -71,6 +72,7 @@ class Payment extends Model
             'metadata' => 'array',
             'paid_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
+            'last_synced_at' => 'immutable_datetime',
         ];
     }
 
@@ -99,6 +101,20 @@ class Payment extends Model
     public function scopePaid(Builder $query): Builder
     {
         return $query->where('status', PaymentStatus::Paid);
+    }
+
+    /**
+     * Open attempts old enough to be worth asking the provider about,
+     * and not polled recently. Mirrors WalletRecharge's identical
+     * scope — an attempt that has no provider order was never handed
+     * to a gateway, so there is nothing to poll.
+     */
+    public function scopeReconciliationDue(Builder $query, \DateTimeInterface $cutoff): Builder
+    {
+        return $query->open()
+            ->whereNotNull('provider_order_id')
+            ->where('created_at', '<=', $cutoff)
+            ->where(fn (Builder $q) => $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<=', $cutoff));
     }
 
     public function getActivitylogOptions(): LogOptions

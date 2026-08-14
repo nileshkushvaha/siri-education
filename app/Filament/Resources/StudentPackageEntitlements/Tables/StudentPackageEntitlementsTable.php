@@ -44,6 +44,13 @@ class StudentPackageEntitlementsTable
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (PackageEntitlementStatus $state): string => $state->color()),
+                // The absolute expiry written at activation; null means
+                // the offer carried no validity limit.
+                TextColumn::make('expires_at')
+                    ->label('Valid Until')
+                    ->dateTime()
+                    ->placeholder('No expiry')
+                    ->sortable(),
                 TextColumn::make('activated_at')
                     ->label('Activated')
                     ->dateTime()

@@ -1,4 +1,4 @@
-# Generic Payable / Payment Attempts, Package Checkout & Settlement (Phases 4B.1–4B.3)
+# Generic Payable / Payment Attempts, Package Checkout, Settlement & Consumption (Phases 4B.1–4C)
 
 The canonical reference for the wider financial domain remains
 [docs/financial-domain-architecture.md](financial-domain-architecture.md),
@@ -11,8 +11,10 @@ own bespoke payment-record table, status enum, and state machine.
 
 Phase 4B.1 built the foundation; Phase 4B.2 gave it its first real
 consumer, `StudentPackagePurchase`, and package checkout; Phase 4B.3
-closed the loop with verified settlement, entitlement activation, and
-recovery.
+closed the money loop with verified settlement, entitlement activation,
+and recovery; Phase 4C made the resulting entitlement operational —
+authoritative expiry, explicit funding attribution, and consumption on
+lesson completion.
 
 ## 0. The package money lifecycle
 
@@ -26,6 +28,12 @@ StudentPackagePurchase      the accepted purchase  (pending_payment)
 Payment attempts            #1 failed · #2 cancelled · #3 paid
         ↓ verified settlement
 StudentPackageEntitlement   the usable lesson balance (+ expires_at)
+        ↓ student books FROM the package (explicit attribution)
+Booking / Lesson            package_entitlement_id
+        ↓ lesson delivered (LessonCompleted)
+Consumption ledger row      + used_quantity, remaining_quantity derived
+        ↓ last unit drawn
+Entitlement -> Completed
 ```
 
 Each row in that chain is a separate record on purpose. Collapsing any
@@ -134,6 +142,89 @@ the student sees "Payment received. Your package is being activated"
 instead of a Pay button. No second gateway order is ever created after
 confirmed payment; reconciliation closes the gap.
 
+## 0b. Consumption (Phase 4C)
+
+### Expiry is authoritative synchronously
+
+`PackageEntitlementService::usable()` and `consumeForLesson()` both
+enforce expiry at the moment of use, and flip a lapsed Active
+entitlement to `Expired` as they go. The daily
+`package-entitlements:expire` sweep reuses the same `expireIfNeeded()`
+rule and is **housekeeping only** — it keeps admin lists honest for
+entitlements nobody has opened. Correctness never depends on it having
+run.
+
+An entitlement expires **at** `expires_at`, not after it. `NULL` means
+no limit. Only `Active` may expire: `Completed` (every lesson used) and
+`Cancelled` keep their own meaning, because "time ran out with lessons
+unused" would be false about either.
+
+### Funding attribution is explicit, never inferred
+
+`bookings.package_entitlement_id` is set when a student deliberately
+schedules from a package; `lessons.package_entitlement_id` snapshots it
+at lesson creation. Consumption reads that column and nothing else.
+
+This is the load-bearing decision of Phase 4C. The alternative —
+"on completion, consume any entitlement that matches this student,
+instructor and subject" — would burn package units on lessons the
+student paid for separately, and would silently pick between two
+matching packages. Both are unacceptable, so:
+
+- `package_entitlement_id IS NULL` → an ordinary lesson. No package is
+  searched for, no balance moves.
+- `package_entitlement_id IS NOT NULL` → that entitlement is consumed,
+  or the attempt fails loudly as an integrity problem.
+
+It also dissolves the multiple-entitlement ambiguity: a student may
+hold several matching entitlements, but the booking already names one,
+so nothing is ever chosen on their behalf.
+
+### Consumption happens on delivered completion
+
+`ConsumePackageEntitlementOnLessonCompleted` listens to
+`LessonCompleted` — the same canonical, after-commit event that drives
+instructor earnings, dispatched only from `LessonLifecycleService`'s
+completion paths and only for the `Completed` outcome. Cancellations,
+the three no-show outcomes, and technical issues never reach it, so
+they cannot burn a unit. Booking, payment, and meeting start never
+consume anything.
+
+It is a sibling listener rather than an extension of the completion
+transaction, matching how earnings already work: widening that
+transaction would couple two independently recoverable concerns.
+Safety comes from idempotency instead.
+
+### One lesson, at most one unit — forever
+
+`UNIQUE(lesson_id)` on `student_package_entitlement_consumptions` is
+global: a lesson may consume at most one package unit, from any
+entitlement, ever. A replayed event, a queue retry, an admin re-run and
+two concurrent workers all collapse onto one row. A replay returns the
+existing consumption rather than throwing, because re-delivery is
+legitimate.
+
+The ledger is write-once (`PreventsUpdates` + `PreventsHardDeletion`):
+it is evidence, and any future correction workflow must be designed
+deliberately rather than by editing history.
+
+### Policy: delivered before expiry
+
+A package-funded lesson must be **delivered** before `expires_at` —
+booking in time is not enough. A lesson that happens after the window
+closes cannot draw on the package; the lesson still completes and the
+instructor is still paid, and the shortfall is audited as
+`package_consumption_failed` for an operator.
+
+### Instructor compensation is untouched
+
+A package-funded lesson is an ordinary completed lesson. Compensation
+resolves from the lesson exactly as before and never reads package
+price, `paid_quantity`, `bonus_quantity`, or an admin override — pinned
+by tests asserting neither side references the other. Bonus units are
+real completed lessons and are paid identically; there is deliberately
+no separate bonus ledger and no bonus-specific expiry.
+
 ## 1. The transitional architecture (read this first)
 
 There are now **three** collection record paths, deliberately, and two
@@ -155,6 +246,14 @@ in is a future decision, explicitly out of scope here.
 **Rule for new work:** if you are adding a new thing a student pays
 for, implement `Payable` and use `PaymentService`. Do not copy
 `booking_payments` or `wallet_recharges`.
+
+**Note for the architecture guards.** Several suites assert that no
+ad-hoc duplicate payment table exists, and `payments` used to appear in
+those forbidden lists as a hypothetical duplicate name. It is now a
+real, sanctioned table, so those guards assert the stronger and more
+accurate thing instead: that a booking, a wallet credit, a learning
+plan, marketplace browsing, and availability work all leave
+`payments` empty. Every other ad-hoc name stays forbidden.
 
 ## 2. Why an abstraction at all — and why not the obvious one
 

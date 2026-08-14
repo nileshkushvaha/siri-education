@@ -562,7 +562,10 @@ class StudentLessonPriceResolverTest extends TestCase
     {
         // instructor_earnings is a separate liability ledger, not a
         // payout executor and not part of the pricing matrix.
-        foreach (['instructor_payouts', 'wallet_debits', 'meetings', 'payments'] as $table) {
+        // `payments` (Phase 4B.1's generic Payable table) is excluded:
+        // it exists on purpose and has nothing to do with the pricing
+        // matrix, which is what this guard protects.
+        foreach (['instructor_payouts', 'wallet_debits', 'meetings'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
         }
 

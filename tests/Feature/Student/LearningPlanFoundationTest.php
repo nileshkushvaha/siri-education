@@ -19,6 +19,7 @@ use App\Models\Wallet;
 use App\Services\Student\LearningPlanService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
@@ -114,7 +115,10 @@ class LearningPlanFoundationTest extends TestCase
         // Wallets are a separate foundation; learning-plan creation
         // must still never touch it.
         $this->assertSame(0, Wallet::count());
-        $this->assertFalse(Schema::hasTable('payments'));
+        // `payments` is the sanctioned generic Payable table (Phase
+        // 4B.1); what matters here is that learning-plan creation never
+        // writes to it.
+        $this->assertSame(0, DB::table('payments')->count());
     }
 
     public function test_only_bookable_instructor_can_be_assigned(): void

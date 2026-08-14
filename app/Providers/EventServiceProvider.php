@@ -65,6 +65,7 @@ use App\Listeners\Messaging\SendMessagingNotifications;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
 use App\Listeners\NotifyInstructorOnProfileActivity;
+use App\Listeners\Package\ConsumePackageEntitlementOnLessonCompleted;
 use App\Listeners\Payment\GenerateInvoiceOnBookingPaymentSucceeded;
 use App\Listeners\Quality\DetectInstructorCancellationQualityRiskOnBookingCancelled;
 use App\Listeners\Quality\DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized;
@@ -269,6 +270,11 @@ class EventServiceProvider extends ServiceProvider
             // evaluation trigger; a sibling of CreateEarningOnLessonCompleted,
             // never a replacement for it.
             CheckDemoConversionIncentiveOnLessonCompleted::class,
+            // The only automatic package-consumption trigger. A sibling
+            // of the earning listener, never a replacement: instructor
+            // compensation is resolved from the completed lesson and is
+            // entirely independent of how the student funded it.
+            ConsumePackageEntitlementOnLessonCompleted::class,
         ],
         LessonDisputed::class => [
             SyncEarningOnLessonDisputed::class,

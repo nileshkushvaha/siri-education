@@ -38,6 +38,7 @@ class Lesson extends Model
         'subject_topic_id',
         'academic_level_id',
         'learning_plan_id',
+        'package_entitlement_id',
         'starts_at',
         'ends_at',
         'timezone',
@@ -117,6 +118,21 @@ class Lesson extends Model
     public function learningPlan(): BelongsTo
     {
         return $this->belongsTo(StudentLearningPlan::class, 'learning_plan_id')->withTrashed();
+    }
+
+    /**
+     * The package this lesson was deliberately scheduled against, or
+     * null for an ordinary lesson. Never inferred — see the Phase 4C.1
+     * attribution migration.
+     */
+    public function packageEntitlement(): BelongsTo
+    {
+        return $this->belongsTo(StudentPackageEntitlement::class, 'package_entitlement_id');
+    }
+
+    public function packageConsumption(): HasOne
+    {
+        return $this->hasOne(StudentPackageEntitlementConsumption::class, 'lesson_id');
     }
 
     public function completer(): BelongsTo

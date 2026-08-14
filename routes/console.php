@@ -9,6 +9,7 @@ use App\Console\Commands\CaptureLessonRecordings;
 use App\Console\Commands\CreditEligibleReferralRewards;
 use App\Console\Commands\ExpireLessonRecordings;
 use App\Console\Commands\ExpireLessonReviewEligibility;
+use App\Console\Commands\ExpirePackageEntitlements;
 use App\Console\Commands\FinalizeDueLessons;
 use App\Console\Commands\Homework\SendHomeworkDueReminders;
 use App\Console\Commands\ProcessLessonEarningReconciliation;
@@ -175,6 +176,18 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/package-purchases-reconcile.log'));
+
+// Mark lapsed package entitlements as expired. Housekeeping only —
+// expiry is already enforced synchronously wherever an entitlement is
+// read or drawn against, so this exists purely so listings agree with
+// reality for entitlements nobody has opened. Daily is sufficient
+// precisely because correctness does not depend on it.
+app(Schedule::class)
+    ->command(ExpirePackageEntitlements::class)
+    ->dailyAt('01:15')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/package-entitlements-expire.log'));
 
 // Re-sync meetings whose Google conference creation is still pending —
 // conference creation is asynchronous, so an event insert can succeed

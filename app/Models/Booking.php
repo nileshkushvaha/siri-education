@@ -41,6 +41,7 @@ class Booking extends Model
         'price',
         'currency',
         'payment_reference',
+        'package_entitlement_id',
         'reserved_until',
         'meeting_provider',
         'meeting_ref',

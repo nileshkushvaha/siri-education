@@ -138,6 +138,7 @@
                             <div><dt class="text-xs text-slate-500">Used</dt><dd class="text-white font-semibold">{{ $entitlement->used_quantity }}</dd></div>
                             <div><dt class="text-xs text-slate-500">Remaining</dt><dd class="text-emerald-400 font-bold">{{ $entitlement->remaining_quantity }}</dd></div>
                             <div><dt class="text-xs text-slate-500">Valid until</dt><dd class="text-white font-semibold">{{ $entitlement->expires_at?->format('j M Y') ?? 'No expiry' }}</dd></div>
+                            <div class="col-span-2 sm:col-span-4"><dt class="text-xs text-slate-500">Package status</dt><dd class="text-white font-semibold">{{ $entitlement->status->label() }}</dd></div>
                         </dl>
                     @endif
                 </div>

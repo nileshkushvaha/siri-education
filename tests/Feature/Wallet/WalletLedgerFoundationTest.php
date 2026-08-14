@@ -32,6 +32,7 @@ use App\Wallet\Services\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -426,9 +427,16 @@ class WalletLedgerFoundationTest extends TestCase
         $wallet = app(WalletService::class)->getOrCreateWallet($this->student, 'INR');
         app(WalletLedgerService::class)->credit($wallet, 5000, WalletLedgerEntryType::PromotionalCredit, $this->student);
 
-        foreach (['razorpay_orders', 'payments'] as $table) {
+        foreach (['razorpay_orders'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
         }
+
+        // `payments` is the sanctioned generic Payable table (Phase
+        // 4B.1) and now legitimately exists. The guarantee that still
+        // matters is that a wallet credit never writes to it — wallet
+        // recharge remains on wallet_recharges; see
+        // docs/generic-payable-payment-foundation.md.
+        $this->assertSame(0, DB::table('payments')->count());
     }
 
     public function test_wallet_debit_creates_no_booking_payment_capture(): void
@@ -480,8 +488,11 @@ class WalletLedgerFoundationTest extends TestCase
         $this->assertTrue(Schema::hasTable('wallets'));
         $this->assertTrue(Schema::hasTable('wallet_ledger_entries'));
 
+        // `payments` is omitted deliberately — it is the approved
+        // generic Payable table, not a duplicate wallet/payment
+        // structure. Every other ad-hoc name stays forbidden.
         foreach ([
-            'wallet_holds', 'wallet_transactions', 'payments', 'payment_transactions',
+            'wallet_holds', 'wallet_transactions', 'payment_transactions',
             'razorpay_orders', 'razorpay_payments', 'instructor_payouts', 'meetings',
         ] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found — only the approved wallet foundation should exist.");

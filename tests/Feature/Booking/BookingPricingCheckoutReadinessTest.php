@@ -33,6 +33,7 @@ use App\Settings\GeneralSettings;
 use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -258,9 +259,15 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         $this->assertSame(0, Wallet::count());
         $this->assertSame(0, WalletLedgerEntry::count());
 
-        foreach (['razorpay_orders', 'payments'] as $table) {
+        // `payments` is deliberately absent from this list: it is the
+        // sanctioned generic Payable table (Phase 4B.1), not a
+        // duplicate. The booking guarantee is that nothing writes to
+        // it, asserted immediately below.
+        foreach (['razorpay_orders'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
         }
+
+        $this->assertSame(0, DB::table('payments')->count(), 'A booking must never write to the generic payments table.');
     }
 
     public function test_free_demo_booking_auto_confirms_and_requires_no_payment(): void
@@ -286,7 +293,9 @@ class BookingPricingCheckoutReadinessTest extends TestCase
         // tables — everything else pricing/payment-adjacent remains absent.
         foreach ([
             'wallet_transactions', 'wallet_settings',
-            'payments', 'payment_transactions', 'razorpay_orders',
+            // `payments` omitted deliberately — see Phase 4B.1. Every
+            // other ad-hoc payment table name stays forbidden.
+            'payment_transactions', 'razorpay_orders',
             'pricing', 'price_matrices', 'booking_type_prices', 'booking_type_country_prices',
         ] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");

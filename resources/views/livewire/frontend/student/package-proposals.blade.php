@@ -47,8 +47,21 @@
                     {{-- The live lesson balance is the entitlement's, and an entitlement exists only once payment has settled. --}}
                     @if ($entitlement)
                         <div class="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Your lessons</p>
-                            <dl class="grid grid-cols-4 gap-3 text-sm">
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Your lessons</p>
+                                {{-- Expired and Completed are different endings: time ran out, versus every lesson was used. --}}
+                                <span class="text-xs font-semibold
+                                    {{ $entitlement->status->value === 'active' ? 'text-emerald-300' : ($entitlement->status->value === 'expired' ? 'text-rose-300' : 'text-slate-300') }}">
+                                    @if ($entitlement->status->value === 'expired')
+                                        Expired {{ $entitlement->expires_at?->format('j F Y') }} · {{ $entitlement->remaining_quantity }} unused
+                                    @elseif ($entitlement->status->value === 'completed')
+                                        All {{ $entitlement->total_quantity }} lessons used
+                                    @else
+                                        {{ $entitlement->status->label() }}
+                                    @endif
+                                </span>
+                            </div>
+                            <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                                 <div><dt class="text-xs text-slate-500">Total</dt><dd class="text-white font-semibold">{{ $entitlement->total_quantity }}</dd></div>
                                 <div><dt class="text-xs text-slate-500">Used</dt><dd class="text-white font-semibold">{{ $entitlement->used_quantity }}</dd></div>
                                 <div><dt class="text-xs text-slate-500">Remaining</dt><dd class="text-emerald-400 font-bold">{{ $entitlement->remaining_quantity }}</dd></div>

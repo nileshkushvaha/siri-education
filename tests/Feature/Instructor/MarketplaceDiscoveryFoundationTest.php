@@ -18,6 +18,7 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -323,7 +324,9 @@ class MarketplaceDiscoveryFoundationTest extends TestCase
         // wallets is a separate foundation; marketplace browsing must
         // still never touch it.
         $this->assertSame(0, Wallet::count());
-        $this->assertFalse(Schema::hasTable('payments'));
+        // `payments` is the sanctioned generic Payable table (Phase
+        // 4B.1); browsing must never write to it.
+        $this->assertSame(0, DB::table('payments')->count());
     }
 
     private function makeInstructor(string $name, InstructorStatus $status, array $userOverrides = [], array $profileOverrides = []): User

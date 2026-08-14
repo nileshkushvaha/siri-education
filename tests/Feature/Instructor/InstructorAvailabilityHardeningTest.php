@@ -25,6 +25,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -674,9 +675,13 @@ class InstructorAvailabilityHardeningTest extends TestCase
 
         // wallets/wallet_ledger_entries are the approved foundation;
         // no dedicated payment/meeting/reservation/slot table exists in this schema.
-        foreach (['payments', 'meetings', 'reservations', 'slots', 'generated_slots', 'booking_slots'] as $table) {
+        foreach (['meetings', 'reservations', 'slots', 'generated_slots', 'booking_slots'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found — availability hardening must not introduce out-of-scope structures.");
         }
+
+        // `payments` (Phase 4B.1's generic Payable table) exists on
+        // purpose; availability work must simply never write to it.
+        $this->assertSame(0, DB::table('payments')->count());
     }
 
     // ── DST / edge-day coverage ──────────────────────────────────────────

@@ -62,6 +62,10 @@ final class CreateLessonFromBookingAction
                 // in the sanitized metadata snapshot below either way.
                 'academic_level_id' => $academicLevelId,
                 'learning_plan_id' => $plan?->id,
+                // Snapshotted, not joined: the lesson is what gets
+                // consumed, so its funding must stay legible even if
+                // the booking is later amended.
+                'package_entitlement_id' => $booking->package_entitlement_id,
                 'starts_at' => $booking->starts_at,
                 'ends_at' => $booking->ends_at,
                 'timezone' => $booking->timezone ?? 'UTC',

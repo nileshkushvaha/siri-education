@@ -31,6 +31,7 @@ use App\Models\WalletLedgerEntry;
 use App\Settings\BookingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -425,9 +426,16 @@ class BookingFlowHardeningTest extends TestCase
         $this->assertSame(0, Wallet::count());
         $this->assertSame(0, WalletLedgerEntry::count());
 
-        foreach (['payments', 'meetings'] as $table) {
+        foreach (['meetings'] as $table) {
             $this->assertFalse(Schema::hasTable($table), "Unexpected table [{$table}] found.");
         }
+
+        // `payments` is the sanctioned generic Payable table (Phase
+        // 4B.1) and now legitimately exists — the guarantee that still
+        // matters is that a booking never writes to it. Booking
+        // collection remains on booking_payments; see
+        // docs/generic-payable-payment-foundation.md.
+        $this->assertSame(0, DB::table('payments')->count());
     }
 
     // ── Admin / permissions ──────────────────────────────────────────────

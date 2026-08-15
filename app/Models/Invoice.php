@@ -45,6 +45,7 @@ class Invoice extends Model
         'service_description',
         'booking_reference',
         'wallet_recharge_reference',
+        'package_purchase_reference',
         'organization_name',
         'organization_address',
         'organization_support_email',

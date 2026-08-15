@@ -17,13 +17,16 @@ use App\Booking\Registry\PaymentProviderRegistry;
 use App\Booking\Services\PaymentProviderResolver;
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\BookingPaymentReconciliationIssue;
 use App\Models\BookingType;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Payments\Enums\PaymentStatus;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -175,7 +178,15 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
         // The exact value a real Razorpay webhook would echo back — never
         // hand-set by this test — must be the payment reference, and
         // findByPaymentReference() must locate this booking with it.
-        $this->assertSame($booking->payment_reference, $notes['booking_reference'] ?? null);
+        // GROUP D: the canonical correlation key is `payment_reference`
+        // and it identifies the ATTEMPT — which is the whole point. The
+        // obligation reference is stable across retries and therefore
+        // cannot say WHICH attempt a webhook is describing.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        $this->assertSame($attempt->idempotency_key, $notes['payment_reference'] ?? null);
+        $this->assertArrayNotHasKey('booking_reference', $notes);
 
         // Settlement arrives purely via webhook — verifyCheckout() (the
         // client-side checkout.js callback) is deliberately never called.
@@ -207,15 +218,28 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
 
     public function test_a_reference_that_matches_no_known_payment_is_rejected_as_unknown(): void
     {
-        [$booking, $orderId] = $this->initiateAndCaptureOrderMetadata();
+        [$booking] = $this->initiateAndCaptureOrderMetadata();
 
-        $forgedPayload = $this->capturedPayload($orderId, 'pay_regress_003', ['booking_reference' => 'PAY-DOES-NOT-EXIST']);
+        // Nothing in this payload corresponds to a payment we issued —
+        // neither the canonical reference nor the provider order id.
+        // (The order id is deliberately bogus too: it is a genuine
+        // provider identifier we persisted ourselves, so correlating on
+        // it is legitimate and would otherwise resolve this event.)
+        $forgedPayload = $this->capturedPayload(
+            'order_DOES_NOT_EXIST',
+            'pay_regress_003',
+            ['payment_reference' => 'PAY-DOES-NOT-EXIST'],
+        );
 
         $response = $this->postWebhook($forgedPayload);
         $response->assertOk()->assertJson(['status' => 'ignored', 'reason' => 'unknown reference']);
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+
+        // Records are never invented from a webhook payload.
+        $this->assertSame(1, Payment::query()->count());
+        $this->assertSame(1, BookingPayment::query()->count());
     }
 
     public function test_amount_mismatch_still_blocks_settlement_with_the_real_metadata(): void
@@ -224,10 +248,35 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
 
         $tamperedPayload = $this->capturedPayload($orderId, 'pay_regress_004', $notes, amount: 1);
 
-        $this->postWebhook($tamperedPayload)->assertStatus(401);
+        // GROUP B: the signature is genuine, so this is a reconciliation
+        // problem rather than an authentication one. It is acknowledged,
+        // and — the part that actually matters — nothing settles.
+        $this->postWebhook($tamperedPayload)->assertOk()->assertJsonPath('status', 'ignored');
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+        $this->assertSame(BookingStatus::Pending, $booking->status);
+
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        // Local financial truth is untouched by the provider's claim.
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame(49900, (int) $attempt->amount_minor);
+        $this->assertSame('INR', $attempt->currency_code);
+        $this->assertDatabaseCount('invoices', 0);
+
+        // The issue carries enough identity to reconcile against, and a
+        // replay does not pile up duplicate records.
+        $issues = BookingPaymentReconciliationIssue::query()->where('booking_payment_id', $obligation->id)->get();
+        $this->assertCount(1, $issues);
+        $issue = $issues->first();
+        $this->assertSame('razorpay', $issue->provider);
+        $this->assertNotNull($issue->reference);
+        $this->assertStringContainsString('49900', (string) $issue->safe_summary);
+
+        $this->postWebhook($tamperedPayload)->assertOk();
+        $this->assertCount(1, BookingPaymentReconciliationIssue::query()->where('booking_payment_id', $obligation->id)->get());
     }
 
     public function test_currency_mismatch_still_blocks_settlement_with_the_real_metadata(): void
@@ -236,10 +285,18 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
 
         $tamperedPayload = $this->capturedPayload($orderId, 'pay_regress_005', $notes, currency: 'USD');
 
-        $this->postWebhook($tamperedPayload)->assertStatus(401);
+        $this->postWebhook($tamperedPayload)->assertOk()->assertJsonPath('status', 'ignored');
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        // No conversion is ever attempted — the expected currency stands.
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame('INR', $attempt->currency_code);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_stripe_and_razorpay_send_the_same_canonical_payment_reference_in_their_webhook_metadata(): void
@@ -307,9 +364,17 @@ class RazorpayWebhookReferenceRegressionTest extends TestCase
         // Same canonical rule on both providers: the metadata's
         // "booking_reference" is always the PAYMENT reference, never the
         // booking's own human reference.
-        $this->assertSame($razorpayBooking->payment_reference, $razorpayNotes['booking_reference']);
-        $this->assertSame($stripeBooking->payment_reference, $capturedMetadata['booking_reference']);
-        $this->assertNotSame($razorpayBooking->reference, $razorpayNotes['booking_reference']);
-        $this->assertNotSame($stripeBooking->reference, $capturedMetadata['booking_reference']);
+        // Both providers send the SAME canonical key, and it is the
+        // attempt reference — never the booking's human reference.
+        $this->assertArrayHasKey('payment_reference', $razorpayNotes);
+        $this->assertArrayHasKey('payment_reference', $capturedMetadata);
+        $this->assertNotSame($razorpayBooking->reference, $razorpayNotes['payment_reference']);
+        $this->assertNotSame($stripeBooking->reference, $capturedMetadata['payment_reference']);
+
+        foreach ([[$razorpayBooking, $razorpayNotes], [$stripeBooking, $capturedMetadata]] as [$booking, $meta]) {
+            $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+            $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+            $this->assertSame($attempt->idempotency_key, $meta['payment_reference']);
+        }
     }
 }

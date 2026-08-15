@@ -68,7 +68,9 @@ use App\Listeners\NotifyInstructorOnProfileActivity;
 use App\Listeners\Package\ConsumePackageEntitlementOnLessonCompleted;
 use App\Listeners\Package\ReleasePackageReservationOnBookingCancelled;
 use App\Listeners\Package\ReleasePackageReservationOnNonConsumingOutcome;
+use App\Listeners\Package\SendPackagePurchaseNotifications;
 use App\Listeners\Payment\GenerateInvoiceOnBookingPaymentSucceeded;
+use App\Listeners\Payment\GenerateInvoiceOnPackagePurchaseSettled;
 use App\Listeners\Quality\DetectInstructorCancellationQualityRiskOnBookingCancelled;
 use App\Listeners\Quality\DetectInstructorNoShowQualityRiskOnLessonOutcomeFinalized;
 use App\Listeners\Quality\DetectLowRatingQualityRiskOnStudentReviewPublished;
@@ -104,6 +106,7 @@ use App\Listeners\Wallet\GenerateInvoiceOnWalletRechargeSucceeded;
 use App\Listeners\Wallet\SendWalletNotifications;
 use App\Messaging\Events\MessageReported;
 use App\Messaging\Events\MessageSent as MessagingMessageSent;
+use App\Package\Events\PackagePurchaseSettled;
 use App\PromotionalCredits\Events\PromotionalCreditIssued;
 use App\Quality\Events\InstructorQualityAlertCreated;
 use App\Referral\Events\ReferralRewardCredited;
@@ -252,6 +255,10 @@ class EventServiceProvider extends ServiceProvider
         BookingPaymentSucceeded::class => [
             [SendBookingNotifications::class, 'handlePaymentSucceeded'],
             GenerateInvoiceOnBookingPaymentSucceeded::class,
+        ],
+        PackagePurchaseSettled::class => [
+            SendPackagePurchaseNotifications::class,
+            GenerateInvoiceOnPackagePurchaseSettled::class,
         ],
         WalletRechargeSucceeded::class => [
             [SendWalletNotifications::class, 'handleRechargeSucceeded'],

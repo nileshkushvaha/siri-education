@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Payments\Contracts\Payable;
+use App\Payments\Enums\PaymentStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\BookingPaymentFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -27,15 +30,17 @@ use Spatie\Activitylog\Support\LogOptions;
  * the durable half; the provider round-trips are the disposable half,
  * and they belong on the generic `payments` attempt ledger.
  *
- * PAY-4A takes the first step: this model now implements Payable, so
- * it can own generic Payment attempts exactly as
- * StudentPackagePurchase does. The two are true analogues — both are
- * obligations, both may be attempted many times, both settle once.
+ * Booking now collects through that ledger: this row is created once
+ * per booking and never again, and every provider round-trip is a
+ * separate Payment attempt. A student who fails twice and succeeds on
+ * the third try owes one amount, and all three attempts survive.
  *
- * Live Booking checkout still runs on the legacy fields. Nothing here
- * has been removed or stopped being written; PAY-4B performs the
- * actual cutover. Until then both representations exist and the legacy
- * one remains authoritative.
+ * Its morph identity is the stable alias `booking_payment`, used
+ * consistently everywhere including the payments ledger and the
+ * activity log. (PAY-4A briefly pinned getMorphClass() to the FQCN to
+ * protect historical polymorphic rows; an audit proved there are none,
+ * and the pin had to go because the attempt relations below resolve
+ * through the same alias the ledger stores.)
  *
  * Wallet-funded rows stay outside this entirely (provider = 'wallet',
  * no provider_order_id/provider_payment_id, no webhook). A wallet
@@ -101,6 +106,35 @@ class BookingPayment extends Model implements Payable
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * The external provider attempts made against this obligation.
+     *
+     * Many attempts, at most one open — the cardinality is enforced by
+     * the unique index on payments, not by application code. A failed
+     * attempt stays failed forever; a retry is a NEW row, which is the
+     * whole reason collection moved off this table.
+     */
+    public function paymentAttempts(): MorphMany
+    {
+        return $this->morphMany(Payment::class, 'payable', 'payable_type', 'payable_id')
+            ->orderByDesc('created_at');
+    }
+
+    /**
+     * The attempt that actually collected the money, if any.
+     *
+     * This is where refund, support and admin resolve provider identity
+     * from. Deliberately a relation rather than provider ids copied back
+     * onto this row: duplicated identifiers drift, and the obligation
+     * has no business knowing which of several attempts happened to win.
+     */
+    public function settledPayment(): MorphOne
+    {
+        return $this->morphOne(Payment::class, 'payable', 'payable_type', 'payable_id')
+            ->where('status', PaymentStatus::Paid->value)
+            ->latestOfMany('paid_at');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Payable — PAY-4A
@@ -121,34 +155,6 @@ class BookingPayment extends Model implements Payable
     public function paymentPayableType(): string
     {
         return self::PAYABLE_TYPE;
-    }
-
-    /**
-     * Deliberately pinned to the FQCN, overriding the morph map.
-     *
-     * Registering PAYABLE_TYPE lets `payments.payable_type` store the
-     * alias and rehydrate from it — that is the whole point. But
-     * Eloquent derives getMorphClass() from the same map GLOBALLY, and
-     * this model already has years of polymorphic history written under
-     * its class name: `activity_log.subject_type`,
-     * `wallet_ledger_entries.source_type`, support-case relations.
-     *
-     * Letting the alias leak into those would split each of them into
-     * "rows before PAY-4A" and "rows after", so an audit-trail or
-     * ledger query filtering on one value silently stops seeing the
-     * other. On a financial model that is a real loss, and no
-     * historical rewrite could be justified to paper over it.
-     *
-     * StudentPackagePurchase needs no such override because it was born
-     * with its alias and has no history under any other value.
-     *
-     * The alias therefore governs the payments ledger ONLY, where it is
-     * written explicitly from paymentPayableType(); this model's
-     * general morph identity is unchanged.
-     */
-    public function getMorphClass(): string
-    {
-        return self::class;
     }
 
     public function paymentPayableId(): string
@@ -175,10 +181,18 @@ class BookingPayment extends Model implements Payable
         return (string) $this->currency_code;
     }
 
-    /** The student who owes this amount. Traced from the obligation, never from the session. */
+    /**
+     * The student who owes this amount. Traced from the obligation,
+     * never from the session.
+     *
+     * Falls back to the booking's student because `user_id` is nullable
+     * on this table: without the fallback a null denormalised owner
+     * becomes the integer 0, which is not a real user and violates the
+     * attempt ledger's foreign key at insert time.
+     */
     public function paymentUserId(): int
     {
-        return (int) $this->user_id;
+        return (int) ($this->user_id ?? $this->booking?->student_id);
     }
 
     /**
@@ -227,7 +241,7 @@ class BookingPayment extends Model implements Payable
     public function scopeReconciliationDue(Builder $query, CarbonInterface $cutoff): Builder
     {
         return $query
-            ->whereNotNull('provider_order_id')
+            ->whereHas('paymentAttempts')
             ->whereIn('status', [
                 BookingPaymentRecordStatus::Pending,
                 BookingPaymentRecordStatus::Authorized,

@@ -317,8 +317,12 @@ try {
                     'object' => [
                         'id' => $args['intent_id'],
                         'amount' => $args['amount_minor'],
+                        // Stripe's authoritative captured figure — what
+                        // the parser reconciles against.
+                        'amount_received' => $args['amount_minor'],
                         'currency' => $args['currency'],
-                        'metadata' => ['booking_reference' => $args['booking_reference']],
+                        // Canonical correlation key: the ATTEMPT reference.
+                        'metadata' => ['payment_reference' => $args['payment_reference']],
                     ],
                 ],
             ], JSON_THROW_ON_ERROR);

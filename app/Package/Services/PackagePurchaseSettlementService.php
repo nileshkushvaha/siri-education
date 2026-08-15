@@ -9,6 +9,7 @@ use App\Models\StudentPackageEntitlement;
 use App\Models\StudentPackagePurchase;
 use App\Package\DTOs\PackageSettlementResult;
 use App\Package\Enums\PackagePurchaseStatus;
+use App\Package\Events\PackagePurchaseSettled;
 use App\Package\Exceptions\PackageException;
 use App\Payments\DTOs\VerifiedPaymentEvent;
 use App\Payments\Enums\PaymentEventType;
@@ -176,6 +177,19 @@ final class PackagePurchaseSettlementService
             // transaction commits, so a rolled-back settlement can never
             // leave an issue closed against money that never landed.
             $this->issues->resolveOpenIssuesFor($result->payment ?? $payment);
+
+            // The provider-agnostic seam: everything downstream of a
+            // settled package (student/instructor notifications, the
+            // student's receipt) hangs off this event, never off a
+            // Razorpay webhook. Only the `settled` branch reaches here —
+            // a replayed delivery returned `replayed()` above and
+            // dispatches nothing, so webhook retries cannot produce a
+            // second set of communications. Dispatched after the
+            // transaction has committed, so no one is ever told
+            // "payment successful" about a settlement that rolled back.
+            if ($result->payment !== null && $result->purchase !== null && $result->entitlement !== null) {
+                PackagePurchaseSettled::dispatch($result->purchase, $result->payment, $result->entitlement);
+            }
         }
 
         return $result;

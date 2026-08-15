@@ -20,8 +20,10 @@ use App\Booking\Services\PaymentProviderConfigValidator;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -329,20 +331,29 @@ final class StripePaymentProvider implements PaymentProviderInterface
      */
     public function checkoutPayload(Booking $booking): array
     {
-        $payment = BookingPayment::query()
-            ->where('booking_id', $booking->id)
-            ->where('status', BookingPaymentRecordStatus::Pending)
+        // Ledger cutover: the live intent id is on the open Payment
+        // ATTEMPT, not on the obligation. See the identical correction
+        // in RazorpayPaymentProvider::checkoutPayload().
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->first();
+
+        if ($obligation === null) {
+            throw (new ModelNotFoundException)->setModel(Payment::class);
+        }
+
+        $attempt = Payment::query()
+            ->forPayable(BookingPayment::PAYABLE_TYPE, (string) $obligation->getKey())
+            ->open()
             ->whereNotNull('provider_order_id')
             ->latest('created_at')
             ->firstOrFail();
 
         return [
             'provider' => self::KEY,
-            'payment_intent_id' => (string) $payment->provider_order_id,
-            'client_secret' => $this->retrieveClientSecret($payment),
+            'payment_intent_id' => (string) $attempt->provider_order_id,
+            'client_secret' => $this->retrieveClientSecret($attempt),
             'publishable_key' => (string) $this->settings->stripe_publishable_key,
-            'amount_minor' => $payment->amount_minor,
-            'currency' => $payment->currency_code,
+            'amount_minor' => (int) $attempt->amount_minor,
+            'currency' => (string) $attempt->currency_code,
         ];
     }
 
@@ -456,10 +467,10 @@ final class StripePaymentProvider implements PaymentProviderInterface
      * returns client_secret for as long as the secret key that created
      * it is used to fetch it.
      */
-    private function retrieveClientSecret(BookingPayment $payment): string
+    private function retrieveClientSecret(Payment $attempt): string
     {
         try {
-            $intent = $this->client->retrievePaymentIntent($this->secretKey(), (string) $payment->provider_order_id);
+            $intent = $this->client->retrievePaymentIntent($this->secretKey(), (string) $attempt->provider_order_id);
         } catch (GatewayRequestException $e) {
             throw new BookingException('Unable to retrieve Stripe payment intent: '.$e->getMessage());
         }

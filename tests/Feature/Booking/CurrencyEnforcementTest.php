@@ -15,6 +15,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -189,7 +190,10 @@ final class CurrencyEnforcementTest extends TestCase
 
         $this->currency->update(['status' => 'inactive']);
 
-        $body = json_encode(['event' => 'succeeded', 'reference' => $intent->reference]);
+        // Correlate on the canonical ATTEMPT reference, which is what a
+        // provider echoes back — not the obligation reference.
+        $attemptReference = (string) Payment::query()->latest('created_at')->sole()->idempotency_key;
+        $body = json_encode(['event' => 'succeeded', 'reference' => $attemptReference]);
         $signature = hash_hmac('sha256', $body, (string) config('app.key'));
 
         $response = $this->postJson('/api/webhooks/bookings/payments/fake', json_decode($body, true), [
@@ -273,13 +277,24 @@ final class CurrencyEnforcementTest extends TestCase
         $booking = $this->reserve();
         $booking->forceFill(['currency' => 'XAU'])->save();
 
-        // Active currency check passes (XAU is active) — this proves the
-        // two rules are independent axes, not that XAU actually succeeds
-        // (provider-currency-support enforcement is pre-existing/out of
-        // this phase's scope; only confirming currency-active status
-        // does not silently bypass any other existing validation).
-        $intent = app(BookingPaymentServiceInterface::class)->initiate($booking->fresh());
-        $this->assertSame('XAU', $intent->currency);
+        // The two rules remain independent axes. XAU is ACTIVE, so the
+        // currency-status axis passes — and the attempt is still refused,
+        // by the provider-support axis instead. The cutover moved that
+        // check ahead of any write (PaymentProviderResolver::
+        // assertSupportsCurrency), so an unsupported currency is now
+        // rejected before an obligation or attempt can be created, rather
+        // than being caught later. Proving WHICH rule rejected it is the
+        // point of this test.
+        try {
+            app(BookingPaymentServiceInterface::class)->initiate($booking->fresh());
+            $this->fail('Expected the provider-currency rule to reject XAU.');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('only supports', $e->getMessage());
+            $this->assertStringNotContainsString('inactive', strtolower($e->getMessage()));
+        }
+
+        // Nothing was written before the refusal.
+        $this->assertSame(0, Payment::query()->count());
     }
 
     public function test_country_routing_does_not_silently_switch_currency(): void

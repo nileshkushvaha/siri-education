@@ -6,18 +6,16 @@ namespace App\Package\Services;
 
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
-use App\Booking\Exceptions\GatewayRequestException;
 use App\Models\Payment;
 use App\Models\StudentPackagePurchase;
 use App\Package\DTOs\PackageSettlementResult;
 use App\Package\Exceptions\PackageException;
 use App\Payments\DTOs\VerifiedPaymentEvent;
-use App\Payments\Enums\PaymentEventType;
 use App\Payments\Enums\PaymentReconciliationIssueType;
+use App\Payments\Services\PaymentAttemptVerifier;
 use App\Payments\Services\PaymentReconciliationIssueService;
 use App\Payments\Services\PaymentService;
 use App\Services\AuditTrailService;
-use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
 
 /**
@@ -61,6 +59,7 @@ final class PackagePurchaseReconciliationService
         private readonly PaymentGatewaySettings $gatewaySettings,
         private readonly AuditTrailService $audit,
         private readonly PaymentReconciliationIssueService $issues,
+        private readonly PaymentAttemptVerifier $verifier,
     ) {}
 
     /** @return int how many attempts were examined */
@@ -188,30 +187,16 @@ final class PackagePurchaseReconciliationService
      * null for anything short of an explicit success, including a
      * gateway error: silence is never treated as payment.
      */
+    /**
+     * Delegated to the canonical verifier so booking and package
+     * reconciliation cannot drift about what "the provider says paid"
+     * means. The rules it enforces — unreachable is not unpaid, and the
+     * event is built from our own snapshot rather than the fetched body
+     * — are documented there.
+     */
     private function providerConfirmsPayment(Payment $payment, bool &$reachable): ?VerifiedPaymentEvent
     {
-        $paid = match ($payment->provider) {
-            'razorpay' => $this->razorpayOrderIsPaid($payment, $reachable),
-            'stripe' => $this->stripeIntentSucceeded($payment, $reachable),
-            default => false,
-        };
-
-        if (! $paid) {
-            return null;
-        }
-
-        // Built from our own trusted local snapshot rather than from
-        // the fetched body, so the amount/currency checks inside
-        // settlement stay meaningful rather than self-confirming.
-        return VerifiedPaymentEvent::reconciled(
-            provider: (string) $payment->provider,
-            type: PaymentEventType::Succeeded,
-            reference: $payment->idempotency_key,
-            providerOrderId: $payment->provider_order_id,
-            providerPaymentId: $payment->provider_payment_id,
-            amountMinor: (int) $payment->amount_minor,
-            currencyCode: (string) $payment->currency_code,
-        );
+        return $this->verifier->confirmedPayment($payment, $reachable);
     }
 
     /**
@@ -272,40 +257,5 @@ final class PackagePurchaseReconciliationService
             ],
             source: 'reconciliation',
         );
-    }
-
-    private function razorpayOrderIsPaid(Payment $payment, bool &$reachable): bool
-    {
-        try {
-            $order = $this->razorpay->fetchOrder(
-                (string) $this->gatewaySettings->razorpay_key_id,
-                (string) PaymentWebhookSignatureService::decryptSecret($this->gatewaySettings, 'razorpay_key_secret'),
-                (string) $payment->provider_order_id,
-            );
-        } catch (GatewayRequestException) {
-            // Unreachable, NOT unpaid. The caller needs to tell those
-            // apart; silence is still never treated as payment.
-            $reachable = false;
-
-            return false;
-        }
-
-        return (string) ($order['status'] ?? '') === 'paid';
-    }
-
-    private function stripeIntentSucceeded(Payment $payment, bool &$reachable): bool
-    {
-        try {
-            $intent = $this->stripe->retrievePaymentIntent(
-                (string) PaymentWebhookSignatureService::decryptSecret($this->gatewaySettings, 'stripe_secret_key'),
-                (string) $payment->provider_order_id,
-            );
-        } catch (GatewayRequestException) {
-            $reachable = false;
-
-            return false;
-        }
-
-        return (string) ($intent['status'] ?? '') === 'succeeded';
     }
 }

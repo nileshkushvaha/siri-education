@@ -294,7 +294,10 @@ class PaymentTerminalStateTest extends TestCase
         $payload = $this->capturedWebhookPayload('order_TERM1', 'pay_TERM1', $reference);
         $payload['payload']['payment']['entity']['amount'] = 999999;
 
-        $this->postWebhook($payload)->assertStatus(401);
+        // GROUP B: valid signature, wrong money — acknowledged rather
+        // than 401'd. The guarantee that matters is unchanged: a
+        // mismatched late webhook credits nothing.
+        $this->postWebhook($payload)->assertOk()->assertJsonPath('status', 'ignored');
 
         $this->assertSame(0, WalletLedgerEntry::query()->count());
         $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);

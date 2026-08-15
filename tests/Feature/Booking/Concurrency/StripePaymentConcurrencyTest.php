@@ -17,11 +17,13 @@ use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Wallet;
+use App\Payments\Enums\PaymentStatus;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Support\Facades\Crypt;
@@ -79,8 +81,11 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         $payment->refresh();
         $booking->refresh();
 
-        $this->assertSame(BookingPaymentRecordStatus::Captured, $payment->status);
+        // Exactly once, whichever leg won: the attempt is Paid and the
+        // obligation is Captured — never two settlements.
+        $this->assertSame(PaymentStatus::Paid, $payment->status);
         $this->assertNotNull($payment->paid_at);
+        $this->assertSame(BookingPaymentRecordStatus::Captured, $payment->payable->status);
         $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
         $this->assertSame(BookingStatus::Confirmed, $booking->status);
     }
@@ -99,7 +104,8 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         $payment->refresh();
         $booking->refresh();
 
-        $this->assertSame(BookingPaymentRecordStatus::Captured, $payment->status);
+        $this->assertSame(PaymentStatus::Paid, $payment->status);
+        $this->assertSame(BookingPaymentRecordStatus::Captured, $payment->payable->status);
         $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
         $this->assertSame(BookingStatus::Confirmed, $booking->status);
     }
@@ -120,7 +126,7 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         $booking->refresh();
         $payment->refresh();
 
-        $this->assertSame(BookingPaymentRecordStatus::Captured, $payment->status);
+        $this->assertSame(PaymentStatus::Paid, $payment->status);
 
         if ($booking->status === BookingStatus::Confirmed) {
             // Webhook won the race before expiry ran — normal settlement.
@@ -152,7 +158,7 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         $booking->refresh();
         $payment->refresh();
 
-        $this->assertSame(BookingPaymentRecordStatus::Captured, $payment->status);
+        $this->assertSame(PaymentStatus::Paid, $payment->status);
 
         if ($booking->status === BookingStatus::Confirmed) {
             $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
@@ -216,7 +222,10 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         // outcome too, never a bug — liveness (a same-instant fallback
         // succeeding) is deliberately NOT guaranteed, since that is
         // exactly the risky behavior the safe-fallback rule forbids.
-        $this->assertLessThanOrEqual(1, BookingPayment::query()->where('booking_id', $booking->id)->whereNotNull('provider_order_id')->count(), json_encode($results));
+        // Provider identity lives on the ATTEMPT ledger now. Rows are
+        // real-committed across every method in this class, so this must
+        // stay scoped to THIS booking's obligation.
+        $this->assertLessThanOrEqual(1, $this->orderedAttemptCount($booking), json_encode($results));
 
         // Liveness is proven separately, sequentially: once the race has
         // settled, a fresh retry for the same booking must still succeed
@@ -226,9 +235,14 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
         $mock->shouldReceive('createPaymentIntent')->andReturn(['id' => $intentId, 'client_secret' => $intentId.'_secret', 'amount' => 4900, 'currency' => 'usd']);
         $this->app->instance(StripeGatewayClient::class, $mock);
 
+        // Resuming an open attempt re-fetches the intent for its
+        // single-use client_secret (never persisted), so the retry path
+        // legitimately calls retrieve as well as create.
+        $mock->shouldReceive('retrievePaymentIntent')->andReturn(['id' => $intentId, 'client_secret' => $intentId.'_secret', 'amount' => 4900, 'currency' => 'usd']);
+
         $retry = app(BookingPaymentServiceInterface::class)->initiate($booking->refresh());
         $this->assertSame('pending', $retry->status);
-        $this->assertSame(1, BookingPayment::query()->where('booking_id', $booking->id)->whereNotNull('provider_order_id')->count());
+        $this->assertSame(1, $this->orderedAttemptCount($booking));
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────
@@ -322,23 +336,36 @@ class StripePaymentConcurrencyTest extends ConcurrencyTestCase
 
         app(BookingPaymentServiceInterface::class)->initiate($booking);
 
-        $payment = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        // The ATTEMPT is what carries provider identity now; the
+        // obligation is reached from it when a test needs both.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
 
-        return [$booking->refresh(), $payment];
+        return [$booking->refresh(), $attempt];
+    }
+
+    /** Attempts for this booking that reached the gateway. */
+    private function orderedAttemptCount(Booking $booking): int
+    {
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->first();
+
+        return $obligation === null ? 0 : Payment::query()
+            ->where('payable_id', $obligation->getKey())
+            ->whereNotNull('provider_order_id')
+            ->count();
     }
 
     /** @return array<string, mixed> */
-    private function webhookArgs(Booking $booking, BookingPayment $payment): array
+    private function webhookArgs(Booking $booking, Payment $attempt): array
     {
         return [
-            'intent_id' => $payment->provider_order_id,
-            'amount_minor' => $payment->amount_minor,
-            'currency' => strtolower($payment->currency_code),
-            // The PAYMENT reference — see StripePaymentProvider::createPayment()'s
-            // metadata construction; a real Stripe webhook's
-            // metadata.booking_reference carries this value, never
-            // $booking->reference.
-            'booking_reference' => $payment->idempotency_key,
+            'intent_id' => $attempt->provider_order_id,
+            'amount_minor' => $attempt->amount_minor,
+            'currency' => strtolower((string) $attempt->currency_code),
+            // The canonical correlation key a real Stripe webhook echoes
+            // back in metadata — the ATTEMPT reference, never the
+            // booking's own human reference.
+            'payment_reference' => $attempt->idempotency_key,
             'webhook_secret' => self::WEBHOOK_SECRET,
         ];
     }

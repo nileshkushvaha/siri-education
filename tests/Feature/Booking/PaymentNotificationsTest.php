@@ -220,7 +220,12 @@ class PaymentNotificationsTest extends TestCase
             $mail = $notification->toMail($this->student);
             $content = json_encode([$mail->subject, $mail->introLines, $mail->outroLines]);
 
-            $this->assertStringContainsString('INR 499', $content);
+            // The amount is now formatted by MoneyFormatter from the
+            // settled payment's own minor units + currency ("499.00 INR")
+            // rather than concatenated from the booking's decimal price
+            // column ("INR 499"). Same invariant — the student is told
+            // what they paid — with the currency's real exponent applied.
+            $this->assertStringContainsString('499.00 INR', $content);
             $this->assertStringNotContainsString('order_SAFE1', $content);
             $this->assertStringNotContainsString('pay_SAFE1', $content);
             $this->assertStringNotContainsString('rzp_', $content);

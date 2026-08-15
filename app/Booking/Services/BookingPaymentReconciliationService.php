@@ -11,10 +11,12 @@ use App\Booking\Enums\BookingPaymentReconciliationIssueType;
 use App\Booking\Enums\BookingPaymentReconciliationSeverity;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Exceptions\BookingException;
-use App\Booking\Exceptions\GatewayRequestException;
 use App\Models\BookingPayment;
 use App\Models\BookingPaymentReconciliationIssue;
+use App\Models\Payment;
 use App\Models\User;
+use App\Payments\Enums\PaymentStatus;
+use App\Payments\Services\PaymentAttemptVerifier;
 use App\Services\AuditTrailService;
 use App\Settings\PaymentGatewaySettings;
 use Carbon\CarbonInterface;
@@ -41,6 +43,8 @@ final class BookingPaymentReconciliationService implements BookingPaymentReconci
         private readonly PaymentProviderResolver $providers,
         private readonly PaymentGatewaySettings $settings,
         private readonly AuditTrailService $audit,
+        private readonly PaymentAttemptVerifier $verifier,
+        private readonly BookingPaymentSettlementService $settlement,
     ) {}
 
     /**
@@ -82,81 +86,111 @@ final class BookingPaymentReconciliationService implements BookingPaymentReconci
         return BookingPayment::query()->whereKey($payment->id)->firstOrFail();
     }
 
+    /**
+     * Reconciles a booking obligation from its external attempt ledger.
+     *
+     * Provider identity lives on the Payment attempt now, not on the
+     * obligation, so this polls the attempt. Reconciliation never
+     * creates an attempt and never initializes a provider order — it
+     * only asks about money that may already have moved. A student can
+     * never be charged by a sweep.
+     */
     private function reconcileOne(BookingPayment $payment, ?CarbonInterface $cutoff = null): void
     {
         $cutoff ??= now()->subMinutes(max(1, $this->settings->booking_payment_unknown_timeout_minutes));
 
-        if ($payment->provider_order_id === null) {
+        $attempt = $this->latestAttemptFor($payment);
+
+        if ($attempt === null) {
             $payment->forceFill(['last_synced_at' => now()])->save();
 
             return;
         }
 
-        try {
-            $provider = $this->providers->resolve($payment->provider);
-            $status = $provider->fetchStatus($payment->provider_order_id);
-        } catch (GatewayRequestException|BookingException $e) {
-            $this->raiseIssue($payment, BookingPaymentReconciliationIssueType::ProviderUnavailable, BookingPaymentReconciliationSeverity::Warning, $e->getMessage());
+        if ($attempt->status === PaymentStatus::Paid) {
+            // The provider already told us, and settlement is the
+            // webhook's or an earlier sweep's business. Nothing to poll.
             $payment->forceFill(['last_synced_at' => now()])->save();
 
             return;
         }
 
-        $wasUnknown = $payment->status === BookingPaymentRecordStatus::Unknown;
-        $before = $payment->status;
+        $reachable = true;
+        $event = $this->verifier->confirmedPayment($attempt, $reachable);
 
-        $updated = $this->payments->applyProviderStatus($payment, $status);
+        if (! $reachable) {
+            // Unreachable is an outage, never evidence of non-payment.
+            $this->raiseIssue(
+                $payment,
+                BookingPaymentReconciliationIssueType::ProviderUnavailable,
+                BookingPaymentReconciliationSeverity::Warning,
+                sprintf('Could not reach %s to verify this payment.', (string) $attempt->provider),
+            );
+            $payment->forceFill(['last_synced_at' => now()])->save();
 
-        if ($updated->status === $before && $before !== BookingPaymentRecordStatus::Unknown) {
+            return;
+        }
+
+        if ($event !== null) {
+            try {
+                $this->settlement->settle($attempt, $event);
+            } catch (BookingException $e) {
+                // Mismatch refusal or a failed local settlement — both
+                // already raised their own incident inside the bridge.
+                report($e);
+            }
+
+            $this->resolveOpenIssues($payment, BookingPaymentReconciliationIssueType::UnknownPaymentOutcome, 'auto_reconciled', 'Provider outcome confirmed on a later reconciliation pass.');
             BookingPayment::query()->whereKey($payment->id)->update(['last_synced_at' => now()]);
 
             return;
         }
 
-        if ($wasUnknown && $updated->status->isTerminal()) {
-            $this->resolveOpenIssues($payment, BookingPaymentReconciliationIssueType::UnknownPaymentOutcome, 'auto_reconciled', 'Provider outcome confirmed on a later reconciliation pass.');
-        }
-
-        if ($updated->status === BookingPaymentRecordStatus::Unknown && ! $wasUnknown) {
-            $this->raiseIssue($payment, BookingPaymentReconciliationIssueType::UnknownPaymentOutcome, BookingPaymentReconciliationSeverity::Warning, 'Reconciliation could not confirm the provider outcome.');
-        }
-
-        $this->detectStaleProcessing($updated, $cutoff);
-        $this->resolveRecoveredIssues($updated, $before);
+        $this->detectStaleAttempt($payment, $attempt, $cutoff);
+        BookingPayment::query()->whereKey($payment->id)->update(['last_synced_at' => now()]);
     }
 
     /**
-     * An attempt the provider keeps declining to resolve.
-     *
-     * The provider is reachable and answering — it simply will not call
-     * this settled — so the sweep would otherwise poll it forever with
-     * nobody watching. Mirrors the package flow's StaleProcessing, and
-     * uses the SAME threshold the sweep already runs on
-     * (`booking_payment_unknown_timeout_minutes`) rather than inventing
-     * a second unrelated timeout: an attempt is stale once it has been
-     * ignored for several of its own reconciliation windows.
-     *
-     * Makes an incident. Never fails the payment: we do not know the
-     * money is gone, only that the provider will not say.
+     * The attempt worth asking about: the open one if there is one
+     * (there can be at most one), otherwise the most recent, so a
+     * settled or failed history is still inspectable.
      */
-    private function detectStaleProcessing(BookingPayment $payment, CarbonInterface $cutoff): void
+    private function latestAttemptFor(BookingPayment $payment): ?Payment
     {
-        if ($payment->status !== BookingPaymentRecordStatus::Processing) {
+        return Payment::query()
+            ->forPayable(BookingPayment::PAYABLE_TYPE, (string) $payment->getKey())
+            ->orderByRaw('CASE WHEN status IN (?, ?) THEN 0 ELSE 1 END', [PaymentStatus::Pending->value, PaymentStatus::Processing->value])
+            ->orderByDesc('created_at')
+            ->first();
+    }
+
+    /**
+     * An attempt the provider is reachable about but will not resolve.
+     *
+     * Never fails the payment: we do not know the money is gone, only
+     * that the provider will not say. Waits several of the sweep's own
+     * windows so ordinary checkout latency never reaches the queue.
+     */
+    private function detectStaleAttempt(BookingPayment $payment, Payment $attempt, CarbonInterface $cutoff): void
+    {
+        if (! $attempt->status->isOpen()) {
             return;
         }
 
-        $staleAfter = $cutoff->copy()->subMinutes(
-            max(1, $this->settings->booking_payment_unknown_timeout_minutes) * self::STALE_WINDOW_MULTIPLIER,
+        $threshold = $cutoff->copy()->subMinutes(
+            max(1, $this->settings->booking_payment_unknown_timeout_minutes) * (self::STALE_WINDOW_MULTIPLIER - 1),
         );
 
-        if ($payment->created_at !== null && $payment->created_at->lt($staleAfter)) {
-            $this->raiseIssue(
-                $payment,
-                BookingPaymentReconciliationIssueType::StaleProcessing,
-                BookingPaymentReconciliationSeverity::Warning,
-                'This payment has been awaiting a provider outcome far longer than expected.',
-            );
+        if ($attempt->created_at === null || $attempt->created_at->gt($threshold)) {
+            return;
         }
+
+        $this->raiseIssue(
+            $payment,
+            BookingPaymentReconciliationIssueType::StaleProcessing,
+            BookingPaymentReconciliationSeverity::Warning,
+            'The provider has not resolved this payment attempt well past the normal window.',
+        );
     }
 
     /**

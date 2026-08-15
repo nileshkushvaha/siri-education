@@ -15,11 +15,43 @@ final class PaymentWebhookSignatureService
     /** Gateways with a real signature-verification implementation below — a blank secret must fail closed for these. */
     private const array VERIFIABLE_GATEWAYS = ['stripe', 'razorpay', 'cashfree'];
 
-    public function isValid(string $gateway, Request $request, PaymentGatewaySettings $settings): bool
-    {
-        $secret = $this->decryptSecret($settings, "{$gateway}_webhook_secret");
+    /** Endpoint purposes that own their own webhook secrets. */
+    public const string PURPOSE_BOOKING = 'booking';
 
-        if (blank($secret)) {
+    public const string PURPOSE_PACKAGE = 'package';
+
+    /**
+     * @param  string|null  $purpose  which endpoint received this delivery
+     *                                (self::PURPOSE_*), so a secret issued for one endpoint
+     *                                cannot authenticate another. Null means "any purpose"
+     *                                and should only be used by callers with no endpoint
+     *                                identity of their own.
+     */
+    public function isValid(string $gateway, Request $request, PaymentGatewaySettings $settings, ?string $purpose = null): bool
+    {
+        // The local/testing provider signs with the app key. It has no
+        // gateway-issued secret, but it must still be verified: an
+        // unsigned settlement path is a settlement path an attacker can
+        // use, and the retired Booking provider did check this.
+        if ($gateway === 'fake') {
+            $header = (string) $request->header('X-Booking-Payment-Signature', '');
+
+            return $header !== '' && hash_equals(
+                hash_hmac('sha256', (string) $request->getContent(), (string) config('app.key')),
+                $header,
+            );
+        }
+
+        // A gateway account can legitimately have MORE THAN ONE webhook
+        // endpoint, each issued its own secret — this platform registers
+        // separate Razorpay endpoints for booking payments and package
+        // purchases. Secrets are therefore scoped to the endpoint that
+        // received the delivery: a booking secret must NOT be able to
+        // authenticate a package webhook, or a leak of either one would
+        // silently become authority over both.
+        $secrets = self::decryptSecrets($settings, "{$gateway}_webhook_secret", $purpose);
+
+        if ($secrets === []) {
             // A blank secret used to fail OPEN ("safe
             // default while unconfigured") — accepting an entirely unsigned
             // request. It now fails closed for every gateway this class
@@ -32,12 +64,24 @@ final class PaymentWebhookSignatureService
 
         $payload = (string) $request->getContent();
 
-        return match ($gateway) {
-            'stripe' => $this->verifyStripe($request->header('Stripe-Signature'), $payload, $secret),
-            'razorpay' => $this->verifyHmacHeader($request->header('X-Razorpay-Signature'), $payload, $secret),
-            'cashfree' => $this->verifyHmacHeader($request->header('x-webhook-signature'), $payload, $secret),
-            default => true,
-        };
+        // Every candidate is checked with a constant-time comparison and
+        // the loop is NOT short-circuited on a non-match, so which
+        // secret matched (and how many are configured) is not leaked
+        // through response timing.
+        $valid = false;
+
+        foreach ($secrets as $secret) {
+            $matches = match ($gateway) {
+                'stripe' => $this->verifyStripe($request->header('Stripe-Signature'), $payload, $secret),
+                'razorpay' => $this->verifyHmacHeader($request->header('X-Razorpay-Signature'), $payload, $secret),
+                'cashfree' => $this->verifyHmacHeader($request->header('x-webhook-signature'), $payload, $secret),
+                default => true,
+            };
+
+            $valid = $valid || $matches;
+        }
+
+        return $valid;
     }
 
     private function verifyStripe(?string $signatureHeader, string $payload, string $secret): bool
@@ -73,6 +117,63 @@ final class PaymentWebhookSignatureService
         $expected = hash_hmac('sha256', $payload, $secret);
 
         return hash_equals($expected, (string) $providedSignature);
+    }
+
+    /**
+     * The webhook secrets configured for a gateway, scoped to one
+     * endpoint purpose.
+     *
+     * The stored field holds ONE SECRET PER LINE. A line may name the
+     * endpoint it belongs to:
+     *
+     *     booking:whsec_aaa      <- only the booking endpoint
+     *     package:whsec_bbb      <- only the package endpoint
+     *     whsec_ccc              <- unscoped (legacy)
+     *
+     * Two lines with the SAME prefix is the credential-rotation case:
+     * old and new are both live while the provider is switched over.
+     *
+     * Unprefixed lines stay valid for every purpose, which is what
+     * keeps existing single-secret installs working untouched — no
+     * migration, and nobody has to re-enter a secret. Adding a prefixed
+     * line is how an operator opts that endpoint into isolation; once
+     * an endpoint has its own prefixed secrets, a secret prefixed for a
+     * DIFFERENT endpoint can never authenticate it.
+     *
+     * @param  string|null  $purpose  self::PURPOSE_*, or null to accept every scope
+     * @return list<string>
+     */
+    public static function decryptSecrets(PaymentGatewaySettings $settings, string $field, ?string $purpose = null): array
+    {
+        $value = self::decryptSecret($settings, $field);
+
+        if (blank($value)) {
+            return [];
+        }
+
+        $known = [self::PURPOSE_BOOKING, self::PURPOSE_PACKAGE];
+
+        return collect(preg_split('/\R/', $value) ?: [])
+            ->map(fn (string $line): string => trim($line))
+            ->filter(fn (string $line): bool => $line !== '')
+            ->map(function (string $line) use ($known): array {
+                // Only a RECOGNISED prefix scopes a line. Anything else
+                // is treated as part of the secret itself, so a secret
+                // that happens to contain a colon is never truncated.
+                $scope = Str::lower(Str::before($line, ':'));
+
+                return in_array($scope, $known, true) && Str::contains($line, ':')
+                    ? ['scope' => $scope, 'secret' => trim(Str::after($line, ':'))]
+                    : ['scope' => null, 'secret' => $line];
+            })
+            ->filter(fn (array $entry): bool => $entry['secret'] !== '')
+            ->filter(fn (array $entry): bool => $purpose === null
+                || $entry['scope'] === null
+                || $entry['scope'] === $purpose)
+            ->pluck('secret')
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** Shared with RazorpayPaymentProvider — one decrypt-with-legacy-fallback routine for all gateway secrets. */

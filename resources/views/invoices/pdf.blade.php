@@ -53,6 +53,12 @@
             <td>{{ $invoice->wallet_recharge_reference }}</td>
         </tr>
         @endif
+        @if($invoice->package_purchase_reference)
+        <tr>
+            <td class="label">Package Reference</td>
+            <td>{{ $invoice->package_purchase_reference }}</td>
+        </tr>
+        @endif
         <tr>
             <td class="label">Payment Date</td>
             <td>{{ $invoice->payment_date->format('F j, Y') }}</td>

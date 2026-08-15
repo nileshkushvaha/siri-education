@@ -28,19 +28,71 @@ final class PaymentWebhookEventParser
 {
     public const array SUPPORTED_PROVIDERS = ['razorpay', 'stripe'];
 
+    /**
+     * The local/testing provider. Checkout already supports it
+     * (PaymentCheckoutService), so settlement must too — otherwise a
+     * fake payment can be started and never completed, and local
+     * development cannot exercise the real settlement path at all.
+     *
+     * It is gated to local/testing below because it carries no
+     * verifiable signature: accepting it in production would let an
+     * unsigned request settle real money.
+     */
+    public const string FAKE_PROVIDER = 'fake';
+
     public function supports(string $provider): bool
     {
+        if ($provider === self::FAKE_PROVIDER) {
+            return app()->environment(['local', 'testing']);
+        }
+
         return in_array($provider, self::SUPPORTED_PROVIDERS, true);
     }
 
     /** @param array<string, mixed> $payload */
     public function parse(string $provider, array $payload): ?VerifiedPaymentEvent
     {
-        return match ($provider) {
-            'razorpay' => $this->parseRazorpay($payload),
-            'stripe' => $this->parseStripe($payload),
+        return match (true) {
+            $provider === 'razorpay' => $this->parseRazorpay($payload),
+            $provider === 'stripe' => $this->parseStripe($payload),
+            $provider === self::FAKE_PROVIDER && $this->supports($provider) => $this->parseFake($payload),
             default => null,
         };
+    }
+
+    /**
+     * The fake provider's payload is our own flat shape, not a gateway's.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function parseFake(array $payload): ?VerifiedPaymentEvent
+    {
+        $reference = $payload['reference'] ?? null;
+
+        if (! is_string($reference) || $reference === '') {
+            return null;
+        }
+
+        $type = match ((string) ($payload['event'] ?? '')) {
+            'succeeded', 'captured' => PaymentEventType::Succeeded,
+            'failed' => PaymentEventType::Failed,
+            default => PaymentEventType::Ignored,
+        };
+
+        if ($type === PaymentEventType::Ignored) {
+            return null;
+        }
+
+        return new VerifiedPaymentEvent(
+            provider: self::FAKE_PROVIDER,
+            type: $type,
+            reference: $reference,
+            providerOrderId: isset($payload['order_id']) ? (string) $payload['order_id'] : null,
+            providerPaymentId: isset($payload['payment_id']) ? (string) $payload['payment_id'] : null,
+            amountMinor: isset($payload['amount_minor']) ? (int) $payload['amount_minor'] : null,
+            currencyCode: isset($payload['currency']) ? strtoupper((string) $payload['currency']) : null,
+            reason: isset($payload['reason']) ? (string) $payload['reason'] : null,
+        );
     }
 
     /** @param array<string, mixed> $payload */

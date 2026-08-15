@@ -445,12 +445,11 @@ abstract class PaymentSettingsPage extends Page
                                 ->maxLength(255)
                                 ->helperText('Stored encrypted. Leave blank to keep existing.'),
                         ]),
-                        TextInput::make('stripe_webhook_secret')
-                            ->label('Webhook Secret')
-                            ->password()
-                            ->revealable()
-                            ->maxLength(255)
-                            ->helperText('Stored encrypted.'),
+                        Textarea::make('stripe_webhook_secret')
+                            ->label('Webhook Secret(s)')
+                            ->rows(3)
+                            ->autosize()
+                            ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         $this->gatewayUrls('stripe'),
                     ]),
             ]);
@@ -475,11 +474,11 @@ abstract class PaymentSettingsPage extends Page
                                 ->maxLength(255)
                                 ->helperText('Stored encrypted. Leave blank to keep existing.'),
                         ]),
-                        TextInput::make('razorpay_webhook_secret')
-                            ->label('Webhook Secret')
-                            ->password()
-                            ->revealable()
-                            ->maxLength(255),
+                        Textarea::make('razorpay_webhook_secret')
+                            ->label('Webhook Secret(s)')
+                            ->rows(3)
+                            ->autosize()
+                            ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         $this->gatewayUrls('razorpay'),
                     ]),
             ]);
@@ -508,11 +507,11 @@ abstract class PaymentSettingsPage extends Page
                                 ->maxLength(255)
                                 ->helperText('Stored encrypted.'),
                         ]),
-                        TextInput::make('paypal_webhook_secret')
-                            ->label('Webhook Secret')
-                            ->password()
-                            ->revealable()
-                            ->maxLength(255),
+                        Textarea::make('paypal_webhook_secret')
+                            ->label('Webhook Secret(s)')
+                            ->rows(3)
+                            ->autosize()
+                            ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         $this->gatewayUrls('paypal'),
                     ]),
             ]);
@@ -541,11 +540,11 @@ abstract class PaymentSettingsPage extends Page
                                 ->maxLength(255)
                                 ->helperText('Stored encrypted.'),
                         ]),
-                        TextInput::make('cashfree_webhook_secret')
-                            ->label('Webhook Secret')
-                            ->password()
-                            ->revealable()
-                            ->maxLength(255),
+                        Textarea::make('cashfree_webhook_secret')
+                            ->label('Webhook Secret(s)')
+                            ->rows(3)
+                            ->autosize()
+                            ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         $this->gatewayUrls('cashfree'),
                     ]),
             ]);
@@ -571,11 +570,11 @@ abstract class PaymentSettingsPage extends Page
                                 ->revealable()
                                 ->maxLength(255)
                                 ->helperText('Stored encrypted.'),
-                            TextInput::make('payu_webhook_secret')
-                                ->label('Webhook Secret')
-                                ->password()
-                                ->revealable()
-                                ->maxLength(255),
+                            Textarea::make('payu_webhook_secret')
+                                ->label('Webhook Secret(s)')
+                                ->rows(3)
+                                ->autosize()
+                                ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         ]),
                         $this->gatewayUrls('payu'),
                     ]),
@@ -602,11 +601,11 @@ abstract class PaymentSettingsPage extends Page
                                 ->revealable()
                                 ->maxLength(255)
                                 ->helperText('Stored encrypted.'),
-                            TextInput::make('phonepe_webhook_secret')
-                                ->label('Webhook Secret')
-                                ->password()
-                                ->revealable()
-                                ->maxLength(255),
+                            Textarea::make('phonepe_webhook_secret')
+                                ->label('Webhook Secret(s)')
+                                ->rows(3)
+                                ->autosize()
+                                ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         ]),
                         $this->gatewayUrls('phonepe'),
                     ]),

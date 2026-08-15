@@ -9,6 +9,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Payments\FakePaymentProvider;
 use App\Booking\Registry\PaymentProviderRegistry;
 use App\Models\Country;
+use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Contracts\Foundation\Application;
@@ -51,12 +52,129 @@ final class PaymentProviderResolver
         private readonly BookingSettings $bookingSettings,
         private readonly PaymentGatewaySettings $gatewaySettings,
         private readonly Application $app,
+        private readonly PaymentProviderConfigValidator $configValidator,
     ) {}
 
     /** @throws BookingException when the configured provider cannot be used right now */
     public function current(?string $countryIso2 = null): PaymentProviderInterface
     {
         return $this->resolve($this->resolveKey($countryIso2));
+    }
+
+    /**
+     * Provider SELECTION, decoupled from provider EXECUTION.
+     *
+     * Booking checkout now collects through the generic Payment kernel,
+     * which takes a provider key and drives the shared gateway clients
+     * itself — it has no use for a PaymentProviderInterface instance.
+     * But every routing and safety rule above still applies, and must
+     * not be reimplemented at the call site.
+     *
+     * So selection lives here and answers with a key. Eligibility is
+     * checked against settings rather than by asking a provider object
+     * whether it is configured, which is what lets the legacy provider
+     * classes be removed without taking the routing policy with them.
+     *
+     * @throws BookingException when no provider may be used right now
+     */
+    public function currentKey(?string $countryIso2 = null): string
+    {
+        $key = $this->resolveKey($countryIso2);
+
+        $this->assertKeyUsable($key);
+
+        return $key;
+    }
+
+    /**
+     * The same gate `resolve()` applies, expressed without needing a
+     * provider instance.
+     *
+     * @throws BookingException when the key cannot be used right now
+     */
+    public function assertKeyUsable(string $key): void
+    {
+        if (! $this->gatewaySettings->payments_enabled) {
+            throw new BookingException('Payments are currently disabled platform-wide.');
+        }
+
+        if ($this->gatewaySettings->allowed_providers !== [] && ! in_array($key, $this->gatewaySettings->allowed_providers, true)) {
+            throw new BookingException(sprintf('Payment provider "%s" is not in the platform\'s allowed-provider list.', $key));
+        }
+
+        if ($key === FakePaymentProvider::KEY) {
+            if (! $this->gatewaySettings->fake_enabled) {
+                throw new BookingException('The fake payment provider is disabled.');
+            }
+
+            if (! $this->app->environment(['local', 'testing'])) {
+                throw new BookingException(
+                    'The fake payment provider cannot be used outside local/testing environments.',
+                );
+            }
+
+            return;
+        }
+
+        if (! $this->isKeyConfigured($key)) {
+            throw new BookingException(sprintf(
+                'Payment provider "%s" is not enabled or its credentials are missing/invalid.',
+                $key,
+            ));
+        }
+    }
+
+    /**
+     * Which currencies each provider account can actually collect.
+     *
+     * This is a real account capability, not a preference: Razorpay is
+     * India/INR-only in this deployment, and the Stripe account is not
+     * verified for INR. Sending an unsupported currency produces a
+     * gateway rejection deep inside an HTTP call, so it is refused here
+     * instead — the same guard the provider classes enforced in their
+     * own createPayment(), kept as data so it outlives them.
+     *
+     * @var array<string, list<string>>
+     */
+    private const array SUPPORTED_CURRENCIES = [
+        'razorpay' => ['INR'],
+        'stripe' => ['USD', 'GBP', 'EUR', 'AED'],
+        FakePaymentProvider::KEY => ['INR', 'USD', 'EUR', 'GBP', 'AED'],
+    ];
+
+    /** @throws BookingException when the provider cannot collect in this currency */
+    public function assertSupportsCurrency(string $key, string $currencyCode): void
+    {
+        $currency = strtoupper($currencyCode);
+        $supported = self::SUPPORTED_CURRENCIES[$key] ?? [];
+
+        if (! in_array($currency, $supported, true)) {
+            throw new BookingException(sprintf(
+                'Payment provider "%s" only supports %s in this phase (booking currency: %s).',
+                $key,
+                implode('/', $supported),
+                $currency,
+            ));
+        }
+    }
+
+    /**
+     * Credential validity read straight from settings — the same checks
+     * the provider classes performed in their own isConfigured().
+     */
+    private function isKeyConfigured(string $key): bool
+    {
+        return match ($key) {
+            'razorpay' => $this->gatewaySettings->razorpay_enabled
+                && $this->configValidator->isValidRazorpayKeyId($this->gatewaySettings->razorpay_key_id)
+                && filled($this->gatewaySettings->razorpay_key_secret),
+            'stripe' => $this->gatewaySettings->stripe_enabled
+                && $this->configValidator->isValidStripePublishableKey($this->gatewaySettings->stripe_publishable_key)
+                && $this->configValidator->isValidStripeSecretKey(
+                    PaymentWebhookSignatureService::decryptSecret($this->gatewaySettings, 'stripe_secret_key'),
+                ),
+            default => false,
+        };
     }
 
     /** @throws BookingException when the given provider key cannot be used right now */

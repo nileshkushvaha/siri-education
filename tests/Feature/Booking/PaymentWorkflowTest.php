@@ -16,11 +16,15 @@ use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
 use App\Models\Booking;
 use App\Models\BookingActivity;
+use App\Models\BookingPayment;
 use App\Models\BookingType;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Payments\Enums\PaymentStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
@@ -58,7 +62,14 @@ class PaymentWorkflowTest extends TestCase
         $this->assignBillingCountry($this->student, $priced['country']);
     }
 
-    /** @return array{Booking, string} booking + payment reference */
+    /**
+     * @return array{Booking, string} booking + the ATTEMPT reference
+     *
+     * A provider webhook now refers to the Payment ATTEMPT that was sent
+     * to the gateway, not to the booking's obligation reference. The two
+     * are deliberately different: the obligation reference is stable
+     * across retries, while each attempt carries its own identity.
+     */
     private function reserve(int $daysAhead = 3, int $hour = 10): array
     {
         $booking = app(StudentBookingServiceInterface::class)->book(new StudentBookingData(
@@ -70,9 +81,14 @@ class PaymentWorkflowTest extends TestCase
             grade: 7,
         ));
 
-        $intent = app(BookingPaymentServiceInterface::class)->initiate($booking);
+        app(BookingPaymentServiceInterface::class)->initiate($booking);
 
-        return [$booking->refresh(), $intent->reference];
+        $attempt = Payment::query()
+            ->where('payable_type', BookingPayment::PAYABLE_TYPE)
+            ->latest('created_at')
+            ->firstOrFail();
+
+        return [$booking->refresh(), (string) $attempt->idempotency_key];
     }
 
     private function webhook(array $payload, ?string $signature = null): TestResponse
@@ -134,9 +150,11 @@ class PaymentWorkflowTest extends TestCase
 
         $this->webhook(['event' => 'failed', 'reference' => $reference, 'reason' => 'card declined'])->assertOk();
 
+        // The attempt ledger records the failure through its own
+        // transition, under the `payments` log.
         $this->assertDatabaseHas('activity_log', [
             'log_name' => 'payments',
-            'event' => 'payment_failed',
+            'event' => 'payment_attempt_failed',
         ]);
     }
 
@@ -149,16 +167,31 @@ class PaymentWorkflowTest extends TestCase
             ->assertJsonPath('status', 'processed');
 
         $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Failed, $booking->payment_status);
+
+        // GROUP C: attempt #1 is terminally Failed, but the OBLIGATION
+        // stays payable — that is precisely what permits attempt #2.
+        $this->assertSame(PaymentStatus::Failed, Payment::query()->sole()->status);
+        $this->assertTrue($booking->payment_status->isPayable());
         $this->assertSame(BookingStatus::Pending, $booking->status);
         $this->assertNotNull($booking->reserved_until);
 
-        // Retry: re-initiate returns to pending with the same reference, then succeed.
+        // Retry: the OBLIGATION reference is stable across attempts —
+        // it is the booking's identity, not any one attempt's.
+        $obligationReference = (string) $booking->payment_reference;
         $retry = app(BookingPaymentServiceInterface::class)->initiate($booking);
-        $this->assertSame($reference, $retry->reference);
+        $this->assertSame($obligationReference, $retry->reference);
+        $this->assertNotSame($reference, $retry->reference);
 
-        $this->webhook(['event' => 'succeeded', 'reference' => $reference])->assertOk();
+        // A genuinely NEW attempt was created; the failed one is untouched.
+        $this->assertSame(2, Payment::query()->count());
+        $second = Payment::query()->latest('created_at')->first();
+        $this->assertSame(PaymentStatus::Pending, $second->status);
+
+        $this->webhook(['event' => 'succeeded', 'reference' => (string) $second->idempotency_key])->assertOk();
         $this->assertSame(BookingStatus::Confirmed, $booking->refresh()->status);
+
+        // The old failed attempt is NOT retroactively rewritten.
+        $this->assertSame(PaymentStatus::Failed, Payment::query()->oldest('created_at')->first()->status);
     }
 
     public function test_invalid_signature_is_rejected_without_processing(): void
@@ -205,13 +238,20 @@ class PaymentWorkflowTest extends TestCase
         [$booking, $reference] = $this->reserve();
         $this->webhook(['event' => 'succeeded', 'reference' => $reference])->assertOk();
 
+        $receiptsBefore = Invoice::query()->count();
+
+        // GROUP C: refund processing is explicitly DEFERRED. The event is
+        // acknowledged and must be completely inert — no settlement
+        // reversal, no booking transition, no wallet activity, no receipt.
         $this->webhook(['event' => 'refunded', 'reference' => $reference, 'reason' => 'disputed'])
             ->assertOk()
-            ->assertJsonPath('status', 'processed');
+            ->assertJsonPath('status', 'ignored');
 
         $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
-        $this->assertSame(BookingStatus::Cancelled, $booking->status);
+        $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
+        $this->assertSame(BookingStatus::Confirmed, $booking->status);
+        $this->assertSame($receiptsBefore, Invoice::query()->count());
+        $this->assertDatabaseCount('wallet_ledger_entries', 0);
     }
 
     public function test_expired_reservations_are_released(): void

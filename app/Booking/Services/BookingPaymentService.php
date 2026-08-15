@@ -29,6 +29,8 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Payments\DTOs\PaymentCheckoutData;
+use App\Payments\Services\PaymentCheckoutService;
 use App\Services\AuditTrailService;
 use App\Services\Student\StudentLifecycleService;
 use App\Support\Financial\CurrencyEligibilityPolicy;
@@ -62,6 +64,8 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         private readonly BookingRepositoryInterface $bookings,
         private readonly BookingServiceInterface $bookingService,
         private readonly PaymentProviderResolver $providers,
+        private readonly PaymentCheckoutService $checkout,
+        private readonly BookingPaymentRefundService $refunds,
         private readonly AuditTrailService $audit,
         private readonly WalletService $wallets,
         private readonly WalletLedgerService $walletLedger,
@@ -114,7 +118,14 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         // the currency: this re-checks Active status at the final
         // internal boundary, never relying on the booking's earlier
         // price-resolution check alone.
-        $booking = DB::transaction(function () use ($booking): Booking {
+        // Provider SELECTION happens before the lock and before any
+        // write: it consults settings and country routing only, and a
+        // disabled/misconfigured provider must fail without having
+        // created an obligation.
+        $providerKey = $this->providers->currentKey($this->resolveCountryIso2($booking));
+        $this->providers->assertSupportsCurrency($providerKey, (string) $booking->currency);
+
+        [$booking, $obligation] = DB::transaction(function () use ($booking, $providerKey): array {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
 
             try {
@@ -125,11 +136,74 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
             $reference = $locked->payment_reference ?? 'PAY-'.strtoupper(Str::random(12));
 
-            // A retry after failure goes back to pending with the same reference.
-            return $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Pending, $reference);
+            // A retry after failure keeps the same reference: it is the
+            // OBLIGATION's identity, not an attempt's.
+            $locked = $this->bookings->updatePaymentStatus($locked, BookingPaymentStatus::Pending, $reference);
+
+            return [$locked, $this->obligationFor($locked, $providerKey)];
         });
 
-        return $this->provider($booking)->createPayment($booking, (string) $booking->payment_reference);
+        // Deliberately OUTSIDE the transaction above: the gateway call
+        // lives inside PaymentCheckoutService, and a database
+        // transaction must never be held open across provider HTTP.
+        $checkout = $this->checkout->start($obligation, $providerKey);
+
+        return $this->intentFrom($booking, $obligation, $checkout);
+    }
+
+    /**
+     * The single commercial obligation for this booking.
+     *
+     * One row per booking, created once and reused for every subsequent
+     * attempt — a student who fails twice and succeeds on the third try
+     * owed one amount, not three. Retry history lives on the Payment
+     * attempt ledger; nothing about a failed attempt is written here.
+     *
+     * Called inside the booking row lock, so two concurrent checkout
+     * requests cannot both create one.
+     */
+    private function obligationFor(Booking $locked, string $providerKey): BookingPayment
+    {
+        $existing = BookingPayment::query()->where('booking_id', $locked->id)->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $minorUnits = MoneyFormatter::minorUnitsFor((string) $locked->currency);
+
+        return BookingPayment::query()->create([
+            'booking_id' => $locked->id,
+            'user_id' => $locked->student_id,
+            'provider' => $providerKey,
+            'amount_minor' => (int) round(((float) $locked->price) * (10 ** $minorUnits)),
+            'currency_code' => (string) $locked->currency,
+            'status' => BookingPaymentRecordStatus::Pending,
+            'idempotency_key' => (string) $locked->payment_reference,
+            'metadata' => ['obligation_reference' => $locked->payment_reference],
+            'created_by' => Auth::id(),
+        ]);
+    }
+
+    /**
+     * Maps the generic kernel's checkout data onto the Booking DTO the
+     * frontend already consumes, so the cutover is invisible to the
+     * checkout UI.
+     */
+    private function intentFrom(Booking $booking, BookingPayment $obligation, PaymentCheckoutData $checkout): PaymentIntentData
+    {
+        $payload = $checkout->checkoutPayload;
+
+        return new PaymentIntentData(
+            bookingId: $booking->id,
+            reference: (string) $booking->payment_reference,
+            amount: (string) $booking->price,
+            currency: (string) $obligation->currency_code,
+            status: BookingPaymentRecordStatus::Pending->value,
+            checkoutUrl: null,
+            publicKey: isset($payload['publishable_key']) ? (string) $payload['publishable_key'] : (isset($payload['key_id']) ? (string) $payload['key_id'] : null),
+            clientSecret: isset($payload['client_secret']) ? (string) $payload['client_secret'] : null,
+        );
     }
 
     public function markPaid(Booking $booking, string $reference): Booking
@@ -705,7 +779,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         });
 
         try {
-            $this->provider()->refund($booking);
+            $this->refunds->refund($booking);
         } catch (Throwable $e) {
             // The claim already committed — clear it so a retry (or the
             // wallet-credit path) is not permanently locked out by a

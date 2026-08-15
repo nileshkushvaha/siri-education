@@ -20,12 +20,15 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
+use App\Payments\Enums\PaymentStatus;
+use App\Payments\Exceptions\PaymentException;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use App\Wallet\Enums\WalletLedgerEntryType;
@@ -151,8 +154,15 @@ class StripeCheckoutTest extends TestCase
                 'object' => [
                     'id' => $intentId,
                     'amount' => $amount,
+                    // `amount_received` is Stripe's AUTHORITATIVE captured
+                    // figure and is what the parser reads for a succeeded
+                    // intent. Omitting it left amountMinor null, which
+                    // silently skipped reconciliation entirely — a real
+                    // fixture gap, not a behaviour change.
+                    'amount_received' => $amount,
                     'currency' => $currency,
-                    'metadata' => ['booking_reference' => $reference],
+                    // GROUP D: canonical correlation key.
+                    'metadata' => ['payment_reference' => $reference],
                 ],
             ],
         ];
@@ -239,7 +249,12 @@ class StripeCheckoutTest extends TestCase
 
         $this->stripeGateway = Mockery::mock(StripeGatewayClient::class);
         $this->stripeGateway->shouldReceive('createPaymentIntent')
-            ->once() // second initiate() reuses the row without a create call
+            ->once() // second initiate() resumes the attempt — no second intent
+            ->andReturn(['id' => 'pi_TEST123', 'client_secret' => 'secret', 'amount' => 4900, 'currency' => 'usd']);
+        // GROUP E: resuming re-fetches the intent purely to recover its
+        // single-use client_secret, which is deliberately never
+        // persisted. One create + N retrieves is the correct contract.
+        $this->stripeGateway->shouldReceive('retrievePaymentIntent')
             ->andReturn(['id' => 'pi_TEST123', 'client_secret' => 'secret', 'amount' => 4900, 'currency' => 'usd']);
         $this->app->instance(StripeGatewayClient::class, $this->stripeGateway);
 
@@ -275,14 +290,20 @@ class StripeCheckoutTest extends TestCase
 
         $booking = $this->reserveStudent();
 
+        // Surfaces through the generic checkout kernel now; the durable
+        // evidence is the Failed ATTEMPT.
         try {
             app(BookingPaymentServiceInterface::class)->initiate($booking);
-            $this->fail('Expected a BookingException.');
-        } catch (BookingException) {
+            $this->fail('Expected the gateway failure to surface.');
+        } catch (PaymentException|BookingException) {
             // expected
         }
 
-        $this->assertDatabaseHas('booking_payments', ['booking_id' => $booking->id, 'status' => 'failed']);
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        $this->assertSame(PaymentStatus::Failed, $attempt->status);
+        $this->assertNull($attempt->provider_order_id);
     }
 
     // ── C. Webhook verification ───────────────────────────────────────
@@ -295,8 +316,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_SUCC1']);
 
         $response = $this->postWebhook($this->intentPayload('payment_intent.succeeded', 'pi_SUCC1', $reference));
 
@@ -315,7 +334,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_BAD1']);
 
         $body = (string) json_encode($this->intentPayload('payment_intent.succeeded', 'pi_BAD1', $reference));
         $response = $this->call('POST', '/api/webhooks/bookings/payments/stripe', [], [], [], [
@@ -324,6 +342,8 @@ class StripeCheckoutTest extends TestCase
             'HTTP_ACCEPT' => 'application/json',
         ], $body);
 
+        // A forged signature is still an AUTHENTICATION failure and must
+        // keep failing closed — unchanged by the reconciliation work.
         $response->assertStatus(401);
 
         $booking->refresh();
@@ -338,14 +358,21 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_AMT1']);
 
         $response = $this->postWebhook($this->intentPayload('payment_intent.succeeded', 'pi_AMT1', $reference, amount: 999999));
 
-        $response->assertStatus(401);
+        // GROUP B: valid signature, wrong money — acknowledged, never
+        // settled, and the local figures stand.
+        $response->assertOk()->assertJsonPath('status', 'ignored');
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame(4900, (int) $attempt->amount_minor);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_stripe_webhook_currency_mismatch_fails_safely(): void
@@ -356,14 +383,19 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_CUR1']);
 
         $response = $this->postWebhook($this->intentPayload('payment_intent.succeeded', 'pi_CUR1', $reference, currency: 'eur'));
 
-        $response->assertStatus(401);
+        $response->assertOk()->assertJsonPath('status', 'ignored');
 
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame('USD', $attempt->currency_code);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_stripe_webhook_payment_intent_failed_keeps_reservation_for_retry(): void
@@ -374,15 +406,22 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_FAIL1']);
 
         $response = $this->postWebhook($this->intentPayload('payment_intent.payment_failed', 'pi_FAIL1', $reference));
 
         $response->assertOk()->assertJson(['status' => 'processed']);
 
         $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Failed, $booking->payment_status);
+
+        // GROUP C: the attempt is terminally Failed; the obligation stays
+        // payable so a second attempt may still succeed.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        $this->assertSame(PaymentStatus::Failed, $attempt->status);
+        $this->assertTrue($booking->payment_status->isPayable());
         $this->assertSame(BookingStatus::Pending, $booking->status);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_stripe_webhook_duplicate_delivery_is_idempotent(): void
@@ -393,7 +432,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_DUP1']);
 
         $payload = $this->intentPayload('payment_intent.succeeded', 'pi_DUP1', $reference);
         $this->postWebhook($payload)->assertOk()->assertJson(['status' => 'processed']);
@@ -412,7 +450,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_LATE1']);
 
         $booking = app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(
             BookingActor::System,
@@ -442,7 +479,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_LATE2']);
 
         app(BookingServiceInterface::class)->cancel($booking, new CancelBookingData(
             BookingActor::System,
@@ -466,7 +502,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_WAL1']);
 
         $this->postWebhook($this->intentPayload('payment_intent.succeeded', 'pi_WAL1', $reference));
 
@@ -482,7 +517,6 @@ class StripeCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
         $reference = $this->paymentReference($booking);
-        BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_order_id' => 'pi_REF1']);
 
         $this->postWebhook($this->intentPayload('payment_intent.succeeded', 'pi_REF1', $reference));
         BookingPayment::query()->where('booking_id', $booking->id)->update(['provider_payment_id' => 'pi_REF1']);

@@ -20,8 +20,11 @@ use App\Booking\Services\PaymentProviderConfigValidator;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Currency;
+use App\Models\Payment;
+use App\Payments\Enums\PaymentStatus;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -159,26 +162,41 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
     {
         $this->assertConfigured();
 
-        $payment = BookingPayment::query()
-            ->where('booking_id', $booking->id)
-            ->where('status', BookingPaymentRecordStatus::Captured)
-            ->whereNotNull('provider_payment_id')
-            ->latest('paid_at')
-            ->first();
+        // Same cutover correction as verifyCheckout(): the provider
+        // payment id identifying WHAT to refund lives on the settled
+        // Payment attempt, not on the obligation row. Reading it from
+        // `booking_payments` found nothing after the cutover, so every
+        // refund failed with "no captured payment to refund" even
+        // though the money had plainly been collected.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->first();
 
-        if ($payment === null) {
+        $attempt = $obligation === null
+            ? null
+            : Payment::query()
+                ->forPayable(BookingPayment::PAYABLE_TYPE, (string) $obligation->getKey())
+                ->where('status', PaymentStatus::Paid)
+                ->whereNotNull('provider_payment_id')
+                ->latest('paid_at')
+                ->first();
+
+        if ($attempt === null) {
             throw new BookingException(sprintf('Booking %s has no captured Razorpay payment to refund.', $booking->reference));
         }
 
         try {
-            $this->client->refundPayment($this->keyId(), $this->keySecret(), (string) $payment->provider_payment_id, [
-                'amount' => $payment->amount_minor,
+            // The amount refunded is the amount actually COLLECTED by
+            // that attempt — never the obligation's current figure or a
+            // re-derived price.
+            $this->client->refundPayment($this->keyId(), $this->keySecret(), (string) $attempt->provider_payment_id, [
+                'amount' => $attempt->amount_minor,
             ]);
         } catch (GatewayRequestException $e) {
             throw new BookingException('Razorpay refund failed: '.$e->getMessage());
         }
 
-        $payment->forceFill(['status' => BookingPaymentRecordStatus::Refunded])->save();
+        // The OBLIGATION is what becomes refunded — that is the
+        // booking-level fact the rest of the domain reads.
+        $obligation->forceFill(['status' => BookingPaymentRecordStatus::Refunded])->save();
     }
 
     /**
@@ -201,27 +219,46 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             throw new InvalidPaymentWebhookException('Razorpay checkout signature is invalid.');
         }
 
-        $payment = BookingPayment::query()
-            ->where('booking_id', $booking->id)
-            ->where('provider_order_id', $orderId)
-            ->first();
+        // The order id lives on the Payment ATTEMPT, not on the
+        // obligation. Booking collection moved onto the generic attempt
+        // ledger, so `booking_payments.provider_order_id` is no longer
+        // written by any checkout path — resolving through it here made
+        // every callback throw "order does not belong to this booking".
+        // The obligation is reached FROM the attempt, which also proves
+        // the order really belongs to this booking rather than trusting
+        // the browser-supplied id.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->first();
 
-        if ($payment === null) {
+        if ($obligation === null) {
             throw new BookingException('Razorpay order does not belong to this booking.');
         }
 
-        if ($payment->status->isTerminal()) {
-            // Already settled by the webhook (or a prior callback) — idempotent no-op.
-            return $payment;
+        $attempt = Payment::query()
+            ->forPayable(BookingPayment::PAYABLE_TYPE, (string) $obligation->getKey())
+            ->where('provider_order_id', $orderId)
+            ->first();
+
+        if ($attempt === null) {
+            throw new BookingException('Razorpay order does not belong to this booking.');
         }
 
-        $payment->forceFill([
-            'provider_payment_id' => $paymentId,
-            'status' => BookingPaymentRecordStatus::Captured,
-            'paid_at' => now(),
-        ])->save();
+        if ($attempt->status->isTerminal()) {
+            // Already settled by the webhook (or a prior callback) — idempotent no-op.
+            return $obligation;
+        }
 
-        return $payment;
+        // Records WHICH payment the gateway says succeeded, and nothing
+        // more. The browser callback is explicitly non-authoritative:
+        // it never moves the attempt to Paid, never captures the
+        // obligation, and never confirms the booking — a signed webhook
+        // is the only thing permitted to settle money. Anyone who can
+        // replay a callback would otherwise be able to confirm a lesson
+        // that was never paid for.
+        if ($attempt->provider_payment_id === null) {
+            $attempt->forceFill(['provider_payment_id' => $paymentId])->save();
+        }
+
+        return $obligation;
     }
 
     public function parseWebhook(Request $request): PaymentWebhookData
@@ -391,20 +428,40 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
      */
     public function checkoutPayload(Booking $booking): array
     {
-        $payment = BookingPayment::query()
-            ->where('booking_id', $booking->id)
-            ->where('status', BookingPaymentRecordStatus::Pending)
-            ->whereNotNull('provider_order_id')
-            ->latest('created_at')
-            ->firstOrFail();
+        // Third reader corrected for the ledger cutover (with
+        // verifyCheckout() and refund()): the live order id is on the
+        // open Payment ATTEMPT. Reading it from the obligation returned
+        // nothing, so the checkout UI could not open Checkout.js at all.
+        $attempt = $this->openAttemptFor($booking);
 
         return [
             'provider' => self::KEY,
-            'order_id' => (string) $payment->provider_order_id,
+            'order_id' => (string) $attempt->provider_order_id,
             'key_id' => $this->keyId(),
-            'amount_minor' => $payment->amount_minor,
-            'currency' => $payment->currency_code,
+            'amount_minor' => (int) $attempt->amount_minor,
+            'currency' => (string) $attempt->currency_code,
         ];
+    }
+
+    /**
+     * The open, order-bearing attempt for a booking's obligation.
+     *
+     * @throws ModelNotFoundException<Payment> when no such attempt exists
+     */
+    private function openAttemptFor(Booking $booking): Payment
+    {
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->first();
+
+        if ($obligation === null) {
+            throw (new ModelNotFoundException)->setModel(Payment::class);
+        }
+
+        return Payment::query()
+            ->forPayable(BookingPayment::PAYABLE_TYPE, (string) $obligation->getKey())
+            ->open()
+            ->whereNotNull('provider_order_id')
+            ->latest('created_at')
+            ->firstOrFail();
     }
 
     /**

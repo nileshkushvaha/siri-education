@@ -271,7 +271,18 @@ final class PaymentCheckoutService
                 'amount' => $payment->amount_minor,
                 'currency' => $payment->currency_code,
                 'receipt' => (string) $payment->idempotency_key,
+                // `payment_reference` is the canonical lookup key the
+                // webhook parser reads back, for every provider and every
+                // payable: it identifies the ATTEMPT, so a webhook can
+                // resolve the exact row even when one obligation has been
+                // attempted several times. Stripe already sends it below.
+                //
+                // `payable_reference` sits alongside it as human context
+                // for support (the booking/purchase a person recognises)
+                // and is deliberately NOT the lookup key — it is stable
+                // across retries and so cannot identify one attempt.
                 'notes' => [
+                    'payment_reference' => (string) $payment->idempotency_key,
                     'payable_type' => $payment->payable_type,
                     'payable_reference' => $payable->paymentReference(),
                 ],

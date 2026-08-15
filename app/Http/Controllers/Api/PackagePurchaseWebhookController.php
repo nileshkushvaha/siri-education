@@ -54,7 +54,7 @@ final class PackagePurchaseWebhookController extends Controller
 
         // Before any state is read or written, and before the payload
         // is even decoded.
-        if (! $signatures->isValid($provider, $request, $settings)) {
+        if (! $signatures->isValid($provider, $request, $settings, PaymentWebhookSignatureService::PURPOSE_PACKAGE)) {
             $audit->logSystem(
                 'student_package_purchases',
                 'package_webhook_signature_invalid',

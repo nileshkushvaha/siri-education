@@ -12,15 +12,18 @@ use App\Booking\Events\BookingConfirmed;
 use App\Booking\Events\BookingPaymentSucceeded;
 use App\Booking\Events\BookingRequested;
 use App\Booking\Events\BookingRescheduled;
+use App\Booking\Support\SettledBookingPaymentResolver;
 use App\Notifications\Booking\BookingCancelledNotification;
 use App\Notifications\Booking\BookingCompletedNotification;
 use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingExpiredNotification;
+use App\Notifications\Booking\BookingPaidLessonConfirmedNotification;
 use App\Notifications\Booking\BookingPaymentSucceededNotification;
 use App\Notifications\Booking\BookingPendingPaymentNotification;
 use App\Notifications\Booking\BookingRequestedNotification;
 use App\Notifications\Booking\BookingRescheduledNotification;
 use App\Services\Notifications\NotificationIdempotencyGuard;
+use App\Services\Payment\InvoiceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
@@ -49,6 +52,8 @@ final class SendBookingNotifications implements ShouldQueue
 
     public function __construct(
         private readonly NotificationIdempotencyGuard $idempotency,
+        private readonly SettledBookingPaymentResolver $payments,
+        private readonly InvoiceService $invoices,
     ) {}
 
     public function handleRequested(BookingRequested $event): void
@@ -67,8 +72,42 @@ final class SendBookingNotifications implements ShouldQueue
 
     public function handlePaymentSucceeded(BookingPaymentSucceeded $event): void
     {
-        // Student only — the instructor never receives payment details.
-        $this->send('booking-payment-succeeded', $event->booking->id, $event->booking->student, new BookingPaymentSucceededNotification($event->booking));
+        $payment = $this->payments->resolve($event->booking);
+
+        if ($payment === null) {
+            // Nothing authoritative to state the amount from. Better to
+            // send no "payment received" line than one quoting the
+            // mutable booking price snapshot.
+            return;
+        }
+
+        // The receipt is resolved through InvoiceService rather than read
+        // back from the table, because GenerateInvoiceOnBookingPaymentSucceeded
+        // is a sibling queued listener with no ordering guarantee against
+        // this one. InvoiceService is idempotent by construction (existing
+        // lookup, then the unique (source_type, source_id) constraint), so
+        // whichever listener arrives first generates and the other gets the
+        // same invoice back — never a second one.
+        $receipt = $this->invoices->generateForBookingPayment($payment);
+
+        // The receipt goes to the payer and to nobody else.
+        $this->send(
+            'booking-payment-succeeded',
+            $event->booking->id,
+            $event->booking->student,
+            new BookingPaymentSucceededNotification($event->booking, $payment, $receipt),
+        );
+
+        // The instructor is told the lesson is confirmed — operational
+        // content only, no amount, no payment reference, no receipt.
+        // See BookingPaidLessonConfirmedNotification's own note on why
+        // student price is not instructor earnings.
+        $this->send(
+            'booking-paid-lesson-confirmed',
+            $event->booking->id,
+            $event->booking->instructor,
+            new BookingPaidLessonConfirmedNotification($event->booking),
+        );
     }
 
     public function handleConfirmed(BookingConfirmed $event): void

@@ -232,34 +232,40 @@ class BookingPaymentPayableFoundationTest extends TestCase
      * a financial model into "before PAY-4A" and "after", which no
      * amount of alias tidiness is worth.
      */
-    public function test_alias_does_not_leak_into_the_models_general_morph_identity(): void
+    public function test_morph_identity_is_the_canonical_alias_everywhere(): void
     {
-        $this->assertSame(BookingPayment::class, (new BookingPayment)->getMorphClass());
-        $this->assertNotSame(BookingPayment::PAYABLE_TYPE, (new BookingPayment)->getMorphClass());
+        $this->assertSame(BookingPayment::PAYABLE_TYPE, (new BookingPayment)->getMorphClass());
+        $this->assertStringNotContainsString('\\', (new BookingPayment)->getMorphClass());
     }
 
-    public function test_activity_log_still_records_booking_payments_under_the_class_name(): void
+    public function test_activity_log_records_booking_payments_under_the_canonical_alias(): void
     {
         $obligation = $this->obligation();
 
         $obligation->update(['status' => BookingPaymentRecordStatus::Captured]);
 
         $this->assertDatabaseHas('activity_log', [
-            'subject_type' => BookingPayment::class,
+            'subject_type' => BookingPayment::PAYABLE_TYPE,
             'subject_id' => $obligation->getKey(),
         ]);
 
         $this->assertDatabaseMissing('activity_log', [
-            'subject_type' => BookingPayment::PAYABLE_TYPE,
+            'subject_type' => BookingPayment::class,
         ]);
     }
 
-    /** Wallet ledger history is written under the class name too, and must stay that way. */
-    public function test_wallet_ledger_source_type_is_unaffected_by_the_alias(): void
+    /** The attempt relations resolve through the same alias the ledger stores. */
+    public function test_attempt_relations_resolve_through_the_alias(): void
     {
-        $this->assertSame(0, DB::table('wallet_ledger_entries')
-            ->where('source_type', BookingPayment::PAYABLE_TYPE)
-            ->count());
+        $obligation = $this->obligation();
+        $payment = $this->service()->startAttempt($obligation, 'razorpay', 'PAY-REL');
+
+        $this->assertTrue($obligation->paymentAttempts()->whereKey($payment->id)->exists());
+        $this->assertNull($obligation->settledPayment);
+
+        $this->service()->transition($payment, PaymentStatus::Paid);
+
+        $this->assertSame($payment->id, $obligation->fresh()->settledPayment?->id);
     }
 
     // ── Attempt ledger (Parts 18, 19, 20) ─────────────────────────────────

@@ -21,12 +21,16 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Currency;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
+use App\Payments\Enums\PaymentStatus;
+use App\Payments\Exceptions\PaymentException;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -121,6 +125,24 @@ class RazorpayCheckoutTest extends TestCase
         return (string) $booking->refresh()->payment_reference;
     }
 
+    /**
+     * The canonical payment reference — the ATTEMPT's identity, which
+     * is what a provider carries in `notes.payment_reference` and what
+     * webhook correlation resolves on. Deliberately NOT the booking's
+     * own obligation reference: that is stable across retries and so
+     * cannot identify which attempt a webhook is talking about.
+     */
+    private function attemptReference(Booking $booking): string
+    {
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+
+        return (string) Payment::query()
+            ->where('payable_id', $obligation->id)
+            ->latest('created_at')
+            ->sole()
+            ->idempotency_key;
+    }
+
     private function checkoutSignature(string $orderId, string $paymentId): string
     {
         return hash_hmac('sha256', "{$orderId}|{$paymentId}", self::KEY_SECRET);
@@ -154,7 +176,11 @@ class RazorpayCheckoutTest extends TestCase
                         'amount' => 49900,
                         'currency' => 'INR',
                         'method' => 'upi',
-                        'notes' => ['booking_reference' => $reference],
+                        // GROUP D: the canonical correlation key in
+                        // provider notes is `payment_reference` (the ATTEMPT
+                        // identity). `booking_reference` is domain metadata
+                        // and must never be the payment lookup key.
+                        'notes' => ['payment_reference' => $reference],
                     ],
                 ],
             ],
@@ -248,12 +274,26 @@ class RazorpayCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
 
-        $this->assertDatabaseHas('booking_payments', [
-            'booking_id' => $booking->id,
+        // GROUP A: provider identity lives on the Payment ATTEMPT
+        // ledger. `booking_payments` is now the OBLIGATION — one row per
+        // booking, carrying no provider order id at all.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $this->assertSame(BookingPaymentRecordStatus::Pending, $obligation->status);
+        $this->assertNull($obligation->provider_order_id);
+
+        $this->assertDatabaseHas('payments', [
+            'payable_type' => BookingPayment::PAYABLE_TYPE,
+            'payable_id' => $obligation->id,
             'provider' => 'razorpay',
             'provider_order_id' => 'order_ABC',
-            'status' => 'pending',
+            'status' => PaymentStatus::Pending->value,
         ]);
+
+        // The obligation's amount/currency remain the authoritative
+        // commercial truth and must agree with the attempt exactly.
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+        $this->assertSame((int) $obligation->amount_minor, (int) $attempt->amount_minor);
+        $this->assertSame($obligation->currency_code, $attempt->currency_code);
     }
 
     public function test_order_creation_is_idempotent_on_repeated_initiate(): void
@@ -280,24 +320,22 @@ class RazorpayCheckoutTest extends TestCase
 
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
-        $reference = $this->paymentReference($booking);
 
-        // Simulate a concurrent request that has already inserted its row
-        // (same idempotency_key) but has not yet received the order_id
-        // back from Razorpay — the reusable-lookup requires a non-null
-        // provider_order_id, so it won't match this in-flight row, and a
-        // second insert with the same idempotency_key hits the DB's
-        // unique constraint. That must be recovered, not surfaced raw.
-        BookingPayment::query()->where('booking_id', $booking->id)->delete();
-        BookingPayment::factory()->create([
-            'booking_id' => $booking->id,
-            'idempotency_key' => $reference,
-            'status' => BookingPaymentRecordStatus::Pending,
-            'provider_order_id' => null,
-        ]);
+        // The open-attempt invariant now owns this race: a second
+        // initiate() must converge on the SAME attempt and the SAME
+        // provider order rather than creating a second live order at
+        // the gateway. `createOrder` is mocked without ->once(), so this
+        // asserts convergence by state rather than by call count.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $before = Payment::query()->where('payable_id', $obligation->id)->sole();
 
-        $this->expectExceptionMessageMatches('/already in progress/');
         app(BookingPaymentServiceInterface::class)->initiate($booking->refresh());
+
+        $after = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        $this->assertSame($before->id, $after->id);
+        $this->assertSame('order_RACE', $after->provider_order_id);
+        $this->assertSame(1, BookingPayment::query()->where('booking_id', $booking->id)->count());
     }
 
     public function test_order_creation_does_not_mark_booking_paid_or_create_meeting(): void
@@ -325,14 +363,23 @@ class RazorpayCheckoutTest extends TestCase
 
         $booking = $this->reserveStudent();
 
+        // The gateway call now lives in PaymentCheckoutService, so the
+        // failure surfaces as a PaymentException. What must remain true
+        // is the durable evidence: the ATTEMPT is Failed, so no provider
+        // order can exist without a local record of it.
         try {
             app(BookingPaymentServiceInterface::class)->initiate($booking);
-            $this->fail('Expected a BookingException.');
-        } catch (BookingException) {
+            $this->fail('Expected the gateway failure to surface.');
+        } catch (PaymentException|BookingException) {
             // expected
         }
 
-        $this->assertDatabaseHas('booking_payments', ['booking_id' => $booking->id, 'status' => 'failed']);
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        $this->assertSame(PaymentStatus::Failed, $attempt->status);
+        $this->assertSame('provider_order_failed', $attempt->failure_code);
+        $this->assertNull($attempt->provider_order_id);
     }
 
     // ── D. Verification / webhook ───────────────────────────────────
@@ -357,7 +404,14 @@ class RazorpayCheckoutTest extends TestCase
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
         $this->assertSame(BookingStatus::Confirmed, $booking->status);
-        $this->assertDatabaseHas('booking_payments', ['provider_order_id' => 'order_XYZ', 'status' => 'captured', 'provider_payment_id' => 'pay_XYZ']);
+
+        // The callback recorded WHICH provider payment succeeded, on the
+        // attempt — it never captured anything itself. Settlement above
+        // came from markPaid(), never from the browser.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+        $this->assertSame('order_XYZ', $attempt->provider_order_id);
+        $this->assertSame('pay_XYZ', $attempt->provider_payment_id);
     }
 
     public function test_checkout_signature_verification_rejects_forged_signature(): void
@@ -446,9 +500,24 @@ class RazorpayCheckoutTest extends TestCase
         $payload = $this->capturedWebhookPayload('order_MISMATCH', 'pay_MISMATCH', $reference);
         $payload['payload']['payment']['entity']['amount'] = 1;
 
-        $this->postWebhook($payload)->assertStatus(401);
+        // GROUP B: the signature is VALID — this is a reconciliation
+        // problem, not an authentication failure, so it is acknowledged
+        // rather than answered 401. What matters is that nothing settles.
+        $this->postWebhook($payload)->assertOk()->assertJsonPath('status', 'ignored');
 
-        $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
+        $booking->refresh();
+        $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+        $this->assertSame(BookingStatus::Pending, $booking->status);
+
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        // The provider payload cannot overwrite local financial truth.
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame(49900, (int) $attempt->amount_minor);
+        $this->assertSame('INR', $attempt->currency_code);
+        $this->assertNull($attempt->paid_at);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_webhook_currency_mismatch_fails_safely(): void
@@ -463,9 +532,18 @@ class RazorpayCheckoutTest extends TestCase
         $payload = $this->capturedWebhookPayload('order_MISMATCH2', 'pay_MISMATCH2', $reference);
         $payload['payload']['payment']['entity']['currency'] = 'USD';
 
-        $this->postWebhook($payload)->assertStatus(401);
+        $this->postWebhook($payload)->assertOk()->assertJsonPath('status', 'ignored');
 
-        $this->assertSame(BookingPaymentStatus::Pending, $booking->refresh()->payment_status);
+        $booking->refresh();
+        $this->assertSame(BookingPaymentStatus::Pending, $booking->payment_status);
+
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        // Expected currency preserved — no conversion is ever attempted.
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame('INR', $attempt->currency_code);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_webhook_payment_failed_keeps_reservation_for_retry(): void
@@ -481,8 +559,20 @@ class RazorpayCheckoutTest extends TestCase
         $this->postWebhook($payload)->assertOk()->assertJsonPath('status', 'processed');
 
         $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Failed, $booking->payment_status);
+
+        // GROUP C: failure belongs to the ATTEMPT, not the obligation.
+        // One declined card does not mean the student stopped owing the
+        // money, so the booking stays payable and keeps its reservation
+        // — that is precisely what makes attempt #2 possible.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->id)->sole();
+
+        $this->assertSame(PaymentStatus::Failed, $attempt->status);
+        $this->assertSame(BookingPaymentRecordStatus::Pending, $obligation->status);
+        $this->assertTrue($booking->payment_status->isPayable());
+        $this->assertSame(BookingStatus::Pending, $booking->status);
         $this->assertNotNull($booking->reserved_until);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_webhook_refund_cancels_booking(): void
@@ -495,15 +585,25 @@ class RazorpayCheckoutTest extends TestCase
         $reference = $this->paymentReference($booking);
         $this->postWebhook($this->capturedWebhookPayload('order_WH4', 'pay_WH4', $reference))->assertOk();
 
+        $booking->refresh();
+        $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
+        $receiptsBefore = Invoice::query()->count();
+
         $refundPayload = [
             'event' => 'refund.created',
-            'payload' => ['refund' => ['entity' => ['id' => 'rfnd_1', 'order_id' => 'order_WH4', 'notes' => ['booking_reference' => $reference]]]],
+            'payload' => ['refund' => ['entity' => ['id' => 'rfnd_1', 'order_id' => 'order_WH4', 'notes' => ['payment_reference' => $reference]]]],
         ];
-        $this->postWebhook($refundPayload)->assertOk()->assertJsonPath('status', 'processed');
+
+        // GROUP C: refund processing is explicitly DEFERRED. The event is
+        // safely acknowledged and must change nothing — no settlement
+        // reversal, no booking transition, no extra receipt.
+        $this->postWebhook($refundPayload)->assertOk()->assertJsonPath('status', 'ignored');
 
         $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
-        $this->assertSame(BookingStatus::Cancelled, $booking->status);
+        $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
+        $this->assertSame(BookingStatus::Confirmed, $booking->status);
+        $this->assertSame($receiptsBefore, Invoice::query()->count());
+        $this->assertDatabaseCount('wallet_ledger_entries', 0);
     }
 
     public function test_active_refund_calls_razorpay_and_cancels_booking(): void
@@ -514,9 +614,11 @@ class RazorpayCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
 
-        $signature = $this->checkoutSignature('order_REFUND', 'pay_REFUND');
-        app(RazorpayPaymentProvider::class)->verifyCheckout($booking, 'order_REFUND', 'pay_REFUND', $signature);
-        app(BookingPaymentServiceInterface::class)->markPaid($booking->refresh(), $this->paymentReference($booking));
+        // Settled the only way settlement is authoritative — a signed
+        // webhook. The browser callback deliberately cannot capture.
+        $this->postWebhook($this->capturedWebhookPayload('order_REFUND', 'pay_REFUND', $this->attemptReference($booking)))
+            ->assertOk()
+            ->assertJsonPath('status', 'processed');
 
         $this->razorpayGateway->shouldReceive('refundPayment')
             ->once()
@@ -530,7 +632,11 @@ class RazorpayCheckoutTest extends TestCase
         $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Refunded, $booking->payment_status);
         $this->assertSame(BookingStatus::Cancelled, $booking->status);
-        $this->assertDatabaseHas('booking_payments', ['provider_payment_id' => 'pay_REFUND', 'status' => 'refunded']);
+        // The OBLIGATION carries the refunded status; the provider
+        // payment id it was refunded against lives on the settled attempt.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $this->assertSame(BookingPaymentRecordStatus::Refunded, $obligation->status);
+        $this->assertSame('pay_REFUND', Payment::query()->where('payable_id', $obligation->id)->sole()->provider_payment_id);
     }
 
     public function test_active_refund_fails_safely_when_razorpay_rejects_it(): void
@@ -541,9 +647,11 @@ class RazorpayCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
 
-        $signature = $this->checkoutSignature('order_REFUND2', 'pay_REFUND2');
-        app(RazorpayPaymentProvider::class)->verifyCheckout($booking, 'order_REFUND2', 'pay_REFUND2', $signature);
-        app(BookingPaymentServiceInterface::class)->markPaid($booking->refresh(), $this->paymentReference($booking));
+        // Settled the only way settlement is authoritative — a signed
+        // webhook. The browser callback deliberately cannot capture.
+        $this->postWebhook($this->capturedWebhookPayload('order_REFUND2', 'pay_REFUND2', $this->attemptReference($booking)))
+            ->assertOk()
+            ->assertJsonPath('status', 'processed');
 
         $this->razorpayGateway->shouldReceive('refundPayment')
             ->andThrow(new GatewayRequestException('already refunded'));
@@ -668,7 +776,7 @@ class RazorpayCheckoutTest extends TestCase
         // BookingSettings::payment_provider stays at its 'fake' default here.
         $booking = $this->reserveStudent();
         app(BookingPaymentServiceInterface::class)->initiate($booking);
-        $reference = $this->paymentReference($booking);
+        $reference = $this->attemptReference($booking);
 
         $body = (string) json_encode(['event' => 'succeeded', 'reference' => $reference]);
         $this->call('POST', '/api/webhooks/bookings/payments/fake', [], [], [], [
@@ -678,11 +786,10 @@ class RazorpayCheckoutTest extends TestCase
         ], $body)->assertOk()->assertJsonPath('status', 'processed');
 
         $this->assertSame(BookingPaymentStatus::Paid, $booking->refresh()->payment_status);
-        // The fake provider creates (and captures) its own BookingPayment
-        // row too, matching every real adapter — needed so
-        // a fake-provider booking's cancellation refund has a captured
-        // row to resolve, same as Razorpay/Stripe.
+        // One obligation, captured — and the provider identity lives on
+        // its attempt, exactly as for Razorpay/Stripe.
         $this->assertSame(1, BookingPayment::count());
         $this->assertSame('captured', BookingPayment::sole()->status->value);
+        $this->assertSame(PaymentStatus::Paid, Payment::sole()->status);
     }
 }

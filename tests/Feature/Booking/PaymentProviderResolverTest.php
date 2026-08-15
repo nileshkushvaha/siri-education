@@ -9,6 +9,7 @@ use App\Booking\Payments\FakePaymentProvider;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Payments\StripePaymentProvider;
 use App\Booking\Registry\PaymentProviderRegistry;
+use App\Booking\Services\PaymentProviderConfigValidator;
 use App\Booking\Services\PaymentProviderResolver;
 use App\Models\Country;
 use App\Settings\BookingSettings;
@@ -136,6 +137,7 @@ class PaymentProviderResolverTest extends TestCase
             app(BookingSettings::class),
             app(PaymentGatewaySettings::class),
             $mockApp,
+            app(PaymentProviderConfigValidator::class),
         );
 
         $this->expectException(BookingException::class);
@@ -154,6 +156,7 @@ class PaymentProviderResolverTest extends TestCase
             app(BookingSettings::class),
             app(PaymentGatewaySettings::class),
             $mockApp,
+            app(PaymentProviderConfigValidator::class),
         );
 
         $this->assertInstanceOf(FakePaymentProvider::class, $resolver->resolve('fake'));

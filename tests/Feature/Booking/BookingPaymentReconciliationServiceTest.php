@@ -22,6 +22,7 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\BookingPaymentReconciliationIssue;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -105,6 +106,16 @@ class BookingPaymentReconciliationServiceTest extends TestCase
         return BookingPayment::query()->where('booking_id', $booking->id)->sole();
     }
 
+    /** The provider order id now lives on the ATTEMPT, not the obligation. */
+    private function attemptOrderId(BookingPayment $obligation): string
+    {
+        return (string) Payment::query()
+            ->where('payable_id', $obligation->getKey())
+            ->latest('created_at')
+            ->sole()
+            ->provider_order_id;
+    }
+
     public function test_reconcile_attempt_settles_a_payment_the_local_state_did_not_yet_know_about(): void
     {
         $payment = $this->pendingStripePayment();
@@ -115,7 +126,7 @@ class BookingPaymentReconciliationServiceTest extends TestCase
         // production never sends.
         $this->stripeGateway->shouldReceive('retrievePaymentIntent')
             ->andReturn([
-                'id' => $payment->provider_order_id,
+                'id' => $this->attemptOrderId($payment),
                 'status' => 'succeeded',
                 'amount_received' => $payment->amount_minor,
                 'currency' => strtolower($payment->currency_code),
@@ -155,11 +166,13 @@ class BookingPaymentReconciliationServiceTest extends TestCase
             'idempotency_key' => 'PAY-ALREADY-SETTLED',
         ]);
 
+        $dueOrderId = $this->attemptOrderId($duePayment);
+
         $this->stripeGateway->shouldReceive('retrievePaymentIntent')
-            ->with(Mockery::any(), $duePayment->provider_order_id)
+            ->with(Mockery::any(), $dueOrderId)
             ->once()
             ->andReturn([
-                'id' => $duePayment->provider_order_id,
+                'id' => $dueOrderId,
                 'status' => 'succeeded',
                 'amount_received' => $duePayment->amount_minor,
                 'currency' => strtolower($duePayment->currency_code),

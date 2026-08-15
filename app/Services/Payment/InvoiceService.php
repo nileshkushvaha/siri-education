@@ -7,7 +7,10 @@ namespace App\Services\Payment;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Models\BookingPayment;
 use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\StudentPackagePurchase;
 use App\Models\WalletRecharge;
+use App\Payments\Enums\PaymentStatus;
 use App\Services\AuditTrailService;
 use App\Settings\GeneralSettings;
 use App\Wallet\Enums\WalletRechargeStatus;
@@ -18,9 +21,10 @@ use RuntimeException;
 /**
  * The single authoritative writer of `invoices` (SRS §14.21-14.24).
  * Controllers, Livewire components, Filament resources, and
- * jobs must never create an invoice directly — only the two
- * generation listeners call this service, and only in reaction to the
- * two authoritative success events.
+ * jobs must never create an invoice directly — only the generation
+ * listeners call this service, and only in reaction to an
+ * authoritative success event (booking payment settled, wallet
+ * recharge succeeded, package purchase settled).
  *
  * Idempotent by construction: a redelivered event (or a genuine
  * concurrent race) never produces a second invoice for the same
@@ -65,6 +69,7 @@ final class InvoiceService
                 : 'Booking payment',
             'booking_reference' => $booking?->reference,
             'wallet_recharge_reference' => null,
+            'package_purchase_reference' => null,
             'organization_name' => $general->organization_name,
             'organization_address' => $general->address,
             'organization_support_email' => $general->support_email,
@@ -102,6 +107,79 @@ final class InvoiceService
             'service_description' => 'Wallet recharge',
             'booking_reference' => null,
             'wallet_recharge_reference' => $recharge->idempotency_key,
+            'package_purchase_reference' => null,
+            'organization_name' => $general->organization_name,
+            'organization_address' => $general->address,
+            'organization_support_email' => $general->support_email,
+            'organization_support_phone' => $general->support_phone,
+            'organization_website_url' => $general->website_url,
+            'issued_at' => now(),
+        ]);
+    }
+
+    /**
+     * The package receipt (SRS §14.21 — "successful payments", of which
+     * a package purchase is now one).
+     *
+     * Keyed on the Payment, not the purchase, for the same reason the
+     * booking receipt is keyed on the BookingPayment: one purchase may
+     * accumulate many attempts (the aggregate stays PendingPayment
+     * across declines), and the receipt documents the attempt that
+     * actually collected money.
+     *
+     * Every financial field is copied from the settled attempt and the
+     * immutable purchase snapshot — never from the proposal's current
+     * price or a live pricing call — so a later price-matrix edit
+     * cannot rewrite what a student already paid.
+     */
+    public function generateForPackagePurchase(Payment $payment): Invoice
+    {
+        if ($payment->status !== PaymentStatus::Paid) {
+            throw new RuntimeException(sprintf(
+                'Payment %s has not settled; refusing to generate a package receipt.',
+                $payment->id,
+            ));
+        }
+
+        $existing = $this->existingInvoice(StudentPackagePurchase::class, (string) $payment->id);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $purchase = $payment->payable;
+
+        if (! $purchase instanceof StudentPackagePurchase) {
+            throw new RuntimeException(sprintf(
+                'Payment %s does not belong to a package purchase.',
+                $payment->id,
+            ));
+        }
+
+        $user = $payment->user;
+        $general = app(GeneralSettings::class);
+        $proposal = $purchase->proposal;
+
+        return $this->createOnce(StudentPackagePurchase::class, (string) $payment->id, [
+            'user_id' => $payment->user_id,
+            'student_name' => $user?->name ?? 'Unknown student',
+            'billing_country' => $user?->profile?->country?->name,
+            // The purchase's own frozen commercial snapshot.
+            'amount_minor' => $purchase->amount_minor,
+            'currency_code' => $purchase->currency_code,
+            'payment_date' => $payment->paid_at ?? now(),
+            'payment_reference' => (string) $purchase->reference,
+            'service_description' => $proposal !== null
+                ? sprintf(
+                    'Lesson package: %d lessons (%d paid + %d bonus)%s',
+                    $proposal->total_quantity,
+                    $proposal->paid_quantity,
+                    $proposal->bonus_quantity,
+                    $proposal->subject?->name !== null ? ' — '.$proposal->subject->name : '',
+                )
+                : 'Lesson package purchase',
+            'booking_reference' => null,
+            'wallet_recharge_reference' => null,
+            'package_purchase_reference' => $purchase->reference,
             'organization_name' => $general->organization_name,
             'organization_address' => $general->address,
             'organization_support_email' => $general->support_email,

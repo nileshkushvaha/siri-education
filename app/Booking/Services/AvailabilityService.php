@@ -16,6 +16,7 @@ use App\Booking\Validation\Rules\BookingWindowRule;
 use App\Models\Booking;
 use App\Models\TeacherUnavailability;
 use App\Settings\BookingSettings;
+use App\Support\Timezone\LocalDay;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -58,8 +59,16 @@ final class AvailabilityService implements AvailabilityServiceInterface
             ->map(fn (TeacherUnavailability $b): array => ['starts_at' => $b->starts_at, 'ends_at' => $b->ends_at]);
         $bookings = $this->bookings->activeBetween($query->instructorId, $from->subMinutes($buffer), $to->addMinutes($buffer));
 
+        // TZ-2A: every instructor-local-day rule below is judged in ONE
+        // resolved calendar, shared with ensureAvailable() so a slot
+        // this method offers can never be rejected there for being on a
+        // different day.
+        $calendarTimezone = $this->availability->calendarTimezoneFor($query->instructorId);
+
         $maxDaily = $this->settings->max_daily_bookings_per_teacher;
-        $bookedPerDay = $bookings->countBy(fn (Booking $b): string => $b->starts_at->toDateString());
+        $bookedPerDay = $bookings->countBy(
+            fn (Booking $b): string => LocalDay::containing($b->starts_at, $calendarTimezone)->date,
+        );
 
         $slots = new Collection;
 
@@ -70,11 +79,21 @@ final class AvailabilityService implements AvailabilityServiceInterface
                 continue;
             }
 
-            if ($holidays->contains($start->toDateString())) {
+            // $start is a UTC instant, so `$start->toDateString()` — what
+            // both checks used to do — asks "which day is this in UTC?".
+            // For an instructor in Australia/Sydney a morning slot
+            // carries the PREVIOUS UTC date and for one in
+            // America/Los_Angeles an evening slot carries the NEXT, so
+            // holidays landed on the wrong day in both directions and
+            // one local day's bookings were split across two cap buckets
+            // (TZ-AUD-005 / TZ-AUD-006).
+            $localDate = LocalDay::containing($start, $calendarTimezone)->date;
+
+            if ($holidays->contains($localDate)) {
                 continue;
             }
 
-            if ($maxDaily !== null && ($bookedPerDay[$start->toDateString()] ?? 0) >= $maxDaily) {
+            if ($maxDaily !== null && ($bookedPerDay[$localDate] ?? 0) >= $maxDaily) {
                 continue;
             }
 
@@ -111,6 +130,12 @@ final class AvailabilityService implements AvailabilityServiceInterface
         $startsAt = $startsAt->utc();
         $endsAt = $endsAt->utc();
 
+        // TZ-2A: the SAME resolved calendar slots() used. Both paths ask
+        // one method for it, so the enforcement check can never disagree
+        // with the offer about which instructor-local day a booking
+        // falls on.
+        $calendarTimezone = $this->availability->calendarTimezoneFor($instructorId);
+
         // Re-verified here (not just by the caller before the host lock) so a
         // teacher deactivated/rejected between the caller's eligibility check
         // and lock acquisition can never still be booked — this is the final
@@ -123,7 +148,7 @@ final class AvailabilityService implements AvailabilityServiceInterface
             throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
-        if ($this->availability->isHoliday($startsAt)) {
+        if ($this->availability->isHoliday($startsAt, $calendarTimezone)) {
             throw SlotUnavailableException::for($instructorId, $startsAt);
         }
 
@@ -138,7 +163,11 @@ final class AvailabilityService implements AvailabilityServiceInterface
         $maxDaily = $this->settings->max_daily_bookings_per_teacher;
 
         if ($maxDaily !== null
-            && $this->bookings->activeCountForDay($instructorId, $startsAt, $ignoreBookingId) >= $maxDaily) {
+            && $this->bookings->activeCountForDay(
+                $instructorId,
+                LocalDay::containing($startsAt, $calendarTimezone),
+                $ignoreBookingId,
+            ) >= $maxDaily) {
             throw SlotUnavailableException::for($instructorId, $startsAt);
         }
     }

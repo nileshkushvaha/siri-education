@@ -13,7 +13,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
-/** A one-off blackout period (holiday, sick day) overriding availability. */
+/**
+ * A one-off blackout period (holiday, sick day) overriding availability.
+ *
+ * TZ-2A resolution of TZ-AUD-019 — `timezone` is an ORIGIN/INPUT
+ * SNAPSHOT, not an input to any calculation, and its being unread is
+ * correct rather than an oversight.
+ *
+ * InstructorTimeOffService takes the instructor's wall-clock input,
+ * interprets it in this timezone, and stores the resulting `starts_at`/
+ * `ends_at` as absolute UTC instants. The blackout is then a fixed
+ * interval on the timeline: overlap checks compare instants directly
+ * (`scopeOverlapping`), which is exactly right and needs no timezone at
+ * all. Re-deriving a local time here would be re-doing work that was
+ * already done correctly at write time.
+ *
+ * What the column IS for: audit provenance — answering "which clock was
+ * the instructor reading when they blocked this out?" — and rendering a
+ * historical entry the way it was entered. Same contract as
+ * `bookings.timezone`; see Booking's class docblock.
+ *
+ * Deliberately retained. It is not dead weight, and it is not a viewer
+ * display timezone.
+ */
 class TeacherUnavailability extends Model
 {
     use HasFactory, HasUuids, LogsActivity;

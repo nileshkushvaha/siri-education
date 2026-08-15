@@ -13,6 +13,7 @@ use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\User;
+use App\Support\Timezone\LocalDay;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -56,8 +57,19 @@ interface BookingRepositoryInterface
         int $bufferMinutes = 0,
     ): bool;
 
-    /** Active bookings for the instructor on the given day (UTC). */
-    public function activeCountForDay(int $instructorId, CarbonImmutable $day, ?string $ignoreBookingId = null): int;
+    /**
+     * Active bookings for the instructor on one INSTRUCTOR-LOCAL
+     * calendar day (TZ-AUD-006).
+     *
+     * Takes a LocalDay rather than an instant precisely so the day
+     * cannot be re-derived here from a UTC timestamp: the daily cap is
+     * a rule about the instructor's own calendar, and in most of the
+     * world their day spans two UTC dates. The caller resolves the
+     * owning calendar once (AvailabilityRepository::calendarTimezoneFor)
+     * and both the slot-generation and booking-enforcement paths pass
+     * the same value in.
+     */
+    public function activeCountForDay(int $instructorId, LocalDay $day, ?string $ignoreBookingId = null): int;
 
     /** Upcoming active bookings for an instructor — the workload measure. */
     public function activeUpcomingCountForInstructor(int $instructorId): int;

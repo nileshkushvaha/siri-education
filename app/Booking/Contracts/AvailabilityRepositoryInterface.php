@@ -30,9 +30,33 @@ interface AvailabilityRepositoryInterface
     /** @return Collection<int, TeacherUnavailability> blackouts intersecting [$from, $to) */
     public function blackoutsFor(int $teacherId, CarbonImmutable $from, CarbonImmutable $to): Collection;
 
-    /** The given moment falls on an organisation-wide holiday. */
-    public function isHoliday(CarbonImmutable $date): bool;
+    /**
+     * TZ-2A: the ONE definition of "which calendar does this
+     * instructor's day belong to?", used by every instructor-local-day
+     * rule — currently the holiday exclusion and the daily booking cap,
+     * on BOTH the slot-generation and the booking-enforcement path, so
+     * the two can never disagree about which day a slot is on.
+     *
+     * Rule-timezone first (the business-owned source
+     * `teacher_availability.timezone`, already authoritative for
+     * materializing windows), then the instructor's canonical user
+     * timezone as the fallback.
+     */
+    public function calendarTimezoneFor(int $teacherId): string;
 
-    /** @return Collection<int, string> holiday dates (Y-m-d) within [$from, $to] */
+    /**
+     * The given moment falls on an organisation-wide holiday, judged by
+     * the LOCAL calendar date in $timezone — never the UTC date of the
+     * instant (TZ-AUD-005).
+     */
+    public function isHoliday(CarbonImmutable $date, string $timezone): bool;
+
+    /**
+     * Holiday dates (Y-m-d) covering the local days that [$from, $to)
+     * touches in $timezone. The range is widened by a day on each side,
+     * because a UTC window's edges can fall on a local date outside it.
+     *
+     * @return Collection<int, string>
+     */
     public function holidayDatesBetween(CarbonImmutable $from, CarbonImmutable $to): Collection;
 }

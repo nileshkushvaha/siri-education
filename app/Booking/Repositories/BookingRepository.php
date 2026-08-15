@@ -15,6 +15,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
 use App\Models\BookingActivity;
 use App\Models\User;
+use App\Support\Timezone\LocalDay;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -119,12 +120,20 @@ final class BookingRepository implements BookingRepositoryInterface
             ->exists();
     }
 
-    public function activeCountForDay(int $instructorId, CarbonImmutable $day, ?string $ignoreBookingId = null): int
+    public function activeCountForDay(int $instructorId, LocalDay $day, ?string $ignoreBookingId = null): int
     {
         return Booking::query()
             ->active()
             ->forInstructor($instructorId)
-            ->whereBetween('starts_at', [$day->startOfDay(), $day->endOfDay()])
+            // Half-open [startUtc, endUtcExclusive) — the boundaries were
+            // built as local midnights and then converted, so this stays
+            // exact on 23- and 25-hour DST days. The previous
+            // startOfDay()/endOfDay() pair operated on a UTC instant and
+            // therefore counted a UTC day, which is a different set of
+            // bookings from the instructor's day (TZ-AUD-006). Status
+            // scope is deliberately untouched: still active() only.
+            ->where('starts_at', '>=', $day->startUtc)
+            ->where('starts_at', '<', $day->endUtcExclusive)
             ->when($ignoreBookingId, fn (Builder $q) => $q->whereKeyNot($ignoreBookingId))
             ->lockForUpdate()
             ->count();

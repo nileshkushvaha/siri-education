@@ -27,7 +27,14 @@ class Holiday extends Model
         ];
     }
 
-    public function scopeOnDate(Builder $query, CarbonInterface $date): Builder
+    /**
+     * TZ-2A: accepts a plain `Y-m-d` string so callers can pass a date
+     * they derived in the OWNING calendar (see LocalDay), rather than
+     * handing over an instant and letting `whereDate` reduce it to a
+     * UTC date. `whereDate` is correct here — `holidays.date` is a
+     * date-only column with no timezone semantics of its own.
+     */
+    public function scopeOnDate(Builder $query, CarbonInterface|string $date): Builder
     {
         return $query->whereDate('date', $date);
     }

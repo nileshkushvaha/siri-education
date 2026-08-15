@@ -8,6 +8,7 @@ use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Exceptions\GatewayRequestException;
 use App\Enums\StudentStatus;
 use App\Exceptions\Student\StudentActionNotAvailableException;
+use App\Livewire\Frontend\Student\WalletOverview;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\User;
@@ -31,6 +32,7 @@ use App\Wallet\Services\WalletLedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
 use Mockery;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -146,6 +148,21 @@ class WalletRechargeTest extends TestCase
         $this->expectException(StudentActionNotAvailableException::class);
 
         $this->service()->initiate($student, 50000);
+    }
+
+    public function test_wallet_ui_renders_restricted_student_error_instead_of_throwing_a_403(): void
+    {
+        $student = $this->student();
+        UserProfile::query()->where('user_id', $student->id)->update(['student_status' => StudentStatus::Suspended]);
+
+        Livewire::actingAs($student)
+            ->test(WalletOverview::class)
+            ->set('rechargeAmount', '500')
+            ->call('initiateRecharge')
+            ->assertSet('rechargeBanner', StudentActionNotAvailableException::make()->getMessage())
+            ->assertSee('Your account is not available for this action. Please contact support.');
+
+        $this->assertDatabaseCount('wallet_recharges', 0);
     }
 
     public function test_wallet_feature_disabled_rejects_initiation(): void

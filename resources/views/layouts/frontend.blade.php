@@ -57,7 +57,7 @@
          alongside Alpine — see docs/frontend.md for component conventions. --}}
     @livewireStyles
 </head>
-<body class="text-slate-800 antialiased" data-public-motion-page style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
+<body class="text-slate-800 antialiased" @unless($__env->hasSection('portal-shell')) data-public-motion-page @endunless style="background: linear-gradient(160deg, #f8f7ff 0%, #f0ebff 30%, #e8f4ff 60%, #f5f0ff 100%); min-height: 100vh;">
 
     @include('partials.seo.tracking-body')
 

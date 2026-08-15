@@ -44,8 +44,7 @@
     <div class="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div class="min-w-0">
-                <p class="text-sm text-slate-400">{{ now()->format('l, F j, Y') }}</p>
-                <div class="mt-2 flex flex-wrap items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3">
                     <h1 class="text-3xl font-bold tracking-normal text-white sm:text-4xl">Instructor Onboarding</h1>
                     <span class="rounded-full border border-indigo-400/25 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200">
                         {{ $progress['status']?->label() ?? 'Not started' }}

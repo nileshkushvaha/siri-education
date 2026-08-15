@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ProfileMediaTest extends TestCase
@@ -39,6 +40,35 @@ class ProfileMediaTest extends TestCase
 
         $response->assertOk()->assertJson(['success' => true]);
         $this->assertTrue($user->profile->fresh()->hasMedia('avatar'));
+    }
+
+    public function test_student_and_instructor_can_upload_avatar_and_cover_images(): void
+    {
+        foreach (['student', 'instructor'] as $roleName) {
+            Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+            $user = $this->activeUser();
+            $user->assignRole($roleName);
+
+            $this->actingAs($user)
+                ->withHeader('Accept', 'application/json')
+                ->post(route('profile.avatar.upload'), [
+                    'avatar' => UploadedFile::fake()->image("{$roleName}-avatar.jpg"),
+                ])
+                ->assertOk()
+                ->assertJson(['success' => true]);
+
+            $this->actingAs($user)
+                ->withHeader('Accept', 'application/json')
+                ->post(route('profile.cover.upload'), [
+                    'cover' => UploadedFile::fake()->image("{$roleName}-cover.jpg"),
+                ])
+                ->assertOk()
+                ->assertJson(['success' => true]);
+
+            $profile = $user->profile->fresh();
+            $this->assertTrue($profile->hasMedia('avatar'));
+            $this->assertTrue($profile->hasMedia('cover'));
+        }
     }
 
     public function test_uploading_a_new_avatar_replaces_the_old_one(): void
@@ -142,5 +172,18 @@ class ProfileMediaTest extends TestCase
                 'avatar' => UploadedFile::fake()->create('document.pdf', 100),
             ])
             ->assertSessionHasErrors('avatar');
+    }
+
+    public function test_json_upload_validation_returns_a_field_error(): void
+    {
+        $user = $this->activeUser();
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('profile.avatar.upload'), [
+                'avatar' => UploadedFile::fake()->create('document.pdf', 100),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('avatar');
     }
 }

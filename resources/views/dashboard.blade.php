@@ -28,7 +28,6 @@
         <div class="mb-10">
             <div class="flex items-start justify-between flex-wrap gap-4">
                 <div>
-                    <p class="text-slate-400 text-sm mb-1">{{ now()->format('l, F j, Y') }}</p>
                     <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2">
                         Welcome back,
                         <span class="text-grad">{{ auth()->user()->first_name ?? explode(' ', auth()->user()->name)[0] }}</span>! 👋

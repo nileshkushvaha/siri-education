@@ -8,7 +8,6 @@
 
 @section('account-content')
     <x-account.page-header
-        :date="now()->format('l, F j, Y')"
         :name="auth()->user()->first_name ?? explode(' ', auth()->user()->name)[0]"
     />
 

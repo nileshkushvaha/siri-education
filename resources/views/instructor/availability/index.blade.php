@@ -12,8 +12,7 @@
 @section('account-content')
     <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <p class="text-sm text-slate-400">{{ now()->format('l, F j, Y') }}</p>
-            <h1 class="mt-2 text-3xl font-bold text-white">Teaching Availability</h1>
+            <h1 class="text-3xl font-bold text-white">Teaching Availability</h1>
             <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
                 Set the weekly hours students can book, then block dates when you are unavailable. Times are handled in your teaching timezone.
             </p>

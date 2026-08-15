@@ -47,7 +47,9 @@
             radial-gradient(circle at 100% 80%, rgb(var(--portal-c) / .06), transparent 14rem),
             rgb(255 255 255 / .028);
     }
-    #main-content > div:has(> h1) {
+    #main-content > div:has(> h1),
+    #main-content > div:has(> div:first-child > h1),
+    #main-content > div > div:first-child:has(h1) {
         position: relative;
         overflow: hidden;
         padding: 1.25rem 1.375rem;
@@ -58,7 +60,9 @@
             linear-gradient(120deg, rgb(var(--portal-a) / .075), rgb(var(--portal-b) / .055) 52%, rgb(255 255 255 / .025));
         box-shadow: inset 0 1px 0 rgb(255 255 255 / .035);
     }
-    #main-content > div:has(> h1)::after {
+    #main-content > div:has(> h1)::after,
+    #main-content > div:has(> div:first-child > h1)::after,
+    #main-content > div > div:first-child:has(h1)::after {
         content: '';
         position: absolute;
         inset: auto -2.5rem -4rem auto;
@@ -69,17 +73,67 @@
         filter: blur(12px);
         pointer-events: none;
     }
-    #main-content > div:has(> h1) > h1 {
+    #main-content > div:has(> h1) > h1,
+    #main-content > div:has(> div:first-child > h1) > div:first-child > h1,
+    #main-content > div > div:first-child:has(h1) h1 {
+        position: relative;
+        z-index: 1;
+        margin-top: .375rem;
+        margin-bottom: .375rem;
         background: linear-gradient(90deg, white, rgb(var(--portal-a)), rgb(var(--portal-c)));
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
+        font-size: clamp(1.75rem, 3vw, 2.25rem);
+        font-weight: 700;
+        line-height: 1.15;
+        letter-spacing: -.025em;
+    }
+    #main-content > div:has(> h1) > p,
+    #main-content > div:has(> div:first-child > h1) > div:first-child > p,
+    #main-content > div > div:first-child:has(h1) p {
+        position: relative;
+        z-index: 1;
+        max-width: 48rem;
+        line-height: 1.6;
     }
     [data-account-mobile-navigation] {
         background:
             linear-gradient(90deg, rgb(var(--portal-a) / .055), rgb(var(--portal-b) / .04), rgb(var(--portal-c) / .05)),
             rgb(2 6 23 / .98);
         backdrop-filter: blur(18px);
+    }
+    @keyframes account-content-enter {
+        from {
+            opacity: 0;
+            transform: translate3d(0, .75rem, 0);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+    @keyframes account-header-glow {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(-.65rem, -.35rem, 0) scale(1.08); }
+    }
+    [data-account-portal] #main-content > * {
+        animation: account-content-enter .5s cubic-bezier(.22, 1, .36, 1) both;
+    }
+    [data-account-portal] #main-content > :nth-child(2) { animation-delay: 60ms; }
+    [data-account-portal] #main-content > :nth-child(3) { animation-delay: 120ms; }
+    #main-content > div:has(> h1)::after,
+    #main-content > div:has(> div:first-child > h1)::after,
+    #main-content > div > div:first-child:has(h1)::after {
+        animation: account-header-glow 7s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        [data-account-portal] #main-content > *,
+        #main-content > div:has(> h1)::after,
+        #main-content > div:has(> div:first-child > h1)::after,
+        #main-content > div > div:first-child:has(h1)::after {
+            animation: none;
+        }
     }
 </style>
 @endpush

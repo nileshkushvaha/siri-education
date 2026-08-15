@@ -6,6 +6,7 @@ namespace App\Livewire\Frontend\Student;
 
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Services\PaymentProviderResolver;
+use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Livewire\Frontend\Auth\Concerns\ThrottlesLivewireRequests;
 use App\Models\Wallet;
 use App\Models\WalletRecharge;
@@ -89,7 +90,7 @@ final class WalletOverview extends Component
 
         try {
             $checkout = $this->recharges->initiate(auth()->user(), $amountMinor);
-        } catch (WalletException $e) {
+        } catch (WalletException|StudentActionNotAvailableException $e) {
             $this->rechargeBanner = $e->getMessage();
 
             return;

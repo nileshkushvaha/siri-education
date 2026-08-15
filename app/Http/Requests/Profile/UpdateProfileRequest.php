@@ -80,10 +80,26 @@ class UpdateProfileRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $normalized = [
             'email_notifications' => $this->boolean('email_notifications'),
             'system_notifications' => $this->boolean('system_notifications'),
             'marketing_emails' => $this->boolean('marketing_emails'),
-        ]);
+        ];
+
+        // Native HTML selects submit scalar IDs as strings. Normalize them
+        // before validation so downstream actions and strictly typed domain
+        // services receive the integer/null values their contracts require.
+        foreach (['country_id', 'state_id', 'student_preferred_language_id'] as $field) {
+            if (! array_key_exists($field, $this->all())) {
+                continue;
+            }
+
+            $value = $this->input($field);
+            $normalized[$field] = $value === null || $value === ''
+                ? null
+                : (filter_var($value, FILTER_VALIDATE_INT) !== false ? (int) $value : $value);
+        }
+
+        $this->merge($normalized);
     }
 }

@@ -121,6 +121,14 @@ class AccountLayoutTest extends TestCase
         $this->assertStringContainsString('data-account-profile-header', $profile);
     }
 
+    public function test_account_portal_does_not_enable_public_page_motion(): void
+    {
+        $content = $this->actingAs($this->makeUser())->get(route('dashboard'))->getContent();
+
+        $this->assertStringContainsString('data-account-portal=', $content);
+        $this->assertStringNotContainsString('data-public-motion-page', $content);
+    }
+
     public function test_dashboard_and_profile_use_the_same_account_layout(): void
     {
         $user = $this->makeUser();

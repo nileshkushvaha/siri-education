@@ -19,6 +19,17 @@ class EditCurriculumModule extends EditRecord
 {
     protected static string $resource = CurriculumModuleResource::class;
 
+    /**
+     * This resource has no [index] page by design (see CurriculumModuleResource
+     * docblock) — default breadcrumbs try to link back to it via getResourceUrl(),
+     * which throws. The "Back to Version" header action already provides the
+     * equivalent navigation, so resource-level breadcrumbs are disabled here.
+     */
+    public function hasResourceBreadcrumbs(): bool
+    {
+        return false;
+    }
+
     protected function getHeaderActions(): array
     {
         return [

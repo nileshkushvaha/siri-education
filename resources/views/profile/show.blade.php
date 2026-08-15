@@ -24,6 +24,7 @@
     states: @js($states->map(fn ($state) => ['id' => $state->id, 'country_id' => $state->country_id, 'name' => $state->name])),
 
     async uploadAvatar(event) {
+        const input = event.target;
         const file = event.target.files[0];
         if (!file) return;
         this.uploading = true;
@@ -32,12 +33,20 @@
         form.append('avatar', file);
         form.append('_token', document.querySelector('meta[name=csrf-token]').content);
         try {
-            const res = await fetch('{{ route('profile.avatar.upload') }}', { method: 'POST', body: form });
-            const json = await res.json();
-            if (json.success) { this.avatarPreview = json.url; }
-            else { this.uploadError = 'Upload failed. Please try again.'; }
+            const res = await fetch('{{ route('profile.avatar.upload') }}', {
+                method: 'POST',
+                body: form,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || !json.success) {
+                this.uploadError = json.errors?.avatar?.[0] || json.message || 'Upload failed. Please try again.';
+                return;
+            }
+            this.avatarPreview = json.url;
         } catch (e) { this.uploadError = 'Upload error. Please try again.'; }
-        finally { this.uploading = false; }
+        finally { this.uploading = false; input.value = ''; }
     },
 
     async deleteAvatar() {
@@ -51,6 +60,7 @@
     },
 
     async uploadCover(event) {
+        const input = event.target;
         const file = event.target.files[0];
         if (!file) return;
         this.coverUploading = true;
@@ -59,12 +69,20 @@
         form.append('cover', file);
         form.append('_token', document.querySelector('meta[name=csrf-token]').content);
         try {
-            const res = await fetch('{{ route('profile.cover.upload') }}', { method: 'POST', body: form });
-            const json = await res.json();
-            if (json.success) { this.coverPreview = json.url; }
-            else { this.coverUploadError = 'Upload failed. Please try again.'; }
+            const res = await fetch('{{ route('profile.cover.upload') }}', {
+                method: 'POST',
+                body: form,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || !json.success) {
+                this.coverUploadError = json.errors?.cover?.[0] || json.message || 'Upload failed. Please try again.';
+                return;
+            }
+            this.coverPreview = json.url;
         } catch (e) { this.coverUploadError = 'Upload error. Please try again.'; }
-        finally { this.coverUploading = false; }
+        finally { this.coverUploading = false; input.value = ''; }
     },
 
     async deleteCover() {
@@ -100,8 +118,8 @@
         <x-slot:avatarActions>
             {{-- Camera overlay --}}
             <label class="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
-                :class="{'cursor-not-allowed': uploading}">
-                <input type="file" class="sr-only" accept="image/*" @change="uploadAvatar($event)" :disabled="uploading">
+                :class="uploading ? 'cursor-wait opacity-100' : 'cursor-pointer'" :aria-busy="uploading">
+                <input type="file" class="sr-only" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" @change="uploadAvatar($event)" :disabled="uploading">
                 <svg x-show="!uploading" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -114,8 +132,8 @@
         </x-slot:avatarActions>
         <x-slot:coverActions>
             <label class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/cover:opacity-100 cursor-pointer transition-opacity"
-                :class="{'cursor-not-allowed': coverUploading}">
-                <input type="file" class="sr-only" accept="image/*" @change="uploadCover($event)" :disabled="coverUploading">
+                :class="coverUploading ? 'cursor-wait opacity-100' : 'cursor-pointer'" :aria-busy="coverUploading">
+                <input type="file" class="sr-only" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" @change="uploadCover($event)" :disabled="coverUploading">
                 <span class="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/50 text-white text-xs font-semibold">
                     <svg x-show="!coverUploading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -125,7 +143,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    <span x-text="coverPreview ? 'Change cover' : 'Add cover'"></span>
+                    <span x-text="coverUploading ? 'Uploading…' : (coverPreview ? 'Change cover' : 'Add cover')"></span>
                 </span>
             </label>
             <button x-show="coverPreview" @click="deleteCover()" type="button"

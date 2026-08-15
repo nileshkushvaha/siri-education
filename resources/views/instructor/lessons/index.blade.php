@@ -11,8 +11,7 @@
 
 @section('account-content')
     <div class="mb-6">
-        <p class="text-sm text-slate-400">{{ now()->format('l, F j, Y') }}</p>
-        <h1 class="mt-2 text-3xl font-bold text-white">My Lessons</h1>
+        <h1 class="text-3xl font-bold text-white">My Lessons</h1>
         <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
             Review your lessons and record private feedback after a lesson completes. Feedback is never shared publicly.
         </p>

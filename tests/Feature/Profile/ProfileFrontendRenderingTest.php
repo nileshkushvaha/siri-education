@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Profile;
 
 use App\Models\Country;
+use App\Models\Currency;
 use App\Models\State;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +82,27 @@ class ProfileFrontendRenderingTest extends TestCase
         ])->assertSessionHasErrors('headline');
 
         $this->assertNull($student->profile->fresh()->headline);
+    }
+
+    public function test_profile_update_normalizes_select_ids_and_returns_validation_errors_for_invalid_values(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $student = $this->activeUser();
+        $student->assignRole('student');
+        $currency = Currency::factory()->create(['status' => 'active']);
+        $country = Country::factory()->create(['default_currency_id' => $currency->id]);
+
+        $this->actingAs($student)->post(route('profile.update'), [
+            'first_name' => 'Student',
+            'country_id' => (string) $country->id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame($country->id, $student->profile->fresh()->country_id);
+
+        $this->actingAs($student)->from(route('profile.show'))->post(route('profile.update'), [
+            'first_name' => 'Student',
+            'country_id' => 'not-a-country',
+        ])->assertRedirect(route('profile.show'))->assertSessionHasErrors('country_id');
     }
 
     public function test_profile_page_renders_visibility_controls(): void

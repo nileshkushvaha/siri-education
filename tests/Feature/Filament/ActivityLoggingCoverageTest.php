@@ -8,7 +8,6 @@ use App\Models\AcademicCategory;
 use App\Models\AcademicLevel;
 use App\Models\Faq;
 use App\Models\FaqCategory;
-use App\Models\SkillLevel;
 use App\Models\Subject;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherUnavailability;
@@ -47,14 +46,6 @@ class ActivityLoggingCoverageTest extends TestCase
         $level->update(['name' => 'Primary School']);
 
         $this->assertDatabaseHas('activity_log', ['log_name' => 'academic_levels']);
-    }
-
-    public function test_skill_level_update_is_logged(): void
-    {
-        $skill = SkillLevel::create(['name' => 'Beginner', 'slug' => 'beginner']);
-        $skill->update(['name' => 'Novice']);
-
-        $this->assertDatabaseHas('activity_log', ['log_name' => 'skill_levels']);
     }
 
     public function test_faq_category_update_is_logged(): void

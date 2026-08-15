@@ -295,30 +295,6 @@
                             @error('academicLevelIds') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
                         </div>
 
-                        <div class="relative" x-data="{ open: false, selected: $wire.entangle('skillLevelIds').live }" @click.outside="open = false" @keydown.escape.window="open = false">
-                            <label class="mb-2 block text-sm font-medium text-slate-200">Skill Levels</label>
-                            <button type="button" @click="open = ! open" @disabled(! $editable) class="{{ $dropdownButtonClass }}">
-                                <span class="truncate" :class="selected.length ? 'text-white' : 'text-slate-500'">
-                                    <span x-text="selected.length ? `${selected.length} selected` : 'Select skill levels'">{{ $selectedSummary($skillLevels, $skillLevelIds, 'Select skill levels') }}</span>
-                                </span>
-                                <svg class="h-4 w-4 shrink-0 text-slate-400 transition" :class="{ 'rotate-180': open }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                            <div x-show="open" x-transition style="display: none;" class="absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-white/[0.10] bg-slate-950 p-2 shadow-2xl shadow-black/40">
-                                @forelse($skillLevels as $level)
-                                    <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-white/[0.06]">
-                                        <input type="checkbox" x-model="selected" value="{{ $level['id'] }}" @disabled(! $editable) class="cursor-pointer rounded border-white/[0.20] bg-white/[0.06] text-indigo-500 focus:ring-indigo-400 disabled:cursor-not-allowed">
-                                        <span>{{ $level['name'] }}</span>
-                                    </label>
-                                @empty
-                                    <p class="px-3 py-2 text-sm text-slate-500">No skill levels available.</p>
-                                @endforelse
-                            </div>
-                            <p class="{{ $helpClass }}">Optional. Select the depth of learning you prefer to teach.</p>
-                            @error('skillLevelIds') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
-                        </div>
-
                         <div class="relative" x-data="{ open: false, selected: $wire.entangle('teachingLanguageIds').live }" @click.outside="open = false" @keydown.escape.window="open = false">
                             <label class="mb-2 block text-sm font-medium text-slate-200">Teaching Languages</label>
                             <button type="button" @click="open = ! open" @disabled(! $editable) class="{{ $dropdownButtonClass }}">

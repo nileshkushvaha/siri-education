@@ -54,8 +54,10 @@ class DatabaseSeeder extends Seeder
             SubjectSeeder::class,
             StudentLessonPriceSeeder::class,
             AcademicLevelSeeder::class,
-            SkillLevelSeeder::class,
             InstructorSeeder::class,
+            // Coherent international Grade 6-12 catalogue: topics,
+            // education systems, curricula, instructor coverage, and packages.
+            InternationalAcademicCatalogueSeeder::class,
             InstructorDocumentRequirementSeeder::class,
             FaqSeeder::class,
             // Support/dispute case management.

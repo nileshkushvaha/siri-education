@@ -259,7 +259,7 @@ Rules:
 
 ## Academic Masters
 
-Admin-managed academic master tables: `AcademicCategory`, `Subject`, `AcademicLevel`, `SkillLevel` — named to avoid colliding with `App\Enums\EducationLevel`'s existing meaning (an instructor's own credential type, not a grade band; the grade-band model was named `AcademicLevel` instead). See `docs/archive/reports/academic-master-foundation.md` (historical — design rationale and naming decisions only, not current instruction) for the full background.
+Admin-managed academic master tables: `AcademicCategory`, `Subject`, and `AcademicLevel`. `AcademicLevel` is named to avoid colliding with `App\Enums\EducationLevel`'s existing meaning (an instructor's own credential type, not a grade band). The former global `SkillLevel` master was retired because it was not subject-specific and had no booking, search, pricing, or learning-plan effect. See `docs/archive/reports/academic-master-foundation.md` for historical background only.
 
 Existing related concepts (unchanged, not duplicated):
 
@@ -274,7 +274,7 @@ Existing related concepts (unchanged, not duplicated):
 
 Rules:
 
-- Do not create a second subject/category/level/skill-level table — enhance the existing models instead.
+- Do not create a second subject/category/level table — enhance the existing models instead. Do not restore a global instructor Skill Level field; any future proficiency requirement must be explicitly designed per subject.
 - Grades currently appear in booking flows via `TeacherSubject::grade_from/grade_to`; `AcademicLevel::min_grade/max_grade` is an admin-manageable label over the same numbers, not a replacement.
 - Course/catalog concepts should first check CMS blocks and booking types before adding new tables.
 
@@ -299,4 +299,3 @@ Before creating a migration, answer yes to all:
 7. Are tests planned for the schema behavior?
 
 If any answer is no, do not create the migration.
-

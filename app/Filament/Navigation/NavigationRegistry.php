@@ -51,7 +51,6 @@ use App\Filament\Resources\Academic\CurriculumResource;
 use App\Filament\Resources\Academic\CurriculumVersionResource;
 use App\Filament\Resources\Academic\EducationSystemResource;
 use App\Filament\Resources\Academic\InstructorSubjectTopicResource;
-use App\Filament\Resources\Academic\SkillLevelResource;
 use App\Filament\Resources\Academic\SubjectResource;
 use App\Filament\Resources\Academic\SubjectTopicResource;
 use App\Filament\Resources\ActivityLog\ActivityLogResource;
@@ -220,15 +219,6 @@ final class NavigationRegistry
                 sort: 4,
                 previousGroup: 'Academic',
                 previousLabel: 'Academic Levels',
-            ),
-            SkillLevelResource::class => new NavigationDestination(
-                id: 'academics.skill-levels',
-                label: 'Skill Levels',
-                group: 'Academics',
-                subgroup: null,
-                sort: 5,
-                previousGroup: 'Academic',
-                previousLabel: 'Skill Levels',
             ),
             // Canonical entry (also contextually relevant to People →
             // Instructors — cross-linked from there, not duplicated).

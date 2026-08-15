@@ -19,7 +19,6 @@ class AcademicPermissionSeeder extends Seeder
         'Subject',
         'SubjectTopic',
         'AcademicLevel',
-        'SkillLevel',
         'InstructorSubjectTopic',
         'Curriculum',
         'CurriculumVersion',

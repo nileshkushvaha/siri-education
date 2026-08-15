@@ -50,7 +50,6 @@ These concepts have distinct jobs:
 
 - **Academic Level** is a broad, reusable band such as Primary School, Middle School, or Higher Secondary. It supports curriculum ownership, reporting, goals, and internal grade matching.
 - An **Education System level** is the exact choice a student sees inside an education system, such as CBSE Class 10 or US Grade 10. It is configured inside the Education System screen, not as a separate sidebar menu.
-- **Skill Level** is optional proficiency vocabulary such as Beginner, Intermediate, or Advanced. It is not a replacement for a school grade.
 - A **Subject Topic** is a reusable topic such as Algebra. A curriculum version may organize that topic into modules without creating a duplicate topic master.
 
 ### How this reaches users
@@ -70,15 +69,14 @@ Complete only the parts your launch offering needs.
 2. **Subjects** — add the subjects offered and configure country availability where applicable.
 3. **Subject Topics** — add topics only when topic-level discovery or instructor matching is needed.
 4. **Academic Levels** — create broad internal bands and normalized grade ranges.
-5. **Skill Levels** — add these only for proficiency-based subjects.
-6. **Curricula** — create a curriculum for each required subject and broad academic level.
-7. **Curriculum Versions** — prepare modules and topics, then publish the approved version.
-8. **Education Systems** — add systems, map countries, broad levels, exact student-facing levels, and curricula.
-9. **Instructor Topic Coverage** — approve instructors for specific topics where topic-level matching is used.
-10. **Learning Goals and Learning Plans** — use after students begin their learning journey.
-11. **Package Offers** — define reusable lesson quantities only if packages are enabled.
-12. **Instructor Package Proposals** — review proposals submitted by instructors.
-13. **Student Package Purchases and Entitlements** — monitor system-created payment and lesson-balance records; do not create them manually.
+5. **Curricula** — create a curriculum for each required subject and broad academic level.
+6. **Curriculum Versions** — prepare modules and topics, then publish the approved version.
+7. **Education Systems** — add systems, map countries, broad levels, exact student-facing levels, and curricula.
+8. **Instructor Topic Coverage** — approve instructors for specific topics where topic-level matching is used.
+9. **Learning Goals and Learning Plans** — use after students begin their learning journey.
+10. **Package Offers** — define reusable lesson quantities only if packages are enabled.
+11. **Instructor Package Proposals** — review proposals submitted by instructors.
+12. **Student Package Purchases and Entitlements** — monitor system-created payment and lesson-balance records; do not create them manually.
 
 Before activating a new option, check the complete path. For example, publishing a curriculum alone does not make it selectable for a student: its subject and level must be active, and the curriculum must be mapped to an education system available in the student's country.
 
@@ -120,16 +118,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Curricula, student learning goals/plans, instructor topic coverage, education-system mappings, and numeric grade matching.
 - **Instructor/student impact:** Students use these levels in learning goals and legacy flows, but in country-aware booking they select an exact Education System level such as “Class 10,” not the broad band itself.
 
-### 5. Skill Levels
-
-- **Purpose:** Provides optional proficiency labels such as Beginner, Intermediate, Advanced, or Fluent.
-- **Managed by:** Admin; instructors select configured values during profile/onboarding workflows.
-- **Use it when:** Ability is better described by proficiency than by a school year, especially languages, programming, music, or professional learning.
-- **Requires:** No category or subject dependency in the current master-data model.
-- **Affects:** Instructor profile/onboarding proficiency data.
-- **Instructor/student impact:** Helps describe instructor capability. It is currently not a primary booking or marketplace-matching key, so do not create a large list unless the profile workflow needs it.
-
-### 6. Instructor Topic Coverage
+### 5. Instructor Topic Coverage
 
 - **Purpose:** Records that a specific instructor can teach a specific topic, optionally limited to an Academic Level.
 - **Managed by:** Admin in the current implementation; instructor self-service topic assignment is not currently provided.
@@ -138,7 +127,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Marketplace topic filters, instructor profile topic labels, and topic-level booking eligibility.
 - **Instructor/student impact:** Approved coverage makes that topic visible for the instructor. It does not set prices and does not replace the instructor's normal subject assignment.
 
-### 7. Curricula
+### 6. Curricula
 
 - **Purpose:** Defines the stable identity of a structured course for one Subject and one broad Academic Level, such as “CBSE Mathematics — Secondary.”
 - **Managed by:** Admin.
@@ -147,7 +136,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Curriculum versions, modules, education-system mappings, academic booking context, instructor curriculum eligibility, and future learning-plan integration.
 - **Instructor/student impact:** A curriculum becomes selectable in country-aware booking only when it is active and mapped to the selected Education System. The curriculum identity remains stable while versions evolve.
 
-### 8. Curriculum Versions
+### 7. Curriculum Versions
 
 - **Purpose:** Preserves revisions of curriculum content without rewriting historical learning records.
 - **Managed by:** Admin through a Curriculum's Versions area. The standalone menu is mainly for browsing and lifecycle management; versions are not created directly there.
@@ -156,7 +145,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Version status and structured curriculum content. Lifecycle moves forward from Draft to Published and later archival/retirement states.
 - **Instructor/student impact:** Draft content is for preparation. Published content is the usable edition; historical records can remain linked to the edition that applied at the time.
 
-### 9. Education Systems
+### 8. Education Systems
 
 - **Purpose:** Configures country-specific academic systems such as CBSE, ICSE, IB, US K–12, GCSE, or AP without hardcoding them in the application.
 - **Managed by:** Admin.
@@ -165,7 +154,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Country-aware booking and academic validation. Each system contains four important mappings: Countries, broad Academic Levels, exact Levels, and Curricula.
 - **Instructor/student impact:** Students see terms configured for that system—Class, Grade, Year, or Level—and only valid mapped choices. Instructor curriculum eligibility is recorded against the education-system and curriculum combination.
 
-### 10. Learning Goals
+### 9. Learning Goals
 
 - **Purpose:** Captures what a student wants to achieve, such as improving algebra, preparing for an exam, or learning conversational English.
 - **Managed by:** Primarily the student in the frontend portal; authorized admins can create and manage goals for support/oversight.
@@ -174,7 +163,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Goal status, priority, target date, and the Learning Plan created from the goal.
 - **Instructor/student impact:** Students can create, edit, complete, and archive their own goals. A goal provides the starting context for an instructor-led plan.
 
-### 11. Learning Plans
+### 10. Learning Plans
 
 - **Purpose:** Turns a goal into a managed, long-term learning journey with a primary instructor, milestones, reviews, assessments, current focus, and progress.
 - **Managed by:** Instructors manage plans assigned to them; students view their plans; authorized admins oversee and use controlled lifecycle actions.
@@ -183,7 +172,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Milestones, assessments, adjustments, progress reviews, plan status, student dashboard progress, instructor teaching queue, and analytics.
 - **Instructor/student impact:** Students see active plans and progress. Instructors maintain academic content and reviews. Completion or archival preserves the history and prevents inappropriate further updates.
 
-### 12. Package Offers
+### 11. Package Offers
 
 - **Purpose:** Defines reusable lesson-quantity templates that instructors may propose, for example 10 paid lessons + 1 bonus lesson.
 - **Managed by:** Admin.
@@ -192,7 +181,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Paid lessons, bonus lessons, total lesson quantity, post-activation validity, and which templates instructors can choose.
 - **Instructor/student impact:** Active offers appear to permitted instructors. The offer does **not** store a fixed selling price; price is calculated from the student's applicable lesson price when the instructor creates a proposal.
 
-### 13. Instructor Package Proposals
+### 12. Instructor Package Proposals
 
 - **Purpose:** Reviews package offers created by instructors for specific students and academic contexts.
 - **Managed by:** Instructor creates/submits in the frontend; authorized admin approves or rejects. Admin may make an audited final-price override with a required reason.
@@ -201,7 +190,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Proposal status, calculated/final price, approval history, and what the student can accept.
 - **Instructor/student impact:** Instructors track their proposals. After approval, the student sees the package and may accept it. Admin does not create proposals from this menu.
 
-### 14. Student Package Entitlements
+### 13. Student Package Entitlements
 
 - **Purpose:** Shows the student's active or historical package lesson balance—how many lessons were granted, reserved, consumed, or remain.
 - **Managed by:** System. Admin has read-only operational visibility.
@@ -210,7 +199,7 @@ Before activating a new option, check the complete path. For example, publishing
 - **Affects:** Whether an eligible booking can use package funding and the remaining lesson balance.
 - **Instructor/student impact:** Students can use qualifying package lessons during booking; instructors can teach funded lessons. No one should manually create, edit, or delete entitlement records from admin.
 
-### 15. Student Package Purchases
+### 14. Student Package Purchases
 
 - **Purpose:** Shows the payment journey for a package the student accepted, including accepted-but-unpaid and settled purchases.
 - **Managed by:** System. Admin has read-only visibility.
@@ -278,7 +267,6 @@ Academic Categories, broad Levels, Curricula, Curriculum Versions, and Education
 ## Menus That Are Mostly System/Advanced Use
 
 - **Curriculum Versions:** advanced content governance. Create versions from the parent Curriculum and publish only after review.
-- **Skill Levels:** optional profile vocabulary; maintain only if the business uses it.
 - **Student Package Entitlements:** system-created, read-only balance records.
 - **Student Package Purchases:** system-created, read-only payment-progress records.
 - **Education System mappings:** powerful master configuration that can remove choices from booking if changed incorrectly.
@@ -288,7 +276,6 @@ Academic Categories, broad Levels, Curricula, Curriculum Versions, and Education
 
 - Prefer **inactive/archive** over deletion so bookings, plans, and reports retain history.
 - Do not create duplicate Subjects or Topics for different countries unless they are genuinely different academic concepts; use country and education-system mappings.
-- Do not use Skill Levels as school grades.
 - Do not create exact Class/Grade/Year choices as broad Academic Levels; add them inside the Education System's **Levels** area.
 - Publish curriculum versions deliberately. Drafts are working copies; historical versions must remain available.
 - Topic coverage and instructor curriculum eligibility are approvals, not pricing controls.

@@ -11,7 +11,6 @@ use App\Models\AcademicLevel;
 use App\Models\Country;
 use App\Models\InstructorDocumentRequirement;
 use App\Models\Language;
-use App\Models\SkillLevel;
 use App\Models\Subject;
 use App\Services\Instructor\InstructorDocumentRequirementService;
 use App\Services\Instructor\InstructorOnboardingService;
@@ -42,9 +41,6 @@ final class OnboardingWizard extends Component
 
     /** @var list<string> */
     public array $academicLevelIds = [];
-
-    /** @var list<string> */
-    public array $skillLevelIds = [];
 
     /** @var list<int|string> */
     public array $teachingLanguageIds = [];
@@ -98,9 +94,6 @@ final class OnboardingWizard extends Component
 
     /** @var list<array{id: string, name: string}> */
     public array $academicLevels = [];
-
-    /** @var list<array{id: string, name: string}> */
-    public array $skillLevels = [];
 
     /** @var list<array{id: int, name: string}> */
     public array $languages = [];
@@ -181,8 +174,6 @@ final class OnboardingWizard extends Component
             'subjectIds.*' => ['string', Rule::in(array_column($this->subjects, 'id'))],
             'academicLevelIds' => ['required', 'array', 'min:1'],
             'academicLevelIds.*' => ['string', Rule::in(array_column($this->academicLevels, 'id'))],
-            'skillLevelIds' => ['array'],
-            'skillLevelIds.*' => ['string', Rule::in(array_column($this->skillLevels, 'id'))],
             'teachingLanguageIds' => ['required', 'array', 'min:1'],
             'teachingLanguageIds.*' => [Rule::in(array_map('strval', array_column($this->languages, 'id')))],
             'countryId' => ['nullable', 'integer', Rule::in(array_column($this->countries, 'id'))],
@@ -192,7 +183,6 @@ final class OnboardingWizard extends Component
         $onboarding->updateProfile(auth()->user(), [
             'subject_ids' => $data['subjectIds'],
             'academic_level_ids' => $data['academicLevelIds'],
-            'skill_level_ids' => $data['skillLevelIds'] ?? [],
             'teaching_language_ids' => $data['teachingLanguageIds'],
             'country_id' => $data['countryId'],
             'timezone' => $data['timezone'],
@@ -388,7 +378,6 @@ final class OnboardingWizard extends Component
         ];
         $this->subjectIds = $user->teacherSubjects->pluck('subject_id')->filter()->map(fn ($id): string => (string) $id)->values()->all();
         $this->academicLevelIds = array_values(array_filter($profile?->instructor_academic_level_ids ?? []));
-        $this->skillLevelIds = array_values(array_filter($profile?->instructor_skill_level_ids ?? []));
         $this->teachingLanguageIds = array_map('strval', array_values(array_filter($profile?->instructor_teaching_language_ids ?? [])));
         $this->countryId = $profile?->country_id;
         $this->timezone = $profile?->timezone;
@@ -401,9 +390,6 @@ final class OnboardingWizard extends Component
             ->all();
         $this->academicLevels = AcademicLevel::query()->availableForAssignment()->orderBy('display_order')->orderBy('name')->get(['id', 'name'])
             ->map(fn (AcademicLevel $level): array => ['id' => (string) $level->id, 'name' => $level->name])
-            ->all();
-        $this->skillLevels = SkillLevel::query()->active()->orderBy('display_order')->orderBy('name')->get(['id', 'name'])
-            ->map(fn (SkillLevel $level): array => ['id' => (string) $level->id, 'name' => $level->name])
             ->all();
         $this->languages = Language::query()->active()->orderBy('name')->get(['id', 'name'])
             ->map(fn (Language $language): array => ['id' => $language->id, 'name' => $language->name])

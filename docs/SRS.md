@@ -4853,7 +4853,6 @@ This module includes:
 - Subject Categories
 - Subjects
 - Education Levels
-- Skill Levels
 - Topics
 - Subtopics
 - Learning Outcomes
@@ -5021,31 +5020,11 @@ Education Levels influence:
 - Homework complexity.
 - Learning plans.
 
-# **4.8 Skill Levels**
+# **4.8 Skill Levels (Retired)**
 
-Some subjects require skill-based progression rather than formal education levels.
+**Product decision — 2026-08-15:** The standalone global Skill Level master and instructor onboarding selection were retired. The implementation was not connected to subjects and affected no booking, search, pricing, curriculum, or learning-plan behavior, while Academic Levels and Instructor Topic Coverage already express the operational teaching scope.
 
-Examples:
-
-Programming
-
-- Beginner
-- Intermediate
-- Advanced
-
-English
-
-- Basic
-- Intermediate
-- Fluent
-
-Music
-
-- Beginner
-- Grade 1-8
-- Professional
-
-Skill Levels are optional and configurable.
+If proficiency progression becomes a future requirement, it must be designed as a subject-specific capability and approved as a new requirement rather than restoring a global instructor label.
 
 # **4.9 Curriculum**
 
@@ -5233,7 +5212,6 @@ An instructor may teach:
 
 - Multiple Subjects
 - Multiple Education Levels
-- Multiple Skill Levels
 - Multiple Teaching Languages
 
 Instructor profiles should never define custom academic structures outside the approved framework.
@@ -5268,9 +5246,9 @@ The system shall allow administrators to create, update, archive, and manage Sub
 
 The system shall allow administrators to manage Education Levels independently of Subjects.
 
-### **4 - Skill Level Management**
+### **4 - Skill Level Management (Retired)**
 
-The system shall support optional Skill Levels for applicable subjects.
+Retired by the 2026-08-15 product simplification decision documented in section 4.8.
 
 ### **5 - Curriculum Management**
 
@@ -7586,7 +7564,7 @@ The system shall display approved professional information from the instructor's
 
 ### **3 - Academic Framework Integration**
 
-Subjects, education levels, skill levels, and teaching languages displayed on public profiles shall reference the centralized Academic Framework.
+Subjects, education levels, and teaching languages displayed on public profiles shall reference the centralized Academic Framework.
 
 ### **4 - Trust Indicators**
 
@@ -19605,7 +19583,6 @@ Academic settings control learning-related defaults.
 Settings may include:
 
 - Supported education levels
-- Supported skill levels
 - Default curriculum version behavior
 - Learning Plan review frequency
 - Homework due reminder timing
@@ -29182,7 +29159,7 @@ Covers instructor application, profile, KYC, approval, expertise, availability r
 
 ### **Chapter 4 - Academic Framework & Curriculum Management**
 
-Covers academic categories, subjects, education levels, skill levels, curriculum, modules, topics, subtopics, and outcomes.
+Covers academic categories, subjects, education levels, curriculum, modules, topics, subtopics, and outcomes.
 
 ### **Chapter 5 - Curriculum, Learning Roadmaps & Competency Management**
 

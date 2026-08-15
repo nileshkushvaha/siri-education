@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\Academic\Pages;
 
 use App\Filament\Resources\Academic\AcademicLevelResource;
-use App\Filament\Resources\Academic\SkillLevelResource;
-use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -14,13 +12,12 @@ class ListAcademicLevels extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Academic levels are broad education stages. Use Skill Levels only for proficiency labels such as Beginner or Advanced.';
+        return 'Manage the education stages and grade ranges instructors can teach and students can study.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('skillLevels')->label('Skill Levels')->url(SkillLevelResource::getUrl())->visible(SkillLevelResource::canViewAny()),
             CreateAction::make(),
         ];
     }

@@ -7,7 +7,6 @@ namespace App\Services\Instructor;
 use App\Enums\InstructorStatus;
 use App\Models\AcademicLevel;
 use App\Models\Language;
-use App\Models\SkillLevel;
 use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserEducation;
@@ -102,7 +101,6 @@ final class InstructorOnboardingService
                 'instructor_teaching_experience_summary' => $data['teaching_experience_summary'] ?? $profile->instructor_teaching_experience_summary,
                 'instructor_teaching_philosophy' => $data['teaching_philosophy'] ?? $profile->instructor_teaching_philosophy,
                 'instructor_academic_level_ids' => $this->validAcademicLevelIds($data['academic_level_ids'] ?? $profile->instructor_academic_level_ids ?? []),
-                'instructor_skill_level_ids' => $this->validSkillLevelIds($data['skill_level_ids'] ?? $profile->instructor_skill_level_ids ?? []),
                 'instructor_teaching_language_ids' => $this->validLanguageIds($data['teaching_language_ids'] ?? $profile->instructor_teaching_language_ids ?? []),
                 'country_id' => $data['country_id'] ?? $profile->country_id,
                 'timezone' => $data['timezone'] ?? $profile->timezone,
@@ -596,16 +594,6 @@ final class InstructorOnboardingService
             ->whereIn('id', array_values(array_filter($ids)))
             ->pluck('id')
             ->map(fn (int $id): string => (string) $id)
-            ->values()
-            ->all();
-    }
-
-    private function validSkillLevelIds(array $ids): array
-    {
-        return SkillLevel::query()
-            ->active()
-            ->whereIn('id', array_values(array_filter($ids)))
-            ->pluck('id')
             ->values()
             ->all();
     }

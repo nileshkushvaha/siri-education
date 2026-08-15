@@ -13,8 +13,8 @@ touching pricing, payment, meeting, or wallet logic.
 - `academic_levels`: flat, admin-managed named grade bands with
   `min_grade`/`max_grade` bridging to the universal 1–12 grade ints —
   **not** country-specific.
-- `skill_levels`: standalone; used only in instructor onboarding, not
-  in booking or search.
+- `skill_levels`: formerly standalone and used only in instructor onboarding;
+  retired on 2026-08-15 because it was not subject-specific and had no booking or search effect.
 - `teacher_subjects`: the booking-flow source of truth — free-text
   `subject` slug + optional `subject_id` reconciliation link + a grade
   range. All matching (`TeacherCandidateRepository`) queries the slug +
@@ -118,7 +118,7 @@ resolution order — documented here as future work, not built.
 ## Admin menu (Academic group)
 
 Academic Categories · Subjects (+topics count) · **Subject Topics** ·
-Academic Levels (+education-system country) · Skill Levels ·
+Academic Levels (+education-system country) ·
 **Instructor Topic Coverage**. Permissions follow the existing
 Shield-style `AcademicPermissionSeeder` (two new modules:
 `SubjectTopic`, `InstructorSubjectTopic`; force-delete stays

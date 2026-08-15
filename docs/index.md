@@ -93,6 +93,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 
 | Topic | File |
 |---|---|
+| Client guide to the Academics sidebar, setup order, and user impact | `ACADEMICS_MENU_GUIDE.md` |
 | Software Requirements Specification | `SRS.md` |
 | SRS compliance audit (dated snapshot — see the file's own header before trusting a specific finding) | `SRS_Compliance_Audit.md` |
 | Roadmap — what's built vs. planned | `Roadmap.md` |

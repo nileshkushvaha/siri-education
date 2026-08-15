@@ -20,6 +20,67 @@ enum BookingPaymentReconciliationIssueType: string
     case WalletCreditFailed = 'wallet_credit_failed';
     case RefundStatusMismatch = 'refund_status_mismatch';
 
+    /**
+     * Can the current architecture actually produce this incident?
+     *
+     * The queue used to advertise all twelve cases in its filter while
+     * only two had a producer, so an operator could filter for states
+     * the platform is incapable of generating and conclude, wrongly,
+     * that nothing was wrong.
+     *
+     * Cases marked false are retained rather than deleted: rows may
+     * exist in production that this environment cannot see, and a
+     * removed case would make them impossible to hydrate. They stay
+     * readable and stay out of the active filter vocabulary.
+     */
+    public function isLive(): bool
+    {
+        return match ($this) {
+            // Verified provider outcome the platform could not trust.
+            self::UnknownPaymentOutcome,
+            self::ProviderUnavailable,
+            self::AmountMismatch,
+            self::CurrencyMismatch,
+            self::StaleProcessing,
+            // Money is ours, the customer has nothing.
+            self::ProviderSuccessLocalIncomplete,
+            self::LateSuccessResolutionFailed,
+            self::WalletCreditFailed => true,
+
+            // Structurally unsupported: the issue table requires a
+            // booking_payment_id (NOT NULL + FK), so a provider
+            // reference that matches no BookingPayment has nothing to
+            // attach to. Belongs to a future provider-level unmatched
+            // payment queue, not this one.
+            self::UnknownPaymentReference,
+
+            // Already owned by database uniqueness on provider_order_id,
+            // provider_payment_id and idempotency_key. Runtime detection
+            // would duplicate an invariant the schema enforces.
+            self::DuplicateProviderReference,
+
+            // Unobservable: reconciliationDue() deliberately excludes
+            // Captured, so no path re-polls settled money. Making it
+            // observable would mean re-verifying captured payments and
+            // acting on a single contrary provider response — a
+            // financial reversal that needs far stronger evidence and an
+            // approved policy.
+            self::LocalSuccessProviderMismatch,
+
+            // Provider refunds are synchronous (refundViaProvider):
+            // success writes the resolution, failure clears the claim and
+            // throws. Nothing polls a refund afterwards, so local and
+            // provider refund state never drift apart to be compared.
+            self::RefundStatusMismatch => false,
+        };
+    }
+
+    /** Types the operator filter offers — never a state the platform cannot generate. */
+    public static function live(): array
+    {
+        return array_values(array_filter(self::cases(), static fn (self $type): bool => $type->isLive()));
+    }
+
     public function label(): string
     {
         return match ($this) {

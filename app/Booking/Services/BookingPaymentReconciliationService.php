@@ -17,6 +17,7 @@ use App\Models\BookingPaymentReconciliationIssue;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Settings\PaymentGatewaySettings;
+use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -42,6 +43,13 @@ final class BookingPaymentReconciliationService implements BookingPaymentReconci
         private readonly AuditTrailService $audit,
     ) {}
 
+    /**
+     * How many reconciliation windows an attempt may be ignored for
+     * before it stops being "in flight" and becomes operator-visible.
+     * Derived from the existing sweep cadence, never a second timeout.
+     */
+    private const int STALE_WINDOW_MULTIPLIER = 6;
+
     public function reconcileDue(int $limit = 200): int
     {
         if (! $this->settings->booking_payment_reconciliation_enabled) {
@@ -60,7 +68,7 @@ final class BookingPaymentReconciliationService implements BookingPaymentReconci
         $examined = 0;
 
         foreach ($payments as $payment) {
-            $this->reconcileOne($payment);
+            $this->reconcileOne($payment, $cutoff);
             $examined++;
         }
 
@@ -74,8 +82,10 @@ final class BookingPaymentReconciliationService implements BookingPaymentReconci
         return BookingPayment::query()->whereKey($payment->id)->firstOrFail();
     }
 
-    private function reconcileOne(BookingPayment $payment): void
+    private function reconcileOne(BookingPayment $payment, ?CarbonInterface $cutoff = null): void
     {
+        $cutoff ??= now()->subMinutes(max(1, $this->settings->booking_payment_unknown_timeout_minutes));
+
         if ($payment->provider_order_id === null) {
             $payment->forceFill(['last_synced_at' => now()])->save();
 
@@ -109,6 +119,70 @@ final class BookingPaymentReconciliationService implements BookingPaymentReconci
 
         if ($updated->status === BookingPaymentRecordStatus::Unknown && ! $wasUnknown) {
             $this->raiseIssue($payment, BookingPaymentReconciliationIssueType::UnknownPaymentOutcome, BookingPaymentReconciliationSeverity::Warning, 'Reconciliation could not confirm the provider outcome.');
+        }
+
+        $this->detectStaleProcessing($updated, $cutoff);
+        $this->resolveRecoveredIssues($updated, $before);
+    }
+
+    /**
+     * An attempt the provider keeps declining to resolve.
+     *
+     * The provider is reachable and answering — it simply will not call
+     * this settled — so the sweep would otherwise poll it forever with
+     * nobody watching. Mirrors the package flow's StaleProcessing, and
+     * uses the SAME threshold the sweep already runs on
+     * (`booking_payment_unknown_timeout_minutes`) rather than inventing
+     * a second unrelated timeout: an attempt is stale once it has been
+     * ignored for several of its own reconciliation windows.
+     *
+     * Makes an incident. Never fails the payment: we do not know the
+     * money is gone, only that the provider will not say.
+     */
+    private function detectStaleProcessing(BookingPayment $payment, CarbonInterface $cutoff): void
+    {
+        if ($payment->status !== BookingPaymentRecordStatus::Processing) {
+            return;
+        }
+
+        $staleAfter = $cutoff->copy()->subMinutes(
+            max(1, $this->settings->booking_payment_unknown_timeout_minutes) * self::STALE_WINDOW_MULTIPLIER,
+        );
+
+        if ($payment->created_at !== null && $payment->created_at->lt($staleAfter)) {
+            $this->raiseIssue(
+                $payment,
+                BookingPaymentReconciliationIssueType::StaleProcessing,
+                BookingPaymentReconciliationSeverity::Warning,
+                'This payment has been awaiting a provider outcome far longer than expected.',
+            );
+        }
+    }
+
+    /**
+     * Closes incidents a later pass has genuinely disproved, so the queue
+     * only ever shows problems that are still real.
+     *
+     * Deliberately narrow. ProviderUnavailable and StaleProcessing are
+     * statements about our ABILITY to learn the outcome, so any definite
+     * outcome clears them. AmountMismatch, CurrencyMismatch,
+     * ProviderSuccessLocalIncomplete, WalletCreditFailed and
+     * LateSuccessResolutionFailed are statements about MONEY, and are
+     * never auto-closed — a replayed webhook or a fresh poll does not
+     * put a student's money where it belongs. Those stay open until an
+     * operator closes them.
+     */
+    private function resolveRecoveredIssues(BookingPayment $payment, BookingPaymentRecordStatus $before): void
+    {
+        if ($payment->status === $before || ! $payment->status->isTerminal()) {
+            return;
+        }
+
+        foreach ([
+            BookingPaymentReconciliationIssueType::ProviderUnavailable,
+            BookingPaymentReconciliationIssueType::StaleProcessing,
+        ] as $type) {
+            $this->resolveOpenIssues($payment, $type, 'auto_reconciled', 'The provider returned a definitive outcome on a later pass.');
         }
     }
 

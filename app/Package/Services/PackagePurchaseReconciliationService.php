@@ -19,7 +19,6 @@ use App\Payments\Services\PaymentService;
 use App\Services\AuditTrailService;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
-use Carbon\CarbonImmutable;
 
 /**
  * Phase 4B.3 — the safety net behind the webhook.
@@ -238,15 +237,9 @@ final class PackagePurchaseReconciliationService
         if ($payment->provider_order_id === null) {
             // Only once a claim was actually made — an attempt still
             // awaiting its first initialization is not stuck, it is new.
-            //
-            // Parsed defensively: unlike every sibling `*_at` column on
-            // Payment, `initialization_claimed_at` carries no cast, so it
-            // arrives from the database as a plain string. Casting it on
-            // the model would be the tidier fix but reaches into the
-            // checkout path this phase must not disturb.
             $claimedAt = $payment->initialization_claimed_at;
 
-            if ($claimedAt !== null && CarbonImmutable::parse($claimedAt)->lt($threshold)) {
+            if ($claimedAt !== null && $claimedAt->lt($threshold)) {
                 $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::MissingProviderReference);
             }
 

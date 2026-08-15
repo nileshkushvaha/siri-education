@@ -90,7 +90,14 @@ class BookingPaymentReconciliationIssuesTable
                         ->mapWithKeys(fn (BookingPaymentReconciliationSeverity $s) => [$s->value => $s->label()])
                         ->toArray()),
                 SelectFilter::make('type')
-                    ->options(collect(BookingPaymentReconciliationIssueType::cases())
+                    // Only types the platform can actually generate. The
+                    // filter previously offered all twelve while only two
+                    // had a producer, so an operator could search for a
+                    // state that cannot exist and read the empty result as
+                    // reassurance. Dormant cases remain hydratable for any
+                    // historical row — they are simply not offered as
+                    // something to look for.
+                    ->options(collect(BookingPaymentReconciliationIssueType::live())
                         ->mapWithKeys(fn (BookingPaymentReconciliationIssueType $t) => [$t->value => $t->label()])
                         ->toArray()),
             ])

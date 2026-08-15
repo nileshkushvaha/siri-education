@@ -73,6 +73,11 @@ class Payment extends Model
             'paid_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
             'last_synced_at' => 'immutable_datetime',
+            // Cast, but deliberately NOT fillable: the initialization
+            // claim is an atomic conditional UPDATE, never a mass
+            // assignment. Without the cast it hydrated as a raw string
+            // while every sibling timestamp came back as Carbon.
+            'initialization_claimed_at' => 'immutable_datetime',
         ];
     }
 

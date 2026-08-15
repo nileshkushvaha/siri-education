@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Payments;
 
 use App\Booking\Contracts\BookingPaymentServiceInterface;
+use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\Enums\BookingPaymentReconciliationIssueType;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -209,6 +211,19 @@ class PaymentOperationalSafetyTest extends TestCase
 
     // ── PAY-AUD-005 · booking reconciliation verifies the money ─────────
 
+    /** A BookingPayment whose booking genuinely awaits it, so markPaid() reaches settlement rather than the benign-race branch. */
+    private function settleableBookingPayment(): BookingPayment
+    {
+        $payment = $this->bookingPayment();
+
+        $payment->booking()->update([
+            'payment_reference' => $payment->idempotency_key,
+            'payment_status' => BookingPaymentStatus::Pending,
+        ]);
+
+        return $payment->refresh();
+    }
+
     private function bookingPayment(array $overrides = []): BookingPayment
     {
         return BookingPayment::factory()->create([
@@ -346,8 +361,97 @@ class PaymentOperationalSafetyTest extends TestCase
         $service->applyProviderStatus($payment, $result);
         $service->applyProviderStatus($payment->refresh(), $result);
 
-        // ResolutionRequired is terminal, so the second pass is a no-op
-        // rather than a second incident.
+        // ResolutionRequired is deliberately NOT terminal (the sweep
+        // re-polls it, so a provider that later corrects itself can still
+        // recover). The second pass therefore re-detects the same
+        // mismatch and the issue service folds it into the existing open
+        // incident rather than opening a new one.
         $this->assertCount(1, BookingPaymentReconciliationIssue::query()->where('booking_payment_id', $payment->id)->get());
+    }
+
+    // ── PAY-2 · the three newly-activated Booking producers ─────────────
+
+    public function test_provider_confirmed_but_local_settlement_broken_becomes_an_incident(): void
+    {
+        // The Booking analogue of the package flow's SettlementFailed.
+        // Reachable because applyProviderStatus() commits the
+        // BookingPayment as Captured BEFORE calling markPaid(), and only
+        // BookingException is treated as a benign race — anything else
+        // leaves the money ours and the booking unsettled.
+        $payment = $this->settleableBookingPayment();
+
+        // `find()` must still succeed — the failure has to happen INSIDE
+        // markPaid(), after the BookingPayment row is already committed
+        // as Captured. Decorating the real repository keeps every other
+        // call intact.
+        $real = app(BookingRepositoryInterface::class);
+        $bookings = Mockery::mock(BookingRepositoryInterface::class);
+        $bookings->shouldReceive('find')->andReturnUsing(fn (string $id) => $real->find($id));
+        $bookings->shouldReceive('updatePaymentStatus')->andThrow(new RuntimeException('settlement exploded'));
+        $this->app->instance(BookingRepositoryInterface::class, $bookings);
+
+        app(BookingPaymentServiceInterface::class)->applyProviderStatus(
+            $payment,
+            new PaymentStatusResult(
+                recordStatus: BookingPaymentRecordStatus::Captured,
+                providerPaymentId: 'py_ok',
+                providerStatus: 'succeeded',
+                safeReason: null,
+                verifiedAmountMinor: $payment->amount_minor,
+                verifiedCurrency: $payment->currency_code,
+            ),
+        );
+
+        $issue = BookingPaymentReconciliationIssue::query()->where('booking_payment_id', $payment->id)->sole();
+        $this->assertSame(BookingPaymentReconciliationIssueType::ProviderSuccessLocalIncomplete, $issue->type);
+    }
+
+    public function test_money_incidents_are_never_auto_resolved_by_a_later_pass(): void
+    {
+        // A replayed webhook or a fresh poll does not put a student's
+        // money where it belongs. Only ability-to-verify incidents clear
+        // themselves; money incidents wait for a human.
+        foreach ([
+            BookingPaymentReconciliationIssueType::AmountMismatch,
+            BookingPaymentReconciliationIssueType::CurrencyMismatch,
+            BookingPaymentReconciliationIssueType::WalletCreditFailed,
+            BookingPaymentReconciliationIssueType::LateSuccessResolutionFailed,
+            BookingPaymentReconciliationIssueType::ProviderSuccessLocalIncomplete,
+        ] as $type) {
+            $this->assertTrue($type->isLive());
+        }
+
+        $service = (string) file_get_contents(base_path('app/Booking/Services/BookingPaymentReconciliationService.php'));
+        $autoResolved = substr($service, strpos($service, 'resolveRecoveredIssues'));
+
+        foreach (['AmountMismatch', 'CurrencyMismatch', 'WalletCreditFailed', 'ProviderSuccessLocalIncomplete'] as $name) {
+            $this->assertStringNotContainsString(
+                'IssueType::'.$name,
+                substr($autoResolved, 0, 1200),
+                "{$name} must not be auto-resolved — money incidents need an operator.",
+            );
+        }
+    }
+
+    public function test_raising_an_incident_never_blocks_the_financial_path(): void
+    {
+        // An incident is a notification about a financial state, never a
+        // reason to abort the path that produced it.
+        $payment = $this->bookingPayment();
+
+        $updated = app(BookingPaymentServiceInterface::class)->applyProviderStatus(
+            $payment,
+            new PaymentStatusResult(
+                recordStatus: BookingPaymentRecordStatus::Captured,
+                providerPaymentId: 'py_x',
+                providerStatus: 'succeeded',
+                safeReason: null,
+                verifiedAmountMinor: 1,
+                verifiedCurrency: 'USD',
+            ),
+        );
+
+        // Mismatch refused and recorded — no exception escaped.
+        $this->assertSame(BookingPaymentRecordStatus::ResolutionRequired, $updated->status);
     }
 }

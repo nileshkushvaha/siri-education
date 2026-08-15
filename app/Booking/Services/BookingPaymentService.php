@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Provider-agnostic payment workflow + booking/payment status sync:
@@ -433,6 +434,23 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 $this->markPaid($booking, $payment->idempotency_key);
             } catch (BookingException) {
                 // Already settled by a concurrent webhook — no-op.
+            } catch (Throwable $e) {
+                // The BookingPayment row above is already committed as
+                // Captured, so at this point the provider's money is ours
+                // and the booking is NOT financially settled. Anything
+                // other than a BookingException means local settlement
+                // genuinely broke rather than losing a benign race.
+                //
+                // Swallowed on purpose: rethrowing would abort the sweep
+                // and leave the state invisible anyway. It becomes an
+                // operator incident instead — the Booking-side analogue
+                // of the package flow's SettlementFailed.
+                $this->raiseCollectionIssue(
+                    $payment,
+                    BookingPaymentReconciliationIssueType::ProviderSuccessLocalIncomplete,
+                    BookingPaymentReconciliationSeverity::Critical,
+                    'The provider confirmed this payment but the booking could not be settled: '.$e->getMessage(),
+                );
             }
         } elseif ($booking !== null && $status->recordStatus === BookingPaymentRecordStatus::Failed) {
             try {
@@ -443,6 +461,32 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         }
 
         return BookingPayment::query()->whereKey($payment->id)->firstOrFail();
+    }
+
+    /**
+     * Raises a Booking collection incident without taking a constructor
+     * dependency on the reconciliation service — which already depends on
+     * THIS service, so injecting it would close a cycle.
+     *
+     * Deliberately swallows its own failures: an incident is a
+     * notification about a financial state, never a reason to abort the
+     * financial path that produced it. Losing the incident is bad;
+     * rolling back a settled payment because we could not file paperwork
+     * would be far worse.
+     */
+    private function raiseCollectionIssue(
+        BookingPayment $payment,
+        BookingPaymentReconciliationIssueType $type,
+        BookingPaymentReconciliationSeverity $severity,
+        string $safeSummary,
+    ): void {
+        try {
+            app(BookingPaymentReconciliationServiceInterface::class)->raiseIssue($payment, $type, $severity, $safeSummary);
+        } catch (Throwable $e) {
+            // Intentionally ignored — see the docblock above. Logged so a
+            // swallowed incident is still traceable rather than silent.
+            report($e);
+        }
     }
 
     /**
@@ -486,7 +530,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             'last_synced_at' => now(),
         ])->save();
 
-        app(BookingPaymentReconciliationServiceInterface::class)->raiseIssue(
+        $this->raiseCollectionIssue(
             $payment,
             $currencyMismatched
                 ? BookingPaymentReconciliationIssueType::CurrencyMismatch
@@ -542,6 +586,20 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             // resolution tag here, so it is never overwritten below.
             $credited = $student !== null && $this->tryCreditWalletForRefund($booking, $payment, $student);
             $decisionMeta = $decision?->toMeta() ?? [];
+
+            if (! $credited && $student !== null) {
+                // The platform owes this student their money back and the
+                // automatic route failed. A guest booking with no account
+                // is deliberately excluded — there is no wallet to credit,
+                // which is a product limitation resolved through
+                // refundViaProvider(), not a system failure to page on.
+                $this->raiseCollectionIssue(
+                    $payment,
+                    BookingPaymentReconciliationIssueType::WalletCreditFailed,
+                    BookingPaymentReconciliationSeverity::Critical,
+                    'A cancellation refund was approved but the wallet credit failed; the student is owed money.',
+                );
+            }
 
             $payment->forceFill([
                 'metadata' => $credited
@@ -614,7 +672,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 sourceType: BookingPayment::class,
                 sourceId: (string) $payment->id,
             );
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
 
@@ -648,7 +706,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
 
         try {
             $this->provider()->refund($booking);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // The claim already committed — clear it so a retry (or the
             // wallet-credit path) is not permanently locked out by a
             // provider call that never actually moved money.
@@ -867,6 +925,17 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 return $booking;
             }
 
+            // The charge is real, the booking is dead, and the money
+            // could not be moved to the student's wallet. Previously
+            // this was a metadata flag and an audit line — true, but
+            // nothing anybody watches. It is a held-money incident.
+            $this->raiseCollectionIssue(
+                $payment,
+                BookingPaymentReconciliationIssueType::LateSuccessResolutionFailed,
+                BookingPaymentReconciliationSeverity::Critical,
+                'A payment arrived after this booking ended and could not be credited to the student\'s wallet.',
+            );
+
             $payment->forceFill([
                 'metadata' => [
                     ...($payment->metadata ?? []),
@@ -920,7 +989,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 sourceType: BookingPayment::class,
                 sourceId: (string) $payment->id,
             );
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
 

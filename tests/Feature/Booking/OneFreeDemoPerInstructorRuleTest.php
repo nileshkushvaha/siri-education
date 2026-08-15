@@ -346,7 +346,7 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
             ->call('selectDate', $this->slot(3)->toDateString())
             ->call('selectSlot', $firstStart)
             ->call('submit')
-            ->assertSet('step', 7);
+            ->assertSet('step', 6);
 
         $secondSlot = $this->slot(7);
         $secondStart = $secondSlot->toIso8601String();

@@ -50,26 +50,13 @@ class FeatureSettings extends Settings
     public bool $promotional_credit_enabled;
 
     /**
-     * Phase 3 — master switch for the country-aware Education-System/
-     * Curriculum academic Demo booking flow (CountryFeature::CountryAcademicBooking).
-     * Off by default: enabling requires a country to also have its
-     * Education Systems, Levels, Curricula, Published CurriculumVersions,
-     * and Instructor eligibilities configured first (see
-     * DemoAcademicContextResolver) — flipping this on alone does not
-     * create any reference data.
-     */
-    public bool $country_academic_booking_enabled;
-
-    /**
      * Phase 4D — master switch for the country-aware academic flow on
      * PERSONALIZED PACKAGES (structured instructor proposals and
      * package-funded paid booking), CountryFeature::CountryAcademicPackages.
      *
-     * Separate from country_academic_booking_enabled on purpose: that
-     * switch's feature declares a DemoLessons dependency, so turning
-     * free demos off would otherwise have made every paid package
-     * unbookable. Off by default for the same reason as its demo
-     * sibling — enabling assumes Education Systems, Levels, Curricula,
+     * Separate from DemoLessons on purpose: turning free demos off must
+     * not make every paid package unbookable. Off by default because
+     * enabling assumes Education Systems, Levels, Curricula,
      * Published CurriculumVersions and instructor eligibilities are
      * already configured for the countries concerned.
      */

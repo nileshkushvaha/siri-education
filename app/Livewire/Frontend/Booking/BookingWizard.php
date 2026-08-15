@@ -11,7 +11,6 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
-use App\Booking\Types\FreeDemoType;
 use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\Country;
 use App\Models\EducationSystem;
@@ -46,7 +45,6 @@ final class BookingWizard extends Component
     private const array PHASE_LABELS = [
         'mode' => 'Session type',
         'subject' => 'Subject',
-        'education_system' => 'Education system',
         // 'level' is deliberately absent here — its label is always the
         // selected EducationSystem's configured terminology ("Class" /
         // "Grade" / "Year"), computed dynamically in steps(), never a
@@ -162,16 +160,15 @@ final class BookingWizard extends Component
     #[Locked]
     public ?string $lockedInstructorName = null;
 
-    // ── Phase 3 — country-aware academic Demo booking (§5-§13) ──────────────
+    // ── Country-aware academic lesson booking (§5-§13) ─────────────────────
     //
     // Country is always server-resolved (§6) — #[Locked] rejects any
     // client-submitted override, exactly like $lockedInstructorId. The
     // three flags below are mutually informative, never redundant:
-    // academicFlowActive = "the wizard is walking the System/Level/
-    // Subject/Curriculum chain instead of the legacy free-text
-    // subject/grade phase"; academicFlowBlocked = "feature is in effect
-    // but this student has no usable Country — the whole free_demo mode
-    // is refused, never silently downgraded to legacy" (§6/§10);
+    // academicFlowActive = "the wizard is walking the mandatory
+    // System/Level/Subject/Curriculum chain"; academicFlowBlocked =
+    // "the student cannot enter that chain because they have no usable
+    // Country — the whole free_demo mode is refused" (§6/§10);
     // academicFlowUnavailable = "feature is in effect and Country is
     // fine, but admin configuration for this Country is incomplete
     // (e.g. no Education Systems mapped yet)" — the flow stays active
@@ -307,22 +304,12 @@ final class BookingWizard extends Component
         // Jump ahead exactly as far as valid query params carry us —
         // never further, never guessed from array/DB ordering. A
         // preselected ?subject= is legacy-only (free-text) and never
-        // applies to the academic flow — a country-aware Demo student
-        // always walks the System/Level/Subject/Curriculum chain from
-        // the top, even when arriving via a deep link.
+        // bypasses the country-aware academic selection.
         if ($this->type !== null) {
-            if ($this->type === FreeDemoType::KEY) {
-                $this->initializeAcademicFlow();
+            $this->initializeAcademicFlow();
 
-                if ($this->academicFlowBlocked) {
-                    // Stay on the mode step; banner already set.
-                } elseif ($this->academicFlowActive) {
-                    $this->goToPhase('education_system');
-                } else {
-                    $this->goToPhase($this->subject !== null ? 'grade' : 'subject');
-                }
-            } else {
-                $this->goToPhase($this->subject !== null ? 'grade' : 'subject');
+            if (! $this->academicFlowBlocked && $this->academicFlowActive) {
+                $this->goToPhase('level');
             }
         }
     }
@@ -366,23 +353,17 @@ final class BookingWizard extends Component
         $this->resetAvailability();
         $this->resetAcademicSelection();
 
-        if ($type === FreeDemoType::KEY) {
-            $this->initializeAcademicFlow();
+        $this->initializeAcademicFlow();
 
-            if ($this->academicFlowBlocked) {
-                // Stay on the mode step — banner already carries the
-                // actionable message (§6/§10: never fall back silently).
-                return;
-            }
-
-            if ($this->academicFlowActive) {
-                $this->goToPhase('education_system');
-
-                return;
-            }
+        if ($this->academicFlowBlocked) {
+            // Stay on the mode step — banner already carries the
+            // actionable message (§6/§10: never fall back silently).
+            return;
         }
 
-        $this->goToPhase('subject');
+        if ($this->academicFlowActive) {
+            $this->goToPhase('level');
+        }
     }
 
     public function selectSubject(string $subject): void
@@ -424,7 +405,7 @@ final class BookingWizard extends Component
      * The single student-facing level choice (§12) — replaces the old
      * separate Academic Level + Grade phases entirely. Selecting a
      * level implies both academic_level_id and normalized_grade; a
-     * level with no normalized_grade is currently unsupported for Demo
+     * level with no normalized_grade is currently unsupported for lesson
      * booking (§9 — no invented subject-only fallback) and is refused
      * here with the same message DemoAcademicContextResolver would
      * throw at submit time.
@@ -438,7 +419,7 @@ final class BookingWizard extends Component
         }
 
         if ($selected['normalized_grade'] === null) {
-            $this->banner = 'This level is not currently supported for demo booking. Please select a different level.';
+            $this->banner = 'This level is not currently supported for booking. Please select a different level.';
 
             return;
         }
@@ -489,7 +470,7 @@ final class BookingWizard extends Component
         $this->goToPhase('curriculum');
     }
 
-    /** Finalizes the country-aware academic selection — mirrors what selectGrade() does for the legacy flow. */
+    /** Finalizes the country-aware academic selection. */
     public function selectCurriculum(string $curriculumId): void
     {
         if (! collect($this->curricula)->pluck('id')->contains($curriculumId)) {
@@ -981,9 +962,9 @@ final class BookingWizard extends Component
 
     /**
      * Phase 3 (§5/§6/§13) — the single entry point that decides, for the
-     * current authenticated student, whether Free Demo goes through the
-     * country-aware academic flow, the legacy free-text flow, or must be
-     * blocked outright. Always re-derives the student's Country
+     * current authenticated student. Every lesson booking uses country-aware
+     * academics and is blocked when the student's country is unusable.
+     * Always re-derives the student's Country
      * server-side (never trusts prior component state).
      */
     private function initializeAcademicFlow(): void
@@ -994,28 +975,18 @@ final class BookingWizard extends Component
         $this->studentCountryId = null;
         $this->studentCountryName = null;
 
-        if (! $this->wizard->academicBookingEnabledGlobally()) {
-            return;
-        }
-
         $user = Auth::user();
         $country = $user !== null ? $this->wizard->studentCountry($user) : null;
 
         if ($country === null || $country->status !== 'active') {
             $this->academicFlowBlocked = true;
-            $this->banner = 'Please complete your profile country before booking a demo lesson.';
+            $this->banner = 'Please complete your profile country before booking a lesson.';
 
             return;
         }
 
         $this->studentCountryId = $country->id;
         $this->studentCountryName = $country->name;
-
-        if (! $this->wizard->academicBookingEnabledForCountry($country)) {
-            // Per-country rollout: legacy free-text subject/grade Demo
-            // flow remains unchanged for this student's country.
-            return;
-        }
 
         $this->academicFlowActive = true;
         $this->educationSystems = $this->wizard->educationSystems($country, $this->lockedInstructorId);
@@ -1024,7 +995,14 @@ final class BookingWizard extends Component
             // §13/§25: enabled but not yet configured for this country —
             // never fall back to legacy, show an unavailable state.
             $this->academicFlowUnavailable = true;
+
+            return;
         }
+
+        // Country mapping is authoritative. The first active mapping follows
+        // its configured display order, so students do not need a redundant
+        // education-system step merely to confirm their own country.
+        $this->selectEducationSystem((string) $this->educationSystems[0]['id']);
     }
 
     private function currentCountry(): ?Country
@@ -1249,8 +1227,15 @@ final class BookingWizard extends Component
      */
     private function phases(): array
     {
-        $phases = $this->type === FreeDemoType::KEY && $this->academicFlowActive
-            ? ['mode', 'education_system', 'level', 'academic_subject', 'curriculum']
+        // Until the student chooses a booking type, future steps are not yet
+        // knowable (paid adds scheduling/payment while demo does not). Showing
+        // only the current decision avoids flashing the obsolete legacy path.
+        if ($this->type === null) {
+            return ['mode'];
+        }
+
+        $phases = $this->academicFlowActive
+            ? ['mode', 'level', 'academic_subject', 'curriculum']
             : ['mode', 'subject', 'grade'];
 
         if ($this->isPaidType()) {

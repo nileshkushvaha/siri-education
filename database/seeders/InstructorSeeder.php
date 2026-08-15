@@ -6,27 +6,24 @@ namespace Database\Seeders;
 
 use App\Booking\Enums\Weekday;
 use App\Enums\InstructorStatus;
-use App\Models\Subject;
 use App\Models\TeacherAvailability;
-use App\Models\TeacherSubject;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 
 /**
- * Seeds a handful of approved, publicly bookable instructors so the guest
- * booking wizard (/book) has real subjects and availability to display.
- * Without this, teacher_subjects is empty and the wizard's "Choose a
- * subject" step has nothing to show.
+ * Seeds approved demo instructors and their availability. Academic subject
+ * assignments are owned by InstructorSubjectAssignmentSeeder so the demo
+ * accounts always follow the current catalogue.
  */
 class InstructorSeeder extends Seeder
 {
     private const INSTRUCTORS = [
-        ['name' => 'Alice Turner', 'subjects' => ['Algebra', 'Geometry']],
-        ['name' => 'Marcus Chen', 'subjects' => ['Physics', 'Chemistry']],
-        ['name' => 'Priya Nair', 'subjects' => ['English', 'Creative Writing']],
-        ['name' => 'David Okafor', 'subjects' => ['Programming Fundamentals', 'Web Development']],
-        ['name' => 'Sofia Ramirez', 'subjects' => ['SAT Prep', 'Statistics']],
+        ['name' => 'Alice Turner'],
+        ['name' => 'Marcus Chen'],
+        ['name' => 'Priya Nair'],
+        ['name' => 'David Okafor'],
+        ['name' => 'Sofia Ramirez'],
     ];
 
     public function run(): void
@@ -55,19 +52,6 @@ class InstructorSeeder extends Seeder
                 'instructor_status' => InstructorStatus::Approved,
                 'is_instructor_verified' => true,
             ]);
-
-            foreach ($data['subjects'] as $subjectName) {
-                $subject = Subject::query()->where('name', $subjectName)->first();
-
-                TeacherSubject::query()->firstOrCreate(
-                    ['teacher_id' => $user->id, 'subject' => strtolower($subjectName)],
-                    [
-                        'subject_id' => $subject?->id,
-                        'grade_from' => 1,
-                        'grade_to' => 12,
-                    ],
-                );
-            }
 
             foreach ([Weekday::Monday, Weekday::Tuesday, Weekday::Wednesday, Weekday::Thursday, Weekday::Friday] as $day) {
                 TeacherAvailability::query()->firstOrCreate([

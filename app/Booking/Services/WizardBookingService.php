@@ -44,8 +44,8 @@ use Illuminate\Support\Str;
  * StudentBookingServiceInterface, which always requires an explicit
  * teacher choice.
  *
- * Phase 3: for `free_demo` only, also resolves the country-aware
- * academic context (DemoAcademicContextResolver) BEFORE candidate
+ * Every wizard booking resolves its country-aware academic context
+ * BEFORE candidate
  * selection — so an automatically-assigned teacher is drawn from an
  * already-narrowed eligible SET — and again immediately before
  * CreateBookingData is built, so the persisted snapshot always reflects
@@ -53,14 +53,11 @@ use Illuminate\Support\Str;
  * eligibility, never a value cached earlier in the request/session
  * (§27/§28).
  *
- * Phase 4D extends that same country-aware resolution to `paid_one_to_one`,
- * gated by CountryFeature::CountryAcademicPackages, and adds explicit
- * package funding. Two properties of that extension matter:
+ * Paid booking adds explicit package funding. Two properties of that
+ * extension matter:
  *
- *  - It is ADDITIVE. A paid booking that sends no structured academic
- *    selections resolves no context and behaves exactly as it did
- *    before — ordinary paid booking is untouched, and owning a
- *    compatible package never forces its use (§31).
+ *  - Academic selection is mandatory in the frontend wizard, while owning
+ *    a compatible package never forces the student to spend it (§31).
  *  - Funding is EXPLICIT. `packageEntitlementId` is only ever what the
  *    student deliberately chose; this service never searches for a
  *    package that happens to match. A chosen entitlement is
@@ -431,24 +428,12 @@ final class WizardBookingService implements WizardBookingServiceInterface
             );
         }
 
-        // Phase 4D — a PAID booking resolves an academic context only
-        // when the student is actually taking the country-aware path,
-        // i.e. they sent structured selections. An ordinary paid
-        // booking sends none and continues to behave exactly as before,
-        // with no academic context and no package involvement (§31/§57)
-        // — this is deliberately additive, never a redirection of the
-        // existing paid flow.
-        //
-        // Gated by CountryAcademicPackages rather than the demo flow's
-        // own feature, so a country that has switched off free demos
-        // can still sell and book packages.
-        if ($data->educationSystemId === null && $data->educationSystemLevelId === null && $data->subjectId === null) {
-            return null;
-        }
-
+        // Paid wizard bookings use the same permanent country-aware booking
+        // context as demos. CountryAcademicPackages remains specific to
+        // package proposal/entitlement availability, not lesson taxonomy.
         return $this->academicContextResolver->resolve(
             student: auth()->user(),
-            feature: CountryFeature::CountryAcademicPackages,
+            feature: CountryFeature::CountryAcademicBooking,
             copy: AcademicFlowCopy::forPackageBooking(),
             educationSystemId: $data->educationSystemId,
             educationSystemLevelId: $data->educationSystemLevelId,

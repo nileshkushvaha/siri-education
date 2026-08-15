@@ -176,7 +176,9 @@ class PlatformFoundationSettingsPage extends Page
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(4)->schema([
-                            Toggle::make('demo_lessons_enabled')->label('Demo Lessons'),
+                            Toggle::make('demo_lessons_enabled')
+                                ->label('Demo Lessons')
+                                ->helperText('Free Demo always uses the student’s country-aware academic flow: Class in India, Grade in supported grade-based systems, and Year in year-based systems.'),
                             Toggle::make('wallet_enabled')->label('Wallet'),
                             Toggle::make('referral_enabled')->label('Referral'),
                             Toggle::make('waitlist_enabled')->label('Waitlist'),

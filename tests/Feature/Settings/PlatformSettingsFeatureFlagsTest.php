@@ -46,6 +46,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertTrue($instructor->approval_required);
         $this->assertSame('IN', $localization->default_country);
         $this->assertTrue($features->demo_lessons_enabled);
+        $this->assertFalse(property_exists($features, 'country_academic_booking_enabled'));
         $this->assertFalse($features->wallet_enabled);
         $this->assertFalse($features->referral_enabled);
         $this->assertFalse($features->recording_enabled);

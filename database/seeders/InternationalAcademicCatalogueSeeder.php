@@ -16,12 +16,9 @@ use App\Models\CurriculumVersion;
 use App\Models\EducationSystem;
 use App\Models\EducationSystemAcademicLevel;
 use App\Models\EducationSystemLevel;
-use App\Models\InstructorSubjectTopic;
 use App\Models\PackageBenefitRule;
 use App\Models\Subject;
 use App\Models\SubjectTopic;
-use App\Models\TeacherSubject;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -103,7 +100,6 @@ final class InternationalAcademicCatalogueSeeder extends Seeder
             $systems = $this->seedEducationSystems($levels);
 
             $this->seedCurricula($subjects, $levels, $systems);
-            $this->seedInstructorTopicCoverage($subjects, $levels);
             $this->seedPackageOffers();
         });
 
@@ -277,9 +273,9 @@ final class InternationalAcademicCatalogueSeeder extends Seeder
                     $version = CurriculumVersion::withTrashed()->updateOrCreate(
                         ['curriculum_id' => $curriculum->id, 'version_number' => 1],
                         [
-                            'status' => 'draft',
-                            'notes' => 'Starter version seeded for administrator review. Add modules and publish only after academic validation.',
-                            'published_at' => null,
+                            'status' => 'published',
+                            'notes' => 'Published starter version for the seeded Grade 6-12 booking catalogue.',
+                            'published_at' => now(),
                             'archived_at' => null,
                             'retired_at' => null,
                             'deleted_at' => null,
@@ -303,54 +299,6 @@ final class InternationalAcademicCatalogueSeeder extends Seeder
                 }
             }
         }
-    }
-
-    /**
-     * Seeds approved coverage only where an instructor already has a
-     * TeacherSubject assignment. It never invents instructor expertise.
-     *
-     * @param  array<string, Subject>  $subjects
-     * @param  array<string, AcademicLevel>  $levels
-     */
-    private function seedInstructorTopicCoverage(array $subjects, array $levels): void
-    {
-        $approverId = User::role('super_admin')->value('id');
-
-        TeacherSubject::query()
-            ->whereNotNull('subject_id')
-            ->with('teacher')
-            ->get()
-            ->each(function (TeacherSubject $assignment) use ($subjects, $levels, $approverId): void {
-                $subject = collect($subjects)->firstWhere('id', $assignment->subject_id);
-
-                if ($subject === null || $assignment->teacher === null || ! $assignment->teacher->hasRole('instructor')) {
-                    return;
-                }
-
-                foreach ($subject->topics()->active()->get() as $topicOrder => $topic) {
-                    foreach ($levels as $level) {
-                        if ($assignment->grade_from > $level->max_grade || $assignment->grade_to < $level->min_grade) {
-                            continue;
-                        }
-
-                        InstructorSubjectTopic::query()->updateOrCreate(
-                            [
-                                'teacher_id' => $assignment->teacher_id,
-                                'subject_topic_id' => $topic->id,
-                                'academic_level_id' => $level->id,
-                            ],
-                            [
-                                'subject_id' => $subject->id,
-                                'proficiency_level' => 'proficient',
-                                'is_primary' => $topicOrder === 0,
-                                'is_active' => true,
-                                'approved_at' => now(),
-                                'approved_by' => $approverId,
-                            ],
-                        );
-                    }
-                }
-            });
     }
 
     private function seedPackageOffers(): void

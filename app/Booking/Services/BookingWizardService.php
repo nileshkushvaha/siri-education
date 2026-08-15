@@ -31,6 +31,7 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Package\Services\PackageBookingEntitlementResolver;
 use App\Package\Services\PackageEntitlementService;
+use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -108,20 +109,10 @@ final class BookingWizardService
 
     // ── Phase 3 — country-aware academic progressive loading (§7/§9) ────────
 
-    public function academicBookingEnabledGlobally(): bool
-    {
-        return $this->demoAcademicContext->isEnabledGlobally();
-    }
-
     /** Server-resolved student Country — never trusted from client input (§6). */
     public function studentCountry(User $student): ?Country
     {
         return $this->demoAcademicContext->studentCountry($student);
-    }
-
-    public function academicBookingEnabledForCountry(?Country $country): bool
-    {
-        return $this->demoAcademicContext->isEnabledForCountry($country);
     }
 
     /** @return list<array{id:string,name:string}> */
@@ -358,7 +349,7 @@ final class BookingWizardService
         try {
             return $this->academicContext->resolve(
                 student: $student,
-                feature: CountryFeature::CountryAcademicPackages,
+                feature: CountryFeature::CountryAcademicBooking,
                 copy: AcademicFlowCopy::forPackageBooking(),
                 educationSystemId: $educationSystemId,
                 educationSystemLevelId: $educationSystemLevelId,
@@ -399,6 +390,16 @@ final class BookingWizardService
     public function result(Booking $booking): array
     {
         $booking->loadMissing('type');
+        $amountFormatted = null;
+
+        if ($booking->price !== null && $booking->currency !== null) {
+            $minorUnits = MoneyFormatter::minorUnitsFor($booking->currency);
+            $amountFormatted = MoneyFormatter::format(
+                MoneyFormatter::toMinor((string) $booking->price, $minorUnits),
+                $booking->currency,
+                $minorUnits,
+            );
+        }
 
         return [
             'id' => $booking->id,
@@ -407,6 +408,7 @@ final class BookingWizardService
             'status_label' => $booking->status->label(),
             'requires_payment' => $booking->payment_status->isPayable(),
             'payment_status' => $booking->payment_status->value,
+            'amount_formatted' => $amountFormatted,
             'type' => [
                 'key' => $booking->type->key,
                 'name' => $booking->type->name,

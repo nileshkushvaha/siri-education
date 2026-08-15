@@ -170,8 +170,20 @@ class BookingWizardAcademicFlowTest extends TestCase
     private function enableGlobally(): void
     {
         $settings = app(FeatureSettings::class);
-        $settings->country_academic_booking_enabled = true;
+        $settings->demo_lessons_enabled = true;
         $settings->save();
+    }
+
+    public function test_initial_progress_only_shows_the_session_type_decision(): void
+    {
+        $student = $this->makeStudent(Country::factory()->create());
+
+        $component = Livewire::actingAs($student)
+            ->test('frontend.booking.booking-wizard')
+            ->assertSee('Session type')
+            ->assertDontSee('Choose a grade');
+
+        self::assertSame(['mode'], $component->invade()->phases());
     }
 
     // ── Country resolution / anti-tampering ────────────────────────────────
@@ -187,7 +199,7 @@ class BookingWizardAcademicFlowTest extends TestCase
             ->assertSet('academicFlowBlocked', true)
             ->assertSet('academicFlowActive', false)
             ->assertSet('step', 1)
-            ->assertSet('banner', 'Please complete your profile country before booking a demo lesson.');
+            ->assertSet('banner', 'Please complete your profile country before booking a lesson.');
     }
 
     public function test_configured_country_activates_the_academic_flow_and_exposes_country_name_only(): void
@@ -203,6 +215,33 @@ class BookingWizardAcademicFlowTest extends TestCase
             ->assertSet('studentCountryId', $fixture['country']->id)
             ->assertSet('studentCountryName', $fixture['country']->name)
             ->assertSet('step', 2);
+    }
+
+    public function test_paid_booking_auto_selects_the_country_system_and_uses_its_level_term(): void
+    {
+        BookingType::factory()->paid()->create([
+            'key' => 'paid_one_to_one',
+            'duration_minutes' => 60,
+        ]);
+        $fixture = $this->buildFixture('PaidIndia', levelTerm: 'Class');
+        $student = $this->makeStudent($fixture['country']);
+
+        $component = Livewire::actingAs($student)
+            ->test('frontend.booking.booking-wizard')
+            ->call('selectMode', 'paid_one_to_one')
+            ->assertSet('academicFlowActive', true)
+            ->assertSet('educationSystemId', $fixture['system']->id)
+            ->assertSet('levels', fn (array $levels): bool => collect($levels)->contains('id', $fixture['level']->id));
+
+        self::assertSame(
+            ['mode', 'level', 'academic_subject', 'curriculum', 'billing_mode', 'date', 'time', 'review', 'confirmed'],
+            $component->invade()->phases(),
+        );
+
+        $component
+            ->assertSee('Class')
+            ->assertDontSee('Education system')
+            ->assertDontSee('Choose a grade');
     }
 
     // ── Missing configuration UX (§13/§25) ──────────────────────────────────
@@ -252,7 +291,7 @@ class BookingWizardAcademicFlowTest extends TestCase
 
         // Exactly one level-selection phase exists in the academic flow —
         // no separate Academic Level phase, no separate Grade phase.
-        self::assertSame(['mode', 'education_system', 'level', 'academic_subject', 'curriculum', 'date', 'time', 'review', 'confirmed'], $component->invade()->phases());
+        self::assertSame(['mode', 'level', 'academic_subject', 'curriculum', 'date', 'time', 'review', 'confirmed'], $component->invade()->phases());
 
         $component
             ->assertSet('levels', fn (array $levels): bool => collect($levels)->contains('id', $fixture['level']->id))
@@ -369,7 +408,7 @@ class BookingWizardAcademicFlowTest extends TestCase
             ->call('selectEducationSystem', $system->id)
             ->call('selectLevel', $level->id)
             ->assertSet('educationSystemLevelId', null)
-            ->assertSet('banner', 'This level is not currently supported for demo booking. Please select a different level.');
+            ->assertSet('banner', 'This level is not currently supported for booking. Please select a different level.');
     }
 
     // ── Dynamic terminology (§13/§36) ────────────────────────────────────────
@@ -477,7 +516,7 @@ class BookingWizardAcademicFlowTest extends TestCase
             ->test('frontend.booking.booking-wizard')
             // Crafted call: an id never offered to this locked instructor.
             ->call('selectEducationSystem', $ineligibleFixture['system']->id)
-            ->assertSet('educationSystemId', null);
+            ->assertSet('educationSystemId', $eligibleFixture['system']->id);
     }
 
     public function test_locked_instructor_id_survives_and_final_submit_still_enforces_eligibility(): void

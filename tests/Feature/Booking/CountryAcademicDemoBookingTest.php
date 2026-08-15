@@ -193,20 +193,8 @@ class CountryAcademicDemoBookingTest extends TestCase
     private function enableGlobally(): void
     {
         $settings = app(FeatureSettings::class);
-        $settings->country_academic_booking_enabled = true;
+        $settings->demo_lessons_enabled = true;
         $settings->save();
-    }
-
-    private function disableGlobally(): void
-    {
-        $settings = app(FeatureSettings::class);
-        $settings->country_academic_booking_enabled = false;
-        $settings->save();
-    }
-
-    private function disableForCountry(Country $country): void
-    {
-        $country->update(['feature_flags' => ['country_academic_booking' => false]]);
     }
 
     private function slot(int $daysAhead): CarbonImmutable
@@ -243,19 +231,14 @@ class CountryAcademicDemoBookingTest extends TestCase
 
     // ── A. Feature flag ──────────────────────────────────────────────────
 
-    public function test_flag_disabled_globally_keeps_legacy_demo_working_with_no_snapshot(): void
+    public function test_country_aware_academic_flow_has_no_independent_global_switch(): void
     {
-        $this->disableGlobally();
-        $fixture = $this->buildFixture('Disabled');
-        $instructor = $this->makeInstructor($fixture['subject']);
-        $student = $this->makeStudent($fixture['country']);
+        $s = $this->eligibleScenario('AlwaysCountryAware');
 
-        $this->actingAs($student);
-        $booking = app(WizardBookingServiceInterface::class)->book($this->wizardData([...$fixture, 'student' => $student, 'instructor' => $instructor], 3));
+        $this->actingAs($s['student']);
+        $booking = app(WizardBookingServiceInterface::class)->book($this->wizardData($s, 3));
 
-        $this->assertDatabaseHas('bookings', ['id' => $booking->id]);
-        $this->assertDatabaseCount('booking_academic_contexts', 0);
-        $this->assertNull($booking->academicContext);
+        $this->assertNotNull($booking->academicContext);
     }
 
     public function test_flag_enabled_and_configured_produces_academic_snapshot(): void
@@ -303,23 +286,16 @@ class CountryAcademicDemoBookingTest extends TestCase
         }
     }
 
-    public function test_country_a_enabled_country_b_disabled_behave_independently(): void
+    public function test_old_country_override_cannot_disable_country_aware_demo_booking(): void
     {
         $this->enableGlobally();
-        $scenarioA = $this->eligibleScenario('CountryA');
+        $scenario = $this->eligibleScenario('CountryOverrideIgnored');
+        $scenario['country']->update(['feature_flags' => ['country_academic_booking' => false]]);
 
-        $fixtureB = $this->buildFixture('CountryB');
-        $this->disableForCountry($fixtureB['country']);
-        $instructorB = $this->makeInstructor($fixtureB['subject']);
-        $studentB = $this->makeStudent($fixtureB['country']);
+        $this->actingAs($scenario['student']);
+        $booking = app(WizardBookingServiceInterface::class)->book($this->wizardData($scenario, 3));
 
-        $this->actingAs($scenarioA['student']);
-        $bookingA = app(WizardBookingServiceInterface::class)->book($this->wizardData($scenarioA, 3));
-        $this->assertNotNull($bookingA->academicContext);
-
-        $this->actingAs($studentB);
-        $bookingB = app(WizardBookingServiceInterface::class)->book($this->wizardData([...$fixtureB, 'student' => $studentB, 'instructor' => $instructorB], 3, teacherId: $instructorB->id));
-        $this->assertNull($bookingB->refresh()->academicContext);
+        $this->assertNotNull($booking->refresh()->academicContext);
     }
 
     // ── B. Resolver tampering surfaces as a booking rejection ─────────────

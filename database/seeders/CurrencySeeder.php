@@ -15,6 +15,10 @@ class CurrencySeeder extends Seeder
         ['GBP', 'Pound Sterling', 'GBP', '826', 2, 30],
         ['CAD', 'Canadian Dollar', 'CAD', '124', 2, 40],
         ['AUD', 'Australian Dollar', 'AUD', '036', 2, 50],
+        ['AED', 'UAE Dirham', 'AED', '784', 2, 60],
+        ['SGD', 'Singapore Dollar', 'SGD', '702', 2, 70],
+        ['NZD', 'New Zealand Dollar', 'NZD', '554', 2, 80],
+        ['SAR', 'Saudi Riyal', 'SAR', '682', 2, 90],
     ];
 
     public function run(): void

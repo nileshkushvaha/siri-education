@@ -226,16 +226,15 @@ Regression coverage: `tests/Architecture/BookingTypeScopeGuardTest.php` (asserts
 
 ## Country-Aware Academic Demo Booking (Phase 3 / 3.1)
 
-Free Demo only, gated by `CountryFeature::CountryAcademicBooking`
-(`FeatureSettings::country_academic_booking_enabled`, resolved per
-student-country via `CountryFeatureResolver` — off by default). When in
-effect for a student's server-resolved Country, the Demo wizard walks
-`Education System → Level → Subject → Curriculum` instead of the
-legacy free-text `Subject → Grade` phases; when not in effect (globally
-off, or disabled for that specific country), the legacy flow is
-unchanged. Never a silent per-request fallback: once the feature is on
-for a country, a missing/inactive student Country or an incomplete
-selection throws `BookingException` rather than degrading to legacy.
+Free Demo and Paid Lesson always walk the country-aware `Level → Subject
+→ Curriculum` flow for the student's server-resolved Country. The active
+education system is selected automatically from the country's configured
+mapping, so it does not consume a student-facing wizard step.
+`FeatureSettings::demo_lessons_enabled` is the single global switch: if
+Demo Lessons is disabled, Free Demo is unavailable; if enabled, there
+is no separate academic-flow toggle and no legacy free-text fallback.
+A missing/inactive student Country or incomplete academic selection
+throws `BookingException` rather than degrading to another flow.
 
 - **`EducationSystemLevel`** (`app/Models/EducationSystemLevel.php`) is
   the exact, student-selectable level under an Education System (CBSE
@@ -243,7 +242,7 @@ selection throws `BookingException` rather than degrading to legacy.
   `docs/architecture/phase-3.1-education-system-levels.md` for the full
   model rationale. Selecting one implies both the broad `AcademicLevel`
   band and a `normalized_grade` (nullable — a level with none is
-  currently unsupported for Demo booking, since candidate matching is
+  currently unsupported for lesson booking, since candidate matching is
   numeric-grade-based throughout this codebase).
 - **`App\Booking\Services\DemoAcademicContextResolver`** — the Booking
   domain's composition layer. `resolveForDemo()` is the authoritative,
@@ -273,8 +272,8 @@ selection throws `BookingException` rather than degrading to legacy.
   before auto-assignment, never a pick-then-reject-afterward pattern.
   A locked instructor who fails this check is rejected at final submit
   even if their `TeacherSubject` range matches.
-- A legacy Booking (pre-Phase-3, or created while the feature was off
-  for its country) simply has no `BookingAcademicContext` row —
+- A historical Booking created before country-aware booking may have no
+  `BookingAcademicContext` row —
   `Booking::academicContext()` is nullable by design; `booking-history.blade.php`
   falls back to the legacy `meta.grade` display for those rows.
 

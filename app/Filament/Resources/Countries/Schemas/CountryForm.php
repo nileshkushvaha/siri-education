@@ -183,6 +183,7 @@ class CountryForm
                     ->schema([
                         Grid::make(3)->schema(
                             collect(CountryFeature::cases())
+                                ->reject(fn (CountryFeature $feature): bool => $feature === CountryFeature::CountryAcademicBooking)
                                 ->map(fn (CountryFeature $feature): Toggle => Toggle::make("feature_flags.{$feature->value}")
                                     ->label($feature->label())
                                     ->default(true))

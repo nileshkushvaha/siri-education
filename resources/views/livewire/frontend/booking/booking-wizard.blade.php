@@ -8,58 +8,39 @@
             }
         "
     >
-        <header class="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#080b24] p-6 text-white shadow-2xl shadow-indigo-950/25 sm:p-8 lg:p-10" data-booking-reveal>
+        <header class="relative overflow-hidden rounded-3xl border border-white/10 bg-[#080b24] px-5 py-5 text-white shadow-xl shadow-indigo-950/20 sm:px-7 sm:py-6" data-booking-reveal>
             <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-indigo-400 via-emerald-300 to-fuchsia-400" aria-hidden="true"></div>
-            <div class="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" aria-hidden="true"></div>
-            <div class="pointer-events-none absolute left-[45%] top-8 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" aria-hidden="true"></div>
-            <div class="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-fuchsia-500/20 blur-3xl" aria-hidden="true"></div>
+            <div class="pointer-events-none absolute -left-24 top-0 h-40 w-40 rounded-full bg-cyan-400/15 blur-3xl" aria-hidden="true"></div>
+            <div class="pointer-events-none absolute -right-24 bottom-0 h-44 w-44 rounded-full bg-fuchsia-500/15 blur-3xl" aria-hidden="true"></div>
             <div class="pointer-events-none absolute inset-0 opacity-20" style="background-image:radial-gradient(#a5b4fc .7px,transparent .7px);background-size:24px 24px" aria-hidden="true"></div>
 
-            <div class="relative grid gap-8 lg:grid-cols-3 lg:items-end">
-                <div class="lg:col-span-2">
-                    <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Guided session booking</p>
-                    <h1 class="mt-3 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl">Book a Session with confidence, one clear choice at a time</h1>
-                    <p class="mt-4 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-                        Choose the learning focus, select an eligible time in your timezone, and review the complete session summary before anything is booked.
+            <div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
+                    <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Session booking</p>
+                    <h1 class="mt-1.5 text-2xl font-black tracking-tight text-white sm:text-3xl">Book a Session</h1>
+                    <p class="mt-1.5 max-w-3xl text-sm leading-6 text-slate-300">
+                        Choose your learning focus and an available time, then review before confirming.
                     </p>
-
-                    @if($lockedInstructorName)
-                        <p class="mt-5 inline-flex items-center rounded-full bg-indigo-400/10 px-4 py-2 text-sm font-bold text-indigo-100 ring-1 ring-indigo-300/20">
-                            Booking with {{ $lockedInstructorName }}
-                        </p>
-                    @endif
-
-                    <div class="mt-5 flex flex-wrap gap-3 text-xs font-bold text-slate-300">
-                        <span class="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">Times shown in {{ $timezone }}</span>
-                        <span class="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">No booking until final confirmation</span>
-                        <span class="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">Secure payment when required</span>
-                    </div>
                 </div>
 
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-                    <p class="text-sm font-bold text-white">How it works</p>
-                    <div class="mt-4 space-y-3 text-sm text-slate-300">
-                        <div class="flex gap-3">
-                            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-black text-indigo-100">1</span>
-                            <p>Select your session details and a time that works for you.</p>
-                        </div>
-                        <div class="flex gap-3">
-                            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-black text-emerald-100">2</span>
-                            <p>Add any notes for the instructor.</p>
-                        </div>
-                        <div class="flex gap-3">
-                            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fuchsia-500/20 text-xs font-black text-fuchsia-100">3</span>
-                            <p>Review everything, then confirm.</p>
-                        </div>
-                    </div>
+                <div class="flex shrink-0 flex-wrap gap-2 text-xs font-bold text-slate-200 sm:max-w-sm sm:justify-end">
+                    @if($lockedInstructorName)
+                        <span class="rounded-full border border-indigo-300/20 bg-indigo-400/10 px-3 py-2 text-indigo-100">
+                            With {{ $lockedInstructorName }}
+                        </span>
+                    @endif
+                    <span class="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2">
+                        {{ $timezone }}
+                    </span>
                 </div>
             </div>
         </header>
 
-        <div class="booking-workspace mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3" data-booking-reveal>
+        <div class="booking-workspace mt-4 grid grid-cols-1 gap-5 lg:grid-cols-3" data-booking-reveal>
             <div class="{{ ! in_array($currentPhase, ['mode', 'confirmed']) ? 'lg:col-span-2' : 'lg:col-span-3' }}">
-                <nav aria-label="Booking progress" class="rounded-3xl border border-indigo-100 bg-white p-4 shadow-lg shadow-indigo-100/60 sm:p-5">
-                    <ol class="booking-progress-steps grid grid-cols-2 gap-2 sm:grid-cols-4" role="list" style="--booking-step-count: {{ count($steps) }}">
+                <nav aria-label="Booking progress" class="rounded-3xl border border-indigo-100 bg-white p-3 shadow-lg shadow-indigo-100/60 sm:p-4">
+                    <div class="booking-progress-scroll">
+                    <ol class="booking-progress-steps {{ count($steps) === 1 ? 'booking-progress-steps--single' : '' }} gap-2" role="list" style="--booking-step-count: {{ count($steps) }}; --booking-progress-min-width: {{ count($steps) * 120 }}px">
                         @foreach($steps as $item)
                             @php
                                 $isCurrent = $step === $item['number'];
@@ -68,7 +49,7 @@
                             <li>
                                 <div
                                     @if($isCurrent) aria-current="step" @endif
-                                    class="flex min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border px-2 py-3 text-center transition
+                                    class="flex min-h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-center transition
                                         {{ $isCurrent ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100 shadow-sm shadow-indigo-100' : '' }}
                                         {{ $isComplete ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100' : '' }}
                                         {{ ! $isCurrent && ! $isComplete ? 'border-white/10 bg-white/[0.04] text-slate-400' : '' }}"
@@ -79,14 +60,15 @@
                                         {{ ! $isCurrent && ! $isComplete ? 'bg-white/10 text-slate-300' : '' }}">
                                         {{ $isComplete ? 'OK' : $item['number'] }}
                                     </span>
-                                    <span class="max-w-full text-xs font-black leading-4 sm:text-sm">{{ $item['label'] }}</span>
+                                    <span class="max-w-full whitespace-nowrap text-xs font-black leading-4 sm:text-sm">{{ $item['label'] }}</span>
                                 </div>
                             </li>
                         @endforeach
                     </ol>
+                    </div>
                 </nav>
 
-                <section class="booking-step-panel mt-6 rounded-3xl border border-indigo-100 bg-white p-5 shadow-2xl shadow-indigo-100/60 sm:p-8">
+                <section class="booking-step-panel mt-4 rounded-3xl border border-indigo-100 bg-white p-5 shadow-xl shadow-indigo-100/50 sm:p-7">
                     <p class="sr-only" aria-live="polite">Step {{ $step }} of {{ count($steps) }}: {{ $steps[$step - 1]['label'] }}</p>
 
                     @if($banner)
@@ -99,7 +81,7 @@
                     @if($currentPhase === 'mode')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose a session type</h2>
-                            <p class="mt-2 text-sm leading-6 text-slate-400">Pick Free Demo to try a session, or Paid Lesson to book a full session with an instructor.</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-400">Pick Free Demo to try an instructor once, or Paid Lesson to continue learning. You may take one free demo with each instructor.</p>
 
                             @if(empty($types))
                                 <x-ui.empty-state title="No session types available" description="Please check back soon." class="mt-6" />
@@ -120,40 +102,6 @@
                                             <span class="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide {{ $typeOption['is_paid'] ? 'bg-fuchsia-500/15 text-fuchsia-200' : 'bg-emerald-500/15 text-emerald-200' }}">
                                                 {{ $typeOption['is_paid'] ? 'Paid' : 'Free' }}
                                             </span>
-                                        </button>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-
-                    {{-- Phase 3.1: country-aware academic Demo flow (Education System -> Level -> Subject -> Curriculum) --}}
-                    @if($currentPhase === 'education_system')
-                        <div>
-                            <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-white outline-none">Choose an education system</h2>
-                            <p class="mt-2 text-sm leading-6 text-slate-400">
-                                @if($studentCountryName)
-                                    Available education systems for {{ $studentCountryName }}.
-                                @else
-                                    Available education systems.
-                                @endif
-                            </p>
-
-                            @if($academicFlowUnavailable)
-                                <x-ui.empty-state title="Not available yet" description="Country-aware demo booking isn't configured for your country yet. Please check back soon, or contact support." class="mt-6" />
-                            @elseif(empty($educationSystems))
-                                <x-ui.empty-state title="No education systems available" description="Please check back soon." class="mt-6" />
-                            @else
-                                <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    @foreach($educationSystems as $systemOption)
-                                        <button
-                                            type="button"
-                                            wire:click="selectEducationSystem(@js($systemOption['id']))"
-                                            aria-pressed="{{ $educationSystemId === $systemOption['id'] ? 'true' : 'false' }}"
-                                            class="rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30
-                                                {{ $educationSystemId === $systemOption['id'] ? 'border-indigo-300/60 bg-indigo-400/10 text-indigo-100' : 'border-white/10 bg-slate-900/70 text-slate-200 hover:border-indigo-300/30 hover:bg-indigo-400/10' }}"
-                                        >
-                                            <span class="block text-lg font-bold text-white">{{ $systemOption['name'] }}</span>
                                         </button>
                                     @endforeach
                                 </div>
@@ -586,28 +534,46 @@
 
                     @if($currentPhase === 'confirmed' && $result && ! ($result['recurring'] ?? false))
                         @php($isAwaitingPayment = $result['requires_payment'] && $result['payment_status'] !== 'paid')
-                        <div class="text-center">
-                            <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full {{ $isAwaitingPayment ? 'bg-amber-400/15 text-amber-600' : 'bg-emerald-400/15 text-emerald-200' }}">
+                        <div class="mx-auto max-w-5xl">
+                            <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex items-start gap-4 text-left">
+                            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl {{ $isAwaitingPayment ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700' }}">
                                 @if($isAwaitingPayment)
-                                    <span class="text-2xl font-black" aria-hidden="true">$</span>
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 @else
-                                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
                                 @endif
                             </span>
-                            <h2 data-booking-step-title tabindex="-1" class="mt-4 text-2xl font-black text-white outline-none">{{ $isAwaitingPayment ? 'Complete payment to confirm your booking' : 'Booking confirmed' }}</h2>
-                            <p class="mt-2 text-sm text-slate-400">Reference: <span class="font-mono font-bold text-slate-100">{{ $result['reference'] }}</span></p>
-                            <p class="mt-1 text-sm text-slate-400">{{ $isAwaitingPayment ? 'Your selected slot is temporarily reserved. It is not confirmed until payment succeeds.' : 'We have sent a confirmation to '.auth()->user()?->email.'.' }}</p>
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-wide {{ $isAwaitingPayment ? 'text-amber-700' : 'text-emerald-700' }}">{{ $isAwaitingPayment ? 'Slot reserved · Payment pending' : 'Confirmed' }}</p>
+                                <h2 data-booking-step-title tabindex="-1" class="mt-1 text-2xl font-black text-slate-950 outline-none sm:text-3xl">{{ $isAwaitingPayment ? 'Complete your payment' : 'Booking confirmed' }}</h2>
+                                <p class="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">{{ $isAwaitingPayment ? 'Your selected time is being held temporarily. Payment confirms the session.' : 'We have sent a confirmation to '.auth()->user()?->email.'.' }}</p>
+                            </div>
+                            </div>
+                            <div class="shrink-0 rounded-xl bg-slate-50 px-3 py-2 text-left ring-1 ring-slate-200 sm:text-right">
+                                <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Booking reference</p>
+                                <p class="mt-0.5 font-mono text-sm font-black text-slate-800">{{ $result['reference'] }}</p>
+                            </div>
+                            </div>
 
-                            <dl class="mx-auto mt-6 max-w-md space-y-2 rounded-2xl bg-slate-900/70 p-5 text-left text-sm ring-1 ring-white/10">
-                                <div class="flex justify-between gap-4"><dt class="text-slate-400">Session</dt><dd class="font-semibold text-white">{{ $result['type']['name'] }}</dd></div>
-                                <div class="flex justify-between gap-4"><dt class="text-slate-400">When</dt><dd class="font-semibold text-white">{{ viewer_datetime_labelled($result['starts_at']) }}</dd></div>
-                                <div class="flex justify-between gap-4"><dt class="text-slate-400">Timezone</dt><dd class="font-semibold text-white">{{ $result['timezone'] }}</dd></div>
+                            <div class="mt-5 grid gap-5 {{ $isAwaitingPayment ? 'lg:grid-cols-5' : '' }}">
+
+                            <dl class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 text-left text-sm {{ $isAwaitingPayment ? 'lg:col-span-2' : '' }}">
+                                <p class="text-xs font-black uppercase tracking-wide text-slate-500">Booking summary</p>
+                                <div class="flex items-start justify-between gap-4"><dt class="text-slate-500">Session</dt><dd class="text-right font-semibold text-slate-900">{{ $result['type']['name'] }}</dd></div>
+                                @if($result['subject'] ?? null)
+                                    <div class="flex items-start justify-between gap-4"><dt class="text-slate-500">Subject</dt><dd class="text-right font-semibold text-slate-900">{{ $result['subject'] }}</dd></div>
+                                @endif
+                                <div class="flex items-start justify-between gap-4"><dt class="text-slate-500">When</dt><dd class="max-w-[70%] text-right font-semibold leading-5 text-slate-900">{{ viewer_datetime_labelled($result['starts_at']) }}</dd></div>
+                                @if($result['amount_formatted'] ?? null)
+                                    <div class="flex items-center justify-between gap-4 border-t border-slate-200 pt-3"><dt class="font-semibold text-slate-600">Total</dt><dd class="text-lg font-black text-slate-950">{{ $result['amount_formatted'] }}</dd></div>
+                                @endif
                             </dl>
 
                             @if($isAwaitingPayment)
-                                <div class="mx-auto mt-5 max-w-md rounded-2xl border border-indigo-300/30 bg-indigo-400/10 p-4 text-left">
-                                    <p class="text-xs font-bold uppercase tracking-wide text-indigo-200">Payment required</p>
-                                    <p class="mt-1 text-xs text-indigo-200">Your slot is reserved while payment is pending. Complete payment to confirm.</p>
+                                <div class="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5 text-left lg:col-span-3">
+                                    <p class="text-xs font-black uppercase tracking-wide text-indigo-700">Complete payment</p>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600">Use the secure payment option below to confirm this booking.</p>
 
                                     @if($paymentBanner)
                                         <div class="booking-payment-error mt-3 rounded-xl border px-4 py-3 text-left" role="alert">
@@ -616,8 +582,8 @@
                                         </div>
                                     @endif
 
-                                    <x-ui.button type="button" class="mt-3 w-full justify-center" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
-                                        <span wire:loading.remove wire:target="initiatePayment">Pay now</span>
+                                    <x-ui.button type="button" class="booking-checkout-primary mt-4 w-full" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
+                                        <span wire:loading.remove wire:target="initiatePayment">{{ ($result['amount_formatted'] ?? null) ? 'Pay '.$result['amount_formatted'] : 'Pay now' }}</span>
                                         <span wire:loading wire:target="initiatePayment">Preparing payment...</span>
                                     </x-ui.button>
 
@@ -627,7 +593,7 @@
                                             <p class="mt-1 text-xs text-slate-400">Wallet balance: <span class="font-semibold text-white">{{ $walletOption['balance_formatted'] }}</span></p>
 
                                             @if($walletOption['sufficient'] ?? false)
-                                                <x-ui.button type="button" variant="ghost" class="mt-2 w-full justify-center" wire:click="payWithWallet" wire:loading.attr="disabled" wire:target="payWithWallet">
+                                                <x-ui.button type="button" variant="secondary" class="booking-checkout-secondary mt-2 w-full" wire:click="payWithWallet" wire:loading.attr="disabled" wire:target="payWithWallet">
                                                     <span wire:loading.remove wire:target="payWithWallet">Pay from wallet</span>
                                                     <span wire:loading wire:target="payWithWallet">Paying...</span>
                                                 </x-ui.button>
@@ -636,7 +602,7 @@
                                             @endif
                                         </div>
                                     @else
-                                        <p class="mt-2 text-[11px] text-slate-500">Wallet payment is not available for this booking yet. Available payment methods appear securely above.</p>
+                                        <p class="mt-3 text-xs leading-5 text-slate-500">Wallet payment is unavailable for this booking. You can still use the secure payment method above.</p>
                                     @endif
 
                                     @if(($paymentOrder['provider'] ?? null) === 'stripe')
@@ -647,27 +613,29 @@
                                         <div class="mt-3" wire:ignore>
                                             <div id="stripe-payment-element" class="rounded-lg bg-white p-3"></div>
                                             <p id="stripe-payment-errors" class="mt-2 text-xs font-semibold text-rose-300" role="alert"></p>
-                                            <x-ui.button type="button" id="stripe-confirm-button" class="mt-3 w-full justify-center" disabled>
+                                            <x-ui.button type="button" id="stripe-confirm-button" class="booking-checkout-primary mt-3 w-full" disabled>
                                                 Confirm card payment
                                             </x-ui.button>
                                         </div>
                                     @endif
 
                                     @if(($paymentOrder['provider'] ?? null) === 'fake' && app()->environment(['local', 'testing']))
-                                        <div class="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3">
-                                            <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200">Test mode — fake provider</p>
-                                            <div class="mt-2 flex gap-2">
-                                                <x-ui.button type="button" size="sm" wire:click="simulateFakePayment(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
-                                                <x-ui.button type="button" size="sm" variant="ghost" wire:click="simulateFakePayment(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
+                                        <div class="mt-4 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3">
+                                            <p class="text-[11px] font-black uppercase tracking-wide text-amber-700">Developer test controls · Fake provider</p>
+                                            <p class="mt-1 text-xs text-amber-800/80">Visible only in local and testing environments.</p>
+                                            <div class="mt-3 flex flex-wrap gap-2">
+                                                <x-ui.button type="button" size="sm" class="booking-checkout-test-success" wire:click="simulateFakePayment(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
+                                                <x-ui.button type="button" size="sm" variant="secondary" class="booking-checkout-test-failure" wire:click="simulateFakePayment(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
                                             </div>
                                         </div>
                                     @endif
                                 </div>
                             @endif
+                            </div>
 
-                            <div class="mt-6 flex flex-wrap justify-center gap-3">
-                                <x-ui.button href="{{ $result['my_bookings_url'] }}">View my bookings</x-ui.button>
-                                <x-ui.button type="button" variant="ghost" wire:click="restart">Book another session</x-ui.button>
+                            <div class="booking-checkout-actions mt-6 flex flex-wrap gap-3">
+                                <x-ui.button href="{{ $result['my_bookings_url'] }}" variant="{{ $isAwaitingPayment ? 'secondary' : 'primary' }}" class="{{ $isAwaitingPayment ? 'booking-checkout-secondary' : 'booking-checkout-primary' }}">View my bookings</x-ui.button>
+                                <x-ui.button type="button" variant="secondary" class="booking-checkout-secondary" wire:click="restart">Book another session</x-ui.button>
                             </div>
                         </div>
                     @endif

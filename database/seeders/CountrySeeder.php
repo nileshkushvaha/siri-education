@@ -221,6 +221,10 @@ class CountrySeeder extends Seeder
         'GB' => ['GBP', 'en', 'Europe/London', 'support-uk@example.com', '+44 0000 000000', 'd/m/Y', 'H:i', '1,234.56'],
         'CA' => ['CAD', 'en', 'America/Toronto', 'support-ca@example.com', '+1 000 000 0000', 'Y-m-d', 'H:i', '1,234.56'],
         'AU' => ['AUD', 'en', 'Australia/Sydney', 'support-au@example.com', '+61 000 000 000', 'd/m/Y', 'h:i A', '1,234.56'],
+        'AE' => ['AED', 'en', 'Asia/Dubai', 'support-ae@example.com', '+971 00 000 0000', 'd/m/Y', 'H:i', '1,234.56'],
+        'SG' => ['SGD', 'en', 'Asia/Singapore', 'support-sg@example.com', '+65 0000 0000', 'd/m/Y', 'H:i', '1,234.56'],
+        'NZ' => ['NZD', 'en', 'Pacific/Auckland', 'support-nz@example.com', '+64 00 000 0000', 'd/m/Y', 'h:i A', '1,234.56'],
+        'SA' => ['SAR', 'en', 'Asia/Riyadh', 'support-sa@example.com', '+966 00 000 0000', 'd/m/Y', 'H:i', '1,234.56'],
     ];
 
     public function run(): void

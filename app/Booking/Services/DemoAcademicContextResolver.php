@@ -24,10 +24,9 @@ use Illuminate\Support\Collection;
  * composition layer. Phase 4D needed the same chain for packages and
  * package-funded paid booking, so the algorithm moved to
  * BookingAcademicContextResolver and this became a wrapper. That is
- * deliberate: the demo flow's behavior, gating feature and exact
- * messages are unchanged, every existing Phase 3 call site and test
- * keeps working untouched, and there is still exactly one
- * implementation of the resolution chain.
+ * deliberate: Demo Lessons is the only user-facing switch, while this
+ * internal feature identifier keeps the shared resolver composition
+ * explicit. There is still exactly one implementation of the chain.
  *
  * Demo always requires the student to CHOOSE a curriculum (Phase 3
  * §7/§9 progressive selection), so it never uses the shared resolver's
@@ -43,17 +42,6 @@ final class DemoAcademicContextResolver
     public function studentCountry(User $student): ?Country
     {
         return $this->resolver->studentCountry($student);
-    }
-
-    public function isEnabledForCountry(?Country $country): bool
-    {
-        return $this->resolver->isEnabledForCountry(CountryFeature::CountryAcademicBooking, $country);
-    }
-
-    /** Whether the feature is on at all, ignoring any specific country's override. */
-    public function isEnabledGlobally(): bool
-    {
-        return $this->resolver->isEnabledGlobally(CountryFeature::CountryAcademicBooking);
     }
 
     /**

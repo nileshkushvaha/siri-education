@@ -27,13 +27,10 @@ enum CountryFeature: string
 
     /**
      * Phase 3 — gates the country-aware Education-System/Curriculum
-     * academic selection flow for Free Demo booking (see
-     * app/Booking/Services/DemoAcademicContextResolver.php). Disabled
-     * for a country means legacy free-text subject/grade Demo booking
-     * remains unchanged; enabled means the full academic context
-     * (education system, level, subject, curriculum, published
-     * curriculum version, instructor eligibility) becomes mandatory —
-     * never a silent fallback once enabled (Phase 3 spec §10/§26).
+     * academic selection flow for all direct lesson booking. It is permanent
+     * and has no independent global or country switch. Demo availability is
+     * still governed separately by DemoLessons; paid booking availability is
+     * governed by its payment and pricing rules.
      */
     case CountryAcademicBooking = 'country_academic_booking';
 
@@ -90,7 +87,6 @@ enum CountryFeature: string
         return match ($this) {
             self::WalletRecharge => [self::Wallet],
             self::PromotionalCredits => [self::Wallet],
-            self::CountryAcademicBooking => [self::DemoLessons],
             // CountryAcademicPackages deliberately declares NO
             // dependency. PaidBookings would be the tempting one, but
             // it maps to the payment-gateway switch: an already-settled

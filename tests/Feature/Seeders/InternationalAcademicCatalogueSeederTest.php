@@ -64,7 +64,7 @@ final class InternationalAcademicCatalogueSeederTest extends TestCase
 
         $expectedCurricula = 9 * 22 * 2;
         $this->assertSame($expectedCurricula, Curriculum::query()->count());
-        $this->assertSame($expectedCurricula, CurriculumVersion::query()->where('status', 'draft')->count());
+        $this->assertSame($expectedCurricula, CurriculumVersion::query()->where('status', 'published')->count());
         $this->assertSame($expectedCurricula, CurriculumModule::query()->count());
         $this->assertSame($expectedCurricula * 5, CurriculumModuleTopic::query()->count());
         $this->assertSame(4, PackageBenefitRule::query()->count());

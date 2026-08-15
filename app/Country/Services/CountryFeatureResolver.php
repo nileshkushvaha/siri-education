@@ -60,7 +60,9 @@ final class CountryFeatureResolver
             }
         }
 
-        if ($country !== null && $this->countryDisables($feature, $country)) {
+        if ($feature !== CountryFeature::CountryAcademicBooking
+            && $country !== null
+            && $this->countryDisables($feature, $country)) {
             return false;
         }
 
@@ -84,7 +86,9 @@ final class CountryFeatureResolver
             CountryFeature::Waitlist => $this->features->waitlist_enabled,
             CountryFeature::Homework => $this->features->homework_enabled,
             CountryFeature::RecordingAvailability => $this->features->recording_enabled,
-            CountryFeature::CountryAcademicBooking => $this->features->country_academic_booking_enabled,
+            // Every direct lesson booking uses the country-aware academic
+            // flow. Demo and paid availability remain separate concerns.
+            CountryFeature::CountryAcademicBooking => true,
             CountryFeature::CountryAcademicPackages => $this->features->country_academic_packages_enabled,
         };
     }

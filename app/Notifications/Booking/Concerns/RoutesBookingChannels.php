@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Booking\Concerns;
 
 use App\Booking\Services\NotificationChannelResolver;
-use App\Models\User;
-use App\Support\UserTimezoneResolver;
+use App\Notifications\Concerns\FormatsRecipientLocalTime;
 use Illuminate\Support\Str;
 
 /**
@@ -17,6 +16,12 @@ use Illuminate\Support\Str;
  */
 trait RoutesBookingChannels
 {
+    // TZ-3: recipientTimezone() moved here from this trait into a
+    // shared one so the Reviews and Quality notifications can use the
+    // identical implementation rather than a second copy. Behaviour is
+    // unchanged for every booking notification.
+    use FormatsRecipientLocalTime;
+
     public function via(object $notifiable): array
     {
         // Queued notifications are unserialized, so constructor injection
@@ -60,18 +65,4 @@ trait RoutesBookingChannels
      * from $this->booking->student or any other shared/cached value.
      */
     abstract protected function plainText(object $notifiable): string;
-
-    /**
-     * SRS-21-6, SRS §21.13/§21.16: resolves the
-     * ACTUAL notifiable's own timezone — never the booking's captured
-     * (student's) timezone, never another recipient's. AnonymousNotifiable
-     * (guest email routing) has no profile, so it falls back to the
-     * platform default.
-     */
-    protected function recipientTimezone(object $notifiable): string
-    {
-        return $notifiable instanceof User
-            ? UserTimezoneResolver::resolve($notifiable)
-            : UserTimezoneResolver::PLATFORM_FALLBACK;
-    }
 }

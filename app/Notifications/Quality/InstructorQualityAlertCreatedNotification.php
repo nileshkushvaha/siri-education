@@ -6,6 +6,7 @@ namespace App\Notifications\Quality;
 
 use App\Models\InstructorQualityAlert;
 use App\Notifications\Admin\AdminAlertNotification;
+use App\Notifications\Concerns\FormatsRecipientLocalTime;
 use App\Notifications\Reviews\Concerns\RoutesReviewChannels;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,7 +25,7 @@ use Illuminate\Queue\SerializesModels;
  */
 final class InstructorQualityAlertCreatedNotification extends AdminAlertNotification
 {
-    use Queueable, RoutesReviewChannels, SerializesModels;
+    use FormatsRecipientLocalTime, Queueable, RoutesReviewChannels, SerializesModels;
 
     public function __construct(
         public readonly InstructorQualityAlert $alert,
@@ -37,7 +38,12 @@ final class InstructorQualityAlertCreatedNotification extends AdminAlertNotifica
         return $this->configureMailMessage(new MailMessage)
             ->subject('New instructor quality alert')
             ->line(sprintf('A %s quality alert (%s severity) was recorded for %s.', $this->alert->alert_type->label(), $this->alert->severity->label(), $this->alert->instructor?->name ?? 'an instructor'))
-            ->line(sprintf('Triggered on %s.', $this->alert->triggered_at->format('M j, Y g:i A')))
+            // TZ-3: rendered in the timezone of the ADMIN receiving
+            // this alert. Admins have a profile timezone like anyone
+            // else; "they are staff" is not a reason to show them UTC.
+            // (Whether the Filament queue they click through to should
+            // agree is TZ-4's question, not this notification's.)
+            ->line(sprintf('Triggered on %s.', $this->recipientDateTime($this->alert->triggered_at, $notifiable)))
             ->action('Open quality-alert queue', route('filament.admin.pages.reports.reviews-quality'));
     }
 

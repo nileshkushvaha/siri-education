@@ -6,6 +6,7 @@ namespace App\Notifications\Reviews;
 
 use App\Models\ReviewReport;
 use App\Notifications\Admin\AdminAlertNotification;
+use App\Notifications\Concerns\FormatsRecipientLocalTime;
 use App\Notifications\Reviews\Concerns\RoutesReviewChannels;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -20,7 +21,7 @@ use Illuminate\Queue\SerializesModels;
  */
 final class ReviewReportedNotification extends AdminAlertNotification
 {
-    use Queueable, RoutesReviewChannels, SerializesModels;
+    use FormatsRecipientLocalTime, Queueable, RoutesReviewChannels, SerializesModels;
 
     public function __construct(
         public readonly ReviewReport $report,
@@ -34,7 +35,8 @@ final class ReviewReportedNotification extends AdminAlertNotification
             ->subject('A review has been reported')
             ->line(sprintf('A review was reported for: %s.', $this->report->reason->label()))
             ->line(sprintf('Current review status: %s.', $this->report->review->status->label()))
-            ->line(sprintf('Reported on %s.', $this->report->submitted_at->format('M j, Y g:i A')))
+            // TZ-3: the moderator's own clock, not the server's.
+            ->line(sprintf('Reported on %s.', $this->recipientDateTime($this->report->submitted_at, $notifiable)))
             ->action('Open report queue', route('filament.admin.pages.reports.reviews-quality'));
     }
 

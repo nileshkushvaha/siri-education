@@ -98,7 +98,7 @@ class SelfModerationGuardTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor->id,
-            'student_id' => User::factory(),
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -137,8 +137,7 @@ class SelfModerationGuardTest extends TestCase
         $instructor = $this->instructorWhoIsAlsoSuperAdmin();
         $review = $this->publishedReviewFor($instructor)->fresh();
 
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(
             reason: ReviewReportReason::AbusiveLanguage,

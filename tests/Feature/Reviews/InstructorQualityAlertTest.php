@@ -495,6 +495,7 @@ class InstructorQualityAlertTest extends TestCase
         $instructor = $this->instructorUser();
         $this->submitPublicReview($instructor, overallRating: 1);
         $alert = InstructorQualityAlert::query()->where('instructor_id', $instructor->id)->firstOrFail();
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         $instructor->assignRole('super_admin');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -647,10 +648,10 @@ class InstructorQualityAlertTest extends TestCase
 
     private function reporterUser(): User
     {
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
-
-        return $reporter;
+        // activeStudent(), not a bare assignRole(): reporting a review is
+        // a protected student action, so StudentLifecycleService requires
+        // student_status = Active as well as the role.
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     private function admin(): User
@@ -669,7 +670,7 @@ class InstructorQualityAlertTest extends TestCase
         // step, which is irrelevant to attribution/counting here.
         return Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => now()->addDay(),
             'ends_at' => now()->addDay()->addHour(),
             'payment_status' => BookingPaymentStatus::NotRequired,
@@ -685,7 +686,7 @@ class InstructorQualityAlertTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -702,7 +703,7 @@ class InstructorQualityAlertTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

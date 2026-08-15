@@ -22,6 +22,7 @@ use App\Reviews\Contracts\StudentReviewServiceInterface;
 use App\Reviews\DTOs\PublicInstructorReviewData;
 use App\Reviews\DTOs\SubmitStudentReviewData;
 use App\Reviews\Enums\StudentReviewStatus;
+use App\Settings\FeatureSettings;
 use App\Settings\ReviewSettings;
 use Database\Seeders\ReviewPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,6 +56,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'Update:User', 'guard_name' => 'web']);
@@ -192,7 +194,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
     public function test_student_identity_is_masked_by_default(): void
     {
         $instructor = $this->makeInstructor();
-        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE, 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
         $this->submitPublicReview($instructor, student: $student);
 
         $response = $this->get(route('instructors.show', $instructor))->assertOk();
@@ -204,7 +206,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
     {
         $this->enableReviews(['public_review_identity_mode' => 'anonymous']);
         $instructor = $this->makeInstructor();
-        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE, 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
         $this->submitPublicReview($instructor, student: $student);
 
         $this->get(route('instructors.show', $instructor))
@@ -217,7 +219,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
     {
         $this->enableReviews(['public_review_identity_mode' => 'first_name_only']);
         $instructor = $this->makeInstructor();
-        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE, 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
         $this->submitPublicReview($instructor, student: $student);
 
         $response = $this->get(route('instructors.show', $instructor))->assertOk();
@@ -228,8 +230,8 @@ class PublicInstructorReviewDisplayTest extends TestCase
     public function test_email_phone_student_id_and_profile_image_are_absent(): void
     {
         $instructor = $this->makeInstructor();
-        $student = User::factory()->create([
-            'status' => 'active',
+        $student = User::factory()->activeStudent()->create([
+            'status' => User::STATUS_ACTIVE,
             'first_name' => 'Nilesh',
             'last_name' => 'Kushvaha',
             'email' => 'nilesh-private@example.com',
@@ -253,7 +255,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
     {
         $this->enableReviews(['public_review_identity_mode' => 'first_name_only']);
         $instructor = $this->makeInstructor();
-        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE, 'first_name' => 'Nilesh', 'last_name' => 'Kushvaha']);
         $this->submitPublicReview($instructor, student: $student);
         $student->profile->update(['student_status' => StudentStatus::Archived]);
 
@@ -414,7 +416,24 @@ class PublicInstructorReviewDisplayTest extends TestCase
 
     public function test_existing_public_profile_actions_still_render(): void
     {
-        $instructor = $this->makeInstructor();
+        // "Book a Paid Class" renders only alongside a demo CTA.
+        // InstructorService::offersDemo() needs all three of: a bookable
+        // instructor, profile.offers_demo, and DemoAvailabilityResolver
+        // (feature flag + active free_demo type). All three are supplied
+        // below and were verified true at request time, yet the page
+        // still takes the single-button branch — so one more input inside
+        // InstructorService's public-profile payload is unaccounted for.
+        //
+        // This assertion was previously unreachable: the test died on the
+        // student-lifecycle guard before rendering, which masked the gap.
+        // It is a public-profile CTA concern with no connection to
+        // reviews, packages, or the student lifecycle.
+        $features = app(FeatureSettings::class);
+        $features->demo_lessons_enabled = true;
+        $features->save();
+        BookingType::factory()->create(['key' => 'free_demo', 'is_paid' => false, 'is_active' => true]);
+
+        $instructor = $this->makeInstructor(['offers_demo' => true]);
         $this->submitPublicReview($instructor);
 
         $this->get(route('instructors.show', $instructor))
@@ -445,7 +464,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -462,7 +481,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

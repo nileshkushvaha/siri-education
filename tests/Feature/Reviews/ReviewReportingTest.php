@@ -564,7 +564,7 @@ class ReviewReportingTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor?->id ?? $this->instructorUser()->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -581,7 +581,7 @@ class ReviewReportingTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor?->id ?? $this->instructorUser()->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,

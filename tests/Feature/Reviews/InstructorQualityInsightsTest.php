@@ -58,6 +58,7 @@ class InstructorQualityInsightsTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
 
@@ -333,7 +334,7 @@ class InstructorQualityInsightsTest extends TestCase
     public function test_student_email_phone_image_and_id_are_absent(): void
     {
         $instructor = $this->instructorUser();
-        $student = User::factory()->create(['status' => 'active', 'first_name' => 'Priyanka', 'email' => 'priyanka-private@example.com']);
+        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE, 'first_name' => 'Priyanka', 'email' => 'priyanka-private@example.com']);
         $this->submitPublicReview($instructor, student: $student);
 
         $response = $this->actingAs($instructor)->get(route('dashboard.instructor.quality-insights'));
@@ -474,7 +475,7 @@ class InstructorQualityInsightsTest extends TestCase
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,
@@ -491,7 +492,7 @@ class InstructorQualityInsightsTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'instructor_id' => $instructor->id,
-            'student_id' => $student?->id ?? User::factory(),
+            'student_id' => $student?->id ?? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::NotRequired,
@@ -520,7 +521,12 @@ class InstructorQualityInsightsTest extends TestCase
         ?User $student = null,
         ?string $studentFirstName = null,
     ): LessonReview {
-        $reviewer = $student ?? ($studentFirstName !== null ? User::factory()->create(['status' => 'active', 'first_name' => $studentFirstName]) : null);
+        // activeStudent(): submitting a review is a protected student
+        // action, so a named reviewer needs the same lifecycle state as
+        // the anonymous one paidLesson() builds by default.
+        $reviewer = $student ?? ($studentFirstName !== null
+            ? User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE, 'first_name' => $studentFirstName])
+            : null);
         $eligibility = $this->openEligibility($this->paidLesson($instructor, $reviewer));
 
         $result = $this->submissions->submit($eligibility, $eligibility->student, new SubmitStudentReviewData(

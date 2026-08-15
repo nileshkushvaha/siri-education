@@ -13,8 +13,11 @@ use App\Models\BookingType;
 use App\Models\Lesson;
 use App\Models\LessonReview;
 use App\Models\LessonReviewEligibility;
+use App\Models\User;
 use App\Reviews\Enums\LessonReviewEligibilityStatus;
 use App\Settings\ReviewSettings;
+use Spatie\Permission\Models\Role;
+use Tests\Feature\Booking\Concurrency\ConcurrencyTestCase;
 
 /**
  * Review-eligibility consumption is otherwise only proven via
@@ -31,6 +34,11 @@ class StudentReviewSubmissionConcurrencyTest extends ConcurrencyTestCase
 {
     public function test_two_concurrent_submissions_converge_to_exactly_one_review(): void
     {
+        // The role must exist before activeStudent() assigns it, and the
+        // child workers read the committed row, so it is created here
+        // rather than relying on a seeder this class does not run.
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $this->enableReviews();
         $eligibility = $this->openEligibility($this->paidLesson());
 
@@ -75,6 +83,10 @@ class StudentReviewSubmissionConcurrencyTest extends ConcurrencyTestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
+            // The child workers submit through the real service, which
+            // runs StudentLifecycleService — so the fixture student must
+            // be genuinely action-eligible, not merely a user row.
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
             'payment_status' => BookingPaymentStatus::Paid,

@@ -168,8 +168,7 @@ class StudentReviewPortalTest extends TestCase
             content: 'A distinctly private review body marker 456123.',
         ));
 
-        $unrelatedStudent = User::factory()->create(['status' => 'active']);
-        $unrelatedStudent->assignRole('student');
+        $unrelatedStudent = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
         Livewire::actingAs($unrelatedStudent)
             ->test(ReviewsPortal::class)
@@ -207,6 +206,7 @@ class StudentReviewPortalTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
@@ -227,6 +227,7 @@ class StudentReviewPortalTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create([
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,

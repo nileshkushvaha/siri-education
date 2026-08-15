@@ -344,8 +344,7 @@ class StudentReviewEditingTest extends TestCase
     public function test_existing_report_under_review_blocks_editing(): void
     {
         $review = $this->submitPublicReview()->fresh();
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->seed(ReviewPermissionSeeder::class);
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(reason: ReviewReportReason::Spam));
@@ -358,8 +357,7 @@ class StudentReviewEditingTest extends TestCase
     public function test_terminal_resolved_report_blocks_editing(): void
     {
         $review = $this->submitPublicReview()->fresh();
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        $reporter = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->seed(ReviewPermissionSeeder::class);
 
         $report = $this->reports->submit($review, $reporter, new SubmitReviewReportData(reason: ReviewReportReason::Spam));
@@ -552,6 +550,7 @@ class StudentReviewEditingTest extends TestCase
 
         $booking = Booking::factory()->confirmed()->create([
             'booking_type_id' => BookingType::factory()->paid(),
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,
@@ -568,6 +567,7 @@ class StudentReviewEditingTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create([
+            'student_id' => User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE])->id,
             'instructor_id' => $instructor->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
             'ends_at' => $endsAt,

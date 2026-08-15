@@ -46,6 +46,7 @@ use Database\Seeders\ReviewPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -79,6 +80,8 @@ class AdminQualityDashboardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
 
         $this->lifecycle = app(LessonLifecycleServiceInterface::class);
         $this->outcomes = app(LessonOutcomeServiceInterface::class);

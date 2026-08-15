@@ -10,6 +10,7 @@ use App\Earnings\Enums\InstructorWithdrawalStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Filament\Resources\InstructorPayoutAttempts\InstructorPayoutAttemptResource;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\InstructorPayoutReconciliationIssueResource;
+use App\Filament\Support\AdminDayRange;
 use App\Models\InstructorPayoutAttempt;
 use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\InstructorWithdrawalRequest;
@@ -123,8 +124,8 @@ class InstructorWithdrawalRequestsTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('requested_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('requested_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('requested_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('requested_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 Action::make('start_review')

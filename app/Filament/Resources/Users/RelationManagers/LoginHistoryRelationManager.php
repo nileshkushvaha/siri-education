@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Users\RelationManagers;
 
 use App\Models\LoginHistory;
 use App\Support\LoginHistoryColors;
+use App\Support\Timezone\ViewerDateTime;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -63,7 +64,7 @@ class LoginHistoryRelationManager extends RelationManager
                     ->dateTime('M j, Y H:i')
                     ->sortable()
                     ->since()
-                    ->tooltip(fn (LoginHistory $record): string => $record->logged_in_at?->format('Y-m-d H:i:s') ?? ''),
+                    ->tooltip(fn (LoginHistory $record): string => ViewerDateTime::labelled($record->logged_in_at, format: 'Y-m-d H:i:s') ?? ''),
             ])
             ->filters([
                 SelectFilter::make('status')

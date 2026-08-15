@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Roles\Tables;
 
 use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
+use App\Filament\Support\AdminDayRange;
 use App\Models\User;
 use App\Services\Admin\RoleAuditRecorder;
 use App\Services\Admin\SuperAdminGuardService;
@@ -107,8 +108,8 @@ class RolesTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'], fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
-                            ->when($data['to'], fn ($q, $d) => $q->whereDate('created_at', '<=', $d));
+                            ->when($data['from'], fn ($q, $d) => $q->where('created_at', '>=', AdminDayRange::viewerDay($d)->startUtc))
+                            ->when($data['to'], fn ($q, $d) => $q->where('created_at', '<', AdminDayRange::viewerDay($d)->endUtcExclusive));
                     }),
             ])
 

@@ -9,6 +9,7 @@ use App\PromotionalCredits\Enums\PromotionalCreditCampaignStatus;
 use App\PromotionalCredits\Exceptions\PromotionalCreditException;
 use App\PromotionalCredits\Services\PromotionalCreditService;
 use App\Support\MoneyFormatter;
+use App\Support\Timezone\ViewerDateTime;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -41,8 +42,8 @@ class PromotionalCreditCampaignsTable
                     ->label('Window (UTC)')
                     ->state(fn (PromotionalCreditCampaign $record): string => sprintf(
                         '%s → %s',
-                        $record->starts_at->format('M j, Y H:i'),
-                        $record->ends_at->format('M j, Y H:i'),
+                        ViewerDateTime::dateTime($record->starts_at),
+                        ViewerDateTime::dateTime($record->ends_at),
                     ))
                     ->sortable(),
                 TextColumn::make('amount_minor')

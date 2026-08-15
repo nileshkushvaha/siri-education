@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Widgets\Quality;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\AdminDayRange;
 use App\Models\InstructorQualityAlert;
 use App\Models\User;
 use App\Quality\Contracts\InstructorQualityAlertServiceInterface;
@@ -117,8 +118,8 @@ class AlertQueueWidget extends TableWidget
                         DatePicker::make('until')->label('Until')->native(false),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'] ?? null, fn (Builder $q, $date) => $q->whereDate('triggered_at', '>=', $date))
-                        ->when($data['until'] ?? null, fn (Builder $q, $date) => $q->whereDate('triggered_at', '<=', $date))),
+                        ->when($data['from'] ?? null, fn (Builder $q, $date) => $q->where('triggered_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'] ?? null, fn (Builder $q, $date) => $q->where('triggered_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 Action::make('start_review')

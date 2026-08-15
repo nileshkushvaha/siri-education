@@ -8,6 +8,7 @@ use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Support\AdminDayRange;
 use App\Models\InstructorEarning;
 use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
@@ -92,8 +93,8 @@ class InstructorEarningsTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('created_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('created_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('created_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('created_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 Action::make('release')

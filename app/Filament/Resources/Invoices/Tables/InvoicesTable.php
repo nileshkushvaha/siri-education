@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Invoices\Tables;
 
+use App\Filament\Support\AdminDayRange;
 use App\Models\Invoice;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -60,8 +61,8 @@ class InvoicesTable
                         ]),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['issued_from'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('issued_at', '>=', $date))
-                        ->when($data['issued_until'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('issued_at', '<=', $date))),
+                        ->when($data['issued_from'] ?? null, fn (Builder $q, string $date): Builder => $q->where('issued_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['issued_until'] ?? null, fn (Builder $q, string $date): Builder => $q->where('issued_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 ViewAction::make(),

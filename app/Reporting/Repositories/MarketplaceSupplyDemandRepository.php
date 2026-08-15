@@ -11,6 +11,7 @@ use App\Reporting\DTOs\Marketplace\MarketplaceSubjectGapRow;
 use App\Reporting\DTOs\Marketplace\MarketplaceSupplyData;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 use App\Reporting\Filters\ReportFilters;
+use App\Reporting\Support\LocalDaySql;
 use App\Reporting\Support\RecurrenceClassifier;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Database\Query\Builder;
@@ -300,10 +301,10 @@ final class MarketplaceSupplyDemandRepository
     /** @return array<string, int> weekday name => bookings starting that weekday, in the reporting timezone, zero-filled Mon–Sun. */
     private function demandByWeekday(ReportingPeriod $period, ReportFilters $filters): array
     {
-        $offset = $period->start->format('P');
+        [$dayExpression, $dayBindings] = LocalDaySql::dayNameExpression('bookings.starts_at', $period);
 
         $rows = $this->bookings($period, $filters)
-            ->selectRaw('DAYNAME(CONVERT_TZ(bookings.starts_at, ?, ?)) as day, count(*) as aggregate', ['+00:00', $offset])
+            ->selectRaw($dayExpression.' as day, count(*) as aggregate', $dayBindings)
             ->groupBy('day')
             ->pluck('aggregate', 'day');
 

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Reporting\DTOs\Engagement\StudentEngagementSummaryData;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 use App\Reporting\Filters\ReportFilters;
+use App\Reporting\Support\LocalDaySql;
 use App\Reporting\Support\RecurrenceClassifier;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -237,21 +238,23 @@ final class StudentEngagementRepository
 
     /**
      * @return array<string, int> new student registrations per day (Y-m-d in
-     *                            reporting timezone), zero-filled, bounded by the period. Bucketing
-     *                            uses the timezone's numeric offset at period start (CONVERT_TZ with
-     *                            named zones requires MySQL tz tables, which are not guaranteed) —
-     *                            exact for fixed-offset zones like the platform default Asia/Kolkata;
-     *                            for DST zones, rows within an hour of midnight on a transition day
-     *                            may land in the adjacent bucket. Documented metric limitation.
+     *                            reporting timezone), zero-filled, bounded by the period.
+     *
+     * TZ-5: bucketing is DST-exact. LocalDaySql splits the period into
+     * runs of constant UTC offset (from PHP/IANA, since MySQL's named
+     * timezone tables are not a deployment invariant here) and emits one
+     * CASE, so a row an hour either side of a transition lands on the
+     * local day it actually belongs to. Half-hour zones are exact too —
+     * the shift is in seconds, never whole hours.
      */
     public function registrationTrend(ReportingPeriod $period, ReportFilters $filters): array
     {
-        $offset = $period->start->format('P'); // e.g. '+05:30'
+        [$dayExpression, $dayBindings] = LocalDaySql::dateExpression('users.created_at', $period);
 
         $rows = $this->students($filters)
             ->where('users.created_at', '>=', $period->startUtc)
             ->where('users.created_at', '<', $period->endUtcExclusive)
-            ->selectRaw('DATE(CONVERT_TZ(users.created_at, ?, ?)) as day, count(*) as aggregate', ['+00:00', $offset])
+            ->selectRaw($dayExpression.' as day, count(*) as aggregate', $dayBindings)
             ->groupBy('day')
             ->pluck('aggregate', 'day');
 

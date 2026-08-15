@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SupportCases\Tables;
 
+use App\Filament\Support\AdminDayRange;
 use App\Models\SupportCase;
 use App\Models\User;
 use App\SupportCases\Enums\SupportCaseCategory;
@@ -89,8 +90,8 @@ class SupportCasesTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('opened_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('opened_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('opened_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('opened_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 ViewAction::make(),

@@ -18,6 +18,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Meetings\GoogleCalendarMeetProvider;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
+use App\Filament\Support\AdminDayRange;
 use App\Filament\Support\CsvExport;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
@@ -138,8 +139,8 @@ class BookingsTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('starts_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('starts_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('starts_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('starts_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -179,7 +180,15 @@ class BookingsTable
                     ->visible(fn (Booking $record): bool => ! $record->status->isTerminal())
                     ->form([
                         DateTimePicker::make('starts_at')
-                            ->label('New start (UTC)')
+                            // TZ-5: the label said "(UTC)" and, before
+                            // TZ-4, was honest — the picker really did
+                            // take the typed digits as UTC. It now reads
+                            // and writes in the admin's own clock via
+                            // FilamentTimezone, so the old label would be
+                            // an outright lie about when the lesson moves
+                            // to. It names the actual timezone instead.
+                            ->label('New start ('.AdminDayRange::viewerLabel().')')
+                            ->helperText('Entered in your profile timezone; stored as an absolute instant.')
                             ->required()
                             ->seconds(false),
                         Textarea::make('reason')->maxLength(500),
@@ -362,8 +371,15 @@ class BookingsTable
                             'Student' => 'student.name',
                             'Student email' => 'student.email',
                             'Instructor' => 'instructor.name',
-                            'Starts (UTC)' => fn (Booking $b): string => $b->starts_at->toDateTimeString(),
-                            'Ends (UTC)' => fn (Booking $b): string => $b->ends_at->toDateTimeString(),
+                            // TZ-5 (TZ-AUD-024) — operational exports stay
+                            // CANONICAL UTC, ISO-8601, explicitly labelled.
+                            // A spreadsheet outlives the session that made
+                            // it and gets forwarded to people in other
+                            // countries, so an offset-bearing instant is
+                            // worth more than a viewer-local string whose
+                            // timezone is lost the moment it is emailed on.
+                            'Starts (UTC)' => fn (Booking $b): string => $b->starts_at->utc()->toIso8601String(),
+                            'Ends (UTC)' => fn (Booking $b): string => $b->ends_at->utc()->toIso8601String(),
                             'Timezone' => 'timezone',
                             'Status' => fn (Booking $b): string => $b->status->label(),
                             'Payment' => fn (Booking $b): string => $b->payment_status->label(),

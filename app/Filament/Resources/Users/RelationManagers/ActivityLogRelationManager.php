@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Users\RelationManagers;
 
 use App\Models\Activity;
 use App\Support\ActivityLogColors;
+use App\Support\Timezone\ViewerDateTime;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -58,7 +59,7 @@ class ActivityLogRelationManager extends RelationManager
                     ->dateTime('M j, Y H:i')
                     ->sortable()
                     ->since()
-                    ->tooltip(fn (Activity $record): string => $record->created_at->format('Y-m-d H:i:s')),
+                    ->tooltip(fn (Activity $record): string => ViewerDateTime::labelled($record->created_at, format: 'Y-m-d H:i:s')),
             ])
             ->filters([
                 SelectFilter::make('event')

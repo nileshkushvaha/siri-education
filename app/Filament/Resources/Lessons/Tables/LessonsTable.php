@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Lessons\Tables;
 
+use App\Filament\Support\AdminDayRange;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonStatus;
@@ -120,8 +121,8 @@ class LessonsTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('starts_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('starts_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('starts_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('starts_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
                 TrashedFilter::make(),
             ])
             ->recordActions([

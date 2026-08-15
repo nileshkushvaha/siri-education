@@ -117,6 +117,132 @@ class ViewerDisplayTimezoneGuardTest extends TestCase
         $this->assertTrue(class_exists(FilamentTimezone::class));
     }
 
+    // ── TZ-5 additions ──────────────────────────────────────────────────
+
+    public function test_filament_never_filters_a_utc_timestamp_by_utc_calendar_day(): void
+    {
+        // `whereDate('created_at', $date)` asks MySQL for the UTC day,
+        // which is neither the admin's day nor the reporting day
+        // (TZ-AUD-008). AdminDayRange turns a selected date into a
+        // half-open UTC range in whichever calendar actually owns it.
+        //
+        // Not a global ban: whereDate() stays correct for DATE columns
+        // (holidays.date, effective_from, period_start), which is why
+        // this guard is scoped to app/Filament and to *_at columns.
+        $offenders = [];
+
+        foreach ($this->filamentFiles() as $file) {
+            if (preg_match('/whereDate\s*\(\s*[\'"]\w*_at[\'"]/', $this->strippedSource($file)) === 1) {
+                $offenders[] = str_replace(base_path().'/', '', $file);
+            }
+        }
+
+        $this->assertSame([], $offenders, implode(' ', [
+            'A Filament filter compared a UTC timestamp against a calendar date. Use',
+            'AdminDayRange::viewerDay()/reportingDay() so the selected date means a real local day.',
+            'Offending files:', implode(', ', $offenders),
+        ]));
+    }
+
+    public function test_filament_closures_render_instants_through_the_viewer_presenter(): void
+    {
+        // The TZ-4 residual: Placeholder/tooltip/summary closures are not
+        // dateTime() components, so FilamentTimezone never reaches them
+        // and they rendered raw app-timezone values beside now-localized
+        // columns.
+        $offenders = [];
+
+        foreach ($this->filamentFiles() as $file) {
+            $source = $this->strippedSource($file);
+
+            if (preg_match('/->\w*_at(\?)?->format\s*\(/', $source) === 1) {
+                $offenders[] = str_replace(base_path().'/', '', $file);
+            }
+        }
+
+        $this->assertSame([], $offenders, implode(' ', [
+            'A Filament closure formatted an instant directly. Use ViewerDateTime so it matches the',
+            'admin-local timestamps rendered around it. Offending files:', implode(', ', $offenders),
+        ]));
+    }
+
+    public function test_reporting_never_freezes_a_single_offset_for_a_whole_period(): void
+    {
+        // The TZ-AUD-010 anti-pattern: one offset captured at period
+        // start and reused for every row, which is an hour wrong after a
+        // DST transition. LocalDaySql segments the period instead.
+        $offenders = [];
+
+        foreach ($this->reportingFiles() as $file) {
+            $source = $this->strippedSource($file);
+
+            if (str_contains($source, "start->format('P')") || str_contains($source, 'CONVERT_TZ')) {
+                $offenders[] = str_replace(base_path().'/', '', $file);
+            }
+        }
+
+        $this->assertSame([], $offenders, implode(' ', [
+            'Reporting reused a period-start offset (or CONVERT_TZ, which needs MySQL timezone tables',
+            'this deployment does not have). Use LocalDaySql. Offending files:', implode(', ', $offenders),
+        ]));
+    }
+
+    /** @return list<string> */
+    private function filamentFiles(): array
+    {
+        return $this->phpFilesIn(app_path('Filament'));
+    }
+
+    /** @return list<string> */
+    private function reportingFiles(): array
+    {
+        return array_values(array_filter(
+            $this->phpFilesIn(app_path('Reporting')),
+            static fn (string $file): bool => ! str_ends_with($file, 'LocalDaySql.php'),
+        ));
+    }
+
+    /** @return list<string> */
+    private function phpFilesIn(string $path): array
+    {
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        sort($files);
+
+        return $files;
+    }
+
+    /** Executable source only, so comments describing a banned pattern never trip a scan. */
+    private function strippedSource(string $file): string
+    {
+        $kept = '';
+
+        foreach (token_get_all((string) file_get_contents($file)) as $token) {
+            if (is_array($token)) {
+                if ($token[0] === T_COMMENT || $token[0] === T_DOC_COMMENT) {
+                    continue;
+                }
+
+                $kept .= $token[1];
+
+                continue;
+            }
+
+            $kept .= $token;
+        }
+
+        return $kept;
+    }
+
     /**
      * Lines formatting a `*_at` attribute (or a `$…StartsAt`-style
      * variable) with no conversion. Date-only attributes are excluded,

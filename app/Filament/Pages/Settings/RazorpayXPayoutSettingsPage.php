@@ -9,6 +9,7 @@ use App\Earnings\Providers\RazorpayX\RazorpayXPayoutConfigurationValidator;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\RazorpayXPayoutSettings;
+use App\Support\Timezone\ViewerDateTime;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
@@ -27,7 +28,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\HtmlString;
 
@@ -426,7 +426,7 @@ class RazorpayXPayoutSettingsPage extends Page
         $settings = app(RazorpayXPayoutSettings::class);
 
         $line = fn (string $label, string $value): string => sprintf('<div class="flex justify-between gap-8"><span>%s</span><strong>%s</strong></div>', e($label), e($value));
-        $formatTimestamp = fn (?string $value): string => $value !== null ? Carbon::parse($value)->format('M j, Y g:i A') : 'Never';
+        $formatTimestamp = fn (?string $value): string => $value !== null ? ViewerDateTime::dateTime($value) : 'Never';
 
         $configStatusLabel = match ($settings->razorpayx_config_status) {
             'ready' => 'Ready',

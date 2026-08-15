@@ -12,6 +12,7 @@ use App\Compliance\Enums\SuspiciousActivityRuleCode;
 use App\Compliance\Exceptions\ComplianceValidationException;
 use App\Compliance\Exceptions\InvalidSuspiciousActivityFlagTransitionException;
 use App\Compliance\Services\ComplianceMonitoringService;
+use App\Filament\Support\AdminDayRange;
 use App\Models\SuspiciousActivityFlag;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -101,8 +102,8 @@ class SuspiciousActivityFlagsTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['observed_from'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('first_observed_at', '>=', $date))
-                            ->when($data['observed_until'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('first_observed_at', '<=', $date));
+                            ->when($data['observed_from'] ?? null, fn (Builder $q, string $date): Builder => $q->where('first_observed_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                            ->when($data['observed_until'] ?? null, fn (Builder $q, string $date): Builder => $q->where('first_observed_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive));
                     }),
             ])
             ->recordActions([

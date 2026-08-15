@@ -10,6 +10,7 @@ use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentProviderCode;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\GatewayRequestException;
+use App\Filament\Support\AdminDayRange;
 use App\Models\BookingPayment;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -124,8 +125,8 @@ class BookingPaymentsTable
                         ]),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['created_from'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('created_at', '>=', $date))
-                        ->when($data['created_until'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('created_at', '<=', $date))),
+                        ->when($data['created_from'] ?? null, fn (Builder $q, string $date): Builder => $q->where('created_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['created_until'] ?? null, fn (Builder $q, string $date): Builder => $q->where('created_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 ViewAction::make(),

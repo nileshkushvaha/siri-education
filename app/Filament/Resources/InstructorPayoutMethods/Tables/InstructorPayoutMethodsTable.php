@@ -11,6 +11,7 @@ use App\Earnings\Enums\PayoutMethodType;
 use App\Earnings\Enums\RazorpayXProviderLinkStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXProvisioningException;
+use App\Filament\Support\AdminDayRange;
 use App\Models\InstructorPayoutDestinationProviderLink;
 use App\Models\InstructorPayoutMethod;
 use Filament\Actions\Action;
@@ -122,8 +123,8 @@ class InstructorPayoutMethodsTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('submitted_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('submitted_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('submitted_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('submitted_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 Action::make('view_sensitive')

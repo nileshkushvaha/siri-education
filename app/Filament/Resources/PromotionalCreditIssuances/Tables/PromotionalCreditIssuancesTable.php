@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PromotionalCreditIssuances\Tables;
 
+use App\Filament\Support\AdminDayRange;
 use App\Models\Currency;
 use App\Models\PromotionalCreditCampaign;
 use App\Models\PromotionalCreditIssuance;
@@ -71,8 +72,8 @@ class PromotionalCreditIssuancesTable
                         DatePicker::make('until'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q, $date) => $q->whereDate('issued_at', '>=', $date))
-                        ->when($data['until'], fn (Builder $q, $date) => $q->whereDate('issued_at', '<=', $date))),
+                        ->when($data['from'], fn (Builder $q, $date) => $q->where('issued_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'], fn (Builder $q, $date) => $q->where('issued_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->headerActions([
                 Action::make('issue_credit')

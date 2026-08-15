@@ -79,8 +79,9 @@ class TeacherLeaveTable
                         ->icon('heroicon-m-arrow-down-tray')
                         ->action(fn (Collection $records) => CsvExport::download($records->load('teacher'), [
                             'Teacher' => 'teacher.name',
-                            'Starts (UTC)' => fn (TeacherUnavailability $l): string => $l->starts_at->toDateTimeString(),
-                            'Ends (UTC)' => fn (TeacherUnavailability $l): string => $l->ends_at->toDateTimeString(),
+                            // TZ-5 (TZ-AUD-024) — canonical UTC, ISO-8601, labelled. See BookingsTable.
+                            'Starts (UTC)' => fn (TeacherUnavailability $l): string => $l->starts_at->utc()->toIso8601String(),
+                            'Ends (UTC)' => fn (TeacherUnavailability $l): string => $l->ends_at->utc()->toIso8601String(),
                             'Timezone' => 'timezone',
                             'Reason' => 'reason',
                         ], 'teacher-leave.csv'))

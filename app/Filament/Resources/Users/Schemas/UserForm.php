@@ -8,6 +8,7 @@ use App\Models\State;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Security\PasswordRuleBuilder;
+use App\Support\Timezone\ViewerDateTime;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -328,7 +329,7 @@ class UserForm
                                     ->schema([
                                         Placeholder::make('member_since')
                                             ->label('Member Since')
-                                            ->content(fn ($record) => $record?->created_at?->format('F j, Y') ?? '—'),
+                                            ->content(fn ($record) => ViewerDateTime::date($record?->created_at, format: 'F j, Y') ?? '—'),
 
                                         Placeholder::make('last_login')
                                             ->label('Last Login')

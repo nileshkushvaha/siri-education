@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Resources\ActivityLog\Tables;
 
 use App\Enums\ActivityActorType;
+use App\Filament\Support\AdminDayRange;
 use App\Models\Activity;
 use App\Models\User;
 use App\Support\ActivityLogColors;
 use App\Support\ModelDisplayName;
+use App\Support\Timezone\ViewerDateTime;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
@@ -79,7 +81,7 @@ class ActivityLogTable
                     ->dateTime('M j, Y H:i')
                     ->sortable()
                     ->since()
-                    ->tooltip(fn (Activity $record): string => $record->created_at->format('Y-m-d H:i:s')),
+                    ->tooltip(fn (Activity $record): string => ViewerDateTime::labelled($record->created_at, format: 'Y-m-d H:i:s')),
             ])
 
             ->filters([
@@ -161,8 +163,8 @@ class ActivityLogTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'], fn (Builder $q) => $q->whereDate('created_at', '>=', $data['from']))
-                            ->when($data['until'], fn (Builder $q) => $q->whereDate('created_at', '<=', $data['until']));
+                            ->when($data['from'], fn (Builder $q) => $q->where('created_at', '>=', AdminDayRange::viewerDay($data['from'])->startUtc))
+                            ->when($data['until'], fn (Builder $q) => $q->where('created_at', '<', AdminDayRange::viewerDay($data['until'])->endUtcExclusive));
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];

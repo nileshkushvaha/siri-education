@@ -6,6 +6,7 @@ namespace App\Filament\Resources\LoginHistory\Schemas;
 
 use App\Models\LoginHistory;
 use App\Support\LoginHistoryColors;
+use App\Support\Timezone\ViewerDateTime;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -62,7 +63,7 @@ class LoginHistoryInfolist
                         TextEntry::make('logged_out_at')
                             ->label('Logout Time')
                             ->state(fn (LoginHistory $record): string => $record->logged_out_at
-                                ? $record->logged_out_at->format('Y-m-d H:i:s')
+                                ? ViewerDateTime::dateTime($record->logged_out_at, format: 'Y-m-d H:i:s')
                                 : 'Still active / not recorded'
                             ),
                     ]),

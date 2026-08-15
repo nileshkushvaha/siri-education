@@ -6,8 +6,8 @@ namespace App\Reporting\DTOs\Learning;
 
 /**
  * Daily period-event trends, bucketed in the reporting
- * timezone (fixed-offset CONVERT_TZ, same documented DST limitation as
- * the registration trend). Every map is keyed Y-m-d over the
+ * timezone. Bucketing is DST-exact as of TZ-5 (see LocalDaySql) — the
+ * former fixed-offset limitation is gone. Every map is keyed Y-m-d over the
  * full period with empty days zero-filled; each series is a true event
  * stream on its own authoritative timestamp — current-state totals are
  * never trended. No smoothing, no forecast.

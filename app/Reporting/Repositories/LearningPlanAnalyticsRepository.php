@@ -12,6 +12,7 @@ use App\Reporting\DTOs\Learning\LearningPlanAnalyticsData;
 use App\Reporting\DTOs\Learning\MilestoneReviewAnalyticsData;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 use App\Reporting\Filters\ReportFilters;
+use App\Reporting\Support\LocalDaySql;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -164,13 +165,13 @@ final class LearningPlanAnalyticsRepository
      */
     public function planTrend(string $column, ReportingPeriod $period, ReportFilters $filters): array
     {
-        $offset = $period->start->format('P');
+        [$dayExpression, $dayBindings] = LocalDaySql::dateExpression("`{$column}`", $period);
 
         $rows = $this->plans($filters)
             ->whereNotNull($column)
             ->where($column, '>=', $period->startUtc)
             ->where($column, '<', $period->endUtcExclusive)
-            ->selectRaw("DATE(CONVERT_TZ(`{$column}`, ?, ?)) as day, count(*) as aggregate", ['+00:00', $offset])
+            ->selectRaw($dayExpression.' as day, count(*) as aggregate', $dayBindings)
             ->groupBy('day')
             ->pluck('aggregate', 'day');
 
@@ -180,14 +181,14 @@ final class LearningPlanAnalyticsRepository
     /** @return array<string, int> milestones achieved per day (completed_at). */
     public function milestoneAchievedTrend(ReportingPeriod $period, ReportFilters $filters): array
     {
-        $offset = $period->start->format('P');
+        [$dayExpression, $dayBindings] = LocalDaySql::dateExpression('learning_plan_milestones.completed_at', $period);
 
         $rows = $this->milestones($filters)
             ->where('learning_plan_milestones.status', LearningPlanMilestoneStatus::Completed->value)
             ->whereNotNull('learning_plan_milestones.completed_at')
             ->where('learning_plan_milestones.completed_at', '>=', $period->startUtc)
             ->where('learning_plan_milestones.completed_at', '<', $period->endUtcExclusive)
-            ->selectRaw('DATE(CONVERT_TZ(learning_plan_milestones.completed_at, ?, ?)) as day, count(*) as aggregate', ['+00:00', $offset])
+            ->selectRaw($dayExpression.' as day, count(*) as aggregate', $dayBindings)
             ->groupBy('day')
             ->pluck('aggregate', 'day');
 
@@ -197,13 +198,13 @@ final class LearningPlanAnalyticsRepository
     /** @return array<string, int> progress reviews completed per day (reviewed_at). */
     public function reviewCompletedTrend(ReportingPeriod $period, ReportFilters $filters): array
     {
-        $offset = $period->start->format('P');
+        [$dayExpression, $dayBindings] = LocalDaySql::dateExpression('learning_plan_reviews.reviewed_at', $period);
 
         $rows = $this->reviews($filters)
             ->whereNotNull('learning_plan_reviews.reviewed_at')
             ->where('learning_plan_reviews.reviewed_at', '>=', $period->startUtc)
             ->where('learning_plan_reviews.reviewed_at', '<', $period->endUtcExclusive)
-            ->selectRaw('DATE(CONVERT_TZ(learning_plan_reviews.reviewed_at, ?, ?)) as day, count(*) as aggregate', ['+00:00', $offset])
+            ->selectRaw($dayExpression.' as day, count(*) as aggregate', $dayBindings)
             ->groupBy('day')
             ->pluck('aggregate', 'day');
 

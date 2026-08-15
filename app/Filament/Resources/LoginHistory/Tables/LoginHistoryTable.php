@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\LoginHistory\Tables;
 
+use App\Filament\Support\AdminDayRange;
 use App\Models\LoginHistory;
 use App\Models\User;
 use App\Support\LoginHistoryColors;
+use App\Support\Timezone\ViewerDateTime;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
@@ -69,12 +71,12 @@ class LoginHistoryTable
                     ->dateTime('M j, Y H:i')
                     ->sortable()
                     ->since()
-                    ->tooltip(fn (LoginHistory $record): string => $record->logged_in_at?->format('Y-m-d H:i:s') ?? ''),
+                    ->tooltip(fn (LoginHistory $record): string => ViewerDateTime::labelled($record->logged_in_at, format: 'Y-m-d H:i:s') ?? ''),
 
                 TextColumn::make('logged_out_at')
                     ->label('Logout')
                     ->state(fn (LoginHistory $record): string => $record->logged_out_at
-                        ? $record->logged_out_at->format('M j, Y H:i')
+                        ? ViewerDateTime::dateTime($record->logged_out_at)
                         : '—'
                     )
                     ->sortable()
@@ -143,8 +145,8 @@ class LoginHistoryTable
                         DatePicker::make('until')->label('Until')->native(false),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'], fn (Builder $q) => $q->whereDate('logged_in_at', '>=', $data['from']))
-                        ->when($data['until'], fn (Builder $q) => $q->whereDate('logged_in_at', '<=', $data['until']))
+                        ->when($data['from'], fn (Builder $q) => $q->where('logged_in_at', '>=', AdminDayRange::viewerDay($data['from'])->startUtc))
+                        ->when($data['until'], fn (Builder $q) => $q->where('logged_in_at', '<', AdminDayRange::viewerDay($data['until'])->endUtcExclusive))
                     )
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];

@@ -10,6 +10,7 @@ use App\Referral\Enums\ReferralCampaignStatus;
 use App\Referral\Enums\ReferralRewardType;
 use App\Referral\Exceptions\ReferralException;
 use App\Support\MoneyFormatter;
+use App\Support\Timezone\ViewerDateTime;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
@@ -43,8 +44,8 @@ class ReferralCampaignsTable
                     ->label('Window (UTC)')
                     ->state(fn (ReferralCampaign $record): string => sprintf(
                         '%s → %s',
-                        $record->starts_at->format('M j, Y H:i'),
-                        $record->ends_at->format('M j, Y H:i'),
+                        ViewerDateTime::dateTime($record->starts_at),
+                        ViewerDateTime::dateTime($record->ends_at),
                     ))
                     ->sortable(),
                 TextColumn::make('reward_type')

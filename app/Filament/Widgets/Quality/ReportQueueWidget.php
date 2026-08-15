@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Widgets\Quality;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\AdminDayRange;
 use App\Models\ReviewReport;
 use App\Quality\Support\QualityDashboardAccess;
 use App\Reviews\Contracts\ReviewReportServiceInterface;
@@ -92,8 +93,8 @@ class ReportQueueWidget extends TableWidget
                         DatePicker::make('until')->label('Until')->native(false),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['from'] ?? null, fn (Builder $q, $date) => $q->whereDate('submitted_at', '>=', $date))
-                        ->when($data['until'] ?? null, fn (Builder $q, $date) => $q->whereDate('submitted_at', '<=', $date))),
+                        ->when($data['from'] ?? null, fn (Builder $q, $date) => $q->where('submitted_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                        ->when($data['until'] ?? null, fn (Builder $q, $date) => $q->where('submitted_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive))),
             ])
             ->recordActions([
                 Action::make('startReview')

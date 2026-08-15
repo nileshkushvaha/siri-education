@@ -10,6 +10,7 @@ use App\Alerts\Enums\OperationalAlertStatus;
 use App\Alerts\Enums\OperationalAlertType;
 use App\Alerts\Exceptions\OperationalAlertValidationException;
 use App\Alerts\Services\OperationalAlertService;
+use App\Filament\Support\AdminDayRange;
 use App\Models\OperationalAlert;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -95,8 +96,8 @@ class OperationalAlertsTable
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['observed_from'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('first_observed_at', '>=', $date))
-                            ->when($data['observed_until'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('first_observed_at', '<=', $date));
+                            ->when($data['observed_from'] ?? null, fn (Builder $q, string $date): Builder => $q->where('first_observed_at', '>=', AdminDayRange::viewerDay($date)->startUtc))
+                            ->when($data['observed_until'] ?? null, fn (Builder $q, string $date): Builder => $q->where('first_observed_at', '<', AdminDayRange::viewerDay($date)->endUtcExclusive));
                     }),
             ])
             ->recordActions([

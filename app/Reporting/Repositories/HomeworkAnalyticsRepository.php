@@ -8,6 +8,7 @@ use App\Homework\Enums\HomeworkStatus;
 use App\Reporting\DTOs\Learning\HomeworkAnalyticsData;
 use App\Reporting\DTOs\Operations\LabeledCountRow;
 use App\Reporting\Filters\ReportFilters;
+use App\Reporting\Support\LocalDaySql;
 use App\Reporting\ValueObjects\ReportingPeriod;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -79,13 +80,13 @@ final class HomeworkAnalyticsRepository
      */
     public function trend(string $column, ReportingPeriod $period, ReportFilters $filters): array
     {
-        $offset = $period->start->format('P');
+        [$dayExpression, $dayBindings] = LocalDaySql::dateExpression("`{$column}`", $period);
 
         $rows = $this->homework($filters)
             ->whereNotNull($column)
             ->where($column, '>=', $period->startUtc)
             ->where($column, '<', $period->endUtcExclusive)
-            ->selectRaw("DATE(CONVERT_TZ(`{$column}`, ?, ?)) as day, count(*) as aggregate", ['+00:00', $offset])
+            ->selectRaw($dayExpression.' as day, count(*) as aggregate', $dayBindings)
             ->groupBy('day')
             ->pluck('aggregate', 'day');
 

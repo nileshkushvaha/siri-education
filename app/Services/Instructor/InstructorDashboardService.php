@@ -22,6 +22,7 @@ use App\Models\StudentLearningPlan;
 use App\Models\User;
 use App\Settings\MeetingSettings;
 use App\Support\MoneyFormatter;
+use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 
 final class InstructorDashboardService
@@ -44,7 +45,7 @@ final class InstructorDashboardService
      */
     public function summary(User $instructor, int $unreadNotifications = 0, ?int $pendingHomeworkReviews = null): InstructorDashboardData
     {
-        $timezone = $instructor->profile?->timezone ?: config('app.timezone');
+        $timezone = UserTimezoneResolver::resolve($instructor);
         $now = CarbonImmutable::now($timezone);
 
         // Three bounded queries (two COUNTs + one LIMIT 4) instead

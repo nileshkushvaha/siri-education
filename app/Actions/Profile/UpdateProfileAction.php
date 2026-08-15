@@ -8,6 +8,7 @@ use App\Contracts\PhoneVerificationServiceInterface;
 use App\Models\User;
 use App\Services\Phone\PhoneNumberService;
 use App\Services\Student\StudentBillingCountryService;
+use App\Support\UserTimezoneResolver;
 use Illuminate\Support\Facades\DB;
 
 final class UpdateProfileAction
@@ -88,8 +89,24 @@ final class UpdateProfileAction
                 'instagram' => array_key_exists('instagram', $data) ? ($data['instagram'] ?? null) : $profile->instagram,
                 'youtube' => array_key_exists('youtube', $data) ? ($data['youtube'] ?? null) : $profile->youtube,
 
-                // Localisation — fall back to saved value to prevent null constraint errors
-                'timezone' => $data['timezone'] ?? $profile->timezone ?? 'Asia/Kolkata',
+                // Localisation — fall back to saved value to prevent null constraint errors.
+                //
+                // TZ-1: the India-specific final fallback is gone. An
+                // account that somehow has no stored timezone now
+                // receives the PLATFORM default rather than
+                // 'Asia/Kolkata' hardcoded into business code.
+                //
+                // Note the ordering: a submitted value wins, then the
+                // ALREADY-STORED value. `country_id` is written a few
+                // lines above from this same payload, so a user moving
+                // country without touching the timezone field keeps the
+                // timezone they explicitly chose — a country change
+                // must never silently relocate someone's clock (they
+                // may travel, or hold a foreign number). The Country
+                // default only ever applies at registration, or through
+                // UserTimezoneResolver's fallback when nothing explicit
+                // was ever stored.
+                'timezone' => $data['timezone'] ?? $profile->timezone ?? UserTimezoneResolver::platformDefault(),
                 'language' => $data['language'] ?? $profile->language ?? 'en',
 
                 // Notifications tab — merge individual keys so toggling one

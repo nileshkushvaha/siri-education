@@ -22,6 +22,7 @@ use App\Services\Instructor\RecommendationService;
 use App\Services\Profile\ProfileService;
 use App\Settings\FeatureSettings;
 use App\Settings\MeetingSettings;
+use App\Support\UserTimezoneResolver;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -90,7 +91,7 @@ final class StudentDashboardService
             return null;
         }
 
-        $timezone = $student->profile?->timezone ?: config('app.timezone');
+        $timezone = UserTimezoneResolver::resolve($student);
         $meeting = $booking->meeting;
 
         // The URL comes exclusively from the
@@ -121,7 +122,7 @@ final class StudentDashboardService
     private function homework(User $student): array
     {
         $stats = $this->homework->statsForStudent($student->id);
-        $timezone = $student->profile?->timezone ?: config('app.timezone');
+        $timezone = UserTimezoneResolver::resolve($student);
 
         return [
             'pending' => (int) ($stats->pending ?? 0),

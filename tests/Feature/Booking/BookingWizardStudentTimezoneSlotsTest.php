@@ -14,7 +14,7 @@ use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Support\RecipientTimezoneResolver;
+use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -23,7 +23,7 @@ use Tests\TestCase;
 /**
  * Phase 3.1 §23-§30/§41 — student-timezone slot presentation. The audit
  * in §23-§28 found the pipeline already correct end to end
- * (RecipientTimezoneResolver -> BookingWizard::$timezone ->
+ * (UserTimezoneResolver -> BookingWizard::$timezone ->
  * AvailabilityQueryData::$timezone -> AvailabilityService::slots()
  * computing everything in UTC and converting only at the final step);
  * these tests close the gap in explicit, single-purpose coverage rather
@@ -314,10 +314,10 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
 
         // Booking::timezone (the frozen, student-facing timezone AT
         // selection) must not be silently re-derived from the now-changed
-        // live profile — RecipientTimezoneResolver is for notifications
+        // live profile — UserTimezoneResolver is for notifications
         // going forward, not for reinterpreting this historical record.
         $booking->refresh();
         $this->assertSame($originalTimezone, $booking->timezone);
-        $this->assertNotSame(RecipientTimezoneResolver::resolve($student->fresh()), $booking->timezone);
+        $this->assertNotSame(UserTimezoneResolver::resolve($student->fresh()), $booking->timezone);
     }
 }

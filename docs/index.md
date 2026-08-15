@@ -43,6 +43,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Activity Log / Audit Trail | `activity-log.md` |
 | Notifications (admin bell + transactional email) | `notifications.md` |
 | Booking Engine | `booking.md` |
+| Timezone architecture (resolution, storage, snapshots, input trust) | `architecture/timezone.md` |
 | Teacher availability engine (DST/timezone detail) | `architecture/phase-6-instructor-availability-foundation.md` |
 | Student pricing matrix (resolution priority) | `architecture/phase-10.2d-student-pricing-matrix.md` |
 | Meeting creation (Manual, Google Meet, Zoom) | `architecture/meetings.md` |

@@ -8,6 +8,7 @@ use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Models\Page as PageModel;
 use App\Settings\GeneralSettings;
+use App\Support\Timezone\IanaTimezone;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -248,8 +249,8 @@ class GeneralSettingsPage extends Page
                             Select::make('default_timezone')
                                 ->label('Default Timezone')
                                 ->options(
-                                    collect(\DateTimeZone::listIdentifiers())
-                                        ->mapWithKeys(fn ($tz) => [$tz => $tz])
+                                    collect(IanaTimezone::identifiers())
+                                        ->mapWithKeys(fn (string $tz): array => [$tz => $tz])
                                         ->all()
                                 )
                                 ->searchable()
@@ -374,7 +375,13 @@ class GeneralSettingsPage extends Page
     public function resetDefaults(): void
     {
         $saved = $this->saveSettingsWithAudit(GeneralSettings::class, 'settings', function (GeneralSettings $settings): void {
-            $settings->default_timezone = 'Asia/Kolkata';
+            // TZ-1: "reset to defaults" must not reinstate an
+            // India-specific platform timezone on a multi-country
+            // deployment. This setting IS the platform default tier, so
+            // there is nothing above it to inherit — reset lands on the
+            // neutral final fallback and an operator sets their real
+            // platform timezone explicitly.
+            $settings->default_timezone = IanaTimezone::FALLBACK;
             $settings->default_currency = 'INR';
             $settings->header_top_bar_enabled = false;
             $settings->facebook_url = null;

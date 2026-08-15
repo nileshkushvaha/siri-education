@@ -6,7 +6,7 @@ namespace App\Notifications\Booking\Concerns;
 
 use App\Booking\Services\NotificationChannelResolver;
 use App\Models\User;
-use App\Support\RecipientTimezoneResolver;
+use App\Support\UserTimezoneResolver;
 use Illuminate\Support\Str;
 
 /**
@@ -71,7 +71,7 @@ trait RoutesBookingChannels
     protected function recipientTimezone(object $notifiable): string
     {
         return $notifiable instanceof User
-            ? RecipientTimezoneResolver::resolve($notifiable)
-            : RecipientTimezoneResolver::PLATFORM_FALLBACK;
+            ? UserTimezoneResolver::resolve($notifiable)
+            : UserTimezoneResolver::PLATFORM_FALLBACK;
     }
 }

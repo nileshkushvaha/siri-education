@@ -19,6 +19,7 @@ use App\Lessons\Exceptions\LessonException;
 use App\Models\HomeworkAssignment;
 use App\Models\Lesson;
 use App\Settings\MeetingSettings;
+use App\Support\UserTimezoneResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -196,8 +197,13 @@ final class LessonFeedbackManager extends Component
         BookingMeetingServiceInterface $meetings,
         MeetingSettings $meetingSettings,
     ): View {
-        $instructorId = (int) auth()->id();
-        $timezone = auth()->user()?->profile?->timezone ?: config('app.timezone');
+        $instructor = auth()->user();
+        $instructorId = (int) $instructor?->id;
+        // The viewer IS the recipient here, so the caller — not the
+        // resolver — is what reads auth(); see UserTimezoneResolver.
+        $timezone = $instructor !== null
+            ? UserTimezoneResolver::resolve($instructor)
+            : UserTimezoneResolver::platformDefault();
 
         $upcoming = Lesson::query()
             ->forInstructor($instructorId)

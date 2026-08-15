@@ -23,7 +23,7 @@ use Tests\TestCase;
  * SRS-21-6, SRS §21.13/§21.16: every booking/meeting notification must
  * display the scheduled time in the ACTUAL
  * recipient's own timezone, resolved at render time via
- * RecipientTimezoneResolver — never the booking's captured (student's)
+ * UserTimezoneResolver — never the booking's captured (student's)
  * timezone reused for the instructor's copy.
  */
 final class BookingNotificationRecipientTimezoneTest extends TestCase

@@ -18,6 +18,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Meeting history is booking history — never hard-deleted;
  * cancellation transitions `status` instead. See PreventsHardDeletion.
+ *
+ * TZ-1 — `booking_meetings.timezone` inherits the booking's
+ * origin snapshot and additionally serves as the PROVIDER TIMEZONE
+ * LABEL sent to Zoom and Google Calendar. It is not a viewer display
+ * timezone (see Booking's class docblock). It also cannot shift the
+ * meeting: Zoom receives `start_time` as a UTC `…Z` timestamp and
+ * Google receives an offset-bearing ISO-8601 `dateTime`, so in both
+ * APIs the instant is fixed by the timestamp and this label only
+ * affects how the provider renders it.
  */
 class BookingMeeting extends Model
 {

@@ -6,6 +6,8 @@ namespace App\Filament\Pages;
 
 use App\Models\Country;
 use App\Models\State;
+use App\Support\Timezone\IanaTimezone;
+use App\Support\UserTimezoneResolver;
 use BackedEnum;
 use Filament\Auth\Pages\EditProfile;
 use Filament\Forms\Components\DatePicker;
@@ -237,13 +239,18 @@ class AdminProfile extends EditProfile
                                 Select::make('timezone')
                                     ->label('Timezone')
                                     ->options(
-                                        collect(\DateTimeZone::listIdentifiers())
-                                            ->mapWithKeys(fn ($tz) => [$tz => $tz])
+                                        collect(IanaTimezone::identifiers())
+                                            ->mapWithKeys(fn (string $tz): array => [$tz => $tz])
                                             ->all()
                                     )
                                     ->searchable()
                                     ->native(false)
-                                    ->default('Asia/Kolkata'),
+                                    // TZ-1: an admin who has never set a timezone
+                                    // is pre-selected onto the PLATFORM default,
+                                    // not onto India. This is a form default only —
+                                    // it prefills the control, and the value still
+                                    // has to be saved before it means anything.
+                                    ->default(fn (): string => UserTimezoneResolver::platformDefault()),
 
                                 Select::make('language')
                                     ->label('Language')

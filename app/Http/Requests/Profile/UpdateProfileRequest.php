@@ -45,6 +45,19 @@ class UpdateProfileRequest extends FormRequest
                 Rule::exists('states', 'id')->where(fn ($query) => $query->where('country_id', $this->input('country_id'))),
             ],
             'postal_code' => ['nullable', 'string', 'max:20'],
+            // TZ-1: `timezone:all` maps to PHP's `DateTimeZone::ALL`
+            // group — the 419 CANONICAL IANA identifiers, which is
+            // exactly the strictness a long-lived, DST-aware profile
+            // value needs. It already rejects `EST`, `GMT`, `CST6CDT`,
+            // `+05:30`, `US/Eastern` and `Asia/Calcutta`, none of which
+            // can model a DST rule over the life of an account.
+            //
+            // (The read-only audit flagged this rule as permissive —
+            // that finding was wrong, and verifying it is why the rule
+            // survives unchanged. What was genuinely missing is that
+            // the same list is now shared with the resolver and the
+            // wizard via IanaTimezone, and a guard test asserts the two
+            // sets stay identical so they cannot drift apart.)
             'timezone' => ['nullable', 'string', 'timezone:all'],
             'language' => ['nullable', 'string', 'max:10'],
             'student_academic_level_id' => [$studentOnly, 'nullable', 'uuid', 'exists:academic_levels,id'],

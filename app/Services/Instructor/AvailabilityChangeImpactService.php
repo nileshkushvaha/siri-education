@@ -10,6 +10,7 @@ use App\Booking\Repositories\AvailabilityRepository;
 use App\Models\Booking;
 use App\Models\TeacherAvailability;
 use App\Models\User;
+use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -44,7 +45,7 @@ final class AvailabilityChangeImpactService
      */
     public function analyzeWindowChange(User $teacher, Collection $currentRows, Collection $proposedRows, string $mutationType, array $proposal): AvailabilityChangeImpact
     {
-        $fallbackTimezone = $teacher->profile?->timezone;
+        $fallbackTimezone = UserTimezoneResolver::resolve($teacher);
 
         $affected = $this->futureConfirmedBookings($teacher->id)
             ->filter(fn (Booking $booking): bool => $this->availability->rowsCover($currentRows, $booking->starts_at, $booking->ends_at, $fallbackTimezone)
@@ -135,7 +136,7 @@ final class AvailabilityChangeImpactService
             return AvailabilityChangeImpact::none($mutationType);
         }
 
-        $timezone = $teacher->profile?->timezone ?: config('app.timezone', 'UTC');
+        $timezone = UserTimezoneResolver::resolve($teacher);
 
         $summaries = $affected
             ->take(AvailabilityChangeImpact::SUMMARY_LIMIT)

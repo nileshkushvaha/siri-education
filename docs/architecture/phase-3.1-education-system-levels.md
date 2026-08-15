@@ -143,7 +143,7 @@ future band spanning e.g. Year 13 remains representable.
 
 ## Timezone architecture (audited, unchanged)
 
-Traced end to end: `RecipientTimezoneResolver::resolve()` (student's
+Traced end to end: `UserTimezoneResolver::resolve()` (student's
 stored `user_profiles.timezone`, `GeneralSettings::default_timezone`
 fallback, `UTC` last resort) → `BookingWizard::$timezone` →
 `WizardBookingService::availableDates()/availableSlots()` →

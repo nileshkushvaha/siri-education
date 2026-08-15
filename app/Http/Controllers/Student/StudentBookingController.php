@@ -20,7 +20,9 @@ use App\Http\Requests\Api\Student\StudentTeachersRequest;
 use App\Http\Resources\Booking\TimeSlotResource;
 use App\Http\Resources\Student\StudentBookingResource;
 use App\Http\Resources\Student\TeacherOptionResource;
-use App\Support\RecipientTimezoneResolver;
+use App\Models\User;
+use App\Support\Timezone\IanaTimezone;
+use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -82,7 +84,7 @@ final class StudentBookingController extends Controller
             return TimeSlotResource::collection(collect());
         }
 
-        $timezone = $request->validated('timezone') ?? RecipientTimezoneResolver::resolve($request->user());
+        $timezone = $this->timezoneFor($request->user(), $request->validated('timezone'));
         $date = CarbonImmutable::parse($request->validated('date'), $timezone)->startOfDay();
 
         return TimeSlotResource::collection($availability->slots(new AvailabilityQueryData(
@@ -96,10 +98,7 @@ final class StudentBookingController extends Controller
 
     public function store(StoreStudentBookingRequest $request): JsonResponse
     {
-        // Omitted by the caller means "use mine", not "use the server's" —
-        // the student's own stored timezone, same resolution order the
-        // booking wizard and every scheduled-time notification use.
-        $timezone = $request->validated('timezone') ?? RecipientTimezoneResolver::resolve($request->user());
+        $timezone = $this->timezoneFor($request->user(), $request->validated('timezone'));
 
         $data = new StudentBookingData(
             typeKey: $request->validated('type'),
@@ -133,5 +132,48 @@ final class StudentBookingController extends Controller
         return StudentBookingResource::make($booking)
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * TZ-1 (TZ-AUD-013): the ONE definition of "which timezone does
+     * this student's naive wall-clock input mean?", shared by slots()
+     * and store() because they MUST agree. If slots were rendered in a
+     * request-supplied zone but a naive `starts_at` picked from that
+     * list were then interpreted in the profile zone, the student would
+     * be booked at an instant they were never shown — a worse outcome
+     * than either rule applied consistently.
+     *
+     * An explicit, valid profile timezone is the account's own answer
+     * and outranks anything the request carries, so a forged or merely
+     * stale `timezone` parameter cannot reinterpret a booking
+     * (audit §60). The field stays accepted rather than rejected, so
+     * existing clients that echo their timezone back keep working; it
+     * simply stops being authoritative. A conflicting value cannot pass
+     * silently either way — the resulting UTC instant is still
+     * re-validated against the instructor's real availability, which
+     * rejects anything that is not a genuine slot.
+     *
+     * The field remains meaningful for the one case where the server
+     * has nothing better: an account with no explicit stored timezone.
+     * There a validated request value beats falling through to the
+     * Country/platform default, because the client at least knows where
+     * the person is sitting.
+     *
+     * Note this only affects NAIVE input. A `starts_at` carrying an
+     * offset or `Z` is already an absolute instant, and both PHP and
+     * Carbon honour the embedded offset over any timezone argument, so
+     * such a request is unambiguous no matter what this returns.
+     */
+    private function timezoneFor(?User $user, ?string $requested): string
+    {
+        if ($user === null) {
+            return UserTimezoneResolver::platformDefault();
+        }
+
+        if (IanaTimezone::isValid($user->profile?->timezone)) {
+            return UserTimezoneResolver::resolve($user);
+        }
+
+        return IanaTimezone::sanitize($requested) ?? UserTimezoneResolver::resolve($user);
     }
 }

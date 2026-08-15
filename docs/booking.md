@@ -64,7 +64,7 @@ teacher's daily cap (`BookingSettings::max_daily_bookings_per_teacher`).
   is re-run under the host lock on create/reschedule.
 - **Student-facing display timezone** (Phase 3.1 §23-§30 audit): the
   student always sees dates/slots in their OWN timezone, never the
-  instructor's or the server's. `App\Support\RecipientTimezoneResolver::resolve()`
+  instructor's or the server's. `App\Support\UserTimezoneResolver::resolve()`
   (student's stored `user_profiles.timezone` → `GeneralSettings::default_timezone`
   → `UTC`) feeds `BookingWizard::$timezone`, which flows unchanged
   through `WizardBookingService::availableDates()/availableSlots()` into

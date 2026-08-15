@@ -23,6 +23,37 @@ use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
+/**
+ * TZ-1 — what `bookings.timezone` means, and what it does not.
+ *
+ * It is the BOOKING-ORIGIN INTERPRETATION SNAPSHOT. It answers exactly
+ * one question:
+ *
+ *     "In which timezone was the wall-clock time the student picked
+ *      interpreted when this booking was created?"
+ *
+ * It is captured once, at creation, and never updated afterwards. Its
+ * legitimate uses are historical provenance ("why is this row's
+ * `starts_at` the instant it is?"), the timezone label handed to a
+ * meeting provider, and legacy API compatibility.
+ *
+ * It explicitly does NOT answer:
+ *
+ *     "In which timezone should a viewer be shown this booking?"
+ *
+ * Those are different questions with different answers, and conflating
+ * them is why an instructor in Europe/London currently sees their own
+ * lessons rendered in their student's Asia/Kolkata clock. A viewer's
+ * timezone is resolved from the VIEWER, with UserTimezoneResolver —
+ * never read off the record being displayed. Presentation surfaces are
+ * migrated to that rule in TZ-4; until then this docblock is the
+ * contract, not the current behavior of every Blade file.
+ *
+ * The absolute truth of when the lesson happens is `starts_at` /
+ * `ends_at`, which are always canonical UTC instants. This column can
+ * never move a booking in time — dropping it entirely would change no
+ * scheduling behavior whatsoever.
+ */
 class Booking extends Model
 {
     use HasFactory, HasUuids, LogsActivity, PreventsHardDeletion, SoftDeletes;

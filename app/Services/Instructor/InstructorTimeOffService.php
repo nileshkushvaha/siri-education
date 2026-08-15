@@ -10,6 +10,8 @@ use App\Exceptions\Instructor\AvailabilityChangeRequiresConfirmationException;
 use App\Models\TeacherUnavailability;
 use App\Models\User;
 use App\Services\AuditTrailService;
+use App\Support\Timezone\IanaTimezone;
+use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -197,13 +199,19 @@ final class InstructorTimeOffService
 
     private function timezone(?string $timezone, User $teacher): string
     {
-        $timezone = $timezone ?: $teacher->profile?->timezone ?: config('app.timezone', 'UTC');
+        // An explicitly chosen timezone is user input and is still
+        // rejected outright when invalid. Everything else defers to the
+        // canonical chain (profile -> Country -> platform -> UTC), which
+        // cannot return an invalid identifier, so it needs no re-check.
+        if (filled($timezone)) {
+            if (! IanaTimezone::isValid($timezone)) {
+                throw ValidationException::withMessages(['timezone' => 'Select a valid timezone.']);
+            }
 
-        if (! in_array($timezone, timezone_identifiers_list(), true)) {
-            throw ValidationException::withMessages(['timezone' => 'Select a valid timezone.']);
+            return $timezone;
         }
 
-        return $timezone;
+        return UserTimezoneResolver::resolve($teacher);
     }
 
     private function assertValidRange(CarbonImmutable $startsAt, CarbonImmutable $endsAt): void

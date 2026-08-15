@@ -20,6 +20,7 @@ use App\Reviews\Contracts\InstructorQualityInsightsServiceInterface;
 use App\Reviews\Enums\LessonReviewEligibilityMode;
 use App\Reviews\Enums\StudentReviewStatus;
 use App\Reviews\Support\ReviewContributionEligibility;
+use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 
 /**
@@ -46,7 +47,7 @@ final class InstructorAnalyticsService
 
     public function overview(User $instructor, InstructorAnalyticsPeriod $period = InstructorAnalyticsPeriod::Last30Days): InstructorAnalyticsData
     {
-        $reportingPeriod = $period->toReportingPeriod($instructor->profile?->timezone);
+        $reportingPeriod = $period->toReportingPeriod(UserTimezoneResolver::resolve($instructor));
         $periodStart = $reportingPeriod?->startUtc;
         $periodEndExclusive = $reportingPeriod?->endUtcExclusive ?? CarbonImmutable::now()->utc()->addSecond();
 
@@ -149,7 +150,7 @@ final class InstructorAnalyticsService
     /** Current-vs-previous-period lesson counts — reuses the exact lessonsSummary() aggregate this class already computes for overview(), called twice. */
     public function lessonTrends(User $instructor, InstructorAnalyticsPeriod $period = InstructorAnalyticsPeriod::Last30Days): LessonTrendData
     {
-        $reportingPeriod = $period->toReportingPeriod($instructor->profile?->timezone);
+        $reportingPeriod = $period->toReportingPeriod(UserTimezoneResolver::resolve($instructor));
         $instructorId = $instructor->id;
 
         if ($reportingPeriod === null) {
@@ -198,7 +199,7 @@ final class InstructorAnalyticsService
      */
     public function qualityTrends(User $instructor, InstructorAnalyticsPeriod $period = InstructorAnalyticsPeriod::Last30Days): QualityTrendData
     {
-        $reportingPeriod = $period->toReportingPeriod($instructor->profile?->timezone);
+        $reportingPeriod = $period->toReportingPeriod(UserTimezoneResolver::resolve($instructor));
 
         if ($reportingPeriod === null) {
             $current = $this->ratingForPeriod($instructor->id, null, CarbonImmutable::now()->utc()->addSecond());
@@ -228,7 +229,7 @@ final class InstructorAnalyticsService
     /** Active students (period-scoped, reusing InstructorStudentService) plus the point-in-time without-upcoming-lesson fact. */
     public function studentEngagement(User $instructor, InstructorAnalyticsPeriod $period = InstructorAnalyticsPeriod::Last30Days): StudentEngagementData
     {
-        $reportingPeriod = $period->toReportingPeriod($instructor->profile?->timezone);
+        $reportingPeriod = $period->toReportingPeriod(UserTimezoneResolver::resolve($instructor));
         $periodStart = $reportingPeriod?->startUtc;
         $periodEndExclusive = $reportingPeriod?->endUtcExclusive ?? CarbonImmutable::now()->utc()->addSecond();
 

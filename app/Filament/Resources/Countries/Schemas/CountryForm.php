@@ -6,7 +6,7 @@ use App\Booking\Enums\PaymentProviderCode;
 use App\Country\Enums\CountryFeature;
 use App\Models\Currency;
 use App\Models\Language;
-use DateTimeZone;
+use App\Support\Timezone\IanaTimezone;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -103,7 +103,8 @@ class CountryForm
 
                             Select::make('default_timezone')
                                 ->label('Default Timezone')
-                                ->options(fn () => collect(DateTimeZone::listIdentifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
+                                ->options(fn (): array => collect(IanaTimezone::identifiers())->mapWithKeys(fn (string $timezone): array => [$timezone => $timezone])->all())
+                                ->helperText('A FALLBACK DEFAULT for users from this country who have not set their own timezone — never an exact location. Multi-timezone countries (US, Canada, Australia) still require each user to choose their real zone.')
                                 ->searchable()
                                 ->nullable()
                                 ->native(false),

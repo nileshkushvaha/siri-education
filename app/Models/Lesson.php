@@ -24,6 +24,14 @@ use Spatie\Activitylog\Support\LogOptions;
  * One lesson per booking (unique booking_id), created only after a
  * valid booking confirmation. Status changes go exclusively through
  * LessonLifecycleService — never mutate `status` directly.
+ *
+ * TZ-1 — `lessons.timezone` is copied verbatim from the originating
+ * booking and carries the identical meaning: a HISTORICAL
+ * booking-origin snapshot, not a viewer display timezone. See
+ * Booking's class docblock for the full contract. `starts_at` /
+ * `ends_at` are canonical UTC instants and are what every
+ * completion, no-show, attendance and compensation calculation
+ * compares; this column never enters any of them.
  */
 class Lesson extends Model
 {

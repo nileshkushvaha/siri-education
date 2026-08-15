@@ -7,6 +7,8 @@ namespace App\Actions\Auth;
 use App\Models\Country;
 use App\Models\User;
 use App\Services\Phone\PhoneNumberService;
+use App\Support\Timezone\IanaTimezone;
+use App\Support\UserTimezoneResolver;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -52,9 +54,27 @@ final class RegisterUserAction
             ]);
 
             $country = Country::query()->findOrFail($data['country_id']);
+
+            // TZ-1: registration snapshots the country's configured
+            // default as the account's INITIAL explicit timezone
+            // (model A) — the long-standing behavior, retained
+            // deliberately so a brand-new account has a sensible local
+            // clock before it ever visits the profile screen.
+            //
+            // It is only a starting point: the user may change it at
+            // any time, and from then on nothing (including a later
+            // country change) overwrites their choice — see
+            // UpdateProfileAction.
+            //
+            // The fallback is no longer a hardcoded 'UTC'. A country
+            // with no configured default now inherits the platform
+            // default, which is the same tier UserTimezoneResolver
+            // would have fallen through to anyway — so what is stored
+            // at signup and what the resolver would compute agree.
             $profileData = [
                 'country_id' => $country->id,
-                'timezone' => $country->default_timezone ?: 'UTC',
+                'timezone' => IanaTimezone::sanitize($country->default_timezone)
+                    ?? UserTimezoneResolver::platformDefault(),
             ];
 
             $phone = $this->phones->normalize($data['phone'] ?? null, $data['phone_country_iso2'] ?? null);

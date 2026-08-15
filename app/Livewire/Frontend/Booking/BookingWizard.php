@@ -18,7 +18,8 @@ use App\Models\EducationSystem;
 use App\Models\Wallet;
 use App\Settings\FeatureSettings;
 use App\Support\MoneyFormatter;
-use App\Support\RecipientTimezoneResolver;
+use App\Support\Timezone\IanaTimezone;
+use App\Support\UserTimezoneResolver;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -108,6 +109,17 @@ final class BookingWizard extends Component
 
     public ?string $selectedSlotStartsAt = null;
 
+    /**
+     * TZ-1 (TZ-AUD-013): #[Locked] so a crafted Livewire property
+     * update cannot set this directly and bypass setTimezone()'s
+     * guards. Previously $timezonePinned was locked but the value it
+     * protects was not, which made the pin trivially skippable — the
+     * client simply wrote $timezone instead of calling setTimezone().
+     *
+     * Every legitimate write still works: mount() and setTimezone() are
+     * server-side, and #[Locked] only rejects CLIENT-initiated updates.
+     */
+    #[Locked]
     public string $timezone = 'UTC';
 
     /** True when the account has its own stored timezone, which browser detection may not override. */
@@ -243,17 +255,26 @@ final class BookingWizard extends Component
 
     public function mount(): void
     {
-        // The student's OWN stored timezone (set from their country at
+        // The student's OWN stored timezone (seeded from their country at
         // registration) is authoritative — the same resolution order every
         // scheduled notification uses. `config('app.timezone')` is the
         // server's storage timezone (UTC) and must never be shown as "your
         // local timezone"; browser detection only fills in when the account
         // has no stored timezone of its own.
+        //
+        // TZ-1: the pin tracks a valid EXPLICIT profile timezone, not
+        // merely a resolved one. A student whose timezone comes from the
+        // Country fallback has still never actually told us where they
+        // are — for a multi-timezone country that default may well be
+        // wrong — so browser detection is allowed to refine it. Only a
+        // choice the student made themselves is protected. A stored
+        // value that is invalid does not pin either: it is not a usable
+        // choice, and the resolver has already fallen past it.
         $user = Auth::user();
-        $this->timezonePinned = filled($user?->profile?->timezone);
+        $this->timezonePinned = IanaTimezone::isValid($user?->profile?->timezone);
         $this->timezone = $user !== null
-            ? RecipientTimezoneResolver::resolve($user)
-            : RecipientTimezoneResolver::PLATFORM_FALLBACK;
+            ? UserTimezoneResolver::resolve($user)
+            : UserTimezoneResolver::PLATFORM_FALLBACK;
 
         $this->month = now($this->timezone)->format('Y-m');
         $this->types = $this->wizard->bookingTypes()->all();
@@ -307,9 +328,18 @@ final class BookingWizard extends Component
     }
 
     /**
-     * Browser-detected timezone, used only when the account has none of
-     * its own. A device reporting UTC (or a VPN, or travel) must not
-     * silently override the timezone the student actually set.
+     * Browser-detected timezone, used only when the account has no
+     * explicit timezone of its own. A device reporting UTC (or a VPN,
+     * or travel) must not silently override the timezone the student
+     * actually set.
+     *
+     * TZ-1: this is now the ONLY way a client can influence
+     * $this->timezone — the property itself is #[Locked]. The value is
+     * checked against the canonical IANA list, so an unparseable
+     * string, a bare offset or a legacy abbreviation is ignored and the
+     * server-resolved timezone stands. Nothing here writes to the
+     * profile: a detected timezone shapes this wizard session only and
+     * never becomes a permanent stored value behind the student's back.
      */
     public function setTimezone(string $timezone): void
     {
@@ -317,7 +347,7 @@ final class BookingWizard extends Component
             return;
         }
 
-        if (in_array($timezone, timezone_identifiers_list(), true)) {
+        if (IanaTimezone::isValid($timezone)) {
             $this->timezone = $timezone;
             $this->month = now($this->timezone)->format('Y-m');
         }

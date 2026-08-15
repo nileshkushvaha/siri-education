@@ -41,6 +41,8 @@ class StudentPackagePurchaseResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Student Package Purchases';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function table(Table $table): Table
     {
         return StudentPackagePurchasesTable::configure($table);

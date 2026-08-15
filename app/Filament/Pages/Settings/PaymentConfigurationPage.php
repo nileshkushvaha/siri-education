@@ -23,6 +23,8 @@ class PaymentConfigurationPage extends PaymentSettingsPage
     use HasCentralizedNavigation;
     use HasSettingsSectionBreadcrumb;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog8Tooth;
 
     protected static ?string $navigationLabel = 'Payment Configuration';
@@ -53,7 +55,7 @@ class PaymentConfigurationPage extends PaymentSettingsPage
         return array_filter([
             BackAction::make(
                 PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
-                'Back to Payment Settings',
+                'Back to Finance Settings',
             ),
         ]);
     }

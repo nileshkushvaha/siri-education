@@ -6,6 +6,7 @@ namespace Tests\Feature\Filament;
 
 use App\Filament\Resources\Academic\Pages\CreateAcademicCategory;
 use App\Filament\Resources\Academic\Pages\EditAcademicCategory;
+use App\Filament\Resources\Academic\Pages\ListAcademicCategories;
 use App\Models\AcademicCategory;
 use App\Models\User;
 use Database\Seeders\AcademicPermissionSeeder;
@@ -60,7 +61,6 @@ class AcademicResourceCrudTest extends TestCase
         Livewire::test(CreateAcademicCategory::class)
             ->fillForm([
                 'name' => 'Computer Science',
-                'slug' => 'computer-science',
                 'is_active' => true,
             ])
             ->call('create')
@@ -81,5 +81,20 @@ class AcademicResourceCrudTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertSame('Arts and Humanities', $category->fresh()->name);
+        $this->assertSame('arts', $category->fresh()->slug);
+    }
+
+    public function test_manager_can_reorder_categories_without_editing_numeric_order_fields(): void
+    {
+        $first = AcademicCategory::create(['name' => 'First', 'slug' => 'first', 'display_order' => 1]);
+        $second = AcademicCategory::create(['name' => 'Second', 'slug' => 'second', 'display_order' => 2]);
+
+        $this->actingAs($this->manager);
+
+        Livewire::test(ListAcademicCategories::class)
+            ->call('reorderTable', [$second->getKey(), $first->getKey()]);
+
+        $this->assertSame(2, $first->fresh()->display_order);
+        $this->assertSame(1, $second->fresh()->display_order);
     }
 }

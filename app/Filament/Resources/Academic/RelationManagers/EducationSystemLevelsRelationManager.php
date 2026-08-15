@@ -56,9 +56,6 @@ class EducationSystemLevelsRelationManager extends RelationManager
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
             ])
             ->headerActions([
                 Action::make('addLevel')
@@ -68,6 +65,8 @@ class EducationSystemLevelsRelationManager extends RelationManager
                     ->action(function (array $data): void {
                         /** @var EducationSystem $system */
                         $system = $this->getOwnerRecord();
+
+                        $data['display_order'] = (int) $system->levels()->max('display_order') + 1;
 
                         try {
                             app(EducationSystemService::class)->addLevel(auth()->user(), $system, $data);
@@ -91,9 +90,9 @@ class EducationSystemLevelsRelationManager extends RelationManager
                         'display_label' => $record->display_label,
                         'normalized_grade' => $record->normalized_grade,
                         'is_active' => $record->is_active,
-                        'display_order' => $record->display_order,
                     ])
                     ->action(function (EducationSystemLevel $record, array $data): void {
+                        $data['display_order'] = $record->display_order;
                         try {
                             app(EducationSystemService::class)->updateLevel(auth()->user(), $record, $data);
                         } catch (AcademicContextException $e) {
@@ -115,6 +114,8 @@ class EducationSystemLevelsRelationManager extends RelationManager
                         Notification::make()->title('Level removed')->success()->send();
                     }),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', $this->getOwnerRecord()) ?? false)
             ->defaultSort('display_order');
     }
 
@@ -147,10 +148,6 @@ class EducationSystemLevelsRelationManager extends RelationManager
             Toggle::make('is_active')
                 ->label('Active')
                 ->default(true),
-            TextInput::make('display_order')
-                ->numeric()
-                ->default(0)
-                ->minValue(0),
         ];
     }
 }

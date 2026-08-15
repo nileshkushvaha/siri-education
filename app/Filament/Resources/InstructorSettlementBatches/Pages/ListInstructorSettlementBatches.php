@@ -6,7 +6,11 @@ namespace App\Filament\Resources\InstructorSettlementBatches\Pages;
 
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Concerns\HasRelatedResourceLinks;
+use App\Filament\Resources\InstructorEarnings\InstructorEarningResource;
 use App\Filament\Resources\InstructorSettlementBatches\InstructorSettlementBatchResource;
+use App\Filament\Support\Presentation\BackAction;
+use App\Filament\Support\RelatedResourceLinkGroups;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
 use App\Models\User;
@@ -20,11 +24,16 @@ use Filament\Resources\Pages\ListRecords;
 
 class ListInstructorSettlementBatches extends ListRecords
 {
+    use HasRelatedResourceLinks;
+
     protected static string $resource = InstructorSettlementBatchResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
+            ...array_filter([
+                BackAction::toResourceIndex(InstructorEarningResource::class, 'Back to Instructor Earnings'),
+            ]),
             Action::make('create_batch')
                 ->label('New Settlement Batch')
                 ->icon('heroicon-m-plus')
@@ -75,5 +84,10 @@ class ListInstructorSettlementBatches extends ListRecords
                     }
                 }),
         ];
+    }
+
+    protected function getRelatedResourceLinks(): array
+    {
+        return RelatedResourceLinkGroups::instructorFinance();
     }
 }

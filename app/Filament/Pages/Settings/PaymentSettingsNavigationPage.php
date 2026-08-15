@@ -23,53 +23,64 @@ class PaymentSettingsNavigationPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
-    protected static ?string $navigationLabel = 'Payment Settings';
+    protected static ?string $navigationLabel = 'Finance Settings';
 
     protected static ?int $navigationSort = 13;
 
     protected static ?string $slug = 'payment-settings';
 
-    protected static bool $shouldRegisterNavigation = false;
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return false;
-    }
-
     public static function getLabel(): string
     {
-        return 'Payment Settings';
+        return 'Finance Settings';
     }
 
     public function getTitle(): string|Htmlable
     {
-        return 'Payment Settings';
+        return 'Finance Settings';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Manage payment configuration from dedicated submenu pages.';
+        return 'Manage student payment collection, instructor earning rules, and payout-provider configuration.';
     }
 
     public function content(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Choose a payment settings section')
-                ->description('Use the sidebar submenus under Payment Settings.')
+            Section::make('Choose a finance settings section')
+                ->description('These settings affect how money is collected, recorded, and paid out. Change advanced or provider settings only during a controlled configuration review.')
                 ->schema([
                     ActionsComponent::make([
                         Action::make('bank')
                             ->label('Bank Account')
-                            ->url(PaymentBankAccountPage::getUrl()),
+                            ->icon(Heroicon::OutlinedBuildingLibrary)
+                            ->url(PaymentBankAccountPage::getUrl())
+                            ->visible(PaymentBankAccountPage::canAccess()),
                         Action::make('gateways')
                             ->label('Payment Gateways')
-                            ->url(PaymentGatewayPage::getUrl()),
+                            ->icon(Heroicon::OutlinedCreditCard)
+                            ->url(PaymentGatewayPage::getUrl())
+                            ->visible(PaymentGatewayPage::canAccess()),
                         Action::make('configuration')
                             ->label('Payment Configuration')
-                            ->url(PaymentConfigurationPage::getUrl()),
+                            ->icon(Heroicon::OutlinedCog8Tooth)
+                            ->url(PaymentConfigurationPage::getUrl())
+                            ->visible(PaymentConfigurationPage::canAccess()),
                         Action::make('advanced')
-                            ->label('Advanced')
-                            ->url(PaymentAdvancedPage::getUrl()),
+                            ->label('Advanced Finance Settings')
+                            ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                            ->url(PaymentAdvancedPage::getUrl())
+                            ->visible(PaymentAdvancedPage::canAccess()),
+                        Action::make('earningRules')
+                            ->label('Instructor Earnings Rules')
+                            ->icon(Heroicon::OutlinedBanknotes)
+                            ->url(InstructorEarningSettingsPage::getUrl())
+                            ->visible(InstructorEarningSettingsPage::canAccess()),
+                        Action::make('razorpayXPayouts')
+                            ->label('RazorpayX Payout Settings')
+                            ->icon(Heroicon::OutlinedBuildingOffice2)
+                            ->url(RazorpayXPayoutSettingsPage::getUrl())
+                            ->visible(RazorpayXPayoutSettingsPage::canAccess()),
                     ]),
                 ]),
         ]);

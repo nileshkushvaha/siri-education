@@ -36,13 +36,15 @@ class PaymentReconciliationIssueResource extends Resource
 {
     use HasCentralizedNavigation;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = PaymentReconciliationIssue::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedExclamationTriangle;
 
     protected static string|\UnitEnum|null $navigationGroup = 'Finance';
 
-    protected static ?string $navigationLabel = 'Payment Discrepancies';
+    protected static ?string $navigationLabel = 'Package Payment Issues';
 
     protected static ?int $navigationSort = 40;
 

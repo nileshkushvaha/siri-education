@@ -8,7 +8,6 @@ use App\Models\AcademicLevel;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -17,26 +16,21 @@ class AcademicLevelForm
 {
     public static function configure(Schema $schema): Schema
     {
-        $isCreate = $schema->getLivewire() instanceof CreateRecord;
-
         return $schema
             ->components([
                 Section::make('Level Information')
                     ->columnSpanFull()
                     ->schema([
-                        // Identity — name drives the auto-generated slug, so they
-                        // stay paired. The slug itself is hidden on create (it's
-                        // generated silently from the name) and only exposed for
-                        // correction once the record exists — editing it later is
-                        // a deliberate action since it changes the public URL.
+                        // Slugs are technical identifiers: generate once during
+                        // creation, keep them hidden, and preserve them on rename.
                         Grid::make(2)->schema([
                             TextInput::make('name')
                                 ->required()
                                 ->maxLength(100)
                                 ->placeholder('e.g. Middle School')
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(function ($state, $set): void {
-                                    if (blank($state)) {
+                                ->afterStateUpdated(function ($state, $set, string $operation): void {
+                                    if ($operation !== 'create' || blank($state)) {
                                         return;
                                     }
 
@@ -49,7 +43,9 @@ class AcademicLevelForm
                                 ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
                                 ->placeholder('e.g. middle-school')
                                 ->helperText('Changing this changes the public URL.')
-                                ->hidden($isCreate)
+                                ->hidden()
+                                ->disabledOn('edit')
+                                ->dehydrated(fn (string $operation): bool => $operation === 'create')
                                 ->dehydratedWhenHidden()
                                 ->dehydrateStateUsing(fn (?string $state, $get): string => filled($state)
                                     ? $state
@@ -109,11 +105,6 @@ class AcademicLevelForm
                                 ->default(AcademicStatus::Active->value)
                                 ->required()
                                 ->placeholder('Select status'),
-                            TextInput::make('display_order')
-                                ->numeric()
-                                ->default(0)
-                                ->minValue(0)
-                                ->placeholder('0'),
                         ]),
                     ]),
             ]);

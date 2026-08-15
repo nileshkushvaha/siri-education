@@ -8,9 +8,12 @@ use App\Earnings\Contracts\FinancialFeatureConfigurationServiceInterface;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\CompensationException;
+use App\Filament\Concerns\HasRelatedResourceLinks;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
+use App\Filament\Support\Presentation\BackAction;
+use App\Filament\Support\RelatedResourceLinkGroups;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\InstructorPayoutAttempt;
 use App\Models\InstructorPayoutReconciliationIssue;
@@ -43,9 +46,12 @@ use Illuminate\Support\HtmlString;
 class InstructorEarningSettingsPage extends Page
 {
     use HasCentralizedNavigation;
+    use HasRelatedResourceLinks;
     use HasSettingsAccess;
     use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
+
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
@@ -73,6 +79,21 @@ class InstructorEarningSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'Payout rules: how instructor earnings are calculated, held, released, and settled. No external transfers are executed.';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::make(
+                PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
+                'Back to Finance Settings',
+            ),
+        ]);
+    }
+
+    protected function getRelatedResourceLinks(): array
+    {
+        return RelatedResourceLinkGroups::instructorFinance();
     }
 
     public function mount(): void

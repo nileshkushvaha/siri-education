@@ -54,7 +54,7 @@ final class AccountMenuService
                 $this->item('My Bookings', 'dashboard.my-bookings', 'clipboard'),
                 $this->item('Homework', 'dashboard.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled, mobilePriority: 3),
                 $this->item('Learning Plans', 'dashboard.learning-plans', 'clipboard'),
-                $this->item('Packages', 'dashboard.packages', 'gift', permission: 'View:InstructorPackageProposal'),
+                $this->item('Lesson Packages', 'dashboard.packages', 'gift', permission: 'View:InstructorPackageProposal'),
                 $this->item('Learning Goals', 'dashboard.learning-goals', 'chart-bar'),
                 $this->item('Progress', 'dashboard.progress', 'chart-bar'),
                 $this->item('Attendance', 'dashboard.attendance', 'check-circle'),
@@ -113,7 +113,7 @@ final class AccountMenuService
                 $this->item('Homework', 'dashboard.instructor.homework', 'pencil', $badges['homework'] ?? 0, enabled: $this->features->homework_enabled),
                 $this->item('Resource Library', 'dashboard.instructor.homework.resources', 'clipboard', enabled: $this->features->homework_enabled),
                 $this->item('Students', 'dashboard.instructor.students', 'user'),
-                $this->item('Package Offers', 'dashboard.instructor.packages', 'gift', permission: 'Create:InstructorPackageProposal'),
+                $this->item('Lesson Packages', 'dashboard.instructor.packages', 'gift', permission: 'Create:InstructorPackageProposal'),
             ]],
             ['label' => 'Performance', 'items' => [
                 $this->item('Reviews & Quality', 'dashboard.instructor.quality-insights', 'star'),

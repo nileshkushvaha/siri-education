@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Academic\Tables;
 
 use App\Enums\AcademicStatus;
+use App\Models\AcademicLevel;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -32,9 +33,6 @@ class AcademicLevelsTable
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (AcademicStatus $state): string => $state->color()),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -61,6 +59,8 @@ class AcademicLevelsTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', new AcademicLevel) ?? false)
             ->defaultSort('display_order');
     }
 }

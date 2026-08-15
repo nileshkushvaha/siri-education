@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic\Schemas;
 
+use App\Actions\GeneratePageSlugAction;
 use App\Enums\AcademicStatus;
 use App\Models\SubjectTopic;
 use Filament\Forms\Components\Select;
@@ -12,7 +13,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 
 class SubjectTopicForm
 {
@@ -51,17 +51,22 @@ class SubjectTopicForm
                                 ->maxLength(150)
                                 ->placeholder('e.g. Algebra')
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(function ($state, $set): void {
-                                    if (filled($state)) {
-                                        $set('slug', Str::slug($state));
+                                ->afterStateUpdated(function ($state, $set, string $operation): void {
+                                    if ($operation === 'create' && filled($state)) {
+                                        $set('slug', app(GeneratePageSlugAction::class)->execute($state, null, SubjectTopic::class));
                                     }
                                 }),
                             TextInput::make('slug')
                                 ->required()
                                 ->maxLength(150)
                                 ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
-                                ->placeholder('e.g. algebra')
-                                ->helperText('Unique within the subject.'),
+                                ->hidden()
+                                ->disabledOn('edit')
+                                ->dehydrated(fn (string $operation): bool => $operation === 'create')
+                                ->dehydratedWhenHidden()
+                                ->dehydrateStateUsing(fn (?string $state, $get): string => filled($state)
+                                    ? $state
+                                    : app(GeneratePageSlugAction::class)->execute((string) $get('name'), null, SubjectTopic::class)),
                         ]),
                         Textarea::make('description')
                             ->rows(3)
@@ -77,10 +82,6 @@ class SubjectTopicForm
                                 )
                                 ->default(AcademicStatus::Active->value)
                                 ->required(),
-                            TextInput::make('display_order')
-                                ->numeric()
-                                ->default(0)
-                                ->minValue(0),
                         ]),
                     ]),
             ]);

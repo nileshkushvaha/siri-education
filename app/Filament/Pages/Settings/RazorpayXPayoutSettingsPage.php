@@ -8,6 +8,7 @@ use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
 use App\Earnings\Providers\RazorpayX\RazorpayXPayoutConfigurationValidator;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
+use App\Filament\Support\Presentation\BackAction;
 use App\Settings\RazorpayXPayoutSettings;
 use App\Support\Timezone\ViewerDateTime;
 use BackedEnum;
@@ -50,6 +51,8 @@ class RazorpayXPayoutSettingsPage extends Page
     use HasSettingsSectionBreadcrumb;
     use LogsSettingsUpdates;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
 
     protected static ?string $navigationLabel = 'RazorpayX Payouts';
@@ -76,6 +79,16 @@ class RazorpayXPayoutSettingsPage extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return 'India/INR instructor payout provider configuration. No live payout is ever executed from this page.';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return array_filter([
+            BackAction::make(
+                PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
+                'Back to Finance Settings',
+            ),
+        ]);
     }
 
     public function mount(): void

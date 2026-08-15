@@ -12,7 +12,7 @@
     @enderror
 
     <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Your package proposals</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Your lesson package proposals</h2>
         @if (! $showForm)
             <button type="button" wire:click="openForm"
                 class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-400 transition">

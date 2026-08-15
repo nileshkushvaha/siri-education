@@ -51,7 +51,6 @@ class CurriculumModulesRelationManager extends RelationManager
             ->recordTitleAttribute('title')
             ->modifyQueryUsing(fn ($query) => $query->withCount('topicAssignments'))
             ->columns([
-                TextColumn::make('sort_order')->label('Order')->sortable(),
                 TextColumn::make('title')->searchable(),
                 TextColumn::make('topic_assignments_count')->label('Topics')->counts('topicAssignments'),
             ])
@@ -99,6 +98,8 @@ class CurriculumModulesRelationManager extends RelationManager
                         }
                     }),
             ])
+            ->reorderable('sort_order', fn (): bool => $this->isDraft())
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', $this->getOwnerRecord()) ?? false)
             ->defaultSort('sort_order');
     }
 

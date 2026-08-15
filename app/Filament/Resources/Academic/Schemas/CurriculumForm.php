@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Academic\Schemas;
 
+use App\Actions\GeneratePageSlugAction;
 use App\Models\AcademicLevel;
+use App\Models\Curriculum;
 use App\Models\Subject;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -12,7 +14,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class CurriculumForm
 {
@@ -50,15 +51,20 @@ class CurriculumForm
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, $set, string $operation): void {
                                 if ($operation === 'create' && filled($state)) {
-                                    $set('slug', Str::slug($state));
+                                    $set('slug', app(GeneratePageSlugAction::class)->execute($state, null, Curriculum::class));
                                 }
                             }),
                         TextInput::make('slug')
                             ->required()
                             ->maxLength(150)
                             ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
-                            ->placeholder('e.g. algebra-foundations')
-                            ->helperText('Unique within the selected subject + academic level.'),
+                            ->hidden()
+                            ->disabledOn('edit')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create')
+                            ->dehydratedWhenHidden()
+                            ->dehydrateStateUsing(fn (?string $state, $get): string => filled($state)
+                                ? $state
+                                : app(GeneratePageSlugAction::class)->execute((string) $get('name'), null, Curriculum::class)),
                     ]),
                     Textarea::make('description')
                         ->rows(3)

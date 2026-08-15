@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Academic\Tables;
 
 use App\Enums\AcademicStatus;
+use App\Models\SubjectTopic;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -40,9 +41,6 @@ class SubjectTopicsTable
                 TextColumn::make('instructor_coverage_count')
                     ->label('Instructors')
                     ->counts('instructorCoverage'),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -91,6 +89,8 @@ class SubjectTopicsTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', new SubjectTopic) ?? false)
             ->defaultSort('display_order');
     }
 }

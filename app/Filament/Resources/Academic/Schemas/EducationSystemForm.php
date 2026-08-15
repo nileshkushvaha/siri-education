@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Academic\Schemas;
 
+use App\Actions\GeneratePageSlugAction;
 use App\Enums\AcademicStatus;
+use App\Models\EducationSystem;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class EducationSystemForm
 {
@@ -29,15 +30,20 @@ class EducationSystemForm
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, $set, string $operation): void {
                                 if ($operation === 'create' && filled($state)) {
-                                    $set('slug', Str::slug($state));
+                                    $set('slug', app(GeneratePageSlugAction::class)->execute($state, null, EducationSystem::class));
                                 }
                             }),
                         TextInput::make('slug')
                             ->required()
                             ->maxLength(150)
                             ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
-                            ->placeholder('e.g. cbse')
-                            ->helperText('Unique identifier for this education system.'),
+                            ->hidden()
+                            ->disabledOn('edit')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create')
+                            ->dehydratedWhenHidden()
+                            ->dehydrateStateUsing(fn (?string $state, $get): string => filled($state)
+                                ? $state
+                                : app(GeneratePageSlugAction::class)->execute((string) $get('name'), null, EducationSystem::class)),
                     ]),
                     Grid::make(2)->schema([
                         TextInput::make('code')
@@ -75,11 +81,6 @@ class EducationSystemForm
                             ->placeholder('e.g. Classes, Grades, Years')
                             ->helperText('Falls back to "Levels" when blank.'),
                     ]),
-                    TextInput::make('display_order')
-                        ->numeric()
-                        ->default(0)
-                        ->minValue(0)
-                        ->placeholder('0'),
                 ]),
         ]);
     }

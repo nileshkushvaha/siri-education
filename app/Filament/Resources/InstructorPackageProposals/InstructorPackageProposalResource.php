@@ -37,6 +37,8 @@ class InstructorPackageProposalResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Instructor Package Proposals';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function table(Table $table): Table
     {
         return InstructorPackageProposalsTable::configure($table);

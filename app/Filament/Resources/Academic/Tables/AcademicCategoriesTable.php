@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic\Tables;
 
+use App\Models\AcademicCategory;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -23,15 +24,9 @@ class AcademicCategoriesTable
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('slug')
-                    ->searchable()
-                    ->sortable(),
                 TextColumn::make('subjects_count')
                     ->label('Subjects')
                     ->counts('subjects'),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 ToggleColumn::make('is_active')
                     ->label('Active'),
                 TextColumn::make('updated_at')
@@ -54,6 +49,8 @@ class AcademicCategoriesTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', new AcademicCategory) ?? false)
             ->defaultSort('display_order');
     }
 }

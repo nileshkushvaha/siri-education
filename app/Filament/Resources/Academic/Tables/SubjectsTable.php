@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Academic\Tables;
 
 use App\Enums\AcademicStatus;
+use App\Models\Subject;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -37,9 +38,6 @@ class SubjectsTable
                     ->label('Countries')
                     ->counts('countries')
                     ->formatStateUsing(fn (?int $state): string => $state ? (string) $state : 'All'),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -71,6 +69,8 @@ class SubjectsTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', new Subject) ?? false)
             ->defaultSort('display_order');
     }
 }

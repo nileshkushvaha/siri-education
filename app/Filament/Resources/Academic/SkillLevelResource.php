@@ -37,6 +37,8 @@ class SkillLevelResource extends Resource
 
     protected static ?int $navigationSort = 8;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return SkillLevelForm::configure($schema);

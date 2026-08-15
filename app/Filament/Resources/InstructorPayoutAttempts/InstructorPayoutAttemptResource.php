@@ -25,6 +25,8 @@ class InstructorPayoutAttemptResource extends Resource
 {
     use HasCentralizedNavigation;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = InstructorPayoutAttempt::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPaperAirplane;

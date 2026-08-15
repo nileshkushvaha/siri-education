@@ -35,6 +35,8 @@ class StudentPackageEntitlementResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Student Package Entitlements';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function table(Table $table): Table
     {
         return StudentPackageEntitlementsTable::configure($table);

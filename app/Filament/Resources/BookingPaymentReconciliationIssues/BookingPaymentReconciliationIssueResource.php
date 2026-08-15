@@ -25,13 +25,15 @@ class BookingPaymentReconciliationIssueResource extends Resource
 {
     use HasCentralizedNavigation;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = BookingPaymentReconciliationIssue::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;
 
     protected static string|\UnitEnum|null $navigationGroup = 'Booking';
 
-    protected static ?string $navigationLabel = 'Payment Reconciliation';
+    protected static ?string $navigationLabel = 'Booking Payment Issues';
 
     protected static ?int $navigationSort = 3;
 

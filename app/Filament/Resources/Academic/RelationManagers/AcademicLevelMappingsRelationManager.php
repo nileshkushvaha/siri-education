@@ -11,7 +11,6 @@ use App\Models\EducationSystem;
 use App\Models\EducationSystemAcademicLevel;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -39,9 +38,6 @@ class AcademicLevelMappingsRelationManager extends RelationManager
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -59,10 +55,6 @@ class AcademicLevelMappingsRelationManager extends RelationManager
                         Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
-                        TextInput::make('display_order')
-                            ->numeric()
-                            ->default(0)
-                            ->minValue(0),
                     ])
                     ->action(function (array $data): void {
                         /** @var EducationSystem $system */
@@ -70,7 +62,8 @@ class AcademicLevelMappingsRelationManager extends RelationManager
                         $level = AcademicLevel::query()->findOrFail($data['academic_level_id']);
 
                         try {
-                            app(EducationSystemService::class)->mapToAcademicLevel(auth()->user(), $system, $level, (bool) $data['is_active'], (int) $data['display_order']);
+                            $nextOrder = (int) $system->academicLevelMappings()->max('display_order') + 1;
+                            app(EducationSystemService::class)->mapToAcademicLevel(auth()->user(), $system, $level, (bool) $data['is_active'], $nextOrder);
                         } catch (AcademicContextException $e) {
                             Notification::make()->title('Mapping not added')->body($e->getMessage())->danger()->send();
 
@@ -92,6 +85,8 @@ class AcademicLevelMappingsRelationManager extends RelationManager
                         Notification::make()->title('Academic level unmapped')->success()->send();
                     }),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', $this->getOwnerRecord()) ?? false)
             ->defaultSort('display_order');
     }
 }

@@ -11,7 +11,6 @@ use App\Models\CountryEducationSystem;
 use App\Models\EducationSystem;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -44,9 +43,6 @@ class CountryMappingsRelationManager extends RelationManager
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -64,10 +60,6 @@ class CountryMappingsRelationManager extends RelationManager
                         Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
-                        TextInput::make('display_order')
-                            ->numeric()
-                            ->default(0)
-                            ->minValue(0),
                     ])
                     ->action(function (array $data): void {
                         /** @var EducationSystem $system */
@@ -75,7 +67,8 @@ class CountryMappingsRelationManager extends RelationManager
                         $country = Country::query()->findOrFail($data['country_id']);
 
                         try {
-                            app(EducationSystemService::class)->mapToCountry(auth()->user(), $system, $country, (bool) $data['is_active'], (int) $data['display_order']);
+                            $nextOrder = (int) $system->countryMappings()->max('display_order') + 1;
+                            app(EducationSystemService::class)->mapToCountry(auth()->user(), $system, $country, (bool) $data['is_active'], $nextOrder);
                         } catch (AcademicContextException $e) {
                             Notification::make()->title('Mapping not added')->body($e->getMessage())->danger()->send();
 
@@ -97,6 +90,8 @@ class CountryMappingsRelationManager extends RelationManager
                         Notification::make()->title('Country unmapped')->success()->send();
                     }),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', $this->getOwnerRecord()) ?? false)
             ->defaultSort('display_order');
     }
 }

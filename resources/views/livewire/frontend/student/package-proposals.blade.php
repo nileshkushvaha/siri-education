@@ -116,7 +116,7 @@
                 </div>
             @empty
                 <div class="flex flex-col items-center justify-center py-8 text-center">
-                    <h3 class="text-slate-300 font-semibold mb-2">No packages yet</h3>
+                    <h3 class="text-slate-300 font-semibold mb-2">No lesson packages yet</h3>
                     <p class="text-slate-400 text-sm max-w-xs">When an instructor offers you a personalized lesson package and it's approved, it will appear here.</p>
                 </div>
             @endforelse

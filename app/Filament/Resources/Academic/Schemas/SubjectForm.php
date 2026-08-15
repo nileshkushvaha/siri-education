@@ -8,7 +8,6 @@ use App\Models\Subject;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -17,8 +16,6 @@ class SubjectForm
 {
     public static function configure(Schema $schema): Schema
     {
-        $isCreate = $schema->getLivewire() instanceof CreateRecord;
-
         return $schema
             ->components([
                 Section::make('Subject Information')
@@ -39,8 +36,8 @@ class SubjectForm
                                 ->maxLength(150)
                                 ->placeholder('e.g. Algebra')
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(function ($state, $set): void {
-                                    if (blank($state)) {
+                                ->afterStateUpdated(function ($state, $set, string $operation): void {
+                                    if ($operation !== 'create' || blank($state)) {
                                         return;
                                     }
 
@@ -48,10 +45,8 @@ class SubjectForm
                                 }),
                         ]),
                         Grid::make(2)->schema([
-                            // Hidden on create (generated silently from the name);
-                            // exposed for correction once the record exists —
-                            // editing it later is deliberate, since it changes the
-                            // public URL.
+                            // Technical identifier: generated once, always hidden,
+                            // and deliberately stable when the subject is renamed.
                             TextInput::make('slug')
                                 ->required()
                                 ->unique('subjects', 'slug', ignoreRecord: true)
@@ -59,7 +54,9 @@ class SubjectForm
                                 ->regex('/^[a-z0-9]+(?:-[a-z0-9]+)*$/')
                                 ->placeholder('e.g. algebra')
                                 ->helperText('Changing this changes the public URL.')
-                                ->hidden($isCreate)
+                                ->hidden()
+                                ->disabledOn('edit')
+                                ->dehydrated(fn (string $operation): bool => $operation === 'create')
                                 ->dehydratedWhenHidden()
                                 ->dehydrateStateUsing(fn (?string $state, $get): string => filled($state)
                                     ? $state
@@ -84,11 +81,6 @@ class SubjectForm
 
                         // Display settings.
                         Grid::make(2)->schema([
-                            TextInput::make('display_order')
-                                ->numeric()
-                                ->default(0)
-                                ->minValue(0)
-                                ->placeholder('0'),
                             Select::make('countries')
                                 ->label('Available In Countries')
                                 ->relationship('countries', 'name')

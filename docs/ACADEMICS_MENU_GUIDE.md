@@ -2,7 +2,17 @@
 
 ## Purpose of this guide
 
-The **Academics** area contains the shared educational structure used by booking, instructor discovery, learning plans, homework, packages, reporting, and future recommendations. It looks large because it includes both setup screens and operational records. The client does **not** need to maintain every menu every day.
+The academic framework contains the shared educational structure used by booking, instructor discovery, learning plans, homework, packages, reporting, and future recommendations. The admin navigation presents this through a smaller set of parent workspaces; related and advanced records remain available from contextual actions instead of occupying separate sidebar entries.
+
+The primary navigation is now:
+
+- **Academics:** Subjects, Levels, Curricula, Education Systems, and Lesson Packages.
+- **People → Students:** Learning Goals and Learning Plans.
+- Related actions inside **Subjects:** Categories, Topics, and Instructor Coverage.
+- Related actions inside **Curricula:** All Versions; each curriculum also owns its versions.
+- Related actions inside **Lesson Packages:** Proposal Reviews, Package Payments, and Student Lesson Balances.
+
+Technical slugs are generated automatically and remain stable when a name changes. Presentation order is managed with drag-and-drop; clients do not enter numeric display-order values.
 
 This guide describes the current application behavior and the intent of the SRS. Where the SRS describes a broader future capability, this guide calls out what the current product does today.
 

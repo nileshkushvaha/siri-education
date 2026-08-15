@@ -7,7 +7,9 @@ namespace App\Filament\Resources\InstructorCompensationAgreements\Pages;
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Concerns\HasRelatedResourceLinks;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
+use App\Filament\Support\RelatedResourceLinkGroups;
 use App\Models\Currency;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\User;
@@ -21,6 +23,8 @@ use Filament\Resources\Pages\ListRecords;
 
 class ListInstructorCompensationAgreements extends ListRecords
 {
+    use HasRelatedResourceLinks;
+
     protected static string $resource = InstructorCompensationAgreementResource::class;
 
     protected function getHeaderActions(): array
@@ -97,5 +101,10 @@ class ListInstructorCompensationAgreements extends ListRecords
                     }
                 }),
         ];
+    }
+
+    protected function getRelatedResourceLinks(): array
+    {
+        return RelatedResourceLinkGroups::instructorFinance();
     }
 }

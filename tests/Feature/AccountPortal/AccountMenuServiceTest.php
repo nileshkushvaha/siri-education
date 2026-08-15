@@ -120,13 +120,8 @@ class AccountMenuServiceTest extends TestCase
         $this->assertContains('Homework', $labels);
     }
 
-    /**
-     * Phase 3.2 — the instructor picks an admin-authored offer template,
-     * so their menu says "Package Offers"; the student receives an actual
-     * package, so theirs stays "Packages". Both are permission-gated, so
-     * the roles need their Package permissions to see either.
-     */
-    public function test_instructor_menu_uses_package_offers_label(): void
+    /** Both portals use one client-friendly label; permissions still determine access. */
+    public function test_instructor_menu_uses_lesson_packages_label(): void
     {
         $this->seed(PackagePermissionSeeder::class);
 
@@ -136,11 +131,10 @@ class AccountMenuServiceTest extends TestCase
 
         $labels = $this->labels($instructor);
 
-        $this->assertContains('Package Offers', $labels);
-        $this->assertNotContains('Packages', $labels);
+        $this->assertContains('Lesson Packages', $labels);
     }
 
-    public function test_student_menu_keeps_plain_packages_label(): void
+    public function test_student_menu_uses_lesson_packages_label(): void
     {
         $this->seed(PackagePermissionSeeder::class);
 
@@ -149,8 +143,7 @@ class AccountMenuServiceTest extends TestCase
 
         $labels = $this->labels($student);
 
-        $this->assertContains('Packages', $labels);
-        $this->assertNotContains('Package Offers', $labels);
+        $this->assertContains('Lesson Packages', $labels);
     }
 
     public function test_items_have_expected_shape_for_future_nesting_and_badges(): void

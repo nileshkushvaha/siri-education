@@ -43,6 +43,8 @@ class CurriculumVersionResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Academic';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return CurriculumVersionForm::configure($schema);

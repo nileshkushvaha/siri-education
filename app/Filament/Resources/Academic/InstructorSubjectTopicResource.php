@@ -33,6 +33,8 @@ class InstructorSubjectTopicResource extends Resource
 
     protected static ?int $navigationSort = 9;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return InstructorSubjectTopicForm::configure($schema);

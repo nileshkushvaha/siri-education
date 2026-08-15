@@ -37,6 +37,8 @@ class SubjectTopicResource extends Resource
 
     protected static ?int $navigationSort = 6;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return SubjectTopicForm::configure($schema);

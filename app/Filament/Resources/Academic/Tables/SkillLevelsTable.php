@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Academic\Tables;
 
+use App\Models\SkillLevel;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -22,12 +23,6 @@ class SkillLevelsTable
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
-                    ->sortable(),
-                TextColumn::make('slug')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('display_order')
-                    ->label('Order')
                     ->sortable(),
                 ToggleColumn::make('is_active')
                     ->label('Active'),
@@ -51,6 +46,8 @@ class SkillLevelsTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', new SkillLevel) ?? false)
             ->defaultSort('display_order');
     }
 }

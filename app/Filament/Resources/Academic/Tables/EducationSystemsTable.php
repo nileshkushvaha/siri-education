@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Academic\Tables;
 
 use App\Enums\AcademicStatus;
+use App\Models\EducationSystem;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
@@ -38,9 +39,6 @@ class EducationSystemsTable
                 TextColumn::make('curriculum_mappings_count')
                     ->label('Curricula')
                     ->counts('curriculumMappings'),
-                TextColumn::make('display_order')
-                    ->label('Order')
-                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -60,6 +58,8 @@ class EducationSystemsTable
                 DeleteAction::make(),
                 RestoreAction::make(),
             ])
+            ->reorderable('display_order')
+            ->authorizeReorder(fn (): bool => auth()->user()?->can('update', new EducationSystem) ?? false)
             ->defaultSort('display_order');
     }
 }

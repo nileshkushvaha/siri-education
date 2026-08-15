@@ -24,6 +24,8 @@ class InstructorSettlementBatchResource extends Resource
 {
     use HasCentralizedNavigation;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = InstructorSettlementBatch::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

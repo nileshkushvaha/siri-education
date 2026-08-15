@@ -89,6 +89,7 @@ use App\Filament\Resources\OperationalAlerts\OperationalAlertResource;
 use App\Filament\Resources\PackageBenefitRules\PackageBenefitRuleResource;
 use App\Filament\Resources\PageBlocks\PageBlockResource;
 use App\Filament\Resources\Pages\PageResource;
+use App\Filament\Resources\PaymentReconciliationIssues\PaymentReconciliationIssueResource;
 use App\Filament\Resources\Permissions\PermissionResource;
 use App\Filament\Resources\PostCategories\PostCategoryResource;
 use App\Filament\Resources\Posts\PostResource;
@@ -213,7 +214,7 @@ final class NavigationRegistry
             ),
             AcademicLevelResource::class => new NavigationDestination(
                 id: 'academics.academic-levels',
-                label: 'Academic Levels',
+                label: 'Levels',
                 group: 'Academics',
                 subgroup: null,
                 sort: 4,
@@ -279,8 +280,8 @@ final class NavigationRegistry
             StudentLearningGoalResource::class => new NavigationDestination(
                 id: 'academics.learning-management.learning-goals',
                 label: 'Learning Goals',
-                group: 'Academics',
-                subgroup: 'Learning Management',
+                group: 'People',
+                subgroup: 'Students',
                 sort: 10,
                 previousGroup: 'People',
                 previousLabel: 'Learning Goals',
@@ -288,15 +289,15 @@ final class NavigationRegistry
             StudentLearningPlanResource::class => new NavigationDestination(
                 id: 'academics.learning-management.learning-plans',
                 label: 'Learning Plans',
-                group: 'Academics',
-                subgroup: 'Learning Management',
+                group: 'People',
+                subgroup: 'Students',
                 sort: 11,
                 previousGroup: 'People',
                 previousLabel: 'Learning Plans',
             ),
             PackageBenefitRuleResource::class => new NavigationDestination(
                 id: 'academics.learning-management.package-offers',
-                label: 'Package Offers',
+                label: 'Lesson Packages',
                 group: 'Academics',
                 subgroup: 'Learning Management',
                 sort: 12,
@@ -426,13 +427,22 @@ final class NavigationRegistry
                 previousLabel: 'Payments',
             ),
             BookingPaymentReconciliationIssueResource::class => new NavigationDestination(
-                id: 'finance.billing.payment-reconciliation',
-                label: 'Payment Reconciliation',
+                id: 'finance.billing.booking-payment-issues',
+                label: 'Booking Payment Issues',
                 group: 'Finance',
                 subgroup: 'Billing & Payments',
                 sort: 2,
                 previousGroup: 'Booking',
                 previousLabel: 'Payment Reconciliation',
+            ),
+            PaymentReconciliationIssueResource::class => new NavigationDestination(
+                id: 'finance.billing.package-payment-issues',
+                label: 'Package Payment Issues',
+                group: 'Finance',
+                subgroup: 'Billing & Payments',
+                sort: 3,
+                previousGroup: 'Finance',
+                previousLabel: 'Payment Discrepancies',
             ),
             InvoiceResource::class => new NavigationDestination(
                 id: 'finance.billing.invoices',
@@ -564,7 +574,7 @@ final class NavigationRegistry
             // exists so the breadcrumb resolves, which is a separate concern.
             PaymentSettingsNavigationPage::class => new NavigationDestination(
                 id: 'finance.configuration.payment-settings',
-                label: 'Payment Settings',
+                label: 'Finance Settings',
                 group: 'Finance',
                 subgroup: 'Finance Configuration',
                 sort: 14,

@@ -240,8 +240,57 @@ This is a transition, not a permanent triplication. The decision (see
 §2) was to build the generic abstraction now but apply it **only to new
 consumers** — migrating two live, money-carrying tables with settled
 history and working webhooks would be a large risk for no user-visible
-gain. Whether `booking_payments` and `wallet_recharges` are ever folded
-in is a future decision, explicitly out of scope here.
+gain.
+
+### PAY-4A — the booking path starts folding in
+
+That future decision has now been taken for bookings. The payment
+architecture audit established that the true analogue of
+`StudentPackagePurchase` is **not** `Booking` but `BookingPayment`:
+
+| | Package | Booking |
+|---|---|---|
+| Commercial obligation | `StudentPackagePurchase` | `BookingPayment` |
+| Provider attempts | `payments` | `booking_payments` *(legacy, in-place)* |
+| Thing being bought | package entitlement | lesson |
+
+`BookingPayment` today plays **both** roles — it is the obligation *and*
+it wears attempt clothing (`provider`, `provider_order_id`,
+`provider_payment_id`, `idempotency_key`, a per-attempt status). That
+dual role is what loses retry history: a second attempt overwrites the
+first in place.
+
+PAY-4A splits the roles conceptually without moving any traffic:
+
+```
+CURRENT   BookingPayment = obligation + attempt   (live)
+TARGET    BookingPayment = obligation
+          payments       = provider attempts
+PAY-4A    both exist; legacy remains authoritative
+```
+
+`BookingPayment` now implements `Payable`, so it can own generic
+`Payment` attempts with a stable morph alias, preserved failed-attempt
+history, the DB-enforced one-open-attempt rule, and the atomic
+initialization claim. **Live booking checkout, webhooks, reconciliation,
+refunds and invoices are untouched** and still run entirely on the
+legacy fields. PAY-4B performs the cutover; PAY-5 retires the duplicate
+mechanics.
+
+`Booking` itself deliberately does **not** implement `Payable`. A
+booking is a lesson, not a debt — package-funded, free-demo and
+not-required bookings are never payable at all, and making the lesson
+the payable would imply every lesson can open a checkout.
+
+**Revenue recognition does not move.** Booking revenue is recognised
+from the obligation (`booking_payments`), never from attempts. Once one
+booking can carry many attempt rows, summing `payments.amount_minor`
+would count a single sale once per retry. This is pinned by test, not
+convention.
+
+Wallet-funded bookings stay out: a wallet payment is an internal
+funding movement, not an external provider attempt, and forcing it into
+the attempt ledger for symmetry would misrepresent it.
 
 **Rule for new work:** if you are adding a new thing a student pays
 for, implement `Payable` and use `PaymentService`. Do not copy
@@ -356,14 +405,41 @@ touches the proposal, student, reference, amount, or currency.
 
 ### Morph aliases
 
-`payable_type` stores a stable alias (`package_purchase`), never a PHP
-FQCN — class names are refactorable, database rows are not. The map
-lives in `App\Providers\PaymentServiceProvider::PAYABLE_MORPH_MAP`;
-its single entry today is `package_purchase => StudentPackagePurchase`,
-declared from `StudentPackagePurchase::PAYABLE_TYPE` so the model and
-the map cannot drift apart. `Relation::morphMap()` **merges** by
-default, so this coexists with the CMS aliases registered elsewhere; do
-not re-register the same aliases in a second provider.
+`payable_type` stores a stable alias, never a PHP FQCN — class names
+are refactorable, database rows are not. The map lives in
+`App\Providers\PaymentServiceProvider::PAYABLE_MORPH_MAP`:
+
+| Alias | Model |
+|---|---|
+| `package_purchase` | `StudentPackagePurchase` |
+| `booking_payment` | `BookingPayment` *(PAY-4A)* |
+
+Each is declared from the model's own `PAYABLE_TYPE` constant so the
+model and the map cannot drift apart. The map is **append-only**: no
+existing value may ever change, or every historical row pointing at it
+is orphaned. `Relation::morphMap()` **merges** by default, so this
+coexists with the CMS aliases registered elsewhere; do not re-register
+the same aliases in a second provider.
+
+#### Why `BookingPayment` overrides `getMorphClass()`
+
+Registering an alias changes a model's polymorphic identity
+**globally**, not just in `payments` — Eloquent derives
+`getMorphClass()` from the same map. `StudentPackagePurchase` was born
+with its alias, so nothing was affected. `BookingPayment` was not: it
+already has years of history written under its class name in
+`activity_log.subject_type`, `wallet_ledger_entries.source_type`, and
+support-case relations.
+
+Letting the alias leak into those would split each into "rows before
+PAY-4A" and "rows after", so a query filtering on one value silently
+stops seeing the other — an audit-trail fracture on a financial model,
+and not something a historical rewrite could honestly repair.
+
+`BookingPayment::getMorphClass()` therefore stays pinned to the FQCN.
+The alias governs the payments ledger only, where `PaymentService`
+writes it explicitly from `paymentPayableType()`; hydration still
+resolves through the morph map. Both halves are pinned by test.
 
 ## 5. `PaymentStatus`
 

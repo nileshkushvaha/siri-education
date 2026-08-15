@@ -19,10 +19,25 @@ namespace App\Payments\Contracts;
  *   - checkout markup
  *   - any domain lifecycle (entitlements, bookings, …)
  *
- * Transitional note: `Booking` and `WalletRecharge` deliberately do
- * NOT implement this — their legacy payment paths are untouched (see
- * docs/generic-payable-payment-foundation.md). The first and currently
- * only implementer is App\Models\StudentPackagePurchase.
+ * Implementers are COMMERCIAL OBLIGATIONS, not the things being
+ * bought:
+ *
+ *     App\Models\StudentPackagePurchase  (package purchase obligation)
+ *     App\Models\BookingPayment          (booking payment obligation, PAY-4A)
+ *
+ * `Booking` itself deliberately does NOT implement this. A booking is
+ * a lesson, not a debt: most bookings — package-funded, free demo,
+ * not-required — are never payable at all, and making the lesson the
+ * payable would imply every lesson can open a checkout. The obligation
+ * row only exists when money is genuinely owed, which is exactly the
+ * condition a Payable should encode.
+ *
+ * `WalletRecharge` also does not implement this — its legacy payment
+ * path is untouched (see docs/generic-payable-payment-foundation.md).
+ *
+ * Transitional note: BookingPayment implements this contract, but live
+ * Booking checkout still runs on its own legacy provider fields until
+ * PAY-4B performs the cutover.
  */
 interface Payable
 {

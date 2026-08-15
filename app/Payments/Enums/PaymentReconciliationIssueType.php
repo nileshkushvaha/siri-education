@@ -99,6 +99,45 @@ enum PaymentReconciliationIssueType: string
         return $this === self::SettlementFailed;
     }
 
+    /**
+     * What we know about the MONEY, as a short operator-facing label.
+     *
+     * The single most important question when triaging a payment
+     * incident is "is the money ours?" — an operator should not have to
+     * infer it from an enum name. Kept deliberately blunt, and never
+     * optimistic: anything short of provider confirmation reads as
+     * unconfirmed.
+     */
+    public function moneyState(): string
+    {
+        return match ($this) {
+            self::SettlementFailed => 'Confirmed',
+            self::AmountMismatch, self::CurrencyMismatch => 'Disputed',
+            self::ProviderUnavailable => 'Not yet confirmed',
+            self::StaleProcessing, self::MissingProviderReference => 'Unresolved',
+        };
+    }
+
+    /** What the customer actually received. */
+    public function deliveryState(): string
+    {
+        return match ($this) {
+            // The provider took the money and the package never activated.
+            self::SettlementFailed => 'Package access NOT completed',
+            self::AmountMismatch, self::CurrencyMismatch => 'Settlement refused',
+            default => 'Nothing granted',
+        };
+    }
+
+    public function moneyStateColor(): string
+    {
+        return match ($this) {
+            self::SettlementFailed => 'danger',
+            self::AmountMismatch, self::CurrencyMismatch => 'warning',
+            default => 'gray',
+        };
+    }
+
     /** Operator-facing explanation of what the platform actually did. */
     public function description(): string
     {

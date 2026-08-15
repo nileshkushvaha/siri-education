@@ -81,6 +81,67 @@ enum BookingPaymentReconciliationIssueType: string
         return array_values(array_filter(self::cases(), static fn (self $type): bool => $type->isLive()));
     }
 
+    /**
+     * What we know about the MONEY. See the generic queue's equivalent —
+     * same question, same vocabulary, so an operator moving between the
+     * two queues does not have to relearn what a word means.
+     */
+    public function moneyState(): string
+    {
+        return match ($this) {
+            self::ProviderSuccessLocalIncomplete,
+            self::LateSuccessResolutionFailed => 'Confirmed',
+            // A refund obligation exists, so the money is ours and owed back.
+            self::WalletCreditFailed => 'Owed to student',
+            self::AmountMismatch, self::CurrencyMismatch => 'Disputed',
+            self::ProviderUnavailable => 'Not yet confirmed',
+            self::UnknownPaymentOutcome, self::StaleProcessing => 'Unresolved',
+            default => 'Unknown',
+        };
+    }
+
+    /** What the student actually got, or is still waiting for. */
+    public function deliveryState(): string
+    {
+        return match ($this) {
+            self::ProviderSuccessLocalIncomplete => 'Booking settlement NOT completed',
+            self::LateSuccessResolutionFailed => 'Student recovery NOT completed',
+            self::WalletCreditFailed => 'Wallet credit FAILED',
+            self::AmountMismatch, self::CurrencyMismatch => 'Settlement refused',
+            default => 'Booking not settled',
+        };
+    }
+
+    public function moneyStateColor(): string
+    {
+        return match ($this) {
+            self::ProviderSuccessLocalIncomplete,
+            self::LateSuccessResolutionFailed,
+            self::WalletCreditFailed => 'danger',
+            self::AmountMismatch, self::CurrencyMismatch => 'warning',
+            default => 'gray',
+        };
+    }
+
+    /** Product-language explanation — never the raw enum value. */
+    public function description(): string
+    {
+        return match ($this) {
+            self::ProviderSuccessLocalIncomplete => 'The provider confirmed this payment but the booking was never financially settled. The student has paid and has no confirmed lesson.',
+            self::LateSuccessResolutionFailed => 'A payment arrived after this booking ended and could not be credited to the student\'s wallet. The platform is holding their money.',
+            self::WalletCreditFailed => 'A cancellation refund was approved but the wallet credit failed. The student is owed money that has not reached them.',
+            self::AmountMismatch => 'The provider reported a different amount than this booking expects. Settlement was refused.',
+            self::CurrencyMismatch => 'The provider reported a different currency than this booking expects. Settlement was refused.',
+            self::ProviderUnavailable => 'The payment provider could not be reached to confirm this payment. Whether money was collected is still unknown; verification keeps retrying.',
+            self::UnknownPaymentOutcome => 'Verification could not establish what the provider did with this payment.',
+            self::StaleProcessing => 'This payment has been awaiting a provider outcome far longer than expected.',
+            self::UnknownPaymentReference => 'Historical record: a provider reference that matched no known booking payment.',
+            self::DuplicateProviderReference => 'Historical record: a provider reference seen more than once.',
+            self::LocalSuccessProviderMismatch => 'Historical record: a locally captured payment the provider later described differently.',
+            self::RefundStatusMismatch => 'Historical record: local and provider refund state disagreed.',
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BookingPaymentReconciliationIssues;
 
+use App\Booking\Enums\BookingPaymentReconciliationIssueType;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Resources\BookingPaymentReconciliationIssues\Pages\ListBookingPaymentReconciliationIssues;
 use App\Filament\Resources\BookingPaymentReconciliationIssues\Tables\BookingPaymentReconciliationIssuesTable;
@@ -54,9 +55,29 @@ class BookingPaymentReconciliationIssueResource extends Resource
         return parent::getEloquentQuery()->with(['bookingPayment', 'assignee']);
     }
 
+    /**
+     * Authorization is checked BEFORE the count is built, not after it is
+     * rendered. Navigation hiding alone is not a boundary: an operator
+     * with no access to this queue must not cause a single row of it to
+     * be read, or "there are 7 open booking payment issues" leaks through
+     * a sidebar they cannot open.
+     *
+     * Counts only what an operator can actually act on: open incidents
+     * whose type the platform still generates. A badge that included
+     * dormant historical types would show a number the queue's own
+     * filters cannot reproduce. Such rows remain visible in the
+     * unfiltered table — they are simply not counted as today's work.
+     */
     public static function getNavigationBadge(): ?string
     {
-        $open = BookingPaymentReconciliationIssue::query()->open()->count();
+        if (! static::canViewAny()) {
+            return null;
+        }
+
+        $open = BookingPaymentReconciliationIssue::query()
+            ->open()
+            ->whereIn('type', BookingPaymentReconciliationIssueType::live())
+            ->count();
 
         return $open > 0 ? (string) $open : null;
     }

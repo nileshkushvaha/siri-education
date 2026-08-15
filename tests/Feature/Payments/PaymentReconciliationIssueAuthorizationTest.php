@@ -4,7 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Payments;
 
+use App\Booking\Enums\BookingPaymentReconciliationIssueStatus;
+use App\Booking\Enums\BookingPaymentReconciliationIssueType;
+use App\Booking\Enums\BookingPaymentReconciliationSeverity;
+use App\Filament\Resources\BookingPaymentReconciliationIssues\BookingPaymentReconciliationIssueResource;
 use App\Filament\Resources\PaymentReconciliationIssues\Pages\ListPaymentReconciliationIssues;
+use App\Filament\Resources\PaymentReconciliationIssues\PaymentReconciliationIssueResource;
+use App\Models\BookingPayment;
+use App\Models\BookingPaymentReconciliationIssue;
 use App\Models\Payment;
 use App\Models\PaymentReconciliationIssue;
 use App\Models\StudentPackagePurchase;
@@ -12,8 +19,10 @@ use App\Models\User;
 use App\Payments\Enums\PaymentReconciliationIssueStatus;
 use App\Payments\Enums\PaymentReconciliationIssueType;
 use App\Payments\Enums\PaymentStatus;
+use Database\Seeders\BookingPaymentReconciliationPermissionSeeder;
 use Database\Seeders\PaymentReconciliationPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -185,5 +194,218 @@ class PaymentReconciliationIssueAuthorizationTest extends TestCase
 
         // Guards the Filament action's visibility as well as the policy.
         $this->assertFalse($this->user('manager')->can('resolve', $issue->refresh()));
+    }
+
+    // ── PAY-3 · four-way permission matrix ──────────────────────────────
+    //
+    // The two reconciliation queues now share one navigation home
+    // (Finance -> Billing & Payments). Sharing a heading must not share
+    // authorization: each queue keeps its own permission, and a common
+    // parent must never become a backdoor into the other domain.
+
+    /** A user holding exactly the listed permissions and nothing else. */
+    private function operatorWith(string ...$permissions): User
+    {
+        $this->seed(BookingPaymentReconciliationPermissionSeeder::class);
+
+        // PortalResolver grants admin-panel access only to super_admin or
+        // manager, so the operator must BE a manager to reach a URL at
+        // all — otherwise a deep-link test would pass for the wrong
+        // reason (panel denial, not resource authorization).
+        //
+        // The shared seeders also grant manager both reconciliation
+        // permissions, which would make every assertion below vacuous, so
+        // they are stripped from the role and re-granted per-user. Scoped
+        // to this test class by RefreshDatabase.
+        $manager = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $manager->revokePermissionTo(array_filter([
+            Permission::where('name', 'ViewAny:BookingPaymentReconciliationIssue')->first(),
+            Permission::where('name', 'ViewAny:PaymentReconciliationIssue')->first(),
+        ]));
+
+        $user = User::factory()->create([
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+        $user->syncRoles([$manager]);
+
+        foreach ($permissions as $permission) {
+            $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+        }
+
+        return $user->fresh();
+    }
+
+    private function bookingIssue(): BookingPaymentReconciliationIssue
+    {
+        Schema::disableForeignKeyConstraints();
+
+        $payment = BookingPayment::factory()->create([
+            'provider' => 'razorpay',
+            'amount_minor' => 4900,
+            'currency_code' => 'INR',
+        ]);
+
+        $issue = BookingPaymentReconciliationIssue::query()->create([
+            'reference' => 'BPRI-'.strtoupper(Str::random(8)),
+            'booking_payment_id' => $payment->id,
+            'provider' => 'razorpay',
+            'type' => BookingPaymentReconciliationIssueType::ProviderUnavailable,
+            'severity' => BookingPaymentReconciliationSeverity::Warning,
+            'local_status' => 'pending',
+            'amount_minor' => 4900,
+            'currency_code' => 'INR',
+            'safe_summary' => 'Provider unreachable.',
+            'first_detected_at' => now(),
+            'last_detected_at' => now(),
+        ]);
+        $issue->forceFill(['status' => BookingPaymentReconciliationIssueStatus::Open])->save();
+
+        Schema::enableForeignKeyConstraints();
+
+        return $issue;
+    }
+
+    public function test_booking_only_operator_reaches_the_booking_queue_and_not_the_package_queue(): void
+    {
+        $this->bookingIssue();
+        $this->issue();
+        $operator = $this->operatorWith('ViewAny:BookingPaymentReconciliationIssue');
+
+        $this->actingAs($operator);
+
+        $this->assertTrue(BookingPaymentReconciliationIssueResource::canViewAny());
+        $this->assertFalse(PaymentReconciliationIssueResource::canViewAny());
+
+        // Badge follows the same boundary — one count, not two.
+        $this->assertNotNull(BookingPaymentReconciliationIssueResource::getNavigationBadge());
+        $this->assertNull(PaymentReconciliationIssueResource::getNavigationBadge());
+    }
+
+    public function test_package_only_operator_reaches_the_package_queue_and_not_the_booking_queue(): void
+    {
+        $this->bookingIssue();
+        $this->issue();
+        $operator = $this->operatorWith('ViewAny:PaymentReconciliationIssue');
+
+        $this->actingAs($operator);
+
+        $this->assertTrue(PaymentReconciliationIssueResource::canViewAny());
+        $this->assertFalse(BookingPaymentReconciliationIssueResource::canViewAny());
+
+        $this->assertNotNull(PaymentReconciliationIssueResource::getNavigationBadge());
+        $this->assertNull(BookingPaymentReconciliationIssueResource::getNavigationBadge());
+    }
+
+    public function test_an_operator_holding_both_permissions_reaches_both_queues(): void
+    {
+        $this->bookingIssue();
+        $this->issue();
+        $operator = $this->operatorWith(
+            'ViewAny:BookingPaymentReconciliationIssue',
+            'ViewAny:PaymentReconciliationIssue',
+        );
+
+        $this->actingAs($operator);
+
+        $this->assertTrue(BookingPaymentReconciliationIssueResource::canViewAny());
+        $this->assertTrue(PaymentReconciliationIssueResource::canViewAny());
+        $this->assertNotNull(BookingPaymentReconciliationIssueResource::getNavigationBadge());
+        $this->assertNotNull(PaymentReconciliationIssueResource::getNavigationBadge());
+    }
+
+    public function test_an_operator_holding_neither_permission_reaches_neither_queue(): void
+    {
+        $this->bookingIssue();
+        $this->issue();
+        $operator = $this->operatorWith();
+
+        $this->actingAs($operator);
+
+        $this->assertFalse(BookingPaymentReconciliationIssueResource::canViewAny());
+        $this->assertFalse(PaymentReconciliationIssueResource::canViewAny());
+        $this->assertNull(BookingPaymentReconciliationIssueResource::getNavigationBadge());
+        $this->assertNull(PaymentReconciliationIssueResource::getNavigationBadge());
+    }
+
+    // ── Deep links: hiding navigation is not a boundary ─────────────────
+
+    public function test_a_package_only_operator_is_denied_the_booking_queue_url(): void
+    {
+        $this->actingAs($this->operatorWith('ViewAny:PaymentReconciliationIssue'));
+
+        $this->get(BookingPaymentReconciliationIssueResource::getUrl('index'))->assertForbidden();
+    }
+
+    public function test_a_booking_only_operator_is_denied_the_package_queue_url(): void
+    {
+        $this->actingAs($this->operatorWith('ViewAny:BookingPaymentReconciliationIssue'));
+
+        $this->get(PaymentReconciliationIssueResource::getUrl('index'))->assertForbidden();
+    }
+
+    public function test_an_operator_with_neither_permission_is_denied_both_urls(): void
+    {
+        $this->actingAs($this->operatorWith());
+
+        $this->get(BookingPaymentReconciliationIssueResource::getUrl('index'))->assertForbidden();
+        $this->get(PaymentReconciliationIssueResource::getUrl('index'))->assertForbidden();
+    }
+
+    // ── Leakage: the unauthorized table must never be READ ──────────────
+
+    public function test_an_unauthorized_badge_executes_no_query_against_the_restricted_table(): void
+    {
+        // "Badge is null" is not enough. If the count still ran, the row
+        // count of a queue this operator cannot open has already been
+        // read out of the database — the leak is the query, not the
+        // rendering. Authorization must short-circuit first.
+        $this->bookingIssue();
+        $this->issue();
+
+        $this->actingAs($this->operatorWith('ViewAny:BookingPaymentReconciliationIssue'));
+
+        $queries = [];
+        DB::listen(static function ($query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        PaymentReconciliationIssueResource::getNavigationBadge();
+
+        $touched = array_filter($queries, static fn (string $sql): bool => str_contains($sql, 'payment_reconciliation_issues'));
+
+        $this->assertSame([], array_values($touched), 'The restricted queue was queried for an operator who cannot view it.');
+    }
+
+    public function test_the_reverse_direction_also_executes_no_restricted_query(): void
+    {
+        $this->bookingIssue();
+        $this->issue();
+
+        $this->actingAs($this->operatorWith('ViewAny:PaymentReconciliationIssue'));
+
+        $queries = [];
+        DB::listen(static function ($query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        BookingPaymentReconciliationIssueResource::getNavigationBadge();
+
+        $touched = array_filter($queries, static fn (string $sql): bool => str_contains($sql, 'booking_payment_reconciliation_issues'));
+
+        $this->assertSame([], array_values($touched), 'The restricted queue was queried for an operator who cannot view it.');
+    }
+
+    public function test_the_booking_badge_counts_only_live_issue_types(): void
+    {
+        // A dormant historical row must not inflate today's work: the
+        // queue's own filters cannot reproduce it, so counting it would
+        // produce a badge number the operator can never account for.
+        $issue = $this->bookingIssue();
+        $issue->forceFill(['type' => BookingPaymentReconciliationIssueType::RefundStatusMismatch])->save();
+
+        $this->actingAs($this->operatorWith('ViewAny:BookingPaymentReconciliationIssue'));
+
+        $this->assertNull(BookingPaymentReconciliationIssueResource::getNavigationBadge());
     }
 }

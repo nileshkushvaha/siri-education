@@ -260,4 +260,139 @@ class ReconciliationIssueTruthfulnessTest extends TestCase
 
         return $sources;
     }
+
+    // ── PAY-3 · operator-facing safety and clarity ──────────────────────
+
+    public function test_neither_queue_exposes_a_way_to_manufacture_settlement(): void
+    {
+        // The load-bearing negative. No operator action may declare money
+        // collected, grant access, or confirm a booking — settlement stays
+        // evidence-driven on both sides of the platform.
+        $forbidden = ['Mark Paid', 'markPaid', 'Force Paid', 'forcePaid', 'Force Capture',
+            'Grant Package', 'grantEntitlement', 'activateEntitlement', 'Mark Settled'];
+
+        foreach ([
+            'app/Filament/Resources/BookingPaymentReconciliationIssues',
+            'app/Filament/Resources/PaymentReconciliationIssues',
+        ] as $directory) {
+            $source = $this->sourcesIn(base_path($directory));  // executable only
+
+            foreach ($forbidden as $needle) {
+                $this->assertStringNotContainsString($needle, $source, "{$directory} exposes '{$needle}'.");
+            }
+        }
+    }
+
+    public function test_closing_an_incident_is_worded_as_operational_not_financial(): void
+    {
+        // "Resolve" alone reads as "the customer's payment is resolved".
+        // Both queues must say what the action actually does.
+        foreach ([
+            'app/Filament/Resources/BookingPaymentReconciliationIssues/Tables/BookingPaymentReconciliationIssuesTable.php',
+            'app/Filament/Resources/PaymentReconciliationIssues/Tables/PaymentReconciliationIssuesTable.php',
+        ] as $table) {
+            $source = (string) file_get_contents(base_path($table));
+
+            $this->assertStringContainsString('Close incident', $source);
+            $this->assertStringContainsString('operational incident only', $source);
+        }
+    }
+
+    public function test_reconcile_is_never_worded_as_retrying_a_payment(): void
+    {
+        // An operator must not fear double-charging a student. The action
+        // re-asks the provider about an existing payment.
+        // Executable source only: the code comment explaining WHY that
+        // wording is banned naturally contains the banned wording.
+        $source = $this->executableSource(base_path(
+            'app/Filament/Resources/BookingPaymentReconciliationIssues/Tables/BookingPaymentReconciliationIssuesTable.php'
+        ));
+
+        $this->assertStringNotContainsString('Retry payment', $source);
+        $this->assertStringContainsString('does not create a new charge', $source);
+    }
+
+    public function test_every_live_type_states_its_money_and_delivery_position(): void
+    {
+        // The first triage question on any payment incident.
+        foreach (BookingPaymentReconciliationIssueType::live() as $type) {
+            $this->assertNotSame('', $type->moneyState());
+            $this->assertNotSame('', $type->deliveryState());
+            $this->assertNotSame('', $type->description());
+        }
+
+        foreach (PaymentReconciliationIssueType::cases() as $type) {
+            $this->assertNotSame('', $type->moneyState());
+            $this->assertNotSame('', $type->deliveryState());
+        }
+    }
+
+    public function test_money_held_states_are_the_ones_marked_critical(): void
+    {
+        // "Provider confirmed, customer got nothing" must never render
+        // like an ordinary retryable glitch.
+        $this->assertSame('Confirmed', PaymentReconciliationIssueType::SettlementFailed->moneyState());
+        $this->assertSame('danger', PaymentReconciliationIssueType::SettlementFailed->moneyStateColor());
+
+        foreach ([
+            BookingPaymentReconciliationIssueType::ProviderSuccessLocalIncomplete,
+            BookingPaymentReconciliationIssueType::LateSuccessResolutionFailed,
+            BookingPaymentReconciliationIssueType::WalletCreditFailed,
+        ] as $type) {
+            $this->assertSame('danger', $type->moneyStateColor(), $type->value.' must read as critical');
+        }
+
+        // …while unresolved-outcome states stay operational, not alarming.
+        foreach ([
+            BookingPaymentReconciliationIssueType::ProviderUnavailable,
+            BookingPaymentReconciliationIssueType::StaleProcessing,
+        ] as $type) {
+            $this->assertSame('gray', $type->moneyStateColor());
+        }
+    }
+
+    public function test_a_wallet_credit_failure_is_described_as_a_refund_problem(): void
+    {
+        // Not "card payment failed" — the collection succeeded; it is the
+        // money going BACK that failed.
+        $description = BookingPaymentReconciliationIssueType::WalletCreditFailed->description();
+
+        $this->assertStringContainsString('refund', strtolower($description));
+        $this->assertStringContainsString('owed', strtolower($description));
+    }
+
+    private function executableSource(string $file): string
+    {
+        $kept = '';
+
+        foreach (token_get_all((string) file_get_contents($file)) as $token) {
+            if (is_array($token)) {
+                if ($token[0] === T_COMMENT || $token[0] === T_DOC_COMMENT) {
+                    continue;
+                }
+
+                $kept .= $token[1];
+
+                continue;
+            }
+
+            $kept .= $token;
+        }
+
+        return $kept;
+    }
+
+    private function sourcesIn(string $path): string
+    {
+        $sources = '';
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS));
+
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $sources .= $this->executableSource($file->getPathname());
+            }
+        }
+
+        return $sources;
+    }
 }

@@ -65,9 +65,25 @@ class PaymentReconciliationIssueResource extends Resource
         return parent::getEloquentQuery()->with(['payment', 'resolver']);
     }
 
-    /** Open discrepancies are money nobody has accounted for — surface the count. */
+    /**
+     * Open incidents are money nobody has accounted for — surface the
+     * count, but only to someone allowed to see this queue.
+     *
+     * Authorization short-circuits before the query is built: navigation
+     * hiding is not a boundary, and a booking-only operator must not
+     * learn how many package payments are stuck from a badge attached to
+     * a resource they cannot open.
+     *
+     * Every type on this queue is live, so no vocabulary filter is
+     * needed here — unlike the Booking queue, which retains dormant
+     * historical types.
+     */
     public static function getNavigationBadge(): ?string
     {
+        if (! static::canViewAny()) {
+            return null;
+        }
+
         $open = PaymentReconciliationIssue::query()->open()->count();
 
         return $open > 0 ? (string) $open : null;

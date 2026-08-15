@@ -44,7 +44,23 @@ class BookingPaymentReconciliationIssuesTable
                     ->formatStateUsing(fn (BookingPaymentReconciliationSeverity $state): string => $state->label())
                     ->color(fn (BookingPaymentReconciliationSeverity $state): string => $state->color()),
                 TextColumn::make('type')
-                    ->formatStateUsing(fn (BookingPaymentReconciliationIssueType $state): string => $state->label()),
+                    ->badge()
+                    ->formatStateUsing(fn (BookingPaymentReconciliationIssueType $state): string => $state->label())
+                    // Product language under the badge — an operator
+                    // should never have to translate
+                    // `provider_success_local_incomplete` themselves.
+                    ->description(fn (BookingPaymentReconciliationIssueType $state): string => $state->description())
+                    ->wrap(),
+                // Same vocabulary as the Package queue next door: is the
+                // money ours, and did the student get what they paid for?
+                // Keeps "provider confirmed, booking never settled" from
+                // reading like an ordinary retryable glitch.
+                TextColumn::make('money_state')
+                    ->label('Money')
+                    ->badge()
+                    ->state(fn (BookingPaymentReconciliationIssue $record): string => $record->type->moneyState())
+                    ->color(fn (BookingPaymentReconciliationIssue $record): string => $record->type->moneyStateColor())
+                    ->description(fn (BookingPaymentReconciliationIssue $record): string => $record->type->deliveryState()),
                 TextColumn::make('bookingPayment.booking.reference')
                     ->label('Booking')
                     ->searchable(),
@@ -103,8 +119,16 @@ class BookingPaymentReconciliationIssuesTable
             ])
             ->recordActions([
                 Action::make('reconcile_now')
+                    // Deliberately NOT "Retry payment": this re-asks the
+                    // provider what already happened. It never creates a
+                    // new charge attempt, and an operator must not fear
+                    // double-charging a student by pressing it.
                     ->label('Reconcile now')
                     ->icon('heroicon-o-arrow-path')
+                    ->requiresConfirmation()
+                    ->modalHeading('Re-check this payment with the provider?')
+                    ->modalDescription('This asks the provider what happened to the existing payment. It does not create a new charge and cannot take money from the student.')
+                    ->modalSubmitActionLabel('Re-check now')
                     ->authorize(fn (BookingPaymentReconciliationIssue $record): bool => auth()->user()?->can('reconcileNow', $record) ?? false)
                     ->visible(fn (BookingPaymentReconciliationIssue $record): bool => $record->status->isOpen())
                     ->action(fn (BookingPaymentReconciliationIssue $record) => self::callService(
@@ -144,11 +168,16 @@ class BookingPaymentReconciliationIssuesTable
                     )),
 
                 Action::make('resolve')
-                    ->label('Resolve')
+                    // Matches the Package queue's wording: closing an
+                    // incident is an operational act, never a financial
+                    // one.
+                    ->label('Close incident')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalDescription('Closes this reconciliation issue. This never marks a booking paid — only a provider-confirmed outcome can do that.')
+                    ->modalHeading('Close this incident?')
+                    ->modalDescription('This closes the operational incident only. It does not mark the booking paid, refund anything, or move money — only a provider-confirmed outcome can settle a payment.')
+                    ->modalSubmitActionLabel('Close incident')
                     ->authorize(fn (BookingPaymentReconciliationIssue $record): bool => auth()->user()?->can('resolve', $record) ?? false)
                     ->visible(fn (BookingPaymentReconciliationIssue $record): bool => $record->status->isOpen())
                     ->form([

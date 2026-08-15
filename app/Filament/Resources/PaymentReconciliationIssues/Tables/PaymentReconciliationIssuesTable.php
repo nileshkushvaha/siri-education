@@ -48,7 +48,23 @@ class PaymentReconciliationIssuesTable
                     ->label('Issue')
                     ->badge()
                     ->formatStateUsing(fn (PaymentReconciliationIssueType $state): string => $state->label())
-                    ->color(fn (PaymentReconciliationIssueType $state): string => $state->color()),
+                    ->color(fn (PaymentReconciliationIssueType $state): string => $state->color())
+                    // Product language under the badge: an operator
+                    // triaging money should not have to translate
+                    // `settlement_failed` in their head.
+                    ->description(fn (PaymentReconciliationIssueType $state): string => $state->description())
+                    ->wrap(),
+                // The first question in any payment incident: is the
+                // money ours, and did the customer get what they paid
+                // for? Surfaced as its own column so "provider confirmed,
+                // access never granted" cannot read like an ordinary
+                // retryable glitch.
+                TextColumn::make('money_state')
+                    ->label('Money')
+                    ->badge()
+                    ->state(fn (PaymentReconciliationIssue $record): string => $record->issue_type->moneyState())
+                    ->color(fn (PaymentReconciliationIssue $record): string => $record->issue_type->moneyStateColor())
+                    ->description(fn (PaymentReconciliationIssue $record): string => $record->issue_type->deliveryState()),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (PaymentReconciliationIssueStatus $state): string => $state->label())
@@ -116,7 +132,16 @@ class PaymentReconciliationIssuesTable
             ])
             ->recordActions([
                 Action::make('resolve')
-                    ->label('Mark Resolved')
+                    // "Mark Resolved" closes the OPERATIONAL INCIDENT. It
+                    // does not settle the payment, grant access, or move
+                    // money — settlement stays evidence-driven. The
+                    // wording and confirmation exist so an operator can
+                    // never believe otherwise.
+                    ->label('Close incident')
+                    ->requiresConfirmation()
+                    ->modalHeading('Close this incident?')
+                    ->modalDescription('This closes the operational incident only. It does not mark the payment as paid, activate the package, or move any money.')
+                    ->modalSubmitActionLabel('Close incident')
                     ->icon('heroicon-o-check-circle')
                     ->color('gray')
                     ->visible(fn (PaymentReconciliationIssue $record): bool => auth()->user()?->can('resolve', $record) ?? false)

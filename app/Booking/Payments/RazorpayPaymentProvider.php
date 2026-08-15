@@ -441,6 +441,11 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             providerPaymentId: $payment?->provider_payment_id,
             providerStatus: $orderStatus !== '' ? $orderStatus : null,
             safeReason: null,
+            // PAY-1: the order body already carried these; discarding
+            // them is what let the reconciliation path settle without
+            // checking what was collected.
+            verifiedAmountMinor: isset($order['amount']) ? (int) $order['amount'] : null,
+            verifiedCurrency: isset($order['currency']) ? strtoupper((string) $order['currency']) : null,
         );
     }
 

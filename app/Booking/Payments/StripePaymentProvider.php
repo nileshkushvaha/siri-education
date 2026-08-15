@@ -382,6 +382,13 @@ final class StripePaymentProvider implements PaymentProviderInterface
             safeReason: is_array($intent['last_payment_error'] ?? null)
                 ? ($intent['last_payment_error']['message'] ?? null)
                 : null,
+            // PAY-1: amount_received is what Stripe actually took;
+            // `amount` is only what was requested, so a partial capture
+            // must not read as a match.
+            verifiedAmountMinor: isset($intent['amount_received'])
+                ? (int) $intent['amount_received']
+                : (isset($intent['amount']) ? (int) $intent['amount'] : null),
+            verifiedCurrency: isset($intent['currency']) ? strtoupper((string) $intent['currency']) : null,
         );
     }
 

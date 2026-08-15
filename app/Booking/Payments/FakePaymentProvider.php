@@ -142,11 +142,17 @@ final class FakePaymentProvider implements PaymentProviderInterface
             ->latest('created_at')
             ->first();
 
+        // PAY-1: mirrors the real providers, which report the money
+        // they hold alongside the status. A fake that omitted it would
+        // exercise a code path production can never take, and would hide
+        // the amount/currency check from every test that uses it.
         return new PaymentStatusResult(
             recordStatus: $payment?->status ?? BookingPaymentRecordStatus::Unknown,
             providerPaymentId: $payment?->provider_payment_id,
             providerStatus: $payment?->status->value,
             safeReason: null,
+            verifiedAmountMinor: $payment?->amount_minor,
+            verifiedCurrency: $payment?->currency_code,
         );
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Services;
 
+use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
@@ -14,6 +15,8 @@ use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentStatusResult;
 use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
+use App\Booking\Enums\BookingPaymentReconciliationIssueType;
+use App\Booking\Enums\BookingPaymentReconciliationSeverity;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
@@ -396,6 +399,25 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
             return $payment;
         }
 
+        // PAY-1 (PAY-AUD-005): the webhook path has always compared the
+        // provider's amount/currency against this booking payment and
+        // refused settlement on a mismatch. The RECONCILIATION path did
+        // not — it read the provider's status, ignored the money, and
+        // settled. A payment recovered by the scheduled sweep, or by an
+        // operator pressing "retry verification", therefore skipped the
+        // one check that proves we collected what we asked for.
+        //
+        // A mismatch is never failed and never captured: it becomes
+        // ResolutionRequired (a status that existed for exactly this and
+        // had no producer) and raises an operator incident. No booking
+        // is confirmed, no lesson or meeting is created, no invoice is
+        // issued, and no wallet movement happens — the money is real but
+        // what it bought is now a human decision.
+        if ($status->recordStatus === BookingPaymentRecordStatus::Captured
+            && ! $this->providerMoneyMatches($payment, $status)) {
+            return $this->refuseMismatchedSettlement($payment, $status);
+        }
+
         $payment->forceFill([
             'status' => $status->recordStatus,
             'provider_payment_id' => $status->providerPaymentId ?? $payment->provider_payment_id,
@@ -419,6 +441,65 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
                 // Already settled by a concurrent webhook — no-op.
             }
         }
+
+        return BookingPayment::query()->whereKey($payment->id)->firstOrFail();
+    }
+
+    /**
+     * Does the money the provider reports match the obligation this
+     * booking payment snapshotted at checkout?
+     *
+     * Compared against the BookingPayment row, never against today's
+     * pricing matrix: the obligation is what the student agreed to when
+     * checkout opened, and re-deriving it now would make the check
+     * self-confirming after any price change.
+     *
+     * A provider that reports no money at all cannot be said to match.
+     */
+    private function providerMoneyMatches(BookingPayment $payment, PaymentStatusResult $status): bool
+    {
+        if (! $status->reportsMoney()) {
+            return false;
+        }
+
+        return $status->verifiedAmountMinor === (int) $payment->amount_minor
+            && strtoupper((string) $status->verifiedCurrency) === strtoupper((string) $payment->currency_code);
+    }
+
+    /**
+     * Parks a verified-success-but-wrong-money attempt for an operator.
+     *
+     * Deliberately raises the reconciliation issue types that already
+     * existed on the Booking queue and had never had a producer —
+     * AmountMismatch and CurrencyMismatch — rather than inventing new
+     * ones. Currency is reported in preference to amount when both
+     * differ: a wrong currency explains a wrong amount, and one incident
+     * describing the real problem beats two describing symptoms.
+     */
+    private function refuseMismatchedSettlement(BookingPayment $payment, PaymentStatusResult $status): BookingPayment
+    {
+        $currencyMismatched = strtoupper((string) $status->verifiedCurrency) !== strtoupper((string) $payment->currency_code);
+
+        $payment->forceFill([
+            'status' => BookingPaymentRecordStatus::ResolutionRequired,
+            'provider_payment_id' => $status->providerPaymentId ?? $payment->provider_payment_id,
+            'last_synced_at' => now(),
+        ])->save();
+
+        app(BookingPaymentReconciliationServiceInterface::class)->raiseIssue(
+            $payment,
+            $currencyMismatched
+                ? BookingPaymentReconciliationIssueType::CurrencyMismatch
+                : BookingPaymentReconciliationIssueType::AmountMismatch,
+            BookingPaymentReconciliationSeverity::Critical,
+            sprintf(
+                'The provider reported %s %s but this booking payment expects %s %s. Settlement was refused.',
+                $status->verifiedAmountMinor ?? 'an unknown amount',
+                $status->verifiedCurrency ?? '(no currency)',
+                $payment->amount_minor,
+                $payment->currency_code,
+            ),
+        );
 
         return BookingPayment::query()->whereKey($payment->id)->firstOrFail();
     }

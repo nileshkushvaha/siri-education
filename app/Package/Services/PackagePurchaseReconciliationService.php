@@ -13,10 +13,13 @@ use App\Package\DTOs\PackageSettlementResult;
 use App\Package\Exceptions\PackageException;
 use App\Payments\DTOs\VerifiedPaymentEvent;
 use App\Payments\Enums\PaymentEventType;
+use App\Payments\Enums\PaymentReconciliationIssueType;
+use App\Payments\Services\PaymentReconciliationIssueService;
 use App\Payments\Services\PaymentService;
 use App\Services\AuditTrailService;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
+use Carbon\CarbonImmutable;
 
 /**
  * Phase 4B.3 — the safety net behind the webhook.
@@ -38,6 +41,19 @@ final class PackagePurchaseReconciliationService
     /** How long an open attempt waits before the first provider poll. */
     public const int DUE_AFTER_MINUTES = 10;
 
+    /**
+     * PAY-1 — how long an attempt may stay unresolved before it stops
+     * being "in flight" and becomes something an operator should look
+     * at.
+     *
+     * Six times the poll grace period, so an attempt has had roughly an
+     * hour and a dozen sweeps to resolve itself before anyone is
+     * bothered. Derived from the existing reconciliation cadence rather
+     * than invented: nothing here fails a payment, it only makes a
+     * stuck one visible, so the constant governs noise, never money.
+     */
+    public const int OPERATOR_VISIBLE_AFTER_MINUTES = self::DUE_AFTER_MINUTES * 6;
+
     public function __construct(
         private readonly PaymentService $payments,
         private readonly PackagePurchaseSettlementService $settlement,
@@ -45,6 +61,7 @@ final class PackagePurchaseReconciliationService
         private readonly StripeGatewayClient $stripe,
         private readonly PaymentGatewaySettings $gatewaySettings,
         private readonly AuditTrailService $audit,
+        private readonly PaymentReconciliationIssueService $issues,
     ) {}
 
     /** @return int how many attempts were examined */
@@ -78,14 +95,34 @@ final class PackagePurchaseReconciliationService
         }
 
         if (! $payment->status->isOpen() || $payment->provider_order_id === null) {
+            // PAY-1: an OPEN attempt with no provider reference is not
+            // "nothing to reconcile" — it is a checkout that started and
+            // never reached the gateway, and no amount of polling will
+            // ever fix it because there is nothing to poll. It needs a
+            // human, so it stops exiting silently here.
+            if ($payment->status->isOpen()) {
+                $this->detectStuckAttempt($payment);
+            }
+
             $this->payments->markSynced($payment);
 
             return PackageSettlementResult::ignored($payment, null, 'Nothing to reconcile.');
         }
 
-        $confirmed = $this->providerConfirmsPayment($payment);
+        $reachable = true;
+        $confirmed = $this->providerConfirmsPayment($payment, $reachable);
 
         if ($confirmed === null) {
+            // PAY-1 (PAY-AUD-001): previously both "the provider says
+            // not yet" and "we could not reach the provider at all"
+            // exited here identically and silently. They are different
+            // facts and only one of them needs a human.
+            if (! $reachable) {
+                $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::ProviderUnavailable);
+            } else {
+                $this->detectStuckAttempt($payment);
+            }
+
             $this->payments->markSynced($payment);
 
             return PackageSettlementResult::ignored($payment, null, 'The provider has not confirmed this payment.');
@@ -96,7 +133,24 @@ final class PackagePurchaseReconciliationService
         } catch (PackageException $e) {
             // Left open on purpose: the next sweep retries. This is the
             // recovery path for "money collected, activation failed".
+            //
+            // PAY-1: it is also the single worst state this queue can
+            // hold — the provider has confirmed the money and the
+            // student has nothing — so it stops being an audit-log-only
+            // event and becomes an operator incident. Raised
+            // unconditionally, with no grace window: unlike an
+            // unreachable gateway, there is nothing transient about it.
             $this->payments->markSynced($payment);
+
+            $this->issues->record(
+                $payment,
+                PaymentReconciliationIssueType::SettlementFailed,
+                [
+                    'expected_amount_minor' => (int) $payment->amount_minor,
+                    'expected_currency' => (string) $payment->currency_code,
+                ],
+                source: 'reconciliation',
+            );
 
             $this->audit->logSystem(
                 'student_package_purchases',
@@ -110,6 +164,11 @@ final class PackagePurchaseReconciliationService
         }
 
         if ($result->settled) {
+            // PAY-1: the discrepancy is over — close every operational
+            // incident this attempt raised, so the queue only ever shows
+            // problems that are still real.
+            $this->issues->resolveOpenIssuesFor($payment);
+
             $this->audit->logSystem(
                 'student_package_purchases',
                 'package_reconciliation_recovered',
@@ -130,11 +189,11 @@ final class PackagePurchaseReconciliationService
      * null for anything short of an explicit success, including a
      * gateway error: silence is never treated as payment.
      */
-    private function providerConfirmsPayment(Payment $payment): ?VerifiedPaymentEvent
+    private function providerConfirmsPayment(Payment $payment, bool &$reachable): ?VerifiedPaymentEvent
     {
         $paid = match ($payment->provider) {
-            'razorpay' => $this->razorpayOrderIsPaid($payment),
-            'stripe' => $this->stripeIntentSucceeded($payment),
+            'razorpay' => $this->razorpayOrderIsPaid($payment, $reachable),
+            'stripe' => $this->stripeIntentSucceeded($payment, $reachable),
             default => false,
         };
 
@@ -156,7 +215,73 @@ final class PackagePurchaseReconciliationService
         );
     }
 
-    private function razorpayOrderIsPaid(Payment $payment): bool
+    /**
+     * PAY-1 — an attempt the provider is reachable about but still will
+     * not resolve. Two distinct, deterministic conditions, both keyed on
+     * observable state and neither inferring anything about the money:
+     *
+     *   MissingProviderReference — checkout claimed initialization long
+     *   ago and never recorded a provider order id, so there is nothing
+     *   left to poll. Retrying forever cannot fix it; only a human can.
+     *
+     *   StaleProcessing — a reference exists and the provider keeps
+     *   declining to call it settled, well past the point where that is
+     *   normal in-flight behaviour.
+     *
+     * Both wait OPERATOR_VISIBLE_AFTER_MINUTES so ordinary checkout
+     * latency never reaches the queue.
+     */
+    private function detectStuckAttempt(Payment $payment): void
+    {
+        $threshold = now()->subMinutes(self::OPERATOR_VISIBLE_AFTER_MINUTES);
+
+        if ($payment->provider_order_id === null) {
+            // Only once a claim was actually made — an attempt still
+            // awaiting its first initialization is not stuck, it is new.
+            //
+            // Parsed defensively: unlike every sibling `*_at` column on
+            // Payment, `initialization_claimed_at` carries no cast, so it
+            // arrives from the database as a plain string. Casting it on
+            // the model would be the tidier fix but reaches into the
+            // checkout path this phase must not disturb.
+            $claimedAt = $payment->initialization_claimed_at;
+
+            if ($claimedAt !== null && CarbonImmutable::parse($claimedAt)->lt($threshold)) {
+                $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::MissingProviderReference);
+            }
+
+            return;
+        }
+
+        if ($payment->created_at !== null && $payment->created_at->lt($threshold)) {
+            $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::StaleProcessing);
+        }
+    }
+
+    /**
+     * Raises an operational incident, deduplicated by the generic issue
+     * service: one open issue per (payment, type), with occurrence_count
+     * and last_seen_at advancing on every later sweep. A five-minute
+     * scheduler must never mean a five-minute stream of identical rows.
+     */
+    private function recordOperationalIssue(Payment $payment, PaymentReconciliationIssueType $type): void
+    {
+        if ($payment->created_at !== null && $payment->created_at->gt(now()->subMinutes(self::OPERATOR_VISIBLE_AFTER_MINUTES))) {
+            return;
+        }
+
+        $this->issues->record(
+            $payment,
+            $type,
+            [
+                'expected_amount_minor' => (int) $payment->amount_minor,
+                'expected_currency' => (string) $payment->currency_code,
+            ],
+            source: 'reconciliation',
+        );
+    }
+
+    private function razorpayOrderIsPaid(Payment $payment, bool &$reachable): bool
     {
         try {
             $order = $this->razorpay->fetchOrder(
@@ -165,13 +290,17 @@ final class PackagePurchaseReconciliationService
                 (string) $payment->provider_order_id,
             );
         } catch (GatewayRequestException) {
+            // Unreachable, NOT unpaid. The caller needs to tell those
+            // apart; silence is still never treated as payment.
+            $reachable = false;
+
             return false;
         }
 
         return (string) ($order['status'] ?? '') === 'paid';
     }
 
-    private function stripeIntentSucceeded(Payment $payment): bool
+    private function stripeIntentSucceeded(Payment $payment, bool &$reachable): bool
     {
         try {
             $intent = $this->stripe->retrievePaymentIntent(
@@ -179,6 +308,8 @@ final class PackagePurchaseReconciliationService
                 (string) $payment->provider_order_id,
             );
         } catch (GatewayRequestException) {
+            $reachable = false;
+
             return false;
         }
 

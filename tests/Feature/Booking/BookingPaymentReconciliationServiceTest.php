@@ -109,8 +109,17 @@ class BookingPaymentReconciliationServiceTest extends TestCase
     {
         $payment = $this->pendingStripePayment();
 
+        // PAY-1: a real Stripe intent always reports the money it took,
+        // and settlement now compares it against the booking payment
+        // before capturing. A fixture without it exercises a payload
+        // production never sends.
         $this->stripeGateway->shouldReceive('retrievePaymentIntent')
-            ->andReturn(['id' => $payment->provider_order_id, 'status' => 'succeeded']);
+            ->andReturn([
+                'id' => $payment->provider_order_id,
+                'status' => 'succeeded',
+                'amount_received' => $payment->amount_minor,
+                'currency' => strtolower($payment->currency_code),
+            ]);
 
         $updated = app(BookingPaymentReconciliationServiceInterface::class)->reconcileAttempt($payment);
 
@@ -149,7 +158,12 @@ class BookingPaymentReconciliationServiceTest extends TestCase
         $this->stripeGateway->shouldReceive('retrievePaymentIntent')
             ->with(Mockery::any(), $duePayment->provider_order_id)
             ->once()
-            ->andReturn(['id' => $duePayment->provider_order_id, 'status' => 'succeeded']);
+            ->andReturn([
+                'id' => $duePayment->provider_order_id,
+                'status' => 'succeeded',
+                'amount_received' => $duePayment->amount_minor,
+                'currency' => strtolower($duePayment->currency_code),
+            ]);
 
         $examined = app(BookingPaymentReconciliationServiceInterface::class)->reconcileDue();
 

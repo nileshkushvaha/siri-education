@@ -214,7 +214,17 @@ final class CurrencyEnforcementTest extends TestCase
 
         $result = app(BookingPaymentServiceInterface::class)->applyProviderStatus(
             $payment,
-            new PaymentStatusResult(recordStatus: BookingPaymentRecordStatus::Captured, providerPaymentId: null, providerStatus: 'captured', safeReason: null),
+            new PaymentStatusResult(
+                recordStatus: BookingPaymentRecordStatus::Captured,
+                providerPaymentId: null,
+                providerStatus: 'captured',
+                safeReason: null,
+                // PAY-1: a verified capture now carries the money the
+                // provider reports; settlement compares it against the
+                // booking payment before proceeding.
+                verifiedAmountMinor: $payment->amount_minor,
+                verifiedCurrency: $payment->currency_code,
+            ),
         );
 
         $this->assertSame(BookingPaymentRecordStatus::Captured, $result->status);

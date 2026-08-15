@@ -6,6 +6,7 @@ namespace Tests\Support;
 
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\Exceptions\GatewayRequestException;
+use App\Models\BookingPayment;
 
 /**
  * A deterministic, network-free double for the real-MySQL concurrency
@@ -22,7 +23,7 @@ final class StripeConcurrencyFakeClient implements StripeGatewayClient
 {
     public function __construct(
         private readonly bool $simulateTimeoutOnCreate = false,
-        /** Wallet-recharge reconciliation races need retrievePaymentIntent() to report an authoritative amount/currency — null preserves the original booking-domain behavior, which never reads these fields. */
+        /** Explicit override for wallet-recharge races. When null, retrievePaymentIntent() mirrors the matching BookingPayment, as a real intent would. */
         private readonly ?int $retrieveAmountReceived = null,
         private readonly ?string $retrieveCurrency = null,
     ) {}
@@ -50,12 +51,28 @@ final class StripeConcurrencyFakeClient implements StripeGatewayClient
 
     public function retrievePaymentIntent(string $secretKey, string $paymentIntentId): array
     {
+        // PAY-1: a real Stripe intent ALWAYS reports the money it took,
+        // and booking settlement now compares it against the booking
+        // payment before capturing (PAY-AUD-005). An explicit override
+        // still wins — wallet-recharge races set it deliberately — but
+        // the default is no longer "omit the fields", because that made
+        // the fake describe a response Stripe never sends.
+        $amountReceived = $this->retrieveAmountReceived;
+        $currency = $this->retrieveCurrency;
+
+        if ($amountReceived === null || $currency === null) {
+            $payment = BookingPayment::query()->where('provider_order_id', $paymentIntentId)->first();
+
+            $amountReceived ??= $payment?->amount_minor;
+            $currency ??= $payment !== null ? strtolower((string) $payment->currency_code) : null;
+        }
+
         return array_filter([
             'id' => $paymentIntentId,
             'client_secret' => $paymentIntentId.'_secret_retrieved',
             'status' => 'succeeded',
-            'amount_received' => $this->retrieveAmountReceived,
-            'currency' => $this->retrieveCurrency,
+            'amount_received' => $amountReceived,
+            'currency' => $currency,
         ], fn (mixed $value): bool => $value !== null);
     }
 

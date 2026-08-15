@@ -9,7 +9,7 @@
                     <p class="text-xs text-slate-400 truncate">
                         {{ $case->case_number }}
                         &middot; {{ $case->category->label() }}
-                        &middot; {{ $case->opened_at->format('M j, Y') }}
+                        &middot; {{ viewer_date($case->opened_at) }}
                     </p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4 flex items-center gap-4">

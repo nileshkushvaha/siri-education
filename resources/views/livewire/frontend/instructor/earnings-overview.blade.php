@@ -39,7 +39,7 @@
                                 <x-ui.badge :color="$earning->status->color()">{{ $earning->status->label() }}</x-ui.badge>
                             </div>
                             <p class="text-xs text-slate-400">
-                                {{ $earning->lesson?->starts_at?->format('M j, Y') ?? $earning->created_at->format('M j, Y') }}
+                                {{ viewer_date($earning->lesson?->starts_at) ?? viewer_date($earning->created_at) }}
                                 &middot; {{ $earning->student?->name ?? 'Student' }}
                             </p>
                             @if ($earning->settlementBatch)

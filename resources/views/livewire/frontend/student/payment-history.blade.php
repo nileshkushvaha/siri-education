@@ -8,7 +8,7 @@
                         <x-ui.badge :color="$booking->payment_status->color()">{{ $booking->payment_status->label() }}</x-ui.badge>
                     </div>
                     <p class="text-xs text-slate-400">
-                        {{ $booking->starts_at->format('M j, Y') }}
+                        {{ viewer_date($booking->starts_at) }}
                         @if($booking->payment_reference)
                             &middot; Ref: {{ $booking->payment_reference }}
                         @endif

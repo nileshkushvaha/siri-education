@@ -14,6 +14,7 @@ use App\Filament\Pages\SchedulerMonitorPage;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\TrackUserSession;
 use App\Settings\GeneralSettings;
+use App\Support\Timezone\ViewerDateTime;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Actions\Action;
 use Filament\FontProviders\SpatieGoogleFontProvider;
@@ -27,6 +28,7 @@ use Filament\PanelProvider;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -55,6 +57,40 @@ class AdminPanelProvider extends PanelProvider
     public function boot(): void
     {
         CreateRecord::disableCreateAnother();
+
+        // TZ-4 (TZ-AUD-007 / TZ-AUD-009): ONE registration gives every
+        // Filament date-TIME column and every DateTimePicker the
+        // logged-in admin's own clock. Before this, all 169 dateTime()
+        // columns rendered UTC while both portals rendered local, and an
+        // admin typing "09:00" into a reschedule picker had it stored as
+        // 09:00 UTC.
+        //
+        // A Closure, not a string: the panel boots long before anyone is
+        // authenticated, and TimezoneManager re-evaluates on every get(),
+        // so this resolves per request and per user rather than being
+        // frozen at boot.
+        //
+        // Filament applies this ONLY to values that carry a time — see
+        // CanFormatState::getTimezone() and DateTimePicker::getTimezone(),
+        // both of which fall back to config('app.timezone') when the
+        // component has no time component. Date-only columns and
+        // DatePickers (birthdays, holiday dates, compensation period
+        // boundaries) are therefore untouched, which is exactly right:
+        // shifting a date-only value by an offset is how a birthday moves
+        // a day.
+        //
+        // The picker round-trip is Filament's own DateTimeStateCast:
+        // reading converts the stored UTC value INTO this timezone, and
+        // writing shiftTimezone()s the typed wall clock out of it back to
+        // app timezone. That is why action code parsing the dehydrated
+        // value as UTC (BookingsTable, BuildsCampaignData, …) is correct
+        // and must stay — the conversion has already happened, and a
+        // second one would double-shift.
+        //
+        // Deliberately NOT applied to date FILTERS: "which rows fall on
+        // 15 August" is a local-day query-boundary question with
+        // financial consequences, and it belongs to TZ-5.
+        FilamentTimezone::set(static fn (): string => ViewerDateTime::timezoneFor());
     }
 
     public function panel(Panel $panel): Panel

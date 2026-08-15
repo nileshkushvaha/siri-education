@@ -140,7 +140,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="font-semibold text-white">{{ $review->reviewerLabel }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500">{{ $review->submittedAt->format('M j, Y') }}</p>
+                                <p class="mt-0.5 text-xs text-slate-500">{{ viewer_date($review->submittedAt) }}</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 @if($review->verifiedLesson)

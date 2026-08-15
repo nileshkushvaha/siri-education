@@ -33,8 +33,8 @@
                             </div>
                             <p class="text-xs text-slate-400">Student: {{ $lesson->student?->name ?? 'Student' }}</p>
                             <p class="text-xs text-slate-400 mt-1">
-                                {{ $lessonStartsAt->isToday() ? 'Today' : $lessonStartsAt->format('M j, Y') }}
-                                &middot; {{ $lessonStartsAt->format('g:i A') }} - {{ $lessonEndsAt->format('g:i A') }}
+                                {{ $lessonStartsAt->isToday() ? 'Today' : viewer_date($lessonStartsAt) }}
+                                &middot; {{ viewer_time($lessonStartsAt) }} - {{ viewer_time($lessonEndsAt) }}
                             </p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
@@ -84,7 +84,7 @@
                                 @endif
                             </div>
                             <p class="text-xs text-slate-400">
-                                {{ $lessonStartsAt->format('M j, Y g:i A') }}
+                                {{ viewer_datetime($lessonStartsAt) }}
                                 @if ($lesson->outcome === $completedOutcome && $lesson->hasFinalizedOutcome() && ($existingFeedback[$lesson->id] ?? null))
                                     &middot; Feedback submitted
                                 @endif

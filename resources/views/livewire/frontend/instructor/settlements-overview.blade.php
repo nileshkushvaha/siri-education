@@ -32,7 +32,7 @@
                                     {{ $batch->period_start->format('M j') }} – {{ $batch->period_end->format('M j, Y') }}
                                 @endif
                                 @if ($batch->paid_at)
-                                    &middot; Processed {{ $batch->paid_at->format('M j, Y') }}
+                                    &middot; Processed {{ viewer_date($batch->paid_at) }}
                                 @endif
                             </p>
                         </div>

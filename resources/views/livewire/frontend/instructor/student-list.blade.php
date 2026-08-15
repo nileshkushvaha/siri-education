@@ -23,11 +23,11 @@
                     <div class="flex flex-wrap items-center gap-4 sm:gap-6">
                         <div class="text-left sm:text-right">
                             <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Last lesson</p>
-                            <p class="text-xs text-slate-300">{{ $student->lastLessonAt?->format('M j, Y') ?? '—' }}</p>
+                            <p class="text-xs text-slate-300">{{ viewer_date($student->lastLessonAt) ?? '—' }}</p>
                         </div>
                         <div class="text-left sm:text-right">
                             <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Upcoming</p>
-                            <p class="text-xs text-slate-300">{{ $student->nextLessonAt?->format('M j, Y') ?? 'None' }}</p>
+                            <p class="text-xs text-slate-300">{{ viewer_date($student->nextLessonAt) ?? 'None' }}</p>
                         </div>
                         <div class="text-left sm:text-right">
                             <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Learning plan</p>

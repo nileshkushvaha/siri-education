@@ -152,7 +152,7 @@
                         <p class="text-xs text-slate-400">
                             {{ $method->type->label() }} &middot; {{ $method->currency_code }}
                             @if ($method->country) &middot; {{ $method->country->name }} @endif
-                            &middot; Added {{ $method->created_at->format('M j, Y') }}
+                            &middot; Added {{ viewer_date($method->created_at) }}
                         </p>
                         @if ($method->status === \App\Earnings\Enums\PayoutMethodStatus::Rejected && $method->rejection_reason)
                             <p class="mt-1 text-xs text-rose-300">Rejected: {{ $method->rejection_reason }}</p>

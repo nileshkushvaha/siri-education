@@ -144,12 +144,12 @@
                         </div>
                         <p class="text-xs text-slate-400">
                             Class #{{ $reward->class_sequence }}
-                            &middot; Eligible {{ $reward->eligible_at->format('M j, Y') }}
+                            &middot; Eligible {{ viewer_date($reward->eligible_at) }}
                             @if($reward->credited_at)
-                                &middot; Credited {{ $reward->credited_at->format('M j, Y') }}
+                                &middot; Credited {{ viewer_date($reward->credited_at) }}
                             @endif
                             @if($reward->reversed_at)
-                                &middot; Reversed {{ $reward->reversed_at->format('M j, Y') }}
+                                &middot; Reversed {{ viewer_date($reward->reversed_at) }}
                             @endif
                         </p>
                     </div>

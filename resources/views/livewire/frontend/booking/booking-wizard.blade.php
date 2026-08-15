@@ -556,7 +556,7 @@
                             <dl class="mx-auto mt-6 max-w-md space-y-3 rounded-2xl bg-slate-900/70 p-5 text-left text-sm ring-1 ring-white/10">
                                 @foreach($result['bookings'] as $occurrence)
                                     <div class="flex justify-between gap-4 border-b border-white/5 pb-3 last:border-0 last:pb-0">
-                                        <dt class="text-slate-400">{{ \Carbon\CarbonImmutable::parse($occurrence['starts_at'])->timezone($occurrence['timezone'])->format('M j, Y g:i A') }}</dt>
+                                        <dt class="text-slate-400">{{ viewer_datetime($occurrence['starts_at']) }}</dt>
                                         <dd class="font-semibold text-white">{{ $occurrence['payment_status'] === 'paid' ? 'Paid' : ($occurrence['requires_payment'] ? 'Payment due' : $occurrence['status_label']) }}</dd>
                                     </div>
                                 @endforeach
@@ -567,7 +567,7 @@
                                     <p class="font-bold uppercase tracking-wide">Some sessions could not be booked</p>
                                     <ul class="mt-2 list-disc space-y-1 pl-4">
                                         @foreach($result['failures'] as $when => $reason)
-                                            <li>{{ \Carbon\CarbonImmutable::parse($when)->format('M j, Y g:i A') }} — {{ $reason }}</li>
+                                            <li>{{ viewer_datetime($when) }} — {{ $reason }}</li>
                                         @endforeach
                                     </ul>
                                 </div>
@@ -600,7 +600,7 @@
 
                             <dl class="mx-auto mt-6 max-w-md space-y-2 rounded-2xl bg-slate-900/70 p-5 text-left text-sm ring-1 ring-white/10">
                                 <div class="flex justify-between gap-4"><dt class="text-slate-400">Session</dt><dd class="font-semibold text-white">{{ $result['type']['name'] }}</dd></div>
-                                <div class="flex justify-between gap-4"><dt class="text-slate-400">When</dt><dd class="font-semibold text-white">{{ \Carbon\CarbonImmutable::parse($result['starts_at'])->timezone($result['timezone'])->format('M j, Y g:i A') }}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-slate-400">When</dt><dd class="font-semibold text-white">{{ viewer_datetime_labelled($result['starts_at']) }}</dd></div>
                                 <div class="flex justify-between gap-4"><dt class="text-slate-400">Timezone</dt><dd class="font-semibold text-white">{{ $result['timezone'] }}</dd></div>
                             </dl>
 

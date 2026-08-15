@@ -16,7 +16,7 @@
         <div>
             <h1 class="text-xl font-bold text-white">{{ $case->subject }}</h1>
             <p class="text-slate-400 text-sm mt-1">
-                {{ $case->case_number }} &middot; {{ $case->category->label() }} &middot; Opened {{ $case->opened_at->format('M j, Y') }}
+                {{ $case->case_number }} &middot; {{ $case->category->label() }} &middot; Opened {{ viewer_date($case->opened_at) }}
             </p>
         </div>
         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-white/[0.06] text-white flex-shrink-0">
@@ -44,7 +44,7 @@
                 <div wire:key="reply-{{ $reply->id }}" class="{{ !$loop->last ? 'pb-4 border-b border-white/[0.05]' : '' }}">
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-semibold text-white">{{ $reply->author->name }}</p>
-                        <p class="text-xs text-slate-500">{{ $reply->created_at->format('M j, Y H:i') }}</p>
+                        <p class="text-xs text-slate-500">{{ viewer_datetime($reply->created_at) }}</p>
                     </div>
                     <p class="text-sm text-slate-300 whitespace-pre-line">{{ $reply->body }}</p>
                 </div>

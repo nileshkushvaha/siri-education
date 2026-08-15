@@ -58,7 +58,7 @@
                     <p class="text-sm font-medium text-slate-200">{{ $plan->title }}</p>
                     <p class="text-xs text-slate-500 mt-1">{{ $plan->subject?->name }} · {{ $plan->status->label() }}</p>
                 </div>
-                <span class="text-xs text-slate-500">{{ $plan->updated_at->format('M j, Y') }}</span>
+                <span class="text-xs text-slate-500">{{ viewer_date($plan->updated_at) }}</span>
             </div>
         @empty
             <p class="py-6 text-sm text-slate-500">Completed and archived plans will stay here.</p>

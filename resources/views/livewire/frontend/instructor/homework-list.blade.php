@@ -120,7 +120,7 @@
                         </div>
                         <p class="text-xs text-slate-400">{{ $assignment->subject }} &middot; {{ $assignment->student?->name ?? 'Student' }}</p>
                         <x-homework.context-line :assignment="$assignment" />
-                        <p class="text-xs text-slate-400 mt-1">Submitted {{ $assignment->submitted_at?->format('M j, Y g:i A') }}</p>
+                        <p class="text-xs text-slate-400 mt-1">Submitted {{ viewer_datetime($assignment->submitted_at) }}</p>
                     </div>
 
                     @if($reviewingId !== $assignment->id)

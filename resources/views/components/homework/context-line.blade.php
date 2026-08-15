@@ -5,7 +5,7 @@
 @if ($assignment->booking !== null || $assignment->learningPlan !== null)
     <p class="text-xs text-slate-500 mt-1">
         @if ($assignment->booking !== null)
-            Lesson: {{ $assignment->booking->starts_at?->timezone($assignment->booking->timezone ?? 'UTC')->format('M j, Y g:i A') }}@if ($assignment->booking->type !== null) ({{ $assignment->booking->type->name }})@endif
+            Lesson: {{ viewer_datetime($assignment->booking->starts_at) }}@if ($assignment->booking->type !== null) ({{ $assignment->booking->type->name }})@endif
         @endif
         @if ($assignment->booking !== null && $assignment->learningPlan !== null)
             &middot;

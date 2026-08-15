@@ -105,7 +105,7 @@
                         <x-ui.badge :color="$entry->status->color()">{{ $entry->status->label() }}</x-ui.badge>
                     </div>
                     <p class="text-xs text-slate-400">
-                        {{ $entry->created_at->format('M j, Y g:i A') }}
+                        {{ viewer_datetime($entry->created_at) }}
                         @if($entry->description)
                             &middot; {{ $entry->description }}
                         @endif

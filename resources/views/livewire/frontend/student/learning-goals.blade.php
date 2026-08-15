@@ -128,7 +128,7 @@
                     <p class="text-sm font-medium text-slate-200">{{ $goal->title }}</p>
                     <p class="text-xs text-slate-500 mt-1">{{ $goal->subject?->name }} · {{ $goal->status->label() }}</p>
                 </div>
-                <span class="text-xs text-slate-500">{{ $goal->updated_at->format('M j, Y') }}</span>
+                <span class="text-xs text-slate-500">{{ viewer_date($goal->updated_at) }}</span>
             </div>
         @empty
             <p class="py-6 text-sm text-slate-500">Completed and archived goals will stay here for history.</p>

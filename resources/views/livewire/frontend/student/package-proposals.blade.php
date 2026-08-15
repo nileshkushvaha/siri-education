@@ -53,7 +53,7 @@
                                 <span class="text-xs font-semibold
                                     {{ $entitlement->status->value === 'active' ? 'text-emerald-300' : ($entitlement->status->value === 'expired' ? 'text-rose-300' : 'text-slate-300') }}">
                                     @if ($entitlement->status->value === 'expired')
-                                        Expired {{ $entitlement->expires_at?->format('j F Y') }} · {{ $entitlement->remaining_quantity }} unused
+                                        Expired {{ viewer_date($entitlement->expires_at, 'j F Y') }} · {{ $entitlement->remaining_quantity }} unused
                                     @elseif ($entitlement->status->value === 'completed')
                                         All {{ $entitlement->total_quantity }} lessons used
                                     @else
@@ -68,7 +68,7 @@
                                 {{-- The validity clock started when payment activated the package. --}}
                                 <div>
                                     <dt class="text-xs text-slate-500">Valid until</dt>
-                                    <dd class="text-white font-semibold">{{ $entitlement->expires_at?->format('j F Y') ?? 'No expiry' }}</dd>
+                                    <dd class="text-white font-semibold">{{ viewer_date($entitlement->expires_at, 'j F Y') ?? 'No expiry' }}</dd>
                                 </div>
                             </dl>
                         </div>

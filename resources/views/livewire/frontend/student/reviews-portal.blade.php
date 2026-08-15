@@ -23,8 +23,8 @@
                             <x-ui.badge color="gray">{{ $eligibility->eligibility_mode->label() }}</x-ui.badge>
                         </div>
                         <p class="text-xs text-slate-400">
-                            Lesson on {{ $eligibility->lesson?->starts_at?->format('M j, Y') ?? '—' }}
-                            &middot; Review by {{ $eligibility->expires_at->format('M j, Y') }}
+                            Lesson on {{ viewer_date($eligibility->lesson?->starts_at) ?? '—' }}
+                            &middot; Review by {{ viewer_date($eligibility->expires_at) }}
                         </p>
                     </div>
                     @if ($submittingEligibilityId !== $eligibility->id)
@@ -67,8 +67,8 @@
                             <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-amber-400/20">{{ $review->overall_rating }} ★</span>
                         </div>
                         <p class="text-xs text-slate-400">
-                            Lesson on {{ $review->lesson?->starts_at?->format('M j, Y') ?? '—' }}
-                            &middot; Submitted {{ $review->submitted_at->format('M j, Y') }}
+                            Lesson on {{ viewer_date($review->lesson?->starts_at) ?? '—' }}
+                            &middot; Submitted {{ viewer_date($review->submitted_at) }}
                             @if ($review->revisions_count > 0)
                                 &middot; Edited {{ $review->revisions_count }} {{ \Illuminate\Support\Str::plural('time', $review->revisions_count) }}
                             @endif
@@ -83,7 +83,7 @@
                                 class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-white/[0.10] hover:bg-white/[0.05] transition">
                                 Edit
                             </button>
-                            <p class="mt-1 text-[11px] text-slate-500">Editable until {{ $canEdit->deadline?->format('M j, g:i A') }}</p>
+                            <p class="mt-1 text-[11px] text-slate-500">Editable until {{ viewer_datetime_labelled($canEdit->deadline, 'M j, g:i A') }}</p>
                         @elseif ($canEdit && ! $canEdit->editable)
                             <p class="max-w-[200px] text-right text-[11px] text-slate-500">{{ $canEdit->reason }}</p>
                         @endif
@@ -116,7 +116,7 @@
                 <div wire:key="closed-{{ $eligibility->id }}" class="flex items-center justify-between py-3 text-sm {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
                     <div>
                         <span class="text-slate-300">{{ $eligibility->instructor?->name ?? 'Instructor' }}</span>
-                        <span class="ml-2 text-xs text-slate-500">Lesson on {{ $eligibility->lesson?->starts_at?->format('M j, Y') ?? '—' }}</span>
+                        <span class="ml-2 text-xs text-slate-500">Lesson on {{ viewer_date($eligibility->lesson?->starts_at) ?? '—' }}</span>
                     </div>
                     <x-ui.badge color="gray">{{ ucfirst(str_replace('_', ' ', $eligibility->status->value)) }}</x-ui.badge>
                 </div>

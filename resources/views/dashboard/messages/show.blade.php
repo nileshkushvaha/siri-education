@@ -38,7 +38,7 @@
                 <div wire:key="message-{{ $msg->id }}" class="{{ !$loop->last ? 'pb-4 border-b border-white/[0.05]' : '' }}">
                     <div class="flex items-center gap-2 mb-1">
                         <p class="text-xs font-semibold {{ $isMine ? 'text-indigo-300' : 'text-white' }}">{{ $isMine ? 'You' : $msg->sender->name }}</p>
-                        <p class="text-xs text-slate-500">{{ $msg->sent_at->format('M j, Y H:i') }}</p>
+                        <p class="text-xs text-slate-500">{{ viewer_datetime($msg->sent_at) }}</p>
                     </div>
                     <p class="text-sm text-slate-300 whitespace-pre-line">{{ $msg->body }}</p>
 

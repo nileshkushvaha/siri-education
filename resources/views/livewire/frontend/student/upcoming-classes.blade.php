@@ -10,8 +10,8 @@
                     <p class="text-xs text-slate-400">with {{ $booking->instructor?->name ?? 'Teacher' }} &middot; {{ $booking->location_type->label() }}</p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
-                    <p class="text-sm font-medium text-indigo-300">{{ $booking->starts_at->format('D, M j') }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">{{ $booking->starts_at->format('g:i A') }} – {{ $booking->ends_at->format('g:i A') }}</p>
+                    <p class="text-sm font-medium text-indigo-300">{{ viewer_date($booking->starts_at, 'D, M j') }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ viewer_time($booking->starts_at) }} – {{ viewer_time($booking->ends_at) }}</p>
                     @if($booking->meeting_url)
                         <a href="{{ $booking->meeting_url }}" target="_blank" rel="noopener"
                            class="inline-block mt-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300">

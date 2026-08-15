@@ -14,6 +14,7 @@ use App\Models\HomeworkAssignment;
 use App\Models\HomeworkResourceVersion;
 use App\Models\StudentLearningPlan;
 use App\Models\User;
+use App\Support\Timezone\ViewerDateTime;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Validate;
@@ -323,7 +324,10 @@ final class HomeworkList extends Component
             ->mapWithKeys(fn (Booking $booking): array => [
                 $booking->id => trim(sprintf(
                     '%s · %s (%s)',
-                    $booking->starts_at->timezone($booking->timezone ?? 'UTC')->format('M j, Y g:i A'),
+                    // TZ-4: the INSTRUCTOR is reading this list, so it
+                    // reads in their clock — not the student's, which is
+                    // what the booking's origin snapshot holds.
+                    ViewerDateTime::dateTime($booking->starts_at),
                     $booking->type?->name ?? 'Lesson',
                     $booking->reference,
                 )),

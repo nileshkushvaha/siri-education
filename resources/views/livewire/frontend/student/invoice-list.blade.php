@@ -8,7 +8,7 @@
                     </div>
                     <p class="text-xs text-slate-400 truncate">
                         {{ $invoice->service_description }}
-                        &middot; {{ $invoice->issued_at->format('M j, Y') }}
+                        &middot; {{ viewer_date($invoice->issued_at) }}
                     </p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4 flex items-center gap-4">

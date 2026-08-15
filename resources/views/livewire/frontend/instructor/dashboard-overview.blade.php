@@ -45,17 +45,18 @@
                 @forelse($nextClasses as $booking)
                     <article wire:key="instructor-next-class-{{ $booking['id'] }}" class="group grid grid-cols-[3.4rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/20 hover:bg-white/[0.04] sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-center">
                         <div class="rounded-xl bg-indigo-500/10 py-2 text-center">
-                            <p class="text-[10px] font-bold uppercase tracking-wide text-indigo-300">{{ $booking['starts_at']->format('M') }}</p>
-                            <p class="text-xl font-bold text-white">{{ $booking['starts_at']->format('j') }}</p>
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-indigo-300">{{ viewer_datetime($booking['starts_at'], 'M') }}</p>
+                            <p class="text-xl font-bold text-white">{{ viewer_datetime($booking['starts_at'], 'j') }}</p>
                         </div>
                         <div class="min-w-0">
                             <p class="truncate text-sm font-semibold text-white">{{ $booking['subject'] }}</p>
                             <p class="mt-1 truncate text-xs text-slate-400">{{ $booking['student'] }} · {{ $booking['type'] }}</p>
+                            @if($booking['is_demo'])<p class="mt-1 text-xs font-medium text-cyan-300">Intro session · Learn the student’s goals and discuss the best next step.</p>@endif
                         </div>
                         <div class="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:justify-end">
                             <div class="text-left sm:text-right">
-                                <p class="text-sm font-semibold text-slate-200">{{ $booking['starts_at']->format('g:i A') }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500">{{ $booking['ends_at']->format('g:i A') }}</p>
+                                <p class="text-sm font-semibold text-slate-200">{{ viewer_time($booking['starts_at']) }}</p>
+                                <p class="mt-0.5 text-xs text-slate-500">{{ viewer_time($booking['ends_at']) }}</p>
                             </div>
                             @if($booking['join_url'])
                                 <a href="{{ $booking['join_url'] }}" target="_blank" rel="noopener noreferrer"

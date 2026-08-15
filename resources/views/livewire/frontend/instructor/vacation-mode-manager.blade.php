@@ -55,7 +55,7 @@
             </div>
             <p class="mt-2 text-sm leading-6 text-slate-400">You are temporarily unavailable for new lesson bookings.</p>
             @if ($statusChangedAt)
-                <p class="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Started: <span class="text-slate-300 normal-case">{{ $statusChangedAt->format('j M Y') }}</span></p>
+                <p class="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Started: <span class="text-slate-300 normal-case">{{ viewer_date($statusChangedAt, 'j M Y') }}</span></p>
             @endif
 
             @if (! $confirmingResume)

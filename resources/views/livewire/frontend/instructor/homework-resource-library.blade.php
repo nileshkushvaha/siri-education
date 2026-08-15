@@ -121,7 +121,7 @@
                                             {{ $version->getFirstMedia('file')->file_name }} ({{ $version->getFirstMedia('file')->human_readable_size }})
                                         </a>
                                     @endif
-                                    <span class="text-slate-500">{{ $version->published_at->format('M j, Y g:i A') }}</span>
+                                    <span class="text-slate-500">{{ viewer_datetime($version->published_at) }}</span>
 
                                     @if($resource->status->value === 'active')
                                         <button wire:click="startAttach('{{ $version->id }}')" class="text-indigo-300 underline">Attach to homework</button>

@@ -31,8 +31,8 @@
                     </p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
-                    <p class="text-sm font-medium text-slate-300">{{ $booking->starts_at->format('M j, Y') }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">{{ $booking->starts_at->format('g:i A') }}</p>
+                    <p class="text-sm font-medium text-slate-300">{{ viewer_date($booking->starts_at) }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ viewer_time($booking->starts_at) }}</p>
                 </div>
             </div>
         @empty
@@ -71,10 +71,14 @@
                 </div>
                 <div>
                     <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">When</dt>
-                    <dd class="mt-1 font-semibold text-white">{{ $booking->starts_at->timezone($booking->timezone)->format('M j, Y g:i A') }}</dd>
+                    <dd class="mt-1 font-semibold text-white">{{ viewer_datetime_labelled($booking->starts_at) }}</dd>
                 </div>
                 <div>
-                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Timezone</dt>
+                    {{-- TZ-4: provenance, not the viewer's clock. The "When"
+                         line above already carries the viewer's own timezone
+                         label; this records which timezone the booking was
+                         originally made in (see Booking's class docblock). --}}
+                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Booked in</dt>
                     <dd class="mt-1 font-semibold text-white">{{ $booking->timezone }}</dd>
                 </div>
                 @if(($booking->meta['subject'] ?? null) !== null)
@@ -238,7 +242,7 @@
                                         wire:click="selectRescheduleSlot('{{ $slot['starts_at'] }}')"
                                         aria-pressed="{{ $rescheduleSlotStartsAt === $slot['starts_at'] ? 'true' : 'false' }}"
                                         class="rounded-xl border-2 p-2 text-sm font-semibold transition {{ $rescheduleSlotStartsAt === $slot['starts_at'] ? 'border-indigo-500 bg-indigo-500/10 text-indigo-200' : 'border-white/10 bg-white/5 text-slate-200 hover:border-indigo-400/40' }}"
-                                    >{{ \Carbon\CarbonImmutable::parse($slot['starts_at'])->timezone($booking->timezone)->format('g:i A') }}</button>
+                                    >{{ viewer_time($slot['starts_at']) }}</button>
                                 @endforeach
                             </div>
                         @elseif($rescheduleDate)
@@ -258,7 +262,7 @@
                                 <p class="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300">
                                     This cancellation is outside the refund window and will not be refunded.
                                     @if($preview['cutoff_at'])
-                                        The refund deadline was {{ $preview['cutoff_at']->timezone($booking->timezone)->format('D, M j Y \a\t H:i') }} ({{ $booking->timezone }}).
+                                        The refund deadline was {{ viewer_datetime_labelled($preview['cutoff_at'], 'D, M j Y \a\t H:i') }}.
                                     @endif
                                 </p>
                             @endif

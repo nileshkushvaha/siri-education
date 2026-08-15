@@ -53,7 +53,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Navigation/helpers.php"
+            "app/Navigation/helpers.php",
+            "app/Support/timezone-helpers.php"
         ]
     },
     "autoload-dev": {

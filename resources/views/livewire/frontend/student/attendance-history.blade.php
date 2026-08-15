@@ -21,7 +21,7 @@
                     <p class="text-xs text-slate-400">with {{ $booking->instructor?->name ?? 'Teacher' }}</p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
-                    <p class="text-sm font-medium text-slate-300">{{ $booking->starts_at->format('M j, Y') }}</p>
+                    <p class="text-sm font-medium text-slate-300">{{ viewer_date($booking->starts_at) }}</p>
                 </div>
             </div>
         @empty

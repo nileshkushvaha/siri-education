@@ -14,9 +14,9 @@
                         <x-ui.badge :color="$entry->status->color()">{{ $entry->status->label() }}</x-ui.badge>
                     </div>
                     <p class="text-xs text-slate-400">
-                        Joined {{ $entry->joined_at->format('M j, Y') }}
+                        Joined {{ viewer_date($entry->joined_at) }}
                         @if($entry->notified_at)
-                            &middot; Last notified {{ $entry->notified_at->format('M j, Y') }}
+                            &middot; Last notified {{ viewer_date($entry->notified_at) }}
                         @endif
                     </p>
                 </div>

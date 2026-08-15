@@ -152,7 +152,7 @@
                             <x-ui.badge :color="$withdrawal->status->color()">{{ $withdrawal->status->label() }}</x-ui.badge>
                         </div>
                         <p class="text-xs text-slate-400">
-                            {{ $withdrawal->requested_at->format('M j, Y g:i A') }}
+                            {{ viewer_datetime($withdrawal->requested_at) }}
                             &middot; {{ $withdrawal->payout_method_label }}
                         </p>
                         @if ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Rejected && $withdrawal->rejection_reason)
@@ -164,7 +164,7 @@
                         @elseif ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Processing)
                             <p class="mt-1 text-xs text-slate-400">Your payout is being processed.</p>
                         @elseif ($withdrawal->status === \App\Earnings\Enums\InstructorWithdrawalStatus::Paid)
-                            <p class="mt-1 text-xs text-emerald-300">Paid{{ $withdrawal->paid_at ? ' on '.$withdrawal->paid_at->format('M j, Y') : '' }}.</p>
+                            <p class="mt-1 text-xs text-emerald-300">Paid{{ $withdrawal->paid_at ? ' on '.viewer_date($withdrawal->paid_at) : '' }}.</p>
                         @endif
                     </div>
                     <div class="flex items-center gap-4">

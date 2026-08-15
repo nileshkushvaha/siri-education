@@ -8,7 +8,7 @@
                     <p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-300">Your next lesson</p>
                     <h2 class="mt-3 text-2xl font-bold text-white md:text-3xl">{{ $lesson['subject'] }}</h2>
                     <p class="mt-2 text-sm text-slate-300">with {{ $lesson['instructor'] }} · {{ $lesson['type'] }}</p>
-                    <p class="mt-4 text-base font-semibold text-white">{{ $lesson['starts_at']->format('l, M j · g:i A') }}</p>
+                    <p class="mt-4 text-base font-semibold text-white">{{ viewer_datetime($lesson['starts_at'], 'l, M j · g:i A') }}</p>
                     <p class="mt-1 text-xs text-slate-400" role="status">Meeting: {{ $lesson['meeting_status'] }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
@@ -24,9 +24,13 @@
             </div>
         </section>
     @else
+        @php($journey = $dashboard->bookingJourney ?? [])
         <section class="rounded-3xl border border-indigo-400/20 bg-gradient-to-r from-indigo-500/15 to-violet-500/10 p-7 md:flex md:items-center md:justify-between">
-            <div><p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-300">Ready when you are</p><h2 class="mt-2 text-2xl font-bold text-white">Plan your next learning session</h2><p class="mt-2 text-sm text-slate-400">Choose a tutor and a time that works for you.</p></div>
-            <a href="{{ route('booking.create') }}" class="mt-5 inline-flex rounded-xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-400 md:mt-0">Book a Class</a>
+            <div class="max-w-2xl"><p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-300">{{ $journey['eyebrow'] ?? 'Ready when you are' }}</p><h2 class="mt-2 text-2xl font-bold text-white">{{ $journey['title'] ?? 'Plan your next learning session' }}</h2><p class="mt-2 text-sm leading-6 text-slate-400">{{ $journey['description'] ?? 'Choose an instructor and a time that works for you.' }}</p></div>
+            <div class="mt-5 flex shrink-0 flex-wrap gap-3 md:ml-6 md:mt-0">
+                @if(! empty($journey['secondary_url']))<a href="{{ $journey['secondary_url'] }}" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white hover:bg-white/10">{{ $journey['secondary_label'] }}</a>@endif
+                <a href="{{ $journey['primary_url'] ?? route('booking.create') }}" class="inline-flex min-h-11 items-center rounded-xl bg-indigo-500 px-5 text-sm font-bold text-white hover:bg-indigo-400">{{ $journey['primary_label'] ?? 'Book a lesson' }}</a>
+            </div>
         </section>
     @endif
 
@@ -38,7 +42,7 @@
                 @forelse($homework['items'] as $item)
                     <a href="{{ route('dashboard.homework') }}" class="flex items-center justify-between gap-4 py-4 hover:bg-white/[.02]">
                         <div class="min-w-0"><p class="truncate text-sm font-semibold text-white">{{ $item['title'] }}</p><p class="mt-1 text-xs text-slate-400">{{ $item['subject'] }}</p></div>
-                        <div class="text-right"><span class="rounded-full px-2 py-1 text-xs font-semibold {{ $item['overdue'] ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300' }}">{{ $item['overdue'] ? 'Overdue' : $item['status'] }}</span><p class="mt-2 text-xs text-slate-400">Due {{ $item['due_at']->format('M j, g:i A') }}</p></div>
+                        <div class="text-right"><span class="rounded-full px-2 py-1 text-xs font-semibold {{ $item['overdue'] ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300' }}">{{ $item['overdue'] ? 'Overdue' : $item['status'] }}</span><p class="mt-2 text-xs text-slate-400">Due {{ viewer_datetime($item['due_at'], 'M j, g:i A') }}</p></div>
                     </a>
                 @empty<p class="py-6 text-sm text-slate-400" role="status">You’re all caught up.</p>@endforelse
             </div>
@@ -68,7 +72,7 @@
                 </div>
                 <div class="lg:w-64"><div class="flex justify-between text-sm"><span class="text-slate-400">Progress</span><strong class="text-white">{{ $journey['progress'] }}%</strong></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-white/[.07]" role="progressbar" aria-label="Learning plan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $journey['progress'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $journey['progress'] }}%"></div></div><p class="mt-2 text-xs text-slate-400">{{ $journey['completed_milestones'] }} of {{ $journey['total_milestones'] }} milestones complete</p></div>
             </div>
-            <div class="mt-5 grid gap-3 md:grid-cols-2">@if($journey['next_milestone'])<div class="rounded-xl bg-white/[.035] p-4"><p class="text-xs uppercase tracking-wide text-slate-500">Next milestone</p><p class="mt-2 text-sm font-semibold text-white">{{ $journey['next_milestone'] }}</p></div>@endif @if($journey['last_review_at'])<div class="rounded-xl bg-white/[.035] p-4"><p class="text-xs uppercase tracking-wide text-slate-500">Latest progress review</p><p class="mt-2 text-sm text-slate-300">{{ $journey['last_review'] ?: 'Review completed' }}</p>@if(! is_null($journey['last_review_progress_percent']))<p class="mt-2 text-sm font-semibold text-white">{{ $journey['last_review_progress_percent'] }}% overall progress assessed</p>@endif<p class="mt-2 text-xs text-slate-500">{{ $journey['last_review_at']->format('M j, Y') }}</p></div>@endif</div>
+            <div class="mt-5 grid gap-3 md:grid-cols-2">@if($journey['next_milestone'])<div class="rounded-xl bg-white/[.035] p-4"><p class="text-xs uppercase tracking-wide text-slate-500">Next milestone</p><p class="mt-2 text-sm font-semibold text-white">{{ $journey['next_milestone'] }}</p></div>@endif @if($journey['last_review_at'])<div class="rounded-xl bg-white/[.035] p-4"><p class="text-xs uppercase tracking-wide text-slate-500">Latest progress review</p><p class="mt-2 text-sm text-slate-300">{{ $journey['last_review'] ?: 'Review completed' }}</p>@if(! is_null($journey['last_review_progress_percent']))<p class="mt-2 text-sm font-semibold text-white">{{ $journey['last_review_progress_percent'] }}% overall progress assessed</p>@endif<p class="mt-2 text-xs text-slate-500">{{ viewer_date($journey['last_review_at']) }}</p></div>@endif</div>
         @else<p class="mt-4 text-sm text-slate-400">Your active learning plan will appear here once one is created.</p>@endif
     </section>
 

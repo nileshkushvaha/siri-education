@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
  * Housekeeping sweep for lapsed package entitlements.
  *
  * Deliberately NOT load-bearing: expiry is enforced synchronously by
- * PackageEntitlementService::usable()/consumeLesson(), so an entitlement
+ * PackageEntitlementService::usable()/consumeForLesson(), so an entitlement
  * is unusable the instant it lapses whether or not this has run. The
  * sweep only keeps admin lists and dashboards honest for entitlements
  * nobody has read since they expired.

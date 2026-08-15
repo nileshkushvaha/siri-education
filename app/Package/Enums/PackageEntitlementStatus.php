@@ -11,7 +11,7 @@ namespace App\Package\Enums;
  * at acceptance and only ever leaves Active; it is never re-opened.
  *
  * Completed is reached automatically when the last lesson is consumed
- * (PackageEntitlementService::consumeLesson()); Cancelled/Expired are
+ * (PackageEntitlementService::consumeForLesson()); Cancelled/Expired are
  * administrative end states reserved for later phases — nothing in
  * Phase 4A transitions into them yet.
  */

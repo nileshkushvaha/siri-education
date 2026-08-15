@@ -12,7 +12,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 /**
  * Entitlements are read-only to everyone. They are created solely by
  * InstructorPackageProposalService::acceptProposal() and mutated solely
- * by PackageEntitlementService::consumeLesson() — there is no
+ * by PackageEntitlementService::consumeForLesson() — there is no
  * create/update/delete route for any role, including admin, so those
  * abilities deliberately return false rather than being permission-gated.
  *
@@ -53,7 +53,7 @@ class StudentPackageEntitlementPolicy
         return false;
     }
 
-    /** Balance changes only through PackageEntitlementService::consumeLesson(). */
+    /** Balance changes only through PackageEntitlementService::consumeForLesson(). */
     public function update(User $user, StudentPackageEntitlement $entitlement): bool
     {
         return false;

@@ -246,21 +246,6 @@ class StudentPackageEntitlementTest extends TestCase
         $this->assertSame(25, $entitlement->fresh()->remaining_quantity);
     }
 
-    /** Consuming a lesson updates the generated balance without ever writing to it. */
-    public function test_remaining_quantity_tracks_used_quantity_automatically(): void
-    {
-        $proposal = $this->approvedProposal(3, 0);
-        $entitlement = $this->acceptedEntitlement($proposal);
-
-        $this->assertSame(3, $entitlement->remaining_quantity);
-
-        $entitlement = $this->entitlements()->consumeLesson($entitlement);
-        $this->assertSame(2, $entitlement->remaining_quantity);
-
-        $entitlement = $this->entitlements()->consumeLesson($entitlement);
-        $this->assertSame(1, $entitlement->remaining_quantity);
-    }
-
     public function test_inconsistent_total_quantity_is_rejected_at_database_level(): void
     {
         $proposal = $this->approvedProposal();
@@ -278,43 +263,6 @@ class StudentPackageEntitlementTest extends TestCase
 
     // ── Consumption ───────────────────────────────────────────────────────
 
-    public function test_consuming_a_lesson_decrements_remaining_and_increments_used(): void
-    {
-        $proposal = $this->approvedProposal(20, 5);
-        $entitlement = $this->acceptedEntitlement($proposal);
-
-        $updated = $this->entitlements()->consumeLesson($entitlement);
-
-        $this->assertSame(1, $updated->used_quantity);
-        $this->assertSame(24, $updated->remaining_quantity);
-        $this->assertSame(PackageEntitlementStatus::Active, $updated->status);
-    }
-
-    public function test_consuming_the_last_lesson_completes_the_entitlement(): void
-    {
-        $proposal = $this->approvedProposal(2, 0);
-        $entitlement = $this->acceptedEntitlement($proposal);
-
-        $this->entitlements()->consumeLesson($entitlement);
-        $completed = $this->entitlements()->consumeLesson($entitlement->fresh());
-
-        $this->assertSame(2, $completed->used_quantity);
-        $this->assertSame(0, $completed->remaining_quantity);
-        $this->assertSame(PackageEntitlementStatus::Completed, $completed->status);
-        $this->assertNotNull($completed->completed_at);
-    }
-
-    public function test_consuming_beyond_the_balance_is_rejected(): void
-    {
-        $proposal = $this->approvedProposal(1, 0);
-        $entitlement = $this->acceptedEntitlement($proposal);
-
-        $this->entitlements()->consumeLesson($entitlement);
-
-        $this->expectException(PackageException::class);
-        $this->entitlements()->consumeLesson($entitlement->fresh());
-    }
-
     public function test_has_available_lessons_and_remaining_lessons_reflect_the_balance(): void
     {
         $proposal = $this->approvedProposal(1, 0);
@@ -323,10 +271,19 @@ class StudentPackageEntitlementTest extends TestCase
         $this->assertTrue($this->entitlements()->hasAvailableLessons($entitlement));
         $this->assertSame(1, $this->entitlements()->remainingLessons($entitlement));
 
-        $consumed = $this->entitlements()->consumeLesson($entitlement);
+        // The accessors are the subject here, not how the unit was
+        // drawn — consumption itself is proved through the canonical
+        // ledger path in PackageEntitlementConsumptionTest.
+        $entitlement->forceFill([
+            'used_quantity' => 1,
+            'status' => PackageEntitlementStatus::Completed,
+            'completed_at' => now(),
+        ])->save();
 
-        $this->assertFalse($this->entitlements()->hasAvailableLessons($consumed));
-        $this->assertSame(0, $this->entitlements()->remainingLessons($consumed));
+        $entitlement->refresh();
+
+        $this->assertFalse($this->entitlements()->hasAvailableLessons($entitlement));
+        $this->assertSame(0, $this->entitlements()->remainingLessons($entitlement));
     }
 
     // ── Student decline ───────────────────────────────────────────────────

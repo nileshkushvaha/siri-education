@@ -29,7 +29,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * `remaining_quantity` is a STORED GENERATED column (total - used) and
  * is therefore intentionally absent from $fillable: it cannot be
  * written by anything, so it can never drift. Read it after a write via
- * refresh() — PackageEntitlementService::consumeLesson() does exactly
+ * refresh() — PackageEntitlementService::consumeForLesson() does exactly
  * that and is the ONLY thing that may change used_quantity.
  *
  * PreventsHardDeletion (no SoftDeletes): a student's owned balance is

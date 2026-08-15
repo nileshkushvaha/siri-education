@@ -7,7 +7,6 @@ namespace Tests\Feature\Package;
 use App\Models\StudentPackageEntitlement;
 use App\Models\User;
 use App\Package\Enums\PackageEntitlementStatus;
-use App\Package\Exceptions\PackageException;
 use App\Package\Services\PackageEntitlementService;
 use Database\Seeders\PackagePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -237,58 +236,14 @@ class PackageEntitlementExpiryTest extends TestCase
         Carbon::setTestNow();
     }
 
-    // ── Consumption refuses expired balances ──────────────────────────────
-
-    public function test_an_expired_entitlement_cannot_be_consumed(): void
-    {
-        Carbon::setTestNow('2027-02-01 09:00:00');
-        $entitlement = $this->entitlement('2027-01-28 14:00:00');
-
-        try {
-            $this->entitlements()->consumeLesson($entitlement);
-            $this->fail('Expected consumption of a lapsed entitlement to be refused.');
-        } catch (PackageException) {
-            // expected
-        }
-
-        $entitlement = $entitlement->fresh();
-        $this->assertSame(PackageEntitlementStatus::Expired, $entitlement->status);
-        $this->assertSame(0, $entitlement->used_quantity);
-        $this->assertSame(5, $entitlement->remaining_quantity);
-
-        Carbon::setTestNow();
-    }
-
-    /** Lapsing between the availability check and the draw must still be caught. */
-    public function test_an_entitlement_that_lapses_before_the_draw_is_refused_under_the_lock(): void
-    {
-        Carbon::setTestNow('2027-01-28 13:59:59');
-        $entitlement = $this->entitlement('2027-01-28 14:00:00');
-
-        $this->assertTrue($this->entitlements()->usable($entitlement));
-
-        // Time passes between the check and the consumption call.
-        Carbon::setTestNow('2027-01-28 14:00:01');
-
-        $this->expectException(PackageException::class);
-        $this->entitlements()->consumeLesson($entitlement);
-
-        Carbon::setTestNow();
-    }
-
-    public function test_an_unexpired_entitlement_still_consumes_normally(): void
-    {
-        Carbon::setTestNow('2027-01-01 12:00:00');
-        $entitlement = $this->entitlement('2027-01-28 14:00:00');
-
-        $consumed = $this->entitlements()->consumeLesson($entitlement);
-
-        $this->assertSame(1, $consumed->used_quantity);
-        $this->assertSame(4, $consumed->remaining_quantity);
-        $this->assertSame(PackageEntitlementStatus::Active, $consumed->status);
-
-        Carbon::setTestNow();
-    }
+    // Consumption-versus-expiry is proved through the canonical
+    // ledger-backed path in PackageEntitlementConsumptionTest
+    // (a_lesson_delivered_after_expiry_cannot_consume_the_package /
+    // _before_expiry_consumes_normally). The tests that used to sit here
+    // exercised the removed consumeLesson() mutator, which bypassed the
+    // consumption ledger and the reservation claim — keeping them would
+    // have meant keeping a second balance-mutation path alive purely to
+    // satisfy its own tests.
 
     // ── Authorization ─────────────────────────────────────────────────────
 

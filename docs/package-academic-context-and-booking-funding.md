@@ -478,3 +478,52 @@ Package purchase refunds remain out of scope.
 > **SRS note.** These are approved-extension policies, not SRS text. `docs/SRS.md`
 > still describes lesson packages as future scope; an addendum should be raised
 > at final package closure rather than editing the SRS here.
+
+---
+
+## Approved package policies (consolidated, Phase 4E.4)
+
+The original SRS lists lesson packages as **future scope**. Everything below is
+an *approved extension* to that scope, implemented across Phases 4A–4E.4. This
+list is the single place the policies are stated together; it is not SRS text
+and `docs/SRS.md` is deliberately unmodified. A proposed SRS addendum accompanies
+the Phase 4E.4 report for governance review.
+
+| # | Policy | Enforced by |
+|---|---|---|
+| 1 | Packages are an approved extension to original future scope | — |
+| 2 | The platform controls package student pricing | `PackagePricingService` (unit × paid quantity, from the existing matrix) |
+| 3 | An instructor can never set or override package price | No instructor-writable price field; price re-resolved server-side at create/submit |
+| 4 | Admin owns Package Offers and final approval | `PackageBenefitRulePolicy`; `Approve/Reject/OverridePrice` are manager-only |
+| 5 | A package is instructor-specific | `student_package_entitlements.instructor_id`; matching is per-instructor |
+| 6 | A package-funded booking requires an explicitly selected instructor | `WizardBookingService::requireEligibleEntitlement()` fails closed when `teacherId` is null |
+| 7 | The academic context is frozen at proposal submission | `PackageAcademicContext` + `PreventsUpdates`; bookings inherit it rather than re-resolving |
+| 8 | Bonus units do not increase the student's price | Price is `unit × paid_quantity`; bonus excluded by construction |
+| 9 | Bonus units are normally compensable to the instructor | Ordinary completed-lesson earning path; proven behaviourally |
+| 10 | Package-funded means prepaid — never demo, never free | `BookingPaymentStatus::PackageFunded` is its own case, keeps real price |
+| 11 | Version 1 package funding is single-booking only | Wizard hides the step for recurring; `bookRecurring()` refuses explicitly |
+| 12 | A unit is reserved at booking, consumed on qualifying completion | `StudentPackageEntitlementReservation` + `consumeForLesson()` |
+| 13 | Non-consuming outcomes release capacity with no monetary refund | Release listeners; `_package_unit_restored` disposition reason |
+| 14 | A lesson must **finish** by package expiry | Slot filtering and `reschedule()`, both on absolute UTC instants |
+| 15 | Package revenue is recognized once, at purchase settlement | `packagePurchaseCollectedByCurrency()` reads settled purchases, not attempts |
+| 16 | Instructor compensation is independent of package price | `InstructorCompensationResolver` reads no package state; guarded structurally |
+
+### Balance integrity
+
+There is exactly **one** way a package balance changes:
+
+```
+LessonCompleted
+    → ConsumePackageEntitlementOnLessonCompleted
+    → PackageEntitlementService::consumeForLesson()
+    → immutable consumption ledger row  (UNIQUE lesson_id)
+    → reservation Reserved → Consumed
+    → used_quantity + 1                 (all in one transaction, under a row lock)
+```
+
+Phase 4E.4 removed `consumeLesson()`, a second public mutator that moved
+`used_quantity` without writing the ledger or claiming the reservation. It had
+no production callers, but it was public and one call away from silently
+double-spending a package — and it kept its own tests alive to justify itself.
+`PackageBalanceIntegrityGuardTest` now fails if it, or any
+`increment('used_quantity')`-shaped shortcut, reappears.

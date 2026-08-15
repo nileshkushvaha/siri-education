@@ -243,7 +243,8 @@ final class PackageEntitlementService
     public function reserveForBooking(StudentPackageEntitlement $entitlement, Booking $booking, ?User $actor = null): StudentPackageEntitlementReservation
     {
         // Expired FIRST, in its own transaction, so the status change
-        // survives the refusal below (same reasoning as consumeLesson()).
+        // survives the refusal below: a write made inside the same
+        // transaction as the throw would be rolled back with it.
         $entitlement = $this->expireIfNeeded($entitlement);
 
         return DB::transaction(function () use ($entitlement, $booking, $actor): StudentPackageEntitlementReservation {
@@ -379,7 +380,8 @@ final class PackageEntitlementService
         }
 
         // Expired outside the transaction so the status change survives
-        // a subsequent refusal (see consumeLesson()).
+        // a subsequent refusal — a write inside the throwing transaction
+        // would be rolled back with it.
         $entitlement = StudentPackageEntitlement::query()->find($lesson->package_entitlement_id);
 
         if ($entitlement === null) {
@@ -549,7 +551,14 @@ final class PackageEntitlementService
             && $entitlement->expires_at->lessThanOrEqualTo(now());
     }
 
-    /** @deprecated Prefer usable() — this does not enforce expiry. Kept for the existing Phase 4A callers/tests. */
+    /**
+     * @deprecated Prefer usable(), which also enforces expiry.
+     *
+     * Read-only and therefore harmless to balance integrity — it is kept
+     * only because removing a pure accessor buys nothing. Never gate a
+     * consumption decision on it: it answers "are there units left?",
+     * not "may this package be drawn against right now?".
+     */
     public function hasAvailableLessons(StudentPackageEntitlement $entitlement): bool
     {
         return $entitlement->status->isConsumable() && $this->remainingLessons($entitlement) > 0;
@@ -558,71 +567,6 @@ final class PackageEntitlementService
     public function remainingLessons(StudentPackageEntitlement $entitlement): int
     {
         return (int) $entitlement->remaining_quantity;
-    }
-
-    /**
-     * Draws one lesson down. The ONLY mutator of `used_quantity`.
-     *
-     * Row-locked so two concurrent consumptions cannot both read the
-     * same remaining balance; the DB CHECK (used <= total) is the
-     * backstop if that lock is ever bypassed. Auto-completes the
-     * entitlement when the last lesson is drawn.
-     *
-     * Not called from Booking yet — see class docblock.
-     *
-     * @throws PackageException when the entitlement is not Active or has no lessons left
-     */
-    public function consumeLesson(StudentPackageEntitlement $entitlement, ?User $actor = null): StudentPackageEntitlement
-    {
-        // Expired FIRST, in its own transaction, so the status change
-        // survives: the refusal below throws, and a write made inside
-        // that same transaction would be rolled back with it.
-        $entitlement = $this->expireIfNeeded($entitlement);
-
-        return DB::transaction(function () use ($entitlement, $actor): StudentPackageEntitlement {
-            $entitlement = StudentPackageEntitlement::query()->whereKey($entitlement->id)->lockForUpdate()->firstOrFail();
-
-            // Re-checked under the lock against the same clock, for the
-            // narrow case where it lapsed between the call above and
-            // this transaction. Refusing is what matters here; the
-            // status write happens on the next read or in the sweep,
-            // because a write in this transaction dies with the throw.
-            if ($this->hasLapsed($entitlement)) {
-                throw new PackageException('This package has expired and can no longer be used.');
-            }
-
-            if (! $entitlement->status->isConsumable()) {
-                throw new PackageException(sprintf('This package is %s and can no longer be used.', $entitlement->status->label()));
-            }
-
-            if ($entitlement->remaining_quantity < 1) {
-                throw new PackageException('This package has no remaining lessons.');
-            }
-
-            $used = $entitlement->used_quantity + 1;
-            $isNowComplete = $used >= $entitlement->total_quantity;
-
-            $entitlement->fill([
-                'used_quantity' => $used,
-                'status' => $isNowComplete ? PackageEntitlementStatus::Completed : PackageEntitlementStatus::Active,
-                'completed_at' => $isNowComplete ? now() : null,
-            ])->save();
-
-            $entitlement->refresh();
-
-            $this->audit->logUser(
-                $actor ?? $entitlement->student,
-                self::LOG_NAME,
-                $isNowComplete ? 'package_entitlement_completed' : 'package_entitlement_lesson_consumed',
-                $isNowComplete
-                    ? 'Package entitlement fully consumed.'
-                    : 'One lesson consumed from package entitlement.',
-                $entitlement,
-                $this->metadata($entitlement),
-            );
-
-            return $entitlement;
-        });
     }
 
     /** @return array<string, mixed> */

@@ -6,13 +6,11 @@ namespace Tests\Feature\Settings;
 
 use App\Filament\Pages\Settings\LogsSettingsUpdates;
 use App\Filament\Pages\Settings\PaymentAdvancedPage;
-use App\Filament\Pages\Settings\PaymentBankAccountPage;
 use App\Filament\Pages\Settings\PaymentConfigurationPage;
 use App\Filament\Pages\Settings\PaymentGatewayPage;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\AuditTrailService;
-use App\Settings\BankSettings;
 use App\Settings\PaymentAdvancedSettings;
 use App\Settings\PaymentConfigurationSettings;
 use App\Settings\PaymentGatewaySettings;
@@ -112,70 +110,55 @@ class PaymentSettingsAtomicityTest extends TestCase
 
     public function test_a_payment_setting_and_its_audit_record_commit_together(): void
     {
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Synthetic Holder',
-                'bank_name' => 'Synthetic Bank',
-                'account_type' => 'savings',
-                'account_number' => '999888777666',
-                'account_number_confirm' => '999888777666',
-                'ifsc_code' => 'ABCD0123456',
-            ])
+        // BankSettings was this test's vehicle before offline bank
+        // transfer was retired; the invariant under test is the
+        // settings-plus-audit transaction, not the settings class.
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_key_id' => 'rzp_test_atomic_1'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertSame('999888777666', app(BankSettings::class)->account_number);
-        $this->assertNotNull($this->latestSettingsUpdate(BankSettings::class));
+        $this->assertSame('rzp_test_atomic_1', app(PaymentGatewaySettings::class)->razorpay_key_id);
+        $this->assertNotNull($this->latestSettingsUpdate(PaymentGatewaySettings::class));
     }
 
     // ── 2. Forced settings-persistence failure creates no audit record ──────
 
     public function test_a_forced_settings_persistence_failure_creates_no_audit_record(): void
     {
-        $before = app(BankSettings::class)->account_number;
+        $before = app(PaymentGatewaySettings::class)->razorpay_key_id;
 
-        $ok = $this->atomicHarness()->run(BankSettings::class, 'settings', function (BankSettings $bank): void {
-            $bank->account_number = 'SHOULD_NEVER_PERSIST';
+        $ok = $this->atomicHarness()->run(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $gateways): void {
+            $gateways->razorpay_key_id = 'SHOULD_NEVER_PERSIST';
             throw new RuntimeException('Simulated settings persistence failure');
         });
 
         $this->assertFalse($ok);
-        $this->assertNull($this->latestSettingsUpdate(BankSettings::class));
-        $this->assertSame($before, app(BankSettings::class)->account_number);
+        $this->assertNull($this->latestSettingsUpdate(PaymentGatewaySettings::class));
+        $this->assertSame($before, app(PaymentGatewaySettings::class)->razorpay_key_id);
     }
 
     // ── 3/4/5. Forced audit failure rolls back Bank + Gateway settings; reload returns originals ──
 
-    public function test_a_forced_audit_trail_failure_rolls_back_a_bank_settings_change(): void
+    public function test_a_forced_audit_trail_failure_rolls_back_a_gateway_settings_change(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->account_number = 'ORIGINAL_ACCOUNT_1';
-        $bank->bank_name = 'Original Bank';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_key_id = 'ORIGINAL_KEY_1';
+        $gateways->save();
 
         $this->bindFailingAuditTrailService();
 
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Someone',
-                'bank_name' => 'Attempted New Bank',
-                'account_type' => 'savings',
-                'account_number' => 'ATTEMPTED_NEW_ACCOUNT',
-                'account_number_confirm' => 'ATTEMPTED_NEW_ACCOUNT',
-                'ifsc_code' => 'ABCD0123456',
-            ])
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_key_id' => 'ATTEMPTED_NEW_KEY'])
             ->call('save');
 
         // Reloading must return the ORIGINAL persisted values, not the
         // attempted (never-committed) ones — proves the rollback
         // actually reached the database and the scoped container was
         // reset (see saveSettingsWithAudit()'s forgetInstance() call).
-        $reloaded = app(BankSettings::class);
-        $this->assertSame('ORIGINAL_ACCOUNT_1', $reloaded->account_number);
-        $this->assertSame('Original Bank', $reloaded->bank_name);
-        $this->assertNull($this->latestSettingsUpdate(BankSettings::class));
+        $reloaded = app(PaymentGatewaySettings::class);
+        $this->assertSame('ORIGINAL_KEY_1', $reloaded->razorpay_key_id);
+        $this->assertNull($this->latestSettingsUpdate(PaymentGatewaySettings::class));
     }
 
     public function test_the_same_forced_audit_failure_rolls_back_a_gateway_settings_change(): void
@@ -199,80 +182,67 @@ class PaymentSettingsAtomicityTest extends TestCase
 
     public function test_a_no_op_save_through_the_atomic_helper_creates_no_audit_record(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->bank_name = 'Stable Bank';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_key_id = 'rzp_stable';
+        $gateways->save();
 
-        $ok = $this->atomicHarness()->run(BankSettings::class, 'settings', function (BankSettings $bank): void {
-            $bank->bank_name = 'Stable Bank'; // unchanged
+        $ok = $this->atomicHarness()->run(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $gateways): void {
+            $gateways->razorpay_key_id = 'rzp_stable'; // unchanged
         });
 
         $this->assertTrue($ok);
-        $this->assertNull($this->latestSettingsUpdate(BankSettings::class));
+        $this->assertNull($this->latestSettingsUpdate(PaymentGatewaySettings::class));
     }
 
     // ── 7/8/9. Financial identifiers never appear in plaintext ──────────────
 
-    public function test_account_number_plaintext_never_appears_in_activity_description_or_properties(): void
+    public function test_gateway_key_secret_plaintext_never_appears_in_activity_description_or_properties(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->account_number = '100000000001';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_key_secret = Crypt::encryptString('secret_old_100000000001');
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Holder',
-                'bank_name' => 'Some Bank',
-                'account_type' => 'savings',
-                'account_number' => '200000000002',
-                'account_number_confirm' => '200000000002',
-                'ifsc_code' => 'ABCD0123456',
-            ])
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_key_secret' => 'secret_new_200000000002'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
         $this->assertNotNull($activity);
 
         $changed = $activity->properties['changed'];
-        $this->assertSame('replaced', $changed['account_number']['action']);
-        $this->assertTrue($changed['account_number']['previously_set']);
-        $this->assertTrue($changed['account_number']['now_set']);
+        $this->assertSame('replaced', $changed['razorpay_key_secret']['action']);
+        $this->assertTrue($changed['razorpay_key_secret']['previously_set']);
+        $this->assertTrue($changed['razorpay_key_secret']['now_set']);
 
         $serialized = (string) json_encode($activity->properties);
-        $this->assertStringNotContainsString('100000000001', $serialized);
-        $this->assertStringNotContainsString('200000000002', $serialized);
-        $this->assertStringNotContainsString('100000000001', $activity->description);
-        $this->assertStringNotContainsString('200000000002', $activity->description);
+        $this->assertStringNotContainsString('secret_old_100000000001', $serialized);
+        $this->assertStringNotContainsString('secret_new_200000000002', $serialized);
+        $this->assertStringNotContainsString('secret_old_100000000001', $activity->description);
+        $this->assertStringNotContainsString('secret_new_200000000002', $activity->description);
     }
 
-    public function test_upi_id_plaintext_never_appears_in_description_or_properties(): void
+    public function test_webhook_secret_plaintext_never_appears_in_description_or_properties(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->upi_id = 'synthetic-old@bank';
-        $bank->account_type = 'current';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_webhook_secret = Crypt::encryptString('whsec-synthetic-old');
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => false,
-                'account_type' => 'current',
-                'upi_id' => 'synthetic-new@bank',
-            ])
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_webhook_secret' => 'whsec-synthetic-new'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
         $this->assertNotNull($activity);
 
         $changed = $activity->properties['changed'];
-        $this->assertSame('replaced', $changed['upi_id']['action']);
+        $this->assertSame('replaced', $changed['razorpay_webhook_secret']['action']);
 
         $serialized = (string) json_encode($activity->properties);
-        $this->assertStringNotContainsString('synthetic-old@bank', $serialized);
-        $this->assertStringNotContainsString('synthetic-new@bank', $serialized);
-        $this->assertStringNotContainsString('synthetic-new@bank', $activity->description);
+        $this->assertStringNotContainsString('whsec-synthetic-old', $serialized);
+        $this->assertStringNotContainsString('whsec-synthetic-new', $serialized);
+        $this->assertStringNotContainsString('whsec-synthetic-new', $activity->description);
     }
 
     public function test_ifsc_code_value_never_appears_in_description_or_properties(): void

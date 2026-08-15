@@ -6,7 +6,6 @@ namespace App\Filament\Pages\Settings;
 
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
-use App\Filament\Support\Presentation\BackAction;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -25,13 +24,13 @@ class PaymentGatewayPage extends PaymentSettingsPage
     use HasCentralizedNavigation;
     use HasSettingsSectionBreadcrumb;
 
-    protected static bool $shouldRegisterNavigation = false;
+    protected static bool $shouldRegisterNavigation = true;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWallet;
 
     protected static ?string $navigationLabel = 'Payment Gateways';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Finance';
+    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 2;
 
@@ -50,16 +49,6 @@ class PaymentGatewayPage extends PaymentSettingsPage
     public function getSubheading(): ?string
     {
         return 'Configure and secure online payment gateway credentials.';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return array_filter([
-            BackAction::make(
-                PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
-                'Back to Finance Settings',
-            ),
-        ]);
     }
 
     public function content(Schema $schema): Schema

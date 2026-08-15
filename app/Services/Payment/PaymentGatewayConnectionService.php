@@ -20,9 +20,6 @@ final class PaymentGatewayConnectionService
             'stripe' => $this->testStripe($runtimeData, $settings),
             'razorpay' => $this->testRazorpay($runtimeData, $settings),
             'paypal' => $this->testPayPal($runtimeData, $settings),
-            'cashfree' => $this->testCashfree($runtimeData, $settings),
-            'payu' => $this->testPayU($runtimeData, $settings),
-            'phonepe' => $this->testPhonePe($runtimeData, $settings),
             'manual' => new GatewayConnectionResult(true, 'Manual payment does not require API connectivity.'),
             default => new GatewayConnectionResult(false, "Unsupported gateway '{$gateway}'."),
         };
@@ -130,108 +127,6 @@ final class PaymentGatewayConnectionService
             ]);
         } catch (Throwable $e) {
             return new GatewayConnectionResult(false, "PayPal connection failed: {$e->getMessage()}");
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $runtimeData
-     */
-    private function testCashfree(array $runtimeData, PaymentGatewaySettings $settings): GatewayConnectionResult
-    {
-        $appId = $runtimeData['cashfree_app_id'] ?? $settings->cashfree_app_id;
-        $secret = $this->resolveSecret($runtimeData['cashfree_secret_key'] ?? null, $settings->cashfree_secret_key);
-        $environment = $runtimeData['cashfree_environment'] ?? $settings->cashfree_environment;
-
-        if (blank($appId) || blank($secret)) {
-            return new GatewayConnectionResult(false, 'Cashfree App ID or Secret Key is missing.');
-        }
-
-        $baseUrl = $environment === 'production'
-            ? 'https://api.cashfree.com'
-            : 'https://sandbox.cashfree.com';
-
-        try {
-            $response = Http::timeout(20)
-                ->acceptJson()
-                ->withHeaders([
-                    'x-client-id' => (string) $appId,
-                    'x-client-secret' => (string) $secret,
-                    'x-api-version' => '2022-09-01',
-                ])
-                ->get("{$baseUrl}/pg/orders");
-
-            if (! in_array($response->status(), [200, 400, 404], true)) {
-                return new GatewayConnectionResult(false, 'Cashfree API rejected credentials.', [
-                    'http_status' => $response->status(),
-                    'response' => $response->json(),
-                ]);
-            }
-
-            return new GatewayConnectionResult(true, 'Cashfree connection successful.');
-        } catch (Throwable $e) {
-            return new GatewayConnectionResult(false, "Cashfree connection failed: {$e->getMessage()}");
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $runtimeData
-     */
-    private function testPayU(array $runtimeData, PaymentGatewaySettings $settings): GatewayConnectionResult
-    {
-        $merchantId = $runtimeData['payu_merchant_id'] ?? $settings->payu_merchant_id;
-        $privateKey = $this->resolveSecret($runtimeData['payu_private_key'] ?? null, $settings->payu_private_key);
-        $sandbox = (bool) ($runtimeData['payu_sandbox_mode'] ?? $settings->payu_sandbox_mode);
-
-        if (blank($merchantId) || blank($privateKey)) {
-            return new GatewayConnectionResult(false, 'PayU Merchant ID or Private Key is missing.');
-        }
-
-        $baseUrl = $sandbox ? 'https://test.payu.in' : 'https://secure.payu.in';
-
-        try {
-            $response = Http::timeout(15)->get($baseUrl);
-
-            if (! $response->successful()) {
-                return new GatewayConnectionResult(false, 'PayU endpoint is unreachable.', [
-                    'http_status' => $response->status(),
-                ]);
-            }
-
-            return new GatewayConnectionResult(true, 'PayU endpoint reachable and credentials look configured.');
-        } catch (Throwable $e) {
-            return new GatewayConnectionResult(false, "PayU connection failed: {$e->getMessage()}");
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $runtimeData
-     */
-    private function testPhonePe(array $runtimeData, PaymentGatewaySettings $settings): GatewayConnectionResult
-    {
-        $merchantId = $runtimeData['phonepe_merchant_id'] ?? $settings->phonepe_merchant_id;
-        $saltKey = $this->resolveSecret($runtimeData['phonepe_salt_key'] ?? null, $settings->phonepe_salt_key);
-        $sandbox = (bool) ($runtimeData['phonepe_sandbox_mode'] ?? $settings->phonepe_sandbox_mode);
-
-        if (blank($merchantId) || blank($saltKey)) {
-            return new GatewayConnectionResult(false, 'PhonePe Merchant ID or Salt Key is missing.');
-        }
-
-        $baseUrl = $sandbox
-            ? 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-            : 'https://api.phonepe.com/apis/hermes';
-
-        try {
-            $response = Http::timeout(15)->get($baseUrl);
-
-            if (! in_array($response->status(), [200, 301, 302, 401, 403, 404], true)) {
-                return new GatewayConnectionResult(false, 'PhonePe endpoint is unreachable.', [
-                    'http_status' => $response->status(),
-                ]);
-            }
-
-            return new GatewayConnectionResult(true, 'PhonePe endpoint reachable and credentials look configured.');
-        } catch (Throwable $e) {
-            return new GatewayConnectionResult(false, "PhonePe connection failed: {$e->getMessage()}");
         }
     }
 

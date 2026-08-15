@@ -68,8 +68,15 @@
                     </div>
                 </nav>
 
-                <section class="booking-step-panel mt-4 rounded-3xl border border-indigo-100 bg-white p-5 shadow-xl shadow-indigo-100/50 sm:p-7">
+                <section class="booking-step-panel relative mt-4 rounded-3xl border border-indigo-100 bg-white p-5 shadow-xl shadow-indigo-100/50 sm:p-7 {{ ! in_array($currentPhase, ['mode', 'confirmed']) ? 'booking-step-panel--with-back' : '' }}">
                     <p class="sr-only" aria-live="polite">Step {{ $step }} of {{ count($steps) }}: {{ $steps[$step - 1]['label'] }}</p>
+
+                    @if(! in_array($currentPhase, ['mode', 'confirmed']))
+                        <button type="button" wire:click="back" class="booking-step-back absolute right-5 top-5 inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 sm:right-7 sm:top-7">
+                            <svg class="h-4 w-4" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                            Back
+                        </button>
+                    @endif
 
                     @if($banner)
                         <x-ui.alert type="error" class="booking-error-alert mb-6">
@@ -640,13 +647,6 @@
                         </div>
                     @endif
 
-                    @if(! in_array($currentPhase, ['mode', 'confirmed']))
-                        <div class="mt-8 border-t border-white/10 pt-5">
-                            <button type="button" wire:click="back" class="text-sm font-semibold text-slate-400 transition hover:text-white focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/30">
-                                &larr; Back
-                            </button>
-                        </div>
-                    @endif
                 </section>
             </div>
 

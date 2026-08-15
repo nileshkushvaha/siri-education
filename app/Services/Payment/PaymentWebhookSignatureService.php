@@ -13,7 +13,7 @@ use Throwable;
 final class PaymentWebhookSignatureService
 {
     /** Gateways with a real signature-verification implementation below — a blank secret must fail closed for these. */
-    private const array VERIFIABLE_GATEWAYS = ['stripe', 'razorpay', 'cashfree'];
+    private const array VERIFIABLE_GATEWAYS = ['stripe', 'razorpay'];
 
     /** Endpoint purposes that own their own webhook secrets. */
     public const string PURPOSE_BOOKING = 'booking';
@@ -56,9 +56,9 @@ final class PaymentWebhookSignatureService
             // default while unconfigured") — accepting an entirely unsigned
             // request. It now fails closed for every gateway this class
             // actually knows how to verify; only a gateway with no
-            // verification implemented at all (payu/phonepe — no real
-            // adapter exists yet — and manual, which by definition has no
-            // signature) still passes through unsigned.
+            // verification implemented at all (paypal/applepay — no
+            // real adapter exists yet — and manual, which by definition
+            // has no signature) still passes through unsigned.
             return ! in_array($gateway, self::VERIFIABLE_GATEWAYS, true);
         }
 
@@ -74,7 +74,6 @@ final class PaymentWebhookSignatureService
             $matches = match ($gateway) {
                 'stripe' => $this->verifyStripe($request->header('Stripe-Signature'), $payload, $secret),
                 'razorpay' => $this->verifyHmacHeader($request->header('X-Razorpay-Signature'), $payload, $secret),
-                'cashfree' => $this->verifyHmacHeader($request->header('x-webhook-signature'), $payload, $secret),
                 default => true,
             };
 

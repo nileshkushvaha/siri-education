@@ -106,57 +106,31 @@ class PaymentGatewaySettings extends Settings
 
     public ?string $paypal_webhook_url;
 
-    public bool $cashfree_enabled;
+    // Apple Pay is presented as its own gateway in the admin so its
+    // merchant identity and domain verification can be managed
+    // separately, even though settlement rides on an existing
+    // processor. `merchant_id` and `domain` are public-facing values;
+    // the certificate/key material is secret and stored encrypted like
+    // every other gateway secret on this model.
+    public bool $applepay_enabled;
 
-    public string $cashfree_environment;
+    public bool $applepay_sandbox_mode;
 
-    public ?string $cashfree_app_id;
+    public ?string $applepay_merchant_id;
 
-    public ?string $cashfree_secret_key;
+    public ?string $applepay_merchant_domain;
 
-    public ?string $cashfree_webhook_secret;
+    public ?string $applepay_merchant_certificate;
 
-    public ?string $cashfree_success_url;
+    public ?string $applepay_merchant_key;
 
-    public ?string $cashfree_failure_url;
+    public ?string $applepay_webhook_secret;
 
-    public ?string $cashfree_webhook_url;
+    public ?string $applepay_success_url;
 
-    public bool $payu_enabled;
+    public ?string $applepay_failure_url;
 
-    public bool $payu_sandbox_mode;
-
-    public ?string $payu_merchant_id;
-
-    public ?string $payu_public_key;
-
-    public ?string $payu_private_key;
-
-    public ?string $payu_webhook_secret;
-
-    public ?string $payu_success_url;
-
-    public ?string $payu_failure_url;
-
-    public ?string $payu_webhook_url;
-
-    public bool $phonepe_enabled;
-
-    public bool $phonepe_sandbox_mode;
-
-    public ?string $phonepe_merchant_id;
-
-    public ?string $phonepe_salt_key;
-
-    public ?string $phonepe_salt_index;
-
-    public ?string $phonepe_webhook_secret;
-
-    public ?string $phonepe_success_url;
-
-    public ?string $phonepe_failure_url;
-
-    public ?string $phonepe_webhook_url;
+    public ?string $applepay_webhook_url;
 
     public bool $manual_enabled;
 

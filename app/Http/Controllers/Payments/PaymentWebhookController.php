@@ -60,9 +60,7 @@ class PaymentWebhookController extends Controller
             'stripe',
             'razorpay',
             'paypal',
-            'cashfree',
-            'payu',
-            'phonepe',
+            'applepay',
             'manual',
         ];
     }

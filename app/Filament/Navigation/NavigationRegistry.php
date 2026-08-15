@@ -34,10 +34,8 @@ use App\Filament\Pages\Settings\InstructorEarningSettingsPage;
 use App\Filament\Pages\Settings\MailSettingsPage;
 use App\Filament\Pages\Settings\MeetingSettingsPage;
 use App\Filament\Pages\Settings\PaymentAdvancedPage;
-use App\Filament\Pages\Settings\PaymentBankAccountPage;
 use App\Filament\Pages\Settings\PaymentConfigurationPage;
 use App\Filament\Pages\Settings\PaymentGatewayPage;
-use App\Filament\Pages\Settings\PaymentSettingsNavigationPage;
 use App\Filament\Pages\Settings\PlatformFoundationSettingsPage;
 use App\Filament\Pages\Settings\RazorpayXPayoutSettingsPage;
 use App\Filament\Pages\Settings\ReviewQualitySettingsPage;
@@ -537,39 +535,14 @@ final class NavigationRegistry
                 previousGroup: 'Earnings',
                 previousLabel: 'Payout Reconciliation',
             ),
-            PaymentBankAccountPage::class => new NavigationDestination(
-                id: 'finance.configuration.bank-account',
-                label: 'Bank Account',
-                group: 'Finance',
-                subgroup: 'Finance Configuration',
-                sort: 15,
-                previousGroup: 'Finance',
-                previousLabel: 'Bank Account',
-            ),
             PaymentGatewayPage::class => new NavigationDestination(
-                id: 'finance.configuration.payment-gateways',
-                label: 'Payment Gateways',
-                group: 'Finance',
-                subgroup: 'Finance Configuration',
+                id: 'settings.payment-gateways',
+                label: 'Payment Gateway Settings',
+                group: 'Settings',
+                subgroup: null,
                 sort: 16,
                 previousGroup: 'Finance',
                 previousLabel: 'Payment Gateways',
-            ),
-            // The /payment-settings hub that links to the four pages above. It
-            // adopts HasSettingsSectionBreadcrumb like they do, but had no
-            // registry entry — so groupFor()/subgroupFor() returned null and it
-            // was the one payment page rendering with no breadcrumb at all,
-            // while everything it links to showed the full trail. It stays out
-            // of the sidebar via its own shouldRegisterNavigation(); this entry
-            // exists so the breadcrumb resolves, which is a separate concern.
-            PaymentSettingsNavigationPage::class => new NavigationDestination(
-                id: 'finance.configuration.payment-settings',
-                label: 'Finance Settings',
-                group: 'Finance',
-                subgroup: 'Finance Configuration',
-                sort: 14,
-                previousGroup: 'Finance',
-                previousLabel: 'Payment Settings',
             ),
             PaymentConfigurationPage::class => new NavigationDestination(
                 id: 'finance.configuration.payment-configuration',

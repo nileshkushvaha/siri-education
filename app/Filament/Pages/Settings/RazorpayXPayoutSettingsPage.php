@@ -85,8 +85,8 @@ class RazorpayXPayoutSettingsPage extends Page
     {
         return array_filter([
             BackAction::make(
-                PaymentSettingsNavigationPage::canAccess() ? PaymentSettingsNavigationPage::getUrl() : null,
-                'Back to Finance Settings',
+                PaymentGatewayPage::canAccess() ? PaymentGatewayPage::getUrl() : null,
+                'Back to Payment Gateway Settings',
             ),
         ]);
     }

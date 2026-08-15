@@ -70,7 +70,6 @@ class SettingsAuditArchitectureTest extends TestCase
 
         return [
             $base.'/app/Filament/Pages/Settings/PaymentAdvancedPage.php',
-            $base.'/app/Filament/Pages/Settings/PaymentBankAccountPage.php',
             $base.'/app/Filament/Pages/Settings/PaymentConfigurationPage.php',
             $base.'/app/Filament/Pages/Settings/PaymentGatewayPage.php',
         ];
@@ -82,7 +81,6 @@ class SettingsAuditArchitectureTest extends TestCase
         $base = base_path();
 
         return [
-            $base.'/app/Filament/Pages/Settings/PaymentSettingsNavigationPage.php',
             $base.'/app/Filament/Pages/Settings/HasSettingsAccess.php',
             $base.'/app/Filament/Pages/Settings/LogsSettingsUpdates.php',
             $base.'/app/Filament/Pages/Security/HasSecurityAccess.php',

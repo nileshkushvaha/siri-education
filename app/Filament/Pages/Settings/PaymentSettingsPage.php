@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Booking\Services\PaymentGatewayConfigurationService;
-use App\Settings\BankSettings;
 use App\Settings\PaymentAdvancedSettings;
 use App\Settings\PaymentConfigurationSettings;
 use App\Settings\PaymentGatewaySettings;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -26,7 +24,6 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
@@ -66,7 +63,7 @@ abstract class PaymentSettingsPage extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Configure bank transfers, gateways, payment rules, and advanced webhook/queue behaviour.';
+        return 'Configure payment gateways, provider routing, payment rules, and advanced webhook/queue behaviour.';
     }
 
     public function getBreadcrumbs(): array
@@ -76,38 +73,19 @@ abstract class PaymentSettingsPage extends Page
 
     public function mount(): void
     {
-        $bank = app(BankSettings::class);
         $gateways = app(PaymentGatewaySettings::class);
         $configuration = app(PaymentConfigurationSettings::class);
         $advanced = app(PaymentAdvancedSettings::class);
 
-        $section = (string) request()->query('section', 'bank');
+        $section = (string) request()->query('section', 'gateways');
         $this->activePaymentTab = match ($section) {
-            'bank' => 1,
-            'gateways' => 2,
-            'configuration' => 3,
-            'advanced' => 4,
+            'gateways' => 1,
+            'configuration' => 2,
+            'advanced' => 3,
             default => 1,
         };
 
         $this->form->fill([
-            // bank
-            'enable_offline_payment' => $bank->enable_offline_payment,
-            'account_holder_name' => $bank->account_holder_name,
-            'bank_name' => $bank->bank_name,
-            'branch_name' => $bank->branch_name,
-            'account_number' => $bank->account_number,
-            'account_number_confirm' => null,
-            'ifsc_code' => $bank->ifsc_code,
-            'swift_code' => $bank->swift_code,
-            'iban' => $bank->iban,
-            'account_type' => $bank->account_type,
-            'upi_id' => $bank->upi_id,
-            'qr_code_image' => $bank->qr_code_image,
-            'payment_instructions' => $bank->payment_instructions,
-            'display_on_invoice' => $bank->display_on_invoice,
-            'display_on_payment_page' => $bank->display_on_payment_page,
-
             // gateways (never prefill secrets)
             'stripe_enabled' => $gateways->stripe_enabled,
             'stripe_sandbox_mode' => $gateways->stripe_sandbox_mode,
@@ -122,7 +100,7 @@ abstract class PaymentSettingsPage extends Page
             // and never settles a booking (see PaymentWebhookProcessor).
             // Stripe/Razorpay are the only gateways with a registered
             // PaymentProviderInterface adapter, so only their defaults
-            // change here; paypal/cashfree/payu/phonepe/manual have no
+            // change here; paypal/applepay/manual have no
             // adapter at all and genuinely have nowhere else to point —
             // their defaults below intentionally still use the generic path.
             'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/bookings/payments/stripe'),
@@ -145,34 +123,22 @@ abstract class PaymentSettingsPage extends Page
             'paypal_failure_url' => $gateways->paypal_failure_url ?? url('/payments/paypal/failure'),
             'paypal_webhook_url' => $gateways->paypal_webhook_url ?? url('/api/webhooks/payments/generic/paypal'),
 
-            'cashfree_enabled' => $gateways->cashfree_enabled,
-            'cashfree_environment' => $gateways->cashfree_environment,
-            'cashfree_app_id' => $gateways->cashfree_app_id,
-            'cashfree_secret_key' => null,
-            'cashfree_webhook_secret' => null,
-            'cashfree_success_url' => $gateways->cashfree_success_url ?? url('/payments/cashfree/success'),
-            'cashfree_failure_url' => $gateways->cashfree_failure_url ?? url('/payments/cashfree/failure'),
-            'cashfree_webhook_url' => $gateways->cashfree_webhook_url ?? url('/api/webhooks/payments/generic/cashfree'),
+            'applepay_enabled' => $gateways->applepay_enabled,
+            'applepay_sandbox_mode' => $gateways->applepay_sandbox_mode,
+            'applepay_merchant_id' => $gateways->applepay_merchant_id,
+            'applepay_merchant_domain' => $gateways->applepay_merchant_domain,
+            'applepay_merchant_certificate' => null,
+            'applepay_merchant_key' => null,
+            'applepay_webhook_secret' => null,
+            'applepay_success_url' => $gateways->applepay_success_url ?? url('/payments/applepay/success'),
+            'applepay_failure_url' => $gateways->applepay_failure_url ?? url('/payments/applepay/failure'),
+            'applepay_webhook_url' => $gateways->applepay_webhook_url ?? url('/api/webhooks/payments/generic/applepay'),
 
-            'payu_enabled' => $gateways->payu_enabled,
-            'payu_sandbox_mode' => $gateways->payu_sandbox_mode,
-            'payu_merchant_id' => $gateways->payu_merchant_id,
-            'payu_public_key' => $gateways->payu_public_key,
-            'payu_private_key' => null,
-            'payu_webhook_secret' => null,
-            'payu_success_url' => $gateways->payu_success_url ?? url('/payments/payu/success'),
-            'payu_failure_url' => $gateways->payu_failure_url ?? url('/payments/payu/failure'),
-            'payu_webhook_url' => $gateways->payu_webhook_url ?? url('/api/webhooks/payments/generic/payu'),
-
-            'phonepe_enabled' => $gateways->phonepe_enabled,
-            'phonepe_sandbox_mode' => $gateways->phonepe_sandbox_mode,
-            'phonepe_merchant_id' => $gateways->phonepe_merchant_id,
-            'phonepe_salt_key' => null,
-            'phonepe_salt_index' => $gateways->phonepe_salt_index,
-            'phonepe_webhook_secret' => null,
-            'phonepe_success_url' => $gateways->phonepe_success_url ?? url('/payments/phonepe/success'),
-            'phonepe_failure_url' => $gateways->phonepe_failure_url ?? url('/payments/phonepe/failure'),
-            'phonepe_webhook_url' => $gateways->phonepe_webhook_url ?? url('/api/webhooks/payments/generic/phonepe'),
+            // routing (see providerRoutingSection)
+            'default_provider' => $gateways->default_provider,
+            'payments_enabled' => $gateways->payments_enabled,
+            'allowed_providers' => $gateways->allowed_providers,
+            'fake_enabled' => $gateways->fake_enabled,
 
             'manual_enabled' => $gateways->manual_enabled,
             'manual_payment_instructions' => $gateways->manual_payment_instructions,
@@ -300,9 +266,6 @@ abstract class PaymentSettingsPage extends Page
                 ->persistTabInQueryString()
                 ->vertical(false)
                 ->tabs([
-                    Tab::make('Bank Account')
-                        ->icon(Heroicon::OutlinedBuildingLibrary)
-                        ->schema($this->bankAccountSchema()),
                     Tab::make('Payment Gateways')
                         ->icon(Heroicon::OutlinedCreditCard)
                         ->schema($this->gatewaySchema()),
@@ -319,96 +282,10 @@ abstract class PaymentSettingsPage extends Page
     /**
      * @return array<Component>
      */
-    protected function bankAccountSchema(): array
-    {
-        return [
-            Section::make('Offline Payment (Bank / NEFT / RTGS / IMPS / UPI)')
-                ->description('Configure your bank transfer details for offline payments.')
-                ->icon(Heroicon::OutlinedBanknotes)
-                ->schema([
-                    Toggle::make('enable_offline_payment')
-                        ->label('Enable Offline Payment')
-                        ->live(),
-                    Grid::make(2)->schema([
-                        TextInput::make('account_holder_name')
-                            ->label('Account Holder Name')
-                            ->required(fn (Get $get): bool => (bool) $get('enable_offline_payment'))
-                            ->maxLength(150),
-                        TextInput::make('bank_name')
-                            ->label('Bank Name')
-                            ->required(fn (Get $get): bool => (bool) $get('enable_offline_payment'))
-                            ->maxLength(150),
-                    ]),
-                    Grid::make(2)->schema([
-                        TextInput::make('branch_name')
-                            ->label('Branch Name')
-                            ->maxLength(150),
-                        Select::make('account_type')
-                            ->label('Account Type')
-                            ->options([
-                                'current' => 'Current',
-                                'savings' => 'Savings',
-                            ])
-                            ->required()
-                            ->native(false),
-                    ]),
-                    Grid::make(2)->schema([
-                        TextInput::make('account_number')
-                            ->label('Account Number')
-                            ->required(fn (Get $get): bool => (bool) $get('enable_offline_payment'))
-                            ->regex('/^[0-9]{6,24}$/')
-                            ->maxLength(24),
-                        TextInput::make('account_number_confirm')
-                            ->label('Confirm Account Number')
-                            ->required(fn (Get $get): bool => (bool) $get('enable_offline_payment'))
-                            ->same('account_number')
-                            ->dehydrated(false),
-                    ]),
-                    Grid::make(3)->schema([
-                        TextInput::make('ifsc_code')
-                            ->label('IFSC Code')
-                            ->regex('/^[A-Z]{4}0[A-Z0-9]{6}$/')
-                            ->required(fn (Get $get): bool => (bool) $get('enable_offline_payment'))
-                            ->maxLength(11),
-                        TextInput::make('swift_code')
-                            ->label('SWIFT Code')
-                            ->maxLength(20),
-                        TextInput::make('iban')
-                            ->label('IBAN (Optional)')
-                            ->maxLength(34),
-                    ]),
-                    Grid::make(2)->schema([
-                        TextInput::make('upi_id')
-                            ->label('UPI ID')
-                            ->maxLength(120)
-                            ->placeholder('name@bank'),
-                        FileUpload::make('qr_code_image')
-                            ->label('QR Code Image')
-                            ->image()
-                            ->disk('public')
-                            ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml'])
-                            ->maxSize(2048)
-                            ->directory('settings/payment'),
-                    ]),
-                    Textarea::make('payment_instructions')
-                        ->label('Payment Instructions')
-                        ->rows(3)
-                        ->helperText('These instructions are displayed on invoice/payment pages.')
-                        ->maxLength(2000),
-                    Grid::make(2)->schema([
-                        Toggle::make('display_on_invoice')->label('Display On Invoice'),
-                        Toggle::make('display_on_payment_page')->label('Display On Payment Page'),
-                    ]),
-                ]),
-        ];
-    }
-
-    /**
-     * @return array<Component>
-     */
     protected function gatewaySchema(): array
     {
         return [
+            $this->providerRoutingSection(),
             Tabs::make('Gateway Cards')
                 ->activeTab(1)
                 ->vertical(false)
@@ -417,11 +294,66 @@ abstract class PaymentSettingsPage extends Page
                     $this->stripeTab(),
                     $this->razorpayTab(),
                     $this->paypalTab(),
-                    $this->cashfreeTab(),
-                    $this->payuTab(),
-                    $this->phonepeTab(),
+                    $this->applePayTab(),
                     $this->manualPaymentTab(),
                 ]),
+        ];
+    }
+
+    /**
+     * Which gateway actually collects money.
+     *
+     * This existed only as database rows before: `default_provider`,
+     * `payments_enabled`, `allowed_providers` and `fake_enabled` had no
+     * admin UI anywhere, so PaymentProviderResolver silently fell
+     * through to BookingSettings::payment_provider — seeded to "fake" —
+     * while a fully configured Razorpay sat unused and reported
+     * "Ready". Enabling a gateway below is NOT the same as selecting
+     * it; this section is where selection happens.
+     */
+    protected function providerRoutingSection(): Section
+    {
+        return Section::make('Provider Routing')
+            ->description('Which gateway collects money. A gateway can be fully configured and still never be used unless it is selected here.')
+            ->icon(Heroicon::OutlinedArrowsRightLeft)
+            ->schema([
+                Grid::make(2)->schema([
+                    Toggle::make('payments_enabled')
+                        ->label('Payments Enabled')
+                        ->helperText('Platform-wide kill switch. Off blocks every new payment attempt.'),
+                    Toggle::make('fake_enabled')
+                        ->label('Allow Fake Provider')
+                        ->helperText('Simulated payments for local/testing only — refused outside those environments.'),
+                ]),
+                Select::make('default_provider')
+                    ->label('Active Payment Provider')
+                    ->options($this->routableProviderOptions())
+                    ->native(false)
+                    ->placeholder('Fall back to the booking default')
+                    ->helperText('Checked after per-country routing and before the booking default. Leave empty only if every country routes explicitly.'),
+                Select::make('allowed_providers')
+                    ->label('Allowed Providers')
+                    ->options($this->routableProviderOptions())
+                    ->multiple()
+                    ->native(false)
+                    ->helperText('Optional allow-list. Empty means no platform-level restriction; a provider outside this list is refused even if routed.'),
+            ]);
+    }
+
+    /**
+     * Only providers with a real adapter can be routed to. PayPal,
+     * Apple Pay and Manual have credential forms but no
+     * PaymentProviderInterface implementation, so offering them here
+     * would let an admin select a provider that cannot collect.
+     *
+     * @return array<string, string>
+     */
+    protected function routableProviderOptions(): array
+    {
+        return [
+            'razorpay' => 'Razorpay',
+            'stripe' => 'Stripe',
+            'fake' => 'Fake (local/testing only)',
         ];
     }
 
@@ -517,97 +449,45 @@ abstract class PaymentSettingsPage extends Page
             ]);
     }
 
-    protected function cashfreeTab(): Tab
+    protected function applePayTab(): Tab
     {
-        return Tab::make('Cashfree')
-            ->icon(Heroicon::OutlinedBanknotes)
-            ->badge(fn (): string => $this->enabledBadge('cashfree_enabled'))
+        return Tab::make('Apple Pay')
+            ->icon(Heroicon::OutlinedDevicePhoneMobile)
+            ->badge(fn (): string => $this->enabledBadge('applepay_enabled'))
             ->schema([
-                Section::make('Cashfree')
+                Section::make('Apple Pay')
+                    ->description('Apple Pay requires a registered merchant identifier and a verified domain. Apple will not present the sheet on an unverified domain, so both must be set before enabling.')
                     ->schema([
-                        Toggle::make('cashfree_enabled')->label('Enable Gateway')->live(),
-                        Select::make('cashfree_environment')
-                            ->label('Environment')
-                            ->options(['sandbox' => 'Sandbox', 'production' => 'Production'])
-                            ->native(false)
-                            ->required(),
+                        $this->gatewaySwitches('applepay_enabled', 'applepay_sandbox_mode'),
                         Grid::make(2)->schema([
-                            TextInput::make('cashfree_app_id')->label('App ID')->maxLength(255),
-                            TextInput::make('cashfree_secret_key')
-                                ->label('Secret Key')
-                                ->password()
-                                ->revealable()
+                            TextInput::make('applepay_merchant_id')
+                                ->label('Merchant Identifier')
+                                ->placeholder('merchant.com.example.siri')
+                                ->maxLength(255),
+                            TextInput::make('applepay_merchant_domain')
+                                ->label('Verified Domain')
+                                ->placeholder('siri education.com')
                                 ->maxLength(255)
-                                ->helperText('Stored encrypted.'),
+                                ->helperText('Must match the domain serving the payment page.'),
                         ]),
-                        Textarea::make('cashfree_webhook_secret')
+                        Grid::make(2)->schema([
+                            Textarea::make('applepay_merchant_certificate')
+                                ->label('Merchant Identity Certificate')
+                                ->rows(3)
+                                ->autosize()
+                                ->helperText('Stored encrypted. Leave blank to keep existing.'),
+                            Textarea::make('applepay_merchant_key')
+                                ->label('Merchant Private Key')
+                                ->rows(3)
+                                ->autosize()
+                                ->helperText('Stored encrypted. Leave blank to keep existing.'),
+                        ]),
+                        Textarea::make('applepay_webhook_secret')
                             ->label('Webhook Secret(s)')
                             ->rows(3)
                             ->autosize()
                             ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
-                        $this->gatewayUrls('cashfree'),
-                    ]),
-            ]);
-    }
-
-    protected function payuTab(): Tab
-    {
-        return Tab::make('PayU')
-            ->icon(Heroicon::OutlinedWallet)
-            ->badge(fn (): string => $this->enabledBadge('payu_enabled'))
-            ->schema([
-                Section::make('PayU')
-                    ->schema([
-                        $this->gatewaySwitches('payu_enabled', 'payu_sandbox_mode'),
-                        Grid::make(2)->schema([
-                            TextInput::make('payu_merchant_id')->label('Merchant ID')->maxLength(255),
-                            TextInput::make('payu_public_key')->label('Public Key')->maxLength(255),
-                        ]),
-                        Grid::make(2)->schema([
-                            TextInput::make('payu_private_key')
-                                ->label('Private Key')
-                                ->password()
-                                ->revealable()
-                                ->maxLength(255)
-                                ->helperText('Stored encrypted.'),
-                            Textarea::make('payu_webhook_secret')
-                                ->label('Webhook Secret(s)')
-                                ->rows(3)
-                                ->autosize()
-                                ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
-                        ]),
-                        $this->gatewayUrls('payu'),
-                    ]),
-            ]);
-    }
-
-    protected function phonepeTab(): Tab
-    {
-        return Tab::make('PhonePe')
-            ->icon(Heroicon::OutlinedDevicePhoneMobile)
-            ->badge(fn (): string => $this->enabledBadge('phonepe_enabled'))
-            ->schema([
-                Section::make('PhonePe')
-                    ->schema([
-                        $this->gatewaySwitches('phonepe_enabled', 'phonepe_sandbox_mode'),
-                        Grid::make(2)->schema([
-                            TextInput::make('phonepe_merchant_id')->label('Merchant ID')->maxLength(255),
-                            TextInput::make('phonepe_salt_index')->label('Salt Index')->maxLength(20),
-                        ]),
-                        Grid::make(2)->schema([
-                            TextInput::make('phonepe_salt_key')
-                                ->label('Salt Key')
-                                ->password()
-                                ->revealable()
-                                ->maxLength(255)
-                                ->helperText('Stored encrypted.'),
-                            Textarea::make('phonepe_webhook_secret')
-                                ->label('Webhook Secret(s)')
-                                ->rows(3)
-                                ->autosize()
-                                ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
-                        ]),
-                        $this->gatewayUrls('phonepe'),
+                        $this->gatewayUrls('applepay'),
                     ]),
             ]);
     }
@@ -765,12 +645,11 @@ abstract class PaymentSettingsPage extends Page
             return;
         }
 
-        $bankOk = $this->saveBankSettings($data);
         $gatewayOk = $this->saveGatewaySettings($data);
         $configOk = $this->saveConfigurationSettings($data);
         $advancedOk = $this->saveAdvancedSettings($data);
 
-        if (! $bankOk || ! $gatewayOk || ! $configOk || ! $advancedOk) {
+        if (! $gatewayOk || ! $configOk || ! $advancedOk) {
             // A failure notification was already shown by
             // saveSettingsWithAudit() for whichever group failed.
             return;
@@ -780,29 +659,6 @@ abstract class PaymentSettingsPage extends Page
             ->title('Payment settings saved')
             ->success()
             ->send();
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function saveBankSettings(array $data): bool
-    {
-        return $this->saveSettingsWithAudit(BankSettings::class, 'settings', function (BankSettings $bank) use ($data): void {
-            $bank->enable_offline_payment = (bool) ($data['enable_offline_payment'] ?? false);
-            $bank->account_holder_name = $data['account_holder_name'] ?? null;
-            $bank->bank_name = $data['bank_name'] ?? null;
-            $bank->branch_name = $data['branch_name'] ?? null;
-            $bank->account_number = $data['account_number'] ?? null;
-            $bank->ifsc_code = isset($data['ifsc_code']) ? strtoupper((string) $data['ifsc_code']) : null;
-            $bank->swift_code = isset($data['swift_code']) ? strtoupper((string) $data['swift_code']) : null;
-            $bank->iban = isset($data['iban']) ? strtoupper((string) $data['iban']) : null;
-            $bank->account_type = $data['account_type'] ?? 'current';
-            $bank->upi_id = $data['upi_id'] ?? null;
-            $bank->qr_code_image = $data['qr_code_image'] ?? $bank->qr_code_image;
-            $bank->payment_instructions = $data['payment_instructions'] ?? null;
-            $bank->display_on_invoice = (bool) ($data['display_on_invoice'] ?? false);
-            $bank->display_on_payment_page = (bool) ($data['display_on_payment_page'] ?? false);
-        });
     }
 
     /**
@@ -834,25 +690,21 @@ abstract class PaymentSettingsPage extends Page
             $settings->paypal_failure_url = $data['paypal_failure_url'] ?? null;
             $settings->paypal_webhook_url = $data['paypal_webhook_url'] ?? null;
 
-            $settings->cashfree_environment = $data['cashfree_environment'] ?? 'sandbox';
-            $settings->cashfree_app_id = $data['cashfree_app_id'] ?? null;
-            $settings->cashfree_success_url = $data['cashfree_success_url'] ?? null;
-            $settings->cashfree_failure_url = $data['cashfree_failure_url'] ?? null;
-            $settings->cashfree_webhook_url = $data['cashfree_webhook_url'] ?? null;
+            $settings->applepay_sandbox_mode = (bool) ($data['applepay_sandbox_mode'] ?? true);
+            $settings->applepay_merchant_id = $data['applepay_merchant_id'] ?? null;
+            $settings->applepay_merchant_domain = $data['applepay_merchant_domain'] ?? null;
+            $settings->applepay_success_url = $data['applepay_success_url'] ?? null;
+            $settings->applepay_failure_url = $data['applepay_failure_url'] ?? null;
+            $settings->applepay_webhook_url = $data['applepay_webhook_url'] ?? null;
 
-            $settings->payu_sandbox_mode = (bool) ($data['payu_sandbox_mode'] ?? true);
-            $settings->payu_merchant_id = $data['payu_merchant_id'] ?? null;
-            $settings->payu_public_key = $data['payu_public_key'] ?? null;
-            $settings->payu_success_url = $data['payu_success_url'] ?? null;
-            $settings->payu_failure_url = $data['payu_failure_url'] ?? null;
-            $settings->payu_webhook_url = $data['payu_webhook_url'] ?? null;
-
-            $settings->phonepe_sandbox_mode = (bool) ($data['phonepe_sandbox_mode'] ?? true);
-            $settings->phonepe_merchant_id = $data['phonepe_merchant_id'] ?? null;
-            $settings->phonepe_salt_index = $data['phonepe_salt_index'] ?? null;
-            $settings->phonepe_success_url = $data['phonepe_success_url'] ?? null;
-            $settings->phonepe_failure_url = $data['phonepe_failure_url'] ?? null;
-            $settings->phonepe_webhook_url = $data['phonepe_webhook_url'] ?? null;
+            // Provider routing. `default_provider` is the knob that
+            // actually decides which gateway collects; it had no UI at
+            // all before, so the seeded BookingSettings default silently
+            // governed every checkout.
+            $settings->payments_enabled = (bool) ($data['payments_enabled'] ?? true);
+            $settings->default_provider = filled($data['default_provider'] ?? null) ? (string) $data['default_provider'] : null;
+            $settings->allowed_providers = array_values(array_filter((array) ($data['allowed_providers'] ?? [])));
+            $settings->fake_enabled = (bool) ($data['fake_enabled'] ?? false);
 
             $settings->manual_payment_instructions = $data['manual_payment_instructions'] ?? null;
 
@@ -863,12 +715,9 @@ abstract class PaymentSettingsPage extends Page
             $this->saveEncryptedField($settings, 'razorpay_webhook_secret', $data['razorpay_webhook_secret'] ?? null);
             $this->saveEncryptedField($settings, 'paypal_client_secret', $data['paypal_client_secret'] ?? null);
             $this->saveEncryptedField($settings, 'paypal_webhook_secret', $data['paypal_webhook_secret'] ?? null);
-            $this->saveEncryptedField($settings, 'cashfree_secret_key', $data['cashfree_secret_key'] ?? null);
-            $this->saveEncryptedField($settings, 'cashfree_webhook_secret', $data['cashfree_webhook_secret'] ?? null);
-            $this->saveEncryptedField($settings, 'payu_private_key', $data['payu_private_key'] ?? null);
-            $this->saveEncryptedField($settings, 'payu_webhook_secret', $data['payu_webhook_secret'] ?? null);
-            $this->saveEncryptedField($settings, 'phonepe_salt_key', $data['phonepe_salt_key'] ?? null);
-            $this->saveEncryptedField($settings, 'phonepe_webhook_secret', $data['phonepe_webhook_secret'] ?? null);
+            $this->saveEncryptedField($settings, 'applepay_merchant_certificate', $data['applepay_merchant_certificate'] ?? null);
+            $this->saveEncryptedField($settings, 'applepay_merchant_key', $data['applepay_merchant_key'] ?? null);
+            $this->saveEncryptedField($settings, 'applepay_webhook_secret', $data['applepay_webhook_secret'] ?? null);
         });
     }
 
@@ -921,9 +770,7 @@ abstract class PaymentSettingsPage extends Page
                 'stripe_secret_key', 'stripe_webhook_secret',
                 'razorpay_key_secret', 'razorpay_webhook_secret',
                 'paypal_client_secret', 'paypal_webhook_secret',
-                'cashfree_secret_key', 'cashfree_webhook_secret',
-                'payu_private_key', 'payu_webhook_secret',
-                'phonepe_salt_key', 'phonepe_webhook_secret',
+                'applepay_merchant_certificate', 'applepay_merchant_key', 'applepay_webhook_secret',
             ] as $secretField) {
                 $settings->{$secretField} = null;
             }
@@ -1111,9 +958,7 @@ abstract class PaymentSettingsPage extends Page
             'stripe' => ['stripe_publishable_key', 'stripe_secret_key'],
             'razorpay' => ['razorpay_key_id', 'razorpay_key_secret'],
             'paypal' => ['paypal_client_id', 'paypal_client_secret'],
-            'cashfree' => ['cashfree_app_id', 'cashfree_secret_key'],
-            'payu' => ['payu_merchant_id', 'payu_private_key'],
-            'phonepe' => ['phonepe_merchant_id', 'phonepe_salt_key', 'phonepe_salt_index'],
+            'applepay' => ['applepay_merchant_id', 'applepay_merchant_domain', 'applepay_merchant_certificate', 'applepay_merchant_key'],
             'manual' => [],
             default => [],
         };
@@ -1128,9 +973,7 @@ abstract class PaymentSettingsPage extends Page
             'stripe' => 'Stripe',
             'razorpay' => 'Razorpay',
             'paypal' => 'PayPal',
-            'cashfree' => 'Cashfree',
-            'payu' => 'PayU',
-            'phonepe' => 'PhonePe',
+            'applepay' => 'Apple Pay',
             'manual' => 'Manual Payment',
         ];
     }
@@ -1140,7 +983,7 @@ abstract class PaymentSettingsPage extends Page
      */
     protected function gatewayPrefixes(): array
     {
-        return ['stripe', 'razorpay', 'paypal', 'cashfree', 'payu', 'phonepe', 'manual'];
+        return ['stripe', 'razorpay', 'paypal', 'applepay', 'manual'];
     }
 
     protected function enabledBadge(string $field): string

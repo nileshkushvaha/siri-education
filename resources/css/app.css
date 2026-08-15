@@ -1177,6 +1177,19 @@ html { scroll-behavior: smooth; }
     animation: booking-step-enter 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+[data-booking-wizard-page] .booking-step-panel--with-back > div {
+    padding-right: 6.5rem;
+}
+
+[data-booking-wizard-page] .booking-step-back {
+    z-index: 2;
+    color: #334155 !important;
+}
+
+[data-booking-wizard-page] .booking-step-back:hover {
+    color: #4338ca !important;
+}
+
 [data-booking-wizard-page] .booking-progress-scroll {
     overflow-x: auto;
     overscroll-behavior-inline: contain;

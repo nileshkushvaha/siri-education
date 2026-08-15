@@ -7,6 +7,7 @@ namespace App\Services\Instructor;
 use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingJoinAvailability;
+use App\Booking\Types\FreeDemoType;
 use App\DTOs\InstructorDashboard\InstructorDashboardData;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Support\InstructorPayoutEligibility;
@@ -62,7 +63,7 @@ final class InstructorDashboardService
         $todayCount = (clone $upcomingQuery)->whereBetween('starts_at', [$todayStart, $todayEnd])->count();
 
         $nextLessons = (clone $upcomingQuery)
-            ->with(['type:id,name', 'student:id,first_name,last_name,name', 'meeting', 'lesson:id,booking_id,status'])
+            ->with(['type:id,key,name', 'student:id,first_name,last_name,name', 'meeting', 'lesson:id,booking_id,status'])
             ->orderBy('starts_at')
             ->limit(4)
             ->get();
@@ -100,6 +101,7 @@ final class InstructorDashboardService
                     'reference' => $booking->reference,
                     'subject' => $booking->meta['subject'] ?? $booking->type?->name ?? 'Lesson',
                     'type' => $booking->type?->name ?? 'Class',
+                    'is_demo' => $booking->type?->key === FreeDemoType::KEY,
                     'student' => $booking->student?->name ?? 'Student',
                     'starts_at' => $booking->starts_at->timezone($timezone),
                     'ends_at' => $booking->ends_at->timezone($timezone),

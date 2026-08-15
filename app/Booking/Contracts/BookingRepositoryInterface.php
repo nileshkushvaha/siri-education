@@ -116,6 +116,9 @@ interface BookingRepositoryInterface
     /** @return Collection<int, User> instructors the student has booked (non-cancelled), most recent first */
     public function previousInstructorsForStudent(int $studentId): Collection;
 
+    /** @return object{has_bookings: bool, has_completed_demo: bool} */
+    public function studentBookingJourney(int $studentId): object;
+
     public function updatePaymentStatus(Booking $booking, BookingPaymentStatus $status, ?string $reference = null): Booking;
 
     public function findByPaymentReference(string $reference): ?Booking;

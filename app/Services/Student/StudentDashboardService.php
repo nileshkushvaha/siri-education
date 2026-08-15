@@ -39,6 +39,7 @@ final class StudentDashboardService
         private readonly MeetingSettings $meetings,
         private readonly BookingMeetingServiceInterface $bookingMeetings,
         private readonly RecommendationService $recommendations,
+        private readonly StudentBookingJourneyService $bookingJourneys,
         private readonly Request $request,
     ) {}
 
@@ -67,6 +68,7 @@ final class StudentDashboardService
                 $errors,
             ),
             errors: $errors,
+            bookingJourney: $this->widget('booking journey', fn () => $this->bookingJourneys->for($student), $errors),
         );
     }
 

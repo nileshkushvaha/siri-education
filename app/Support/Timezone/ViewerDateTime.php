@@ -47,6 +47,9 @@ final class ViewerDateTime
 
     public const string TIME = 'g:i A';
 
+    /** Session key holding an anonymous visitor's validated browser timezone (display only). */
+    public const string BROWSER_TIMEZONE_KEY = 'viewer_browser_timezone';
+
     /**
      * The viewer's resolved timezone.
      *
@@ -61,9 +64,57 @@ final class ViewerDateTime
     {
         $viewer ??= Auth::user();
 
-        return $viewer instanceof User
-            ? UserTimezoneResolver::resolve($viewer)
-            : UserTimezoneResolver::platformDefault();
+        if ($viewer instanceof User) {
+            // TZ-6: an authenticated user's own resolved timezone always
+            // wins. A browser hint never overrides a choice they made.
+            return UserTimezoneResolver::resolve($viewer);
+        }
+
+        return self::anonymousTimezone();
+    }
+
+    /**
+     * TZ-6 (Product Decision 3 / TZ-AUD-020): display timezone for a
+     * visitor with no account.
+     *
+     *     validated browser IANA identifier
+     *         -> GeneralSettings.default_timezone
+     *             -> UTC
+     *
+     * The browser hint is DISPLAY CONTEXT ONLY. It is validated against
+     * the canonical IANA list before it is trusted at all, and it is
+     * never written to a profile, never used to infer a country, never
+     * allowed to influence price, payment or availability validation —
+     * a visitor cannot change what a lesson costs or when it is bookable
+     * by editing their device clock. There is no IP lookup, no
+     * geolocation prompt and no phone-prefix guessing anywhere in this
+     * path, by design.
+     */
+    public static function anonymousTimezone(): string
+    {
+        return IanaTimezone::sanitize(session(self::BROWSER_TIMEZONE_KEY))
+            ?? UserTimezoneResolver::platformDefault();
+    }
+
+    /**
+     * Record a browser-reported timezone for the current visitor.
+     *
+     * Rejects anything that is not a canonical IANA identifier, so a
+     * crafted value cannot reach Carbon. Deliberately session-scoped and
+     * deliberately NOT persisted: it describes the device in front of us
+     * right now, not a decision the person has made.
+     */
+    public static function rememberBrowserTimezone(?string $timezone): bool
+    {
+        $valid = IanaTimezone::sanitize($timezone);
+
+        if ($valid === null) {
+            return false;
+        }
+
+        session([self::BROWSER_TIMEZONE_KEY => $valid]);
+
+        return true;
     }
 
     /** The instant moved into the viewer's clock. Null-safe; never mutates. */

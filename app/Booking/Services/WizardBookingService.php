@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Services;
 
+use App\Booking\Contracts\AvailabilityRepositoryInterface;
 use App\Booking\Contracts\AvailabilityServiceInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
@@ -31,6 +32,7 @@ use App\Models\BookingType;
 use App\Models\StudentPackageEntitlement;
 use App\Models\User;
 use App\Package\Services\PackageBookingEntitlementResolver;
+use App\Support\Timezone\LocalWallClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -85,6 +87,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly InstructorAcademicEligibilityResolver $instructorEligibility,
         private readonly BookingAcademicContextResolver $academicContextResolver,
         private readonly PackageBookingEntitlementResolver $packageEntitlements,
+        private readonly AvailabilityRepositoryInterface $availabilityRules,
     ) {}
 
     public function availableDates(
@@ -273,12 +276,53 @@ final class WizardBookingService implements WizardBookingServiceInterface
         $occurrences = max(2, min($recurrence->occurrences, RecurrenceData::MAX_OCCURRENCES));
         $groupId = (string) Str::uuid();
 
+        // TZ-6 (Product Decision 1): a recurring series is anchored to the
+        // INSTRUCTOR'S availability clock, not the student's.
+        //
+        // The series exists because the instructor publishes "Mondays at
+        // 19:00" — that rule is theirs, and it must keep meaning 19:00 to
+        // them all year. Anchoring to the student instead (the previous
+        // behavior, characterized in TZ-2A) held the STUDENT's clock
+        // still and therefore walked the instructor's teaching slot by an
+        // hour for the weeks when the two countries' DST dates differ,
+        // pushing lessons outside the very availability window that
+        // created them.
+        //
+        // Students are unaffected in the sense that matters: every
+        // occurrence is still stored as a UTC instant and still rendered
+        // in their own timezone (TZ-4). What changes is that their local
+        // clock may move by an hour across a transition, while the
+        // instructor's does not.
+        $recurrenceTimezone = $this->availabilityRules->calendarTimezoneFor($teacherId);
+        $anchor = $data->startsAt->setTimezone($recurrenceTimezone);
+
+        // Generated up front, and validated as a whole BEFORE anything is
+        // persisted: a series whose wall clock cannot be represented is
+        // refused outright rather than half-created (see assertRepresentable).
+        $schedule = [];
+        $intendedReadings = [];
+        $anchorTimeOfDay = $anchor->format('H:i:s');
+
+        for ($i = 0; $i < $occurrences; $i++) {
+            $occurrence = $recurrence->nextStartsAt($anchor, $i);
+            $schedule[] = $occurrence;
+
+            // The reading the student ASKED for, not the one PHP settled
+            // on. Carbon normalizes a skipped wall clock the moment it is
+            // constructed (01:30 becomes 02:30), so inspecting the
+            // resulting instant can never reveal the gap. Pairing the
+            // occurrence's DATE — which calendar arithmetic gets right —
+            // with the anchor's original time-of-day reconstructs the
+            // intent, and that is what gets validated.
+            $intendedReadings[] = $occurrence->format('Y-m-d').' '.$anchorTimeOfDay;
+        }
+
+        $this->assertRepresentable($intendedReadings, $recurrenceTimezone);
+
         $booked = new Collection;
         $failures = [];
 
-        for ($i = 0; $i < $occurrences; $i++) {
-            $startsAt = $recurrence->nextStartsAt($data->startsAt, $i);
-
+        foreach ($schedule as $startsAt) {
             try {
                 $booked->push($this->bookings->request($this->occurrenceData($data, $type, $startsAt, $teacherId, $data->grade, extraMeta: ['recurring_group' => $groupId], recurrenceFrequency: $recurrence->frequency)));
             } catch (BookingException $e) {
@@ -291,6 +335,44 @@ final class WizardBookingService implements WizardBookingServiceInterface
         }
 
         return new RecurringBookingResult($groupId, $booked, $failures);
+    }
+
+    /**
+     * TZ-6 (Product Decision 2 / TZ-AUD-022): refuse a series containing
+     * a wall-clock reading that daylight saving makes impossible or
+     * double.
+     *
+     * Checked for EVERY occurrence before a single one is created, so a
+     * DST-invalid series has no partial effect at all — no booking, no
+     * reservation, no payment demand. That is a stricter guarantee than
+     * the availability-clash path, which deliberately books what it can
+     * and reports the rest (see RecurringBookingResult): a clash is a
+     * fact about a specific date the student can work around, whereas an
+     * unrepresentable time means we do not know what they asked for.
+     *
+     * PHP would answer either case silently — shifting a skipped time
+     * forward, or picking the first of two identical readings — and a
+     * scheduling platform must not choose on the user's behalf.
+     *
+     * @param  list<string>  $intendedReadings  `Y-m-d H:i:s` as the series intends them locally
+     *
+     * @throws BookingException
+     */
+    private function assertRepresentable(array $intendedReadings, string $timezone): void
+    {
+        foreach ($intendedReadings as $reading) {
+            $classification = LocalWallClock::classify($reading, $timezone);
+
+            if ($classification === LocalWallClock::VALID) {
+                continue;
+            }
+
+            throw new BookingException(sprintf(
+                'This repeating time cannot be scheduled on %s. %s',
+                CarbonImmutable::parse(substr($reading, 0, 10))->format('j M Y'),
+                LocalWallClock::reason($classification, $timezone),
+            ));
+        }
     }
 
     private function assertAuthenticated(): void

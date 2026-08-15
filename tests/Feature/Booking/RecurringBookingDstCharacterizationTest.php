@@ -23,10 +23,26 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * TZ-2A / TZ-AUD-016 — CHARACTERIZATION, not new policy.
+ * TZ-2A / TZ-AUD-016 — SUPERSEDED BY TZ-6. Kept as the historical record
+ * of what the platform did BEFORE the recurrence anchor was decided, not
+ * as a statement of current behaviour.
  *
- * Recurring bookings currently anchor to the STUDENT'S LOCAL WALL-CLOCK
- * time: "Monday 19:00" stays 19:00 for the student across a DST
+ * TZ-6 closed the open product question the other way: a series is now
+ * anchored to the INSTRUCTOR'S availability timezone, because the weekly
+ * rule belongs to the instructor and a student-anchored series walked
+ * their teaching slot out of its own availability window whenever the
+ * two countries changed clocks on different dates. Current policy and
+ * its proofs live in TimezonePolicyClosureTest.
+ *
+ * The tests below therefore exercise RecurrenceData in ISOLATION — the
+ * arithmetic primitive, given an explicitly zoned anchor — which is
+ * unchanged and still the mechanism the new policy relies on. What
+ * changed is WHICH timezone the service hands it. The two
+ * production-path tests that asserted student-local anchoring have moved
+ * to TimezonePolicyClosureTest in their corrected form.
+ *
+ * Original note, retained for context — recurring bookings USED TO
+ * anchor to the STUDENT'S LOCAL WALL-CLOCK time: "Monday 19:00" stays 19:00 for the student across a DST
  * transition, and the underlying UTC instant shifts by an hour instead.
  *
  * That is almost certainly what a human scheduling lessons expects, but
@@ -96,9 +112,10 @@ class RecurringBookingDstCharacterizationTest extends TestCase
     }
 
     /**
-     * Books a real recurring series through the production service and
-     * returns each persisted occurrence rendered back in the student's
-     * timezone, ordered.
+     * Books a real recurring series through the production service.
+     *
+     * Retained for the ordering guard below; the anchor-policy
+     * assertions it used to serve now live in TimezonePolicyClosureTest.
      *
      * @return list<CarbonImmutable>
      */
@@ -137,59 +154,7 @@ class RecurringBookingDstCharacterizationTest extends TestCase
 
     // ── Spring forward ──────────────────────────────────────────────────
 
-    /**
-     * Europe/London springs forward on 2027-03-28 (GMT → BST). A weekly
-     * Monday 19:00 series starting 2027-03-22 crosses it on the second
-     * occurrence.
-     */
-    public function test_weekly_series_keeps_the_student_local_time_across_spring_forward(): void
-    {
-        $timezone = 'Europe/London';
-        $student = $this->student($timezone);
-        $teacher = $this->instructor($timezone);
-
-        $starts = $this->bookSeriesLocalTimes($student, $teacher, '2027-03-22 19:00', $timezone, 3);
-
-        foreach ($starts as $index => $start) {
-            $this->assertSame('19:00', $start->format('H:i'), "occurrence {$index} drifted in the student's clock");
-            $this->assertSame(1, $start->dayOfWeek, 'every occurrence stays a Monday');
-        }
-
-        // The wall clock held still, so the absolute instant moved.
-        $this->assertSame('2027-03-22T19:00:00+00:00', $starts[0]->toIso8601String());
-        $this->assertSame('2027-03-29T19:00:00+01:00', $starts[1]->toIso8601String());
-
-        $this->assertSame('19:00', $starts[0]->utc()->format('H:i'), 'before DST: 19:00 UTC');
-        $this->assertSame('18:00', $starts[1]->utc()->format('H:i'), 'after DST: 18:00 UTC — one hour earlier');
-
-        // Consecutive occurrences are 7 calendar days but NOT 168 hours.
-        $this->assertSame(167.0, $starts[0]->diffInHours($starts[1]));
-    }
-
     // ── Fall back ───────────────────────────────────────────────────────
-
-    /** America/New_York falls back on 2026-11-01 (EDT → EST). */
-    public function test_weekly_series_keeps_the_student_local_time_across_fall_back(): void
-    {
-        $timezone = 'America/New_York';
-        $student = $this->student($timezone);
-        $teacher = $this->instructor($timezone);
-
-        $starts = $this->bookSeriesLocalTimes($student, $teacher, '2026-10-28 19:00', $timezone, 3);
-
-        foreach ($starts as $index => $start) {
-            $this->assertSame('19:00', $start->format('H:i'), "occurrence {$index} drifted in the student's clock");
-        }
-
-        $this->assertSame('2026-10-28T19:00:00-04:00', $starts[0]->toIso8601String());
-        $this->assertSame('2026-11-04T19:00:00-05:00', $starts[1]->toIso8601String());
-
-        $this->assertSame('23:00', $starts[0]->utc()->format('H:i'), 'before DST: 23:00 UTC');
-        $this->assertSame('00:00', $starts[1]->utc()->format('H:i'), 'after DST: 00:00 UTC — one hour later');
-
-        // 169 hours: the fall-back week is a day plus an hour longer.
-        $this->assertSame(169.0, $starts[0]->diffInHours($starts[1]));
-    }
 
     // ── The ordering this protects ──────────────────────────────────────
 

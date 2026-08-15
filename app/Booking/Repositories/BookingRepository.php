@@ -12,6 +12,7 @@ use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Types\FreeDemoType;
 use App\Models\Booking;
 use App\Models\BookingActivity;
 use App\Models\User;
@@ -168,6 +169,19 @@ final class BookingRepository implements BookingRepositoryInterface
             ->orderBy('starts_at')
             ->when($limit !== null, fn (Builder $query) => $query->limit($limit))
             ->get();
+    }
+
+    public function studentBookingJourney(int $studentId): object
+    {
+        $history = Booking::withTrashed()->forStudent($studentId);
+
+        return (object) [
+            'has_bookings' => (clone $history)->exists(),
+            'has_completed_demo' => (clone $history)
+                ->where('status', BookingStatus::Completed)
+                ->whereHas('type', fn (Builder $type) => $type->where('key', FreeDemoType::KEY))
+                ->exists(),
+        ];
     }
 
     /** withTrashed() — a student's own booking history remains visible even after an admin archives one of their terminal bookings; archived rows are never upcoming or actionable regardless. */

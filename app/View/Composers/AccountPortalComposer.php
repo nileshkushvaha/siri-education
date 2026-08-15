@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\View\Composers;
 
 use App\DTOs\AccountProfileSummaryData;
+use App\Enums\PortalAudience;
 use App\Services\Account\AccountMenuService;
 use App\Services\Account\AccountWalletSummaryService;
 use App\Services\Account\PortalBadgeService;
 use App\Services\FrontendPortalAudienceResolver;
 use App\Services\Profile\ProfileService;
+use App\Services\Student\StudentBookingJourneyService;
 use Illuminate\View\View;
 
 /**
@@ -25,6 +27,7 @@ final class AccountPortalComposer
         private readonly PortalBadgeService $badges,
         private readonly FrontendPortalAudienceResolver $audiences,
         private readonly AccountWalletSummaryService $wallets,
+        private readonly StudentBookingJourneyService $bookingJourneys,
     ) {}
 
     public function compose(View $view): void
@@ -54,6 +57,9 @@ final class AccountPortalComposer
             'accountWalletEnabled' => $this->wallets->enabledFor($audience),
             'accountWalletSummary' => $this->wallets->for($user, $audience),
             'accountReferralEnabled' => $this->wallets->referralEnabledFor($audience),
+            'accountBookingJourney' => $audience === PortalAudience::Student
+                ? $this->bookingJourneys->for($user)
+                : null,
         ]);
     }
 }

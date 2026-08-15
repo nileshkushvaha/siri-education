@@ -17,6 +17,7 @@ final readonly class StudentDashboardData
      * @param  array{completion: int, missing: array<int, string>}|null  $profile
      * @param  array<int, array<string, mixed>>|null  $recommendedInstructors
      * @param  array<int, string>  $errors
+     * @param  array<string, mixed>|null  $bookingJourney
      */
     public function __construct(
         public ?array $nextLesson,
@@ -29,5 +30,6 @@ final readonly class StudentDashboardData
         public ?array $profile,
         public ?array $recommendedInstructors = null,
         public array $errors = [],
+        public ?array $bookingJourney = null,
     ) {}
 }

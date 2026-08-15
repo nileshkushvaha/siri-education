@@ -58,4 +58,7 @@ interface StudentBookingServiceInterface
 
     /** @return Collection<int, object{subject: string, sessions: int}> subjects studied, most-booked first */
     public function subjectBreakdown(User $student): Collection;
+
+    /** @return object{has_bookings: bool, has_completed_demo: bool} */
+    public function bookingJourney(User $student): object;
 }

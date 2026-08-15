@@ -7,6 +7,7 @@ namespace Tests\Feature\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ProfileVisibilityTest extends TestCase
@@ -72,9 +73,13 @@ class ProfileVisibilityTest extends TestCase
 
     private function activeUser(array $overrides = []): User
     {
-        return User::factory()->create(array_merge([
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $user = User::factory()->create(array_merge([
             'status' => 'active',
             'email_verified_at' => now(),
         ], $overrides));
+        $user->assignRole('instructor');
+
+        return $user;
     }
 }

@@ -4,6 +4,7 @@
     'walletEnabled' => false,
     'walletSummary' => null,
     'referralEnabled' => false,
+    'bookingJourney' => null,
 ])
 
 <header class="sticky top-0 z-40 bg-slate-950/90 shadow-lg shadow-black/10 backdrop-blur-xl" data-account-header>
@@ -27,6 +28,12 @@
             <a href="{{ route('home') }}" class="hidden min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-slate-300 transition-colors hover:bg-white/[0.08] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:inline-flex">
                 Explore website
             </a>
+
+            @if($bookingJourney)
+                <a href="{{ $bookingJourney['primary_url'] }}" class="inline-flex min-h-11 items-center rounded-xl bg-indigo-500 px-3 text-xs font-bold text-white shadow-lg shadow-indigo-950/25 transition hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 sm:px-4 sm:text-sm">
+                    {{ $bookingJourney['header_label'] }}
+                </a>
+            @endif
 
             <a href="{{ route('dashboard.notifications') }}" class="relative inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-200 hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Notifications{{ $notificationCount ? ', '.$notificationCount.' unread' : '' }}">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h11zm0 0v1a3 3 0 11-6 0v-1"/></svg>

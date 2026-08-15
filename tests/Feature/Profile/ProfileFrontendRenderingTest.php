@@ -105,14 +105,26 @@ class ProfileFrontendRenderingTest extends TestCase
         ])->assertRedirect(route('profile.show'))->assertSessionHasErrors('country_id');
     }
 
-    public function test_profile_page_renders_visibility_controls(): void
+    public function test_profile_visibility_controls_are_instructor_only(): void
     {
-        $user = $this->activeUser();
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $student = $this->activeUser();
+        $student->assignRole('student');
+        $instructor = $this->activeUser();
+        $instructor->assignRole('instructor');
 
-        $content = $this->actingAs($user)->get(route('profile.show'))->getContent();
+        $studentContent = $this->actingAs($student)->get(route('profile.show'))->getContent();
+        $instructorContent = $this->actingAs($instructor)->get(route('profile.show'))->getContent();
 
-        $this->assertStringContainsString(route('profile.visibility.update'), $content);
-        $this->assertStringContainsString('name="profile_visibility"', $content);
+        $this->assertStringNotContainsString('Profile Visibility', $studentContent);
+        $this->assertStringNotContainsString('name="profile_visibility"', $studentContent);
+        $this->assertStringContainsString(route('profile.visibility.update'), $instructorContent);
+        $this->assertStringContainsString('name="profile_visibility"', $instructorContent);
+
+        $this->actingAs($student)
+            ->post(route('profile.visibility.update'), ['profile_visibility' => 'private'])
+            ->assertForbidden();
     }
 
     public function test_profile_page_renders_the_completion_component(): void

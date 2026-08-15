@@ -152,6 +152,7 @@
         :wallet-enabled="$accountWalletEnabled ?? false"
         :wallet-summary="$accountWalletSummary ?? null"
         :referral-enabled="$accountReferralEnabled ?? false"
+        :booking-journey="$accountBookingJourney ?? null"
     />
 
     <div x-cloak x-show="drawerOpen" class="fixed inset-0 z-50 lg:hidden" role="presentation">

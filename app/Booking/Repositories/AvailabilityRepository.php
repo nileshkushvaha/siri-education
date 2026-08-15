@@ -11,6 +11,7 @@ use App\Models\TeacherUnavailability;
 use App\Models\User;
 use App\Support\Timezone\IanaTimezone;
 use App\Support\Timezone\LocalDay;
+use App\Support\Timezone\LocalWallClock;
 use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -42,6 +43,25 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
                 }
 
                 if ($row->effective_until !== null && $date->greaterThan($row->effective_until)) {
+                    continue;
+                }
+
+                // TZ-6 (TZ-AUD-022): setTimeFromTimeString() answers even
+                // when the wall clock it is given does not exist. On a
+                // spring-forward date "09:00" may be skipped entirely and
+                // PHP silently returns 10:00 — publishing a window the
+                // instructor never offered. On a fall-back date a reading
+                // can occur twice, and picking one arbitrarily means the
+                // student and the instructor can each reasonably believe a
+                // different hour was booked.
+                //
+                // Neither is ours to decide, so that ONE occurrence is
+                // simply not generated. The instructor's weekly rule is
+                // untouched and every other week is unaffected — only the
+                // impossible or double reading disappears from the
+                // bookable set, twice a year at most.
+                if (! LocalWallClock::isValid($date->format('Y-m-d').' '.$row->start_time, $timezone)
+                    || ! LocalWallClock::isValid($date->format('Y-m-d').' '.$row->end_time, $timezone)) {
                     continue;
                 }
 

@@ -109,6 +109,11 @@ final class StudentBookingService implements StudentBookingServiceInterface
         return $this->repository->subjectBreakdownForUser($student->id);
     }
 
+    public function bookingJourney(User $student): object
+    {
+        return $this->repository->studentBookingJourney($student->id);
+    }
+
     public function book(StudentBookingData $data): Booking
     {
         return $this->bookOccurrence($data, $data->startsAt);

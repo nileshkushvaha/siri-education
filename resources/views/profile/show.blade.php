@@ -565,7 +565,8 @@
                 </div>
                 @endif
 
-                {{-- Profile Visibility --}}
+                @if($portalAudience === \App\Enums\PortalAudience::Instructor)
+                {{-- Instructor public-profile visibility --}}
                 <div class="rounded-2xl border border-white/[0.04] bg-white/[0.025] backdrop-blur-xl p-7 mt-5">
                     <div class="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.04]">
                         <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
@@ -615,6 +616,7 @@
                         </button>
                     </form>
                 </div>
+                @endif
             </div>
 
             {{-- ══════════════════════════════════════════════════════ --}}

@@ -9,7 +9,9 @@ use App\Settings\PaymentAdvancedSettings;
 use App\Settings\PaymentConfigurationSettings;
 use App\Settings\PaymentGatewaySettings;
 use BackedEnum;
+use Closure;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -88,7 +90,6 @@ abstract class PaymentSettingsPage extends Page
         $this->form->fill([
             // gateways (never prefill secrets)
             'stripe_enabled' => $gateways->stripe_enabled,
-            'stripe_sandbox_mode' => $gateways->stripe_sandbox_mode,
             'stripe_publishable_key' => $gateways->stripe_publishable_key,
             'stripe_secret_key' => null,
             'stripe_webhook_secret' => null,
@@ -106,7 +107,6 @@ abstract class PaymentSettingsPage extends Page
             'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/bookings/payments/stripe'),
 
             'razorpay_enabled' => $gateways->razorpay_enabled,
-            'razorpay_sandbox_mode' => $gateways->razorpay_sandbox_mode,
             'razorpay_key_id' => $gateways->razorpay_key_id,
             'razorpay_key_secret' => null,
             'razorpay_webhook_secret' => null,
@@ -124,7 +124,6 @@ abstract class PaymentSettingsPage extends Page
             'paypal_webhook_url' => $gateways->paypal_webhook_url ?? url('/api/webhooks/payments/generic/paypal'),
 
             'applepay_enabled' => $gateways->applepay_enabled,
-            'applepay_sandbox_mode' => $gateways->applepay_sandbox_mode,
             'applepay_merchant_id' => $gateways->applepay_merchant_id,
             'applepay_merchant_domain' => $gateways->applepay_merchant_domain,
             'applepay_merchant_certificate' => null,
@@ -367,7 +366,7 @@ abstract class PaymentSettingsPage extends Page
                 Section::make('Stripe')
                     ->description('Stripe • Publishable / Secret keys')
                     ->schema([
-                        $this->gatewaySwitches('stripe_enabled', 'stripe_sandbox_mode'),
+                        $this->gatewaySwitches('stripe_enabled', $this->keyDerivedMode('stripe')),
                         Grid::make(2)->schema([
                             TextInput::make('stripe_publishable_key')->label('Publishable Key')->maxLength(255),
                             TextInput::make('stripe_secret_key')
@@ -396,7 +395,7 @@ abstract class PaymentSettingsPage extends Page
             ->schema([
                 Section::make('Razorpay')
                     ->schema([
-                        $this->gatewaySwitches('razorpay_enabled', 'razorpay_sandbox_mode'),
+                        $this->gatewaySwitches('razorpay_enabled', $this->keyDerivedMode('razorpay')),
                         Grid::make(2)->schema([
                             TextInput::make('razorpay_key_id')->label('Key ID')->maxLength(255),
                             TextInput::make('razorpay_key_secret')
@@ -458,7 +457,7 @@ abstract class PaymentSettingsPage extends Page
                 Section::make('Apple Pay')
                     ->description('Apple Pay requires a registered merchant identifier and a verified domain. Apple will not present the sheet on an unverified domain, so both must be set before enabling.')
                     ->schema([
-                        $this->gatewaySwitches('applepay_enabled', 'applepay_sandbox_mode'),
+                        $this->gatewaySwitches('applepay_enabled'),
                         Grid::make(2)->schema([
                             TextInput::make('applepay_merchant_id')
                                 ->label('Merchant Identifier')
@@ -510,12 +509,49 @@ abstract class PaymentSettingsPage extends Page
             ]);
     }
 
-    protected function gatewaySwitches(string $enabledField, string $sandboxField): Grid
+    /**
+     * `$modeHint` replaces the old per-gateway "Sandbox Mode" toggle,
+     * which stored a boolean that changed nothing: the provider decides
+     * live-vs-test purely from the API key you use, so the toggle could
+     * (and did) claim "sandbox" while a live key charged real cards.
+     * The mode is now derived and read-only.
+     */
+    protected function gatewaySwitches(string $enabledField, ?Closure $modeHint = null): Grid
     {
-        return Grid::make(2)->schema([
+        return Grid::make(2)->schema(array_filter([
             Toggle::make($enabledField)->label('Enable Gateway')->live(),
-            Toggle::make($sandboxField)->label('Sandbox Mode'),
-        ]);
+            $modeHint === null ? null : Placeholder::make($enabledField.'_mode')
+                ->label('Mode')
+                ->content($modeHint),
+        ]));
+    }
+
+    /** Derived from the key prefix — the provider's own source of truth. */
+    protected function keyDerivedMode(string $gateway): Closure
+    {
+        return function () use ($gateway): string {
+            $settings = app(PaymentGatewaySettings::class);
+
+            $live = match ($gateway) {
+                'razorpay' => $settings->razorpayIsLive(),
+                'stripe' => $settings->stripeIsLive(),
+                default => false,
+            };
+
+            $configured = match ($gateway) {
+                'razorpay' => filled($settings->razorpay_key_id),
+                'stripe' => filled($settings->stripe_publishable_key) || filled($settings->stripe_secret_key),
+                default => false,
+            };
+
+            if (! $configured) {
+                return 'No key configured yet.';
+            }
+
+            return $live
+                ? 'LIVE — real cards are charged. Test cards will be rejected as invalid.'
+                : 'TEST — test cards work. No real money moves.';
+        };
     }
 
     protected function gatewayUrls(string $prefix): Grid
@@ -533,7 +569,14 @@ abstract class PaymentSettingsPage extends Page
                 ->label('Webhook URL')
                 ->url()
                 ->maxLength(255)
-                ->readOnly(),
+                ->readOnly()
+                // Only Razorpay and Stripe have a settlement adapter.
+                // Every other gateway's URL points at the generic
+                // log-and-audit endpoint, which never settles a booking
+                // — say so rather than letting it look interchangeable.
+                ->helperText(in_array($prefix, ['razorpay', 'stripe'], true)
+                    ? 'Register this exact URL with the provider. Settlement happens here and nowhere else — the browser callback never confirms a booking.'
+                    : 'This gateway has no settlement adapter: the endpoint records the event for audit only and will not confirm a booking.'),
         ]);
     }
 
@@ -672,13 +715,11 @@ abstract class PaymentSettingsPage extends Page
                 $settings->{$enabledField} = (bool) ($data[$enabledField] ?? false);
             }
 
-            $settings->stripe_sandbox_mode = (bool) ($data['stripe_sandbox_mode'] ?? true);
             $settings->stripe_publishable_key = $data['stripe_publishable_key'] ?? null;
             $settings->stripe_success_url = $data['stripe_success_url'] ?? null;
             $settings->stripe_failure_url = $data['stripe_failure_url'] ?? null;
             $settings->stripe_webhook_url = $data['stripe_webhook_url'] ?? null;
 
-            $settings->razorpay_sandbox_mode = (bool) ($data['razorpay_sandbox_mode'] ?? true);
             $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
             $settings->razorpay_success_url = $data['razorpay_success_url'] ?? null;
             $settings->razorpay_failure_url = $data['razorpay_failure_url'] ?? null;
@@ -690,7 +731,6 @@ abstract class PaymentSettingsPage extends Page
             $settings->paypal_failure_url = $data['paypal_failure_url'] ?? null;
             $settings->paypal_webhook_url = $data['paypal_webhook_url'] ?? null;
 
-            $settings->applepay_sandbox_mode = (bool) ($data['applepay_sandbox_mode'] ?? true);
             $settings->applepay_merchant_id = $data['applepay_merchant_id'] ?? null;
             $settings->applepay_merchant_domain = $data['applepay_merchant_domain'] ?? null;
             $settings->applepay_success_url = $data['applepay_success_url'] ?? null;

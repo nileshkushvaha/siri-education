@@ -61,7 +61,7 @@ final readonly class ProviderActivationReader
                 label: 'Razorpay (collection)',
                 enabled: $this->gateways->razorpay_enabled,
                 status: $this->gateways->razorpay_config_status,
-                sandbox: $this->gateways->razorpay_sandbox_mode,
+                sandbox: ! $this->gateways->razorpayIsLive(),
                 settingsUrl: $canOpenSettings ? PaymentGatewayPage::getUrl() : null,
             ),
             $this->state(
@@ -69,7 +69,7 @@ final readonly class ProviderActivationReader
                 label: 'Stripe (collection)',
                 enabled: $this->gateways->stripe_enabled,
                 status: $this->gateways->stripe_config_status,
-                sandbox: $this->gateways->stripe_sandbox_mode,
+                sandbox: ! $this->gateways->stripeIsLive(),
                 settingsUrl: $canOpenSettings ? PaymentGatewayPage::getUrl() : null,
             ),
         ];

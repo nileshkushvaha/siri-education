@@ -8,6 +8,30 @@ use Spatie\LaravelSettings\Settings;
 
 class PaymentGatewaySettings extends Settings
 {
+    /**
+     * Live-vs-test is NOT a stored flag.
+     *
+     * There used to be a `*_sandbox_mode` toggle per gateway. It was
+     * read by exactly one dashboard label and changed no API behaviour
+     * whatsoever — so an admin could set "Sandbox Mode" ON while a
+     * `rzp_live_` key talked to production Razorpay and charged real
+     * cards. A switch that looks like a safety control but isn't is
+     * worse than no switch at all.
+     *
+     * The provider's own key prefix is the single source of truth, and
+     * it cannot disagree with itself.
+     */
+    public function razorpayIsLive(): bool
+    {
+        return str_starts_with((string) $this->razorpay_key_id, 'rzp_live_');
+    }
+
+    public function stripeIsLive(): bool
+    {
+        return str_starts_with((string) $this->stripe_publishable_key, 'pk_live_')
+            || str_starts_with((string) $this->stripe_secret_key, 'sk_live_');
+    }
+
     // Platform-wide gateway routing/kill-switch. None of
     // these are read by PaymentProviderResolver unless explicitly set —
     // see PaymentProviderResolver's routing-order docblock. Adding these
@@ -60,8 +84,6 @@ class PaymentGatewaySettings extends Settings
 
     public bool $stripe_enabled;
 
-    public bool $stripe_sandbox_mode;
-
     public ?string $stripe_publishable_key;
 
     public ?string $stripe_secret_key;
@@ -75,8 +97,6 @@ class PaymentGatewaySettings extends Settings
     public ?string $stripe_webhook_url;
 
     public bool $razorpay_enabled;
-
-    public bool $razorpay_sandbox_mode;
 
     public ?string $razorpay_key_id;
 
@@ -113,8 +133,6 @@ class PaymentGatewaySettings extends Settings
     // the certificate/key material is secret and stored encrypted like
     // every other gateway secret on this model.
     public bool $applepay_enabled;
-
-    public bool $applepay_sandbox_mode;
 
     public ?string $applepay_merchant_id;
 

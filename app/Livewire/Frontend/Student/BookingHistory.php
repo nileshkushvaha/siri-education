@@ -309,7 +309,7 @@ final class BookingHistory extends Component
      * Polled by the Stripe Payment Element partial after
      * stripe.confirmPayment() returns client-side — never trusted as
      * settlement itself, only a signal to re-check what the server
-     * already knows. Only a signed webhook (StripePaymentProvider::parseWebhook())
+     * already knows. Only a signed webhook
      * ever calls markPaid()/markFailed() for Stripe; this method makes
      * no state change of its own, it only re-reads and re-renders.
      */
@@ -343,15 +343,12 @@ final class BookingHistory extends Component
         $this->modalBanner = '';
 
         try {
+            // Non-authoritative by design — see BookingWizard::
+            // verifyPayment() for why calling markPaid() here produced
+            // confirmed bookings with no receipt and no notifications.
             $this->razorpay->verifyCheckout($this->selectedBooking, $orderId, $paymentId, $signature);
 
-            $booking = $this->selectedBooking->refresh();
-
-            if ($booking->payment_status->isPayable()) {
-                $this->payments->markPaid($booking, (string) $booking->payment_reference);
-            }
-
-            $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'instructor']);
+            $this->selectedBooking = $this->selectedBooking->refresh()->loadMissing(['type', 'instructor']);
         } catch (InvalidPaymentWebhookException|BookingException $exception) {
             $this->modalBanner = $exception->getMessage();
         }

@@ -110,7 +110,7 @@ final class WalletRechargeWebhookController extends Controller
         }
 
         // Fall back to the order id when notes are absent (mirrors
-        // RazorpayPaymentProvider::parseWebhook()'s identical fallback).
+        // the booking webhook parser's identical fallback).
         $recharge = WalletRecharge::query()->where('provider_order_id', $entity['order_id'])->first();
 
         return $recharge?->idempotency_key ?? '';
@@ -172,7 +172,7 @@ final class WalletRechargeWebhookController extends Controller
         }
 
         // Fall back to the PaymentIntent id when metadata is absent
-        // (mirrors StripePaymentProvider::parseWebhook()'s identical fallback).
+        // (mirrors the booking webhook parser's identical fallback).
         $recharge = WalletRecharge::query()->where('provider_order_id', $intent['id'])->first();
 
         return $recharge?->idempotency_key ?? '';

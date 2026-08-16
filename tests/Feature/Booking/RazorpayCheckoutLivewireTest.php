@@ -7,18 +7,23 @@ namespace Tests\Feature\Booking;
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StudentBookingServiceInterface;
 use App\Booking\DTOs\StudentBookingData;
+use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\Weekday;
 use App\Livewire\Frontend\Student\BookingHistory;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Country;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\StudentLessonPrice;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Payments\Enums\PaymentStatus;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Carbon\CarbonImmutable;
@@ -161,9 +166,46 @@ class RazorpayCheckoutLivewireTest extends TestCase
         $signature = $this->checkoutSignature($orderId, 'pay_LW1');
         $component->call('verifyPayment', $orderId, 'pay_LW1', $signature);
 
+        // The callback is NON-AUTHORITATIVE. It records which provider
+        // payment succeeded and nothing else — the booking stays unpaid
+        // until a signed webhook settles it. This previously asserted
+        // Paid/Confirmed, which is exactly the behaviour that produced
+        // confirmed bookings with no receipt and no notifications.
         $booking = Booking::query()->findOrFail($bookingId);
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->getKey())->sole();
+
+        $this->assertSame('pay_LW1', $attempt->provider_payment_id);
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertSame(BookingPaymentRecordStatus::Pending, $obligation->status);
+        $this->assertTrue($booking->payment_status->isPayable());
+        $this->assertNotSame(BookingStatus::Confirmed, $booking->status);
+        $this->assertSame(0, Invoice::query()->count());
+
+        // The signed webhook is what settles, and it produces the whole
+        // downstream chain the callback deliberately does not.
+        $body = (string) json_encode([
+            'event' => 'payment.captured',
+            'payload' => ['payment' => ['entity' => [
+                'id' => 'pay_LW1',
+                'order_id' => $orderId,
+                'amount' => 49900,
+                'currency' => 'INR',
+                'notes' => ['payment_reference' => $attempt->idempotency_key],
+            ]]],
+        ]);
+
+        $this->call('POST', '/api/webhooks/bookings/payments/razorpay', [], [], [], [
+            'HTTP_X_RAZORPAY_SIGNATURE' => hash_hmac('sha256', $body, 'webhook_secret'),
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+        ], $body)->assertOk()->assertJsonPath('status', 'processed');
+
+        $booking->refresh();
         $this->assertSame(BookingPaymentStatus::Paid, $booking->payment_status);
         $this->assertSame(BookingStatus::Confirmed, $booking->status);
+        $this->assertSame(PaymentStatus::Paid, $attempt->refresh()->status);
+        $this->assertSame(1, Invoice::query()->count());
     }
 
     public function test_booking_wizard_shows_safe_error_when_no_matrix_price_configured(): void
@@ -275,8 +317,19 @@ class RazorpayCheckoutLivewireTest extends TestCase
         $signature = $this->checkoutSignature($orderId, 'pay_LW2');
         $component->call('verifyPayment', $orderId, 'pay_LW2', $signature);
 
-        $this->assertSame(BookingPaymentStatus::Paid, $booking->refresh()->payment_status);
-        $this->assertSame(BookingStatus::Confirmed, $booking->status);
+        // Retry-from-dashboard uses the same non-authoritative callback:
+        // the provider payment id is recorded, settlement waits for the
+        // signed webhook. (The full callback -> webhook -> invoice chain
+        // is proven in test_student_can_pay_via_the_booking_wizard.)
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->getKey())
+            ->orderByDesc('created_at')->orderByDesc('id')->firstOrFail();
+
+        $this->assertSame('pay_LW2', $attempt->provider_payment_id);
+        $this->assertSame(PaymentStatus::Pending, $attempt->status);
+        $this->assertTrue($booking->refresh()->payment_status->isPayable());
+        $this->assertNotSame(BookingStatus::Confirmed, $booking->status);
+        $this->assertSame(0, Invoice::query()->count());
     }
 
     public function test_student_cannot_pay_for_another_students_booking(): void

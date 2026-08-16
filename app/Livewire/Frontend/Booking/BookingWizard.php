@@ -811,15 +811,24 @@ final class BookingWizard extends Component
 
         try {
             $booking = $this->bookings->findOrFail($this->bookingId);
+
+            // verifyCheckout() proves the signature and that this order
+            // belongs to this booking, and records provider_payment_id on
+            // the attempt. It settles NOTHING, and neither does this
+            // method: the browser is not evidence that money moved.
+            //
+            // This used to call markPaid() here. That confirmed the
+            // booking straight from the callback while leaving the
+            // obligation and attempt uncaptured, so the receipt and
+            // notifications — which resolve a CAPTURED obligation —
+            // silently never fired. A student ended up with a confirmed
+            // lesson, no receipt and no email, and a replayed callback
+            // could confirm a lesson that was never paid for.
+            //
+            // Settlement arrives from the signed payment.captured
+            // webhook, or from the reconciliation sweep if that webhook
+            // is lost. Until then the UI shows a confirming state.
             $this->razorpay->verifyCheckout($booking, $orderId, $paymentId, $signature);
-
-            // Reload before the state check: a concurrent webhook delivery
-            // may have already settled this booking.
-            $booking->refresh();
-
-            if ($booking->payment_status->isPayable()) {
-                $this->payments->markPaid($booking, (string) $booking->payment_reference);
-            }
 
             $this->result = $this->wizard->result($booking->refresh());
         } catch (InvalidPaymentWebhookException|BookingException $exception) {
@@ -831,7 +840,7 @@ final class BookingWizard extends Component
      * Polled by the Stripe Payment Element partial after
      * stripe.confirmPayment() returns client-side — never trusted as
      * settlement itself, only a signal to re-check what the server
-     * already knows. Only a signed webhook (StripePaymentProvider::parseWebhook())
+     * already knows. Only a signed webhook
      * ever calls markPaid()/markFailed() for Stripe; this method makes
      * no state change of its own, it only re-reads and re-renders.
      */

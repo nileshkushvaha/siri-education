@@ -38,7 +38,7 @@ use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
 /**
- * Regression coverage: parseWebhook() hands the order's
+ * Regression coverage: the webhook parser hands the order's
  * `notes.booking_reference` straight to
  * BookingRepository::findByPaymentReference(), which queries the
  * `payment_reference` column ("PAY-…") — so

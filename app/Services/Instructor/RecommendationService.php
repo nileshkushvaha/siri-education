@@ -110,8 +110,14 @@ final class RecommendationService
 
         $student = $viewer;
 
-        $excludeIds = $this->favoritedInstructorIds($student);
-        $signalSlugs = $this->personalizationSignalSubjectSlugs($student);
+        // ONE read of the student's favourites serves both needs below:
+        // the complete set is what recommendations must exclude, and a
+        // bookable sample of it is what personalises them. These used to
+        // be two separate queries against the same relationship.
+        $favorites = $this->favorites->allFavorites($student);
+
+        $excludeIds = $favorites->pluck('id')->all();
+        $signalSlugs = $this->personalizationSignalSubjectSlugs($student, $favorites);
 
         if ($signalSlugs->isEmpty()) {
             return $this->popular($request, $limit, $excludeIds);
@@ -137,14 +143,11 @@ final class RecommendationService
         return $this->instructors->cardsFor($matched, $country);
     }
 
-    /** @return list<int> */
-    private function favoritedInstructorIds(User $student): array
-    {
-        return $student->favoriteInstructors()->pluck('users.id')->all();
-    }
-
-    /** @return Collection<int, string> */
-    private function personalizationSignalSubjectSlugs(User $student): Collection
+    /**
+     * @param  Collection<int, User>  $favorites  already-loaded favourites, reused rather than re-queried
+     * @return Collection<int, string>
+     */
+    private function personalizationSignalSubjectSlugs(User $student, Collection $favorites): Collection
     {
         $planSlugs = StudentLearningPlan::query()
             ->where('student_user_id', $student->id)
@@ -155,8 +158,14 @@ final class RecommendationService
             ->pluck('subject.slug')
             ->filter();
 
-        $favoriteSlugs = $this->favorites->bookableFavorites($student, self::PERSONALIZATION_FAVORITE_SAMPLE)
-            ->flatMap(fn (User $instructor) => $this->instructors->activeSubjectSlugsFor($instructor));
+        // Bookability is filtered in memory against the already-loaded
+        // set using the favourites service's own canonical predicate —
+        // never a second copy of the rule, and never a second query.
+        $favoriteSlugs = $this->instructors->activeSubjectSlugsForMany(
+            $favorites->filter(fn (User $instructor): bool => $this->favorites->isBookable($instructor))
+                ->take(self::PERSONALIZATION_FAVORITE_SAMPLE)
+                ->values(),
+        );
 
         return $planSlugs->merge($favoriteSlugs)->unique()->values();
     }

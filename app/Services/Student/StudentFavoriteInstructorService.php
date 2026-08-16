@@ -92,6 +92,40 @@ final class StudentFavoriteInstructorService
             ->get();
     }
 
+    /**
+     * Every favourite the student has, profiles eager-loaded, unfiltered
+     * and unlimited.
+     *
+     * Exists for callers that need BOTH the complete favourite set and a
+     * bookable subset in one request — RecommendationService previously
+     * hit this relationship twice (all ids to exclude, then a bookable
+     * sample to personalise from) for a single recommendation build.
+     * Favourites are a small hand-curated set, so reading them once and
+     * partitioning in memory is cheaper than a second round trip.
+     *
+     * @return Collection<int, User>
+     */
+    public function allFavorites(User $student): Collection
+    {
+        return $student->favoriteInstructors()->with('profile')->get();
+    }
+
+    /**
+     * The single definition of "this instructor can currently be booked".
+     *
+     * `bookableFavorites()` expresses the same rule in SQL. Callers that
+     * already hold hydrated User models must not re-implement it — this
+     * is the one place the rule lives for in-memory checks, and
+     * ensureCanFavorite() uses it too so the write path and the read
+     * paths cannot drift apart.
+     */
+    public function isBookable(User $instructor): bool
+    {
+        return $instructor->status === User::STATUS_ACTIVE
+            && $instructor->profile?->profile_visibility === 'public'
+            && in_array($instructor->profile?->instructor_status?->value, InstructorStatus::bookableValues(), true);
+    }
+
     private function ensureCanFavorite(User $student, User $instructor): void
     {
         if ($student->id === $instructor->id) {
@@ -102,12 +136,7 @@ final class StudentFavoriteInstructorService
             throw ValidationException::withMessages(['student' => 'Only student accounts can favorite instructors.']);
         }
 
-        $isBookable = $instructor->isActive()
-            && $instructor->hasRole('instructor')
-            && $instructor->profile?->profile_visibility === 'public'
-            && in_array($instructor->profile?->instructor_status?->value, InstructorStatus::bookableValues(), true);
-
-        if (! $isBookable) {
+        if (! $instructor->hasRole('instructor') || ! $this->isBookable($instructor)) {
             throw ValidationException::withMessages(['instructor' => 'Only approved, public instructors can be favorited.']);
         }
     }

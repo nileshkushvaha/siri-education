@@ -206,6 +206,36 @@ final class InstructorService
      *
      * @return Collection<int, string>
      */
+    /**
+     * Active subject slugs for MANY instructors in one query.
+     *
+     * activeSubjectSlugsFor() is per-instructor, so calling it inside a
+     * loop is an N+1 — personalising recommendations from a student's
+     * favourites did exactly that, issuing one query per favourite.
+     * Callers holding a set of instructors should use this instead.
+     *
+     * @param  Collection<int, User>  $instructors
+     * @return Collection<int, string> deduplicated slugs across all of them
+     */
+    public function activeSubjectSlugsForMany(Collection $instructors): Collection
+    {
+        $ids = $instructors->pluck('id')->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        return TeacherSubject::query()
+            ->whereIn('teacher_id', $ids)
+            ->whereHas('subjectMaster', fn (Builder $q) => $q->where('status', AcademicStatus::Active))
+            ->with('subjectMaster:id,slug,status')
+            ->get()
+            ->pluck('subjectMaster.slug')
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
     public function activeSubjectSlugsFor(User $instructor): Collection
     {
         return TeacherSubject::query()

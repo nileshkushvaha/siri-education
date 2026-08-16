@@ -38,14 +38,29 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        $this->migrator->add(
-            'payment_gateways.razorpay_international_currencies',
-            RazorpayPaymentProvider::DEFAULT_INTERNATIONAL_CURRENCIES,
-        );
+        // Guarded so a partially applied run can be retried. `add()` throws
+        // SettingAlreadyExists and `update()` throws SettingDoesNotExist — if the first
+        // statement succeeded and a later one failed, the migration is never recorded, so
+        // the retry would hit the already-created property and fail forever.
+        if (! $this->migrator->exists('payment_gateways.razorpay_international_currencies')) {
+            $this->migrator->add(
+                'payment_gateways.razorpay_international_currencies',
+                RazorpayPaymentProvider::DEFAULT_INTERNATIONAL_CURRENCIES,
+            );
+        }
 
-        $this->migrator->update(
+        if ($this->migrator->exists('payment_gateways.payment_collection_rollout_scope')) {
+            $this->migrator->update(
+                'payment_gateways.payment_collection_rollout_scope',
+                fn (): string => PaymentCollectionRolloutScope::ActiveCountryRouting->value,
+            );
+
+            return;
+        }
+
+        $this->migrator->add(
             'payment_gateways.payment_collection_rollout_scope',
-            fn (): string => PaymentCollectionRolloutScope::ActiveCountryRouting->value,
+            PaymentCollectionRolloutScope::ActiveCountryRouting->value,
         );
     }
 

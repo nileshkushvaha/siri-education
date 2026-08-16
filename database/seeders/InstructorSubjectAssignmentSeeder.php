@@ -47,7 +47,8 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
 
     private const DEFAULT_GRADE_TO = 12;
 
-    private ?string $approverId = null;
+    /** User keys are UUID strings locally but integers on older databases. */
+    private int|string|null $approverId = null;
 
     /** @var Collection<int, AcademicLevel> */
     private Collection $levels;

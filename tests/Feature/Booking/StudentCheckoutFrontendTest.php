@@ -18,13 +18,17 @@ use App\Booking\Enums\Weekday;
 use App\Booking\Exceptions\BookingException;
 use App\Livewire\Frontend\Student\BookingHistory;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Payments\Enums\PaymentStatus;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\PaymentGatewaySettings;
@@ -426,7 +430,20 @@ class StudentCheckoutFrontendTest extends TestCase
             ->call('simulateFakePayment', false);
 
         $booking->refresh();
-        $this->assertSame(BookingPaymentStatus::Failed, $booking->payment_status);
+
+        // A simulated failure now runs the same settlement path a signed
+        // webhook does, so failure belongs to the ATTEMPT: the booking
+        // stays unpaid and retryable rather than becoming terminally
+        // Failed. Previously this called markFailed() directly, which
+        // failed the obligation and made a retry impossible — a state
+        // the real webhook path never produces.
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+        $attempt = Payment::query()->where('payable_id', $obligation->getKey())->latest('created_at')->sole();
+
+        $this->assertSame(PaymentStatus::Failed, $attempt->status);
+        $this->assertTrue($booking->payment_status->isPayable());
+        $this->assertNotSame(BookingStatus::Confirmed, $booking->status);
+        $this->assertSame(0, Invoice::query()->count());
     }
 
     public function test_simulate_fake_payment_is_a_no_op_outside_local_or_testing(): void

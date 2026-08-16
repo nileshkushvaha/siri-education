@@ -21,6 +21,7 @@ use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\CancellationRefundPolicy;
 use App\Booking\Services\RescheduleLimitPolicy;
+use App\Booking\Support\FakePaymentSimulator;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Wallet;
@@ -367,7 +368,7 @@ final class BookingHistory extends Component
      */
     public function simulateFakePayment(bool $success): void
     {
-        if (! $this->selectedBooking || ! app()->environment(['local', 'testing'])) {
+        if (! $this->selectedBooking || ! app(FakePaymentSimulator::class)->isAvailable()) {
             return;
         }
 
@@ -377,17 +378,10 @@ final class BookingHistory extends Component
 
         try {
             $booking = $this->selectedBooking->refresh();
-            $reference = (string) $booking->payment_reference;
 
-            if ($success) {
-                if ($booking->payment_status->isPayable()) {
-                    $this->payments->markPaid($booking, $reference);
-                }
-            } else {
-                if ($booking->payment_status->isPayable()) {
-                    $this->payments->markFailed($booking, $reference, 'Simulated failure (fake provider).');
-                }
-            }
+            // Same settlement path a signed webhook takes — see
+            // FakePaymentSimulator.
+            app(FakePaymentSimulator::class)->simulate($booking, $success);
 
             $this->selectedBooking = $booking->refresh()->loadMissing(['type', 'instructor']);
         } catch (BookingException $exception) {

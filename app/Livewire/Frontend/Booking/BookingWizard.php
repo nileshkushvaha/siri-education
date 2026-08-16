@@ -11,6 +11,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
+use App\Booking\Support\FakePaymentSimulator;
 use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\Country;
 use App\Models\EducationSystem;
@@ -780,7 +781,7 @@ final class BookingWizard extends Component
     /** Local/testing-only — see BookingHistory::simulateFakePayment() for the identical rationale. */
     public function simulateFakePayment(bool $success): void
     {
-        if ($this->bookingId === null || ! app()->environment(['local', 'testing'])) {
+        if ($this->bookingId === null || ! app(FakePaymentSimulator::class)->isAvailable()) {
             return;
         }
 
@@ -788,17 +789,11 @@ final class BookingWizard extends Component
 
         try {
             $booking = $this->bookings->findOrFail($this->bookingId)->refresh();
-            $reference = (string) $booking->payment_reference;
 
-            if ($success) {
-                if ($booking->payment_status->isPayable()) {
-                    $this->payments->markPaid($booking, $reference);
-                }
-            } else {
-                if ($booking->payment_status->isPayable()) {
-                    $this->payments->markFailed($booking, $reference, 'Simulated failure (fake provider).');
-                }
-            }
+            // Routed through the real settlement service, not markPaid():
+            // see FakePaymentSimulator for why a direct markPaid() left
+            // the ledger uncaptured and silently skipped the receipt.
+            app(FakePaymentSimulator::class)->simulate($booking, $success);
 
             $this->result = $this->wizard->result($booking->refresh());
         } catch (BookingException $exception) {

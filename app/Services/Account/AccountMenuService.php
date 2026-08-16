@@ -67,6 +67,12 @@ final class AccountMenuService
             ['label' => 'Money', 'items' => [
                 $this->item('Wallet', 'dashboard.wallet', 'credit-card', enabled: $this->features->wallet_enabled),
                 $this->item('Payments', 'dashboard.payments', 'credit-card'),
+                // Receipts were reachable only from the payment-success
+                // email: /dashboard/invoices existed, was authenticated,
+                // and scoped to the owner, but nothing in the student
+                // portal linked to it. A student who lost the email had
+                // no way to find their own receipt.
+                $this->item('Invoices', 'dashboard.invoices', 'document'),
                 $this->item('Orders', 'dashboard.orders', 'bag'),
             ]],
             ['label' => 'Engage', 'items' => [

@@ -7,12 +7,9 @@ namespace App\Booking\Contracts;
 use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentStatusResult;
-use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\GatewayRequestException;
-use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Models\Booking;
-use Illuminate\Http\Request;
 
 /**
  * The provider abstraction. Implement per gateway (Stripe, Razorpay, …),
@@ -38,13 +35,6 @@ interface PaymentProviderInterface
      * @throws BookingException when the provider rejects the refund
      */
     public function refund(Booking $booking): void;
-
-    /**
-     * Verify authenticity and normalize an incoming webhook.
-     *
-     * @throws InvalidPaymentWebhookException when the request cannot be trusted
-     */
-    public function parseWebhook(Request $request): PaymentWebhookData;
 
     /**
      * Whether this provider is enabled AND its credentials pass format

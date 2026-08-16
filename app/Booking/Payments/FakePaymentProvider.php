@@ -9,14 +9,10 @@ use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentProviderHealth;
 use App\Booking\DTOs\PaymentStatusResult;
-use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
-use App\Booking\Enums\PaymentWebhookEvent;
-use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Support\MoneyFormatter;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -42,7 +38,7 @@ final class FakePaymentProvider implements PaymentProviderInterface
         ]);
 
         // Mirrors Razorpay/Stripe's own createPayment(): a Pending row
-        // now, captured later — here, by parseWebhook() on a 'succeeded'
+        // now, captured later — by the webhook settlement path on a 'succeeded'
         // event. Keeps the fake provider's BookingPayment trail
         // consistent with every real adapter (refundToWallet()/
         // refundViaProvider() both require a captured row to exist),
@@ -75,41 +71,6 @@ final class FakePaymentProvider implements PaymentProviderInterface
             'booking' => $booking->reference,
             'payment_reference' => $booking->payment_reference,
         ]);
-    }
-
-    public function parseWebhook(Request $request): PaymentWebhookData
-    {
-        $signature = (string) $request->header('X-Booking-Payment-Signature', '');
-        $expected = hash_hmac('sha256', $request->getContent(), (string) config('app.key'));
-
-        if ($signature === '' || ! hash_equals($expected, $signature)) {
-            throw new InvalidPaymentWebhookException('Webhook signature verification failed.');
-        }
-
-        $event = PaymentWebhookEvent::tryFrom((string) $request->json('event'));
-        $reference = (string) $request->json('reference');
-
-        if ($event === null || $reference === '') {
-            throw new InvalidPaymentWebhookException('Webhook payload is malformed.');
-        }
-
-        if ($event === PaymentWebhookEvent::Succeeded) {
-            BookingPayment::query()
-                ->where('idempotency_key', $reference)
-                ->where('status', BookingPaymentRecordStatus::Pending)
-                ->update(['status' => BookingPaymentRecordStatus::Captured]);
-        } elseif ($event === PaymentWebhookEvent::Failed) {
-            BookingPayment::query()
-                ->where('idempotency_key', $reference)
-                ->where('status', BookingPaymentRecordStatus::Pending)
-                ->update(['status' => BookingPaymentRecordStatus::Failed]);
-        }
-
-        return new PaymentWebhookData(
-            event: $event,
-            reference: $reference,
-            reason: $request->json('reason'),
-        );
     }
 
     /** Always "configured" — no credentials exist to validate. */

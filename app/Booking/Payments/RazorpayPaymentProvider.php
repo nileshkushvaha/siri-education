@@ -10,7 +10,6 @@ use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentProviderHealth;
 use App\Booking\DTOs\PaymentStatusResult;
-use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
 use App\Booking\Exceptions\BookingException;
@@ -36,17 +35,17 @@ use Illuminate\Support\Facades\Auth;
  * on Booking is converted at this boundary, never stored as float
  * anywhere in the payment record.
  *
- * Two independent verification paths, both server-side, both mandatory:
- *  - verifyCheckout(): the client-side Checkout.js success callback
- *    (order_id|payment_id HMAC'd with the key secret) — fast path,
- *    but never trusted alone.
- *  - parseWebhook(): the async server-to-server webhook (raw body
- *    HMAC'd with the webhook secret) — the authoritative fallback,
- *    since a client can close the tab before the callback fires.
- * Both paths converge on the same booking_payments row and the same
- * BookingPaymentService::markPaid(), so whichever arrives first wins
- * and the second is a no-op (BookingException "not pending" is caught
- * and acknowledged, never a double-mark).
+ * verifyCheckout() handles the client-side Checkout.js callback
+ * (order_id|payment_id HMAC'd with the key secret). It is deliberately
+ * NON-AUTHORITATIVE: it proves the order belongs to this booking and
+ * records provider_payment_id on the attempt, but never settles.
+ *
+ * Settlement belongs entirely to the signed server-to-server webhook,
+ * which is parsed by PaymentWebhookEventParser and verified by
+ * PaymentWebhookSignatureService before BookingPaymentSettlementService
+ * applies it. This class deliberately carries no webhook parser of its
+ * own — a second verification implementation is a second thing that can
+ * be wrong about whether money arrived.
  */
 final class RazorpayPaymentProvider implements PaymentProviderInterface
 {
@@ -134,9 +133,8 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
                     // = booking_payments.idempotency_key, same value as
                     // `receipt` above), not $booking->reference — mirrors
                     // the identical fix in StripePaymentProvider.
-                    // parseWebhook() reads this back and hands it straight
-                    // to BookingRepository::findByPaymentReference(), which
-                    // queries the `payment_reference` column. Using the
+                    // The webhook parser reads this back to resolve the
+                    // exact attempt. Using the
                     // booking's own human reference here meant a webhook
                     // arriving without a prior verifyCheckout() (client tab
                     // closed before the checkout.js callback fired) would
@@ -259,73 +257,6 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         }
 
         return $obligation;
-    }
-
-    public function parseWebhook(Request $request): PaymentWebhookData
-    {
-        // Deliberately does not call assertConfigured(): webhook signature
-        // verification only needs razorpay_webhook_secret, not the
-        // enabled flag or key_id/key_secret. Gating on those would make a
-        // disabled-but-still-receiving-webhooks gateway throw a generic
-        // BookingException (422) instead of the 401 a bad/missing
-        // signature should produce.
-        $secret = PaymentWebhookSignatureService::decryptSecret($this->settings, 'razorpay_webhook_secret');
-        $signature = $request->header('X-Razorpay-Signature');
-
-        if (blank($secret) || blank($signature)) {
-            throw new InvalidPaymentWebhookException('Razorpay webhook signature is missing.');
-        }
-
-        $body = (string) $request->getContent();
-        $expected = hash_hmac('sha256', $body, $secret);
-
-        if (! hash_equals($expected, (string) $signature)) {
-            throw new InvalidPaymentWebhookException('Razorpay webhook signature is invalid.');
-        }
-
-        $payload = json_decode($body, true);
-
-        if (! is_array($payload)) {
-            throw new InvalidPaymentWebhookException('Razorpay webhook payload is malformed.');
-        }
-
-        $event = (string) ($payload['event'] ?? '');
-        $entity = match (true) {
-            str_starts_with($event, 'refund.') => $payload['payload']['refund']['entity'] ?? null,
-            default => $payload['payload']['payment']['entity'] ?? null,
-        };
-
-        $reference = is_array($entity) ? (string) ($entity['notes']['booking_reference'] ?? '') : '';
-
-        // Fall back to the order's receipt (= our payment_reference) when notes are absent.
-        if ($reference === '' && is_array($entity) && isset($entity['order_id'])) {
-            $payment = BookingPayment::query()->where('provider_order_id', $entity['order_id'])->first();
-            $reference = $payment?->idempotency_key ?? '';
-        }
-
-        if ($reference === '') {
-            throw new InvalidPaymentWebhookException('Razorpay webhook did not reference a known booking payment.');
-        }
-
-        $this->assertAmountAndCurrencyMatch($event, $entity, $reference);
-
-        $normalizedEvent = $this->normalizeEvent($event);
-
-        // If a payment settles via webhook alone (the client closed the
-        // tab before Checkout.js's success callback fired), verifyCheckout()
-        // never runs — this webhook is then the only place the
-        // booking_payments row itself gets marked captured/failed, which
-        // refund() depends on to find a capturable row later. A no-op for
-        // refund.* events (handled by BookingPaymentService::recordRefund()
-        // instead) since normalizeEvent() maps those to Refunded, not
-        // Succeeded/Failed.
-        $this->settlePaymentRow($normalizedEvent, $entity, $reference);
-
-        return new PaymentWebhookData(
-            event: $normalizedEvent,
-            reference: $reference,
-            reason: is_array($entity) ? ($entity['error_description'] ?? null) : null,
-        );
     }
 
     /**
@@ -466,7 +397,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 
     /**
      * Authenticated order-status poll — reconciliation's boundary call,
-     * never the primary settlement path (verifyCheckout()/parseWebhook()
+     * never the primary settlement path (the signed webhook
      * remain that). Razorpay's order status (created/attempted/paid) is
      * coarser than a payment's own status, but the order is the only
      * reference reconciliation reliably has before a payment settles.

@@ -21,11 +21,12 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Settings\BookingSettings;
 use App\Settings\PaymentGatewaySettings;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Livewire\Livewire;
 use Mockery;
-use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -36,6 +37,7 @@ use Tests\TestCase;
  */
 class RazorpayCheckoutLivewireTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use CreatesStudentLessonPrices;
     use RefreshDatabase;
 
@@ -45,32 +47,56 @@ class RazorpayCheckoutLivewireTest extends TestCase
 
     private Country $pricedCountry;
 
+    /** @var array<string, mixed> */
+    private array $academic;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $this->bootAcademicBookingContext();
 
         $this->teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $this->teacher->assignRole('instructor');
         UserProfile::updateOrCreate(['user_id' => $this->teacher->id], [
             'instructor_status' => 'approved',
             'profile_visibility' => 'public',
         ]);
-        TeacherSubject::factory()->state(['teacher_id' => $this->teacher->id])->subject('maths', 1, 12)->create();
         foreach (Weekday::cases() as $day) {
             TeacherAvailability::factory()->state(['teacher_id' => $this->teacher->id])
                 ->forDay($day)->between('09:00:00', '17:00:00')->create();
         }
 
-        // BookingType::factory()->paid() does not carry a price —
-        // createPaidBookingTypeWithPrice() also seeds the matching
-        // StudentLessonPrice (INR, all levels, 60min).
-        // withBillingCountry() below points every student at this same
-        // country so the wizard's own selectSubject('maths')/selectGrade(5)
-        // input resolves against it.
+        // Country-aware academics are mandatory, so checkout needs a
+        // complete Country -> System -> Level -> Subject -> Curriculum
+        // chain plus an eligible instructor before a price can even be
+        // resolved. The shared trait owns that fixture.
         $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 499.00, 'INR', durationMinutes: 60);
         BookingType::query()->where('key', 'paid_one_to_one')->update(['sort_order' => 1]);
         $this->pricedCountry = $priced['country'];
+
+        $this->academic = $this->seedAcademicContext('RZP', $this->pricedCountry, normalizedGrade: 10);
+
+        // The instructor must teach the academic subject and be eligible
+        // for this system/curriculum, or the wizard offers no slots.
+        TeacherSubject::factory()->create([
+            'teacher_id' => $this->teacher->id,
+            'subject' => $this->academic['subject']->name,
+            'subject_id' => $this->academic['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->makeInstructorEligible($this->teacher, $this->academic['system'], $this->academic['curriculum']);
+
+        // Price the ACADEMIC subject (the legacy 'maths' row cannot be
+        // reached now that subject selection comes from the curriculum).
+        $this->seedStudentLessonPrice(
+            $priced['type'],
+            $this->pricedCountry,
+            $priced['currency'],
+            499.00,
+            $this->academic['subject']->slug,
+        );
 
         $gateways = app(PaymentGatewaySettings::class);
         $gateways->razorpay_enabled = true;
@@ -108,19 +134,22 @@ class RazorpayCheckoutLivewireTest extends TestCase
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $slot = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0);
 
-        $component = Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectBillingMode', 'single')
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
-            ->call('submit')
-            ->assertSet('step', 8)
-            ->assertSee('Pay now');
+        $component = $this->navigateAcademicWizardToSlot(
+            Livewire::actingAs($student)->test('frontend.booking.booking-wizard'),
+            $this->academic,
+            $slot,
+        );
+
+        // The canonical paid flow is nine phases (mode, level, subject,
+        // curriculum, billing mode, date, time, review, payment), so the
+        // final step is 9 — not the legacy flow's 8.
+        $component->call('submit')
+            ->assertSet('step', 9)
+            // The CTA carries the formatted amount, so this also proves
+            // MoneyFormatter's currency-correct output reaches checkout.
+            ->assertSee('Pay 499.00 INR');
 
         $bookingId = $component->get('bookingId');
         $this->assertNotNull($bookingId);
@@ -147,18 +176,17 @@ class RazorpayCheckoutLivewireTest extends TestCase
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $slot = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0);
 
-        Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectBillingMode', 'single')
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+        $this->navigateAcademicWizardToSlot(
+            Livewire::actingAs($student)->test('frontend.booking.booking-wizard'),
+            $this->academic,
+            $slot,
+        )
             ->call('submit')
-            ->assertSet('step', 7)
+            // Submission is refused on the review step (8 of 9) — the
+            // student never reaches payment without a resolvable price.
+            ->assertSet('step', 8)
             ->assertSee('price is not configured');
 
         $this->assertDatabaseMissing('bookings', ['instructor_id' => $this->teacher->id]);
@@ -173,16 +201,13 @@ class RazorpayCheckoutLivewireTest extends TestCase
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $this->withBillingCountry($student);
 
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $slot = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0);
 
-        $component = Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectBillingMode', 'single')
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+        $component = $this->navigateAcademicWizardToSlot(
+            Livewire::actingAs($student)->test('frontend.booking.booking-wizard'),
+            $this->academic,
+            $slot,
+        )
             ->call('submit')
             ->call('initiatePayment');
 
@@ -211,8 +236,8 @@ class RazorpayCheckoutLivewireTest extends TestCase
             studentId: $student->id,
             teacherId: $this->teacher->id,
             startsAt: now('UTC')->addDays(4)->setTime(11, 0)->toImmutable(),
-            subject: 'maths',
-            grade: 5,
+            subject: $this->academic['subject']->name,
+            grade: 10,
         ));
 
         $component = Livewire::actingAs($student)
@@ -237,8 +262,8 @@ class RazorpayCheckoutLivewireTest extends TestCase
             studentId: $student->id,
             teacherId: $this->teacher->id,
             startsAt: now('UTC')->addDays(4)->setTime(11, 0)->toImmutable(),
-            subject: 'maths',
-            grade: 5,
+            subject: $this->academic['subject']->name,
+            grade: 10,
         ));
 
         $component = Livewire::actingAs($student)
@@ -265,8 +290,8 @@ class RazorpayCheckoutLivewireTest extends TestCase
             studentId: $owner->id,
             teacherId: $this->teacher->id,
             startsAt: now('UTC')->addDays(5)->setTime(12, 0)->toImmutable(),
-            subject: 'maths',
-            grade: 5,
+            subject: $this->academic['subject']->name,
+            grade: 10,
         ));
 
         // The intruder can never load the owner's booking into selectedBooking

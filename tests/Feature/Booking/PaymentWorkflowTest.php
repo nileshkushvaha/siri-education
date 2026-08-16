@@ -25,6 +25,7 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Payments\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
@@ -89,6 +90,14 @@ class PaymentWorkflowTest extends TestCase
             ->firstOrFail();
 
         return [$booking->refresh(), (string) $attempt->idempotency_key];
+    }
+
+    /** Attempts belonging to ONE booking — never a global Payment query. */
+    private function attemptsFor(Booking $booking): Builder
+    {
+        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->sole();
+
+        return Payment::query()->where('payable_id', $obligation->getKey());
     }
 
     private function webhook(array $payload, ?string $signature = null): TestResponse
@@ -170,7 +179,7 @@ class PaymentWorkflowTest extends TestCase
 
         // GROUP C: attempt #1 is terminally Failed, but the OBLIGATION
         // stays payable — that is precisely what permits attempt #2.
-        $this->assertSame(PaymentStatus::Failed, Payment::query()->sole()->status);
+        $this->assertSame(PaymentStatus::Failed, $this->attemptsFor($booking)->sole()->status);
         $this->assertTrue($booking->payment_status->isPayable());
         $this->assertSame(BookingStatus::Pending, $booking->status);
         $this->assertNotNull($booking->reserved_until);
@@ -183,15 +192,15 @@ class PaymentWorkflowTest extends TestCase
         $this->assertNotSame($reference, $retry->reference);
 
         // A genuinely NEW attempt was created; the failed one is untouched.
-        $this->assertSame(2, Payment::query()->count());
-        $second = Payment::query()->latest('created_at')->first();
+        $this->assertSame(2, $this->attemptsFor($booking)->count());
+        $second = $this->attemptsFor($booking)->latest('created_at')->latest('id')->first();
         $this->assertSame(PaymentStatus::Pending, $second->status);
 
         $this->webhook(['event' => 'succeeded', 'reference' => (string) $second->idempotency_key])->assertOk();
         $this->assertSame(BookingStatus::Confirmed, $booking->refresh()->status);
 
         // The old failed attempt is NOT retroactively rewritten.
-        $this->assertSame(PaymentStatus::Failed, Payment::query()->oldest('created_at')->first()->status);
+        $this->assertSame(PaymentStatus::Failed, $this->attemptsFor($booking)->oldest('created_at')->oldest('id')->first()->status);
     }
 
     public function test_invalid_signature_is_rejected_without_processing(): void

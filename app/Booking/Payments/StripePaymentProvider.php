@@ -10,7 +10,6 @@ use App\Booking\DTOs\PaymentIntentData;
 use App\Booking\DTOs\PaymentProviderCapabilities;
 use App\Booking\DTOs\PaymentProviderHealth;
 use App\Booking\DTOs\PaymentStatusResult;
-use App\Booking\DTOs\PaymentWebhookData;
 use App\Booking\Enums\BookingPaymentRecordStatus;
 use App\Booking\Enums\PaymentWebhookEvent;
 use App\Booking\Exceptions\BookingException;
@@ -156,7 +155,7 @@ final class StripePaymentProvider implements PaymentProviderInterface
                     'booking_id' => $booking->id,
                     // Deliberately the PAYMENT reference ($reference,
                     // = booking_payments.idempotency_key), not $booking->reference
-                    // — parseWebhook() reads this back and hands it straight to
+                    // — the webhook parser reads this back to resolve the attempt via
                     // BookingRepository::findByPaymentReference(), which queries
                     // the `payment_reference` column. Using the booking's own
                     // human reference here was a real bug: a genuine Stripe
@@ -204,73 +203,6 @@ final class StripePaymentProvider implements PaymentProviderInterface
         }
 
         $payment->forceFill(['status' => BookingPaymentRecordStatus::Refunded])->save();
-    }
-
-    /**
-     * Server-to-server webhook — the only settlement path for Stripe in
-     * this phase. Signature verification reuses
-     * PaymentWebhookSignatureService::verifyStripe() (already built for
-     * the generic gateway scaffold's Stripe-signature check; not
-     * previously wired to booking settlement).
-     *
-     * @throws InvalidPaymentWebhookException when the signature is missing/invalid or the payload is malformed
-     */
-    public function parseWebhook(Request $request): PaymentWebhookData
-    {
-        $secret = PaymentWebhookSignatureService::decryptSecret($this->settings, 'stripe_webhook_secret');
-
-        if (blank($secret)) {
-            throw new InvalidPaymentWebhookException('Stripe webhook secret is not configured.');
-        }
-
-        if (! $this->signatureService->isValid('stripe', $request, $this->settings)) {
-            throw new InvalidPaymentWebhookException('Stripe webhook signature is invalid.');
-        }
-
-        $payload = json_decode((string) $request->getContent(), true);
-
-        if (! is_array($payload)) {
-            throw new InvalidPaymentWebhookException('Stripe webhook payload is malformed.');
-        }
-
-        $event = (string) ($payload['type'] ?? '');
-        $intent = $payload['data']['object'] ?? null;
-
-        if (! is_array($intent)) {
-            throw new InvalidPaymentWebhookException('Stripe webhook payload is missing its object data.');
-        }
-
-        $reference = is_array($intent['metadata'] ?? null)
-            ? (string) ($intent['metadata']['booking_reference'] ?? '')
-            : '';
-
-        if ($reference === '' && isset($intent['id'])) {
-            $payment = BookingPayment::query()->where('provider_order_id', $intent['id'])->first();
-            $reference = $payment?->idempotency_key ?? '';
-        }
-
-        if ($reference === '') {
-            throw new InvalidPaymentWebhookException('Stripe webhook did not reference a known booking payment.');
-        }
-
-        $this->assertAmountAndCurrencyMatch($event, $intent, $reference);
-
-        $normalizedEvent = $this->normalizeEvent($event);
-
-        // Stripe has no client-side checkout-verify step (unlike Razorpay's
-        // verifyCheckout()) — this webhook is the only place the
-        // booking_payments row itself ever gets marked captured/failed,
-        // which this class's own refund() depends on to find a capturable
-        // row later.
-        $this->settlePaymentRow($normalizedEvent, $intent, $reference);
-
-        return new PaymentWebhookData(
-            event: $normalizedEvent,
-            reference: $reference,
-            reason: is_array($intent['last_payment_error'] ?? null)
-                ? ($intent['last_payment_error']['message'] ?? null)
-                : null,
-        );
     }
 
     /**

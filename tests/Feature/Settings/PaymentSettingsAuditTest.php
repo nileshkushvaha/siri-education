@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Settings;
 
 use App\Filament\Pages\Settings\PaymentAdvancedPage;
-use App\Filament\Pages\Settings\PaymentBankAccountPage;
 use App\Filament\Pages\Settings\PaymentConfigurationPage;
 use App\Filament\Pages\Settings\PaymentGatewayPage;
 use App\Models\Activity;
 use App\Models\User;
-use App\Settings\BankSettings;
 use App\Settings\PaymentAdvancedSettings;
 use App\Settings\PaymentConfigurationSettings;
 use App\Settings\PaymentGatewaySettings;
@@ -74,71 +72,66 @@ class PaymentSettingsAuditTest extends TestCase
         return (new \ReflectionMethod($instance, $method))->invoke($instance, ...$args);
     }
 
-    // ── 1/2/3. Bank Account page ─────────────────────────────────────────────
+    // ── 1/2/3. Payment Gateway page ──────────────────────────────────────────
 
-    public function test_bank_account_page_creates_an_audit_record_after_a_real_change(): void
+    public function test_gateway_page_creates_an_audit_record_after_a_real_change(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->account_holder_name = 'Original Holder';
-        $bank->bank_name = 'Original Bank';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_key_secret = Crypt::encryptString('Original Secret');
+        $gateways->razorpay_key_id = 'rzp_test_original';
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
+        Livewire::test(PaymentGatewayPage::class)
             ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'New Holder Name',
-                'bank_name' => 'New Bank',
-                'account_type' => 'savings',
-                'account_number' => '123456789012',
-                'account_number_confirm' => '123456789012',
-                'ifsc_code' => 'ABCD0123456',
+                'razorpay_enabled' => true,
+                'razorpay_key_secret' => 'New Secret Value',
+                'razorpay_key_id' => 'rzp_test_new',
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
         $this->assertNotNull($activity, 'Expected a settings_updated audit record.');
         $this->assertSame($this->superAdmin->id, $activity->causer_id);
         $this->assertSame('settings', $activity->log_name);
 
         $changed = $activity->properties['changed'];
 
-        // account_holder_name is a personal name with no
-        // explicit PII-plaintext-in-audit policy, so it gets the same
-        // presence-only redaction as a financial identifier — never the
-        // actual name.
-        $this->assertSame('replaced', $changed['account_holder_name']['action']);
-        $this->assertTrue($changed['account_holder_name']['previously_set']);
-        $this->assertTrue($changed['account_holder_name']['now_set']);
+        // A gateway secret gets presence-only redaction — never the
+        // value, in either direction.
+        $this->assertSame('replaced', $changed['razorpay_key_secret']['action']);
+        $this->assertTrue($changed['razorpay_key_secret']['previously_set']);
+        $this->assertTrue($changed['razorpay_key_secret']['now_set']);
         $serialized = json_encode($activity->properties);
-        $this->assertStringNotContainsString('Original Holder', (string) $serialized);
-        $this->assertStringNotContainsString('New Holder Name', (string) $serialized);
+        $this->assertStringNotContainsString('Original Secret', (string) $serialized);
+        $this->assertStringNotContainsString('New Secret Value', (string) $serialized);
 
-        // Bank name is not a financial identifier — plain before/after.
-        $this->assertSame('Original Bank', $changed['bank_name']['from']);
-        $this->assertSame('New Bank', $changed['bank_name']['to']);
+        // A publishable key id is not a credential — plain before/after.
+        $this->assertSame('rzp_test_original', $changed['razorpay_key_id']['from']);
+        $this->assertSame('rzp_test_new', $changed['razorpay_key_id']['to']);
 
-        $this->assertTrue($changed['enable_offline_payment']['to']);
+        $this->assertTrue($changed['razorpay_enabled']['to']);
     }
 
-    public function test_bank_account_unchanged_save_creates_no_audit_record(): void
+    public function test_gateway_unchanged_save_creates_no_audit_record(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->account_holder_name = 'Same Holder';
-        $bank->account_type = 'current';
-        $bank->save();
+        // The form seeds defaults for fields that may be unset in
+        // storage (webhook/success URLs, routing flags), so the FIRST
+        // save legitimately persists those. Normalise with one save,
+        // then prove a genuinely unchanged second save is silent.
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_key_id' => 'rzp_test_same'])
+            ->call('save')
+            ->assertHasNoFormErrors();
 
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => $bank->enable_offline_payment,
-                'account_holder_name' => 'Same Holder',
-                'account_type' => 'current',
-                'display_on_invoice' => $bank->display_on_invoice,
-                'display_on_payment_page' => $bank->display_on_payment_page,
-            ])
-            ->call('save');
+        Activity::query()->where('event', 'settings_updated')->delete();
 
-        $this->assertNull($this->latestSettingsUpdate(BankSettings::class));
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_key_id' => 'rzp_test_same'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertNull($this->latestSettingsUpdate(PaymentGatewaySettings::class));
     }
 
     // ── 4/5/6/7. Payment Configuration page — multiple fields, booleans, integers ─

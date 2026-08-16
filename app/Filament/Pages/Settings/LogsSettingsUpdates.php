@@ -220,7 +220,12 @@ trait LogsSettingsUpdates
             return true;
         }
 
-        foreach (['password', 'secret', 'token', 'api_key', 'private_key', 'signature', 'salt_key', 'credentials_json'] as $needle) {
+        // `certificate` and `merchant_key` cover Apple Pay's merchant
+        // identity material, which is credential data stored encrypted
+        // exactly like a gateway secret but matches none of the other
+        // needles — without them the audit trail would record the
+        // ciphertext as an ordinary before/after value.
+        foreach (['password', 'secret', 'token', 'api_key', 'private_key', 'signature', 'salt_key', 'credentials_json', 'certificate', 'merchant_key'] as $needle) {
             if (str_contains(strtolower($key), $needle)) {
                 return true;
             }

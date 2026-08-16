@@ -11,7 +11,7 @@ use Tests\TestCase;
 /**
  * "Payment Settings" is satisfied by 4 existing,
  * already-tested-via-admin-UI classes: PaymentConfigurationSettings,
- * PaymentGatewaySettings, PaymentAdvancedSettings, BankSettings. This
+ * PaymentGatewaySettings, PaymentAdvancedSettings. This
  * test covers PaymentConfigurationSettings as the representative core
  * of that group — see docs/architecture/platform-settings-feature-flags.md.
  */

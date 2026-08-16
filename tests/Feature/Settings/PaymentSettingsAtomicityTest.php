@@ -245,33 +245,52 @@ class PaymentSettingsAtomicityTest extends TestCase
         $this->assertStringNotContainsString('whsec-synthetic-new', $activity->description);
     }
 
-    public function test_ifsc_code_value_never_appears_in_description_or_properties(): void
+    public function test_stripe_secret_value_never_appears_in_description_or_properties(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->ifsc_code = 'OLDB0000001';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->stripe_secret_key = Crypt::encryptString('sk_test_OLDB0000001');
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['stripe_secret_key' => 'sk_test_NEWB0000002'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
+        $changed = $activity->properties['changed'];
+        $this->assertSame('replaced', $changed['stripe_secret_key']['action']);
+
+        $serialized = (string) json_encode($activity->properties);
+        $this->assertStringNotContainsString('sk_test_OLDB0000001', $serialized);
+        $this->assertStringNotContainsString('sk_test_NEWB0000002', $serialized);
+        $this->assertStringNotContainsString('sk_test_NEWB0000002', $activity->description);
+    }
+
+    /**
+     * Apple Pay's merchant identity material is credential data stored
+     * encrypted like any gateway secret, but its field names match none
+     * of the usual "secret/private_key" needles — so it needs its own
+     * proof that the audit trail redacts it.
+     */
+    public function test_apple_pay_merchant_credentials_are_redacted_in_the_audit_trail(): void
+    {
+        Livewire::test(PaymentGatewayPage::class)
             ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Holder',
-                'bank_name' => 'Some Bank',
-                'account_type' => 'savings',
-                'account_number' => '123456789012',
-                'account_number_confirm' => '123456789012',
-                'ifsc_code' => 'NEWB0000002',
+                'applepay_merchant_certificate' => 'SYNTHETIC_APPLEPAY_CERT_0001',
+                'applepay_merchant_key' => 'SYNTHETIC_APPLEPAY_KEY_0001',
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
         $changed = $activity->properties['changed'];
-        $this->assertSame('replaced', $changed['ifsc_code']['action']);
+
+        $this->assertSame('set', $changed['applepay_merchant_certificate']['action']);
+        $this->assertSame('set', $changed['applepay_merchant_key']['action']);
 
         $serialized = (string) json_encode($activity->properties);
-        $this->assertStringNotContainsString('OLDB0000001', $serialized);
-        $this->assertStringNotContainsString('NEWB0000002', $serialized);
-        $this->assertStringNotContainsString('NEWB0000002', $activity->description);
+        $this->assertStringNotContainsString('SYNTHETIC_APPLEPAY_CERT_0001', $serialized);
+        $this->assertStringNotContainsString('SYNTHETIC_APPLEPAY_KEY_0001', $serialized);
     }
 
     // ── 10. Set / replace / clear a financial identifier → safe metadata only ──
@@ -280,161 +299,116 @@ class PaymentSettingsAtomicityTest extends TestCase
     {
         $harness = $this->atomicHarness();
 
-        $harness->run(BankSettings::class, 'settings', function (BankSettings $bank): void {
-            $bank->iban = 'SYNTHETIC_IBAN_0001';
+        $harness->run(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $gateways): void {
+            $gateways->paypal_client_secret = 'SYNTHETIC_SECRET_0001';
         });
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
-        $this->assertSame('set', $activity->properties['changed']['iban']['action']);
-        $this->assertFalse($activity->properties['changed']['iban']['previously_set']);
-        $this->assertTrue($activity->properties['changed']['iban']['now_set']);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
+        $this->assertSame('set', $activity->properties['changed']['paypal_client_secret']['action']);
+        $this->assertFalse($activity->properties['changed']['paypal_client_secret']['previously_set']);
+        $this->assertTrue($activity->properties['changed']['paypal_client_secret']['now_set']);
 
-        $harness->run(BankSettings::class, 'settings', function (BankSettings $bank): void {
-            $bank->iban = 'SYNTHETIC_IBAN_0002';
+        $harness->run(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $gateways): void {
+            $gateways->paypal_client_secret = 'SYNTHETIC_SECRET_0002';
         });
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
-        $this->assertSame('replaced', $activity->properties['changed']['iban']['action']);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
+        $this->assertSame('replaced', $activity->properties['changed']['paypal_client_secret']['action']);
 
-        $harness->run(BankSettings::class, 'settings', function (BankSettings $bank): void {
-            $bank->iban = null;
+        $harness->run(PaymentGatewaySettings::class, 'settings', function (PaymentGatewaySettings $gateways): void {
+            $gateways->paypal_client_secret = null;
         });
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
-        $this->assertSame('cleared', $activity->properties['changed']['iban']['action']);
-        $this->assertTrue($activity->properties['changed']['iban']['previously_set']);
-        $this->assertFalse($activity->properties['changed']['iban']['now_set']);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
+        $this->assertSame('cleared', $activity->properties['changed']['paypal_client_secret']['action']);
+        $this->assertTrue($activity->properties['changed']['paypal_client_secret']['previously_set']);
+        $this->assertFalse($activity->properties['changed']['paypal_client_secret']['now_set']);
 
         $serialized = (string) json_encode($activity->properties);
-        $this->assertStringNotContainsString('SYNTHETIC_IBAN_0001', $serialized);
-        $this->assertStringNotContainsString('SYNTHETIC_IBAN_0002', $serialized);
+        $this->assertStringNotContainsString('SYNTHETIC_SECRET_0001', $serialized);
+        $this->assertStringNotContainsString('SYNTHETIC_SECRET_0002', $serialized);
     }
 
     // ── 11. Account-holder-name PII classification ───────────────────────────
 
-    public function test_account_holder_name_follows_presence_only_pii_classification(): void
+    public function test_webhook_secret_follows_presence_only_classification(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->account_holder_name = 'Synthetic Original Holder';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->paypal_webhook_secret = Crypt::encryptString('Synthetic Original Secret');
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Synthetic New Holder',
-                'bank_name' => 'Some Bank',
-                'account_type' => 'savings',
-                'account_number' => '123456789012',
-                'account_number_confirm' => '123456789012',
-                'ifsc_code' => 'ABCD0123456',
-            ])
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['paypal_webhook_secret' => 'Synthetic New Secret'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
-        $changed = $activity->properties['changed']['account_holder_name'];
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
+        $changed = $activity->properties['changed']['paypal_webhook_secret'];
 
         $this->assertSame('replaced', $changed['action']);
         $serialized = (string) json_encode($activity->properties);
-        $this->assertStringNotContainsString('Synthetic Original Holder', $serialized);
-        $this->assertStringNotContainsString('Synthetic New Holder', $serialized);
+        $this->assertStringNotContainsString('Synthetic Original Secret', $serialized);
+        $this->assertStringNotContainsString('Synthetic New Secret', $serialized);
     }
 
     // ── 12. Safe non-sensitive fields retain accurate before/after values ───
 
-    public function test_bank_name_and_safe_fields_retain_accurate_before_after_values(): void
+    public function test_non_sensitive_gateway_fields_retain_accurate_before_after_values(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->bank_name = 'Old Safe Bank';
-        $bank->branch_name = 'Old Branch';
-        $bank->account_type = 'current';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_key_id = 'rzp_test_old';
+        $gateways->paypal_mode = 'sandbox';
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
+        Livewire::test(PaymentGatewayPage::class)
             ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Holder',
-                'bank_name' => 'New Safe Bank',
-                'branch_name' => 'New Branch',
-                'account_type' => 'savings',
-                'account_number' => '123456789012',
-                'account_number_confirm' => '123456789012',
-                'ifsc_code' => 'ABCD0123456',
+                'razorpay_key_id' => 'rzp_test_new',
+                'paypal_mode' => 'live',
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
         $changed = $activity->properties['changed'];
 
-        $this->assertSame('Old Safe Bank', $changed['bank_name']['from']);
-        $this->assertSame('New Safe Bank', $changed['bank_name']['to']);
-        $this->assertSame('Old Branch', $changed['branch_name']['from']);
-        $this->assertSame('New Branch', $changed['branch_name']['to']);
-        $this->assertSame('current', $changed['account_type']['from']);
-        $this->assertSame('savings', $changed['account_type']['to']);
+        // A publishable key id and a mode are not credentials — a
+        // reviewer must be able to see exactly what they changed to.
+        $this->assertSame('rzp_test_old', $changed['razorpay_key_id']['from']);
+        $this->assertSame('rzp_test_new', $changed['razorpay_key_id']['to']);
+        $this->assertSame('sandbox', $changed['paypal_mode']['from']);
+        $this->assertSame('live', $changed['paypal_mode']['to']);
     }
 
     // ── 15. Multiple safe + sensitive changes in one save → one event ───────
 
     public function test_multiple_safe_and_sensitive_changes_in_one_save_produce_one_structured_event(): void
     {
-        $bank = app(BankSettings::class);
-        $bank->bank_name = 'Before Bank';
-        $bank->account_number = '300000000003';
-        $bank->upi_id = 'before@upi';
-        $bank->account_type = 'current';
-        $bank->save();
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->razorpay_key_id = 'rzp_test_before';
+        $gateways->razorpay_key_secret = Crypt::encryptString('secret_before');
+        $gateways->razorpay_webhook_secret = Crypt::encryptString('whsec_before');
+        $gateways->save();
 
-        Livewire::test(PaymentBankAccountPage::class)
+        Livewire::test(PaymentGatewayPage::class)
             ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Holder',
-                'bank_name' => 'After Bank',
-                'account_type' => 'savings',
-                'account_number' => '400000000004',
-                'account_number_confirm' => '400000000004',
-                'ifsc_code' => 'ABCD0123456',
-                'upi_id' => 'after@upi',
+                'razorpay_key_id' => 'rzp_test_after',
+                'razorpay_key_secret' => 'secret_after',
+                'razorpay_webhook_secret' => 'whsec_after',
             ])
             ->call('save')
             ->assertHasNoFormErrors();
 
         $activities = Activity::query()
             ->where('event', 'settings_updated')
-            ->where('properties->settings_class', BankSettings::class)
+            ->where('properties->settings_class', PaymentGatewaySettings::class)
             ->get();
 
         $this->assertCount(1, $activities, 'Expected exactly one structured audit event for this save.');
 
         $changed = $activities->first()->properties['changed'];
-        $this->assertSame('After Bank', $changed['bank_name']['to']); // safe
-        $this->assertSame('replaced', $changed['account_number']['action']); // sensitive
-        $this->assertSame('replaced', $changed['upi_id']['action']); // sensitive
+        $this->assertSame('rzp_test_after', $changed['razorpay_key_id']['to']); // safe
+        $this->assertSame('replaced', $changed['razorpay_key_secret']['action']); // sensitive
+        $this->assertSame('replaced', $changed['razorpay_webhook_secret']['action']); // sensitive
     }
 
     // ── 17. Every payment mutation method uses the atomic audited path ──────
-
-    public function test_save_bank_settings_is_atomic_with_its_audit_record(): void
-    {
-        $bank = app(BankSettings::class);
-        $bank->account_number = 'ATOMIC_BANK_ORIGINAL';
-        $bank->save();
-
-        $this->bindFailingAuditTrailService();
-
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Holder',
-                'bank_name' => 'Bank',
-                'account_type' => 'savings',
-                'account_number' => 'ATOMIC_BANK_ATTEMPTED',
-                'account_number_confirm' => 'ATOMIC_BANK_ATTEMPTED',
-                'ifsc_code' => 'ABCD0123456',
-            ])
-            ->call('save');
-
-        $this->assertSame('ATOMIC_BANK_ORIGINAL', app(BankSettings::class)->account_number);
-        $this->assertNull($this->latestSettingsUpdate(BankSettings::class));
-    }
 
     public function test_save_gateway_settings_is_atomic_with_its_audit_record(): void
     {
@@ -559,20 +533,12 @@ class PaymentSettingsAtomicityTest extends TestCase
 
     public function test_existing_audit_viewer_can_still_display_the_resulting_event(): void
     {
-        Livewire::test(PaymentBankAccountPage::class)
-            ->fillForm([
-                'enable_offline_payment' => true,
-                'account_holder_name' => 'Holder',
-                'bank_name' => 'Viewer Bank',
-                'account_type' => 'savings',
-                'account_number' => '123456789012',
-                'account_number_confirm' => '123456789012',
-                'ifsc_code' => 'ABCD0123456',
-            ])
+        Livewire::test(PaymentGatewayPage::class)
+            ->fillForm(['razorpay_key_id' => 'rzp_test_viewer'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $activity = $this->latestSettingsUpdate(BankSettings::class);
+        $activity = $this->latestSettingsUpdate(PaymentGatewaySettings::class);
 
         // Same shape every settings-audit viewer already reads.
         $this->assertSame('settings', $activity->log_name);

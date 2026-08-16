@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Package\Services;
 
+use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Services\PaymentProviderResolver;
 use App\Models\InstructorPackageProposal;
@@ -41,6 +42,7 @@ final class PackagePurchaseService
         private readonly AuditTrailService $audit,
         private readonly PaymentCheckoutService $checkout,
         private readonly PaymentProviderResolver $providers,
+        private readonly PaymentCollectionEligibilityServiceInterface $collectionEligibility,
         private readonly PaymentService $payments,
     ) {}
 
@@ -203,8 +205,30 @@ final class PackagePurchaseService
      */
     private function resolveProviderFor(User $student, StudentPackagePurchase $purchase): string
     {
+        $countryIso2 = $student->profile?->country?->iso2;
+
+        // The market gate, applied to packages on the same terms as
+        // booking checkout: rollout scope, Country.status, routing,
+        // provider capability. Without this, an inactive country or a
+        // paused rollout would stop a student paying for a lesson but
+        // still let them buy a package — a control that holds on one
+        // payable and not another is not a control.
+        $eligibility = $this->collectionEligibility->resolve(
+            $countryIso2,
+            (string) $purchase->currency_code,
+            'booking_payment',
+        );
+
+        if (! $eligibility->isEligible) {
+            throw new PackageException(
+                $eligibility->summary() !== ''
+                    ? $eligibility->summary()
+                    : 'Payments are not available for your country yet.',
+            );
+        }
+
         try {
-            $provider = $this->providers->current($student->profile?->country?->iso2);
+            $provider = $this->providers->current($countryIso2);
         } catch (BookingException $e) {
             throw new PackageException($e->getMessage());
         }

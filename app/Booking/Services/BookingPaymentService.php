@@ -8,6 +8,7 @@ use App\Booking\Contracts\BookingPaymentReconciliationServiceInterface;
 use App\Booking\Contracts\BookingPaymentServiceInterface;
 use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
+use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\CancellationRefundDecision;
@@ -73,6 +74,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         private readonly StudentLifecycleService $studentLifecycle,
         private readonly CountryFeatureResolver $countryFeatures,
         private readonly CountryResolver $countryResolver,
+        private readonly PaymentCollectionEligibilityServiceInterface $collectionEligibility,
     ) {}
 
     public function initiate(Booking $booking): PaymentIntentData
@@ -122,8 +124,7 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
         // write: it consults settings and country routing only, and a
         // disabled/misconfigured provider must fail without having
         // created an obligation.
-        $providerKey = $this->providers->currentKey($this->resolveCountryIso2($booking));
-        $this->providers->assertSupportsCurrency($providerKey, (string) $booking->currency);
+        $providerKey = $this->assertCollectionAllowed($booking);
 
         [$booking, $obligation] = DB::transaction(function () use ($booking, $providerKey): array {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
@@ -927,6 +928,57 @@ final class BookingPaymentService implements BookingPaymentServiceInterface
     private function resolveCountryIso2(Booking $booking): ?string
     {
         return $booking->student?->profile?->country?->iso2;
+    }
+
+    /**
+     * The market gate for a real payment, and the reason
+     * PaymentCollectionEligibilityService is no longer advisory.
+     *
+     * It used to be that `initiate()` called the resolver directly, so
+     * `payment_collection_rollout_scope` gated nothing that moved money —
+     * it only shaped a read-only preview. Anything that can be set to
+     * "india only" while a US student still checks out is not a control.
+     * Now the same service decides both, so the preview and the payment
+     * can never disagree.
+     *
+     * Order matters: this runs BEFORE the booking-row transaction and
+     * before any obligation or attempt is written, so a refusal leaves
+     * no money state behind. The resolver's own currency assertion is
+     * kept as a second, narrower guard — eligibility answers "is this
+     * market open", `assertSupportsCurrency()` answers "can this account
+     * actually collect this currency", and the second is the one that
+     * must never be skipped.
+     *
+     * @return string the resolved provider key
+     *
+     * @throws BookingException when this country/currency may not be collected right now
+     */
+    private function assertCollectionAllowed(Booking $booking): string
+    {
+        $currency = (string) $booking->currency;
+
+        $eligibility = $this->collectionEligibility->resolve(
+            $this->resolveCountryIso2($booking),
+            $currency,
+            'booking_payment',
+        );
+
+        if (! $eligibility->isEligible || $eligibility->provider === null) {
+            // Safe messages only — never the raw resolver text, which can
+            // name providers and credential state.
+            throw new BookingException(
+                $eligibility->summary() !== ''
+                    ? $eligibility->summary()
+                    : 'Payments are not available for your country yet.',
+            );
+        }
+
+        $providerKey = $eligibility->provider;
+
+        $this->providers->assertKeyUsable($providerKey);
+        $this->providers->assertSupportsCurrency($providerKey, $currency);
+
+        return $providerKey;
     }
 
     /**

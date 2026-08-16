@@ -52,6 +52,135 @@ readiness.
    a separately-permissioned exception action, never the default, and
    the two are mutually exclusive per payment.
 
+### Version 1 market strategy — student collection
+
+One real gateway. Razorpay serves every launch market; Stripe is fully
+implemented and tested but **deferred**, and no country routes to it.
+
+| Country | Education system | Term | Billing currency | Collection |
+|---|---|---|---|---|
+| India | IN-SEC | Class | INR | Razorpay domestic |
+| United States | US-K12 | Grade | USD | Razorpay International |
+| United Kingdom | UK-SEC | Year | GBP | Razorpay International |
+| Australia | AU-AC | Year | AUD | Razorpay International |
+| Canada | CA-SEC | Grade | CAD | Razorpay International |
+| United Arab Emirates | AE-SEC | Grade | AED | Razorpay International |
+| Singapore | SG-SEC | Grade | SGD | Razorpay International |
+| New Zealand | NZ-NC | Year | NZD | **Blocked** — currency unverified |
+| Saudi Arabia | SA-SEC | Grade | SAR | **Blocked** — currency unverified |
+
+**Every other country is inactive** and cannot register, price, book, or
+pay.
+
+#### The canonical market source
+
+`Country` owns market identity, and `CountrySeeder::LAUNCH_MARKETS` is
+the one place the launch set is declared:
+
+- `Country.status` — is this a market at all? Read by registration
+  (`scopeAvailableForRegistration`), pricing, booking, and collection.
+  Only launch markets are Active; every other ISO country is seeded
+  Inactive and kept purely as reference data.
+- `Country.default_currency_id` — the market's billing currency.
+- `Country.payment_routing` — which provider serves it, explicitly.
+- `CountryEducationSystem` → `EducationSystem` — academics, including
+  the student-facing level term (`level_term_singular/plural`), so no
+  code branches on country for terminology.
+
+No payment class carries its own country list. Opening a market is a
+country row plus pricing rows; closing one is `status = inactive`.
+
+#### Three gates, three different questions
+
+1. **`payment_collection_rollout_scope`** — is collection running at
+   all? `active_country_routing` (default) or `disabled`. There is
+   deliberately no per-market mode: a single-country scope would put
+   market policy in an enum where it drifts from the country data.
+   Enforced on the real checkout path by
+   `PaymentCollectionEligibilityService`, for bookings and packages
+   alike — not merely previewed.
+2. **`Country.status` + `Country.payment_routing`** — is this market
+   open, and who serves it?
+3. **Provider capability** — can this account actually collect this
+   currency? `RazorpayPaymentProvider::approvedCurrencies()`.
+
+#### Razorpay capability: domestic vs international
+
+INR is unconditional — domestic collection never depends on the
+international attestation, so activating or revoking international
+payments can never break India.
+
+International currencies require **both**:
+
+- `razorpay_international_enabled` — an operator's attestation that
+  Razorpay approved International Payments on the merchant account, and
+- `razorpay_international_currencies` — the specific currencies that
+  operator confirmed.
+
+Neither is inferred from credentials. Razorpay publishes no API
+reporting international approval, and `rzp_live_*` keys prove nothing: a
+domestic-only account holds identical-looking keys and will accept a
+foreign-currency order, then decline it at capture, after the student has
+entered card details.
+
+The currency list is per-account, not global. Razorpay's own
+documentation states that currencies outside their standard set require a
+support request, so no static list in this codebase can be authoritative
+about a specific merchant. `DEFAULT_INTERNATIONAL_CURRENCIES` seeds the
+setting with the six currencies Razorpay's public documentation confirms
+(USD, GBP, AUD, CAD, AED, SGD); **NZD and SAR are excluded** because they
+could not be verified. Those two markets are academically live and
+payment-blocked until an operator confirms them with Razorpay and adds
+them to the setting — configuration, not a code change.
+
+#### Merchant settlement is not the customer's transaction
+
+SIRI records what the STUDENT paid. A UK booking is `3900 GBP` on the
+attempt, the obligation, and the invoice, and it stays that way forever.
+
+Razorpay settles the Indian merchant account in INR, always, converting
+at its own rate on the payment date (their `base_amount` field). That is
+a real fact about the business's bank account and a completely different
+one from what the customer was charged. This application deliberately
+does **not** model it: no FX ledger, no settlement reconciliation, no INR
+shadow amount. Rewriting a student's currency to INR because the merchant
+was settled in INR would destroy the only record of what they agreed to
+pay. If merchant-side FX accounting is needed later it belongs in its own
+domain, reading provider settlement reports.
+
+### Refund initiation — operations constraint (Version 1)
+
+Provider refunds must be initiated through the SIRI admin refund
+workflow (Finance → Booking Payments → **Refund via Provider**, gated by
+`RefundViaProvider:BookingPayment`). Direct refunds issued from the
+Razorpay or Stripe dashboard are **not** synchronized into SIRI in
+Version 1.
+
+The reason is narrow and deliberate: refund webhooks are not consumed.
+`PaymentWebhookEventParser` resolves an attempt from
+`payload.payment.entity`, whereas a Razorpay `refund.processed` event
+carries `payload.refund.entity`, so the event is acknowledged as
+unrecognised and nothing is written. That is the intended Version 1
+behaviour — the admin action is synchronous, so there is no outcome for
+a webhook to deliver — and there is a test asserting it.
+
+The consequence to brief finance/support staff on: a dashboard-issued
+refund moves real money while SIRI still shows the payment as captured,
+and the booking, invoice, and student-visible payment history stay
+unchanged. Reconciliation will not repair it, because it too only polls
+payment status. Refunding through the admin action is what keeps the
+two systems in agreement.
+
+`BookingPaymentService::recordRefund()` is the seam a future
+`refund.processed` handler would call — it marks the obligation
+`provider_refunded_externally` and cancels the booking. It has **no
+production caller today** and is deliberately left uncalled rather than
+given a synthetic one; it is retained because it is the reconciliation
+entry point that closes this gap when dashboard refunds become
+operationally supported, and because it already encodes the
+transactional pairing (refund + cancel) that such a handler must not
+re-derive.
+
 ## 2. Complete architecture
 
 ```mermaid

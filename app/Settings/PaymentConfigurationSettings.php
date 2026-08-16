@@ -28,8 +28,6 @@ class PaymentConfigurationSettings extends Settings
 
     public bool $auto_capture_payment;
 
-    public bool $refund_enabled;
-
     public static function group(): string
     {
         return 'payment_configuration';

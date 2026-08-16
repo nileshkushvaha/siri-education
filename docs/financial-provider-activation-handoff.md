@@ -108,7 +108,7 @@ any of them for the other:
   country or currency is supported by this adapter.
 - Stripe international collection remains disabled
   (`stripe_enabled = false`, `payment_collection_rollout_scope =
-  india_razorpay_only`) until verified.
+  active_country_routing`; markets are gated by Country.status) until verified.
 - Razorpay remains the current, only production-proven India/INR
   collection route.
 - The student collection provider never determines the instructor
@@ -166,7 +166,7 @@ payout_provider = fake
 payout_rollout_scope = india_inr_only
 razorpayx_enabled = false
 
-payment_collection_rollout_scope = india_razorpay_only
+payment_collection_rollout_scope = active_country_routing
 stripe_enabled = false
 ```
 

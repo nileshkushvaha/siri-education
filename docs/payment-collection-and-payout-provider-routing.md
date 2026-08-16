@@ -106,10 +106,10 @@ provider or geography.
 flowchart TD
     S[Student checkout] --> SC{payment_collection_rollout_scope}
     SC -->|disabled| SN[no route]
-    SC -->|india_razorpay_only| SI{country == IN?}
+    SC -->|disabled| BLOCK[Refused]
     SI -->|no| SN
     SI -->|yes| SR[PaymentProviderResolver:\nCountry.payment_routing → default_provider\n→ legacy BookingSettings::payment_provider]
-    SC -->|country_capability_routing| SR
+    SC -->|active_country_routing| SR
     SR --> SCap[provider.capabilities environment/currency/health check]
 
     P[Instructor withdrawal] --> PC{payout_rollout_scope}
@@ -133,7 +133,7 @@ row itself (`BookingPayment.provider`, `InstructorPayoutAttempt.provider`)
 collection provider with a complete, tested, end-to-end flow (order
 creation → checkout signature verification → webhook capture, all
 audited in `tests/Feature/Booking/RazorpayCheckoutTest.php`).
-`payment_collection_rollout_scope` defaults to `india_razorpay_only`,
+`payment_collection_rollout_scope` defaults to `active_country_routing`,
 matching this reality exactly — not aspirational configuration.
 
 ## 8. US/UK (international) collection strategy
@@ -146,7 +146,7 @@ is not built in this phase… this class is the complete, tested backend
 half."* Accordingly `capabilities()` declares
 `supportedStudentCountries = []` (nothing verified yet, so nothing is
 asserted) rather than guessing. Moving `payment_collection_rollout_scope`
-to `country_capability_routing` should wait for that frontend
+to `active_country_routing` should wait for that frontend
 integration and a verified live Stripe account — this phase leaves the
 switch at the current safe value and documents the blocker instead of
 flipping it.
@@ -460,7 +460,7 @@ route eligible," the same way anyone may ask "what does this cost").
 ## 24. Activation checklist (routing-specific additions)
 
 On top of the Phase 16A checklist (unchanged): before moving
-`payment_collection_rollout_scope` to `country_capability_routing`,
+`payment_collection_rollout_scope` to `active_country_routing`,
 confirm (a) a verified live Stripe account and (b) the frontend Stripe.js/
 Elements integration exists (§8) — neither exists yet. Before moving
 `payout_rollout_scope` to `provider_capability_routing`, confirm a real

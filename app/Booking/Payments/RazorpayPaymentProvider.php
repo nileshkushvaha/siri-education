@@ -20,7 +20,6 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Currency;
 use App\Models\Payment;
-use App\Payments\Enums\PaymentStatus;
 use App\Services\Payment\PaymentWebhookSignatureService;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -29,11 +28,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Razorpay Orders API + Checkout.js integration. INR-only in this
- * phase — any other booking currency is rejected before an order is
- * ever created. Amounts are always integer paise; the decimal price
- * on Booking is converted at this boundary, never stored as float
- * anywhere in the payment record.
+ * Razorpay Orders API + Checkout.js integration, covering both approved
+ * Version 1 markets: India/INR and — once International Payments is
+ * activated on the merchant account — United States/USD. Any other
+ * booking currency is rejected before an order is ever created; see
+ * approvedCurrencies().
+ *
+ * Amounts are always integer minor units derived from the currency's
+ * own exponent (`currencies.minor_units`), never a hardcoded x100. The
+ * decimal price on Booking is converted at this boundary and never
+ * stored as a float anywhere in the payment record.
+ *
+ * SIRI records the CUSTOMER's transaction: a USD booking stays 4900 USD
+ * on the attempt, the obligation, and the invoice. Razorpay separately
+ * settles the Indian merchant account in INR at its own FX rate — that
+ * is a provider-settlement fact this application deliberately does not
+ * model, and it must never be allowed to rewrite the student's currency.
  *
  * verifyCheckout() handles the client-side Checkout.js callback
  * (order_id|payment_id HMAC'd with the key secret). It is deliberately
@@ -51,7 +61,31 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 {
     private const KEY = 'razorpay';
 
-    private const SUPPORTED_CURRENCY = 'INR';
+    /** The domestic currency, always collectable when Razorpay is configured at all. */
+    private const DOMESTIC_CURRENCY = 'INR';
+
+    /**
+     * The international currencies SIRI will collect once the merchant
+     * account is attested — the DEFAULT for
+     * `razorpay_international_currencies`, not a hardcoded ceiling.
+     *
+     * Razorpay's own list runs to 130+ currencies and, critically, is
+     * per-merchant: their documentation says a currency outside the
+     * standard set requires a support request, so no static list in this
+     * codebase can be authoritative about a specific account. That is
+     * why the operative value is a setting an operator confirms against
+     * their Dashboard, and why this constant only seeds it.
+     *
+     * These six are the launch currencies Razorpay's public
+     * documentation confirms. NZD and SAR are deliberately ABSENT: they
+     * could not be verified from official documentation, so enabling
+     * them is an explicit operator action after checking the account
+     * rather than an assumption baked into code. Their markets stay
+     * academically live and payment-blocked until then.
+     *
+     * @var list<string>
+     */
+    public const DEFAULT_INTERNATIONAL_CURRENCIES = ['USD', 'GBP', 'AUD', 'CAD', 'AED', 'SGD'];
 
     public function __construct(
         private readonly PaymentGatewaySettings $settings,
@@ -68,12 +102,13 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
     {
         $this->assertConfigured();
 
-        $currencyCode = strtoupper((string) ($booking->currency ?? self::SUPPORTED_CURRENCY));
+        $currencyCode = strtoupper((string) ($booking->currency ?? self::DOMESTIC_CURRENCY));
+        $approved = self::approvedCurrencies($this->settings);
 
-        if ($currencyCode !== self::SUPPORTED_CURRENCY) {
+        if (! in_array($currencyCode, $approved, true)) {
             throw new BookingException(sprintf(
                 'Razorpay only supports %s in this phase (booking currency: %s).',
-                self::SUPPORTED_CURRENCY,
+                implode('/', $approved),
                 $currencyCode,
             ));
         }
@@ -90,7 +125,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             return $this->intentFrom($booking, $reference, $reusable);
         }
 
-        $amountMinor = $this->toMinorUnits((float) $booking->price);
+        $amountMinor = $this->toMinorUnits((float) $booking->price, $currencyCode);
 
         try {
             $payment = BookingPayment::query()->create([
@@ -98,7 +133,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
                 'user_id' => $booking->student_id,
                 'provider' => self::KEY,
                 'amount_minor' => $amountMinor,
-                'currency_code' => self::SUPPORTED_CURRENCY,
+                'currency_code' => $currencyCode,
                 'status' => BookingPaymentRecordStatus::Pending,
                 'idempotency_key' => $reference,
                 'metadata' => ['receipt' => $reference],
@@ -125,7 +160,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         try {
             $order = $this->client->createOrder($this->keyId(), $this->keySecret(), [
                 'amount' => $amountMinor,
-                'currency' => self::SUPPORTED_CURRENCY,
+                'currency' => $currencyCode,
                 'receipt' => $reference,
                 'notes' => [
                     'booking_id' => $booking->id,
@@ -154,47 +189,6 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         $payment->forceFill(['provider_order_id' => (string) ($order['id'] ?? '')])->save();
 
         return $this->intentFrom($booking, $reference, $payment);
-    }
-
-    public function refund(Booking $booking): void
-    {
-        $this->assertConfigured();
-
-        // Same cutover correction as verifyCheckout(): the provider
-        // payment id identifying WHAT to refund lives on the settled
-        // Payment attempt, not on the obligation row. Reading it from
-        // `booking_payments` found nothing after the cutover, so every
-        // refund failed with "no captured payment to refund" even
-        // though the money had plainly been collected.
-        $obligation = BookingPayment::query()->where('booking_id', $booking->id)->first();
-
-        $attempt = $obligation === null
-            ? null
-            : Payment::query()
-                ->forPayable(BookingPayment::PAYABLE_TYPE, (string) $obligation->getKey())
-                ->where('status', PaymentStatus::Paid)
-                ->whereNotNull('provider_payment_id')
-                ->latest('paid_at')
-                ->first();
-
-        if ($attempt === null) {
-            throw new BookingException(sprintf('Booking %s has no captured Razorpay payment to refund.', $booking->reference));
-        }
-
-        try {
-            // The amount refunded is the amount actually COLLECTED by
-            // that attempt — never the obligation's current figure or a
-            // re-derived price.
-            $this->client->refundPayment($this->keyId(), $this->keySecret(), (string) $attempt->provider_payment_id, [
-                'amount' => $attempt->amount_minor,
-            ]);
-        } catch (GatewayRequestException $e) {
-            throw new BookingException('Razorpay refund failed: '.$e->getMessage());
-        }
-
-        // The OBLIGATION is what becomes refunded — that is the
-        // booking-level fact the rest of the domain reads.
-        $obligation->forceFill(['status' => BookingPaymentRecordStatus::Refunded])->save();
     }
 
     /**
@@ -344,7 +338,7 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
             bookingId: $booking->id,
             reference: $reference,
             amount: (string) $booking->price,
-            currency: self::SUPPORTED_CURRENCY,
+            currency: (string) $payment->currency_code,
             status: $payment->status->value,
             checkoutUrl: null,
         );
@@ -447,7 +441,43 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
 
     public function supportedCurrencies(): array
     {
-        return [self::SUPPORTED_CURRENCY];
+        return self::approvedCurrencies($this->settings);
+    }
+
+    /**
+     * The currencies this Razorpay account may collect right now.
+     *
+     * INR is unconditional — domestic collection never depends on the
+     * international attestation, so activating or revoking international
+     * payments can never break India.
+     *
+     * The international set applies only when an operator has attested
+     * that Razorpay activated International Payments on the merchant
+     * account (`razorpay_international_enabled`), and is then limited to
+     * the currencies that operator confirmed
+     * (`razorpay_international_currencies`). Neither is inferred from
+     * live credentials, which a domestic-only account also has.
+     *
+     * Static and settings-driven so PaymentProviderResolver can ask the
+     * same question during routing without constructing a provider, and
+     * so there is exactly ONE definition of what Razorpay may collect.
+     *
+     * @return list<string>
+     */
+    public static function approvedCurrencies(PaymentGatewaySettings $settings): array
+    {
+        if (! $settings->razorpay_international_enabled) {
+            return [self::DOMESTIC_CURRENCY];
+        }
+
+        $international = array_values(array_unique(array_map(
+            static fn (string $code): string => strtoupper(trim($code)),
+            $settings->razorpay_international_currencies,
+        )));
+
+        // INR is domestic and never depends on the international
+        // attestation, so it can never be removed by editing that list.
+        return [self::DOMESTIC_CURRENCY, ...array_values(array_diff($international, [self::DOMESTIC_CURRENCY]))];
     }
 
     private function assertConfigured(): void
@@ -475,22 +505,34 @@ final class RazorpayPaymentProvider implements PaymentProviderInterface
         return (string) PaymentWebhookSignatureService::decryptSecret($this->settings, 'razorpay_key_secret');
     }
 
-    private function toMinorUnits(float $amount): int
+    private function toMinorUnits(float $amount, string $currencyCode): int
     {
-        $minorUnits = Currency::query()->where('code', self::SUPPORTED_CURRENCY)->value('minor_units') ?? 2;
+        $minorUnits = Currency::query()->where('code', $currencyCode)->value('minor_units') ?? 2;
 
         return (int) round($amount * (10 ** $minorUnits));
     }
 
-    /** India-focused, INR-only in this phase — a real account may later be verified for additional currencies/methods, never assumed here. */
+    /**
+     * Technical provider capability, kept separate from market rollout.
+     *
+     * `supportedStudentCountries` is deliberately EMPTY — read by
+     * `supportsStudentCountry()` as "no technical restriction", not "no
+     * country supported". Razorpay does not care which country a student
+     * sits in; what SIRI approves is a COMMERCIAL decision, and it is
+     * expressed where it belongs: the rollout scope, per-country
+     * `payment_routing`, and the approved-currency list above (a market
+     * cannot transact without a priced currency this account may
+     * collect). Putting a market allowlist here would duplicate that
+     * policy in a class whose job is describing the gateway.
+     */
     public function capabilities(): PaymentProviderCapabilities
     {
         return new PaymentProviderCapabilities(
             provider: self::KEY,
             environment: app()->environment(),
-            supportedStudentCountries: ['IN'],
-            supportedBillingCurrencies: [self::SUPPORTED_CURRENCY],
-            supportedCollectionCurrencies: [self::SUPPORTED_CURRENCY],
+            supportedStudentCountries: [],
+            supportedBillingCurrencies: self::approvedCurrencies($this->settings),
+            supportedCollectionCurrencies: self::approvedCurrencies($this->settings),
             supportedTransactionTypes: ['booking_payment', 'wallet_recharge'],
             supportedPaymentMethods: [],
             supportsWalletRecharge: true,

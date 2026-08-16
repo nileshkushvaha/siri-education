@@ -385,7 +385,11 @@ class StudentPackagePurchaseTest extends TestCase
         $purchase = $this->acceptedPurchase();
         $this->configureRazorpay();
 
-        $this->expectExceptionMessage('No payment method is available');
+        // The market gate now answers first ("does not support GBP");
+        // the provider-currency guard behind it says "No payment method
+        // is available". Either proves the currency was refused before
+        // any gateway order existed.
+        $this->expectExceptionMessageMatches('/does not support|No payment method is available/');
         $this->purchases()->startCheckout($purchase, $purchase->student);
     }
 

@@ -65,14 +65,6 @@ final class FakePaymentProvider implements PaymentProviderInterface
         );
     }
 
-    public function refund(Booking $booking): void
-    {
-        Log::info('FakePaymentProvider: refund issued (no gateway).', [
-            'booking' => $booking->reference,
-            'payment_reference' => $booking->payment_reference,
-        ]);
-    }
-
     /** Always "configured" — no credentials exist to validate. */
     public function isConfigured(): bool
     {

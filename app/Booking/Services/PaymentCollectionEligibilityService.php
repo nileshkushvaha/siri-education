@@ -8,6 +8,7 @@ use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
 use App\Booking\DTOs\PaymentEligibilityResult;
 use App\Booking\Enums\PaymentCollectionRolloutScope;
 use App\Booking\Exceptions\BookingException;
+use App\Models\Country;
 use App\Settings\PaymentGatewaySettings;
 use Carbon\CarbonImmutable;
 
@@ -43,13 +44,25 @@ final class PaymentCollectionEligibilityService implements PaymentCollectionElig
         $scope = PaymentCollectionRolloutScope::tryFrom($this->settings->payment_collection_rollout_scope) ?? PaymentCollectionRolloutScope::Disabled;
 
         if ($scope === PaymentCollectionRolloutScope::Disabled) {
-            $failures[] = 'country_route_missing';
+            $failures[] = 'collection_rollout_disabled';
 
             return $this->result(null, $studentCountryIso2, $currencyCode, $transactionType, $paymentMethod, $failures, null);
         }
 
-        if ($scope === PaymentCollectionRolloutScope::IndiaRazorpayOnly && strtoupper((string) $studentCountryIso2) !== 'IN') {
-            $failures[] = 'country_route_missing';
+        // The market gate. `Country.status` is the platform's canonical
+        // statement of which markets exist, so an inactive (or unknown)
+        // country is refused here — at the business boundary every
+        // payable passes through — rather than only being filtered out
+        // of a dropdown. A crafted request from an unlaunched country
+        // must reach no provider and create no money state.
+        $country = $studentCountryIso2 === null
+            ? null
+            : Country::query()
+                ->whereRaw('UPPER(iso2) = ?', [strtoupper($studentCountryIso2)])
+                ->first(['status']);
+
+        if ($country === null || $country->status !== 'active') {
+            $failures[] = 'country_not_active';
 
             return $this->result(null, $studentCountryIso2, $currencyCode, $transactionType, $paymentMethod, $failures, null);
         }
@@ -108,6 +121,8 @@ final class PaymentCollectionEligibilityService implements PaymentCollectionElig
     ): PaymentEligibilityResult {
         $messages = [
             'payment_collection_disabled' => 'Payments are currently disabled platform-wide.',
+            'collection_rollout_disabled' => 'Payment collection is currently paused.',
+            'country_not_active' => 'Payments are not available in your country yet.',
             'country_route_missing' => 'No collection route is configured for this country.',
             'provider_not_configured' => 'The configured payment provider is not registered.',
             'provider_disabled' => 'The configured payment provider is disabled.',

@@ -7,6 +7,7 @@ namespace App\Booking\Services;
 use App\Booking\Contracts\PaymentProviderInterface;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Payments\FakePaymentProvider;
+use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Registry\PaymentProviderRegistry;
 use App\Models\Country;
 use App\Services\Payment\PaymentWebhookSignatureService;
@@ -127,17 +128,23 @@ final class PaymentProviderResolver
     /**
      * Which currencies each provider account can actually collect.
      *
-     * This is a real account capability, not a preference: Razorpay is
-     * India/INR-only in this deployment, and the Stripe account is not
-     * verified for INR. Sending an unsupported currency produces a
-     * gateway rejection deep inside an HTTP call, so it is refused here
-     * instead — the same guard the provider classes enforced in their
-     * own createPayment(), kept as data so it outlives them.
+     * This is a real account capability, not a preference: the Stripe
+     * account is not verified for INR, and Razorpay collects INR always
+     * but the approved international currencies only once an operator
+     * has attested that International Payments is live on the merchant
+     * account. Sending an unsupported currency produces a gateway
+     * rejection deep inside an HTTP call — or worse, a Razorpay order
+     * that is accepted and then declined at capture — so it is refused
+     * here instead.
+     *
+     * Razorpay's entry is resolved through
+     * RazorpayPaymentProvider::approvedCurrencies() rather than
+     * duplicated, so routing and the provider's own declared
+     * capabilities can never disagree about what may be collected.
      *
      * @var array<string, list<string>>
      */
     private const array SUPPORTED_CURRENCIES = [
-        'razorpay' => ['INR'],
         'stripe' => ['USD', 'GBP', 'EUR', 'AED'],
         FakePaymentProvider::KEY => ['INR', 'USD', 'EUR', 'GBP', 'AED'],
     ];
@@ -146,7 +153,9 @@ final class PaymentProviderResolver
     public function assertSupportsCurrency(string $key, string $currencyCode): void
     {
         $currency = strtoupper($currencyCode);
-        $supported = self::SUPPORTED_CURRENCIES[$key] ?? [];
+        $supported = $key === 'razorpay'
+            ? RazorpayPaymentProvider::approvedCurrencies($this->gatewaySettings)
+            : (self::SUPPORTED_CURRENCIES[$key] ?? []);
 
         if (! in_array($currency, $supported, true)) {
             throw new BookingException(sprintf(

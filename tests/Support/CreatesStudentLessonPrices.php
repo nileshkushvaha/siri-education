@@ -12,6 +12,7 @@ use App\Models\StudentLessonPrice;
 use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Support\MoneyFormatter;
 
 /**
  * `BookingType::factory()->paid()` no longer
@@ -56,7 +57,12 @@ trait CreatesStudentLessonPrices
             'currency_id' => $currency->id,
             'currency_code' => $currency->code,
             'duration_minutes' => $durationMinutes,
-            'amount_minor' => (int) round($amount * 100),
+            // Same conversion production uses (StudentLessonPriceSeeder →
+            // MoneyFormatter), driven by the currency's own exponent.
+            // A hardcoded x100 silently misprices any 0- or 3-decimal
+            // currency, which is exactly the class of bug a money test
+            // must not introduce itself.
+            'amount_minor' => MoneyFormatter::toMinor(number_format($amount, $currency->minor_units, '.', ''), $currency->minor_units),
         ]);
     }
 
@@ -82,10 +88,15 @@ trait CreatesStudentLessonPrices
             ['name' => $currencyCode, 'symbol' => $currencyCode, 'numeric_code' => '000', 'minor_units' => 2, 'status' => 'active'],
         );
 
+        // Active, mirroring a real launch market
+        // (CountrySeeder::LAUNCH_MARKETS). Provider routing is left to
+        // each test's own gateway configuration, exactly as the resolver
+        // allows: an explicit country route wins, the platform default
+        // covers the rest.
         $country = Country::factory()->create(array_filter([
             'iso2' => $countryIso2,
             'default_currency_id' => $currency->id,
-        ]));
+        ]) + ['status' => 'active']);
 
         $type = BookingType::factory()->paid()->create([
             'key' => $key,

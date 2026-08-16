@@ -98,6 +98,42 @@ class PaymentGatewaySettings extends Settings
 
     public bool $razorpay_enabled;
 
+    /**
+     * Confirms Razorpay has APPROVED International Payments on the
+     * merchant account — an operational fact, deliberately not inferred.
+     *
+     * Razorpay exposes no API that reports whether international
+     * collection is live, and `rzp_live_*` credentials say nothing about
+     * it: a fully valid live key belonging to a domestic-only account
+     * will accept a USD order request and reject it at capture, after
+     * the student has entered card details. So this is an operator's
+     * attestation, set only after checking the Razorpay Dashboard.
+     *
+     * `razorpay_enabled` means "we have working Razorpay credentials".
+     * This means "that account may additionally collect the approved
+     * international currencies". They are different questions and are
+     * kept as different flags — see
+     * RazorpayPaymentProvider::approvedCurrencies().
+     */
+    public bool $razorpay_international_enabled;
+
+    /**
+     * The international currencies this merchant account is confirmed to
+     * collect, gated behind `razorpay_international_enabled`.
+     *
+     * Razorpay's supported set is per-account: their documentation
+     * states that currencies outside the standard list require a support
+     * request, so "Razorpay supports X" and "this account may collect X"
+     * are different facts. This holds the second one. Seeded from
+     * RazorpayPaymentProvider::DEFAULT_INTERNATIONAL_CURRENCIES.
+     *
+     * INR is never listed here — domestic collection is unconditional
+     * and cannot be switched off by editing this list.
+     *
+     * @var list<string> ISO 4217 codes
+     */
+    public array $razorpay_international_currencies;
+
     public ?string $razorpay_key_id;
 
     public ?string $razorpay_key_secret;

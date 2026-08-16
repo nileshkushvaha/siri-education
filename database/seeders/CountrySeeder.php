@@ -215,6 +215,39 @@ class CountrySeeder extends Seeder
         ['Zimbabwe', 'ZW', 'ZWE', '+263'],
     ];
 
+    /**
+     * The ONLY active launch markets.
+     *
+     * `Country.status` is the canonical market gate for the whole
+     * platform — registration, pricing, booking, and collection all read
+     * it — so this map is the single place the launch set is declared.
+     * A country listed here is seeded Active WITH an explicit collection
+     * route; every other ISO country is seeded Inactive with no route,
+     * present for reference data (addresses, phone codes) but never
+     * selectable as a billing market.
+     *
+     * Adding a market is a data change here plus pricing rows, not a
+     * code change anywhere else. Nothing in the payment layer carries
+     * its own country list.
+     *
+     * `payment_routing` is explicit rather than leaning on
+     * `default_provider`, so configuration states the business intent
+     * for each market on its own.
+     *
+     * @var array<string, string> ISO2 => collection provider key
+     */
+    public const LAUNCH_MARKETS = [
+        'IN' => 'razorpay',
+        'US' => 'razorpay',
+        'GB' => 'razorpay',
+        'AU' => 'razorpay',
+        'CA' => 'razorpay',
+        'AE' => 'razorpay',
+        'SG' => 'razorpay',
+        'NZ' => 'razorpay',
+        'SA' => 'razorpay',
+    ];
+
     private const LOCALIZATION = [
         'IN' => ['INR', 'en', 'Asia/Kolkata', 'support-in@example.com', '+91 00000 00000', 'd/m/Y', 'H:i', '1,23,456.78'],
         'US' => ['USD', 'en', 'America/New_York', 'support-us@example.com', '+1 000 000 0000', 'm/d/Y', 'h:i A', '1,234.56'],
@@ -235,6 +268,15 @@ class CountrySeeder extends Seeder
         foreach (self::COUNTRIES as $sortOrder => [$name, $iso2, $iso3, $phoneCode]) {
             $localization = self::LOCALIZATION[$iso2] ?? null;
 
+            $isLaunchMarket = isset(self::LAUNCH_MARKETS[$iso2]);
+
+            // Localization fields keep their existing value when this
+            // seeder has nothing to say about them (null is "unknown",
+            // not "clear it"). Status and routing are the exception:
+            // they are the market gate, so they are always written —
+            // otherwise a country that was active in a development
+            // database would silently stay active and routed after being
+            // dropped from the launch set.
             Country::updateOrCreate(
                 ['iso2' => $iso2],
                 array_filter([
@@ -243,7 +285,6 @@ class CountrySeeder extends Seeder
                     'phone_code' => $phoneCode,
                     'flag' => $this->flagEmoji($iso2),
                     'sort_order' => $sortOrder,
-                    'status' => 'active',
                     'default_currency_id' => $localization ? ($currencyIds[$localization[0]] ?? null) : null,
                     'default_language_id' => $localization ? ($languageIds[$localization[1]] ?? null) : null,
                     'default_timezone' => $localization[2] ?? null,
@@ -252,7 +293,12 @@ class CountrySeeder extends Seeder
                     'date_format' => $localization[5] ?? null,
                     'time_format' => $localization[6] ?? null,
                     'number_format' => $localization[7] ?? null,
-                ], fn ($value): bool => $value !== null)
+                ], fn ($value): bool => $value !== null) + [
+                    'status' => $isLaunchMarket ? 'active' : 'inactive',
+                    'payment_routing' => $isLaunchMarket
+                        ? ['provider' => self::LAUNCH_MARKETS[$iso2], 'enabled' => true]
+                        : null,
+                ]
             );
         }
     }

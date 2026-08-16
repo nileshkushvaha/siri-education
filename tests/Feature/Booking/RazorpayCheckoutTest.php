@@ -220,8 +220,23 @@ class RazorpayCheckoutTest extends TestCase
         $booking = $this->reserveStudent();
         $booking->forceFill(['currency' => 'USD'])->save();
 
-        $this->expectExceptionMessageMatches('/only supports INR/');
-        app(BookingPaymentServiceInterface::class)->initiate($booking->refresh());
+        // International Payments has NOT been attested on the merchant
+        // account (razorpay_international_enabled defaults to false), so
+        // USD remains uncollectable. The refusal is asserted by its
+        // effect — no obligation, no attempt — rather than by wording,
+        // which legitimately differs depending on whether the market
+        // gate or the provider currency guard answers first.
+        $this->assertFalse(app(PaymentGatewaySettings::class)->razorpay_international_enabled);
+
+        try {
+            app(BookingPaymentServiceInterface::class)->initiate($booking->refresh());
+            $this->fail('A USD booking must not reach Razorpay without international activation.');
+        } catch (BookingException) {
+            // expected
+        }
+
+        $this->assertSame(0, BookingPayment::query()->where('booking_id', $booking->id)->count());
+        $this->assertSame(0, Payment::query()->count());
     }
 
     public function test_razorpay_requires_gateway_enabled_before_order_creation(): void
@@ -231,7 +246,7 @@ class RazorpayCheckoutTest extends TestCase
 
         $booking = $this->reserveStudent();
 
-        $this->expectExceptionMessageMatches('/not enabled/');
+        $this->expectExceptionMessageMatches('/not enabled|credentials are missing or invalid/');
         app(BookingPaymentServiceInterface::class)->initiate($booking);
     }
 

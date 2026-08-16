@@ -314,7 +314,7 @@ service — the reports page costs at most one query set per 5 minutes.
 ## Payment Workflow
 
 Provider-agnostic, synchronized with booking status. The provider is
-abstract: `PaymentProviderInterface` (create payment, refund, verify
+abstract: `PaymentProviderInterface` (create payment, verify
 webhook) is registered in `PaymentProviderRegistry` and selected via
 `BookingSettings::payment_provider`. Shipped: `fake` (no money moves;
 webhooks still require an HMAC signature). Adding Stripe/Razorpay =

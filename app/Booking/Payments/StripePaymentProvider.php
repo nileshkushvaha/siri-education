@@ -178,33 +178,6 @@ final class StripePaymentProvider implements PaymentProviderInterface
         return $this->intentFrom($booking, $reference, $payment, (string) ($intent['client_secret'] ?? ''));
     }
 
-    public function refund(Booking $booking): void
-    {
-        $this->assertConfigured();
-
-        $payment = BookingPayment::query()
-            ->where('booking_id', $booking->id)
-            ->where('status', BookingPaymentRecordStatus::Captured)
-            ->whereNotNull('provider_payment_id')
-            ->latest('paid_at')
-            ->first();
-
-        if ($payment === null) {
-            throw new BookingException(sprintf('Booking %s has no captured Stripe payment to refund.', $booking->reference));
-        }
-
-        try {
-            $this->client->createRefund($this->secretKey(), [
-                'payment_intent' => $payment->provider_payment_id,
-                'amount' => $payment->amount_minor,
-            ]);
-        } catch (GatewayRequestException $e) {
-            throw new BookingException('Stripe refund failed: '.$e->getMessage());
-        }
-
-        $payment->forceFill(['status' => BookingPaymentRecordStatus::Refunded])->save();
-    }
-
     /**
      * Idempotent by construction: a row already in a terminal status
      * (e.g. already Captured by an earlier delivery of the same event)
@@ -440,9 +413,17 @@ final class StripePaymentProvider implements PaymentProviderInterface
     /**
      * International-currency focused; INR is deliberately excluded (see
      * SUPPORTED_CURRENCIES) — reserved for Razorpay by routing
-     * convention. No frontend Stripe.js/Elements integration exists yet
-     * (this class is the tested backend half only), so no student
-     * country is asserted as verified — empty list until that changes.
+     * convention.
+     *
+     * `supportedStudentCountries` is deliberately EMPTY, which
+     * `supportsStudentCountry()` reads as "no country restriction" —
+     * not as "no country supported". The frontend Stripe.js/Elements
+     * integration does now exist (see this class's header), so the
+     * remaining gap is commercial, not technical: no specific student
+     * country has been verified end to end against a live Stripe
+     * account. Narrowing this list is how a country gets asserted as
+     * verified; widening the currency list is a separate decision that
+     * SRS §14.6 currently defers.
      */
     public function capabilities(): PaymentProviderCapabilities
     {

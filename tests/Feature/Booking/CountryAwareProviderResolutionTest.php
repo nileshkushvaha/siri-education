@@ -16,6 +16,7 @@ use App\Models\BookingPayment;
 use App\Models\BookingType;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -197,7 +198,17 @@ class CountryAwareProviderResolutionTest extends TestCase
         app(BookingPaymentServiceInterface::class)->initiate($booking);
     }
 
-    public function test_null_country_falls_back_to_default_provider(): void
+    /**
+     * A student with no billing country belongs to no market.
+     *
+     * This previously fell through to the platform default provider and
+     * collected. Since Country.status became the canonical market gate,
+     * "no country" is refused for the same reason an unlaunched country
+     * is: there is no market to price, route, or collect in. The
+     * fallback still exists in the resolver, but the market gate is
+     * reached first — and refusal happens before any money state.
+     */
+    public function test_null_country_cannot_collect_because_it_belongs_to_no_market(): void
     {
         $this->configureRazorpay();
         app(BookingSettings::class)->payment_provider = 'razorpay';
@@ -228,10 +239,15 @@ class CountryAwareProviderResolutionTest extends TestCase
 
         UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => null]);
 
-        app(BookingPaymentServiceInterface::class)->initiate($booking);
+        try {
+            app(BookingPaymentServiceInterface::class)->initiate($booking);
+            $this->fail('A student with no billing country must not be able to collect.');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('not available in your country', $e->getMessage());
+        }
 
-        $payment = BookingPayment::query()->where('booking_id', $booking->id)->firstOrFail();
-        $this->assertSame('razorpay', $payment->provider);
+        $this->assertSame(0, BookingPayment::query()->where('booking_id', $booking->id)->count());
+        $this->assertSame(0, Payment::query()->count());
     }
 
     public function test_random_razorpay_credentials_still_fail_safely_with_country_routing(): void

@@ -157,7 +157,6 @@ class PaymentSettingsAuditTest extends TestCase
                 'allow_partial_payment' => true,
                 'auto_generate_invoice' => true,
                 'auto_capture_payment' => true,
-                'refund_enabled' => true,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -204,7 +203,6 @@ class PaymentSettingsAuditTest extends TestCase
                 'allow_partial_payment' => $config->allow_partial_payment,
                 'auto_generate_invoice' => $config->auto_generate_invoice,
                 'auto_capture_payment' => $config->auto_capture_payment,
-                'refund_enabled' => $config->refund_enabled,
             ])
             ->call('save');
 

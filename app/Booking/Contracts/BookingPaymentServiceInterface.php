@@ -107,6 +107,16 @@ interface BookingPaymentServiceInterface
      * e.g. a dashboard-initiated refund reported asynchronously. No
      * money moves here; this only synchronizes local state.
      *
+     * HAS NO PRODUCTION CALLER as of Version 1, and deliberately no
+     * synthetic one. Refund webhooks are not consumed
+     * (PaymentWebhookEventParser reads `payload.payment.entity`; a
+     * Razorpay `refund.processed` carries `payload.refund.entity`), so
+     * dashboard-issued refunds are an operations constraint rather than
+     * a supported flow — see docs/financial-domain-architecture.md §1.7.
+     * Retained as the entry point a future refund-event handler calls,
+     * because it already owns the transactional pairing (mark refunded
+     * + cancel the booking) such a handler must not re-derive.
+     *
      * @throws BookingException when the booking is not paid
      */
     public function recordRefund(Booking $booking, ?string $reason = null): Booking;

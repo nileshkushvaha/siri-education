@@ -16,6 +16,14 @@ use App\Models\Booking;
  * register in BookingServiceProvider, select via
  * BookingSettings::payment_provider. The workflow never knows which
  * provider is active.
+ *
+ * Deliberately has no `refund()`. SRS 13.18 makes Version 1 refunds
+ * wallet-only, so the default refund destination never reaches a
+ * gateway at all; the narrow finance-exception path
+ * (BookingPaymentService::refundViaProvider()) executes through
+ * BookingPaymentRefundService, which resolves the charge to reverse
+ * from the settled Payment attempt. Provider refund execution lives
+ * there, in one place, and not behind this interface.
  */
 interface PaymentProviderInterface
 {
@@ -28,13 +36,6 @@ interface PaymentProviderInterface
      * @throws BookingException
      */
     public function createPayment(Booking $booking, string $reference): PaymentIntentData;
-
-    /**
-     * Issue a refund at the provider.
-     *
-     * @throws BookingException when the provider rejects the refund
-     */
-    public function refund(Booking $booking): void;
 
     /**
      * Whether this provider is enabled AND its credentials pass format

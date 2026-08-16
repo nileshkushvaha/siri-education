@@ -289,7 +289,11 @@ final class CurrencyEnforcementTest extends TestCase
             app(BookingPaymentServiceInterface::class)->initiate($booking->fresh());
             $this->fail('Expected the provider-currency rule to reject XAU.');
         } catch (BookingException $e) {
-            $this->assertStringContainsString('only supports', $e->getMessage());
+            // Either phrasing proves the PROVIDER-SUPPORT axis rejected
+            // it: the market gate answers first ("does not support XAU"),
+            // the resolver's own guard second ("only supports ..."). What
+            // must never appear is the currency-status axis.
+            $this->assertMatchesRegularExpression('/only supports|does not support/', $e->getMessage());
             $this->assertStringNotContainsString('inactive', strtolower($e->getMessage()));
         }
 

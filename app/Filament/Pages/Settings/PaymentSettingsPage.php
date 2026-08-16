@@ -153,7 +153,6 @@ abstract class PaymentSettingsPage extends Page
             'allow_partial_payment' => $configuration->allow_partial_payment,
             'auto_generate_invoice' => $configuration->auto_generate_invoice,
             'auto_capture_payment' => $configuration->auto_capture_payment,
-            'refund_enabled' => $configuration->refund_enabled,
 
             // advanced
             'webhook_timeout' => $advanced->webhook_timeout,
@@ -641,7 +640,6 @@ abstract class PaymentSettingsPage extends Page
                     ]),
                     Grid::make(2)->schema([
                         Toggle::make('auto_capture_payment')->label('Auto Capture Payment'),
-                        Toggle::make('refund_enabled')->label('Refund Enabled'),
                     ]),
                 ]),
         ];
@@ -777,7 +775,6 @@ abstract class PaymentSettingsPage extends Page
             $settings->allow_partial_payment = (bool) ($data['allow_partial_payment'] ?? false);
             $settings->auto_generate_invoice = (bool) ($data['auto_generate_invoice'] ?? true);
             $settings->auto_capture_payment = (bool) ($data['auto_capture_payment'] ?? true);
-            $settings->refund_enabled = (bool) ($data['refund_enabled'] ?? true);
         });
     }
 

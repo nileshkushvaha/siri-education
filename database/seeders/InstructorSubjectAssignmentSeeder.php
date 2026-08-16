@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -230,9 +231,22 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
             return Subject::query()->active()->find($assignment->subject_id);
         }
 
+        $name = trim((string) $assignment->subject);
+
+        if ($name === '') {
+            return null;
+        }
+
+        // Legacy rows were free text, so casing and spacing drift from the catalogue
+        // ("physics" vs "Physics"). Compare lowercased rather than relying on the
+        // column collation, which is case-sensitive on some deployments.
         return Subject::query()
             ->active()
-            ->where('name', $assignment->subject)
+            ->where(function ($query) use ($name): void {
+                $query
+                    ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])
+                    ->orWhere('slug', Str::slug($name));
+            })
             ->first();
     }
 

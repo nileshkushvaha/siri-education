@@ -5,6 +5,7 @@ namespace App\Enums;
 enum BlockType: string
 {
     case Hero = 'hero';
+    case HeroCarousel = 'hero_carousel';
     case RichText = 'rich_text';
     case Image = 'image';
     case Gallery = 'gallery';
@@ -32,6 +33,7 @@ enum BlockType: string
     {
         return match ($this) {
             self::Hero => 'Hero',
+            self::HeroCarousel => 'Hero Carousel',
             self::RichText => 'Rich Text',
             self::Image => 'Image',
             self::Gallery => 'Gallery',
@@ -61,6 +63,7 @@ enum BlockType: string
     {
         return match ($this) {
             self::Hero => 'heroicon-m-photo',
+            self::HeroCarousel => 'heroicon-m-rectangle-stack',
             self::RichText => 'heroicon-m-document-text',
             self::Image => 'heroicon-m-image',
             self::Gallery => 'heroicon-m-photo-square',
@@ -90,6 +93,7 @@ enum BlockType: string
     {
         return match ($this) {
             self::Hero => 'Large banner with title, subtitle, image, and CTA button',
+            self::HeroCarousel => 'Rotating hero with cycling headline and full-bleed background images',
             self::RichText => 'Rich text content with formatting',
             self::Image => 'Single image with caption',
             self::Gallery => 'Multiple images in a grid',
@@ -118,7 +122,7 @@ enum BlockType: string
     public function category(): string
     {
         return match ($this) {
-            self::Hero, self::Divider, self::Spacer => 'Layout',
+            self::Hero, self::HeroCarousel, self::Divider, self::Spacer => 'Layout',
             self::RichText, self::Button => 'Content',
             self::Image, self::Gallery, self::Video => 'Media',
             self::CTA => 'Call to Action',
@@ -137,7 +141,7 @@ enum BlockType: string
     public function color(): string
     {
         return match ($this) {
-            self::Hero => 'info',
+            self::Hero, self::HeroCarousel => 'info',
             self::RichText => 'success',
             self::Image, self::Gallery, self::Video => 'warning',
             self::CTA => 'danger',

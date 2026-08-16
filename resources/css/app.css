@@ -131,6 +131,16 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
 }
+/* Anchored on oklch(86.5% 0.127 207.078) — held at the midpoint so the requested
+   colour is what the eye reads, with a lighter lead-in and a deeper tail for depth. */
+.text-grad-cyan {
+    background: linear-gradient(135deg,
+        oklch(92% 0.085 207.078) 0%,
+        oklch(86.5% 0.127 207.078) 45%,
+        oklch(76% 0.138 215) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
 .text-grad-amber {
     background: linear-gradient(135deg, #FCD34D 0%, #F97316 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
@@ -728,6 +738,81 @@ html { scroll-behavior: smooth; }
 [data-public-homepage] [data-home-shine]:hover::after {
     left: 130%;
     opacity: 1;
+}
+
+/* ------------------------------------------------------------
+   "Why study with us?" cards
+   Reveal and the shine sweep are already inherited from the
+   homepage motion system; these rules add the hover response.
+   ------------------------------------------------------------ */
+[data-public-homepage] [data-why-card] {
+    transition:
+        transform 460ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 460ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+}
+
+[data-public-homepage] [data-why-card]:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 26px 50px -22px rgb(15 23 42 / 0.45);
+}
+
+[data-public-homepage] [data-why-card] [data-why-icon] {
+    transition:
+        transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 460ms ease;
+}
+
+[data-public-homepage] [data-why-card]:hover [data-why-icon] {
+    transform: translateY(-4px) scale(1.1) rotate(-6deg);
+    box-shadow: 0 14px 26px -12px rgb(249 115 22 / 0.55);
+}
+
+[data-public-homepage] [data-why-card] [data-why-icon] svg {
+    transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-public-homepage] [data-why-card]:hover [data-why-icon] svg {
+    transform: rotate(6deg) scale(1.06);
+}
+
+[data-public-homepage] [data-why-card] [data-why-title] {
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: left center;
+}
+
+[data-public-homepage] [data-why-card]:hover [data-why-title] {
+    transform: translateX(3px);
+}
+
+/* Dots ripple outward one after another rather than all at once. */
+[data-public-homepage] [data-why-card] [data-why-dot] {
+    transition:
+        transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 380ms ease;
+    transition-delay: calc(var(--why-dot-index, 0) * 70ms);
+}
+
+[data-public-homepage] [data-why-card]:hover [data-why-dot] {
+    transform: scale(1.85);
+    background-color: rgb(234 88 12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-public-homepage] [data-why-card],
+    [data-public-homepage] [data-why-card] [data-why-icon],
+    [data-public-homepage] [data-why-card] [data-why-icon] svg,
+    [data-public-homepage] [data-why-card] [data-why-title],
+    [data-public-homepage] [data-why-card] [data-why-dot] {
+        transition: none;
+    }
+
+    [data-public-homepage] [data-why-card]:hover,
+    [data-public-homepage] [data-why-card]:hover [data-why-icon],
+    [data-public-homepage] [data-why-card]:hover [data-why-icon] svg,
+    [data-public-homepage] [data-why-card]:hover [data-why-title] {
+        transform: none;
+    }
 }
 
 [data-public-homepage] section:first-child > [aria-hidden="true"] {

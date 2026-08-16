@@ -12,140 +12,318 @@ use App\Models\Subject;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 /**
- * Assigns the seeded Grade 6-12 catalogue to the known demo instructors.
- * Production instructor expertise remains managed through onboarding/admin.
+ * Gives every instructor a complete set of academic records.
+ *
+ * Environment agnostic — it selects users by the `instructor` role, never by email, so it
+ * behaves the same on local, staging and production where the accounts differ.
+ *
+ * Two passes:
+ *
+ *  1. Any instructor with NO subject assignments is given a random selection from the
+ *     active catalogue. Instructors who already have subjects are left completely alone,
+ *     so real onboarding/admin decisions are never overwritten — and because the pass only
+ *     targets empty instructors, re-running never piles on more random subjects.
+ *  2. Every instructor is then backfilled from `teacher_subjects`, creating the derived
+ *     InstructorSubjectTopic (per topic x academic level) and InstructorCurriculumEligibility
+ *     rows.
+ *
+ * Safe to re-run. Nothing is truncated or deleted. Academic levels come from each
+ * assignment's own grade range via AcademicLevel::coversGrade(), so a primary-school
+ * instructor is never handed high-school levels.
  */
 final class InstructorSubjectAssignmentSeeder extends Seeder
 {
-    /** @var array<string, list<string>> */
-    private const ASSIGNMENTS = [
-        'instructor1@example.com' => [
-            'Mathematics',
-            'Statistics',
-            'Further Mathematics',
-            'Applied Mathematics',
-        ],
-        'instructor2@example.com' => [
-            'General Science',
-            'Physics',
-            'Chemistry',
-            'Biology',
-            'Environmental Science',
-            'Earth Science',
-            'Astronomy',
-        ],
-        'instructor3@example.com' => [
-            'English',
-            'Hindi',
-        ],
-        'instructor4@example.com' => [
-            'Computer Science',
-            'Information Technology',
-            'Artificial Intelligence',
-            'Robotics',
-        ],
-        'instructor5@example.com' => [
-            'Accounting',
-            'Commerce',
-            'Finance',
-            'Entrepreneurship',
-            'Legal Studies',
-        ],
-    ];
+    /** How many catalogue subjects an instructor with none is given. */
+    private const RANDOM_SUBJECTS_MIN = 2;
+
+    private const RANDOM_SUBJECTS_MAX = 4;
+
+    private const DEFAULT_GRADE_FROM = 6;
+
+    private const DEFAULT_GRADE_TO = 12;
+
+    private ?string $approverId = null;
+
+    /** @var Collection<int, AcademicLevel> */
+    private Collection $levels;
+
+    private int $instructorCount = 0;
+
+    private int $topicRows = 0;
+
+    private int $eligibilityRows = 0;
+
+    private int $skippedSubjects = 0;
+
+    private int $randomlyAssigned = 0;
 
     public function run(): void
     {
-        $approverId = User::role('super_admin')->value('id');
-        $levels = AcademicLevel::query()
-            ->active()
-            ->whereIn('slug', ['middle-school', 'high-school'])
-            ->get();
+        // Spatie's role() scope throws outright if the role does not exist, so both roles
+        // are checked before any query uses them rather than aborting mid-seed.
+        if (! $this->roleExists('instructor')) {
+            $this->command?->warn('No `instructor` role found — nothing to seed.');
 
-        foreach (self::ASSIGNMENTS as $email => $subjectNames) {
-            $instructor = User::query()->where('email', $email)->first();
+            return;
+        }
 
-            if ($instructor === null || ! $instructor->hasRole('instructor')) {
-                $this->command?->warn("Skipping {$email}: seeded instructor account not found.");
+        // Approval attribution is optional; fall back to null when no super admin exists.
+        $this->approverId = $this->roleExists('super_admin')
+            ? User::role('super_admin')->value('id')
+            : null;
+        $this->levels = AcademicLevel::query()->availableForAssignment()->get();
 
-                continue;
-            }
+        if ($this->levels->isEmpty()) {
+            $this->command?->warn('No active academic levels found — nothing to assign.');
 
-            $subjects = Subject::query()
-                ->active()
-                ->whereIn('name', $subjectNames)
-                ->get()
-                ->keyBy('name');
+            return;
+        }
 
-            foreach ($subjectNames as $subjectName) {
-                $subject = $subjects->get($subjectName);
+        $this->assignRandomSubjectsWhereMissing();
+        $this->backfillEveryInstructor();
 
-                if ($subject === null) {
-                    $this->command?->warn("Skipping {$subjectName}: active subject not found.");
+        $this->command?->info(sprintf(
+            '✓ Instructor academic records synced — %d instructor(s), %d topic row(s), %d curriculum eligibility row(s).',
+            $this->instructorCount,
+            $this->topicRows,
+            $this->eligibilityRows,
+        ));
 
-                    continue;
-                }
+        if ($this->randomlyAssigned > 0) {
+            $this->command?->info(sprintf(
+                '  %d instructor(s) had no subjects and were given a random catalogue selection.',
+                $this->randomlyAssigned,
+            ));
+        }
 
-                TeacherSubject::query()->updateOrCreate(
-                    [
-                        'teacher_id' => $instructor->id,
-                        'subject' => $subject->name,
-                    ],
-                    [
-                        'subject_id' => $subject->id,
-                        'grade_from' => 6,
-                        'grade_to' => 12,
-                    ],
-                );
+        if ($this->skippedSubjects > 0) {
+            $this->command?->warn(sprintf(
+                '%d subject assignment(s) skipped — no matching active subject in the catalogue.',
+                $this->skippedSubjects,
+            ));
+        }
+    }
 
-                foreach ($subject->topics()->active()->get() as $topicOrder => $topic) {
-                    foreach ($levels as $level) {
-                        InstructorSubjectTopic::query()->updateOrCreate(
-                            [
-                                'teacher_id' => $instructor->id,
-                                'subject_topic_id' => $topic->id,
-                                'academic_level_id' => $level->id,
-                            ],
-                            [
-                                'subject_id' => $subject->id,
-                                'proficiency_level' => 'proficient',
-                                'is_primary' => $topicOrder === 0,
-                                'is_active' => true,
-                                'approved_at' => now(),
-                                'approved_by' => $approverId,
-                            ],
-                        );
-                    }
-                }
+    private function roleExists(string $name): bool
+    {
+        return Role::query()
+            ->where('name', $name)
+            ->where('guard_name', 'web')
+            ->exists();
+    }
 
-                Curriculum::query()
-                    ->where('subject_id', $subject->id)
-                    ->whereHas('versions', fn ($query) => $query->where('status', 'published'))
-                    ->with('educationSystemMappings')
-                    ->get()
-                    ->each(function (Curriculum $curriculum) use ($instructor, $approverId): void {
-                        foreach ($curriculum->educationSystemMappings as $mapping) {
-                            InstructorCurriculumEligibility::query()->updateOrCreate(
+    /**
+     * Gives a random slice of the catalogue to instructors who have no subjects at all.
+     *
+     * Selection is by role, never by email, so it works on staging and production where
+     * the accounts differ. Instructors that already hold assignments are skipped entirely
+     * — which also makes this idempotent: a second run finds nobody empty and adds nothing.
+     */
+    private function assignRandomSubjectsWhereMissing(): void
+    {
+        $subjectIds = Subject::query()->active()->pluck('id');
+
+        if ($subjectIds->isEmpty()) {
+            $this->command?->warn('No active subjects in the catalogue — skipping random assignment.');
+
+            return;
+        }
+
+        User::query()
+            ->role('instructor')
+            ->whereDoesntHave('teacherSubjects')
+            ->orderBy('id')
+            ->chunkById(50, function (Collection $instructors) use ($subjectIds): void {
+                foreach ($instructors as $instructor) {
+                    $take = min(
+                        random_int(self::RANDOM_SUBJECTS_MIN, self::RANDOM_SUBJECTS_MAX),
+                        $subjectIds->count(),
+                    );
+
+                    $subjects = Subject::query()
+                        ->whereIn('id', $subjectIds->random($take)->all())
+                        ->get();
+
+                    DB::transaction(function () use ($instructor, $subjects): void {
+                        foreach ($subjects as $subject) {
+                            TeacherSubject::query()->updateOrCreate(
                                 [
                                     'teacher_id' => $instructor->id,
-                                    'education_system_id' => $mapping->education_system_id,
-                                    'curriculum_id' => $curriculum->id,
+                                    'subject' => $subject->name,
                                 ],
                                 [
-                                    'is_active' => true,
-                                    'notes' => 'Seeded demo instructor eligibility for the Grade 6-12 catalogue.',
-                                    'approved_at' => now(),
-                                    'approved_by' => $approverId,
-                                    'created_by' => $approverId,
-                                    'updated_by' => $approverId,
+                                    'subject_id' => $subject->id,
+                                    'grade_from' => self::DEFAULT_GRADE_FROM,
+                                    'grade_to' => self::DEFAULT_GRADE_TO,
                                 ],
                             );
                         }
                     });
+
+                    $this->randomlyAssigned++;
+                }
+            });
+    }
+
+    /**
+     * Walks every instructor that has at least one subject assignment. Chunked so a large
+     * production roster never loads into memory at once, and wrapped per instructor so one
+     * bad record cannot roll back everybody else's work.
+     */
+    private function backfillEveryInstructor(): void
+    {
+        User::query()
+            ->role('instructor')
+            ->whereHas('teacherSubjects')
+            ->orderBy('id')
+            ->chunkById(50, function (Collection $instructors): void {
+                foreach ($instructors as $instructor) {
+                    DB::transaction(fn () => $this->syncInstructor($instructor));
+                    $this->instructorCount++;
+                }
+            });
+    }
+
+    private function syncInstructor(User $instructor): void
+    {
+        $assignments = TeacherSubject::query()
+            ->where('teacher_id', $instructor->id)
+            ->get();
+
+        foreach ($assignments as $assignment) {
+            $subject = $this->resolveSubject($assignment);
+
+            if ($subject === null) {
+                $this->skippedSubjects++;
+
+                continue;
             }
+
+            // Keep the denormalised columns honest for rows created before subject_id existed.
+            if ($assignment->subject_id !== $subject->id) {
+                $assignment->forceFill(['subject_id' => $subject->id])->save();
+            }
+
+            $levels = $this->levelsForAssignment($assignment);
+
+            if ($levels->isEmpty()) {
+                continue;
+            }
+
+            $this->syncTopics($instructor, $subject, $levels);
+            $this->syncCurriculumEligibility($instructor, $subject);
+        }
+    }
+
+    /**
+     * Assignments carry a subject_id once backfilled, but older rows only have the name.
+     */
+    private function resolveSubject(TeacherSubject $assignment): ?Subject
+    {
+        if (filled($assignment->subject_id)) {
+            return Subject::query()->active()->find($assignment->subject_id);
         }
 
-        $this->command?->info('✓ Demo instructor Grade 6-12 subject assignments seeded.');
+        return Subject::query()
+            ->active()
+            ->where('name', $assignment->subject)
+            ->first();
+    }
+
+    /**
+     * Levels come from the assignment's own grade range rather than a fixed pair of
+     * slugs, so a primary-school instructor is not handed high-school levels.
+     *
+     * @return Collection<int, AcademicLevel>
+     */
+    private function levelsForAssignment(TeacherSubject $assignment): Collection
+    {
+        $from = $assignment->grade_from;
+        $to = $assignment->grade_to;
+
+        if ($from === null && $to === null) {
+            // Not grade-bound: fall back to every grade-bound level.
+            return $this->levels->filter(
+                fn (AcademicLevel $level) => $level->min_grade !== null || $level->max_grade !== null
+            )->values();
+        }
+
+        $from ??= $to;
+        $to ??= $from;
+
+        return $this->levels->filter(function (AcademicLevel $level) use ($from, $to): bool {
+            foreach (range((int) $from, (int) $to) as $grade) {
+                if ($level->coversGrade($grade)) {
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
+    }
+
+    /**
+     * @param  Collection<int, AcademicLevel>  $levels
+     */
+    private function syncTopics(User $instructor, Subject $subject, Collection $levels): void
+    {
+        $topics = $subject->topics()->active()->get();
+
+        foreach ($topics as $topicOrder => $topic) {
+            foreach ($levels as $level) {
+                InstructorSubjectTopic::query()->updateOrCreate(
+                    [
+                        'teacher_id' => $instructor->id,
+                        'subject_topic_id' => $topic->id,
+                        'academic_level_id' => $level->id,
+                    ],
+                    [
+                        'subject_id' => $subject->id,
+                        'proficiency_level' => 'proficient',
+                        'is_primary' => $topicOrder === 0,
+                        'is_active' => true,
+                        'approved_at' => now(),
+                        'approved_by' => $this->approverId,
+                    ],
+                );
+
+                $this->topicRows++;
+            }
+        }
+    }
+
+    private function syncCurriculumEligibility(User $instructor, Subject $subject): void
+    {
+        Curriculum::query()
+            ->where('subject_id', $subject->id)
+            ->whereHas('versions', fn ($query) => $query->where('status', 'published'))
+            ->with('educationSystemMappings')
+            ->get()
+            ->each(function (Curriculum $curriculum) use ($instructor): void {
+                foreach ($curriculum->educationSystemMappings as $mapping) {
+                    InstructorCurriculumEligibility::query()->updateOrCreate(
+                        [
+                            'teacher_id' => $instructor->id,
+                            'education_system_id' => $mapping->education_system_id,
+                            'curriculum_id' => $curriculum->id,
+                        ],
+                        [
+                            'is_active' => true,
+                            'notes' => 'Derived from the instructor\'s assigned subjects.',
+                            'approved_at' => now(),
+                            'approved_by' => $this->approverId,
+                            'created_by' => $this->approverId,
+                            'updated_by' => $this->approverId,
+                        ],
+                    );
+
+                    $this->eligibilityRows++;
+                }
+            });
     }
 }

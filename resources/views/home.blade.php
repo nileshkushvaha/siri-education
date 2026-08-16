@@ -24,114 +24,73 @@ $subjectPalettes = [
 
 @section('content')
 <main class="overflow-hidden bg-white text-slate-900" data-public-homepage>
-    <section class="relative border-b border-indigo-100 bg-gradient-to-br from-[#f8fbff] via-white to-[#fff4ef]">
-        <div class="pointer-events-none absolute -left-32 top-10 h-96 w-96 rounded-full bg-cyan-200/35 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute right-[25%] top-0 h-80 w-80 rounded-full bg-amber-200/25 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute -right-32 bottom-0 h-[30rem] w-[30rem] rounded-full bg-violet-200/40 blur-3xl" aria-hidden="true"></div>
-        <div class="pointer-events-none absolute inset-0 opacity-30" style="background-image:radial-gradient(#818cf8 .7px,transparent .7px);background-size:24px 24px" aria-hidden="true"></div>
+    @include('components.blocks.hero-carousel', ['use_default_slides' => true])
 
-        <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-[1.04fr_.96fr] lg:px-8 lg:py-14">
-            <div>
-                <span class="inline-flex items-center gap-2 rounded-full border border-indigo-300 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-5 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-indigo-700 shadow-md shadow-indigo-100 ring-2 ring-indigo-100 sm:text-base">
-                    <span class="flex -space-x-1" aria-hidden="true">
-                        <span class="h-2.5 w-2.5 rounded-full bg-cyan-400"></span>
-                        <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
-                        <span class="h-2.5 w-2.5 rounded-full bg-fuchsia-500"></span>
-                    </span>
-                    One-to-one live online tutoring
-                </span>
-
-                <h1 class="mt-5 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-[4rem] lg:leading-[1.04]">
-                    Find the right instructor.
-                    <span class="bg-gradient-to-r from-indigo-600 via-violet-600 to-rose-500 bg-clip-text text-transparent">Make real progress.</span>
-                </h1>
-                <p class="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-                    Discover verified instructors, book flexible one-to-one lessons, manage homework, and follow a learning plan shaped around your goals.
-                </p>
-
-                <div class="mt-6 flex flex-wrap gap-2 sm:flex-nowrap">
-                    <a href="{{ route('instructors.index') }}" class="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 px-4 text-sm font-black text-white shadow-xl shadow-indigo-200 transition hover:-translate-y-0.5 hover:shadow-violet-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200">
-                        Explore instructors
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" />
-                        </svg>
-                    </a>
-                    <a href="#how-it-works" class="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white/90 px-4 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-cyan-100">
-                        See how it works
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7" />
-                        </svg>
-                    </a>
-                    @if(Route::has('booking.create'))
-                    <a href="{{ route('booking.create') }}" class="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-violet-200 bg-violet-50 px-4 text-sm font-black text-violet-700 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-violet-100">
-                        Book a Free Demo
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" />
-                        </svg>
-                    </a>
-                    @endif
-                </div>
-
-                <div class="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold text-slate-600">
-                    @foreach(['Verified public profiles', 'Timezone-aware booking', 'Secure wallet and payments'] as $trustPoint)
-                    <span class="inline-flex items-center gap-2">
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-hidden="true">✓</span>
-                        {{ $trustPoint }}
-                    </span>
-                    @endforeach
-                </div>
+    {{-- Why study with us — light section directly under the hero --}}
+    <section class="bg-white py-16 sm:py-20" aria-labelledby="home-why-study-heading">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-3xl text-center">
+                <p class="text-sm font-black uppercase tracking-[0.15em] text-rose-600">Why us</p>
+                <h2 id="home-why-study-heading" class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Why study with us?</h2>
+                <p class="mt-4 leading-7 text-slate-600">Four reasons students make faster progress with one-to-one learning.</p>
             </div>
 
-            <div class="relative mx-auto w-full max-w-xl" aria-label="Student learning workspace preview">
-                <div class="absolute -inset-7 rounded-[2.5rem] bg-gradient-to-br from-cyan-300/30 via-indigo-300/30 to-rose-300/35 blur-2xl" aria-hidden="true"></div>
-                <div class="relative overflow-hidden rounded-[2rem] border border-white bg-white/90 p-5 shadow-2xl shadow-indigo-200/50 backdrop-blur sm:p-6">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-5">
-                        <div>
-                            <p class="text-xs font-black uppercase tracking-[0.14em] text-indigo-600">Your learning workspace</p>
-                            <h2 class="mt-1 text-xl font-black text-slate-950">Everything in one clear path</h2>
-                        </div>
-                        <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">On track</span>
-                    </div>
-
-                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                        <div class="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-200">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wide text-indigo-100">Next lesson</span>
-                                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15" aria-hidden="true">▶</span>
-                            </div>
-                            <p class="mt-7 text-lg font-black">Learn at your pace</p>
-                            <p class="mt-1 text-sm text-indigo-100">Flexible scheduling in your timezone</p>
-                        </div>
-                        <div class="rounded-2xl border border-amber-100 bg-amber-50 p-5">
-                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-white" aria-hidden="true">✓</span>
-                            <p class="mt-5 text-xs font-bold uppercase tracking-wide text-amber-700">Weekly progress</p>
-                            <p class="mt-1 text-lg font-black text-slate-900">Goals made visible</p>
-                            <div class="mt-4 h-2 overflow-hidden rounded-full bg-amber-100">
-                                <div class="h-full w-4/5 rounded-full bg-gradient-to-r from-amber-400 to-rose-400"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
-                        <div class="flex items-center gap-3">
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 font-black text-white" aria-hidden="true">1:1</span>
-                            <div>
-                                <p class="font-black text-slate-900">Find your instructor match</p>
-                                <p class="mt-0.5 text-sm text-slate-600">Compare subjects, expertise, profiles, and availability.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
-                        <div class="flex items-center gap-3">
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 text-xl font-black text-white" aria-hidden="true">✓</span>
-                            <div>
-                                <p class="font-black text-slate-900">Keep every lesson organised</p>
-                                <p class="mt-0.5 text-sm text-slate-600">View bookings, homework, learning plans, and progress together.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach([
+                [
+                'bg-violet-100',
+                'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5',
+                'Proven way to improve marks',
+                [
+                'The National Bureau of Economic Research found one-on-one tutoring produces higher academic gains than group or classroom instruction.',
+                'Students tutored one-on-one in maths and reading showed improvements of 30% in test scores.',
+                ],
+                ],
+                [
+                'bg-amber-100',
+                'M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z',
+                'Personalised attention',
+                [
+                'One-to-one premium classes with expert tutors, shaped around how each student actually learns.',
+                'Tutors resolve doubts as they come up and support homework in the same session.',
+                ],
+                ],
+                [
+                'bg-emerald-100',
+                'M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25',
+                'Subject specific courses',
+                [
+                'PISA 2018 reported that around 1 in 4 students fall below the baseline in at least one of the three core subjects.',
+                $appName.' offers subject-specific tutoring, paced to each student’s proficiency.',
+                ],
+                ],
+                [
+                'bg-rose-100',
+                'M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0 1 18 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3 1.5 1.5 3-3.75',
+                'Dedicated student account managers',
+                [
+                'A named account manager keeps track of attendance, progress, and lesson quality.',
+                'One point of contact for scheduling changes, feedback, and escalations.',
+                ],
+                ],
+                ] as [$surface, $iconPath, $cardTitle, $cardPoints])
+                <article data-why-card class="flex h-full flex-col rounded-3xl {{ $surface }} p-6">
+                    <span data-why-icon class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm" aria-hidden="true">
+                        <svg class="h-7 w-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" />
+                        </svg>
+                    </span>
+                    <h3 data-why-title class="mt-6 text-lg font-black leading-6 text-slate-900">{{ $cardTitle }}</h3>
+                    <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                        @foreach($cardPoints as $cardPoint)
+                        <li class="flex gap-2.5">
+                            <span data-why-dot style="--why-dot-index: {{ $loop->index }}" class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" aria-hidden="true"></span>
+                            <span>{{ $cardPoint }}</span>
+                        </li>
+                        @endforeach
+                    </ul>
+                </article>
+                @endforeach
             </div>
         </div>
     </section>

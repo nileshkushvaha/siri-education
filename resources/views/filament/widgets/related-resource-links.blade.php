@@ -1,5 +1,9 @@
-@if ($links !== [])
-    <x-filament-widgets::widget>
+{{-- The widget wrapper must be the single, UNCONDITIONAL root element. Wrapping it in
+     `@if` makes the root conditional, which Livewire cannot reconcile against the lazy
+     placeholder it renders first — `wire:id` then lands on an inner element and arrives
+     without its snapshot, throwing "Snapshot missing on Livewire component". --}}
+<x-filament-widgets::widget>
+    @if ($links !== [])
         <div class="mx-auto w-fit max-w-full overflow-x-auto rounded-2xl bg-white p-2 shadow-sm ring-1 ring-gray-950/10 dark:bg-white/5 dark:ring-white/10">
             <nav class="flex min-w-max items-center gap-1" aria-label="Related pages">
                 @foreach ($links as $link)
@@ -21,5 +25,5 @@
                 @endforeach
             </nav>
         </div>
-    </x-filament-widgets::widget>
-@endif
+    @endif
+</x-filament-widgets::widget>

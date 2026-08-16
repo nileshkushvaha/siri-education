@@ -39,6 +39,7 @@ class BlockRenderer
     {
         return match ($blockType) {
             BlockType::Hero => view('components.blocks.hero', $data),
+            BlockType::HeroCarousel => view('components.blocks.hero-carousel', $data),
             BlockType::RichText => view('components.blocks.rich-text', $data),
             BlockType::Image => view('components.blocks.image', $data),
             BlockType::Gallery => view('components.blocks.gallery', $data),

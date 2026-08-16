@@ -14,6 +14,7 @@ class BlockContentHydrator
     {
         return match ($blockType) {
             BlockType::Hero => self::hydrateHero($jsonContent),
+            BlockType::HeroCarousel => self::hydrateHeroCarousel($jsonContent),
             BlockType::RichText => self::hydrateRichText($jsonContent),
             BlockType::Image => self::hydrateImage($jsonContent),
             BlockType::Gallery => self::hydrateGallery($jsonContent),
@@ -48,6 +49,19 @@ class BlockContentHydrator
             'button_text' => $content['button_text'] ?? '',
             'button_link' => $content['button_link'] ?? '',
             'button_style' => $content['button_style'] ?? 'primary',
+        ];
+    }
+
+    private static function hydrateHeroCarousel(array $content): array
+    {
+        return [
+            'prefix_text' => $content['prefix_text'] ?? '',
+            'suffix_text' => $content['suffix_text'] ?? '',
+            'footnote' => $content['footnote'] ?? '',
+            'slides' => $content['slides'] ?? [],
+            'autoplay' => $content['autoplay'] ?? true,
+            'interval' => $content['interval'] ?? 5000,
+            'show_arrows' => $content['show_arrows'] ?? true,
         ];
     }
 

@@ -14,6 +14,7 @@ use App\Forms\Blocks\FeaturedTeachersBlockForm;
 use App\Forms\Blocks\FeaturesBlockForm;
 use App\Forms\Blocks\GalleryBlockForm;
 use App\Forms\Blocks\HeroBlockForm;
+use App\Forms\Blocks\HeroCarouselBlockForm;
 use App\Forms\Blocks\ImageBlockForm;
 use App\Forms\Blocks\MapBlockForm;
 use App\Forms\Blocks\NewsletterBlockForm;
@@ -37,6 +38,7 @@ class BlockFormSchemaFactory
     {
         return match ($blockType) {
             BlockType::Hero => HeroBlockForm::schema(),
+            BlockType::HeroCarousel => HeroCarouselBlockForm::schema(),
             BlockType::RichText => RichTextBlockForm::schema(),
             BlockType::Image => ImageBlockForm::schema(),
             BlockType::Gallery => GalleryBlockForm::schema(),

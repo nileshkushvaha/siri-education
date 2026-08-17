@@ -79,8 +79,6 @@ class PlatformFoundationSettingsPage extends Page
             'reschedule_limit' => $booking->reschedule_limit,
             'no_show_grace_minutes' => $booking->no_show_grace_minutes,
             'auto_completion_delay_minutes' => $booking->auto_completion_delay_minutes,
-            'minimum_recharge_amount' => $wallet->minimum_recharge_amount,
-            'maximum_recharge_amount' => $wallet->maximum_recharge_amount,
             'low_balance_threshold' => $wallet->low_balance_threshold,
             'recurring_deduction_hours_before_lesson' => $wallet->recurring_deduction_hours_before_lesson,
             'approval_required' => $instructor->approval_required,
@@ -138,12 +136,14 @@ class PlatformFoundationSettingsPage extends Page
                         ]),
                     ]),
 
+                // Recharge minimum/maximum are set per currency on
+                // Finance → Currencies, not here: one platform-wide
+                // number cannot express a limit across nine billing
+                // currencies (SRS §13.12).
                 Section::make('Wallet')
-                    ->description('Stored defaults only; wallet ledger logic ships later. Enable the Wallet module in Feature Flags below.')
+                    ->description('Recharge minimums and maximums are configured per currency under Currencies. Enable the Wallet module in Feature Flags below.')
                     ->schema([
                         Grid::make(2)->schema([
-                            $this->numericInput('minimum_recharge_amount', 'Minimum Recharge', 0),
-                            $this->numericInput('maximum_recharge_amount', 'Maximum Recharge', 0),
                             $this->numericInput('low_balance_threshold', 'Low Balance Threshold', 0),
                             $this->integerInput('recurring_deduction_hours_before_lesson', 'Deduct Before Lesson', 0, 720),
                         ]),
@@ -256,8 +256,6 @@ class PlatformFoundationSettingsPage extends Page
     private function saveWallet(array $data): bool
     {
         return $this->saveSettingsWithAudit(WalletSettings::class, 'settings', function (WalletSettings $settings) use ($data): void {
-            $settings->minimum_recharge_amount = (float) $data['minimum_recharge_amount'];
-            $settings->maximum_recharge_amount = (float) $data['maximum_recharge_amount'];
             $settings->low_balance_threshold = (float) $data['low_balance_threshold'];
             $settings->recurring_deduction_hours_before_lesson = (int) $data['recurring_deduction_hours_before_lesson'];
         });

@@ -7,13 +7,13 @@ namespace Tests\Feature\Wallet\Concurrency;
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Models\WalletRecharge;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
-use App\Settings\GeneralSettings;
 use App\Settings\PaymentGatewaySettings;
 use App\Wallet\Contracts\WalletRechargeServiceInterface;
 use App\Wallet\Enums\WalletRechargeStatus;
@@ -21,17 +21,20 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Crypt;
 use Mockery;
 use Spatie\Permission\Models\Role;
+use Tests\Support\EstablishesRechargeMarket;
 
 /**
  * Real multi-process races for wallet recharge (SRS §13.11/§13.33)
  * settlement — mirrors StripePaymentConcurrencyTest's shape. Reuses
  * the tests/Concurrency/run-op.php harness; the property under test is
- * that WalletRechargeService::processProviderEvent()'s locked-row
+ * that WalletRechargeSettlementService's locked-row
  * discipline (not this test, not Mockery) is what prevents a
  * double-credit.
  */
 final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
 {
+    use EstablishesRechargeMarket;
+
     private const KEY_SECRET = 'test_concurrency_key_secret';
 
     private const WEBHOOK_SECRET = 'test_concurrency_webhook_secret';
@@ -49,7 +52,7 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
         app(BookingSettings::class)->save();
     }
 
-    /** @return array{0: User, 1: WalletRecharge} */
+    /** @return array{0: User, 1: WalletRecharge, 2: Payment} */
     private function initiatedRazorpayRecharge(int $amountMinor = 50000): array
     {
         Currency::query()->firstOrCreate(['code' => 'INR'], [
@@ -62,7 +65,14 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
         $features->save();
         $this->configureRazorpay();
 
-        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        // Recharge passes the same market gate as booking collection, so
+        // the race needs a real active India/INR market to run in.
+        $india = $this->establishRechargeMarket('IN', 'INR', provider: 'razorpay', numericCode: '356');
+
+        $student = $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $india,
+        );
 
         // Called directly in THIS (parent) process only — child workers
         // launched by race() are separate PHP processes and never see
@@ -73,11 +83,12 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
         $gateway->shouldReceive('createOrder')->once()->andReturn(['id' => $orderId]);
         $this->app->instance(RazorpayGatewayClient::class, $gateway);
 
-        app(WalletRechargeServiceInterface::class)->initiate($student, $amountMinor);
+        $checkout = app(WalletRechargeServiceInterface::class)->initiate($student, $amountMinor);
 
-        $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
+        $payment = Payment::query()->whereKey($checkout->paymentId)->sole();
+        $recharge = WalletRecharge::query()->whereKey($payment->payable_id)->sole();
 
-        return [$student, $recharge];
+        return [$student, $recharge, $payment];
     }
 
     private function configureStripe(): void
@@ -93,7 +104,7 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
         app(BookingSettings::class)->save();
     }
 
-    /** @return array{0: User, 1: WalletRecharge} */
+    /** @return array{0: User, 1: WalletRecharge, 2: Payment} */
     private function initiatedStripeRecharge(int $amountMinor = 50000): array
     {
         Currency::query()->firstOrCreate(['code' => 'USD'], [
@@ -104,37 +115,42 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
         $features = app(FeatureSettings::class);
         $features->wallet_enabled = true;
         $features->save();
-        $general = app(GeneralSettings::class);
-        $general->default_currency = 'USD';
-        $general->save();
         $this->configureStripe();
 
-        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        // Wallet currency follows the student's own market, not the
+        // platform default currency — a Stripe-routed US/USD market.
+        $usa = $this->establishRechargeMarket('US', 'USD', provider: 'stripe', numericCode: '840');
+
+        $student = $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $usa,
+        );
 
         $intentId = 'pi_concurrency_'.bin2hex(random_bytes(6));
         $gateway = Mockery::mock(StripeGatewayClient::class);
         $gateway->shouldReceive('createPaymentIntent')->once()->andReturn(['id' => $intentId, 'client_secret' => $intentId.'_secret']);
         $this->app->instance(StripeGatewayClient::class, $gateway);
 
-        app(WalletRechargeServiceInterface::class)->initiate($student, $amountMinor);
+        $checkout = app(WalletRechargeServiceInterface::class)->initiate($student, $amountMinor);
 
-        $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
+        $payment = Payment::query()->whereKey($checkout->paymentId)->sole();
+        $recharge = WalletRecharge::query()->whereKey($payment->payable_id)->sole();
 
-        return [$student, $recharge];
+        return [$student, $recharge, $payment];
     }
 
     // ── 1. Duplicate webhook delivery ───────────────────────────────────
 
     public function test_duplicate_webhook_delivery_cannot_double_credit(): void
     {
-        [, $recharge] = $this->initiatedRazorpayRecharge();
+        [, $recharge, $payment] = $this->initiatedRazorpayRecharge();
 
         $args = [
-            'order_id' => $recharge->provider_order_id,
+            'order_id' => $payment->provider_order_id,
             'payment_id' => 'pay_concurrency_'.bin2hex(random_bytes(6)),
             'amount_minor' => $recharge->amount_minor,
             'currency' => $recharge->currency_code,
-            'reference' => $recharge->idempotency_key,
+            'reference' => $payment->idempotency_key,
             'webhook_secret' => self::WEBHOOK_SECRET,
         ];
 
@@ -158,24 +174,24 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
 
     public function test_browser_verification_racing_the_webhook_creates_exactly_one_credit(): void
     {
-        [$student, $recharge] = $this->initiatedRazorpayRecharge();
+        [$student, $recharge, $payment] = $this->initiatedRazorpayRecharge();
 
         $paymentId = 'pay_concurrency_'.bin2hex(random_bytes(6));
-        $signature = hash_hmac('sha256', "{$recharge->provider_order_id}|{$paymentId}", self::KEY_SECRET);
+        $signature = hash_hmac('sha256', "{$payment->provider_order_id}|{$paymentId}", self::KEY_SECRET);
 
         $this->race([
             ['wallet-recharge-verify', [
                 'student_id' => $student->id,
-                'order_id' => $recharge->provider_order_id,
+                'order_id' => $payment->provider_order_id,
                 'payment_id' => $paymentId,
                 'signature' => $signature,
             ]],
             ['wallet-recharge-webhook-succeed', [
-                'order_id' => $recharge->provider_order_id,
+                'order_id' => $payment->provider_order_id,
                 'payment_id' => $paymentId,
                 'amount_minor' => $recharge->amount_minor,
                 'currency' => $recharge->currency_code,
-                'reference' => $recharge->idempotency_key,
+                'reference' => $payment->idempotency_key,
                 'webhook_secret' => self::WEBHOOK_SECRET,
             ]],
         ]);
@@ -195,16 +211,21 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
 
     public function test_concurrent_initiation_for_the_same_student_produces_two_independent_attempts_never_a_shared_one(): void
     {
-        Currency::query()->firstOrCreate(['code' => 'INR'], [
-            'name' => 'Indian Rupee', 'symbol' => 'Rs', 'numeric_code' => '356',
-            'minor_units' => 2, 'status' => 'active', 'sort_order' => 1,
-        ]);
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $features = app(FeatureSettings::class);
         $features->wallet_enabled = true;
         $features->save();
 
-        $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        // Both child processes must find a collectable market, or each
+        // initiate() fails eligibility and the race proves nothing. The
+        // `fake` route keeps this test about the wallet-creation race
+        // rather than about gateway credentials.
+        $india = $this->establishRechargeMarket('IN', 'INR', provider: 'fake', numericCode: '356');
+
+        $student = $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $india,
+        );
 
         $this->race([
             ['wallet-recharge-initiate', ['student_id' => $student->id, 'amount_minor' => 50000]],
@@ -220,7 +241,7 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
         $this->assertSame(2, WalletRecharge::query()->where('user_id', $student->id)->count());
         $this->assertSame(
             2,
-            WalletRecharge::query()->where('user_id', $student->id)->distinct()->count('idempotency_key'),
+            WalletRecharge::query()->where('user_id', $student->id)->distinct()->count('reference'),
         );
     }
 
@@ -228,13 +249,13 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
 
     public function test_stripe_duplicate_webhook_delivery_cannot_double_credit(): void
     {
-        [, $recharge] = $this->initiatedStripeRecharge();
+        [, $recharge, $payment] = $this->initiatedStripeRecharge();
 
         $args = [
-            'intent_id' => $recharge->provider_order_id,
+            'intent_id' => $payment->provider_order_id,
             'amount_minor' => $recharge->amount_minor,
             'currency' => strtolower($recharge->currency_code),
-            'reference' => $recharge->idempotency_key,
+            'reference' => $payment->idempotency_key,
             'webhook_secret' => self::WEBHOOK_SECRET,
         ];
 
@@ -258,19 +279,20 @@ final class WalletRechargeConcurrencyTest extends ConcurrencyTestCase
 
     public function test_stripe_webhook_racing_reconciliation_creates_exactly_one_credit(): void
     {
-        [, $recharge] = $this->initiatedStripeRecharge();
+        [, $recharge, $payment] = $this->initiatedStripeRecharge();
 
-        WalletRecharge::query()->whereKey($recharge->id)->update([
+        // Due for a provider poll — a property of the ATTEMPT now.
+        Payment::query()->whereKey($payment->id)->update([
             'created_at' => CarbonImmutable::now()->subMinutes(30),
             'last_synced_at' => null,
         ]);
 
         $this->race([
             ['wallet-recharge-stripe-webhook-succeed', [
-                'intent_id' => $recharge->provider_order_id,
+                'intent_id' => $payment->provider_order_id,
                 'amount_minor' => $recharge->amount_minor,
                 'currency' => strtolower($recharge->currency_code),
-                'reference' => $recharge->idempotency_key,
+                'reference' => $payment->idempotency_key,
                 'webhook_secret' => self::WEBHOOK_SECRET,
             ]],
             ['wallet-recharge-reconcile', [

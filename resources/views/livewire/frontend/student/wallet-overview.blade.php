@@ -35,7 +35,10 @@
         @if($rechargeAvailable)
             <p class="mt-2 text-xs text-slate-400">
                 Currency: <span class="font-semibold text-white">{{ $rechargeCurrencyCode }}</span>
-                &middot; Min {{ $rechargeLimits['min'] }} &middot; Max {{ $rechargeLimits['max'] }}
+                {{-- Only advertise a limit this currency actually has configured; an
+                     unconfigured limit is not enforced, so printing one would be a lie. --}}
+                @if($rechargeLimits['min']) &middot; Min {{ $rechargeLimits['min'] }} @endif
+                @if($rechargeLimits['max']) &middot; Max {{ $rechargeLimits['max'] }} @endif
             </p>
 
             @if($rechargeBanner)
@@ -132,5 +135,13 @@
     </x-account.card>
 </div>
 
+{{-- Both partials reference $wire, which only exists inside Livewire's
+     own script scope. Included as bare <script> tags they ran at page
+     load with $wire undefined, so neither checkout listener was ever
+     registered and the console reported "$wire is not defined". Same
+     @script/@endscript wrapping the booking wizard and booking history
+     already use for their identical Razorpay/Stripe partials. --}}
+@script
 @include('livewire.frontend.student.partials.wallet-recharge-checkout-script')
 @include('livewire.frontend.student.partials.wallet-recharge-stripe-checkout-script')
+@endscript

@@ -33,10 +33,19 @@ use App\Settings\PaymentGatewaySettings;
  *   provider that answered "not paid". Callers must tell them apart:
  *   one is an outage, the other is a fact.
  *
- *   The event is built from our own stored snapshot, never from the
- *   fetched body. If it echoed the provider's amount back, the
- *   amount/currency checks performed during settlement would be
- *   self-confirming and could never catch a mismatch.
+ *   The event carries what the PROVIDER reported, not what we stored.
+ *   This class previously rebuilt the event from the attempt's own
+ *   amount and currency, on the stated reasoning that echoing the
+ *   provider's figures back would make settlement's checks
+ *   self-confirming. That reasoning is inverted: settlement compares
+ *   the event against the attempt, so feeding it the attempt's own
+ *   values compared the row with itself and the mismatch guards could
+ *   never fire on the reconciliation path at all. Feeding it the
+ *   provider's values is what makes those guards mean anything.
+ *
+ *   A provider that confirms payment without reporting an amount or
+ *   currency yields nulls, which settlement treats as "unproven" and
+ *   skips — never as agreement.
  */
 final class PaymentAttemptVerifier
 {
@@ -56,13 +65,13 @@ final class PaymentAttemptVerifier
             return null;
         }
 
-        $paid = match ($payment->provider) {
+        $confirmed = match ($payment->provider) {
             'razorpay' => $this->razorpayOrderIsPaid($payment, $reachable),
             'stripe' => $this->stripeIntentSucceeded($payment, $reachable),
-            default => false,
+            default => null,
         };
 
-        if (! $paid) {
+        if ($confirmed === null) {
             return null;
         }
 
@@ -72,12 +81,18 @@ final class PaymentAttemptVerifier
             reference: $payment->idempotency_key,
             providerOrderId: $payment->provider_order_id,
             providerPaymentId: $payment->provider_payment_id,
-            amountMinor: (int) $payment->amount_minor,
-            currencyCode: (string) $payment->currency_code,
+            amountMinor: $confirmed['amountMinor'],
+            currencyCode: $confirmed['currencyCode'],
         );
     }
 
-    private function razorpayOrderIsPaid(Payment $payment, bool &$reachable): bool
+    /**
+     * What the provider says it collected, or null when it does not
+     * confirm a payment at all.
+     *
+     * @return array{amountMinor: ?int, currencyCode: ?string}|null
+     */
+    private function razorpayOrderIsPaid(Payment $payment, bool &$reachable): ?array
     {
         try {
             $order = $this->razorpay->fetchOrder(
@@ -90,13 +105,23 @@ final class PaymentAttemptVerifier
             // apart; silence is still never treated as payment.
             $reachable = false;
 
-            return false;
+            return null;
         }
 
-        return (string) ($order['status'] ?? '') === 'paid';
+        if ((string) ($order['status'] ?? '') !== 'paid') {
+            return null;
+        }
+
+        // The order body carries both figures; discarding them is what
+        // let reconciliation settle without checking what was collected.
+        return [
+            'amountMinor' => isset($order['amount']) ? (int) $order['amount'] : null,
+            'currencyCode' => isset($order['currency']) ? strtoupper((string) $order['currency']) : null,
+        ];
     }
 
-    private function stripeIntentSucceeded(Payment $payment, bool &$reachable): bool
+    /** @return array{amountMinor: ?int, currencyCode: ?string}|null */
+    private function stripeIntentSucceeded(Payment $payment, bool &$reachable): ?array
     {
         try {
             $intent = $this->stripe->retrievePaymentIntent(
@@ -106,9 +131,18 @@ final class PaymentAttemptVerifier
         } catch (GatewayRequestException) {
             $reachable = false;
 
-            return false;
+            return null;
         }
 
-        return (string) ($intent['status'] ?? '') === 'succeeded';
+        if ((string) ($intent['status'] ?? '') !== 'succeeded') {
+            return null;
+        }
+
+        // `amount_received` is Stripe's authoritative captured amount;
+        // `amount` is only what was requested.
+        return [
+            'amountMinor' => isset($intent['amount_received']) ? (int) $intent['amount_received'] : null,
+            'currencyCode' => isset($intent['currency']) ? strtoupper((string) $intent['currency']) : null,
+        ];
     }
 }

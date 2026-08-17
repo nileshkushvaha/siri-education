@@ -22,10 +22,7 @@ use App\Models\WalletRecharge;
 use App\Services\Payment\InvoiceService;
 use App\Settings\FeatureSettings;
 use App\Settings\GeneralSettings;
-use App\Wallet\Contracts\WalletRechargeServiceInterface;
-use App\Wallet\DTOs\WalletRechargeProviderEvent;
 use App\Wallet\Enums\WalletLedgerEntryType;
-use App\Wallet\Enums\WalletRechargeProviderEventType;
 use App\Wallet\Services\WalletLedgerService;
 use App\Wallet\Services\WalletService;
 use Carbon\CarbonImmutable;
@@ -34,6 +31,8 @@ use Illuminate\Support\Facades\Route;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\EstablishesRechargeMarket;
+use Tests\Support\InitiatesWalletRecharges;
 use Tests\TestCase;
 
 /**
@@ -45,9 +44,13 @@ use Tests\TestCase;
  */
 class InvoiceGenerationTest extends TestCase
 {
+    use EstablishesRechargeMarket;
+    use InitiatesWalletRecharges;
     use RefreshDatabase;
 
     private BookingType $paidType;
+
+    private Country $india;
 
     protected function setUp(): void
     {
@@ -64,6 +67,11 @@ class InvoiceGenerationTest extends TestCase
 
         app(FeatureSettings::class)->wallet_enabled = true;
 
+        // Wallet recharge passes the same market gate as booking
+        // collection, so the recharge-invoice cases need a real active
+        // India/INR market to run in.
+        $this->india = $this->establishRechargeMarket('IN', 'INR', provider: 'fake', numericCode: '356');
+
         app(GeneralSettings::class)->organization_name = 'SIRI Education';
         app(GeneralSettings::class)->save();
 
@@ -76,11 +84,9 @@ class InvoiceGenerationTest extends TestCase
     {
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
 
-        if ($country !== null) {
-            $student->profile()->update(['country_id' => $country->id]);
-        }
+        $student->profile()->update(['country_id' => ($country ?? $this->india)->id]);
 
-        return $student;
+        return $student->refresh();
     }
 
     private function pendingBooking(User $student, int $priceMinor = 49900): Booking
@@ -110,21 +116,7 @@ class InvoiceGenerationTest extends TestCase
 
     private function succeededRecharge(User $student, int $amountMinor = 50000): WalletRecharge
     {
-        $service = app(WalletRechargeServiceInterface::class);
-        $checkout = $service->initiate($student, $amountMinor);
-        $recharge = WalletRecharge::query()->where('idempotency_key', $checkout->reference)->sole();
-
-        $service->processProviderEvent(new WalletRechargeProviderEvent(
-            provider: $recharge->provider,
-            reference: $recharge->idempotency_key,
-            providerOrderId: $recharge->provider_order_id,
-            providerPaymentId: 'fake_payment_'.$recharge->id,
-            amountMinor: $recharge->amount_minor,
-            currencyCode: $recharge->currency_code,
-            type: WalletRechargeProviderEventType::Captured,
-        ));
-
-        return $recharge->fresh();
+        return $this->completedRecharge($student, $amountMinor);
     }
 
     private function admin(): User
@@ -161,7 +153,7 @@ class InvoiceGenerationTest extends TestCase
 
         $invoice = Invoice::query()->where('user_id', $student->id)->sole();
         $this->assertSame(WalletRecharge::class, $invoice->source_type);
-        $this->assertSame($recharge->idempotency_key, $invoice->wallet_recharge_reference);
+        $this->assertSame($recharge->reference, $invoice->wallet_recharge_reference);
         $this->assertNull($invoice->booking_reference);
         $this->assertSame(75000, $invoice->amount_minor);
     }

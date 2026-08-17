@@ -39,7 +39,7 @@ final class WalletRechargeSucceededNotification extends WalletNotification
         $rendered = app(NotificationTemplateRenderer::class)->render(
             NotificationTemplateKey::WalletRechargeSucceeded,
             NotificationTemplateChannel::Mail,
-            ['amount' => $this->amountFormatted(), 'reference' => $this->recharge->idempotency_key],
+            ['amount' => $this->amountFormatted(), 'reference' => $this->recharge->reference],
         );
 
         $mail = $this->configureMailMessage(new MailMessage)->subject($rendered->subject);
@@ -63,7 +63,7 @@ final class WalletRechargeSucceededNotification extends WalletNotification
         return [
             'title' => $rendered->subject,
             'message' => $rendered->message(),
-            'wallet_recharge_reference' => $this->recharge->idempotency_key,
+            'wallet_recharge_reference' => $this->recharge->reference,
         ];
     }
 

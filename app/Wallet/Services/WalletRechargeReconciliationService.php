@@ -4,236 +4,264 @@ declare(strict_types=1);
 
 namespace App\Wallet\Services;
 
-use App\Booking\Contracts\RazorpayGatewayClient;
-use App\Booking\Contracts\StripeGatewayClient;
-use App\Booking\Exceptions\GatewayRequestException;
+use App\Models\Payment;
 use App\Models\WalletRecharge;
+use App\Payments\DTOs\VerifiedPaymentEvent;
+use App\Payments\Enums\PaymentReconciliationIssueType;
+use App\Payments\Services\PaymentAttemptVerifier;
+use App\Payments\Services\PaymentReconciliationIssueService;
+use App\Payments\Services\PaymentService;
 use App\Services\AuditTrailService;
-use App\Services\Payment\PaymentWebhookSignatureService;
-use App\Settings\PaymentGatewaySettings;
-use App\Wallet\Contracts\WalletRechargeServiceInterface;
-use App\Wallet\DTOs\WalletRechargeProviderEvent;
-use App\Wallet\Enums\WalletRechargeProviderEventType;
+use App\Wallet\DTOs\WalletRechargeSettlementResult;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Exceptions\WalletException;
+use Throwable;
 
 /**
- * The provider-neutral-in-spirit (Razorpay-only in practice this
- * phase) reconciliation sweep for wallet recharges — deliberately
- * small: no separate issue-tracking table, unlike
- * BookingPaymentReconciliationService. Every state transition here
- * goes through WalletRechargeService::processProviderEvent()/
- * retryPendingCredit(), never a separate financial-effect code path.
- * SRS §13.33: this is the sweep that detects "payment succeeded but
- * wallet credit failed" and retries it, and "payment success but
- * callback delayed" (a captured order the webhook never reported).
+ * The safety net behind the wallet recharge webhook.
+ *
+ * This class OWNS NO PROVIDER INTEGRATION. It used to hold its own
+ * Razorpay and Stripe polling, its own gateway credentials, and its own
+ * amount/currency comparison against `wallet_recharges` — a second
+ * provider reconciliation engine racing the generic one for the same
+ * facts. It now asks PaymentAttemptVerifier, the single canonical
+ * "does the provider say this was paid?" implementation shared with
+ * booking and package reconciliation, and hands the answer to the same
+ * WalletRechargeSettlementService the webhook uses.
+ *
+ * It survives the cutover as a thin DOMAIN orchestrator because it does
+ * two things the generic payment sweep genuinely cannot:
+ *
+ *   1. It scopes the sweep to wallet-recharge payables, so the wallet's
+ *      recovery cadence and audit trail stay its own.
+ *
+ *   2. It retries CREDITS. A recharge in CreditFailed has a Paid
+ *      Payment — the generic sweep is correct to consider it finished,
+ *      because externally it is. What is unfinished is purely local: the
+ *      ledger credit. No provider call can help, and no other component
+ *      would ever look for it.
  */
 final class WalletRechargeReconciliationService
 {
     /**
-     * How long a non-terminal recharge waits before its first
-     * reconciliation check. Public: also the operational-monitoring
-     * staleness threshold (App\Reporting\Repositories\WalletFinancialReportRepository) —
-     * one number, reused, not duplicated.
+     * How long an open attempt waits before the first provider poll.
+     * Public: also the operational-monitoring staleness threshold read
+     * by WalletFinancialReportRepository — one number, reused.
      */
     public const int DUE_AFTER_MINUTES = 10;
 
+    /** How long an attempt may stay unresolved before an operator should see it. */
+    public const int OPERATOR_VISIBLE_AFTER_MINUTES = self::DUE_AFTER_MINUTES * 6;
+
     public function __construct(
-        private readonly WalletRechargeServiceInterface $recharges,
-        private readonly RazorpayGatewayClient $razorpay,
-        private readonly StripeGatewayClient $stripe,
-        private readonly PaymentGatewaySettings $gatewaySettings,
+        private readonly PaymentService $payments,
+        private readonly WalletRechargeSettlementService $settlement,
+        private readonly PaymentAttemptVerifier $verifier,
+        private readonly PaymentReconciliationIssueService $issues,
         private readonly AuditTrailService $audit,
     ) {}
 
+    /** @return int how many attempts and stalled credits were examined */
     public function reconcileDue(int $limit = 200): int
     {
-        $cutoff = now()->subMinutes(self::DUE_AFTER_MINUTES);
+        return $this->reconcileDuePayments($limit) + $this->retryStalledCredits($limit);
+    }
 
-        $recharges = WalletRecharge::query()
-            ->reconciliationDue($cutoff)
+    /** Provider-side recovery: attempts the webhook never resolved. */
+    private function reconcileDuePayments(int $limit): int
+    {
+        $due = Payment::query()
+            ->where('payable_type', WalletRecharge::PAYABLE_TYPE)
+            ->reconciliationDue(now()->subMinutes(self::DUE_AFTER_MINUTES))
             ->orderBy('created_at')
             ->orderBy('id')
             ->limit($limit)
             ->get();
 
-        $examined = 0;
-
-        foreach ($recharges as $recharge) {
-            $this->reconcileOne($recharge);
-            $examined++;
+        foreach ($due as $payment) {
+            $this->reconcileOne($payment);
         }
 
-        return $examined;
+        return $due->count();
     }
 
-    public function reconcileOne(WalletRecharge $recharge): WalletRecharge
+    /**
+     * Local-only recovery: money already collected whose ledger credit
+     * has not been applied. Deliberately makes no provider call — the
+     * external side of these is finished and correct.
+     */
+    private function retryStalledCredits(int $limit): int
     {
-        if ($recharge->status->needsCreditRetry()) {
-            return $this->retryCredit($recharge);
+        $stalled = WalletRecharge::query()
+            ->awaitingCredit()
+            ->orderBy('created_at')
+            ->limit($limit)
+            ->get();
+
+        foreach ($stalled as $recharge) {
+            try {
+                $result = $this->settlement->retryCredit($recharge);
+            } catch (WalletException) {
+                // No settled payment yet, or no longer awaiting a credit
+                // — the provider-side sweep above owns that case.
+                continue;
+            }
+
+            if ($result->settled) {
+                $this->audit->logSystem(
+                    'wallet_recharges',
+                    'reconciliation_credit_recovered',
+                    sprintf('Reconciliation applied the pending wallet credit for recharge %s.', $recharge->reference),
+                    $result->recharge,
+                    ['amount_minor' => (int) $recharge->amount_minor, 'currency_code' => $recharge->currency_code],
+                );
+            }
         }
 
-        if ($recharge->status->isAwaitingSettlement()) {
-            return $this->pollProviderOrder($recharge);
-        }
-
-        return $recharge;
+        return $stalled->count();
     }
 
-    private function retryCredit(WalletRecharge $recharge): WalletRecharge
+    /**
+     * Polls one attempt and settles it if the provider confirms payment.
+     * Safe to call repeatedly: settlement is idempotent, so an attempt
+     * already settled comes back as a replay and credits nothing twice.
+     */
+    public function reconcileOne(Payment $payment): WalletRechargeSettlementResult
     {
+        if ($payment->payable_type !== WalletRecharge::PAYABLE_TYPE) {
+            return WalletRechargeSettlementResult::ignored($payment, null, 'Not a wallet recharge payment.');
+        }
+
+        if (! $payment->status->isOpen() || $payment->provider_order_id === null) {
+            // An OPEN attempt with no provider reference is not "nothing
+            // to reconcile" — it is a checkout that started and never
+            // reached the gateway. Nothing can poll it; it needs a human.
+            if ($payment->status->isOpen()) {
+                $this->detectStuckAttempt($payment);
+            }
+
+            $this->payments->markSynced($payment);
+
+            return WalletRechargeSettlementResult::ignored($payment, null, 'Nothing to reconcile.');
+        }
+
+        $reachable = true;
+        $confirmed = $this->providerConfirmsPayment($payment, $reachable);
+
+        if ($confirmed === null) {
+            // "The provider says not yet" and "we could not reach the
+            // provider" are different facts, and only one needs a human.
+            if (! $reachable) {
+                $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::ProviderUnavailable);
+            } else {
+                $this->detectStuckAttempt($payment);
+            }
+
+            $this->payments->markSynced($payment);
+
+            return WalletRechargeSettlementResult::ignored($payment, null, 'The provider has not confirmed this payment.');
+        }
+
         try {
-            $result = $this->recharges->retryPendingCredit($recharge);
-        } catch (WalletException) {
-            $this->markSynced($recharge);
+            $result = $this->settlement->settle($payment, $confirmed);
+        } catch (Throwable $e) {
+            // Left open on purpose: the next sweep retries. The provider
+            // has confirmed money and the student has nothing, so this
+            // becomes an operator incident immediately — there is
+            // nothing transient about it.
+            $this->payments->markSynced($payment);
 
-            return $recharge->refresh();
-        }
+            $this->issues->record(
+                $payment,
+                PaymentReconciliationIssueType::SettlementFailed,
+                [
+                    'expected_amount_minor' => (int) $payment->amount_minor,
+                    'expected_currency' => (string) $payment->currency_code,
+                ],
+                source: 'reconciliation',
+            );
 
-        if ($result->status === WalletRechargeStatus::CreditFailed) {
-            // A repeated CreditFailed outcome across sweeps is the
-            // operationally significant signal SRS §13.33 asks for —
-            // captured provider money that still cannot reach the
-            // wallet needs an operator, not another silent retry.
             $this->audit->logSystem(
                 'wallet_recharges',
-                'reconciliation_credit_retry_failed',
-                sprintf('Wallet recharge %s remains uncredited after a reconciliation retry.', $recharge->idempotency_key),
-                $result,
-                ['failure_code' => $result->failure_code, 'amount_minor' => $result->amount_minor, 'currency_code' => $result->currency_code],
+                'reconciliation_settlement_failed',
+                sprintf('Reconciliation could not settle a provider-confirmed wallet recharge: %s', $e->getMessage()),
+                $payment,
+                ['payment_id' => $payment->id, 'provider' => $payment->provider],
+            );
+
+            return WalletRechargeSettlementResult::ignored($payment, null, $e->getMessage());
+        }
+
+        if ($result->settled) {
+            $this->issues->resolveOpenIssuesFor($payment);
+
+            $this->audit->logSystem(
+                'wallet_recharges',
+                'reconciliation_recovered',
+                sprintf('Reconciliation recovered and credited wallet recharge %s.', $result->recharge?->reference),
+                $result->recharge,
+                ['payment_id' => $payment->id],
             );
         }
 
-        $this->markSynced($result);
+        $this->payments->markSynced($payment->refresh());
 
         return $result;
     }
 
-    private function pollProviderOrder(WalletRecharge $recharge): WalletRecharge
+    /**
+     * Delegated to the canonical verifier so wallet, booking and package
+     * reconciliation cannot drift about what "the provider says paid"
+     * means. The rules it enforces — unreachable is never unpaid, and
+     * the amount/currency compared are the provider's own reported
+     * values, never our copy of them — are documented there.
+     */
+    private function providerConfirmsPayment(Payment $payment, bool &$reachable): ?VerifiedPaymentEvent
     {
-        if ($recharge->provider_order_id === null) {
-            $this->markSynced($recharge);
-
-            return $recharge;
-        }
-
-        return match ($recharge->provider) {
-            'razorpay' => $this->pollRazorpayOrder($recharge),
-            'stripe' => $this->pollStripeIntent($recharge),
-            default => tap($recharge, fn (WalletRecharge $r) => $this->markSynced($r)),
-        };
+        return $this->verifier->confirmedPayment($payment, $reachable);
     }
 
-    private function pollRazorpayOrder(WalletRecharge $recharge): WalletRecharge
+    /** An attempt the provider is reachable about but that still will not resolve. */
+    private function detectStuckAttempt(Payment $payment): void
     {
-        $keyId = (string) $this->gatewaySettings->razorpay_key_id;
-        $keySecret = (string) PaymentWebhookSignatureService::decryptSecret($this->gatewaySettings, 'razorpay_key_secret');
+        $threshold = now()->subMinutes(self::OPERATOR_VISIBLE_AFTER_MINUTES);
 
-        try {
-            $order = $this->razorpay->fetchOrder($keyId, $keySecret, $recharge->provider_order_id);
-        } catch (GatewayRequestException) {
-            $this->markSynced($recharge);
+        if ($payment->provider_order_id === null) {
+            $claimedAt = $payment->initialization_claimed_at;
 
-            return $recharge->refresh();
-        }
-
-        $status = (string) ($order['status'] ?? '');
-
-        // Never guess: only an authoritative "paid" status from the
-        // provider's own order lookup ever settles a recharge here —
-        // this is exactly the "captured but the webhook never arrived"
-        // case SRS §13.33 requires reconciliation to catch.
-        if ($status === 'paid') {
-            try {
-                $this->recharges->processProviderEvent(new WalletRechargeProviderEvent(
-                    provider: 'razorpay',
-                    reference: $recharge->idempotency_key,
-                    providerOrderId: $recharge->provider_order_id,
-                    providerPaymentId: $recharge->provider_payment_id,
-                    amountMinor: $recharge->amount_minor,
-                    currencyCode: $recharge->currency_code,
-                    type: WalletRechargeProviderEventType::Captured,
-                ));
-            } catch (WalletException) {
-                $this->markSynced($recharge);
-
-                return $recharge->refresh();
+            if ($claimedAt !== null && $claimedAt->lt($threshold)) {
+                $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::MissingProviderReference);
             }
 
-            return $recharge->refresh();
+            return;
         }
 
-        if ($recharge->status === WalletRechargeStatus::ProviderCreated) {
-            $recharge->forceFill(['status' => WalletRechargeStatus::AwaitingConfirmation])->save();
+        if ($payment->created_at !== null && $payment->created_at->lt($threshold)) {
+            $this->recordOperationalIssue($payment, PaymentReconciliationIssueType::StaleProcessing);
         }
-
-        $this->markSynced($recharge);
-
-        return $recharge->refresh();
     }
 
-    private function pollStripeIntent(WalletRecharge $recharge): WalletRecharge
+    /** Deduplicated by the generic issue service: one open issue per (payment, type). */
+    private function recordOperationalIssue(Payment $payment, PaymentReconciliationIssueType $type): void
     {
-        $secretKey = (string) PaymentWebhookSignatureService::decryptSecret($this->gatewaySettings, 'stripe_secret_key');
-
-        try {
-            $intent = $this->stripe->retrievePaymentIntent($secretKey, $recharge->provider_order_id);
-        } catch (GatewayRequestException) {
-            $this->markSynced($recharge);
-
-            return $recharge->refresh();
+        if ($payment->created_at !== null && $payment->created_at->gt(now()->subMinutes(self::OPERATOR_VISIBLE_AFTER_MINUTES))) {
+            return;
         }
 
-        $status = (string) ($intent['status'] ?? '');
-
-        // Never guess: only an authoritative "succeeded" status from
-        // Stripe's own intent lookup ever settles a recharge here — the
-        // "captured but the webhook never arrived" case SRS §13.33
-        // requires reconciliation to catch.
-        if ($status === 'succeeded') {
-            try {
-                $this->recharges->processProviderEvent(new WalletRechargeProviderEvent(
-                    provider: 'stripe',
-                    reference: $recharge->idempotency_key,
-                    providerOrderId: $recharge->provider_order_id,
-                    providerPaymentId: $recharge->provider_payment_id,
-                    amountMinor: (int) ($intent['amount_received'] ?? -1),
-                    currencyCode: strtoupper((string) ($intent['currency'] ?? $recharge->currency_code)),
-                    type: WalletRechargeProviderEventType::Captured,
-                ));
-            } catch (WalletException) {
-                $this->markSynced($recharge);
-
-                return $recharge->refresh();
-            }
-
-            return $recharge->refresh();
-        }
-
-        // A canceled intent is Stripe's own authoritative terminal
-        // failure — never guessed from elapsed time.
-        if ($status === 'canceled') {
-            $this->recharges->markProviderFailure(
-                'stripe',
-                $recharge->idempotency_key,
-                'stripe_canceled',
-                'Stripe reported the payment intent as canceled.',
-            );
-
-            return $recharge->refresh();
-        }
-
-        if ($recharge->status === WalletRechargeStatus::ProviderCreated) {
-            $recharge->forceFill(['status' => WalletRechargeStatus::AwaitingConfirmation])->save();
-        }
-
-        $this->markSynced($recharge);
-
-        return $recharge->refresh();
+        $this->issues->record(
+            $payment,
+            $type,
+            [
+                'expected_amount_minor' => (int) $payment->amount_minor,
+                'expected_currency' => (string) $payment->currency_code,
+            ],
+            source: 'reconciliation',
+        );
     }
 
-    private function markSynced(WalletRecharge $recharge): void
+    /** Statuses this sweep can still act on — used by operational reporting. */
+    public static function recoverableStatuses(): array
     {
-        WalletRecharge::query()->whereKey($recharge->id)->update(['last_synced_at' => now()]);
+        return [WalletRechargeStatus::Requested, WalletRechargeStatus::CreditPending, WalletRechargeStatus::CreditFailed];
     }
 }

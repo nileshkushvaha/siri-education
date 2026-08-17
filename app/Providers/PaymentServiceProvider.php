@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Models\BookingPayment;
 use App\Models\StudentPackagePurchase;
+use App\Models\WalletRecharge;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -32,10 +33,14 @@ class PaymentServiceProvider extends ServiceProvider
      * CMS aliases registered in CmsServiceProvider rather than
      * replacing them — do not consolidate the two.
      *
-     * `Booking` and `WalletRecharge` are deliberately absent, and for
-     * different reasons. Booking is not itself a payable — PAY-4 makes
-     * BOOKING_PAYMENT the payable, because the obligation is what gets
-     * paid, not the lesson. WalletRecharge keeps its own legacy path.
+     * `Booking` is deliberately absent: it is not itself a payable —
+     * PAY-4 makes BOOKING_PAYMENT the payable, because the obligation
+     * is what gets paid, not the lesson.
+     *
+     * `WalletRecharge` IS a payable. A recharge is a commercial
+     * obligation in its own right (a student owes money in exchange for
+     * stored value), and it no longer carries a parallel provider
+     * integration of its own.
      *
      * Adding an alias is append-only: no existing value may ever change,
      * or historical rows stop hydrating.
@@ -45,6 +50,7 @@ class PaymentServiceProvider extends ServiceProvider
     private const PAYABLE_MORPH_MAP = [
         StudentPackagePurchase::PAYABLE_TYPE => StudentPackagePurchase::class,
         BookingPayment::PAYABLE_TYPE => BookingPayment::class,
+        WalletRecharge::PAYABLE_TYPE => WalletRecharge::class,
     ];
 
     private function registerPayableMorphMap(): void

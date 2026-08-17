@@ -6,10 +6,10 @@ namespace App\Payments\DTOs;
 
 /**
  * The gateway-neutral result of opening (or resuming) checkout for a
- * generic Payable. Mirrors WalletRechargeCheckoutData's shape and its
- * rule: `checkoutPayload` is frontend-facing and must never contain a
- * secret key — only the single-use, publishable values a browser
- * legitimately needs.
+ * generic Payable — including wallet recharge, which used to carry a
+ * near-identical DTO of its own. `checkoutPayload` is frontend-facing
+ * and must never contain a secret key — only the single-use,
+ * publishable values a browser legitimately needs.
  */
 final readonly class PaymentCheckoutData
 {

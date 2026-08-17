@@ -6,75 +6,59 @@ namespace App\Wallet\Contracts;
 
 use App\Models\User;
 use App\Models\WalletRecharge;
-use App\Wallet\DTOs\WalletRechargeCheckoutData;
-use App\Wallet\DTOs\WalletRechargeProviderEvent;
-use App\Wallet\DTOs\WalletRechargeSettlementResult;
+use App\Payments\DTOs\PaymentCheckoutData;
 use App\Wallet\Exceptions\WalletException;
 
 /**
- * Wallet recharge via a payment gateway (SRS §13.11/§13.12) — a
- * student adding funds to their own wallet, independent of any
- * booking. Deliberately not PaymentProviderInterface: every method
- * there is typed to Booking. This orchestrates the same generic
- * gateway SDK clients (RazorpayGatewayClient et al.) that
- * PaymentProviderInterface implementations use internally, via
- * PaymentProviderResolver for provider selection only.
+ * Wallet recharge (SRS §13.11/§13.12) — a student adding funds to their
+ * own wallet, independent of any booking.
  *
- * The wallet is never credited before a provider has authoritatively
- * confirmed capture — initiate() never touches the ledger.
+ * The DOMAIN half only: who may recharge, for how much, in which
+ * currency. Implementations must hold no gateway client, no provider
+ * secret, and no provider name in a conditional — creating the external
+ * order and owning provider identity belong to the generic payment
+ * kernel, and a wallet recharge is a `Payable` like any other.
+ *
+ * Nothing on this contract credits a wallet. A wallet moves only when an
+ * authenticated provider event reaches WalletRechargeSettlementService.
  */
 interface WalletRechargeServiceInterface
 {
     /**
-     * Resolves/creates the student's own wallet, validates amount and
-     * provider eligibility, and creates the provider order/intent.
-     * $amountMinor is already-validated integer minor units — never a
-     * raw client string.
-     *
-     * @throws WalletException when the actor is ineligible, the wallet
-     *                         feature is disabled, the wallet is not usable for a new
-     *                         recharge, the amount is out of the configured range, or no
-     *                         recharge-capable provider is available for the wallet's currency
+     * The collection transaction type a wallet recharge presents to
+     * PaymentCollectionEligibilityService, matching what providers
+     * declare in PaymentProviderCapabilities::$supportedTransactionTypes.
+     * Lives on the contract so read-only consumers (the student wallet
+     * screen's availability preview) can ask the same question without
+     * depending on the concrete service.
      */
-    public function initiate(User $student, int $amountMinor): WalletRechargeCheckoutData;
+    public const string TRANSACTION_TYPE = 'wallet_recharge';
 
     /**
-     * Razorpay's client-side Checkout.js success callback — a fast
-     * path, never trusted alone. Verifies the order_id|payment_id HMAC
-     * signature, re-checks that the order belongs to $student's own
-     * recharge, then funnels into the same settlement path the webhook
-     * uses. The signed webhook remains the durable, authoritative
-     * fallback.
+     * Validates eligibility and amount, creates the WalletRecharge
+     * domain record, and opens checkout through the generic payment
+     * kernel.
      *
-     * @throws WalletException when the signature is invalid, the order does not belong to this student, or the amount/currency disagree
+     * Every eligibility question is answered BEFORE any money state
+     * exists: a refused recharge creates no WalletRecharge, no Payment,
+     * and reaches no provider. $amountMinor is already-validated integer
+     * minor units — never a raw client string — and the resulting
+     * Payment takes its amount and currency from the recharge's own
+     * snapshot, never from the request.
+     *
+     * @throws WalletException when the actor is ineligible, the wallet feature or
+     *                         market is unavailable, the wallet is not usable for a new
+     *                         recharge, the amount is outside the currency's configured
+     *                         range, or the gateway rejects the order
      */
-    public function verifyRazorpayCheckout(User $student, string $orderId, string $paymentId, string $signature): WalletRecharge;
+    public function initiate(User $student, int $amountMinor): PaymentCheckoutData;
 
     /**
-     * The single authoritative settlement path every verified provider
-     * event (webhook or browser-verify) ultimately funnels through.
-     * Idempotent: a recharge already Succeeded returns an ignored
-     * result rather than crediting twice. A provider-captured payment
-     * that cannot be credited right now (wallet closed/ownership
-     * changed) is recorded as CreditFailed, never silently discarded.
-     */
-    public function processProviderEvent(WalletRechargeProviderEvent $event): WalletRechargeSettlementResult;
-
-    /**
-     * Reconciliation's retry entry point for a recharge stuck in
-     * CreditPending or CreditFailed — re-attempts the same locked
-     * credit step processProviderEvent() uses. A repeat call after a
-     * prior success is a no-op (idempotency key guards the ledger).
+     * Re-presents the open payment attempt for a recharge the student
+     * already started, instead of opening a second one. Ownership is
+     * derived from the recharge, never from the request.
      *
-     * @throws WalletException when the recharge is not in a retryable state
+     * @throws WalletException when the recharge is not this student's, or has nothing open
      */
-    public function retryPendingCredit(WalletRecharge $recharge): WalletRecharge;
-
-    /**
-     * A definitive, non-capturable provider outcome (failed/cancelled/
-     * expired) — never called for a payment that was ever captured.
-     *
-     * @throws WalletException when the reference does not match a recharge awaiting settlement
-     */
-    public function markProviderFailure(string $provider, string $reference, string $failureCode, ?string $reason = null): WalletRecharge;
+    public function resumeCheckout(User $student, WalletRecharge $recharge): PaymentCheckoutData;
 }

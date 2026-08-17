@@ -22,9 +22,8 @@ use Carbon\CarbonInterface;
  */
 enum WalletRechargeOperationalClassification: string
 {
-    case AwaitingConfirmation = 'awaiting_confirmation';
-    case StaleProviderCreated = 'stale_provider_created';
-    case StaleAwaitingConfirmation = 'stale_awaiting_confirmation';
+    case AwaitingPayment = 'awaiting_payment';
+    case StaleAwaitingPayment = 'stale_awaiting_payment';
     case ProviderTerminalFailure = 'provider_terminal_failure';
     case CapturedCreditPending = 'captured_credit_pending';
     case CapturedCreditFailed = 'captured_credit_failed';
@@ -43,18 +42,19 @@ enum WalletRechargeOperationalClassification: string
             WalletRechargeStatus::Expired => self::Expired,
             WalletRechargeStatus::CreditPending => self::CapturedCreditPending,
             WalletRechargeStatus::CreditFailed => self::CapturedCreditFailed,
-            WalletRechargeStatus::ProviderCreated => $stale ? self::StaleProviderCreated : self::AwaitingConfirmation,
-            WalletRechargeStatus::AwaitingConfirmation => $stale ? self::StaleAwaitingConfirmation : self::AwaitingConfirmation,
-            WalletRechargeStatus::Pending => $stale ? self::StaleProviderCreated : self::AwaitingConfirmation,
+            // The three provider-shaped opening states collapsed into
+            // one domain state at the payment-ledger cutover: how far an
+            // external charge has got is now a fact about the recharge's
+            // Payment attempt, not a status this table duplicates.
+            WalletRechargeStatus::Requested => $stale ? self::StaleAwaitingPayment : self::AwaitingPayment,
         };
     }
 
     public function label(): string
     {
         return match ($this) {
-            self::AwaitingConfirmation => 'Awaiting confirmation',
-            self::StaleProviderCreated => 'Stale — provider created',
-            self::StaleAwaitingConfirmation => 'Stale — awaiting confirmation',
+            self::AwaitingPayment => 'Awaiting payment',
+            self::StaleAwaitingPayment => 'Stale — awaiting payment',
             self::ProviderTerminalFailure => 'Provider terminal failure',
             self::CapturedCreditPending => 'Captured — credit pending',
             self::CapturedCreditFailed => 'Captured — credit failed',
@@ -64,7 +64,7 @@ enum WalletRechargeOperationalClassification: string
         };
     }
 
-    /** Provider has durably confirmed capture (provider_confirmed_at was set) but the wallet has not yet been credited. */
+    /** The payment is settled but the wallet has not yet been credited — the states an operator most needs to see. */
     public function isCapturedButUncredited(): bool
     {
         return match ($this) {
@@ -76,7 +76,7 @@ enum WalletRechargeOperationalClassification: string
     public function isStale(): bool
     {
         return match ($this) {
-            self::StaleProviderCreated, self::StaleAwaitingConfirmation => true,
+            self::StaleAwaitingPayment => true,
             default => false,
         };
     }
@@ -86,9 +86,9 @@ enum WalletRechargeOperationalClassification: string
         return match ($this) {
             self::Succeeded => 'success',
             self::ProviderTerminalFailure, self::CapturedCreditFailed => 'danger',
-            self::CapturedCreditPending, self::StaleProviderCreated, self::StaleAwaitingConfirmation => 'warning',
+            self::CapturedCreditPending, self::StaleAwaitingPayment => 'warning',
             self::Cancelled, self::Expired => 'gray',
-            self::AwaitingConfirmation => 'info',
+            self::AwaitingPayment => 'info',
         };
     }
 }

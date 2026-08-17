@@ -45,6 +45,8 @@ use App\Models\ReferralReward;
 use App\Models\StudentPackagePurchase;
 use App\Models\TeacherAvailability;
 use App\Models\User;
+use App\Models\WalletRecharge;
+use App\Payments\Services\PaymentCallbackVerifier;
 use App\Payments\Services\PaymentCheckoutService;
 use App\Queue\Services\FailedJobRetryService;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
@@ -836,7 +838,7 @@ try {
                             'order_id' => $args['order_id'],
                             'amount' => $args['amount_minor'],
                             'currency' => $args['currency'],
-                            'notes' => ['wallet_recharge_reference' => $args['reference']],
+                            'notes' => ['payment_reference' => $args['reference']],
                         ],
                     ],
                 ],
@@ -861,21 +863,25 @@ try {
             return ['status_code' => $response->getStatusCode(), 'content' => $response->getContent()];
         })(),
 
-        // The Razorpay Checkout.js browser-verify fast path — raced
-        // against wallet-recharge-webhook-succeed above for the SAME
-        // recharge; exactly one of the two may ever post the
-        // RechargeConfirmed ledger credit.
+        // The Razorpay Checkout.js browser callback — raced against
+        // wallet-recharge-webhook-succeed above for the SAME recharge.
+        // It is non-authoritative by construction, so the property under
+        // test is that racing it against a real settlement still yields
+        // exactly one RechargeConfirmed ledger credit.
         'wallet-recharge-verify' => (function () use ($args) {
-            $student = User::query()->findOrFail($args['student_id']);
+            $recharge = WalletRecharge::query()
+                ->where('user_id', $args['student_id'])
+                ->latest('created_at')
+                ->firstOrFail();
 
-            $recharge = app(WalletRechargeServiceInterface::class)->verifyRazorpayCheckout(
-                $student,
+            $attempt = app(PaymentCallbackVerifier::class)->verifyRazorpayCheckout(
+                $recharge,
                 (string) $args['order_id'],
                 (string) $args['payment_id'],
                 (string) $args['signature'],
             );
 
-            return ['status' => $recharge->status->value];
+            return ['status' => $attempt->status->value];
         })(),
 
         'wallet-recharge-reconcile' => (function () use ($args) {
@@ -903,7 +909,7 @@ try {
                         'amount_received' => $args['amount_minor'],
                         'currency' => $args['currency'],
                         'status' => 'succeeded',
-                        'metadata' => ['wallet_recharge_reference' => $args['reference']],
+                        'metadata' => ['payment_reference' => $args['reference']],
                     ],
                 ],
             ], JSON_THROW_ON_ERROR);

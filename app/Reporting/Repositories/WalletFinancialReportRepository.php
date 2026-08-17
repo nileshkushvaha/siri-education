@@ -161,21 +161,30 @@ final class WalletFinancialReportRepository
      */
     public function uncreditedCapturedRecharges(int $limit = 50): array
     {
-        return DB::table('wallet_recharges')
-            ->whereIn('status', ['credit_pending', 'credit_failed'])
-            ->orderBy('provider_confirmed_at')
+        // Money the provider took that has not reached a wallet — the
+        // single most operationally urgent wallet state. Provider
+        // identity and capture time come from the joined Payment
+        // attempt; `wallet_recharges` no longer stores either.
+        return WalletRecharge::query()
+            ->awaitingCredit()
+            ->with('payments')
+            ->orderBy('created_at')
             ->limit($limit)
-            ->get(['id', 'provider', 'amount_minor', 'currency_code', 'status', 'failure_code', 'provider_confirmed_at', 'last_synced_at'])
-            ->map(fn ($row) => [
-                'id' => (string) $row->id,
-                'provider' => (string) $row->provider,
-                'amountMinor' => (int) $row->amount_minor,
-                'currency' => (string) $row->currency_code,
-                'status' => (string) $row->status,
-                'failureCode' => $row->failure_code !== null ? (string) $row->failure_code : null,
-                'providerConfirmedAt' => $row->provider_confirmed_at !== null ? (string) $row->provider_confirmed_at : null,
-                'lastSyncedAt' => $row->last_synced_at !== null ? (string) $row->last_synced_at : null,
-            ])
+            ->get()
+            ->map(function (WalletRecharge $recharge): array {
+                $payment = $recharge->payments->first();
+
+                return [
+                    'id' => (string) $recharge->id,
+                    'provider' => (string) ($payment?->provider ?? ''),
+                    'amountMinor' => (int) $recharge->amount_minor,
+                    'currency' => (string) $recharge->currency_code,
+                    'status' => $recharge->status->value,
+                    'failureCode' => $recharge->failure_code,
+                    'providerConfirmedAt' => $payment?->paid_at?->toIso8601String(),
+                    'lastSyncedAt' => $payment?->last_synced_at?->toIso8601String(),
+                ];
+            })
             ->all();
     }
 
@@ -190,13 +199,12 @@ final class WalletFinancialReportRepository
         $cutoff = CarbonImmutable::now()->subMinutes(WalletRechargeReconciliationService::DUE_AFTER_MINUTES);
 
         $stale = (int) DB::table('wallet_recharges')
-            ->whereIn('status', [WalletRechargeStatus::ProviderCreated->value, WalletRechargeStatus::AwaitingConfirmation->value])
+            ->where('status', WalletRechargeStatus::Requested->value)
             ->where('created_at', '<=', $cutoff)
             ->count();
 
         return new WalletRechargeMonitoringSummary(
-            providerCreated: $breakdown[WalletRechargeStatus::ProviderCreated->value] ?? 0,
-            awaitingConfirmation: $breakdown[WalletRechargeStatus::AwaitingConfirmation->value] ?? 0,
+            awaitingPayment: $breakdown[WalletRechargeStatus::Requested->value] ?? 0,
             capturedCreditPending: $breakdown[WalletRechargeStatus::CreditPending->value] ?? 0,
             capturedCreditFailed: $breakdown[WalletRechargeStatus::CreditFailed->value] ?? 0,
             succeeded: $breakdown[WalletRechargeStatus::Succeeded->value] ?? 0,
@@ -218,14 +226,18 @@ final class WalletFinancialReportRepository
     {
         $cutoff = CarbonImmutable::now()->subMinutes(WalletRechargeReconciliationService::DUE_AFTER_MINUTES);
 
-        $query = WalletRecharge::query()->with(['user:id,name,first_name']);
+        // Provider identity lives on the Payment attempt; eager-loaded
+        // so the operator table does not N+1 across it.
+        $query = WalletRecharge::query()->with(['user:id,name,first_name', 'payments']);
 
         if (filled($params['status'] ?? null)) {
             $query->where('status', $params['status']);
         }
 
         if (filled($params['provider'] ?? null)) {
-            $query->where('provider', $params['provider']);
+            // Provider identity lives on the Payment attempt now, so
+            // filtering by it is a join, not a local column.
+            $query->whereHas('payments', fn ($q) => $q->where('provider', $params['provider']));
         }
 
         if (filled($params['currencyCode'] ?? null)) {
@@ -233,9 +245,9 @@ final class WalletFinancialReportRepository
         }
 
         if (filled($params['reference'] ?? null)) {
-            // idempotency_key is varchar(100) — the column itself bounds
-            // the search input; no unbounded LIKE scan risk beyond that.
-            $query->where('idempotency_key', 'like', '%'.mb_substr((string) $params['reference'], 0, 100).'%');
+            // `reference` is varchar(100) — the column itself bounds the
+            // search input; no unbounded LIKE scan risk beyond that.
+            $query->where('reference', 'like', '%'.mb_substr((string) $params['reference'], 0, 100).'%');
         }
 
         if (($params['capturedUncreditedOnly'] ?? false) === true) {
@@ -243,7 +255,7 @@ final class WalletFinancialReportRepository
         }
 
         if (($params['staleOnly'] ?? false) === true) {
-            $query->whereIn('status', [WalletRechargeStatus::ProviderCreated->value, WalletRechargeStatus::AwaitingConfirmation->value])
+            $query->where('status', WalletRechargeStatus::Requested->value)
                 ->where('created_at', '<=', $cutoff);
         }
 
@@ -258,24 +270,30 @@ final class WalletFinancialReportRepository
         return $query
             ->orderByDesc('created_at')
             ->paginate($perPage)
-            ->through(fn (WalletRecharge $recharge): WalletRechargeMonitoringRow => new WalletRechargeMonitoringRow(
-                id: $recharge->id,
-                reference: $recharge->idempotency_key,
-                studentLabel: $this->studentLabel($recharge, $maskStudentIdentity),
-                currencyCode: $recharge->currency_code,
-                amountMinor: $recharge->amount_minor,
-                provider: $recharge->provider,
-                status: $recharge->status,
-                classification: WalletRechargeOperationalClassification::fromRecharge($recharge, $cutoff),
-                failureCode: $recharge->failure_code,
-                providerConfirmedAtUtc: $recharge->provider_confirmed_at,
-                succeededAtUtc: $recharge->succeeded_at,
-                failedAtUtc: $recharge->failed_at,
-                lastSyncedAtUtc: $recharge->last_synced_at,
-                createdAtUtc: CarbonImmutable::parse($recharge->created_at, 'UTC'),
-                maskedProviderOrderId: $this->mask($recharge->provider_order_id),
-                maskedProviderPaymentId: $this->mask($recharge->provider_payment_id),
-            ));
+            ->through(function (WalletRecharge $recharge) use ($cutoff, $maskStudentIdentity): WalletRechargeMonitoringRow {
+                // The attempt that matters operationally is the most
+                // recent one; `payments` is already ordered newest-first.
+                $payment = $recharge->payments->first();
+
+                return new WalletRechargeMonitoringRow(
+                    id: $recharge->id,
+                    reference: $recharge->reference,
+                    studentLabel: $this->studentLabel($recharge, $maskStudentIdentity),
+                    currencyCode: $recharge->currency_code,
+                    amountMinor: $recharge->amount_minor,
+                    provider: $payment?->provider,
+                    status: $recharge->status,
+                    classification: WalletRechargeOperationalClassification::fromRecharge($recharge, $cutoff),
+                    failureCode: $recharge->failure_code,
+                    providerConfirmedAtUtc: $payment?->paid_at,
+                    succeededAtUtc: $recharge->succeeded_at,
+                    failedAtUtc: $recharge->failed_at,
+                    lastSyncedAtUtc: $payment?->last_synced_at,
+                    createdAtUtc: CarbonImmutable::parse($recharge->created_at, 'UTC'),
+                    maskedProviderOrderId: $this->mask($payment?->provider_order_id),
+                    maskedProviderPaymentId: $this->mask($payment?->provider_payment_id),
+                );
+            });
     }
 
     /** Mirrors StudentEngagementReportService::studentLabel()'s exact masking convention — first-initial + '***' when the viewer lacks ViewStudentReports. */

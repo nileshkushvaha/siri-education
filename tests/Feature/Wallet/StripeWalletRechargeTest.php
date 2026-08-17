@@ -8,7 +8,9 @@ use App\Booking\Contracts\StripeGatewayClient;
 use App\Booking\Exceptions\GatewayRequestException;
 use App\Livewire\Frontend\Student\WalletOverview;
 use App\Models\BookingPayment;
+use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
@@ -21,8 +23,6 @@ use App\Settings\FeatureSettings;
 use App\Settings\GeneralSettings;
 use App\Settings\PaymentGatewaySettings;
 use App\Wallet\Contracts\WalletRechargeServiceInterface;
-use App\Wallet\DTOs\WalletRechargeProviderEvent;
-use App\Wallet\Enums\WalletRechargeProviderEventType;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Enums\WalletStatus;
 use App\Wallet\Exceptions\WalletException;
@@ -33,11 +33,17 @@ use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use Mockery;
 use Spatie\Permission\Models\Role;
+use Tests\Support\EstablishesRechargeMarket;
+use Tests\Support\InitiatesWalletRecharges;
 use Tests\TestCase;
 
 class StripeWalletRechargeTest extends TestCase
 {
+    use EstablishesRechargeMarket;
+    use InitiatesWalletRecharges;
     use RefreshDatabase;
+
+    private Country $market;
 
     protected function setUp(): void
     {
@@ -47,6 +53,11 @@ class StripeWalletRechargeTest extends TestCase
             'name' => 'US Dollar', 'symbol' => '$', 'numeric_code' => '840',
             'minor_units' => 2, 'status' => 'active', 'sort_order' => 1,
         ]);
+
+        // Recharge now passes the same market gate as booking
+        // collection, so an active US/USD market routed at Stripe is a
+        // precondition for every case in this file.
+        $this->market = $this->establishRechargeMarket('US', 'USD', provider: 'stripe', numericCode: '840');
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
 
@@ -77,7 +88,10 @@ class StripeWalletRechargeTest extends TestCase
 
     private function student(): User
     {
-        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        return $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $this->market,
+        );
     }
 
     private function service(): WalletRechargeServiceInterface
@@ -111,8 +125,12 @@ class StripeWalletRechargeTest extends TestCase
 
         $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
         $this->assertSame(50000, $recharge->amount_minor);
-        $this->assertSame(WalletRechargeStatus::ProviderCreated, $recharge->status);
-        $this->assertSame('pi_TEST123', $recharge->provider_order_id);
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->status);
+
+        // The intent id belongs to the Payment attempt, not the recharge.
+        $payment = Payment::query()->whereKey($checkout->paymentId)->sole();
+        $this->assertSame('pi_TEST123', $payment->provider_order_id);
+        $this->assertSame(WalletRecharge::PAYABLE_TYPE, $payment->payable_type);
     }
 
     public function test_lowercase_currency_is_sent_to_stripe(): void
@@ -133,7 +151,9 @@ class StripeWalletRechargeTest extends TestCase
         $gateway = Mockery::mock(StripeGatewayClient::class);
         $gateway->shouldReceive('createPaymentIntent')
             ->withArgs(function (string $secretKey, array $params, string $idempotencyKey) use (&$captured): bool {
-                $captured = $params['metadata']['wallet_recharge_reference'] ?? null;
+                // The canonical generic key — the wallet no longer has
+                // a metadata dialect of its own.
+                $captured = $params['metadata']['payment_reference'] ?? null;
 
                 return true;
             })
@@ -180,13 +200,17 @@ class StripeWalletRechargeTest extends TestCase
         $this->fakeStripeIntentApi('pi_NOPERSIST1', 'pi_NOPERSIST1_secret_xyz');
         $student = $this->student();
 
-        $this->service()->initiate($student, 50000);
+        $checkout = $this->service()->initiate($student, 50000);
 
         $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
+        $payment = Payment::query()->whereKey($checkout->paymentId)->sole();
 
-        $this->assertSame('pi_NOPERSIST1', $recharge->provider_order_id);
-        $raw = json_encode($recharge->toArray());
-        $this->assertStringNotContainsString('pi_NOPERSIST1_secret_xyz', (string) $raw);
+        $this->assertSame('pi_NOPERSIST1', $payment->provider_order_id);
+
+        // The single-use client_secret must not reach EITHER record.
+        foreach ([$recharge->toArray(), $payment->toArray()] as $row) {
+            $this->assertStringNotContainsString('pi_NOPERSIST1_secret_xyz', (string) json_encode($row));
+        }
         $this->assertStringNotContainsString('secret', (string) ($recharge->metadata ?? ''));
     }
 
@@ -229,17 +253,26 @@ class StripeWalletRechargeTest extends TestCase
         $this->service()->initiate($student, 50000);
     }
 
+    /**
+     * The wallet currency now follows the student's own MARKET, so an
+     * unsupported currency is expressed as a market whose billing
+     * currency the provider cannot collect — JPY, which is genuinely
+     * absent from StripePaymentProvider::SUPPORTED_CURRENCIES. This used
+     * to work by leaving the student countryless and switching the
+     * platform default currency, which no longer describes anything
+     * reachable: a student with no active market cannot recharge at all,
+     * for a different and more fundamental reason.
+     */
     public function test_unsupported_currency_rejects_safely(): void
     {
-        Currency::query()->firstOrCreate(['code' => 'JPY'], [
-            'name' => 'Japanese Yen', 'symbol' => '¥', 'numeric_code' => '392',
-            'minor_units' => 0, 'status' => 'active', 'sort_order' => 2,
-        ]);
-        app(GeneralSettings::class)->default_currency = 'JPY';
-        app(GeneralSettings::class)->save();
+        $japan = $this->establishRechargeMarket('JP', 'JPY', provider: 'stripe', numericCode: '392');
+        Currency::query()->where('code', 'JPY')->update(['minor_units' => 0]);
 
         $this->fakeStripeIntentApi();
-        $student = $this->student();
+        $student = $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $japan,
+        );
 
         $this->expectException(WalletException::class);
 
@@ -281,24 +314,15 @@ class StripeWalletRechargeTest extends TestCase
 
     // ── Settlement smoke test (full webhook coverage lives in WalletRechargeWebhookTest) ──
 
-    public function test_stripe_settlement_via_process_provider_event_credits_exact_minor_units_with_correct_source_linkage(): void
+    public function test_stripe_settlement_credits_exact_minor_units_with_correct_source_linkage(): void
     {
         $this->fakeStripeIntentApi('pi_SETTLE1');
         $student = $this->student();
-        $this->service()->initiate($student, 50000);
-        $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
+        [$recharge, $payment] = $this->initiateRecharge($student, 50000);
 
-        $result = $this->service()->processProviderEvent(new WalletRechargeProviderEvent(
-            provider: 'stripe',
-            reference: $recharge->idempotency_key,
-            providerOrderId: 'pi_SETTLE1',
-            providerPaymentId: 'pi_SETTLE1',
-            amountMinor: 50000,
-            currencyCode: 'USD',
-            type: WalletRechargeProviderEventType::Captured,
-        ));
+        $result = $this->settle($payment, $this->capturedEvent($payment));
 
-        $this->assertTrue($result->credited);
+        $this->assertTrue($result->settled);
         $wallet = Wallet::query()->forUser($student->id)->sole();
         $this->assertSame(50000, $wallet->balance_minor);
 
@@ -313,18 +337,9 @@ class StripeWalletRechargeTest extends TestCase
     {
         $this->fakeStripeIntentApi('pi_REPORT1');
         $student = $this->student();
-        $this->service()->initiate($student, 50000);
-        $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
+        [, $payment] = $this->initiateRecharge($student, 50000);
 
-        $this->service()->processProviderEvent(new WalletRechargeProviderEvent(
-            provider: 'stripe',
-            reference: $recharge->idempotency_key,
-            providerOrderId: 'pi_REPORT1',
-            providerPaymentId: 'pi_REPORT1',
-            amountMinor: 50000,
-            currencyCode: 'USD',
-            type: WalletRechargeProviderEventType::Captured,
-        ));
+        $this->settle($payment, $this->capturedEvent($payment));
 
         $period = ReportingPeriod::custom(CarbonImmutable::now()->subDay(), CarbonImmutable::now()->addDay());
         $movements = app(WalletFinancialReportRepository::class)->movements($period, new ReportFilters(period: $period));
@@ -342,22 +357,13 @@ class StripeWalletRechargeTest extends TestCase
     {
         $this->fakeStripeIntentApi('pi_UNCREDITED1');
         $student = $this->student();
-        $this->service()->initiate($student, 50000);
-        $recharge = WalletRecharge::query()->where('user_id', $student->id)->sole();
+        [$recharge, $payment] = $this->initiateRecharge($student, 50000);
 
         // Close the wallet initiate() already created, so settlement's
         // own credit attempt fails and the recharge becomes CreditFailed.
         Wallet::query()->whereKey($recharge->wallet_id)->update(['status' => WalletStatus::Closed]);
 
-        $this->service()->processProviderEvent(new WalletRechargeProviderEvent(
-            provider: 'stripe',
-            reference: $recharge->idempotency_key,
-            providerOrderId: 'pi_UNCREDITED1',
-            providerPaymentId: 'pi_UNCREDITED1',
-            amountMinor: 50000,
-            currencyCode: 'USD',
-            type: WalletRechargeProviderEventType::Captured,
-        ));
+        $this->settle($payment, $this->capturedEvent($payment));
 
         $uncredited = app(WalletFinancialReportRepository::class)->uncreditedCapturedRecharges();
         $this->assertNotEmpty(array_filter($uncredited, fn (array $row): bool => $row['id'] === $recharge->id));

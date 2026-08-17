@@ -13,8 +13,12 @@ namespace App\Reporting\DTOs\Finance;
 final readonly class WalletRechargeMonitoringSummary
 {
     public function __construct(
-        public int $providerCreated,
-        public int $awaitingConfirmation,
+        // `providerCreated` and `awaitingConfirmation` were two separate
+        // cards describing how far an external charge had got. That is a
+        // fact about the recharge's Payment attempt, not about the
+        // wallet, so they collapse into one domain card: the student has
+        // asked to add money and the payment has not settled yet.
+        public int $awaitingPayment,
         public int $capturedCreditPending,
         public int $capturedCreditFailed,
         public int $succeeded,

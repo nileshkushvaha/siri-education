@@ -690,7 +690,13 @@ International as a verified collection fallback; RazorpayX tax/TDS
 withholding (fees/tax are recorded as platform operational cost, never
 deducted from the instructor); withdrawal fees (schema-ready); currency
 conversion (explicitly never — both domains are single-currency-per-
-transaction by design); wallet recharge and wallet-as-payment-method;
+transaction by design); wallet recharge (a `Payable` on the generic
+`payments` ledger since the payment-ledger cutover — `WalletRecharge`
+owns no provider identity, `WalletRechargeSettlementService` is the only
+path to `WalletLedgerService::credit()`, the browser callback is
+non-authoritative, and settlement is two-phase so a captured payment
+whose wallet credit is refused stays `Paid` and retryable; see
+`docs/architecture/wallet.md`) and wallet-as-payment-method;
 `payu`/`phonepe`/`cashfree`/`paypal` real collection adapters
 (settings-only, no implementation); incentive & adjustment earning
 sources; automatic tiers; demo-to-paid/hybrid demo policies;

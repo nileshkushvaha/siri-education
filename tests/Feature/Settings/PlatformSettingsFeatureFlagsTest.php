@@ -41,7 +41,14 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(30, $booking->demo_duration_minutes);
         $this->assertSame(120, $booking->minimum_booking_notice_minutes);
         $this->assertSame(90, $booking->maximum_advance_booking_days);
-        $this->assertSame(100.0, $wallet->minimum_recharge_amount);
+        // Recharge min/max are no longer platform-wide settings — they
+        // are per-currency minor-unit columns on `currencies` (SRS
+        // §13.12), because one scalar cannot express a limit across nine
+        // billing currencies. What remains here is the low-balance
+        // threshold and the recurring-deduction window.
+        $this->assertSame(500.0, $wallet->low_balance_threshold);
+        $this->assertFalse(property_exists($wallet, 'minimum_recharge_amount'));
+        $this->assertFalse(property_exists($wallet, 'maximum_recharge_amount'));
         $this->assertSame('manual', $meeting->default_provider);
         $this->assertTrue($instructor->approval_required);
         $this->assertSame('IN', $localization->default_country);
@@ -97,8 +104,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.reservation_expiry_minutes', 25)
             ->set('data.minimum_booking_notice_minutes', 180)
             ->set('data.maximum_advance_booking_days', 45)
-            ->set('data.minimum_recharge_amount', 250)
-            ->set('data.maximum_recharge_amount', 25000)
+            ->set('data.low_balance_threshold', 250)
             ->set('data.wallet_enabled', true)
             ->set('data.referral_enabled', true)
             ->set('data.recording_enabled', true)
@@ -111,7 +117,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(180, $booking->minimum_booking_notice_minutes);
         $this->assertSame(45, $booking->maximum_advance_booking_days);
 
-        $this->assertSame(250.0, app()->make(WalletSettings::class)->refresh()->minimum_recharge_amount);
+        $this->assertSame(250.0, app()->make(WalletSettings::class)->refresh()->low_balance_threshold);
 
         $features = app()->make(FeatureSettings::class)->refresh();
         $this->assertTrue($features->wallet_enabled);
@@ -186,7 +192,7 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         Livewire::test(PlatformFoundationSettingsPage::class)
             ->set('data.demo_duration_minutes', 40)
             ->set('data.reservation_expiry_minutes', 25)
-            ->set('data.minimum_recharge_amount', 250)
+            ->set('data.low_balance_threshold', 250)
             ->set('data.approval_required', false)
             ->set('data.default_country', 'us')
             ->set('data.wallet_enabled', true)
@@ -231,8 +237,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.reschedule_limit', $booking->reschedule_limit)
             ->set('data.no_show_grace_minutes', $booking->no_show_grace_minutes)
             ->set('data.auto_completion_delay_minutes', $booking->auto_completion_delay_minutes)
-            ->set('data.minimum_recharge_amount', $wallet->minimum_recharge_amount)
-            ->set('data.maximum_recharge_amount', $wallet->maximum_recharge_amount)
             ->set('data.low_balance_threshold', $wallet->low_balance_threshold)
             ->set('data.recurring_deduction_hours_before_lesson', $wallet->recurring_deduction_hours_before_lesson)
             ->set('data.approval_required', $instructor->approval_required)

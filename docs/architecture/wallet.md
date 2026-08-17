@@ -2,9 +2,10 @@
 
 ## Data model
 
-Two tables, under a dedicated `app/Wallet/` domain module (mirrors `app/Booking/`'s Enums/Services/Exceptions structure), both UUID-keyed:
+Three tables, under a dedicated `app/Wallet/` domain module (mirrors `app/Booking/`'s Enums/Services/Exceptions structure), all UUID-keyed:
 
 - **`wallets`** — one row per (user, currency). `balance_minor = available_balance_minor + held_balance_minor`, and both parts `>= 0`, are enforced by DB `CHECK` constraints, not just application code. `status` (`active`/`frozen`/`closed`) — `closed` is the terminal state instead of soft-deleting, because a wallet with ledger history must never disappear (a soft-delete-and-recreate cycle can't stay correct against a unique `(user_id, currency_id)` index in MySQL).
+- **`wallet_recharges`** — one row per student intent to add money. Carries `wallet_id`, `user_id`, `amount_minor`, `currency_code`, `reference` (`WRCH-…`, unique) and the **credit** lifecycle (`status`, `failure_code`, `failure_reason`, `succeeded_at`, `failed_at`). It holds **no** `provider`, `provider_order_id` or `provider_payment_id`: external payment identity belongs to `payments` (`payable_type = 'wallet_recharge'`), and holding a second copy meant two records of one charge that could disagree. See the `move_wallet_recharge_provider_identity_to_payments` migration.
 - **`wallet_ledger_entries`** — append-only. `amount_minor` is an unsigned magnitude; `direction` (`credit`/`debit`) carries the sign. Every row snapshots `balance_after_minor`/`available_after_minor`/`held_after_minor` at post time, so the full balance history is reconstructable from the ledger alone. `idempotency_key` is DB-unique. There is no separate `wallet_holds` table — held balance is tracked as two columns on `wallets` plus `booking_hold`/`booking_hold_release` ledger entry types.
 
 ## Ledger philosophy
@@ -27,13 +28,69 @@ Every balance-mutating method: `DB::transaction()` wraps a `Wallet::query()->whe
 
 ## Currency
 
-`WalletService::resolveCurrency()`: explicit currency code (if passed) → the user's `profile.country.defaultCurrency.code` → `GeneralSettings::default_currency`. The resolved code must match an **active** row in `currencies` or a `ValidationException` is thrown. No exchange-rate engine exists: a user may hold one wallet per currency (tested: two currencies for the same user produce two isolated wallets, and a credit to one never touches the other's balance), but nothing converts between them. The student wallet page currently assumes a single currency per student rather than offering a currency selector (see `WalletOverview`'s docblock) — revisit if/when a student legitimately needs more than one currency wallet.
+`WalletService::resolveCurrency()`: explicit currency code (if passed) → the user's `profile.country.defaultCurrency.code` → `GeneralSettings::default_currency`. The resolved code must match an **active** row in `currencies` or a `ValidationException` is thrown. No exchange-rate engine exists: a user may hold one wallet per currency (tested: two currencies for the same user produce two isolated wallets, and a credit to one never touches the other's balance), but nothing converts between them. Per SRS §13.7 the wallet currency follows the student's billing country and cross-currency wallet operations are not supported in Version 1 — the multi-currency schema exists so a student who *moves* market keeps their old balance intact and in its original currency, not so a student can choose a currency. The student wallet page therefore offers no currency selector.
+
+## Recharge limits
+
+Per currency, not platform-wide: `currencies.minimum_recharge_minor` / `maximum_recharge_minor`, integer minor units in that currency's own exponent (SRS §13.12), edited on the Currency admin form and enforced by `WalletRechargeService::assertAmountWithinLimits()`. NULL means unconfigured — no floor beyond `amount > 0`, no ceiling beyond the provider's technical limits — and is deliberately not the same as 0.
+
+This replaced two platform-wide floats (`wallet.minimum_recharge_amount` / `maximum_recharge_amount`) that the service re-expressed in each wallet's own minor units, so one configured `100` meant ₹100 in India *and* $100 in the United States. With no exchange rate anywhere in the application, a single scalar cannot express a limit meaningful in more than one currency; the old shape was unsound rather than merely under-configured. Only the three minimums SRS §13.12 states (INR 500, USD 10, GBP 10) are seeded, and no maximum is seeded anywhere.
+
+## Recharge payment architecture
+
+A wallet recharge is a `Payable`, exactly like a package purchase or a booking payment obligation. It owns **no provider identity at all**.
+
+```
+WalletRecharge (Payable)
+  → PaymentCheckoutService → Payment → Razorpay
+  → signed webhook  (shared signature service, PURPOSE_WALLET scope)
+  → PaymentWebhookEventParser  (one parser, no wallet dialect)
+  → PaymentService::findByProviderReference → payable_type guard
+  → WalletRechargeSettlementService
+  → WalletLedgerService::credit()
+```
+
+**Ownership split.** `Payment` owns `provider`, `provider_order_id`, `provider_payment_id`, `paid_at`, `last_synced_at` and the payment lifecycle. `WalletRecharge` owns `wallet_id`, `amount_minor`, `currency_code`, `reference` and the **credit** lifecycle. Amount and currency are duplicated onto the recharge deliberately: they are the domain snapshot settlement validates the provider's reported figures against, so a payment that disagrees with the recharge is detectable at all.
+
+`WalletRechargeService` holds no gateway client, no provider secret, and no provider name in any conditional — it answers only *who may recharge, for how much, in which currency*. Before the cutover it drove `RazorpayGatewayClient`/`StripeGatewayClient` directly and stored provider ids on `wallet_recharges`, so one external charge was described by two independent records that could disagree about whether money had arrived.
+
+The wallet keeps its own webhook **route** (`/api/webhooks/wallets/recharges/{provider}`), matching the house convention that each payable domain owns an endpoint with its own secret scope — a leaked recharge secret must not become authority to settle lessons. What is shared is everything worth sharing: the signature service, the parser, the gateway clients, and the ledger. `/webhooks/payments/generic/{gateway}` is deliberately inert and settles nothing.
+
+## Recharge collection gate
+
+Wallet recharge is external money collection, so **whether it may happen at all is not a wallet decision**. `WalletRechargeService` delegates wholesale to `PaymentCollectionEligibilityService` — the same gate booking collection passes through — asked with the `wallet_recharge` transaction type (`WalletRechargeServiceInterface::TRANSACTION_TYPE`).
+
+That single call covers `payments_enabled`, the collection rollout scope, `Country.status === 'active'` (the canonical market gate), provider routing/configuration, the provider's approved billing currencies — which for Razorpay is where the international attestation `razorpay_international_enabled` + `razorpay_international_currencies` is enforced — and provider health. There is therefore **no wallet-specific country allowlist and no wallet-specific currency allowlist anywhere**, recharge cannot drift from booking collection, and NZD/SAR stay blocked for wallets exactly as long as they stay blocked for bookings. Every check runs *before* any money state exists: a refused recharge creates no `WalletRecharge`, no `Payment`, and reaches no provider.
+
+`LaunchMarketWalletRechargeTest` pins this across all nine launch markets, mirroring `LaunchMarketPaymentTest`.
+
+## Callback vs. webhook
+
+- **`PaymentCallbackVerifier` (browser callback) is non-authoritative.** It verifies the `order_id|payment_id` HMAC, resolves the attempt from the **payable plus order id** — which is what stops a valid callback for someone else's order attaching itself here — records `provider_payment_id` on the `Payment`, and returns. It never settles, never credits, never notifies, never invoices.
+- **`WalletRechargeSettlementService::settle()` is authoritative** and is the only path that reaches `WalletLedgerService::credit()`.
+
+Two independent reasons the callback must not settle: it is browser-supplied and replayable, and Checkout.js fires on **authorization, not capture** — an authorized-but-uncaptured payment is money SIRI does not have. It is generic rather than wallet-specific because the wallet previously carried its own copy of the HMAC check, so there were two implementations of "is this callback real" that could drift.
+
+## Two-phase settlement, and why it differs from packages
+
+`PackagePurchaseSettlementService` writes everything in one transaction. Wallet settlement cannot, because crediting a wallet has a **real, persistent** business failure that package activation does not: the destination wallet may be frozen or closed.
+
+```
+phase 1 (one txn)   validate → Payment = Paid, Recharge = CreditPending
+phase 2 (one txn)   WalletLedgerService::credit() → Recharge = Succeeded
+```
+
+If phase 2 is refused, the `Payment` **stays Paid** — the money genuinely was collected, and pretending otherwise would be a lie about money SIRI holds — while the recharge becomes `CreditFailed`: durable, operator-visible via `PaymentReconciliationIssue`, and retryable through `retryCredit()` with **no provider call and no second `Payment`**. Rolling back instead would leave the attempt looking unpaid while the provider held real money, and the provider would retry forever against a wallet that will still be frozen. A credit failure is answered `200`, not `500`: the provider has nothing left to do.
+
+## Reconciliation
+
+`WalletRechargeReconciliationService` owns no provider integration. It sweeps the recharge slice of the `payments` ledger, asks the shared `PaymentAttemptVerifier`, and hands the answer to the same settlement service the webhook uses — so the two can never disagree about what "paid" means. It survives as a thin domain orchestrator for the one recovery no generic sweep would look for: retrying **credits** for recharges whose `Payment` is already `Paid`.
+
+`PaymentAttemptVerifier` now carries the **provider's** reported amount and currency. It previously rebuilt the event from the attempt's own values, on the stated reasoning that echoing the provider back would make settlement's checks self-confirming — that reasoning is inverted, and it meant reconciliation compared each row with itself and the mismatch guards could never fire. Wallet settlement additionally fails closed when a success event carries no amount or currency at all.
 
 ## Student wallet UI
 
-`GET /dashboard/wallet` (`StudentWalletController`) — `abort_unless(FeatureSettings::wallet_enabled, 404)` at the top, so the whole surface is invisible whenever the module is off (`FeatureSettings::$wallet_enabled` defaults to `false` — enabling it is a product decision). The page never creates a wallet just by being viewed: a student with no wallet sees a plain "No wallet yet" empty state, not an auto-provisioned zero-balance row — there is no recharge flow yet to justify creating a real financial record on a passive page view. The "Recharge" button is rendered disabled with a "Coming soon" label — no route, no JavaScript, no provider call exists behind it yet. The nav item ("Wallet", under the student sidebar) is gated by the same feature flag.
-
-`WalletSettings` (recharge min/max, low-balance threshold) is seeded but not yet enforced anywhere — there is no recharge path to enforce it against yet.
+`GET /dashboard/wallet` (`StudentWalletController`) — `abort_unless(FeatureSettings::wallet_enabled, 404)` at the top, so the whole surface is invisible whenever the module is off (`FeatureSettings::$wallet_enabled` defaults to `false` — enabling it is a product decision). The page never creates a wallet just by being viewed: a student with no wallet sees a plain "No wallet yet" empty state, not an auto-provisioned zero-balance row. A wallet is created only as a direct effect of the student's own recharge attempt. Recharge amount limits are shown only when the student's currency actually has one configured. The nav item ("Wallet", under the student sidebar) is gated by the same feature flag.
 
 ## Admin wallet management
 
@@ -49,12 +106,17 @@ A relation manager is used instead of a second top-level `WalletLedgerEntryResou
 
 Every state change logs through `AuditTrailService` (never `activity()` directly): wallet creation via `logUser()`; freeze/unfreeze/close/admin-adjustment/reversal via `logOverride()` (reason mandatory, `is_override: true`); every credit/debit via `logUser()` with `entry_type`/`amount_minor`/`balance_after_minor` in the properties. `Wallet`'s own `LogsActivity` trait deliberately only watches `user_id`/`currency_code`/`status` — not the balance columns — since the ledger service's explicit audit calls are the richer, authoritative record of *why* a balance moved; a generic before/after diff on every ledger post would just duplicate that as noise. No payment-provider payload or unnecessary personal data is logged from the wallet domain itself.
 
+## Wallet spending
+
+SRS-approved wallet spend is **lesson bookings only**. `BookingPaymentService::payWithWallet()` locks the booking, re-validates every precondition against the locked row, requires a wallet whose currency *already* matches the booking's (never converting, never creating one in the booking's currency), debits, and finalizes — all in one transaction, so a debit cannot persist without the booking finalizing or vice versa. No gateway call occurs.
+
+Package purchase via wallet is **not** implemented, deliberately: SRS §13.1 lists "future Subscription or Package modules" as integrations the wallet is being *prepared* for, and no chapter authorizes wallet-funded package purchase. That stays deferred rather than assumed.
+
 ## Integration points for future work
 
-- **Real-money recharge (e.g. Razorpay)**: `WalletLedgerService::credit()` with `entry_type = RechargeConfirmed` and an `idempotencyKey` derived from the payment gateway's own reference is the intended landing spot for a webhook handler — the idempotency mechanism already exists to make that safe against webhook retries.
-- **Booking payment from wallet**: `placeHold()`/`releaseHold()`/`debit(..., WalletLedgerEntryType::BookingPayment, sourceType: 'booking', sourceId: $booking->id)` already model the hold-then-settle flow a real integration would need; `BookingService` doesn't currently call into wallet.
-- **Refunds to wallet**: `BookingPaymentService::recordRefund()` is the natural caller of `credit(..., WalletLedgerEntryType::Refund, ...)`.
 - **Referral/promotional credits**: `WalletLedgerEntryType::ReferralCredit`/`PromotionalCredit` already exist in the enum — a future engine only needs to call `WalletLedgerService::credit()`.
+- **Recurring lesson auto-deduction** (SRS §13.14/§13.15): `WalletSettings::$recurring_deduction_hours_before_lesson` is seeded but has no consumer yet.
+- **Low-balance notifications** (SRS §13.16): `WalletSettings::$low_balance_threshold` has one consumer (`WalletFinancialReportRepository`) but carries the same currency-blind shape the recharge limits were moved off — one scalar compared against every currency's balance. It needs the same per-currency treatment before it drives anything student-facing.
 - **Instructor earnings**: kept separate — `wallets.user_id` is not role-restricted at the DB level (an instructor wallet can reuse the same table), but no payout/earnings concept is wired to it, and the current UI is student-only.
 
 ## Tests

@@ -24,6 +24,8 @@ class Currency extends Model
         'symbol',
         'numeric_code',
         'minor_units',
+        'minimum_recharge_minor',
+        'maximum_recharge_minor',
         'status',
         'sort_order',
         'remarks',
@@ -33,6 +35,12 @@ class Currency extends Model
     {
         return [
             'minor_units' => 'integer',
+            // Integer minor units in THIS currency's own exponent, never
+            // a float and never a cross-currency scalar — see the
+            // add_recharge_limits_to_currencies_table migration. NULL is
+            // "unconfigured", which is not the same as 0.
+            'minimum_recharge_minor' => 'integer',
+            'maximum_recharge_minor' => 'integer',
             'sort_order' => 'integer',
         ];
     }

@@ -8,12 +8,18 @@ use App\Wallet\Services\WalletRechargeReconciliationService;
 use Illuminate\Console\Command;
 
 /**
- * Scheduled reconciliation sweep for wallet recharges (SRS §13.33) —
- * the wallet-domain counterpart of ReconcileBookingPayments, never
- * sharing a table or code path with it. Idempotent: every state
- * transition reuses WalletRechargeService::processProviderEvent()/
- * retryPendingCredit(), so an overlapping run can never apply a
- * financial effect twice.
+ * Scheduled reconciliation sweep for wallet recharges (SRS §13.33).
+ *
+ * Sweeps the recharge slice of the generic `payments` ledger, using the
+ * shared PaymentAttemptVerifier to ask the provider and the shared
+ * WalletRechargeSettlementService to apply the answer — so it can never
+ * disagree with the webhook about what "paid" means. It also retries
+ * captures whose wallet CREDIT failed, which needs no provider call at
+ * all and is the one recovery no generic sweep would look for.
+ *
+ * Idempotent at every layer: Payment terminal states, recharge
+ * settlement state, and the ledger's unique idempotency key. An
+ * overlapping run cannot apply a financial effect twice.
  */
 final class ReconcileWalletRecharges extends Command
 {

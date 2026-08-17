@@ -46,15 +46,23 @@ final readonly class VerifiedPaymentEvent
         public string $source = 'webhook',
     ) {}
 
-    /** Reconstructs the event a reconciliation poll proves, from the attempt's own trusted local values. */
+    /**
+     * The event a reconciliation poll proves, carrying what the PROVIDER
+     * reported — never the attempt's own copy, which would make
+     * settlement's mismatch guards compare the row with itself.
+     *
+     * Amount and currency are nullable because a provider can confirm a
+     * payment without restating either; settlement treats a null as
+     * unproven and skips that check rather than reading it as agreement.
+     */
     public static function reconciled(
         string $provider,
         PaymentEventType $type,
         ?string $reference,
         ?string $providerOrderId,
         ?string $providerPaymentId,
-        int $amountMinor,
-        string $currencyCode,
+        ?int $amountMinor,
+        ?string $currencyCode,
     ): self {
         return new self(
             provider: $provider,

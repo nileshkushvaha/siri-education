@@ -252,16 +252,23 @@ class PaymentReconciliationIssueTest extends TestCase
     {
         [, $payment] = $this->purchaseWithAttempt();
 
-        // The provider confirms payment on poll, but its order carries a
-        // different amount than the approved purchase.
+        // The provider confirms payment on poll, but reports collecting
+        // a different amount than the purchase is for.
+        //
+        // This used to force a LOCAL desync instead, because the sweep
+        // rebuilt its event from the attempt's own values and so could
+        // only ever detect a local disagreement — it compared the row
+        // with itself and a genuinely wrong provider amount sailed
+        // through. The verifier now carries the provider's reported
+        // figures, so the real-world case is the one under test.
         $gateway = Mockery::mock(RazorpayGatewayClient::class);
-        $gateway->shouldReceive('fetchOrder')->andReturn(['id' => $payment->provider_order_id, 'status' => 'paid']);
+        $gateway->shouldReceive('fetchOrder')->andReturn([
+            'id' => $payment->provider_order_id,
+            'status' => 'paid',
+            'amount' => 12345,
+            'currency' => $payment->currency_code,
+        ]);
         $this->app->instance(RazorpayGatewayClient::class, $gateway);
-
-        // Force the local attempt out of step with the purchase so the
-        // sweep's own validation trips — the sweep builds its event from
-        // trusted local values, so the discrepancy must be local.
-        $payment->forceFill(['amount_minor' => 12345])->save();
 
         app(PackagePurchaseReconciliationService::class)->reconcileOne($payment->refresh());
 

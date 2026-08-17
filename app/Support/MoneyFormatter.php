@@ -74,6 +74,29 @@ final class MoneyFormatter
         return ((int) $whole) * (10 ** $units) + ($units > 0 ? (int) $fraction : 0);
     }
 
+    /**
+     * The exact inverse of toMinor(): integer minor units → a plain
+     * major-unit string ("50000", 2 → "500.00"). Unlike format() there
+     * is no thousands grouping and no currency code, because this feeds
+     * amount INPUTS — a grouped, suffixed string round-trips back
+     * through toMinor() as a validation error.
+     *
+     * String/integer arithmetic only, same as everything else here: a
+     * float round-trip is exactly the rounding this class exists to
+     * prevent.
+     */
+    public static function toMajor(int $amountMinor, int $minorUnits): string
+    {
+        $units = self::validateExponent($minorUnits);
+
+        $sign = $amountMinor < 0 ? '-' : '';
+        $absolute = str_pad((string) abs($amountMinor), $units + 1, '0', STR_PAD_LEFT);
+
+        $whole = substr($absolute, 0, strlen($absolute) - $units) ?: '0';
+
+        return $sign.$whole.($units > 0 ? '.'.substr($absolute, -$units) : '');
+    }
+
     /** Canonical exponent for a currency code; conservative 2 when unknown. */
     public static function minorUnitsFor(string $currencyCode): int
     {

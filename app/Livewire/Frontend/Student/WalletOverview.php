@@ -4,22 +4,25 @@ declare(strict_types=1);
 
 namespace App\Livewire\Frontend\Student;
 
-use App\Booking\Exceptions\BookingException;
-use App\Booking\Services\PaymentProviderResolver;
+use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
 use App\Exceptions\Student\StudentActionNotAvailableException;
 use App\Livewire\Frontend\Auth\Concerns\ThrottlesLivewireRequests;
+use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\Wallet;
 use App\Models\WalletRecharge;
+use App\Payments\DTOs\VerifiedPaymentEvent;
+use App\Payments\Enums\PaymentEventType;
+use App\Payments\Exceptions\PaymentException;
+use App\Payments\Services\PaymentCallbackVerifier;
 use App\Settings\FeatureSettings;
 use App\Settings\GeneralSettings;
-use App\Settings\WalletSettings;
 use App\Support\MoneyFormatter;
 use App\Wallet\Contracts\WalletRechargeServiceInterface;
-use App\Wallet\DTOs\WalletRechargeProviderEvent;
-use App\Wallet\Enums\WalletRechargeProviderEventType;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Exceptions\WalletException;
 use App\Wallet\Services\WalletLedgerService;
+use App\Wallet\Services\WalletRechargeSettlementService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorImpl;
@@ -111,7 +114,7 @@ final class WalletOverview extends Component
         }
 
         if ($checkout->provider === 'stripe') {
-            $this->pendingStripeRechargeId = $checkout->rechargeId;
+            $this->pendingStripeRechargeId = $checkout->paymentId;
 
             $this->dispatch(
                 'wallet-recharge-stripe-checkout-ready',
@@ -126,29 +129,53 @@ final class WalletOverview extends Component
         $this->pendingFakeRecharge = ['reference' => $checkout->reference];
     }
 
-    /** Razorpay Checkout.js success callback — a fast path, never trusted alone; verifyRazorpayCheckout() re-verifies server-side before anything is shown as settled. */
+    /**
+     * Razorpay Checkout.js success callback.
+     *
+     * Strictly non-authoritative: PaymentCallbackVerifier proves the
+     * signature and that the order belongs to THIS student's recharge,
+     * records the reported provider payment id on the Payment attempt,
+     * and settles nothing. The wallet stays uncredited until the signed
+     * webhook (or reconciliation) says the money was captured, so the
+     * banner below never claims a balance changed.
+     */
     public function verifyWalletRecharge(string $orderId, string $paymentId, string $signature): void
     {
         $this->rechargeBanner = '';
 
+        $recharge = $this->openRecharge();
+
+        if ($recharge === null) {
+            return;
+        }
+
         try {
-            $recharge = $this->recharges->verifyRazorpayCheckout(auth()->user(), $orderId, $paymentId, $signature);
-        } catch (WalletException $e) {
+            app(PaymentCallbackVerifier::class)->verifyRazorpayCheckout($recharge, $orderId, $paymentId, $signature);
+        } catch (PaymentException $e) {
             $this->rechargeBanner = $e->getMessage();
 
             return;
         }
 
-        $this->applySettlementBanner($recharge);
+        $this->applySettlementBanner($recharge->refresh());
+    }
+
+    /** The student's own most recent recharge that is still awaiting payment. */
+    private function openRecharge(): ?WalletRecharge
+    {
+        return WalletRecharge::query()
+            ->where('user_id', auth()->id())
+            ->where('status', WalletRechargeStatus::Requested)
+            ->latest('created_at')
+            ->first();
     }
 
     /**
-     * Stripe has no browser-side settlement step — stripe.confirmPayment()
+     * Stripe has no browser-side settlement step — confirmPayment()
      * completing only means checkout progressed, never that the wallet
-     * was credited. This re-reads the server's own record, scoped to
-     * the authenticated student's own recharge, and never settles
-     * anything itself (mirrors BookingHistory::checkPaymentStatus()'s
-     * identical read-only rationale for Stripe booking payments).
+     * was credited. This re-reads the server's own record, scoped to the
+     * authenticated student's own recharge, and never settles anything
+     * itself.
      */
     public function pollWalletRechargeStatus(): void
     {
@@ -156,8 +183,18 @@ final class WalletOverview extends Component
             return;
         }
 
-        $recharge = WalletRecharge::query()
+        $payment = Payment::query()
             ->whereKey($this->pendingStripeRechargeId)
+            ->where('user_id', auth()->id())
+            ->where('payable_type', WalletRecharge::PAYABLE_TYPE)
+            ->first();
+
+        if ($payment === null) {
+            return;
+        }
+
+        $recharge = WalletRecharge::query()
+            ->whereKey($payment->payable_id)
             ->where('user_id', auth()->id())
             ->first();
 
@@ -166,7 +203,7 @@ final class WalletOverview extends Component
         }
 
         if (! $recharge->status->isTerminal() && ! $recharge->status->needsCreditRetry()) {
-            $this->rechargeBanner = 'We could not confirm your payment yet. Please check your wallet again shortly.';
+            $this->rechargeBanner = 'We are confirming your payment with the gateway. Your balance will update shortly.';
 
             return;
         }
@@ -182,6 +219,11 @@ final class WalletOverview extends Component
      * Local/testing-only convenience: the fake provider has no real
      * checkout UI to complete. Mirrors BookingWizard::simulateFakePayment()'s
      * identical rationale and environment guard.
+     *
+     * Goes through the SAME WalletRechargeSettlementService a signed
+     * webhook reaches, with the same VerifiedPaymentEvent shape — a
+     * local shortcut that took a different settlement path would prove
+     * nothing about the real one.
      */
     public function simulateFakeRecharge(bool $success): void
     {
@@ -193,31 +235,33 @@ final class WalletOverview extends Component
         $reference = (string) $this->pendingFakeRecharge['reference'];
         $this->pendingFakeRecharge = [];
 
-        $recharge = WalletRecharge::query()->where('idempotency_key', $reference)->first();
+        $recharge = WalletRecharge::query()
+            ->where('reference', $reference)
+            ->where('user_id', auth()->id())
+            ->first();
 
         if ($recharge === null) {
             return;
         }
 
-        try {
-            if ($success) {
-                $result = $this->recharges->processProviderEvent(new WalletRechargeProviderEvent(
-                    provider: 'fake',
-                    reference: $reference,
-                    providerOrderId: $recharge->provider_order_id,
-                    providerPaymentId: 'fake_payment_'.$recharge->id,
-                    amountMinor: $recharge->amount_minor,
-                    currencyCode: $recharge->currency_code,
-                    type: WalletRechargeProviderEventType::Captured,
-                ));
-                $this->applySettlementBanner($result->recharge);
-            } else {
-                $failed = $this->recharges->markProviderFailure('fake', $reference, 'simulated_failure', 'Simulated failure (fake provider).');
-                $this->applySettlementBanner($failed);
-            }
-        } catch (WalletException $e) {
-            $this->rechargeBanner = $e->getMessage();
+        $payment = $recharge->payments()->first();
+
+        if ($payment === null) {
+            return;
         }
+
+        $result = app(WalletRechargeSettlementService::class)->settle($payment, new VerifiedPaymentEvent(
+            provider: (string) $payment->provider,
+            type: $success ? PaymentEventType::Succeeded : PaymentEventType::Failed,
+            reference: $payment->idempotency_key,
+            providerOrderId: $payment->provider_order_id,
+            providerPaymentId: 'fake_payment_'.$payment->id,
+            amountMinor: (int) $payment->amount_minor,
+            currencyCode: (string) $payment->currency_code,
+            reason: $success ? null : 'Simulated failure (fake provider).',
+        ));
+
+        $this->applySettlementBanner($result->recharge?->refresh() ?? $recharge->refresh());
     }
 
     public function render(): View
@@ -240,7 +284,12 @@ final class WalletOverview extends Component
             WalletRechargeStatus::Succeeded => '',
             WalletRechargeStatus::CreditFailed => 'Your payment was received. We are completing your wallet credit — this can take a few minutes.',
             WalletRechargeStatus::Failed => 'Your recharge could not be completed. Please try again.',
-            default => 'We could not confirm your payment yet. Please check your wallet again shortly.',
+            // Includes AwaitingConfirmation, the state a Razorpay
+            // browser callback now leaves a recharge in. The student's
+            // payment may well have gone through; what has NOT happened
+            // is the authoritative confirmation, so this deliberately
+            // promises nothing about the balance.
+            default => 'We are confirming your payment with the gateway. Your balance will update shortly.',
         };
 
         if ($recharge->status === WalletRechargeStatus::Succeeded) {
@@ -248,25 +297,31 @@ final class WalletOverview extends Component
         }
     }
 
-    /** Read-only preview — never creates a wallet, order, or recharge attempt merely from viewing this screen. */
+    /**
+     * Read-only preview — never creates a wallet, order, or recharge
+     * attempt merely from viewing this screen.
+     *
+     * Asks PaymentCollectionEligibilityService the exact question
+     * WalletRechargeService::initiate() will ask, rather than
+     * re-deriving it. This screen previously reimplemented a narrower
+     * gate (provider resolution + supportedCurrencies only), which could
+     * disagree with the server in both directions: showing an Add Money
+     * form that initiate() would refuse, or hiding one that was
+     * genuinely available. The button state is a preview of the
+     * authoritative answer, never a second opinion — and hiding it is
+     * never the enforcement, which lives at the service boundary.
+     */
     private function rechargeAvailable(string $currencyCode): bool
     {
         if (! app(FeatureSettings::class)->wallet_enabled) {
             return false;
         }
 
-        $countryIso2 = auth()->user()?->profile?->country?->iso2;
-
-        try {
-            $provider = app(PaymentProviderResolver::class)->current($countryIso2);
-        } catch (BookingException) {
-            return false;
-        }
-
-        $supported = array_map(strtoupper(...), $provider->supportedCurrencies());
-
-        return $provider->capabilities()->supportsWalletRecharge
-            && in_array(strtoupper($currencyCode), $supported, true);
+        return app(PaymentCollectionEligibilityServiceInterface::class)->resolve(
+            auth()->user()?->profile?->country?->iso2,
+            $currencyCode,
+            WalletRechargeServiceInterface::TRANSACTION_TYPE,
+        )->isEligible;
     }
 
     private function currentCurrencyCode(): string
@@ -282,15 +337,28 @@ final class WalletOverview extends Component
         return $user?->profile?->country?->defaultCurrency?->code ?? app(GeneralSettings::class)->default_currency;
     }
 
-    /** @return array{min: string, max: string} */
+    /**
+     * The limits WalletRechargeService will actually enforce, read from
+     * the same per-currency source (SRS §13.12) rather than re-derived
+     * from a platform-wide scalar. An unconfigured limit is null and is
+     * simply not advertised — the view must not print a floor or ceiling
+     * the server would not apply.
+     *
+     * @return array{min: ?string, max: ?string}
+     */
     private function rechargeLimits(string $currencyCode): array
     {
-        $settings = app(WalletSettings::class);
-        $minorUnits = MoneyFormatter::minorUnitsFor($currencyCode);
+        $currency = Currency::query()
+            ->where('code', strtoupper($currencyCode))
+            ->first(['minimum_recharge_minor', 'maximum_recharge_minor']);
 
         return [
-            'min' => MoneyFormatter::format(MoneyFormatter::toMinor((string) $settings->minimum_recharge_amount, $minorUnits), $currencyCode),
-            'max' => MoneyFormatter::format(MoneyFormatter::toMinor((string) $settings->maximum_recharge_amount, $minorUnits), $currencyCode),
+            'min' => $currency?->minimum_recharge_minor === null
+                ? null
+                : MoneyFormatter::format($currency->minimum_recharge_minor, $currencyCode),
+            'max' => $currency?->maximum_recharge_minor === null
+                ? null
+                : MoneyFormatter::format($currency->maximum_recharge_minor, $currencyCode),
         ];
     }
 

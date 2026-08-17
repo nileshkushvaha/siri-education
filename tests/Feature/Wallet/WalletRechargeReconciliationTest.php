@@ -6,16 +6,18 @@ namespace Tests\Feature\Wallet;
 
 use App\Booking\Contracts\RazorpayGatewayClient;
 use App\Booking\Contracts\StripeGatewayClient;
+use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Models\WalletRecharge;
+use App\Payments\Enums\PaymentStatus;
+use App\Payments\Services\PaymentService;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
-use App\Settings\GeneralSettings;
 use App\Settings\PaymentGatewaySettings;
-use App\Wallet\Contracts\WalletRechargeServiceInterface;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Enums\WalletStatus;
 use App\Wallet\Services\WalletRechargeReconciliationService;
@@ -24,11 +26,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Mockery;
 use Spatie\Permission\Models\Role;
+use Tests\Support\EstablishesRechargeMarket;
+use Tests\Support\InitiatesWalletRecharges;
 use Tests\TestCase;
 
 class WalletRechargeReconciliationTest extends TestCase
 {
+    use EstablishesRechargeMarket;
+    use InitiatesWalletRecharges;
     use RefreshDatabase;
+
+    private Country $india;
 
     private const KEY_SECRET = 'test_key_secret';
 
@@ -60,11 +68,19 @@ class WalletRechargeReconciliationTest extends TestCase
 
         app(BookingSettings::class)->payment_provider = 'razorpay';
         app(BookingSettings::class)->save();
+
+        // Recharge passes the same market gate as booking collection, so
+        // an active India/INR market routed at Razorpay is a
+        // precondition for every case in this file.
+        $this->india = $this->establishRechargeMarket('IN', 'INR', provider: 'razorpay', numericCode: '356');
     }
 
     private function student(): User
     {
-        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+        return $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $this->india,
+        );
     }
 
     private function mockRazorpayClient(): Mockery\MockInterface
@@ -83,44 +99,50 @@ class WalletRechargeReconciliationTest extends TestCase
         return $gateway;
     }
 
-    private function initiatedRecharge(int $amountMinor = 50000): WalletRecharge
+    /** @return array{0: WalletRecharge, 1: Payment} */
+    private function initiatedRecharge(int $amountMinor = 50000): array
     {
         $gateway = $this->mockRazorpayClient();
         $orderId = 'order_'.uniqid();
         $gateway->shouldReceive('createOrder')->once()->andReturn(['id' => $orderId]);
 
-        $student = $this->student();
-        app(WalletRechargeServiceInterface::class)->initiate($student, $amountMinor);
-
-        return WalletRecharge::query()->where('user_id', $student->id)->sole();
+        return $this->initiateRecharge($this->student(), $amountMinor);
     }
 
-    private function initiatedStripeRecharge(int $amountMinor = 50000): WalletRecharge
+    /**
+     * A Stripe recharge belongs to a student in a Stripe-routed MARKET,
+     * not to a temporary swap of the platform default currency. Wallet
+     * currency follows the student's billing country and the provider
+     * follows that country's payment_routing, so this seeds a real
+     * US/USD market at Stripe and puts the student in it — the India
+     * market other cases in this file use is untouched.
+     */
+    /** @return array{0: WalletRecharge, 1: Payment} */
+    private function initiatedStripeRecharge(int $amountMinor = 50000): array
     {
         $gateway = $this->mockStripeClient();
         $intentId = 'pi_'.uniqid();
         $gateway->shouldReceive('createPaymentIntent')->once()->andReturn(['id' => $intentId, 'client_secret' => $intentId.'_secret']);
 
-        $general = app(GeneralSettings::class);
-        $general->default_currency = 'USD';
-        $general->save();
-        app(BookingSettings::class)->payment_provider = 'stripe';
-        app(BookingSettings::class)->save();
+        $usa = $this->establishRechargeMarket('US', 'USD', provider: 'stripe', numericCode: '840');
 
-        $student = $this->student();
-        app(WalletRechargeServiceInterface::class)->initiate($student, $amountMinor);
+        $student = $this->attachStudentToMarket(
+            User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]),
+            $usa,
+        );
 
-        $general->default_currency = 'INR';
-        $general->save();
-        app(BookingSettings::class)->payment_provider = 'razorpay';
-        app(BookingSettings::class)->save();
-
-        return WalletRecharge::query()->where('user_id', $student->id)->sole();
+        return $this->initiateRecharge($student, $amountMinor);
     }
 
-    private function makeDue(WalletRecharge $recharge): void
+    /**
+     * Reconciliation now sweeps the recharge slice of the generic
+     * `payments` ledger, so "due" is a property of the ATTEMPT — the
+     * recharge no longer carries a last_synced_at of its own, because
+     * only one component polls the provider.
+     */
+    private function makeDue(Payment $payment): void
     {
-        WalletRecharge::query()->whereKey($recharge->id)->update([
+        Payment::query()->whereKey($payment->id)->update([
             'created_at' => CarbonImmutable::now()->subMinutes(30),
             'last_synced_at' => null,
         ]);
@@ -128,15 +150,15 @@ class WalletRechargeReconciliationTest extends TestCase
 
     public function test_reconciliation_retries_and_credits_a_credit_pending_recharge(): void
     {
-        $recharge = $this->initiatedRecharge();
+        [$recharge, $payment] = $this->initiatedRecharge();
 
-        // Simulate a captured-but-uncredited state directly (the wallet was
-        // closed at the moment settlement first tried to credit it).
+        // A captured-but-uncredited state: the money is collected
+        // (Payment = Paid) and only the ledger credit is outstanding.
+        // Recovery from here needs no provider call at all.
+        app(PaymentService::class)->transition($payment, PaymentStatus::Paid);
         WalletRecharge::query()->whereKey($recharge->id)->update([
             'status' => WalletRechargeStatus::CreditPending,
-            'provider_confirmed_at' => now(),
         ]);
-        $this->makeDue($recharge->fresh());
 
         $examined = app(WalletRechargeReconciliationService::class)->reconcileDue();
 
@@ -150,15 +172,16 @@ class WalletRechargeReconciliationTest extends TestCase
 
     public function test_reconciliation_retries_a_credit_failed_recharge_exactly_once_to_success(): void
     {
-        $recharge = $this->initiatedRecharge();
+        [$recharge, $payment] = $this->initiatedRecharge();
         Wallet::query()->whereKey($recharge->wallet_id)->update(['status' => WalletStatus::Closed]);
 
+        // The real two-phase state: the money IS collected, so the
+        // Payment is Paid; only the wallet credit is outstanding.
+        app(PaymentService::class)->transition($payment, PaymentStatus::Paid);
         WalletRecharge::query()->whereKey($recharge->id)->update([
             'status' => WalletRechargeStatus::CreditFailed,
             'failure_code' => 'wallet_not_usable',
-            'provider_confirmed_at' => now(),
         ]);
-        $this->makeDue($recharge->fresh());
 
         // Still closed — the sweep must record the retry outcome without crashing.
         app(WalletRechargeReconciliationService::class)->reconcileDue();
@@ -167,7 +190,6 @@ class WalletRechargeReconciliationTest extends TestCase
 
         // Reopen the wallet and sweep again — must now succeed exactly once.
         Wallet::query()->whereKey($recharge->wallet_id)->update(['status' => WalletStatus::Active]);
-        WalletRecharge::query()->whereKey($recharge->id)->update(['last_synced_at' => null]);
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $recharge->refresh();
@@ -177,11 +199,11 @@ class WalletRechargeReconciliationTest extends TestCase
 
     public function test_reconciliation_detects_a_captured_order_the_webhook_never_reported(): void
     {
-        $recharge = $this->initiatedRecharge();
-        $this->makeDue($recharge->fresh());
+        [$recharge, $payment] = $this->initiatedRecharge();
+        $this->makeDue($payment->fresh());
 
         $gateway = $this->mockRazorpayClient();
-        $gateway->shouldReceive('fetchOrder')->once()->andReturn(['id' => $recharge->provider_order_id, 'status' => 'paid']);
+        $gateway->shouldReceive('fetchOrder')->zeroOrMoreTimes()->andReturn(['id' => $payment->provider_order_id, 'status' => 'paid', 'amount' => 50000, 'currency' => 'INR']);
 
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
@@ -194,42 +216,110 @@ class WalletRechargeReconciliationTest extends TestCase
 
     public function test_reconciliation_never_guesses_success_for_a_still_pending_order(): void
     {
-        $recharge = $this->initiatedRecharge();
-        $this->makeDue($recharge->fresh());
+        [$recharge, $payment] = $this->initiatedRecharge();
+        $this->makeDue($payment->fresh());
 
         $gateway = $this->mockRazorpayClient();
-        $gateway->shouldReceive('fetchOrder')->once()->andReturn(['id' => $recharge->provider_order_id, 'status' => 'created']);
+        $gateway->shouldReceive('fetchOrder')->zeroOrMoreTimes()->andReturn(['id' => $payment->provider_order_id, 'status' => 'created']);
 
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $recharge->refresh();
-        $this->assertSame(WalletRechargeStatus::AwaitingConfirmation, $recharge->status);
-        $this->assertNotNull($recharge->last_synced_at);
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->status);
+        $this->assertNotNull($payment->fresh()->last_synced_at);
         $this->assertSame(0, WalletLedgerEntry::query()->where('wallet_id', $recharge->wallet_id)->count());
     }
 
     public function test_a_recently_synced_recharge_is_not_re_examined_before_the_cutoff(): void
     {
-        $recharge = $this->initiatedRecharge();
+        [$recharge, $payment] = $this->initiatedRecharge();
         // Synced moments ago — not yet stale enough for a second look.
-        WalletRecharge::query()->whereKey($recharge->id)->update(['last_synced_at' => now()]);
+        // Staleness is a property of the ATTEMPT now: only one component
+        // polls the provider, so only one row records when it last did.
+        Payment::query()->whereKey($payment->id)->update(['last_synced_at' => now()]);
 
         $examined = app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $this->assertSame(0, $examined);
-        $this->assertSame(WalletRechargeStatus::ProviderCreated, $recharge->fresh()->status);
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->fresh()->status);
+    }
+
+    /**
+     * The Razorpay counterpart of the existing Stripe amount-mismatch
+     * case. Reconciliation used to pass the LOCAL row's own
+     * amount/currency into the settlement path, so the mismatch guards
+     * compared the row against itself and any order Razorpay called
+     * "paid" settled — whatever it was actually paid for. The order body
+     * carries both fields; they are now the ones checked.
+     */
+    public function test_reconciliation_refuses_a_paid_order_whose_amount_disagrees(): void
+    {
+        [$recharge, $payment] = $this->initiatedRecharge();
+        $this->makeDue($payment->fresh());
+
+        $gateway = $this->mockRazorpayClient();
+        $gateway->shouldReceive('fetchOrder')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
+            'status' => 'paid',
+            'amount' => 10000, // Razorpay collected ₹100, not the ₹500 on record.
+            'currency' => 'INR',
+        ]);
+
+        app(WalletRechargeReconciliationService::class)->reconcileDue();
+
+        $this->assertNotSame(WalletRechargeStatus::Succeeded, $recharge->fresh()->status);
+        $this->assertSame(0, WalletLedgerEntry::query()->where('wallet_id', $recharge->wallet_id)->count());
+        $this->assertSame(0, Wallet::query()->whereKey($recharge->wallet_id)->sole()->balance_minor);
+    }
+
+    /** Same rule for the currency: an authentic "paid" order in the wrong currency is not this recharge's money. */
+    public function test_reconciliation_refuses_a_paid_order_whose_currency_disagrees(): void
+    {
+        [$recharge, $payment] = $this->initiatedRecharge();
+        $this->makeDue($payment->fresh());
+
+        $gateway = $this->mockRazorpayClient();
+        $gateway->shouldReceive('fetchOrder')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
+            'status' => 'paid',
+            'amount' => 50000,
+            'currency' => 'USD', // Right number, wrong money.
+        ]);
+
+        app(WalletRechargeReconciliationService::class)->reconcileDue();
+
+        $this->assertNotSame(WalletRechargeStatus::Succeeded, $recharge->fresh()->status);
+        $this->assertSame(0, Wallet::query()->whereKey($recharge->wallet_id)->sole()->balance_minor);
+    }
+
+    /** An order body missing amount/currency proves nothing — fail closed rather than assume. */
+    public function test_reconciliation_refuses_a_paid_order_that_reports_no_amount(): void
+    {
+        [$recharge, $payment] = $this->initiatedRecharge();
+        $this->makeDue($payment->fresh());
+
+        $gateway = $this->mockRazorpayClient();
+        $gateway->shouldReceive('fetchOrder')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
+            'status' => 'paid',
+        ]);
+
+        app(WalletRechargeReconciliationService::class)->reconcileDue();
+
+        $this->assertNotSame(WalletRechargeStatus::Succeeded, $recharge->fresh()->status);
+        $this->assertSame(0, Wallet::query()->whereKey($recharge->wallet_id)->sole()->balance_minor);
     }
 
     public function test_a_succeeded_recharge_is_never_re_examined(): void
     {
-        $recharge = $this->initiatedRecharge();
+        [$recharge, $payment] = $this->initiatedRecharge();
         $gateway = $this->mockRazorpayClient();
-        $gateway->shouldReceive('fetchOrder')->once()->andReturn(['id' => $recharge->provider_order_id, 'status' => 'paid']);
-        $this->makeDue($recharge->fresh());
+        $gateway->shouldReceive('fetchOrder')->zeroOrMoreTimes()->andReturn(['id' => $payment->provider_order_id, 'status' => 'paid', 'amount' => 50000, 'currency' => 'INR']);
+        $this->makeDue($payment->fresh());
         app(WalletRechargeReconciliationService::class)->reconcileDue();
         $this->assertSame(WalletRechargeStatus::Succeeded, $recharge->fresh()->status);
 
-        WalletRecharge::query()->whereKey($recharge->id)->update(['last_synced_at' => null]);
+        Payment::query()->whereKey($payment->id)->update(['last_synced_at' => null]);
         $examined = app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $this->assertSame(0, $examined);
@@ -241,12 +331,12 @@ class WalletRechargeReconciliationTest extends TestCase
 
     public function test_stripe_reconciliation_settles_an_authoritative_succeeded_intent(): void
     {
-        $recharge = $this->initiatedStripeRecharge();
-        $this->makeDue($recharge->fresh());
+        [$recharge, $payment] = $this->initiatedStripeRecharge();
+        $this->makeDue($payment->fresh());
 
         $gateway = $this->mockStripeClient();
-        $gateway->shouldReceive('retrievePaymentIntent')->once()->andReturn([
-            'id' => $recharge->provider_order_id,
+        $gateway->shouldReceive('retrievePaymentIntent')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
             'status' => 'succeeded',
             'amount_received' => 50000,
             'currency' => 'usd',
@@ -263,48 +353,61 @@ class WalletRechargeReconciliationTest extends TestCase
 
     public function test_stripe_reconciliation_leaves_a_processing_intent_awaiting_confirmation(): void
     {
-        $recharge = $this->initiatedStripeRecharge();
-        $this->makeDue($recharge->fresh());
+        [$recharge, $payment] = $this->initiatedStripeRecharge();
+        $this->makeDue($payment->fresh());
 
         $gateway = $this->mockStripeClient();
-        $gateway->shouldReceive('retrievePaymentIntent')->once()->andReturn([
-            'id' => $recharge->provider_order_id,
+        $gateway->shouldReceive('retrievePaymentIntent')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
             'status' => 'processing',
         ]);
 
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $recharge->refresh();
-        $this->assertSame(WalletRechargeStatus::AwaitingConfirmation, $recharge->status);
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->status);
         $this->assertSame(0, WalletLedgerEntry::query()->where('wallet_id', $recharge->wallet_id)->count());
     }
 
-    public function test_stripe_reconciliation_marks_terminal_failure_only_from_an_authoritative_canceled_intent(): void
+    /**
+     * BEHAVIOUR CHANGE, recorded deliberately. The pre-cutover wallet
+     * sweep closed the recharge itself on a canceled intent. The shared
+     * PaymentAttemptVerifier answers one question — "does the provider
+     * confirm payment?" — so a canceled intent is simply "no", and the
+     * attempt stays open for the stale-attempt detector to surface to an
+     * operator (the same treatment package reconciliation gives it).
+     *
+     * The money-safety invariant is unchanged and is what this asserts:
+     * an authoritative cancellation never credits a wallet.
+     */
+    public function test_stripe_reconciliation_never_credits_from_a_canceled_intent(): void
     {
-        $recharge = $this->initiatedStripeRecharge();
-        $this->makeDue($recharge->fresh());
+        [$recharge, $payment] = $this->initiatedStripeRecharge();
+        $this->makeDue($payment->fresh());
 
         $gateway = $this->mockStripeClient();
-        $gateway->shouldReceive('retrievePaymentIntent')->once()->andReturn([
-            'id' => $recharge->provider_order_id,
+        $gateway->shouldReceive('retrievePaymentIntent')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
             'status' => 'canceled',
         ]);
 
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $recharge->refresh();
-        $this->assertSame(WalletRechargeStatus::Failed, $recharge->status);
+        $this->assertNotSame(WalletRechargeStatus::Succeeded, $recharge->status);
+        $this->assertNotSame(PaymentStatus::Paid, $payment->fresh()->status);
         $this->assertSame(0, WalletLedgerEntry::query()->where('wallet_id', $recharge->wallet_id)->count());
+        $this->assertSame(0, Wallet::query()->whereKey($recharge->wallet_id)->sole()->balance_minor);
     }
 
     public function test_stripe_reconciliation_amount_mismatch_never_settles(): void
     {
-        $recharge = $this->initiatedStripeRecharge(amountMinor: 50000);
-        $this->makeDue($recharge->fresh());
+        [$recharge, $payment] = $this->initiatedStripeRecharge(amountMinor: 50000);
+        $this->makeDue($payment->fresh());
 
         $gateway = $this->mockStripeClient();
-        $gateway->shouldReceive('retrievePaymentIntent')->once()->andReturn([
-            'id' => $recharge->provider_order_id,
+        $gateway->shouldReceive('retrievePaymentIntent')->zeroOrMoreTimes()->andReturn([
+            'id' => $payment->provider_order_id,
             'status' => 'succeeded',
             'amount_received' => 1,
             'currency' => 'usd',
@@ -312,27 +415,26 @@ class WalletRechargeReconciliationTest extends TestCase
 
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
-        $this->assertSame(WalletRechargeStatus::ProviderCreated, $recharge->fresh()->status);
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->fresh()->status);
         $this->assertSame(0, WalletLedgerEntry::query()->where('wallet_id', $recharge->wallet_id)->count());
     }
 
     public function test_stripe_credit_failed_reconciliation_retry_remains_idempotent(): void
     {
-        $recharge = $this->initiatedStripeRecharge();
+        [$recharge, $payment] = $this->initiatedStripeRecharge();
         Wallet::query()->whereKey($recharge->wallet_id)->update(['status' => WalletStatus::Closed]);
 
+        // Money collected (Payment = Paid), credit outstanding.
+        app(PaymentService::class)->transition($payment, PaymentStatus::Paid);
         WalletRecharge::query()->whereKey($recharge->id)->update([
             'status' => WalletRechargeStatus::CreditFailed,
             'failure_code' => 'wallet_not_usable',
-            'provider_confirmed_at' => now(),
         ]);
-        $this->makeDue($recharge->fresh());
 
         app(WalletRechargeReconciliationService::class)->reconcileDue();
         $this->assertSame(WalletRechargeStatus::CreditFailed, $recharge->fresh()->status);
 
         Wallet::query()->whereKey($recharge->wallet_id)->update(['status' => WalletStatus::Active]);
-        WalletRecharge::query()->whereKey($recharge->id)->update(['last_synced_at' => null]);
         app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $recharge->refresh();

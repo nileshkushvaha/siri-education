@@ -6,10 +6,13 @@ namespace Tests\Feature\Reporting;
 
 use App\Filament\Pages\RechargeMonitoring;
 use App\Models\Currency;
+use App\Models\Payment;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
 use App\Models\WalletRecharge;
+use App\Payments\Enums\PaymentStatus;
+use App\Payments\Services\PaymentService;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\ReportRegistryInterface;
 use App\Reporting\Repositories\WalletFinancialReportRepository;
@@ -81,18 +84,38 @@ class WalletRechargeMonitoringTest extends TestCase
         return [$student, $wallet];
     }
 
+    /**
+     * A recharge plus its real Payment attempt.
+     *
+     * `wallet_recharges` carries no provider columns, so a `provider`
+     * override is applied where provider identity actually lives — the
+     * attempt. Hand-building rows here would let the fixtures describe
+     * a shape the application can no longer produce.
+     */
     private function recharge(Wallet $wallet, array $overrides = []): WalletRecharge
     {
-        return WalletRecharge::query()->create(array_merge([
+        $provider = $overrides['provider'] ?? 'razorpay';
+        $paymentStatus = $overrides['payment_status'] ?? PaymentStatus::Pending;
+        unset($overrides['provider'], $overrides['payment_status']);
+
+        $recharge = WalletRecharge::query()->create(array_merge([
             'wallet_id' => $wallet->id,
             'user_id' => $wallet->user_id,
-            'provider' => 'razorpay',
-            'provider_order_id' => 'order_'.uniqid(),
             'amount_minor' => 50000,
             'currency_code' => $wallet->currency_code,
-            'status' => WalletRechargeStatus::ProviderCreated,
-            'idempotency_key' => 'WRCH-'.strtoupper(uniqid()),
+            'status' => WalletRechargeStatus::Requested,
+            'reference' => 'WRCH-'.strtoupper(uniqid()),
         ], $overrides));
+
+        $payments = app(PaymentService::class);
+        $payment = $payments->startAttempt($recharge, $provider, $recharge->reference);
+        $payments->recordProviderOrder($payment, 'order_'.uniqid());
+
+        if ($paymentStatus !== PaymentStatus::Pending) {
+            $payments->transition($payment->refresh(), $paymentStatus);
+        }
+
+        return $recharge->refresh();
     }
 
     // ── Access ───────────────────────────────────────────────────────────
@@ -174,8 +197,8 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_razorpay_and_stripe_attempts_both_appear(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['provider' => 'razorpay', 'idempotency_key' => 'WRCH-RZP1']);
-        $this->recharge($wallet, ['provider' => 'stripe', 'idempotency_key' => 'WRCH-STR1']);
+        $this->recharge($wallet, ['provider' => 'razorpay', 'reference' => 'WRCH-RZP1']);
+        $this->recharge($wallet, ['provider' => 'stripe', 'reference' => 'WRCH-STR1']);
 
         $this->actingAs($this->manager())->get(RechargeMonitoring::getUrl())
             ->assertOk()
@@ -186,8 +209,8 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_status_filter_narrows_results(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated, 'idempotency_key' => 'WRCH-PC1']);
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::Failed, 'failed_at' => now(), 'idempotency_key' => 'WRCH-FAIL1']);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested, 'reference' => 'WRCH-PC1']);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Failed, 'failed_at' => now(), 'reference' => 'WRCH-FAIL1']);
 
         Livewire::actingAs($this->manager())
             ->test(RechargeMonitoring::class)
@@ -199,8 +222,8 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_provider_filter_narrows_results(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['provider' => 'razorpay', 'idempotency_key' => 'WRCH-RZP2']);
-        $this->recharge($wallet, ['provider' => 'stripe', 'idempotency_key' => 'WRCH-STR2']);
+        $this->recharge($wallet, ['provider' => 'razorpay', 'reference' => 'WRCH-RZP2']);
+        $this->recharge($wallet, ['provider' => 'stripe', 'reference' => 'WRCH-STR2']);
 
         Livewire::actingAs($this->manager())
             ->test(RechargeMonitoring::class)
@@ -213,8 +236,8 @@ class WalletRechargeMonitoringTest extends TestCase
     {
         [, $inrWallet] = $this->studentWithWallet('INR');
         [, $usdWallet] = $this->studentWithWallet('USD');
-        $this->recharge($inrWallet, ['idempotency_key' => 'WRCH-INR1']);
-        $this->recharge($usdWallet, ['currency_code' => 'USD', 'idempotency_key' => 'WRCH-USD1']);
+        $this->recharge($inrWallet, ['reference' => 'WRCH-INR1']);
+        $this->recharge($usdWallet, ['currency_code' => 'USD', 'reference' => 'WRCH-USD1']);
 
         Livewire::actingAs($this->manager())
             ->test(RechargeMonitoring::class)
@@ -226,8 +249,8 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_internal_reference_search_works(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['idempotency_key' => 'WRCH-FINDME1']);
-        $this->recharge($wallet, ['idempotency_key' => 'WRCH-OTHER1']);
+        $this->recharge($wallet, ['reference' => 'WRCH-FINDME1']);
+        $this->recharge($wallet, ['reference' => 'WRCH-OTHER1']);
 
         Livewire::actingAs($this->manager())
             ->test(RechargeMonitoring::class)
@@ -241,10 +264,10 @@ class WalletRechargeMonitoringTest extends TestCase
         [, $wallet] = $this->studentWithWallet();
         $this->recharge($wallet, [
             'status' => WalletRechargeStatus::CreditPending,
-            'provider_confirmed_at' => now(),
-            'idempotency_key' => 'WRCH-CP1',
+            'payment_status' => PaymentStatus::Paid,
+            'reference' => 'WRCH-CP1',
         ]);
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated, 'idempotency_key' => 'WRCH-PC2']);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested, 'reference' => 'WRCH-PC2']);
 
         Livewire::actingAs($this->manager())
             ->test(RechargeMonitoring::class)
@@ -258,9 +281,9 @@ class WalletRechargeMonitoringTest extends TestCase
         [, $wallet] = $this->studentWithWallet();
         $recharge = $this->recharge($wallet, [
             'status' => WalletRechargeStatus::CreditFailed,
-            'provider_confirmed_at' => now(),
+            'payment_status' => PaymentStatus::Paid,
             'failure_code' => 'wallet_not_usable',
-            'idempotency_key' => 'WRCH-CF1',
+            'reference' => 'WRCH-CF1',
         ]);
 
         $classification = WalletRechargeOperationalClassification::fromRecharge($recharge, CarbonImmutable::now()->subMinutes(10));
@@ -276,29 +299,29 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_provider_created_without_confirmation_is_not_classified_as_captured(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $recharge = $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
+        $recharge = $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
 
         $classification = WalletRechargeOperationalClassification::fromRecharge($recharge, CarbonImmutable::now()->subMinutes(10));
 
         $this->assertFalse($classification->isCapturedButUncredited());
-        $this->assertSame(WalletRechargeOperationalClassification::AwaitingConfirmation, $classification);
+        $this->assertSame(WalletRechargeOperationalClassification::AwaitingPayment, $classification);
     }
 
     public function test_a_processing_stripe_intent_remains_pending_not_succeeded(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $recharge = $this->recharge($wallet, ['provider' => 'stripe', 'status' => WalletRechargeStatus::AwaitingConfirmation]);
+        $recharge = $this->recharge($wallet, ['provider' => 'stripe', 'status' => WalletRechargeStatus::Requested]);
 
         $classification = WalletRechargeOperationalClassification::fromRecharge($recharge, CarbonImmutable::now()->subMinutes(10));
 
         $this->assertNotSame(WalletRechargeOperationalClassification::Succeeded, $classification);
-        $this->assertSame(WalletRechargeOperationalClassification::AwaitingConfirmation, $classification);
+        $this->assertSame(WalletRechargeOperationalClassification::AwaitingPayment, $classification);
     }
 
     public function test_terminal_provider_failure_shows_no_ledger_credit(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::Failed, 'failed_at' => now(), 'idempotency_key' => 'WRCH-TERMFAIL1']);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Failed, 'failed_at' => now(), 'reference' => 'WRCH-TERMFAIL1']);
 
         $this->assertSame(0, WalletLedgerEntry::query()->where('wallet_id', $wallet->id)->count());
 
@@ -342,12 +365,15 @@ class WalletRechargeMonitoringTest extends TestCase
 
         $recharge = $this->recharge($wallet, [
             'status' => WalletRechargeStatus::CreditFailed,
-            'provider_confirmed_at' => now(),
+            'payment_status' => PaymentStatus::Paid,
             'failure_code' => 'wallet_not_usable',
-            'idempotency_key' => 'WRCH-RECOVER1',
+            'reference' => 'WRCH-RECOVER1',
         ]);
 
-        app(WalletRechargeReconciliationService::class)->reconcileOne($recharge);
+        // Recovery from CreditFailed is the wallet-domain half of the
+        // sweep: the money is already collected, so it needs no provider
+        // call at all.
+        app(WalletRechargeReconciliationService::class)->reconcileDue();
 
         $this->assertSame(WalletRechargeStatus::Succeeded, $recharge->fresh()->status);
 
@@ -360,21 +386,21 @@ class WalletRechargeMonitoringTest extends TestCase
     {
         [, $wallet] = $this->studentWithWallet();
 
-        $fresh = $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
-        $stale = $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
+        $fresh = $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
+        $stale = $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
         WalletRecharge::query()->whereKey($stale->id)->update(['created_at' => CarbonImmutable::now()->subMinutes(30)]);
 
         $cutoff = CarbonImmutable::now()->subMinutes(WalletRechargeReconciliationService::DUE_AFTER_MINUTES);
 
-        $this->assertSame(WalletRechargeOperationalClassification::AwaitingConfirmation, WalletRechargeOperationalClassification::fromRecharge($fresh->fresh(), $cutoff));
-        $this->assertSame(WalletRechargeOperationalClassification::StaleProviderCreated, WalletRechargeOperationalClassification::fromRecharge($stale->fresh(), $cutoff));
-        $this->assertTrue(WalletRechargeOperationalClassification::StaleProviderCreated->isStale());
+        $this->assertSame(WalletRechargeOperationalClassification::AwaitingPayment, WalletRechargeOperationalClassification::fromRecharge($fresh->fresh(), $cutoff));
+        $this->assertSame(WalletRechargeOperationalClassification::StaleAwaitingPayment, WalletRechargeOperationalClassification::fromRecharge($stale->fresh(), $cutoff));
+        $this->assertTrue(WalletRechargeOperationalClassification::StaleAwaitingPayment->isStale());
     }
 
     public function test_fake_provider_test_data_is_handled_safely(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['provider' => 'fake', 'idempotency_key' => 'WRCH-FAKE1']);
+        $this->recharge($wallet, ['provider' => 'fake', 'reference' => 'WRCH-FAKE1']);
 
         $this->actingAs($this->manager())->get(RechargeMonitoring::getUrl())
             ->assertOk()
@@ -463,7 +489,11 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_provider_identifiers_are_masked(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['provider_order_id' => 'order_ABCDEFGHIJKLMNOP']);
+        $recharge = $this->recharge($wallet);
+        Payment::query()
+            ->where('payable_type', WalletRecharge::PAYABLE_TYPE)
+            ->where('payable_id', $recharge->id)
+            ->update(['provider_order_id' => 'order_ABCDEFGHIJKLMNOP']);
 
         $response = $this->actingAs($this->manager())->get(RechargeMonitoring::getUrl())->assertOk();
 
@@ -500,7 +530,7 @@ class WalletRechargeMonitoringTest extends TestCase
     {
         [, $wallet] = $this->studentWithWallet();
         for ($i = 0; $i < 30; $i++) {
-            $this->recharge($wallet, ['idempotency_key' => 'WRCH-PAGE'.$i]);
+            $this->recharge($wallet, ['reference' => 'WRCH-PAGE'.$i]);
         }
 
         $rows = app(FinancialReportsServiceInterface::class)->paginatedRechargeMonitoring($this->manager(), [], null, 25);
@@ -516,7 +546,7 @@ class WalletRechargeMonitoringTest extends TestCase
 
         [, $wallet] = $this->studentWithWallet();
         for ($i = 0; $i < 3; $i++) {
-            $this->recharge($wallet, ['idempotency_key' => 'WRCH-NPLUS1SMALL'.$i]);
+            $this->recharge($wallet, ['reference' => 'WRCH-NPLUS1SMALL'.$i]);
         }
 
         DB::enableQueryLog();
@@ -525,7 +555,7 @@ class WalletRechargeMonitoringTest extends TestCase
         DB::flushQueryLog();
 
         for ($i = 0; $i < 20; $i++) {
-            $this->recharge($wallet, ['idempotency_key' => 'WRCH-NPLUS1BIG'.$i]);
+            $this->recharge($wallet, ['reference' => 'WRCH-NPLUS1BIG'.$i]);
         }
         DB::flushQueryLog();
 
@@ -544,14 +574,14 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_status_breakdown_counts_are_correct(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
         $this->recharge($wallet, ['status' => WalletRechargeStatus::Failed, 'failed_at' => now()]);
 
         $breakdown = app(WalletFinancialReportRepository::class)->rechargeAttemptStatusBreakdown();
 
-        $this->assertSame(2, $breakdown['provider_created'] ?? 0);
-        $this->assertSame(1, $breakdown['failed'] ?? 0);
+        $this->assertSame(2, $breakdown[WalletRechargeStatus::Requested->value] ?? 0);
+        $this->assertSame(1, $breakdown[WalletRechargeStatus::Failed->value] ?? 0);
     }
 
     public function test_captured_but_uncredited_selection_is_correct(): void
@@ -559,7 +589,7 @@ class WalletRechargeMonitoringTest extends TestCase
         [, $wallet] = $this->studentWithWallet();
         $this->recharge($wallet, ['status' => WalletRechargeStatus::CreditPending, 'provider_confirmed_at' => now()]);
         $this->recharge($wallet, ['status' => WalletRechargeStatus::CreditFailed, 'provider_confirmed_at' => now()]);
-        $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
+        $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
 
         $uncredited = app(WalletFinancialReportRepository::class)->uncreditedCapturedRecharges();
 
@@ -569,8 +599,8 @@ class WalletRechargeMonitoringTest extends TestCase
     public function test_stale_selection_is_correct(): void
     {
         [, $wallet] = $this->studentWithWallet();
-        $recent = $this->recharge($wallet, ['status' => WalletRechargeStatus::ProviderCreated]);
-        $old = $this->recharge($wallet, ['status' => WalletRechargeStatus::AwaitingConfirmation]);
+        $recent = $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
+        $old = $this->recharge($wallet, ['status' => WalletRechargeStatus::Requested]);
         WalletRecharge::query()->whereKey($old->id)->update(['created_at' => CarbonImmutable::now()->subMinutes(30)]);
 
         $rows = app(FinancialReportsServiceInterface::class)->paginatedRechargeMonitoring($this->manager(), ['staleOnly' => true], null, 25);
@@ -613,8 +643,8 @@ class WalletRechargeMonitoringTest extends TestCase
     {
         [, $inrWallet] = $this->studentWithWallet('INR');
         [, $usdWallet] = $this->studentWithWallet('USD');
-        $this->recharge($inrWallet, ['provider' => 'razorpay', 'idempotency_key' => 'WRCH-XCTN1']);
-        $this->recharge($usdWallet, ['provider' => 'stripe', 'currency_code' => 'USD', 'idempotency_key' => 'WRCH-XCTN2']);
+        $this->recharge($inrWallet, ['provider' => 'razorpay', 'reference' => 'WRCH-XCTN1']);
+        $this->recharge($usdWallet, ['provider' => 'stripe', 'currency_code' => 'USD', 'reference' => 'WRCH-XCTN2']);
 
         $rows = app(FinancialReportsServiceInterface::class)->paginatedRechargeMonitoring(
             $this->manager(),

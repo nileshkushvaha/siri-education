@@ -60,14 +60,10 @@
             <div class="fi-section-header px-6 py-4 border-b border-gray-200 dark:border-white/10">
                 <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Attempt health (as of {{ $summary->generatedAtIso }})</h3>
             </div>
-            <div class="grid grid-cols-2 gap-0 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-y sm:divide-y-0 divide-gray-100 dark:divide-white/5">
+            <div class="grid grid-cols-2 gap-0 sm:grid-cols-4 lg:grid-cols-6 divide-x divide-y sm:divide-y-0 divide-gray-100 dark:divide-white/5">
                 <div class="px-4 py-3">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Provider created</p>
-                    <p class="mt-0.5 text-lg font-bold text-gray-950 dark:text-white">{{ $summary->providerCreated }}</p>
-                </div>
-                <div class="px-4 py-3">
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Awaiting confirmation</p>
-                    <p class="mt-0.5 text-lg font-bold text-gray-950 dark:text-white">{{ $summary->awaitingConfirmation }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Awaiting payment</p>
+                    <p class="mt-0.5 text-lg font-bold text-gray-950 dark:text-white">{{ $summary->awaitingPayment }}</p>
                 </div>
                 <div class="px-4 py-3">
                     <p class="text-xs text-gray-500 dark:text-gray-400">Captured, credit pending</p>
@@ -121,7 +117,7 @@
                             <tr wire:key="recharge-{{ $row->id }}">
                                 <td class="px-6 py-2 font-mono text-xs">{{ $row->reference }}</td>
                                 <td class="px-4 py-2">{{ $row->studentLabel }}</td>
-                                <td class="px-4 py-2">{{ ucfirst($row->provider) }}</td>
+                                <td class="px-4 py-2">{{ $row->provider ? ucfirst($row->provider) : '—' }}</td>
                                 <td class="px-4 py-2">{{ \App\Support\MoneyFormatter::format($row->amountMinor, $row->currencyCode) }}</td>
                                 <td class="px-4 py-2">{{ $row->status->label() }}</td>
                                 <td class="px-4 py-2">

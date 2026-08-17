@@ -21,6 +21,13 @@ final class PaymentWebhookSignatureService
     public const string PURPOSE_PACKAGE = 'package';
 
     /**
+     * Wallet recharge. A distinct endpoint from booking and package
+     * collection, so it gets a distinct scope: a leaked recharge secret
+     * must not become authority to settle lessons, and vice versa.
+     */
+    public const string PURPOSE_WALLET = 'wallet';
+
+    /**
      * @param  string|null  $purpose  which endpoint received this delivery
      *                                (self::PURPOSE_*), so a secret issued for one endpoint
      *                                cannot authenticate another. Null means "any purpose"
@@ -150,7 +157,7 @@ final class PaymentWebhookSignatureService
             return [];
         }
 
-        $known = [self::PURPOSE_BOOKING, self::PURPOSE_PACKAGE];
+        $known = [self::PURPOSE_BOOKING, self::PURPOSE_PACKAGE, self::PURPOSE_WALLET];
 
         return collect(preg_split('/\R/', $value) ?: [])
             ->map(fn (string $line): string => trim($line))

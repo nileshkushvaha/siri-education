@@ -12,10 +12,14 @@ use Spatie\LaravelSettings\Settings;
  */
 class WalletSettings extends Settings
 {
-    public float $minimum_recharge_amount;
-
-    public float $maximum_recharge_amount;
-
+    /**
+     * Recharge minimum/maximum deliberately do NOT live here. A limit is
+     * an amount of money and cannot be expressed as one platform-wide
+     * scalar across nine billing currencies with no exchange rate; they
+     * are per-currency integer minor units on
+     * `currencies.minimum_recharge_minor`/`maximum_recharge_minor`
+     * (SRS §13.12), enforced by WalletRechargeService.
+     */
     public float $low_balance_threshold;
 
     public int $recurring_deduction_hours_before_lesson;

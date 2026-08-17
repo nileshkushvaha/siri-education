@@ -319,9 +319,11 @@ class EventServiceProvider extends ServiceProvider
             ReevaluateReferralRewardOnLessonOutcomeOverridden::class,
             RecalculateLearningPlanProgressOnLessonOutcomeOverridden::class,
         ],
-        // A refunded lesson invalidates its referral reward.
+        // A refunded lesson invalidates its referral reward, and the student
+        // is told the money is back in their wallet.
         LessonRefundCompleted::class => [
             ReverseReferralRewardOnLessonRefundCompleted::class,
+            [SendWalletNotifications::class, 'handleLessonRefundCompleted'],
         ],
         // Referrer-facing reward notifications (idempotent).
         ReferralRewardCredited::class => [

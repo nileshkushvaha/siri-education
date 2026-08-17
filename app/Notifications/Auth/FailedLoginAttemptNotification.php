@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class FailedLoginAttemptNotification extends Notification implements ShouldQueue
+final class FailedLoginAttemptNotification extends AuthNotification
 {
     use Queueable;
 
@@ -31,7 +29,7 @@ final class FailedLoginAttemptNotification extends Notification implements Shoul
         $appName = config('app.name');
         $appUrl = config('app.url');
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject("Failed login attempt on your {$appName} account")
             ->view('emails.auth.failed-login-attempt', [
                 'user' => $notifiable,

@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Notifications\Cms;
 
+use App\Notifications\Admin\AdminAlertNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class ContactFormSubmissionNotification extends Notification implements ShouldQueue
+final class ContactFormSubmissionNotification extends AdminAlertNotification
 {
     use Queueable;
 
@@ -39,7 +38,7 @@ final class ContactFormSubmissionNotification extends Notification implements Sh
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('New contact form submission')
             ->view('emails.cms.contact-form-submission', [
                 'payload' => $this->payload,

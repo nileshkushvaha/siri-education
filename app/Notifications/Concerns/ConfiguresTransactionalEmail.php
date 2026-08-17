@@ -19,6 +19,18 @@ trait ConfiguresTransactionalEmail
         return ['mail' => 'notifications'];
     }
 
+    /**
+     * Applies the mailer, the category sender, and the shared SIRI branded
+     * shell to a stock MailMessage.
+     *
+     * The view is set here rather than in each notification so that every
+     * `->subject()/->line()/->action()` message renders inside one layout —
+     * Laravel's unbranded default markdown theme is bypassed entirely. A
+     * notification needing bespoke markup calls `->view(...)` *after* this
+     * method; that later assignment overwrites the default, which is why
+     * bespoke templates must use `->view()` and not `->markdown()`
+     * (`markdown()` sets a different property and would lose the race).
+     */
     protected function configureMailMessage(MailMessage $message): MailMessage
     {
         $mail = app(TransactionalMailSender::class);
@@ -26,6 +38,10 @@ trait ConfiguresTransactionalEmail
 
         return $message
             ->mailer($mail->mailer())
-            ->from($sender['address'], $sender['name']);
+            ->from($sender['address'], $sender['name'])
+            ->view([
+                'html' => 'emails.notification',
+                'text' => 'emails.notification-text',
+            ]);
     }
 }

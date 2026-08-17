@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Notifications\Instructor;
 
 use App\Earnings\Enums\InstructorWithdrawalStatus;
+use App\Notifications\Tutor\TutorNotification;
 use App\Support\MoneyFormatter;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
  * Instructor-facing withdrawal lifecycle updates. Carries the
@@ -17,7 +16,7 @@ use Illuminate\Notifications\Notification;
  * rejections) the safe reason — never bank details, snapshots, or
  * internal review notes.
  */
-final class InstructorWithdrawalStatusNotification extends Notification implements ShouldQueue
+final class InstructorWithdrawalStatusNotification extends TutorNotification
 {
     use Queueable;
 
@@ -65,7 +64,7 @@ final class InstructorWithdrawalStatusNotification extends Notification implemen
             default => sprintf('Your withdrawal request %s is now: %s.', $this->reference, $this->status->label()),
         };
 
-        $mail = (new MailMessage)
+        $mail = $this->configureMailMessage(new MailMessage)
             ->subject($subject.' — '.config('app.name'))
             ->greeting('Hello, '.$notifiable->name.'!')
             ->line($message);

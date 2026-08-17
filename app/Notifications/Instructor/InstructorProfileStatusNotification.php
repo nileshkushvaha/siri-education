@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Notifications\Instructor;
 
 use App\Enums\InstructorStatus;
+use App\Notifications\Tutor\TutorNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class InstructorProfileStatusNotification extends Notification implements ShouldQueue
+final class InstructorProfileStatusNotification extends TutorNotification
 {
     use Queueable;
 
@@ -41,7 +40,7 @@ final class InstructorProfileStatusNotification extends Notification implements 
             default => 'Your instructor profile status has been updated to: '.$this->status->label(),
         };
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject($subject.' — '.config('app.name'))
             ->greeting('Hello, '.$notifiable->name.'!')
             ->line($message)

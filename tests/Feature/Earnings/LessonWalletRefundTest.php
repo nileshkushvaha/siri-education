@@ -12,6 +12,7 @@ use App\Earnings\Enums\LessonStudentDisposition;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Contracts\LessonOutcomeServiceInterface;
 use App\Lessons\Enums\LessonOutcome;
+use App\Listeners\Wallet\SendWalletNotifications;
 use App\Models\Activity;
 use App\Models\Booking;
 use App\Models\BookingPayment;
@@ -24,6 +25,7 @@ use App\Models\LessonFinancialDisposition;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletLedgerEntry;
+use App\Notifications\Wallet\LessonRefundCreditedNotification;
 use App\Wallet\Actions\ExecuteLessonWalletRefundAction;
 use App\Wallet\Contracts\LessonWalletRefundServiceInterface;
 use App\Wallet\Enums\WalletLedgerEntryType;
@@ -36,6 +38,7 @@ use Database\Seeders\LessonPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Tests\Support\ManagesFinancialSettings;
 use Tests\TestCase;
 
@@ -416,6 +419,55 @@ class LessonWalletRefundTest extends TestCase
 
         $this->assertSame(0, WalletLedgerEntry::query()->count());
         $this->assertSame(LessonFinancialDispositionStatus::Ready, $this->dispositionFor($lesson)->processing_status);
+    }
+
+    // ── Student refund notification ──────────────────────────────────
+
+    public function test_credited_refund_notifies_the_student_once_with_safe_content(): void
+    {
+        Notification::fake();
+        [$lesson, $payment] = $this->paidLessonWithCharge();
+        $this->outcomes->finalize($lesson, LessonOutcome::InstructorNoShow);
+
+        $this->artisan('lessons:process-refunds')->assertSuccessful();
+
+        $student = $lesson->booking->student;
+
+        Notification::assertSentToTimes($student, LessonRefundCreditedNotification::class, 1);
+        Notification::assertSentTo($student, LessonRefundCreditedNotification::class,
+            function (LessonRefundCreditedNotification $notification) use ($student, $payment): bool {
+                $mail = $notification->toMail($student);
+                $body = implode(' ', array_merge($mail->introLines, $mail->outroLines));
+
+                // The amount the student sees, the reason, and nothing from the gateway.
+                $this->assertStringContainsString('4,999.00', $body);
+                $this->assertStringContainsString('instructor was unable to attend', $body);
+                $this->assertStringNotContainsString((string) $payment->id, $body);
+                $this->assertStringNotContainsString('razorpay', strtolower($body));
+
+                return true;
+            });
+    }
+
+    public function test_a_replayed_refund_event_does_not_send_a_second_notification(): void
+    {
+        Notification::fake();
+        [$lesson] = $this->paidLessonWithCharge();
+        $this->outcomes->finalize($lesson, LessonOutcome::InstructorNoShow);
+        $this->artisan('lessons:process-refunds')->assertSuccessful();
+
+        $disposition = $this->dispositionFor($lesson);
+        $entry = $this->refundEntryFor($lesson);
+
+        // At-least-once queue delivery: the same event handled twice.
+        app(SendWalletNotifications::class)
+            ->handleLessonRefundCompleted(new LessonRefundCompleted($disposition, $entry));
+
+        Notification::assertSentToTimes(
+            $lesson->booking->student,
+            LessonRefundCreditedNotification::class,
+            1,
+        );
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

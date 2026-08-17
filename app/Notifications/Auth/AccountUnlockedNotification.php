@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class AccountUnlockedNotification extends Notification implements ShouldQueue
+final class AccountUnlockedNotification extends AuthNotification
 {
     use Queueable;
 
@@ -42,7 +40,7 @@ final class AccountUnlockedNotification extends Notification implements ShouldQu
             default => 'An administrator has unlocked your account. You can now sign in.',
         };
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject($subject)
             ->greeting('Good news, '.$notifiable->first_name.'!')
             ->line($body)

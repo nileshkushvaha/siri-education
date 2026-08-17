@@ -121,16 +121,53 @@ There is no notification-log/dedupe table — duplicate-suppression relies on th
 
 ### Queue
 
-Notifications and their listeners run on the `notifications` queue (database driver): `php artisan queue:work --queue=notifications --tries=3` (supervised in production — nothing is delivered without a running worker). Mail uses the existing transactional-email plumbing (`ConfiguresTransactionalEmail`, Resend) and stock `MailMessage` content — no separate template system per notification. Tests use `Notification::fake()`.
+Notifications and their listeners run on the `notifications` queue (database driver): `php artisan queue:work --queue=notifications --tries=3` (supervised in production — nothing is delivered without a running worker). Mail uses the existing transactional-email plumbing (`ConfiguresTransactionalEmail`, Resend). Tests use `Notification::fake()`.
+
+## Shared email theme
+
+Every transactional email renders inside one branded shell — `resources/views/emails/layouts/base.blade.php`. There are exactly two ways in, and no email may use a third:
+
+| Style | View | When |
+|---|---|---|
+| Stock `MailMessage` | `emails/notification.blade.php` (+ `-text` twin) | The default. `->subject()/->greeting()/->line()/->action()` — no HTML in the notification class. |
+| Bespoke template | e.g. `emails/auth/welcome.blade.php` | Only when the message needs layout the shell can't express (a verification code block, a multi-step explainer). Must `@extends('emails.layouts.base')`. |
+
+`ConfiguresTransactionalEmail::configureMailMessage()` is the single seam: it applies the mailer, the category sender, **and** the default branded view. Laravel's unbranded `notifications::email` markdown theme is therefore never reached, and no notification class contains layout HTML.
+
+A bespoke template wins simply by calling `->view(...)` *after* `configureMailMessage()`, which overwrites the default. Use `->view()`, never `->markdown()` — `markdown()` sets a different property, loses the race against the default view, and would additionally re-inline Laravel's own theme CSS over the SIRI styles.
+
+Two architecture tests in `tests/Feature/Notifications/TransactionalEmailThemeTest.php` hold this: every `toMail()` must build through `configureMailMessage(new MailMessage)`, and every transactional notification must implement `TransactionalEmail`. A notification extending `Notification` directly silently loses the category sender, the queue routing, and the branding — the test fails rather than letting that ship.
 
 ## Adding a transactional email
 
 1. Dispatch a domain event from the business service.
 2. Handle it in a queued listener on the `notifications` queue.
 3. Send a queued Notification/Mailable only.
-4. Extend the matching base notification class for the domain (Auth, Booking, Payment, Instructor, Wallet, Support, or Admin).
-5. Configure the category sender in Mail Settings when a separate sender address is required.
-6. Confirm the message appears in `email_logs`.
+4. Extend the matching base notification class for the domain (Auth, Booking, Payment, Tutor, Wallet, Support, Review, or Admin) — never `Notification` directly.
+5. Build the message with `$this->configureMailMessage(new MailMessage)` so it inherits the sender and the branded shell.
+6. Claim the send through `NotificationIdempotencyGuard` in the listener.
+7. Configure the category sender in Mail Settings when a separate sender address is required.
+8. Confirm the message appears in `email_logs`.
+
+## Production smoke test
+
+Run after any deploy that touches notifications, mail config, or the queue worker. Confirm the `notifications` worker is running first — every check below is silently a no-op without it (`php artisan queue:work --queue=notifications,default`).
+
+Each row should produce **exactly one** email, rendered in the branded shell, and **one** row in `email_logs` (Filament → Email Logs).
+
+| # | Path | Trigger | Expect |
+|---|---|---|---|
+| 1 | **Auth** | Request a password reset for a test account | Reset email, branded, working link. Confirms the `auth` sender and the bespoke-template route. |
+| 2 | **Booking** | Create a booking as a test student | Student confirmation + instructor copy. Instructor copy must contain **no** amount. |
+| 3 | **Payment** | Complete a booking payment end-to-end | One payment-success email with the receipt/invoice link. Check the invoice URL honours `InvoicePolicy` when opened as another user. |
+| 4 | **Wallet recharge** | Recharge via the real provider, let the **webhook** settle it | One "recharge successful" email. Balance credited. |
+| 5 | **Wallet refund credit** | Resolve a lesson as instructor no-show, run `lessons:process-refunds` | One `LessonRefundCreditedNotification` stating amount, reason, and new balance. |
+| 6 | **Admin operational** | Submit the public contact form | Admin recipients (per `AdminRecipientResolver`) receive it — and nobody outside that permission does. |
+| 7 | **Duplicate / replay** | Re-deliver the same provider webhook (Razorpay dashboard resend), then run reconciliation | Webhook answers `replayed`/`ignored`. **No second email.** `notification_dispatch_logs` gains no new row for that key. |
+
+Row 7 is the one that matters most and the one most easily broken by a well-meaning change — a payment observed through browser callback, webhook, webhook retry, and reconciliation must still yield one email. If it produces two, the fault is a domain event firing twice, not the mail layer; see "Duplicate / idempotency strategy" above.
+
+Sender identity: confirm `MAIL_FROM_NAME`, the per-category senders in Mail Settings, and that links resolve to the production HTTPS `APP_URL` (not `localhost`).
 
 ## Troubleshooting
 

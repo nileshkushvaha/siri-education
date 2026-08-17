@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class SuspiciousLoginNotification extends Notification implements ShouldQueue
+final class SuspiciousLoginNotification extends AuthNotification
 {
     use Queueable;
 
@@ -33,7 +31,7 @@ final class SuspiciousLoginNotification extends Notification implements ShouldQu
         $appName = config('app.name');
         $appUrl = config('app.url');
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject("New sign-in to your {$appName} account")
             ->view('emails.auth.suspicious-login', [
                 'user' => $notifiable,

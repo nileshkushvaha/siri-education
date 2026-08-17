@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class AccountApprovedNotification extends Notification implements ShouldQueue
+final class AccountApprovedNotification extends AuthNotification
 {
     use Queueable;
 
@@ -25,7 +23,7 @@ final class AccountApprovedNotification extends Notification implements ShouldQu
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('Your '.config('app.name').' account has been approved!')
             ->view('emails.auth.account-approved', [
                 'user' => $notifiable,

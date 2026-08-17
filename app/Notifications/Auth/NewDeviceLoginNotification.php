@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class NewDeviceLoginNotification extends Notification implements ShouldQueue
+final class NewDeviceLoginNotification extends AuthNotification
 {
     use Queueable;
 
@@ -33,7 +31,7 @@ final class NewDeviceLoginNotification extends Notification implements ShouldQue
         $appName = config('app.name');
         $appUrl = config('app.url');
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject("New device signed in to your {$appName} account")
             ->view('emails.auth.new-device-login', [
                 'user' => $notifiable,

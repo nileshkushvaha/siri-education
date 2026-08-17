@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Auth;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class PasswordChangedNotification extends Notification implements ShouldQueue
+final class PasswordChangedNotification extends AuthNotification
 {
     use Queueable;
 
@@ -27,7 +25,7 @@ final class PasswordChangedNotification extends Notification implements ShouldQu
 
     public function toMail(mixed $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('Your Password Has Been Changed — '.config('app.name'))
             ->view('emails.auth.password-changed', [
                 'user' => $notifiable,

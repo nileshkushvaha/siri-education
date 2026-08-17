@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Notifications\Instructor;
 
+use App\Notifications\Tutor\TutorNotification;
 use App\Support\MoneyFormatter;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
  * Informs the instructor a demo-to-paid conversion bonus was earned.
@@ -18,7 +17,7 @@ use Illuminate\Notifications\Notification;
  * InstructorWithdrawalStatusNotification's plain (non-templated)
  * instructor-financial-notice shape.
  */
-final class DemoConversionIncentiveEarnedNotification extends Notification implements ShouldQueue
+final class DemoConversionIncentiveEarnedNotification extends TutorNotification
 {
     use Queueable;
 
@@ -39,7 +38,7 @@ final class DemoConversionIncentiveEarnedNotification extends Notification imple
     {
         $amount = MoneyFormatter::format($this->amountMinor, $this->currencyCode);
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject('You earned a conversion bonus — '.config('app.name'))
             ->greeting('Hello, '.$notifiable->name.'!')
             ->line(sprintf('One of your students booked a paid lesson after their demo — you earned a bonus of %s.', $amount))

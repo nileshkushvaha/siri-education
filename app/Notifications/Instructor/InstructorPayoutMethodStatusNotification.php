@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace App\Notifications\Instructor;
 
 use App\Earnings\Enums\PayoutMethodStatus;
+use App\Notifications\Tutor\TutorNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
  * Instructor-facing payout-method outcome. Carries only the safe
  * display label and (for rejections) the admin-provided reason — never
  * account numbers, routing data, or any encrypted payload.
  */
-final class InstructorPayoutMethodStatusNotification extends Notification implements ShouldQueue
+final class InstructorPayoutMethodStatusNotification extends TutorNotification
 {
     use Queueable;
 
@@ -48,7 +47,7 @@ final class InstructorPayoutMethodStatusNotification extends Notification implem
             default => sprintf('Your payout method (%s) is now: %s.', $this->displayLabel, $this->status->label()),
         };
 
-        $mail = (new MailMessage)
+        $mail = $this->configureMailMessage(new MailMessage)
             ->subject($subject.' — '.config('app.name'))
             ->greeting('Hello, '.$notifiable->name.'!')
             ->line($message);

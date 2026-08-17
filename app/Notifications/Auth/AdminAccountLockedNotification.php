@@ -6,11 +6,9 @@ namespace App\Notifications\Auth;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-final class AdminAccountLockedNotification extends Notification implements ShouldQueue
+final class AdminAccountLockedNotification extends AuthNotification
 {
     use Queueable;
 
@@ -32,7 +30,7 @@ final class AdminAccountLockedNotification extends Notification implements Shoul
         $appName = config('app.name');
         $appUrl = config('app.url');
 
-        return (new MailMessage)
+        return $this->configureMailMessage(new MailMessage)
             ->subject("[{$appName}] Account locked — {$this->lockedUser->email}")
             ->view('emails.auth.admin-account-locked', [
                 'admin' => $notifiable,

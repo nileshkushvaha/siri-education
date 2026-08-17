@@ -112,6 +112,20 @@ SRS-approved wallet spend is **lesson bookings only**. `BookingPaymentService::p
 
 Package purchase via wallet is **not** implemented, deliberately: SRS §13.1 lists "future Subscription or Package modules" as integrations the wallet is being *prepared* for, and no chapter authorizes wallet-funded package purchase. That stays deferred rather than assumed.
 
+## Student-facing credit notifications
+
+A wallet credit the student did not initiate must explain itself, or money simply appears in their balance. `SendWalletNotifications` covers all three sources on the `notifications` queue, each claimed through `NotificationIdempotencyGuard`:
+
+| Credit source | Event | Notification |
+|---|---|---|
+| Recharge settled by the provider | `WalletRechargeSucceeded` | `WalletRechargeSucceededNotification` |
+| Lesson-outcome refund (instructor no-show, technical failure, admin exception) | `LessonRefundCompleted` | `LessonRefundCreditedNotification` |
+| Promotional campaign credit | `PromotionalCreditIssued` | `PromotionalCreditIssuedNotification` |
+
+A *student-initiated cancellation* refund is deliberately absent from this table — `BookingCancelledNotification` already states its frozen refund outcome, so notifying again from the ledger would double-message one action. The lesson-outcome refund is the opposite case: it is executed later, often by an admin days after the lesson, and was previously silent.
+
+The refund notification's idempotency key is scoped to disposition id **and** `version`, matching the ledger's own key — an admin override that legitimately re-resolves a disposition into a second distinct refund therefore notifies again, while a redelivered event for the same refund does not.
+
 ## Integration points for future work
 
 - **Referral/promotional credits**: `WalletLedgerEntryType::ReferralCredit`/`PromotionalCredit` already exist in the enum — a future engine only needs to call `WalletLedgerService::credit()`.

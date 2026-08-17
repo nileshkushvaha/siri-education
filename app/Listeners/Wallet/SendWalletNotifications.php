@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Listeners\Wallet;
 
 use App\Models\PromotionalCreditIssuance;
+use App\Models\User;
+use App\Notifications\Wallet\LessonRefundCreditedNotification;
 use App\Notifications\Wallet\PromotionalCreditIssuedNotification;
 use App\Notifications\Wallet\WalletRechargeSucceededNotification;
 use App\PromotionalCredits\Events\PromotionalCreditIssued;
 use App\Services\Notifications\NotificationIdempotencyGuard;
+use App\Wallet\Events\LessonRefundCompleted;
 use App\Wallet\Events\WalletRechargeSucceeded;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -48,6 +51,37 @@ final class SendWalletNotifications implements ShouldQueue
 
         $this->idempotency->once($key, WalletRechargeSucceededNotification::class, function () use ($event): void {
             $event->recharge->user->notify(new WalletRechargeSucceededNotification($event->recharge));
+        });
+    }
+
+    /**
+     * A lesson-outcome refund (instructor no-show, technical failure, admin
+     * exception) credits the student's wallet from a path they never see in
+     * real time — unlike a student-initiated cancellation, which already
+     * states its frozen refund outcome in BookingCancelledNotification.
+     *
+     * Keyed on disposition id *and* version because an admin override can
+     * legitimately re-resolve a disposition into a second, distinct refund;
+     * the ledger's own idempotency key is scoped the same way, so the mail
+     * and the credit can never disagree about what counts as "the same"
+     * refund.
+     */
+    public function handleLessonRefundCompleted(LessonRefundCompleted $event): void
+    {
+        $student = $event->disposition->booking?->student;
+
+        if (! $student instanceof User) {
+            return;
+        }
+
+        $key = sprintf(
+            'lesson-refund-credited:%s:v%d',
+            $event->disposition->id,
+            $event->disposition->version,
+        );
+
+        $this->idempotency->once($key, LessonRefundCreditedNotification::class, function () use ($student, $event): void {
+            $student->notify(new LessonRefundCreditedNotification($event->disposition, $event->entry));
         });
     }
 

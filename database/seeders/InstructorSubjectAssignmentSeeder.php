@@ -39,6 +39,23 @@ use Spatie\Permission\Models\Role;
  */
 final class InstructorSubjectAssignmentSeeder extends Seeder
 {
+    /**
+     * Free-text values predating the catalogue, mapped to their canonical subject.
+     *
+     * These are topics or exam prep rather than subjects, so no name lookup can resolve
+     * them. Keys are lowercased. `sat prep` is deliberately absent — it has no catalogue
+     * equivalent and stays unmapped rather than being filed under a subject the
+     * instructor may not actually teach.
+     */
+    private const LEGACY_SUBJECT_ALIASES = [
+        'algebra' => 'Mathematics',
+        'geometry' => 'Mathematics',
+        'calculus' => 'Mathematics',
+        'creative writing' => 'English',
+        'programming fundamentals' => 'Computer Science',
+        'web development' => 'Information Technology',
+    ];
+
     /** How many catalogue subjects an instructor with none is given. */
     private const RANDOM_SUBJECTS_MIN = 2;
 
@@ -63,6 +80,10 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
     private int $skippedSubjects = 0;
 
     private int $randomlyAssigned = 0;
+
+    private int $renamedRows = 0;
+
+    private int $mergedRows = 0;
 
     public function run(): void
     {
@@ -100,6 +121,14 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
             $this->command?->info(sprintf(
                 '  %d instructor(s) had no subjects and were given a random catalogue selection.',
                 $this->randomlyAssigned,
+            ));
+        }
+
+        if ($this->renamedRows > 0 || $this->mergedRows > 0) {
+            $this->command?->info(sprintf(
+                '  %d legacy row(s) renamed to their catalogue subject, %d merged into an existing row.',
+                $this->renamedRows,
+                $this->mergedRows,
             ));
         }
 
@@ -206,9 +235,11 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
                 continue;
             }
 
-            // Keep the denormalised columns honest for rows created before subject_id existed.
-            if ($assignment->subject_id !== $subject->id) {
-                $assignment->forceFill(['subject_id' => $subject->id])->save();
+            // Repairs legacy rows: canonical name + subject_id, merging any duplicate.
+            $assignment = $this->normaliseAssignment($assignment, $subject);
+
+            if ($assignment === null) {
+                continue;
             }
 
             $levels = $this->levelsForAssignment($assignment);
@@ -240,7 +271,7 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
         // Legacy rows were free text, so casing and spacing drift from the catalogue
         // ("physics" vs "Physics"). Compare lowercased rather than relying on the
         // column collation, which is case-sensitive on some deployments.
-        return Subject::query()
+        $direct = Subject::query()
             ->active()
             ->where(function ($query) use ($name): void {
                 $query
@@ -248,6 +279,61 @@ final class InstructorSubjectAssignmentSeeder extends Seeder
                     ->orWhere('slug', Str::slug($name));
             })
             ->first();
+
+        if ($direct !== null) {
+            return $direct;
+        }
+
+        $alias = self::LEGACY_SUBJECT_ALIASES[mb_strtolower($name)] ?? null;
+
+        return $alias === null
+            ? null
+            : Subject::query()->active()->where('name', $alias)->first();
+    }
+
+    /**
+     * Brings a legacy row onto the canonical subject.
+     *
+     * Candidate matching runs off the `subject` name column, not `subject_id`, so setting
+     * the key alone would leave the instructor unbookable. The name is rewritten too —
+     * and because (teacher_id, subject, grade_from, grade_to) is unique, a row that would
+     * collide with an already-canonical row is merged away instead.
+     *
+     * @return TeacherSubject|null null when the row was merged into an existing one
+     */
+    private function normaliseAssignment(TeacherSubject $assignment, Subject $subject): ?TeacherSubject
+    {
+        if ($assignment->subject !== $subject->name) {
+            $existing = TeacherSubject::query()
+                ->where('teacher_id', $assignment->teacher_id)
+                ->where('subject', $subject->name)
+                ->where('grade_from', $assignment->grade_from)
+                ->where('grade_to', $assignment->grade_to)
+                ->whereKeyNot($assignment->getKey())
+                ->exists();
+
+            if ($existing) {
+                // The canonical row is already present (or was renamed earlier in this
+                // same pass), so this alias row is redundant.
+                $assignment->delete();
+                $this->mergedRows++;
+
+                return null;
+            }
+
+            $assignment->forceFill(['subject' => $subject->name]);
+            $this->renamedRows++;
+        }
+
+        if ($assignment->subject_id !== $subject->id) {
+            $assignment->forceFill(['subject_id' => $subject->id]);
+        }
+
+        if ($assignment->isDirty()) {
+            $assignment->save();
+        }
+
+        return $assignment;
     }
 
     /**

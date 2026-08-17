@@ -188,4 +188,71 @@ class InstructorSubjectAssignmentSeederTest extends TestCase
             'A grades 6-8 assignment must not produce high-school level rows.'
         );
     }
+
+    public function test_it_maps_a_legacy_topic_name_onto_its_catalogue_subject(): void
+    {
+        $maths = $this->seedCatalogue();
+        $instructor = $this->instructor('legacy@client.com');
+
+        TeacherSubject::query()->create([
+            'teacher_id' => $instructor->id,
+            'subject' => 'algebra',
+            'subject_id' => null,
+            'grade_from' => 6,
+            'grade_to' => 12,
+        ]);
+
+        $this->runSeeder();
+
+        $row = TeacherSubject::query()->where('teacher_id', $instructor->id)->sole();
+
+        // The name must be rewritten too: candidate matching runs off `subject`, not the key.
+        $this->assertSame('Mathematics', $row->subject);
+        $this->assertSame($maths->id, $row->subject_id);
+    }
+
+    public function test_it_merges_two_legacy_rows_that_map_to_the_same_subject(): void
+    {
+        $maths = $this->seedCatalogue();
+        $instructor = $this->instructor('merge@client.com');
+
+        foreach (['Algebra', 'Geometry'] as $legacy) {
+            TeacherSubject::query()->create([
+                'teacher_id' => $instructor->id,
+                'subject' => $legacy,
+                'subject_id' => null,
+                'grade_from' => 6,
+                'grade_to' => 12,
+            ]);
+        }
+
+        $this->runSeeder();
+
+        $rows = TeacherSubject::query()->where('teacher_id', $instructor->id)->get();
+
+        $this->assertCount(1, $rows, 'Both aliases map to Mathematics, so they must merge into one row.');
+        $this->assertSame('Mathematics', $rows->first()->subject);
+        $this->assertSame($maths->id, $rows->first()->subject_id);
+    }
+
+    public function test_it_leaves_an_unmapped_legacy_name_untouched(): void
+    {
+        $this->seedCatalogue();
+        $instructor = $this->instructor('satprep@client.com');
+
+        TeacherSubject::query()->create([
+            'teacher_id' => $instructor->id,
+            'subject' => 'sat prep',
+            'subject_id' => null,
+            'grade_from' => 6,
+            'grade_to' => 12,
+        ]);
+
+        $this->runSeeder();
+
+        $row = TeacherSubject::query()->where('teacher_id', $instructor->id)->sole();
+
+        $this->assertSame('sat prep', $row->subject, 'Unmapped rows must never be renamed or deleted.');
+        $this->assertNull($row->subject_id);
+    }
 }

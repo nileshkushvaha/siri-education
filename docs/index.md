@@ -61,6 +61,17 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Support & Dispute Case Management | `support-cases.md` |
 | Promotional Wallet Credit Campaigns | `promotional-credits.md` |
 
+## AI
+
+| Topic | File |
+|---|---|
+| AI platform foundation (provider-neutral layer, security, prompts, cost controls, P1-P4 roadmap) | `ai/README.md` |
+| AI Quality Insights — admin-only advisory instructor briefings (P1) | `ai/features/quality-insights.md` |
+| Instructor Homework Copilot — AI feedback drafts, instructor-published (P2) | `ai/features/homework-copilot.md` |
+| AI Lesson Summaries — instructor-approved lesson documentation (P3) | `ai/features/lesson-summary.md` |
+| Communication Safety — AI-assisted risk flagging, human-reviewed (P4) | `ai/features/communication-safety.md` |
+| AI evaluation & governance — metrics, feedback loop, prompt improvement (AI-E0) | `ai/evaluation.md` |
+
 ## Security
 
 | Topic | File |

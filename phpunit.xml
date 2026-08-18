@@ -26,7 +26,9 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <!-- Recording ingestion has its own long-timeout connection in production; tests run it inline. -->
+        <!-- Recording ingestion and AI execution each have their own
+             dedicated connection in production; tests run both inline. -->
+        <env name="AI_QUEUE_DRIVER" value="sync"/>
         <env name="RECORDING_QUEUE_DRIVER" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

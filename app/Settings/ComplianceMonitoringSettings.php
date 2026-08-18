@@ -71,6 +71,21 @@ class ComplianceMonitoringSettings extends Settings
 
     public int $repeated_message_reports_cooldown_minutes;
 
+    /**
+     * Communication-safety escalation (P4). Counts findings an
+     * administrator has CONFIRMED — never raw AI output — so a model's
+     * opinion can never open a compliance flag on its own.
+     */
+    public bool $repeated_confirmed_message_risks_enabled;
+
+    public int $repeated_confirmed_message_risks_threshold;
+
+    public int $repeated_confirmed_message_risks_window_days;
+
+    public string $repeated_confirmed_message_risks_severity;
+
+    public int $repeated_confirmed_message_risks_cooldown_minutes;
+
     public static function group(): string
     {
         return 'compliance_monitoring';

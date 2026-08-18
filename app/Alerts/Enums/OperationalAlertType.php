@@ -30,6 +30,15 @@ enum OperationalAlertType: string
      */
     case RecordingMultipleArtifacts = 'recording_multiple_artifacts';
 
+    /**
+     * AI estimated spend crossed its configured warning threshold. Like
+     * RecordingMultipleArtifacts this is a product signal rather than a
+     * failure — nothing is broken, but somebody should decide whether to
+     * raise the ceiling or turn a capability off before the budget guard
+     * starts blocking runs silently.
+     */
+    case AiBudgetThresholdReached = 'ai_budget_threshold_reached';
+
     public function label(): string
     {
         return match ($this) {
@@ -56,7 +65,11 @@ enum OperationalAlertType: string
 
             self::PaymentReconciliationIssue,
             self::PayoutReconciliationIssue,
-            self::WalletRechargeCreditFailed => OperationalAlertCategory::Finance,
+            self::WalletRechargeCreditFailed,
+            // Finance, not System: this is money being spent, and the
+            // decision it prompts (raise the ceiling, or switch a
+            // capability off) is a spending decision.
+            self::AiBudgetThresholdReached => OperationalAlertCategory::Finance,
 
             self::CriticalFailedJob => OperationalAlertCategory::NotificationQueueSystem,
         };

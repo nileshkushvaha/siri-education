@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Quality\Contracts;
 
+use App\Models\LessonReview;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 
 /**
@@ -25,6 +27,17 @@ interface QualitySignalRepositoryInterface
 
     /** Host-attributed (instructor) booking cancellations for this instructor within the window. */
     public function countInstructorAttributedCancellations(int $instructorId, CarbonImmutable $since): int;
+
+    /**
+     * Published public reviews for one instructor inside a half-open
+     * window `[from, until)`, newest first, hard-capped. Window-bounded
+     * rather than `since`-bounded because insight generation reports on
+     * a closed period, and reused here rather than re-queried in the
+     * consuming service so LessonReview access stays in one place.
+     *
+     * @return Collection<int, LessonReview>
+     */
+    public function publishedReviewsInWindow(int $instructorId, CarbonImmutable $from, CarbonImmutable $until, int $limit): Collection;
 
     /** Every published, low-rated public review submitted since $since — cursored, for reconciliation. */
     public function recentLowPublishedReviews(CarbonImmutable $since, int $threshold): LazyCollection;

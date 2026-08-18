@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\Commands\AccruePeriodicCompensation;
+use App\Console\Commands\Ai\CheckAiBudgetThreshold;
 use App\Console\Commands\Alerts\CheckMissingMeetingLinksCommand;
 use App\Console\Commands\AutoCompleteLessons;
 use App\Console\Commands\CaptureLessonRecordings;
@@ -295,3 +296,14 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/referrals-credit-rewards.log'));
+
+// Warn before the AI budget guard starts blocking runs. Hourly rather
+// than on every AI request: the condition changes over hours, and the
+// guard runs on the hot path of every AI feature. Idempotent —
+// OperationalAlertService merges a repeat into one alert with an
+// occurrence count rather than creating a new one each hour.
+app(Schedule::class)
+    ->command(CheckAiBudgetThreshold::class)
+    ->hourly()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ai-budget.log'));

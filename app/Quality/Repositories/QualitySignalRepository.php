@@ -14,6 +14,7 @@ use App\Reviews\Enums\LessonReviewEligibilityMode;
 use App\Reviews\Enums\StudentReviewStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 
 final class QualitySignalRepository implements QualitySignalRepositoryInterface
@@ -37,6 +38,20 @@ final class QualitySignalRepository implements QualitySignalRepositoryInterface
             ->where('cancelled_by', BookingActor::Instructor)
             ->where('cancelled_at', '>=', $since)
             ->count();
+    }
+
+    public function publishedReviewsInWindow(int $instructorId, CarbonImmutable $from, CarbonImmutable $until, int $limit): Collection
+    {
+        return LessonReview::query()
+            ->where('instructor_id', $instructorId)
+            ->where('status', StudentReviewStatus::Published)
+            ->where('review_mode', LessonReviewEligibilityMode::PublicReview)
+            ->where('submitted_at', '>=', $from)
+            ->where('submitted_at', '<', $until)
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
     }
 
     public function recentLowPublishedReviews(CarbonImmutable $since, int $threshold): LazyCollection

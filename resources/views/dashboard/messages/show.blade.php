@@ -75,6 +75,18 @@
         </div>
 
         @can('reply', $conversation)
+            {{-- Contact/payment sharing warning. Deterministic, advisory,
+                 recorded nowhere — the user may always send anyway. --}}
+            @if (session('safety_warning'))
+                <div class="mt-6 rounded-xl border border-amber-400/25 bg-amber-500/[0.07] px-4 py-3">
+                    <p class="text-sm font-semibold text-amber-200">Your message looks like it contains {{ session('safety_warning') }}.</p>
+                    <p class="mt-1 text-xs text-amber-100/80">
+                        Keeping conversations and payments inside SIRI is what lets us support you if something goes wrong —
+                        lesson records, refunds and dispute help only cover what happens here. You can still send this message.
+                    </p>
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('dashboard.messages.reply', $conversation) }}" enctype="multipart/form-data" class="mt-6 pt-5 border-t border-white/[0.05]">
                 @csrf
                 <label for="body" class="block text-xs font-semibold text-slate-400 mb-2">Reply</label>
@@ -89,10 +101,23 @@
                     @error('attachment')<p class="mt-1.5 text-xs text-red-400">{{ $message }}</p>@enderror
                 </div>
 
-                <button type="submit"
-                    class="mt-3 inline-flex min-h-11 items-center px-5 py-2.5 rounded-lg bg-indigo-500 text-sm font-semibold text-white hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
-                    Send
-                </button>
+                @if (session('safety_warning'))
+                    {{-- Same form, resubmitted with the acknowledgement.
+                         The user is never blocked — only asked once. --}}
+                    <input type="hidden" name="acknowledged_safety_warning" value="1">
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <button type="submit"
+                            class="inline-flex min-h-11 items-center px-5 py-2.5 rounded-lg bg-amber-500 text-sm font-semibold text-slate-900 hover:bg-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
+                            Send anyway
+                        </button>
+                        <span class="text-xs text-slate-400">or edit your message above</span>
+                    </div>
+                @else
+                    <button type="submit"
+                        class="mt-3 inline-flex min-h-11 items-center px-5 py-2.5 rounded-lg bg-indigo-500 text-sm font-semibold text-white hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
+                        Send
+                    </button>
+                @endif
             </form>
         @else
             <p class="mt-6 pt-5 border-t border-white/[0.05] text-sm text-slate-400">This conversation is {{ strtolower($conversation->status->label()) }} and cannot accept new messages.</p>

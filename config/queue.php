@@ -111,6 +111,30 @@ return [
             'after_commit' => false,
         ],
 
+        /*
+         * Dedicated connection for AI provider work.
+         *
+         * Separated from "database" for the same two reasons the
+         * recordings connection is, at a different scale:
+         *
+         *  1. retry_after must exceed ExecuteAiTaskJob::$timeout (120s),
+         *     and retry_after is per-CONNECTION — raising it on
+         *     "database" would slow recovery for every other job. Too
+         *     short, and a second worker would re-send a generation that
+         *     is still in flight: duplicated spend for one answer.
+         *  2. Provider rate limits produce bursts of released jobs. A
+         *     backlog of retrying AI work must never sit in front of
+         *     notification, payment or payout jobs.
+         */
+        'ai' => [
+            'driver' => env('AI_QUEUE_DRIVER', 'database'),
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'ai',
+            'retry_after' => (int) env('AI_QUEUE_RETRY_AFTER', 180),
+            'after_commit' => false,
+        ],
+
         'failover' => [
             'driver' => 'failover',
             'connections' => [

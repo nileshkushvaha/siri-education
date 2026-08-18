@@ -22,3 +22,10 @@ Displays pending and failed job counts by queue name.
 `QUEUE_CONNECTION` in `.env`. In tests, set to `sync` in `phpunit.xml` so queued listeners run inline.
 
 The `notifications` queue is used by `NotifyAdminsOnActivity`. Production should run a dedicated worker for this queue.
+
+The `recordings` and `ai` queues each have their own connection (their `retry_after` must stay above the corresponding job timeout) and each needs its own worker:
+
+```bash
+php artisan queue:work recordings --queue=recordings
+php artisan queue:work ai --queue=ai
+```

@@ -5,7 +5,14 @@ declare(strict_types=1);
 namespace App\Compliance\Enums;
 
 /**
- * One case per deterministic rule. `category()` is
+ * One case per deterministic rule — including
+ * RepeatedConfirmedMessageRisks, which counts findings an
+ * ADMINISTRATOR has confirmed. That rule stays deterministic in the
+ * sense this enum requires: its threshold and window are fixed
+ * configuration and its input is a count of human decisions, never a
+ * model's own output. No AI result reaches this pipeline directly.
+ *
+ * `category()` is
  * the single source of truth linking a rule to its domain — the
  * flag's own `category` column is always derived from this, never set
  * independently, so a rule and its category can never drift apart.
@@ -17,6 +24,7 @@ enum SuspiciousActivityRuleCode: string
     case RepeatedReferralFraudHolds = 'repeated_referral_fraud_holds';
     case UnusualManualWalletAdjustments = 'unusual_manual_wallet_adjustments';
     case RepeatedMessageReports = 'repeated_message_reports';
+    case RepeatedConfirmedMessageRisks = 'repeated_confirmed_message_risks';
 
     public function label(): string
     {
@@ -26,6 +34,7 @@ enum SuspiciousActivityRuleCode: string
             self::RepeatedReferralFraudHolds => 'Repeated Referral Fraud Holds',
             self::UnusualManualWalletAdjustments => 'Unusual Manual Wallet Adjustments',
             self::RepeatedMessageReports => 'Repeated Message Reports',
+            self::RepeatedConfirmedMessageRisks => 'Repeated Confirmed Message Risks',
         };
     }
 
@@ -37,6 +46,7 @@ enum SuspiciousActivityRuleCode: string
             self::RepeatedReferralFraudHolds => SuspiciousActivityCategory::Referral,
             self::UnusualManualWalletAdjustments => SuspiciousActivityCategory::Wallet,
             self::RepeatedMessageReports => SuspiciousActivityCategory::Messaging,
+            self::RepeatedConfirmedMessageRisks => SuspiciousActivityCategory::Messaging,
         };
     }
 }

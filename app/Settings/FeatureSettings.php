@@ -62,6 +62,16 @@ class FeatureSettings extends Settings
      */
     public bool $country_academic_packages_enabled;
 
+    /**
+     * Phase P0 — master switch for the AI platform layer
+     * (app/Ai). Off means no provider call can ever be made,
+     * whatever the per-capability flags in AiSettings say: AiFeatureGate
+     * checks this first. The capability flags themselves live in
+     * AiSettings because they narrow this switch rather than compete
+     * with it — same layering as recording_enabled above.
+     */
+    public bool $ai_enabled;
+
     public static function group(): string
     {
         return 'features';

@@ -39,6 +39,7 @@ use App\Listeners\Booking\RecordBookingLifecycleAudit;
 use App\Listeners\Booking\SendBookingNotifications;
 use App\Listeners\Booking\SendMeetingNotifications;
 use App\Listeners\Booking\SyncPaymentOnCancellation;
+use App\Listeners\Compliance\EvaluateConfirmedMessageRisksOnFindingConfirmed;
 use App\Listeners\Compliance\EvaluateExcessiveBookingCancellationsOnBookingCancelled;
 use App\Listeners\Compliance\EvaluateRepeatedFailedLoginsOnLoginFailed;
 use App\Listeners\Compliance\EvaluateRepeatedMessageReportsOnMessageReported;
@@ -61,6 +62,8 @@ use App\Listeners\Mail\LogNotificationFailed;
 use App\Listeners\Mail\LogNotificationSending;
 use App\Listeners\Mail\LogNotificationSent;
 use App\Listeners\Mail\LogResendEmailEvent;
+use App\Listeners\Messaging\AnalyseSentMessageForSafety;
+use App\Listeners\Messaging\ModerateReportedMessage;
 use App\Listeners\Messaging\SendMessagingNotifications;
 use App\Listeners\NotifyAdminsOnActivity;
 use App\Listeners\NotifyInstructorOnPayoutActivity;
@@ -106,6 +109,7 @@ use App\Listeners\Wallet\GenerateInvoiceOnWalletRechargeSucceeded;
 use App\Listeners\Wallet\SendWalletNotifications;
 use App\Messaging\Events\MessageReported;
 use App\Messaging\Events\MessageSent as MessagingMessageSent;
+use App\Messaging\Safety\Events\MessageSafetyFindingConfirmed;
 use App\Package\Events\PackagePurchaseSettled;
 use App\PromotionalCredits\Events\PromotionalCreditIssued;
 use App\Quality\Events\InstructorQualityAlertCreated;
@@ -432,9 +436,23 @@ class EventServiceProvider extends ServiceProvider
         // Controlled student-instructor messaging.
         MessagingMessageSent::class => [
             [SendMessagingNotifications::class, 'handleMessageSent'],
+            // P4: records what the deterministic detector already found,
+            // and queues an AI analysis only for the small residue the
+            // triage gate cannot explain. Queued, so message delivery
+            // never waits on safety work.
+            AnalyseSentMessageForSafety::class,
         ],
         MessageReported::class => [
             EvaluateRepeatedMessageReportsOnMessageReported::class,
+            // P4: the safety classifier runs on REPORTED messages only —
+            // a human reporting is the initiating act.
+            ModerateReportedMessage::class,
+        ],
+        // P4: a PATTERN of administrator-confirmed message risks may
+        // open an account-level compliance flag. Never raw AI output —
+        // only human decisions reach the compliance pipeline.
+        MessageSafetyFindingConfirmed::class => [
+            EvaluateConfirmedMessageRisksOnFindingConfirmed::class,
         ],
         // Durable operational alerts.
         OperationalAlertRecorded::class => [

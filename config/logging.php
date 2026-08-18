@@ -123,6 +123,22 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        /*
+         * AI platform telemetry. A separate channel, not the stack:
+         * these lines are written on every provider call and must stay
+         * greppable and separately retainable — and, crucially, the
+         * channel is only ever written through App\Ai\Services\AiLogger,
+         * which allowlists the fields that may appear. Never log to this
+         * channel directly.
+         */
+        'ai' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai.log'),
+            'level' => env('AI_LOG_LEVEL', 'info'),
+            'days' => (int) env('AI_LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

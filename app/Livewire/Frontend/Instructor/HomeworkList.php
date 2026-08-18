@@ -8,8 +8,12 @@ use App\Booking\Enums\BookingStatus;
 use App\Enums\LearningPlanStatus;
 use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Contracts\HomeworkServiceInterface;
+use App\Homework\Copilot\Contracts\HomeworkFeedbackDraftRepositoryInterface;
+use App\Homework\Copilot\Contracts\HomeworkFeedbackDraftServiceInterface;
+use App\Homework\Copilot\Exceptions\HomeworkCopilotException;
 use App\Homework\Exceptions\HomeworkException;
 use App\Models\Booking;
+use App\Models\HomeworkAiFeedbackDraft;
 use App\Models\HomeworkAssignment;
 use App\Models\HomeworkResourceVersion;
 use App\Models\StudentLearningPlan;
@@ -65,10 +69,98 @@ final class HomeworkList extends Component
 
     private HomeworkRepositoryInterface $repository;
 
-    public function boot(HomeworkServiceInterface $homework, HomeworkRepositoryInterface $repository): void
-    {
+    private HomeworkFeedbackDraftServiceInterface $copilot;
+
+    private HomeworkFeedbackDraftRepositoryInterface $drafts;
+
+    public function boot(
+        HomeworkServiceInterface $homework,
+        HomeworkRepositoryInterface $repository,
+        HomeworkFeedbackDraftServiceInterface $copilot,
+        HomeworkFeedbackDraftRepositoryInterface $drafts,
+    ): void {
         $this->homework = $homework;
         $this->repository = $repository;
+        $this->copilot = $copilot;
+        $this->drafts = $drafts;
+    }
+
+    // ── AI feedback copilot ───────────────────────────────────────────
+
+    /**
+     * Requests an AI feedback DRAFT for the submission being reviewed.
+     * Queues the work and returns immediately — the instructor is never
+     * left waiting on a provider, and the page keeps working when AI is
+     * unavailable.
+     *
+     * Every failure surfaces as an inline message, never an exception:
+     * an unavailable assistant must not break the review screen.
+     */
+    public function generateAiDraft(string $assignmentId): void
+    {
+        $assignment = $this->repository->findOrFail($assignmentId);
+        $this->authorize('generate', [HomeworkAiFeedbackDraft::class, $assignment]);
+
+        try {
+            $this->copilot->request($assignment, auth()->user());
+        } catch (HomeworkCopilotException $e) {
+            $this->addError('aiDraft', $e->getMessage());
+
+            return;
+        } catch (\Throwable) {
+            $this->addError('aiDraft', 'The AI assistant could not be reached. Please try again later.');
+
+            return;
+        }
+
+        session()->flash('success', 'Generating a feedback draft. It will appear here in a moment.');
+    }
+
+    /**
+     * Copies the draft into the instructor's editor. This is the ONLY
+     * path from an AI draft to the feedback field, it is an explicit
+     * instructor action, and what finally reaches the student is
+     * whatever they leave in the box and submit — never this text
+     * unedited by default.
+     */
+    public function useAiDraft(string $draftId): void
+    {
+        $draft = $this->drafts->find($draftId);
+
+        if ($draft === null || ! $draft->status->isActionable()) {
+            return;
+        }
+
+        $this->authorize('act', $draft);
+
+        $this->reviewingId = $draft->homework_assignment_id;
+        $this->feedbackText = (string) $draft->suggested_feedback;
+        $this->resetValidation();
+
+        $this->copilot->markUsed($draft, auth()->user());
+    }
+
+    public function discardAiDraft(string $draftId): void
+    {
+        $draft = $this->drafts->find($draftId);
+
+        if ($draft === null) {
+            return;
+        }
+
+        $this->authorize('act', $draft);
+
+        $this->copilot->discard($draft, auth()->user());
+    }
+
+    /**
+     * The draft to show alongside the review form, if any. Read fresh
+     * on render so a queued run appearing between polls is picked up
+     * without any client-side state.
+     */
+    public function activeDraftFor(HomeworkAssignment $assignment): ?HomeworkAiFeedbackDraft
+    {
+        return $this->drafts->activeFor($assignment);
     }
 
     public function openAssignForm(): void

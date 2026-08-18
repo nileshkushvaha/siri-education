@@ -33,6 +33,12 @@ class Message extends Model implements HasMedia
     /** @use HasFactory<MessageFactory> */
     use HasFactory, HasStandardImageConversions, HasUuids, InteractsWithMedia, PreventsHardDeletion;
 
+    /** P4 communication-safety findings about this message — evidence for admin review, never enforcement. */
+    public function safetyFindings(): HasMany
+    {
+        return $this->hasMany(MessageSafetyFinding::class);
+    }
+
     protected $fillable = [
         'conversation_id',
         'sender_id',

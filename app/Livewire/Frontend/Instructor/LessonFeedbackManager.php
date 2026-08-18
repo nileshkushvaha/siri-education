@@ -16,8 +16,12 @@ use App\Lessons\DTOs\TechnicalIssueReportData;
 use App\Lessons\Enums\LessonOutcome;
 use App\Lessons\Enums\TechnicalIssueCategory;
 use App\Lessons\Exceptions\LessonException;
+use App\Lessons\Summaries\Contracts\LessonSummaryRepositoryInterface;
+use App\Lessons\Summaries\Contracts\LessonSummaryServiceInterface;
+use App\Lessons\Summaries\Exceptions\LessonSummaryException;
 use App\Models\HomeworkAssignment;
 use App\Models\Lesson;
+use App\Models\LessonAiSummary;
 use App\Settings\MeetingSettings;
 use App\Support\UserTimezoneResolver;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -58,6 +62,11 @@ final class LessonFeedbackManager extends Component
     public string $private_notes = '';
 
     public ?string $reportingIssueId = null;
+
+    /** The lesson whose approved-summary editor is open, if any. */
+    public ?string $summaryEditingId = null;
+
+    public string $summaryText = '';
 
     public string $issue_category = '';
 
@@ -190,6 +199,120 @@ final class LessonFeedbackManager extends Component
         $this->resetForm();
         $this->expandedLessonId = null;
         session()->flash('lessons-status', 'Feedback saved. It is private and visible only to you.');
+    }
+
+    // ── AI lesson summary ─────────────────────────────────────────────
+
+    /**
+     * Requests an AI DRAFT summary for a completed lesson. Queues the
+     * work and returns immediately, so the page never waits on a
+     * provider and keeps working when AI is unavailable.
+     */
+    public function generateSummary(string $lessonId, LessonSummaryServiceInterface $summaries): void
+    {
+        $lesson = $this->instructorLesson($lessonId);
+        $this->authorize('generate', [LessonAiSummary::class, $lesson]);
+
+        try {
+            $summaries->request($lesson, auth()->user());
+        } catch (LessonSummaryException $e) {
+            $this->addError('aiSummary', $e->getMessage());
+
+            return;
+        } catch (\Throwable) {
+            $this->addError('aiSummary', 'The AI assistant could not be reached. Please try again later.');
+
+            return;
+        }
+
+        session()->flash('success', 'Generating a lesson summary. It will appear here in a moment.');
+    }
+
+    /**
+     * Opens the editor pre-filled with the draft. Approval is a
+     * separate, explicit step — nothing is recorded until the
+     * instructor submits their own text.
+     */
+    public function startSummaryReview(string $summaryId, LessonSummaryRepositoryInterface $summaries): void
+    {
+        $summary = $summaries->find($summaryId);
+
+        if ($summary === null || ! $summary->status->isActionable()) {
+            return;
+        }
+
+        $this->authorize('act', $summary);
+
+        $this->summaryEditingId = $summary->getKey();
+        $this->summaryText = (string) $summary->lesson_summary;
+        $this->resetValidation();
+    }
+
+    public function cancelSummaryReview(): void
+    {
+        $this->summaryEditingId = null;
+        $this->summaryText = '';
+        $this->resetValidation();
+    }
+
+    /**
+     * Approves the instructor's OWN edited text as the lesson's summary
+     * of record. What is stored is whatever they left in the box —
+     * never the draft by default.
+     */
+    public function approveSummary(LessonSummaryRepositoryInterface $summaries, LessonSummaryServiceInterface $service): void
+    {
+        $summary = $this->summaryEditingId === null ? null : $summaries->find($this->summaryEditingId);
+
+        if ($summary === null) {
+            return;
+        }
+
+        $this->authorize('act', $summary);
+
+        $this->validate(
+            ['summaryText' => 'required|string|min:20|max:2000'],
+            [],
+            ['summaryText' => 'summary'],
+        );
+
+        $service->approve($summary, auth()->user(), $this->summaryText);
+
+        $this->summaryEditingId = null;
+        $this->summaryText = '';
+        session()->flash('success', 'Lesson summary approved.');
+    }
+
+    public function discardSummary(string $summaryId, LessonSummaryRepositoryInterface $summaries, LessonSummaryServiceInterface $service): void
+    {
+        $summary = $summaries->find($summaryId);
+
+        if ($summary === null) {
+            return;
+        }
+
+        $this->authorize('act', $summary);
+
+        $service->discard($summary, auth()->user());
+
+        if ($this->summaryEditingId === $summaryId) {
+            $this->cancelSummaryReview();
+        }
+    }
+
+    /** The lesson's summary row, if any — read fresh on render so a queued run is picked up. */
+    public function summaryFor(Lesson $lesson): ?LessonAiSummary
+    {
+        return app(LessonSummaryRepositoryInterface::class)->forLesson($lesson);
+    }
+
+    /** Re-resolved server-side and scoped to the authenticated instructor; never trusted from the browser. */
+    private function instructorLesson(string $lessonId): Lesson
+    {
+        return Lesson::query()
+            ->forInstructor((int) auth()->id())
+            ->whereKey($lessonId)
+            ->firstOrFail();
     }
 
     public function render(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Navigation;
 
+use App\Filament\Pages\AiEvaluationDashboard;
 use App\Filament\Pages\BookingLessonMeetingOperations;
 use App\Filament\Pages\BookingReports;
 use App\Filament\Pages\CacheManagerPage;
@@ -27,6 +28,7 @@ use App\Filament\Pages\Security\LoginSecurityPage;
 use App\Filament\Pages\Security\PasswordPolicyPage;
 use App\Filament\Pages\Security\RegistrationPage;
 use App\Filament\Pages\Security\SessionPage;
+use App\Filament\Pages\Settings\AiSettingsPage;
 use App\Filament\Pages\Settings\DemoConversionIncentiveSettingsPage;
 use App\Filament\Pages\Settings\GeneralSettingsPage;
 use App\Filament\Pages\Settings\HomeworkReminderSettingsPage;
@@ -52,6 +54,7 @@ use App\Filament\Resources\Academic\InstructorSubjectTopicResource;
 use App\Filament\Resources\Academic\SubjectResource;
 use App\Filament\Resources\Academic\SubjectTopicResource;
 use App\Filament\Resources\ActivityLog\ActivityLogResource;
+use App\Filament\Resources\AiQualityInsights\AiQualityInsightResource;
 use App\Filament\Resources\BookingPaymentReconciliationIssues\BookingPaymentReconciliationIssueResource;
 use App\Filament\Resources\BookingPayments\BookingPaymentResource;
 use App\Filament\Resources\Bookings\BookingResource;
@@ -837,6 +840,18 @@ final class NavigationRegistry
                 previousGroup: 'Reports',
                 previousLabel: 'Review Tags',
             ),
+            // AI-assisted, advisory instructor briefings (P1). Sits
+            // beside Review Operations because it is quality-review
+            // work, not an AI product surface — an admin comes here to
+            // read about instructors, not to manage AI. AI Platform
+            // configuration stays in Settings.
+            AiQualityInsightResource::class => new NavigationDestination(
+                id: 'quality.ai-quality-insights',
+                label: 'AI Quality Insights',
+                group: 'Quality & Compliance',
+                subgroup: null,
+                sort: 4,
+            ),
             SuspiciousActivityFlagResource::class => new NavigationDestination(
                 id: 'quality.compliance-flags',
                 label: 'Compliance Flags',
@@ -848,6 +863,17 @@ final class NavigationRegistry
             ),
 
             // ── Analytics ────────────────────────────────────────────────
+            // AI-E0: evaluation of the AI features, not an AI feature
+            // itself. Analytics rather than Settings — it answers "is
+            // this working", which is a reporting question; AI Platform
+            // configuration stays in Settings.
+            AiEvaluationDashboard::class => new NavigationDestination(
+                id: 'analytics.operations.ai-evaluation',
+                label: 'AI Evaluation',
+                group: 'Analytics',
+                subgroup: 'Operations',
+                sort: 9,
+            ),
             ReportingHub::class => new NavigationDestination(
                 id: 'analytics.operations.reporting-hub',
                 label: 'Reporting Hub',
@@ -1036,6 +1062,19 @@ final class NavigationRegistry
             // not operational meeting management — no separate meeting-
             // record CRUD page exists anywhere in the panel). Per that
             // finding, this belongs in Settings → Platform, not Operations.
+            // AI platform configuration (P0). Settings -> Platform, not
+            // System: this page configures a capability layer
+            // (provider, credentials, models, capability flags, spend
+            // ceilings) and executes no AI work of its own — its one
+            // action is a credential connectivity check, exactly like
+            // the meeting and payout provider pages above.
+            AiSettingsPage::class => new NavigationDestination(
+                id: 'settings.platform.ai',
+                label: 'AI Platform',
+                group: 'Settings',
+                subgroup: 'Platform',
+                sort: 5,
+            ),
             MeetingSettingsPage::class => new NavigationDestination(
                 id: 'settings.platform.meeting-settings',
                 label: 'Meeting Settings',

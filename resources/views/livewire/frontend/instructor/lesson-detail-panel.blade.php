@@ -104,6 +104,109 @@
         </form>
     @endif
 
+    {{-- AI lesson summary. Instructor-initiated, never automatic, and
+         never recorded until the instructor approves their own text. --}}
+    @if($lesson->outcome === $completedOutcome && $lesson->hasFinalizedOutcome())
+        @php($aiSummary = $this->summaryFor($lesson))
+        <div class="mt-4 border-t border-white/[0.05] pt-4">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Lesson summary</p>
+
+            @if($aiSummary?->status === \App\Lessons\Summaries\Enums\LessonSummaryStatus::Approved)
+                <p class="text-sm text-slate-200 whitespace-pre-line">{{ $aiSummary->approved_summary }}</p>
+                <p class="mt-2 text-xs text-slate-500">
+                    Approved by you {{ viewer_datetime($aiSummary->approved_at) }}. Drafted with AI assistance.
+                </p>
+
+            @elseif($aiSummary?->status === \App\Lessons\Summaries\Enums\LessonSummaryStatus::Pending)
+                <div wire:poll.5s class="flex items-center gap-2 text-xs text-slate-400">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Drafting summary&hellip;
+                </div>
+
+            @elseif($aiSummary?->status === \App\Lessons\Summaries\Enums\LessonSummaryStatus::Ready)
+                @if($summaryEditingId === $aiSummary->id)
+                    <p class="text-xs text-amber-300/80 mb-2">
+                        Edit freely. What you approve is what is recorded — the draft is a starting point, not a record.
+                    </p>
+                    <form wire:submit="approveSummary" class="space-y-3">
+                        <textarea wire:model="summaryText" rows="5"
+                                  class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-emerald-500/40"></textarea>
+                        @error('summaryText')
+                            <p class="text-xs text-rose-400">{{ $message }}</p>
+                        @enderror
+                        <div class="flex items-center gap-2">
+                            <button type="submit"
+                                    class="min-h-11 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition">
+                                Approve summary
+                            </button>
+                            <button type="button" wire:click="cancelSummaryReview"
+                                    class="min-h-11 px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <p class="text-xs text-slate-500 mb-2">
+                        AI draft &middot; not recorded until you approve it
+                        @if($aiSummary->confidencePercent() !== null)
+                            &middot; <span title="The model's own stated certainty, based on how much detail this lesson recorded. Not a measure of the student.">AI confidence {{ $aiSummary->confidencePercent() }}%</span>
+                        @endif
+                    </p>
+                    <p class="text-sm text-slate-300 whitespace-pre-line">{{ $aiSummary->lesson_summary }}</p>
+
+                    @foreach ([
+                        'Topics covered' => $aiSummary->topics_covered,
+                        'Noted as going well' => $aiSummary->strengths_observed,
+                        'Suggested practice' => $aiSummary->practice_recommendations,
+                        'Suggested next focus' => $aiSummary->next_focus,
+                    ] as $heading => $items)
+                        @if(filled($items))
+                            <p class="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ $heading }}</p>
+                            <ul class="mt-1 space-y-0.5">
+                                @foreach($items as $item)
+                                    <li class="text-xs text-slate-300">&bull; {{ $item }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    @endforeach
+
+                    <p class="mt-3 text-[11px] text-amber-300/80">
+                        Drafted from your notes only — check it describes the lesson accurately before approving.
+                    </p>
+
+                    <div class="flex items-center gap-2 mt-3">
+                        <button type="button" wire:click="startSummaryReview('{{ $aiSummary->id }}')"
+                                class="min-h-11 px-4 py-2 rounded-xl text-xs font-semibold text-emerald-200 bg-emerald-500/10 border border-emerald-400/20 hover:bg-emerald-500/20 transition">
+                            Review &amp; approve
+                        </button>
+                        <button type="button" wire:click="discardSummary('{{ $aiSummary->id }}')"
+                                class="min-h-11 px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition">
+                            Discard
+                        </button>
+                    </div>
+                @endif
+
+            @else
+                <p class="text-xs text-slate-400">
+                    @if($aiSummary?->status === \App\Lessons\Summaries\Enums\LessonSummaryStatus::Failed)
+                        No summary was produced. You can try again.
+                    @else
+                        Draft a summary of this lesson from your own completion notes.
+                    @endif
+                </p>
+                <button type="button" wire:click="generateSummary('{{ $lesson->id }}')"
+                        wire:confirm="This sends the lesson's subject, level, topic, your completion notes, the plan focus and any homework titles to the AI provider. Student and tutor names are removed first. Recordings are never used. Continue?"
+                        wire:loading.attr="disabled"
+                        class="mt-2 min-h-11 px-4 py-2 rounded-xl text-xs font-semibold text-emerald-200 bg-emerald-500/10 border border-emerald-400/20 hover:bg-emerald-500/20 transition">
+                    Generate AI summary
+                </button>
+                @error('aiSummary')
+                    <p class="mt-2 text-xs text-rose-400">{{ $message }}</p>
+                @enderror
+            @endif
+        </div>
+    @endif
+
     @if($lesson->outcome === $completedOutcome && $lesson->hasFinalizedOutcome())
         @php($feedback = $existingFeedback[$lesson->id] ?? null)
         <div class="mt-4 border-t border-white/[0.05] pt-4">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Reporting\Contracts\AiEvaluationReportServiceInterface;
 use App\Reporting\Contracts\BookingLessonMeetingOperationsReportServiceInterface;
 use App\Reporting\Contracts\FinancialReportsServiceInterface;
 use App\Reporting\Contracts\InstructorPerformanceReportServiceInterface;
@@ -16,6 +17,7 @@ use App\Reporting\Contracts\ReportRegistryInterface;
 use App\Reporting\Contracts\StudentEngagementReportServiceInterface;
 use App\Reporting\Registry\MetricRegistry;
 use App\Reporting\Registry\ReportRegistry;
+use App\Reporting\Services\AiEvaluationReportService;
 use App\Reporting\Services\BookingLessonMeetingOperationsReportService;
 use App\Reporting\Services\FinancialReportsService;
 use App\Reporting\Services\InstructorPerformanceReportService;
@@ -30,6 +32,11 @@ class ReportingServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // AI-E0 evaluation reporting. Lives in Reporting because it
+        // must read four feature tables, and app/Ai is forbidden from
+        // depending on business domains.
+        $this->app->singleton(AiEvaluationReportServiceInterface::class, AiEvaluationReportService::class);
+
         $this->app->singleton(ReportAccessContextInterface::class, ReportAccessContext::class);
         $this->app->singleton(ReportRegistryInterface::class, ReportRegistry::class);
         $this->app->singleton(MetricRegistryInterface::class, MetricRegistry::class);

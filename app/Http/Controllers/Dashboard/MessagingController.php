@@ -10,6 +10,7 @@ use App\Http\Requests\Messaging\ReportMessageRequest;
 use App\Http\Requests\Messaging\SendMessageRequest;
 use App\Messaging\Enums\MessageReportReason;
 use App\Messaging\Exceptions\MessagingException;
+use App\Messaging\Safety\Contracts\MessageSafetyServiceInterface;
 use App\Messaging\Services\MessagingService;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -31,6 +32,7 @@ final class MessagingController extends Controller
     public function __construct(
         private readonly MessagingService $messaging,
         private readonly FrontendPortalAudienceResolver $audience,
+        private readonly MessageSafetyServiceInterface $safety,
     ) {}
 
     public function index(): View
@@ -72,15 +74,37 @@ final class MessagingController extends Controller
         return view('dashboard.messages.show', ['conversation' => $conversation->load('messages.sender')]);
     }
 
+    /**
+     * The soft warning lives here rather than in the browser so there is
+     * exactly ONE detector: LeakageDetector, server-side, already used
+     * to flag sent messages. A JavaScript copy of those patterns would
+     * be a second source of truth that silently drifts.
+     *
+     * It is user education, not moderation: nothing is recorded, no
+     * provider is called, and the same submission with "Send anyway"
+     * goes through untouched.
+     */
     public function reply(Conversation $conversation, SendMessageRequest $request): RedirectResponse
     {
         Gate::authorize('reply', $conversation);
+
+        $body = (string) $request->validated('body');
+
+        if (! $request->acknowledgedSafetyWarning()) {
+            $warning = $this->safety->warningFor($body);
+
+            if (! $warning->isEmpty()) {
+                return back()
+                    ->withInput()
+                    ->with('safety_warning', $warning->summary());
+            }
+        }
 
         try {
             $this->messaging->send(
                 $conversation,
                 $request->user(),
-                $request->validated('body'),
+                $body,
                 $request->file('attachment'),
             );
         } catch (MessagingException $e) {

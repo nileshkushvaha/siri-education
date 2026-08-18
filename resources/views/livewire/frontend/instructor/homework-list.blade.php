@@ -204,6 +204,100 @@
                 @endif
 
                 @if($reviewingId === $assignment->id)
+                    @php($aiDraft = $this->activeDraftFor($assignment))
+
+                    {{-- AI feedback copilot. The assistant only ever runs
+                         because the instructor asked, on this one
+                         submission, and its output is a draft the
+                         instructor edits before publishing. --}}
+                    <div class="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                        @if($aiDraft === null)
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">AI feedback assistant</p>
+                                    <p class="text-xs text-slate-400 mt-1">
+                                        Drafts feedback from this submission to save you time. It never grades, and nothing is sent to the student until you publish it yourself.
+                                    </p>
+                                </div>
+                                <button wire:click="generateAiDraft('{{ $assignment->id }}')"
+                                        wire:confirm="This sends the student's written submission and the assignment details to the AI provider to draft feedback. Names and contact details are removed first. Attachments are never sent. Continue?"
+                                        wire:loading.attr="disabled"
+                                        class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-200 bg-indigo-500/10 border border-indigo-400/20 hover:bg-indigo-500/20 transition-all">
+                                    Generate draft
+                                </button>
+                            </div>
+                            @error('aiDraft')
+                                <p class="text-xs text-rose-400 mt-2">{{ $message }}</p>
+                            @enderror
+                        @elseif($aiDraft->status === \App\Homework\Copilot\Enums\HomeworkFeedbackDraftStatus::Pending)
+                            <div wire:poll.5s class="flex items-center gap-2 text-xs text-slate-400">
+                                <span class="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                                Drafting feedback…
+                            </div>
+                        @elseif($aiDraft->status === \App\Homework\Copilot\Enums\HomeworkFeedbackDraftStatus::Failed)
+                            <div class="flex items-start justify-between gap-3">
+                                <p class="text-xs text-slate-400">
+                                    No draft was produced. You can write your feedback as usual, or try again.
+                                </p>
+                                <button wire:click="discardAiDraft('{{ $aiDraft->id }}')"
+                                        class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+                                    Dismiss
+                                </button>
+                            </div>
+                        @else
+                            <div class="flex items-start justify-between gap-3">
+                                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">AI draft — review before using</p>
+                                @if($aiDraft->confidencePercent() !== null)
+                                    <span class="shrink-0 text-[11px] text-slate-500" title="The model's own stated certainty. Not a mark, and not a measure of correctness.">
+                                        AI confidence {{ $aiDraft->confidencePercent() }}%
+                                    </span>
+                                @endif
+                            </div>
+
+                            @if($aiDraft->summary)
+                                <p class="text-xs text-slate-300 mt-2">{{ $aiDraft->summary }}</p>
+                            @endif
+
+                            @if(filled($aiDraft->strengths))
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 mt-3">Strengths noted</p>
+                                <ul class="mt-1 space-y-0.5">
+                                    @foreach($aiDraft->strengths as $strength)
+                                        <li class="text-xs text-slate-300">• {{ $strength }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+
+                            @if(filled($aiDraft->improvements))
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 mt-3">Possible improvements</p>
+                                <ul class="mt-1 space-y-0.5">
+                                    @foreach($aiDraft->improvements as $improvement)
+                                        <li class="text-xs text-slate-300">• {{ $improvement }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+
+                            @if($aiDraft->suggested_feedback)
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 mt-3">Suggested wording</p>
+                                <p class="text-xs text-slate-300 mt-1 whitespace-pre-line">{{ $aiDraft->suggested_feedback }}</p>
+                            @endif
+
+                            <p class="text-[11px] text-amber-300/80 mt-3">
+                                Suggestions only — check them against the work before using. You decide the feedback and the grade.
+                            </p>
+
+                            <div class="flex items-center gap-2 mt-3">
+                                <button wire:click="useAiDraft('{{ $aiDraft->id }}')"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-200 bg-indigo-500/10 border border-indigo-400/20 hover:bg-indigo-500/20 transition-all">
+                                    Use as a starting point
+                                </button>
+                                <button wire:click="discardAiDraft('{{ $aiDraft->id }}')"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+                                    Discard
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+
                     <div class="mt-4">
                         <textarea wire:model="feedbackText" rows="3"
                                   class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40"

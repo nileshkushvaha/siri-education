@@ -83,6 +83,11 @@ class DatabaseSeeder extends Seeder
             PackagePermissionSeeder::class,
             // Generic payment discrepancy queue (Payable/payments path).
             PaymentReconciliationPermissionSeeder::class,
+            // AI platform foundation (P0) — configuration and
+            // connectivity-check rights only; no AI feature is enabled.
+            AiPlatformPermissionSeeder::class,
+            // AI Quality Intelligence (P1) — admin-only, advisory.
+            AiQualityInsightPermissionSeeder::class,
         ]);
     }
 }

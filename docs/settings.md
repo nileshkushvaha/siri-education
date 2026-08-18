@@ -49,6 +49,7 @@ ls app/Settings/*.php | xargs -n1 basename -s .php
 | `ReviewSettings` | `reviews` | Review & Quality Settings |
 | `InstructorEarningSettings` | `instructor_earnings` | Instructor Earning Settings |
 | `RazorpayXPayoutSettings` | `razorpayx_payout` | RazorpayX Payout Settings |
+| `AiSettings` | `ai` | AI Platform Settings |
 | `DemoConversionIncentiveSettings` | `demo_conversion_incentive` | Demo Conversion Incentive Settings |
 | `ComplianceMonitoringSettings` | `compliance_monitoring` | *(no admin page yet — configured via settings migration defaults only)* |
 | `InvoiceSettings` | `invoice` | *(no admin page yet)* |

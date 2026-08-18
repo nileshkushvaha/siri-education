@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Lessons\Summaries;
 
 use App\Ai\Contracts\AiExecutionServiceInterface;
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiPromptRegistryInterface;
 use App\Ai\Contracts\AiSchemaRegistryInterface;
 use App\Ai\DTOs\AiTaskDescriptor;
@@ -388,6 +389,10 @@ class LessonSummaryGenerationTest extends TestCase
             resultHandler: LessonSummaryResultHandler::class,
             correlationId: $summary->getKey(),
             promptVersion: LessonSummaryPrompt::VERSION,
+            // The feature registry requires an acting user for
+            // human-initiated features, exactly as the real service
+            // passes one.
+            requestedBy: (int) $summary->requested_by,
         ));
 
         $queueJob = Mockery::mock(Job::class);
@@ -396,7 +401,7 @@ class LessonSummaryGenerationTest extends TestCase
         $queueJob->shouldReceive('release')->never();
 
         $job->setJob($queueJob);
-        $job->handle(app(AiExecutionServiceInterface::class), app(AiLogger::class));
+        $job->handle(app(AiExecutionServiceInterface::class), app(AiLogger::class), app(AiFeatureRegistryInterface::class));
 
         $summary->refresh();
 

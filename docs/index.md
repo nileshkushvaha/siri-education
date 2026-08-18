@@ -70,7 +70,8 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Instructor Homework Copilot — AI feedback drafts, instructor-published (P2) | `ai/features/homework-copilot.md` |
 | AI Lesson Summaries — instructor-approved lesson documentation (P3) | `ai/features/lesson-summary.md` |
 | Communication Safety — AI-assisted risk flagging, human-reviewed (P4) | `ai/features/communication-safety.md` |
-| AI evaluation & governance — metrics, feedback loop, prompt improvement (AI-E0) | `ai/evaluation.md` |
+| AI evaluation — metrics, feedback loop, prompt improvement (AI-E0) | `ai/evaluation.md` |
+| AI security & governance — access control, data boundaries, prompt security (AI-G1) | `ai/security-governance.md` |
 
 ## Security
 

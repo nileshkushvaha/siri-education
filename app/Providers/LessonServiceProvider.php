@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiPromptRegistryInterface;
 use App\Ai\Contracts\AiSchemaRegistryInterface;
+use App\Ai\Enums\AiFeature;
+use App\Ai\Registry\AiFeatureDefinition;
 use App\Lessons\Contracts\LessonAttendanceRepositoryInterface;
 use App\Lessons\Contracts\LessonAttendanceServiceInterface;
 use App\Lessons\Contracts\LessonConfirmationServiceInterface;
@@ -26,6 +29,8 @@ use App\Lessons\Summaries\Contracts\LessonSummaryRepositoryInterface;
 use App\Lessons\Summaries\Contracts\LessonSummaryServiceInterface;
 use App\Lessons\Summaries\Prompts\LessonSummaryPrompt;
 use App\Lessons\Summaries\Repositories\LessonSummaryRepository;
+use App\Lessons\Summaries\Resolvers\LessonSummaryInputResolver;
+use App\Lessons\Summaries\Resolvers\LessonSummaryResultHandler;
 use App\Lessons\Summaries\Schemas\LessonSummarySchema;
 use App\Lessons\Summaries\Services\LessonSummaryService;
 use App\Models\LessonAiSummary;
@@ -55,6 +60,20 @@ class LessonServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+
+        // P3's declared shape. Instructor-initiated by design — this is
+        // the switch that would have to be flipped to wire summaries to
+        // the LessonCompleted event, and it should not be flipped
+        // quietly.
+        $this->app->make(AiFeatureRegistryInterface::class)->register(new AiFeatureDefinition(
+            feature: AiFeature::LessonSummary,
+            ownerDomain: 'app/Lessons/Summaries',
+            purpose: 'Draft a lesson write-up from the instructor\'s own notes for them to approve. Never touches progress.',
+            inputResolver: LessonSummaryInputResolver::class,
+            resultHandlers: [LessonSummaryResultHandler::class],
+            allowedPromptKeys: ['lesson_summary'],
+            requiresAuthenticatedActor: true,
+        ));
         Gate::policy(LessonAiSummary::class, LessonAiSummaryPolicy::class);
 
         // The domain registers its own prompt and schema into the P0

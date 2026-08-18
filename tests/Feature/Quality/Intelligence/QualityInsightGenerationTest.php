@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Quality\Intelligence;
 
 use App\Ai\Contracts\AiExecutionServiceInterface;
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiPromptRegistryInterface;
 use App\Ai\Contracts\AiSchemaRegistryInterface;
 use App\Ai\DTOs\AiTaskDescriptor;
@@ -84,6 +85,10 @@ class QualityInsightGenerationTest extends TestCase
             resultHandler: QualityInsightResultHandler::class,
             correlationId: $insight->getKey(),
             promptVersion: QualityInsightPrompt::VERSION,
+            // The feature registry requires an acting user for
+            // human-initiated features, exactly as the real service
+            // passes one.
+            requestedBy: (int) $insight->requested_by,
         ));
 
         $queueJob = Mockery::mock(Job::class);
@@ -92,7 +97,7 @@ class QualityInsightGenerationTest extends TestCase
         $queueJob->shouldReceive('release')->never();
 
         $job->setJob($queueJob);
-        $job->handle(app(AiExecutionServiceInterface::class), app(AiLogger::class));
+        $job->handle(app(AiExecutionServiceInterface::class), app(AiLogger::class), app(AiFeatureRegistryInterface::class));
     }
 
     private function seedActivity(User $instructor): void

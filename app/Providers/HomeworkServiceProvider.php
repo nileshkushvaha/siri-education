@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiPromptRegistryInterface;
 use App\Ai\Contracts\AiSchemaRegistryInterface;
+use App\Ai\Enums\AiFeature;
+use App\Ai\Registry\AiFeatureDefinition;
 use App\Homework\Contracts\HomeworkRepositoryInterface;
 use App\Homework\Contracts\HomeworkServiceInterface;
 use App\Homework\Copilot\Contracts\HomeworkFeedbackDraftRepositoryInterface;
 use App\Homework\Copilot\Contracts\HomeworkFeedbackDraftServiceInterface;
 use App\Homework\Copilot\Prompts\HomeworkFeedbackPrompt;
 use App\Homework\Copilot\Repositories\HomeworkFeedbackDraftRepository;
+use App\Homework\Copilot\Resolvers\HomeworkCopilotInputResolver;
+use App\Homework\Copilot\Resolvers\HomeworkFeedbackResultHandler;
 use App\Homework\Copilot\Schemas\HomeworkFeedbackSchema;
 use App\Homework\Copilot\Services\HomeworkFeedbackDraftService;
 use App\Homework\Repositories\HomeworkRepository;
@@ -43,6 +48,19 @@ class HomeworkServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+
+        // P2's declared shape. An acting instructor is mandatory: their
+        // request is what makes a student's submission eligible to
+        // leave the platform at all.
+        $this->app->make(AiFeatureRegistryInterface::class)->register(new AiFeatureDefinition(
+            feature: AiFeature::HomeworkAssistant,
+            ownerDomain: 'app/Homework/Copilot',
+            purpose: 'Draft feedback on one submitted homework for its own instructor to edit and publish. Never grades.',
+            inputResolver: HomeworkCopilotInputResolver::class,
+            resultHandlers: [HomeworkFeedbackResultHandler::class],
+            allowedPromptKeys: ['homework_feedback'],
+            requiresAuthenticatedActor: true,
+        ));
         Gate::policy(HomeworkAssignment::class, HomeworkAssignmentPolicy::class);
         Gate::policy(HomeworkResource::class, HomeworkResourcePolicy::class);
         Gate::policy(HomeworkResourceVersion::class, HomeworkResourceVersionPolicy::class);

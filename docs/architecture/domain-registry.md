@@ -401,3 +401,16 @@ When adding a new resource, pick the existing group that matches its domain rath
 | Budget alerting | `ai:check-budget` (hourly, `routes/console.php`) raises the existing `OperationalAlert` type `AiBudgetThresholdReached` (Finance category) at `ai.budget_alert_threshold` of a ceiling. Scheduled rather than checked inside `AiBudgetGuard`, which runs on every AI request. |
 | Tests | `tests/Feature/Ai/Evaluation/{AiFeedbackRecordingTest,AiEvaluationReportTest,AiEvaluationDashboardTest}.php`. |
 | Do not duplicate | Do not mirror feature outcomes into an evaluation table. Do not add free text or a subject reference to `ai_feedback_events`. Do not build a second AI analytics surface. Do not edit a frozen prompt in place — register a new version so historical measurements stay meaningful. Do not let a measurement drive an automatic change (no auto prompt-switching, no auto model changes). |
+
+## AI Security & Governance (AI-G1 — access control, not a feature)
+
+| Category | Existing assets |
+|---|---|
+| Purpose | Verify and enforce that AI can only execute approved workflows, with approved permissions, through approved data boundaries. Adds no capability. Full record: `docs/ai/security-governance.md`. |
+| Paths | `app/Ai/Registry/{AiFeatureDefinition,AiFeatureRegistry}.php`, `app/Ai/Contracts/AiFeatureRegistryInterface.php`. Enforced in `AiExecutionService` and `ExecuteAiTaskJob`; definitions declared in each owning domain's service provider. |
+| The gap it closed | `ExecuteAiTaskJob` previously resolved whatever class-string its queue payload named out of the container and called `resolve()` on it, unchecked — so the boundary deciding which platform data reaches a provider was effectively whatever a caller wrote into a descriptor. |
+| Registry | Every feature declares `ownerDomain`, `purpose`, one `inputResolver`, its permitted `resultHandlers`, its `allowedPromptKeys`, and `requiresAuthenticatedActor`. A feature may not be redefined by a second domain. An unregistered feature cannot run. |
+| Fail-closed additions | `AiFailureCode::FeatureNotPermitted` (unregistered feature, or a prompt/resolver/handler the feature never declared) and `AiFailureCode::ActorRequired` (human-facing feature dispatched with no acting user). Both non-retryable and recorded as blocked `ai_runs` rows. |
+| Actor rule | Only `communication_moderation` (and the admin-triggered `platform_diagnostics`) may run without an acting user. This is the control that stops a human-facing capability being quietly wired to a background job. |
+| Tests | `tests/Feature/Ai/Governance/{AiFeatureRegistryTest,AiAccessBoundaryTest}.php` — allowlist enforcement, fail-closed matrix, no AI HTTP route, only four dispatchers, no action field in any schema, no DB/env/filesystem access in `app/Ai`, dynamic container resolution confined to the job. |
+| Do not duplicate | Do not add a second AI authorization mechanism — policies decide who may trigger, the registry decides what may run. Do not add a general AI endpoint, chat surface or free-form prompt field. Do not add an action-shaped field to any AI schema. Do not bypass the registry by resolving a resolver or handler directly. |

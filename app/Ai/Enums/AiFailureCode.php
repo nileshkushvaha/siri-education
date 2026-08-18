@@ -32,6 +32,22 @@ enum AiFailureCode: string
     /** The prompt key/version is not registered. */
     case PromptMissing = 'prompt_missing';
 
+    /**
+     * The feature has no entry in the AI feature registry, or the run
+     * asked for a prompt, resolver or handler that entry does not
+     * permit. Always a configuration or wiring mistake — never
+     * something a retry or a different input could fix.
+     */
+    case FeatureNotPermitted = 'feature_not_permitted';
+
+    /**
+     * A feature declared as human-initiated was dispatched with no
+     * acting user. Recorded rather than silently allowed, because it
+     * means a human-facing capability has been wired to run in the
+     * background.
+     */
+    case ActorRequired = 'actor_required';
+
     /** The daily or monthly cost ceiling is already reached. */
     case BudgetExceeded = 'budget_exceeded';
 
@@ -89,6 +105,8 @@ enum AiFailureCode: string
             self::NotConfigured,
             self::CapabilityUnsupported,
             self::PromptMissing,
+            self::FeatureNotPermitted,
+            self::ActorRequired,
             self::BudgetExceeded => true,
             default => false,
         };
@@ -101,6 +119,8 @@ enum AiFailureCode: string
             self::NotConfigured => 'AI not configured',
             self::CapabilityUnsupported => 'Capability unsupported by provider',
             self::PromptMissing => 'Prompt not registered',
+            self::FeatureNotPermitted => 'AI feature not permitted by the registry',
+            self::ActorRequired => 'AI feature requires an acting user',
             self::BudgetExceeded => 'AI budget exceeded',
             self::ProviderUnavailable => 'Provider unreachable',
             self::AuthenticationFailed => 'Provider credentials rejected',

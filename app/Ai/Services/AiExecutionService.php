@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Services;
 
 use App\Ai\Contracts\AiExecutionServiceInterface;
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiPromptRegistryInterface;
 use App\Ai\Contracts\AiSchemaRegistryInterface;
 use App\Ai\Contracts\EmbeddingProviderInterface;
@@ -57,6 +58,7 @@ use Throwable;
 final class AiExecutionService implements AiExecutionServiceInterface
 {
     public function __construct(
+        private readonly AiFeatureRegistryInterface $registry,
         private readonly AiFeatureGate $gate,
         private readonly AiPromptRegistryInterface $prompts,
         private readonly AiSchemaRegistryInterface $schemas,
@@ -71,8 +73,14 @@ final class AiExecutionService implements AiExecutionServiceInterface
 
     public function execute(AiTaskRequest $request): AiTaskResult
     {
+        // ── Governance: may this feature run at all, like this? ───────
+        // Checked before the feature flag, because an unregistered or
+        // mis-wired feature is a defect rather than a switched-off
+        // capability, and the two should never be confused in telemetry.
+        $blocked = $this->governanceBlockReason($request);
+
         // ── Preflight: everything that must not cost money ────────────
-        $blocked = $this->gate->blockReason($request->feature) ?? $this->budget->blockReason();
+        $blocked ??= $this->gate->blockReason($request->feature) ?? $this->budget->blockReason();
 
         if ($blocked !== null) {
             return $this->blocked($request, $blocked);
@@ -143,6 +151,33 @@ final class AiExecutionService implements AiExecutionServiceInterface
             moderation: $moderation,
             embedding: $embedding,
         );
+    }
+
+    /**
+     * The allowlist check. Fails closed on every axis: an unregistered
+     * feature, a prompt the feature never declared, or a human-facing
+     * capability dispatched with no acting user.
+     */
+    private function governanceBlockReason(AiTaskRequest $request): ?AiFailureCode
+    {
+        if (! $this->registry->has($request->feature)) {
+            return AiFailureCode::FeatureNotPermitted;
+        }
+
+        $definition = $this->registry->get($request->feature);
+
+        if (! $definition->allowsPrompt($request->promptKey)) {
+            // Stops a descriptor pointing one feature at another
+            // feature's prompt — which would run that prompt under the
+            // wrong flag, budget attribution and data boundary.
+            return AiFailureCode::FeatureNotPermitted;
+        }
+
+        if ($definition->requiresAuthenticatedActor && $request->requestedBy === null) {
+            return AiFailureCode::ActorRequired;
+        }
+
+        return null;
     }
 
     /**

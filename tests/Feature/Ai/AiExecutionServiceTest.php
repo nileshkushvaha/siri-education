@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Ai;
 
 use App\Ai\Contracts\AiExecutionServiceInterface;
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiPromptRegistryInterface;
 use App\Ai\Contracts\AiProviderInterface;
 use App\Ai\Contracts\AiProviderRegistryInterface;
@@ -19,13 +20,18 @@ use App\Ai\Enums\AiFailureCode;
 use App\Ai\Enums\AiFeature;
 use App\Ai\Enums\AiModelRole;
 use App\Ai\Enums\AiRunStatus;
+use App\Ai\Exceptions\AiConfigurationException;
 use App\Ai\Prompts\AiPromptCatalog;
 use App\Ai\Prompts\PromptDefinition;
+use App\Ai\Registry\AiFeatureDefinition;
+use App\Ai\Registry\AiFeatureRegistry;
 use App\Ai\Registry\AiProviderRegistry;
 use App\Ai\Schemas\ConnectivityCheckSchema;
 use App\Ai\Schemas\StructuredOutputValidator;
 use App\Ai\Services\AiProviderResolver;
+use App\Ai\Services\NullTaskInputResolver;
 use App\Models\AiRun;
+use App\Models\User;
 use App\Settings\AiSettings;
 use App\Settings\FeatureSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,6 +72,48 @@ class AiExecutionServiceTest extends TestCase
     private function execute(AiTaskRequest $request): AiTaskResult
     {
         return app(AiExecutionServiceInterface::class)->execute($request);
+    }
+
+    /**
+     * Permits an ad-hoc prompt under the diagnostics feature. Tests that
+     * register their own prompt must also declare it, exactly as a real
+     * domain does — the registry is what makes that mandatory.
+     */
+    private function permitPrompt(string $promptKey): void
+    {
+        // Rebinds a fresh registry rather than re-registering: the real
+        // registry refuses to redefine a feature another domain already
+        // owns, which is itself a guard worth keeping (see
+        // test_a_feature_cannot_be_redefined_by_a_second_domain).
+        $registry = new AiFeatureRegistry;
+
+        $registry->register(new AiFeatureDefinition(
+            feature: AiFeature::PlatformDiagnostics,
+            ownerDomain: 'tests',
+            purpose: 'Test fixture.',
+            inputResolver: NullTaskInputResolver::class,
+            resultHandlers: [],
+            allowedPromptKeys: ['platform_connectivity_check', $promptKey],
+            requiresAuthenticatedActor: false,
+        ));
+
+        app()->instance(AiFeatureRegistryInterface::class, $registry);
+    }
+
+    /** The guard that stops two domains each believing they own a capability. */
+    public function test_a_feature_cannot_be_redefined_by_a_second_domain(): void
+    {
+        $this->expectException(AiConfigurationException::class);
+        $this->expectExceptionMessage('already registered by app/Ai');
+
+        app(AiFeatureRegistryInterface::class)->register(new AiFeatureDefinition(
+            feature: AiFeature::PlatformDiagnostics,
+            ownerDomain: 'some/other/domain',
+            purpose: 'Attempted takeover.',
+            inputResolver: NullTaskInputResolver::class,
+            resultHandlers: [],
+            allowedPromptKeys: ['anything_i_like'],
+        ));
     }
 
     // ── Happy path ────────────────────────────────────────────────────
@@ -131,7 +179,15 @@ class AiExecutionServiceTest extends TestCase
     {
         $this->enableAi();
 
-        $result = $this->execute($this->request(AiFeature::LessonSummary, 'platform_connectivity_check'));
+        // A real registered feature/prompt pair WITH an acting user, so
+        // neither the registry nor the actor rule fires and the
+        // CAPABILITY FLAG is what refuses.
+        $result = $this->execute(new AiTaskRequest(
+            feature: AiFeature::LessonSummary,
+            capability: AiCapability::StructuredGeneration,
+            promptKey: 'lesson_summary',
+            requestedBy: User::factory()->create()->id,
+        ));
 
         $this->assertSame(AiRunStatus::Blocked, $result->status);
         $this->assertSame(AiFailureCode::FeatureDisabled, $result->failureCode);
@@ -166,14 +222,23 @@ class AiExecutionServiceTest extends TestCase
 
     // ── Prompt and provider resolution ────────────────────────────────
 
-    public function test_an_unregistered_prompt_fails_closed(): void
+    /** A prompt the feature never declared is refused by the registry first. */
+    public function test_a_prompt_the_feature_never_declared_is_refused(): void
     {
         $this->enableAi();
 
-        // A key that is deliberately never registered — using a real
-        // roadmap key here would silently stop testing this the moment
-        // that phase shipped.
         $result = $this->execute($this->request(AiFeature::PlatformDiagnostics, 'no_such_prompt_will_ever_exist'));
+
+        $this->assertSame(AiFailureCode::FeatureNotPermitted, $result->failureCode);
+    }
+
+    /** A DECLARED prompt that was never registered still fails closed. */
+    public function test_a_declared_but_unregistered_prompt_fails_closed(): void
+    {
+        $this->enableAi();
+        $this->permitPrompt('declared_but_never_registered');
+
+        $result = $this->execute($this->request(AiFeature::PlatformDiagnostics, 'declared_but_never_registered'));
 
         $this->assertSame(AiFailureCode::PromptMissing, $result->failureCode);
     }
@@ -236,6 +301,8 @@ class AiExecutionServiceTest extends TestCase
     {
         $this->enableAi();
 
+        $this->permitPrompt('test_text_prompt');
+
         $prompts = app(AiPromptRegistryInterface::class);
         $prompts->register(new PromptDefinition(
             key: 'test_text_prompt',
@@ -274,6 +341,8 @@ class AiExecutionServiceTest extends TestCase
         // A schema the fake provider cannot satisfy: it emits only the
         // properties the schema declares, so a required property with no
         // declaration can never appear.
+        $this->permitPrompt('test_strict_prompt');
+
         app(AiSchemaRegistryInterface::class)->register(new StrictTestSchema);
         app(AiPromptRegistryInterface::class)->register(new PromptDefinition(
             key: 'test_strict_prompt',

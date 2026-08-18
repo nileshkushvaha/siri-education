@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Ai\Jobs;
 
 use App\Ai\Contracts\AiExecutionServiceInterface;
+use App\Ai\Contracts\AiFeatureRegistryInterface;
+use App\Ai\Contracts\AiTaskInputResolverInterface;
 use App\Ai\Contracts\AiTaskResultHandlerInterface;
 use App\Ai\DTOs\AiTaskDescriptor;
 use App\Ai\DTOs\AiTaskRequest;
 use App\Ai\DTOs\AiTaskResult;
 use App\Ai\DTOs\AiUsage;
+use App\Ai\Enums\AiFailureCode;
 use App\Ai\Enums\AiRunStatus;
 use App\Ai\Exceptions\AiException;
 use App\Ai\Services\AiLogger;
@@ -63,10 +66,26 @@ final class ExecuteAiTaskJob implements ShouldQueue
         $this->onQueue('ai');
     }
 
-    public function handle(AiExecutionServiceInterface $ai, AiLogger $log): void
+    public function handle(AiExecutionServiceInterface $ai, AiLogger $log, AiFeatureRegistryInterface $registry): void
     {
+        // The descriptor names the class that will read platform data.
+        // It arrives from a queue payload, so it is checked against the
+        // feature's registered allowlist before anything is resolved
+        // from the container — otherwise the boundary deciding what may
+        // reach a provider would be whatever a caller wrote down.
+        if (! $this->isPermittedByRegistry($registry, $log)) {
+            $this->deliver(new AiTaskResult(
+                runId: '',
+                status: AiRunStatus::Blocked,
+                usage: AiUsage::none(),
+                failureCode: AiFailureCode::FeatureNotPermitted,
+            ), $log);
+
+            return;
+        }
+
         try {
-            $variables = app($this->descriptor->inputResolver)->resolve($this->descriptor);
+            $variables = $this->resolver($registry)->resolve($this->descriptor);
         } catch (AiException $e) {
             // The subject vanished or became ineligible between dispatch
             // and execution. Not a provider failure and not retryable —
@@ -117,6 +136,48 @@ final class ExecuteAiTaskJob implements ShouldQueue
         ]);
 
         $this->deliver($result, $log);
+    }
+
+    /**
+     * Verifies this descriptor against the feature's declared shape,
+     * and records the denial where an operator will see it.
+     */
+    private function isPermittedByRegistry(AiFeatureRegistryInterface $registry, AiLogger $log): bool
+    {
+        $feature = $this->descriptor->feature;
+
+        $permitted = $registry->has($feature)
+            && $registry->get($feature)->allowsResolver($this->descriptor->inputResolver)
+            && $registry->get($feature)->allowsHandler($this->descriptor->resultHandler)
+            && $registry->get($feature)->allowsPrompt($this->descriptor->promptKey);
+
+        if (! $permitted) {
+            $log->warning('AI task refused by the feature registry', [
+                'feature' => $feature->value,
+                'prompt_key' => $this->descriptor->promptKey,
+                'failure_code' => AiFailureCode::FeatureNotPermitted->value,
+                'attempt' => $this->attempts(),
+            ]);
+        }
+
+        return $permitted;
+    }
+
+    /**
+     * Resolves the feature's ONE approved resolver. Type-checked as
+     * well as allowlisted: the container will happily build any class,
+     * and a resolver that is not a resolver would fail somewhere less
+     * obvious.
+     */
+    private function resolver(AiFeatureRegistryInterface $registry): AiTaskInputResolverInterface
+    {
+        $resolver = app($registry->get($this->descriptor->feature)->inputResolver);
+
+        if (! $resolver instanceof AiTaskInputResolverInterface) {
+            throw new AiException('AI input resolvers must implement AiTaskInputResolverInterface.', AiFailureCode::FeatureNotPermitted);
+        }
+
+        return $resolver;
     }
 
     /**

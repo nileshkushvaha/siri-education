@@ -1,7 +1,8 @@
 # AI Platform (P0 Foundation)
 
 Status: **AI Release 1 complete (P0-P4), plus AI-E0 production
-evaluation. Every AI feature ships disabled by default.** The AI layer is configurable, tested and off.
+evaluation and AI-G1 security governance. Every AI feature ships
+disabled by default.** The AI layer is configurable, tested and off.
 Capabilities built on it: Admin Quality Intelligence
 ([`features/quality-insights.md`](features/quality-insights.md)), the
 Instructor Homework Copilot
@@ -78,7 +79,11 @@ Features built on the foundation live in their own domain, never in
 | P3 AI Lesson Summaries | `app/Lessons/Summaries` | `features/lesson-summary.md` |
 | P4 Communication Safety | `app/Messaging/Safety` | `features/communication-safety.md` |
 
-Measurement and governance for all of the above — not a feature —
+Access control, data boundaries and prompt security for all of the
+above are in [`security-governance.md`](security-governance.md) (AI-G1)
+— read it before adding any AI feature.
+
+Measurement for all of the above — not a feature —
 lives in [`evaluation.md`](evaluation.md) (AI-E0): reviewer feedback,
 per-feature acceptance and cost, prompt-version comparison, the AI
 Evaluation dashboard, and budget alerting.
@@ -369,6 +374,10 @@ grade, publish, or run without an instructor asking.
 (including that no recording data is ever read), summary lifecycle,
 authorization, and the guarantees that no AI path can complete a lesson
 or move learning-plan progress.
+
+`tests/Feature/Ai/Governance/` — AI-G1: the feature allowlist, the
+fail-closed matrix, and the boundary that keeps AI from becoming a
+general assistant.
 
 `tests/Feature/Ai/Evaluation/` — AI-E0: feedback recording and its
 privacy constraints, evaluation aggregation, dashboard access, and

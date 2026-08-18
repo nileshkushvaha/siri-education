@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Ai;
 
 use App\Ai\Contracts\AiExecutionServiceInterface;
+use App\Ai\Contracts\AiFeatureRegistryInterface;
 use App\Ai\Contracts\AiTaskInputResolverInterface;
 use App\Ai\DTOs\AiTaskDescriptor;
 use App\Ai\DTOs\AiTaskRequest;
@@ -117,6 +118,7 @@ class ExecuteAiTaskJobTest extends TestCase
         (new ExecuteAiTaskJob($this->descriptor()))->handle(
             app(AiExecutionServiceInterface::class),
             app(AiLogger::class),
+            app(AiFeatureRegistryInterface::class),
         );
 
         $this->assertSame(AiRunStatus::Succeeded, AiRun::query()->sole()->status);
@@ -157,10 +159,15 @@ class ExecuteAiTaskJobTest extends TestCase
 
         $job = new ExecuteAiTaskJob($this->descriptor());
         $job->setJob($queueJob);
-        $job->handle($this->executionReturning($code), app(AiLogger::class));
+        $job->handle($this->executionReturning($code), app(AiLogger::class), app(AiFeatureRegistryInterface::class));
     }
 
-    public function test_an_unresolvable_subject_ends_the_job_without_calling_a_provider(): void
+    /**
+     * A resolver the feature never declared is refused by the registry
+     * before it is even constructed — so this now proves the allowlist
+     * rather than only that a throwing resolver is handled.
+     */
+    public function test_a_resolver_the_feature_never_declared_is_refused(): void
     {
         $this->enableAi();
 
@@ -171,7 +178,7 @@ class ExecuteAiTaskJobTest extends TestCase
             capability: AiCapability::StructuredGeneration,
             promptKey: 'platform_connectivity_check',
             inputResolver: FailingInputResolver::class,
-        )))->handle(app(AiExecutionServiceInterface::class), app(AiLogger::class));
+        )))->handle(app(AiExecutionServiceInterface::class), app(AiLogger::class), app(AiFeatureRegistryInterface::class));
 
         $this->assertSame(0, AiRun::query()->count());
     }

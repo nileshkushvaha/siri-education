@@ -70,3 +70,9 @@ AI evaluation derives outcomes from each feature's own records and never duplica
 
 Frozen prompts are never edited in place. Improvement means registering a new version alongside the old one, so historical measurements of the old version stay meaningful.
 
+Every AI feature must be registered in `AiFeatureRegistry` by its owning domain before it can run, declaring its input resolver, permitted result handlers, permitted prompts, and whether a human actor is required. An unregistered feature — or a descriptor naming a resolver, handler or prompt the feature did not declare — fails closed.
+
+There is no general AI access in SIRI: no chat endpoint, no free-form prompt surface, and no path from a user to a provider that does not pass through a domain policy and an approved resolver.
+
+Prompt-injection defence is structural, not textual. No AI schema carries an action field, authorization is always evaluated before AI runs, and output is re-validated locally — so a model that fully complies with an injected instruction still has nowhere to put a command.
+

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\Conversions\FileManipulator;
 use Spatie\MediaLibrary\Conversions\Jobs\PerformConversionsJob;
+use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
@@ -148,15 +149,21 @@ final class StandardImageConversionsTest extends TestCase
         $this->assertFalse($pdfMedia->hasGeneratedConversion('preview'));
     }
 
-    // ── No conversions for Recording ──────────────────────
+    // ── No Media Library involvement for Recording ────────────────────
 
-    public function test_recording_collection_registers_no_conversions(): void
+    /**
+     * This previously asserted that the recording media collection
+     * registered no image conversions — the invariant being that
+     * private lesson VIDEO must never have derivative images generated
+     * from it. That invariant is now structural rather than
+     * configured: recordings do not use Media Library at all. Their
+     * bytes live behind the RecordingStorage abstraction (Google Drive
+     * today, S3 later), so there is no Media row for a conversion to
+     * ever attach to.
+     */
+    public function test_recordings_do_not_use_media_library_at_all(): void
     {
-        $recording = Recording::factory()->create();
-
-        $recording->registerAllMediaConversions();
-
-        $this->assertSame([], $recording->mediaConversions);
+        $this->assertNotInstanceOf(HasMedia::class, Recording::factory()->create());
     }
 
     // ── Storage boundary preservation ────────────────────────────────

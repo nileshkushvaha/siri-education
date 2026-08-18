@@ -20,9 +20,12 @@ use App\Models\UserExperience;
  * resolving here, independent of whatever a Policy might separately
  * allow.
  *
- * Homework, Recording, and instructor KYC documents already have their
- * own dedicated, already-private, already-tested download controllers
- * — deliberately not listed here, so
+ * Homework and instructor KYC documents already have their own
+ * dedicated, already-private, already-tested download controllers, and
+ * lesson recordings do not use Media Library at all — their bytes live
+ * behind the RecordingStorage abstraction (Google Drive today, S3
+ * later) and are served by RecordingDownloadController
+ * — all deliberately not listed here, so
  * this registry only ever grows to cover genuinely new private
  * collections, never duplicates an existing boundary.
  */

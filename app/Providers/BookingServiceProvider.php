@@ -23,6 +23,8 @@ use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\GoogleCalendarClient;
+use App\Booking\Contracts\GoogleDriveClient;
+use App\Booking\Contracts\GoogleMeetClient;
 use App\Booking\Contracts\MeetingAttendanceIngestionServiceInterface;
 use App\Booking\Contracts\MeetingAttendanceSyncServiceInterface;
 use App\Booking\Contracts\PaymentCollectionEligibilityServiceInterface;
@@ -35,6 +37,8 @@ use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\Contracts\ZoomMeetingClient;
 use App\Booking\Gateways\GoogleCalendarSdkClient;
+use App\Booking\Gateways\GoogleDriveSdkClient;
+use App\Booking\Gateways\GoogleMeetSdkClient;
 use App\Booking\Gateways\RazorpaySdkClient;
 use App\Booking\Gateways\StripeSdkClient;
 use App\Booking\Gateways\ZoomApiClient;
@@ -72,6 +76,7 @@ use App\Booking\Services\PaymentProviderResolver;
 use App\Booking\Services\StudentBookingService;
 use App\Booking\Services\TeacherAssignmentService;
 use App\Booking\Services\WizardBookingService;
+use App\Booking\Storage\RecordingStorageResolver;
 use App\Booking\Types\FreeDemoType;
 use App\Booking\Types\PaidOneToOneType;
 use App\Booking\Validation\BookingValidationPipeline;
@@ -136,6 +141,18 @@ class BookingServiceProvider extends ServiceProvider
         // HTTP/the SDK.
         $this->app->bind(GoogleCalendarClient::class, GoogleCalendarSdkClient::class);
 
+        // Identical isolation for the Drive half of the same SDK.
+        // GoogleDriveRecordingStorage never instantiates \Google\Client
+        // or \Google\Service\Drive; tests bind a fake GoogleDriveClient
+        // and never touch Google at all.
+        $this->app->bind(GoogleDriveClient::class, GoogleDriveSdkClient::class);
+
+        // And the Meet REST API, which is how a finished class's
+        // recording artifact is located. Same isolation rule: nothing
+        // above the gateway sees \Google\Service\Meet, and tests bind
+        // a fake client rather than stubbing Google.
+        $this->app->bind(GoogleMeetClient::class, GoogleMeetSdkClient::class);
+
         // Zoom REST API (no third-party SDK — Laravel HTTP client only).
         // ZoomMeetingProvider never builds HTTP requests or sees tokens;
         // tests bind a fake ZoomMeetingClient.
@@ -168,6 +185,12 @@ class BookingServiceProvider extends ServiceProvider
         // platform_meeting_account) to every job the worker processes
         // afterward, until the worker restarts. scoped() rebuilds the
         // registry (and every provider in it) fresh per request/job.
+        // Same scoped() reasoning as the meeting registry below: the
+        // Google Drive storage adapter injects MeetingSettings, so a
+        // plain singleton would pin a stale credential snapshot for the
+        // lifetime of a queue worker.
+        $this->app->scoped(RecordingStorageResolver::class);
+
         $this->app->scoped(MeetingProviderRegistry::class);
         $this->app->scoped(MeetingProviderResolver::class);
 

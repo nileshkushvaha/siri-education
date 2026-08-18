@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace App\Booking\Meetings;
 
+use App\Booking\Contracts\DiscoversRecordingArtifacts;
 use App\Booking\Contracts\GoogleCalendarClient;
 use App\Booking\Contracts\MeetingProviderInterface;
+use App\Booking\Contracts\MeetingRecordingProviderInterface;
+use App\Booking\DTOs\DiscoveredRecording;
 use App\Booking\DTOs\MeetingCancellationResult;
 use App\Booking\DTOs\MeetingCreationContext;
 use App\Booking\DTOs\MeetingCreationResult;
 use App\Booking\DTOs\MeetingUpdateContext;
+use App\Booking\DTOs\ProviderRecordingResult;
+use App\Booking\DTOs\StagedRecordingFile;
 use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Meetings\Concerns\BuildsSafeMeetingContent;
 use App\Booking\Meetings\Concerns\SanitizesProviderMessages;
+use App\Booking\Services\GoogleMeetRecordingLocator;
+use App\Booking\Services\GoogleMeetRecordingStager;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use App\Settings\MeetingSettings;
@@ -33,12 +40,24 @@ use Throwable;
  * tells the student/instructor about the link, since a calendar-invite
  * notification policy is not built in this phase).
  *
+ * RECORDING. This provider also supplies lesson recordings (SRS
+ * §12.31). Meet writes a finished class recording as an MP4 into the
+ * platform account's Google Drive and exposes its Drive file id
+ * through the Meet REST API, so acquisition is a metadata lookup
+ * rather than a download — see GoogleMeetRecordingLocator for the
+ * meeting→conference→artifact mapping, and
+ * DiscoversRecordingArtifacts for why discovery and transfer are
+ * separate steps. Recording capability is declared only when the Meet
+ * lookup is fully configured, so a deployment without the Meet scope
+ * granted simply reports no recording support instead of failing every
+ * lesson.
+ *
  * Never logs or persists the raw Google API response, the credentials
  * JSON, or an access/refresh token — GoogleCalendarClient already
  * returns a minimal plain array, and exception messages are sanitized
  * before they reach BookingMeetingService.
  */
-final class GoogleCalendarMeetProvider implements MeetingProviderInterface
+final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, MeetingProviderInterface, MeetingRecordingProviderInterface
 {
     use BuildsSafeMeetingContent;
     use SanitizesProviderMessages;
@@ -56,6 +75,8 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
     public function __construct(
         private readonly GoogleCalendarClient $client,
         private readonly MeetingSettings $settings,
+        private readonly GoogleMeetRecordingLocator $recordings,
+        private readonly GoogleMeetRecordingStager $stager,
     ) {}
 
     public function key(): string
@@ -140,6 +161,53 @@ final class GoogleCalendarMeetProvider implements MeetingProviderInterface
         }
 
         return new MeetingCancellationResult(status: MeetingStatus::Cancelled);
+    }
+
+    // ── MeetingRecordingProviderInterface / DiscoversRecordingArtifacts ──
+
+    /**
+     * A configuration declaration, never a network call. False when
+     * the Meet recording lookup is switched off or incompletely
+     * configured — which makes the whole recording pipeline decline
+     * cleanly (RecordingEligibilityResolver) rather than registering
+     * recordings that could never be fetched.
+     */
+    public function supportsRecording(): bool
+    {
+        return $this->recordings->isConfigured();
+    }
+
+    public function discoverRecording(BookingMeeting $meeting): ?DiscoveredRecording
+    {
+        return $this->recordings->discover($meeting);
+    }
+
+    public function stageRecording(DiscoveredRecording $discovered): StagedRecordingFile
+    {
+        return $this->stager->stage($discovered);
+    }
+
+    /**
+     * The base-contract path, kept for callers that do not use
+     * discovery. Composed from the same two steps so there is exactly
+     * one implementation of each — this always stages, and therefore
+     * always costs a full download; RecordingIngestionService prefers
+     * discoverRecording() precisely to avoid that.
+     */
+    public function fetchRecording(BookingMeeting $meeting): ?ProviderRecordingResult
+    {
+        $discovered = $this->discoverRecording($meeting);
+
+        if ($discovered === null) {
+            return null;
+        }
+
+        return new ProviderRecordingResult(
+            providerReference: $discovered->providerReference,
+            file: $this->stageRecording($discovered),
+            durationSeconds: $discovered->durationSeconds,
+            recordedAt: $discovered->recordedAt,
+        );
     }
 
     /**

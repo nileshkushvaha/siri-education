@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Enums\RecordingStatus;
 use Database\Factories\RecordingFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,26 +12,32 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\MediaLibrary\HasMedia;
-use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
- * SRS §12.18-21/31: durable lesson-recording metadata. The
- * file itself lives in the private 'file' Media Library collection
- * (never a public disk, never a public URL); duration/size/mime_type
- * are ALSO stored directly on this row (not read only from the Media
- * row) so they survive past the media file's deletion at retention
- * expiry — see RecordingService::expireDueRecordings().
+ * SRS §12.18-21/31: durable lesson-recording metadata and the CANONICAL
+ * record of one lesson recording.
+ *
+ * The bytes are not here. They live wherever the row's storage locator
+ * (storage_driver + storage_path) points — Google Drive today, an S3
+ * disk later — reached only through the RecordingStorage abstraction.
+ * This model exposes no backend-specific accessor on purpose: there is
+ * no google_drive_file_id, no drive URL, no signed link. Business
+ * logic, policies, notifications and UI all work from this row and
+ * from RecordingStorage, so replacing the backend touches neither.
+ *
+ * duration/size/mime_type/checksum are stored ON THIS ROW rather than
+ * read from the storage backend so they survive the object's deletion
+ * at retention expiry — metadata must outlive the file (SRS §12.21).
  *
  * No LogsActivity trait — RecordingService writes every lifecycle
  * event through AuditTrailService exclusively (CLAUDE.md's audit rule
  * is authoritative project-wide), so a passive trait hook here would
  * only produce duplicate entries.
  */
-class Recording extends Model implements HasMedia
+class Recording extends Model
 {
     /** @use HasFactory<RecordingFactory> */
-    use HasFactory, HasUuids, InteractsWithMedia;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'booking_meeting_id',
@@ -39,6 +46,9 @@ class Recording extends Model implements HasMedia
         'teacher_id',
         'provider',
         'provider_reference',
+        'storage_driver',
+        'storage_path',
+        'storage_checksum',
         'status',
         'idempotency_key',
         'consent_snapshot',
@@ -48,36 +58,41 @@ class Recording extends Model implements HasMedia
         'capture_attempts',
         'failure_code',
         'recorded_at',
+        'transfer_started_at',
+        'stored_at',
         'available_at',
         'failed_at',
         'expires_at',
+    ];
+
+    /**
+     * The storage locator is infrastructure detail, not something an
+     * API response or a Livewire payload should ever carry — a Drive
+     * file id is not secret, but publishing it invites exactly the
+     * out-of-band access this architecture exists to prevent.
+     */
+    protected $hidden = [
+        'storage_driver',
+        'storage_path',
+        'storage_checksum',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => RecordingStatus::class,
+            'failure_code' => RecordingFailureCode::class,
             'consent_snapshot' => 'array',
             'duration_seconds' => 'integer',
             'size_bytes' => 'integer',
             'capture_attempts' => 'integer',
             'recorded_at' => 'immutable_datetime',
+            'transfer_started_at' => 'immutable_datetime',
+            'stored_at' => 'immutable_datetime',
             'available_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
             'expires_at' => 'immutable_datetime',
         ];
-    }
-
-    public function registerMediaCollections(): void
-    {
-        // Defense in depth only — content is always system-fetched via
-        // a MeetingRecordingProviderInterface adapter, never a raw
-        // end-user upload, but a real content-type restriction is still
-        // cheap insurance against a malformed/corrupt provider payload.
-        $this->addMediaCollection('file')
-            ->useDisk('local')
-            ->singleFile()
-            ->acceptsMimeTypes(['video/mp4', 'video/webm', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/wav']);
     }
 
     public function bookingMeeting(): BelongsTo
@@ -100,9 +115,34 @@ class Recording extends Model implements HasMedia
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
+    /** Whether a viewer could be served this recording's content right now. */
+    public function isPlayable(): bool
+    {
+        return $this->status === RecordingStatus::Available
+            && $this->storage_driver !== null
+            && $this->storage_path !== null;
+    }
+
+    /**
+     * Awaiting a first (or retried) ingestion attempt. Stored is
+     * included because a run interrupted between upload and
+     * verification must be resumed, not abandoned — see
+     * RecordingIngestionService.
+     */
     public function scopeDueForCapture(Builder $query): Builder
     {
-        return $query->where('status', RecordingStatus::Pending);
+        return $query->whereIn('status', [RecordingStatus::Pending, RecordingStatus::Stored]);
+    }
+
+    /**
+     * Claimed by a worker that never finished — a crash, an OOM kill,
+     * or a lost queue worker. The sweep returns these to Pending once
+     * they are older than the configured stale threshold.
+     */
+    public function scopeStalledInTransfer(Builder $query, int $staleMinutes): Builder
+    {
+        return $query->where('status', RecordingStatus::Transferring)
+            ->where('transfer_started_at', '<=', now()->subMinutes(max(1, $staleMinutes)));
     }
 
     public function scopeDueForExpiry(Builder $query): Builder

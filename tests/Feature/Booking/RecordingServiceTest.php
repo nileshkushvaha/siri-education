@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Booking;
 
 use App\Alerts\Enums\OperationalAlertType;
-use App\Booking\DTOs\ProviderRecordingResult;
+use App\Booking\DTOs\RecordingStorageRequest;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Enums\RecordingStatus;
 use App\Booking\Meetings\FakeMeetingProvider;
 use App\Booking\Services\RecordingService;
+use App\Booking\Services\RecordingStagingArea;
+use App\Booking\Storage\FilesystemRecordingStorage;
 use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
 use App\Models\Booking;
@@ -24,15 +27,21 @@ use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
+use Tests\Support\InMemoryRecordingStorage;
 use Tests\TestCase;
 
 /**
  * RecordingService is the single authoritative writer for the
- * `recordings` table: idempotent registration/capture, private
- * storage, retry/alerting, retention/expiry, and access authorization.
+ * `recordings` table: idempotent registration/capture, retry and
+ * alerting, retention/expiry, and access authorization.
+ *
+ * Storage is a fake in-memory backend throughout — the service does
+ * not know or care which backend is active, which is exactly the
+ * property the RecordingStorage abstraction exists to provide.
  */
 final class RecordingServiceTest extends TestCase
 {
@@ -43,6 +52,15 @@ final class RecordingServiceTest extends TestCase
     private User $student;
 
     private User $instructor;
+
+    private InMemoryRecordingStorage $storage;
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(app(RecordingStagingArea::class)->path());
+
+        parent::tearDown();
+    }
 
     protected function setUp(): void
     {
@@ -62,6 +80,19 @@ final class RecordingServiceTest extends TestCase
         $meetings->recording_enabled = true;
         $meetings->save();
 
+        $this->storage = new InMemoryRecordingStorage;
+        $this->app->instance(InMemoryRecordingStorage::class, $this->storage);
+        config([
+            'recordings.storage_driver' => InMemoryRecordingStorage::KEY,
+            'recordings.drivers' => [
+                InMemoryRecordingStorage::KEY => InMemoryRecordingStorage::class,
+                // Kept resolvable so factory rows written under the
+                // filesystem backend still delete correctly — the same
+                // situation a real platform is in mid-migration.
+                FilesystemRecordingStorage::KEY => FilesystemRecordingStorage::class,
+            ],
+        ]);
+
         $this->service = app(RecordingService::class);
 
         $this->student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
@@ -75,7 +106,7 @@ final class RecordingServiceTest extends TestCase
         FakeMeetingProvider::reset();
     }
 
-    /** Minimal bytes finfo genuinely detects as video/mp4 — Recording's media collection validates real detected mime, not a caller-supplied hint. */
+    /** Minimal bytes finfo genuinely detects as video/mp4 — staging validates the real detected mime, not a caller-supplied hint. */
     private function fakeMp4Bytes(): string
     {
         return "\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2avc1mp41".str_repeat("\x00", 200);
@@ -146,14 +177,9 @@ final class RecordingServiceTest extends TestCase
         $recording->bookingMeeting->update(['ends_at' => now()->subHour()]);
 
         $content = $this->fakeMp4Bytes();
-        FakeMeetingProvider::$nextRecordingResult = new ProviderRecordingResult(
-            providerReference: 'ref-123',
-            content: $content,
-            filename: 'lesson.mp4',
-            mimeType: 'video/mp4',
-            durationSeconds: 1800,
-            recordedAt: CarbonImmutable::now()->subMinutes(5),
-        );
+        FakeMeetingProvider::$nextRecordingContents = $content;
+        FakeMeetingProvider::$nextRecordingReference = 'ref-123';
+        FakeMeetingProvider::$nextRecordingDurationSeconds = 1800;
 
         $this->service->capture($recording, new FakeMeetingProvider);
         $recording->refresh();
@@ -165,7 +191,9 @@ final class RecordingServiceTest extends TestCase
         $this->assertSame(1800, $recording->duration_seconds);
         $this->assertNotNull($recording->available_at);
         $this->assertNotNull($recording->expires_at);
-        $this->assertNotNull($recording->getFirstMedia('file'));
+        $this->assertSame(InMemoryRecordingStorage::KEY, $recording->storage_driver);
+        $this->assertNotNull($recording->storage_path);
+        $this->assertCount(1, $this->storage->objects);
 
         Notification::assertSentTo($this->student, RecordingAvailableNotification::class);
         Notification::assertSentTo($this->instructor, RecordingAvailableNotification::class);
@@ -179,14 +207,9 @@ final class RecordingServiceTest extends TestCase
         ]);
         $recording->bookingMeeting->update(['ends_at' => now()->subHour()]);
 
-        FakeMeetingProvider::$nextRecordingResult = new ProviderRecordingResult(
-            providerReference: 'ref-abc',
-            content: $this->fakeMp4Bytes(),
-            filename: 'lesson.mp4',
-            mimeType: 'video/mp4',
-            durationSeconds: 900,
-            recordedAt: CarbonImmutable::now(),
-        );
+        FakeMeetingProvider::$nextRecordingContents = $this->fakeMp4Bytes();
+        FakeMeetingProvider::$nextRecordingReference = 'ref-abc';
+        FakeMeetingProvider::$nextRecordingDurationSeconds = 900;
 
         $this->service->capture($recording, new FakeMeetingProvider);
         // Second call is a no-op: status already left Pending.
@@ -208,7 +231,7 @@ final class RecordingServiceTest extends TestCase
         ]);
         $recording->bookingMeeting->update(['ends_at' => now()->subMinutes(10)]);
 
-        FakeMeetingProvider::$nextRecordingResult = null;
+        FakeMeetingProvider::$nextRecordingContents = null;
 
         $this->service->capture($recording, new FakeMeetingProvider);
         $recording->refresh();
@@ -227,14 +250,9 @@ final class RecordingServiceTest extends TestCase
             'provider_reference' => 'original-reference',
         ]);
 
-        FakeMeetingProvider::$nextRecordingResult = new ProviderRecordingResult(
-            providerReference: 'should-not-apply',
-            content: 'ignored',
-            filename: 'ignored.mp4',
-            mimeType: 'video/mp4',
-            durationSeconds: 1,
-            recordedAt: CarbonImmutable::now(),
-        );
+        FakeMeetingProvider::$nextRecordingContents = 'ignored';
+        FakeMeetingProvider::$nextRecordingReference = 'should-not-apply';
+        FakeMeetingProvider::$nextRecordingDurationSeconds = 1;
 
         $this->service->capture($recording, new FakeMeetingProvider);
 
@@ -285,7 +303,7 @@ final class RecordingServiceTest extends TestCase
         $recording->refresh();
 
         $this->assertSame(RecordingStatus::Failed, $recording->status);
-        $this->assertSame('capture_retries_exhausted', $recording->failure_code);
+        $this->assertSame(RecordingFailureCode::RetriesExhausted, $recording->failure_code);
         $this->assertNotNull($recording->failed_at);
 
         $alert = OperationalAlert::query()->first();
@@ -307,7 +325,7 @@ final class RecordingServiceTest extends TestCase
         $recording->refresh();
 
         $this->assertSame(RecordingStatus::Failed, $recording->status);
-        $this->assertSame('provider_capability_missing', $recording->failure_code);
+        $this->assertSame(RecordingFailureCode::ProviderCapabilityMissing, $recording->failure_code);
         $this->assertSame(1, OperationalAlert::query()->count());
     }
 
@@ -320,15 +338,24 @@ final class RecordingServiceTest extends TestCase
             'teacher_id' => $this->instructor->id,
             'expires_at' => now()->subMinute(),
         ]);
-        $recording->addMediaFromString($this->fakeMp4Bytes())->usingFileName('lesson.mp4')->toMediaCollection('file');
-        $this->assertNotNull($recording->fresh()->getFirstMedia('file'));
+        // Give the row a real object in the fake backend to delete.
+        $stored = $this->storage->put(new RecordingStorageRequest(
+            file: app(RecordingStagingArea::class)->stageContents($this->fakeMp4Bytes(), 'lesson.mp4'),
+            displayName: 'lesson-BK-TEST.mp4',
+            partitionedAt: CarbonImmutable::now(),
+        ));
+        $recording->forceFill([
+            'storage_driver' => $stored->locator->driver,
+            'storage_path' => $stored->locator->path,
+        ])->save();
 
         $expiredCount = $this->service->expireDueRecordings(100);
         $recording->refresh();
 
         $this->assertSame(1, $expiredCount);
         $this->assertSame(RecordingStatus::Expired, $recording->status);
-        $this->assertNull($recording->getFirstMedia('file'));
+        $this->assertCount(0, $this->storage->objects);
+        $this->assertNull($recording->storage_path);
         // Metadata/audit evidence survives the media deletion.
         $this->assertSame(1800, $recording->duration_seconds);
         $this->assertSame(104857600, $recording->size_bytes);

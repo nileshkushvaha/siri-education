@@ -40,7 +40,11 @@ class BookingPermissionSeeder extends Seeder
         // Recording access is participant-or-explicitly-
         // permitted-admin only; no Create/Update/Delete permission
         // exists because RecordingService is the only writer.
-        'ViewAny:Recording', 'View:Recording',
+        // Retry is the one administrative WRITE: it returns a failed
+        // recording to the ingestion pipeline. It creates no data and
+        // deletes nothing, which is why it sits with the manager set
+        // rather than being super-admin only.
+        'ViewAny:Recording', 'View:Recording', 'Retry:Recording',
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [

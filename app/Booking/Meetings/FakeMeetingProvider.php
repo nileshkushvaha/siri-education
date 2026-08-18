@@ -19,6 +19,7 @@ use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\AttendanceSyncUnavailableException;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidAttendanceWebhookException;
+use App\Booking\Services\RecordingStagingArea;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use Carbon\CarbonImmutable;
@@ -57,10 +58,25 @@ final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, M
 
     public static bool $supportsRecording = true;
 
-    /** Null = "not ready yet" (transient) — the default, realistic state. */
-    public static ?ProviderRecordingResult $nextRecordingResult = null;
+    /**
+     * Raw bytes the next fetchRecording() should stage, or null =
+     * "not ready yet" (transient) — the default, realistic state.
+     * Bytes rather than a ProviderRecordingResult because a real
+     * adapter never hands the domain a string: it stages the download
+     * to disk first, and this fake does the same through
+     * RecordingStagingArea so tests exercise the real staging path.
+     */
+    public static ?string $nextRecordingContents = null;
+
+    public static string $nextRecordingReference = 'fake-recording-reference';
+
+    public static ?int $nextRecordingDurationSeconds = 1800;
 
     public static bool $failNextRecordingFetch = false;
+
+    public function __construct(
+        private readonly RecordingStagingArea $staging = new RecordingStagingArea,
+    ) {}
 
     public static function reset(): void
     {
@@ -69,7 +85,9 @@ final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, M
         self::$supportsSync = true;
         self::$supportsWebhooks = true;
         self::$supportsRecording = true;
-        self::$nextRecordingResult = null;
+        self::$nextRecordingContents = null;
+        self::$nextRecordingReference = 'fake-recording-reference';
+        self::$nextRecordingDurationSeconds = 1800;
         self::$failNextRecordingFetch = false;
     }
 
@@ -272,6 +290,17 @@ final class FakeMeetingProvider implements MeetingAttendanceProviderInterface, M
             throw new BookingException('Fake provider recording fetch failed.');
         }
 
-        return self::$nextRecordingResult;
+        if (self::$nextRecordingContents === null) {
+            return null;
+        }
+
+        // Staged to the private ingestion disk exactly as a real
+        // adapter would — the domain only ever receives a file path.
+        return new ProviderRecordingResult(
+            providerReference: self::$nextRecordingReference,
+            file: $this->staging->stageContents(self::$nextRecordingContents, 'lesson.mp4'),
+            durationSeconds: self::$nextRecordingDurationSeconds,
+            recordedAt: CarbonImmutable::now()->subMinutes(5),
+        );
     }
 }

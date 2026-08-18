@@ -125,6 +125,29 @@ class MeetingSettings extends Settings
     /** Recordings per processing chunk in recordings:expire. */
     public int $recording_expiry_batch_size;
 
+    /**
+     * Enable Google Meet recording ACQUISITION (Meet REST API lookup +
+     * Drive artifact read). Ships OFF: it needs the
+     * meetings.space.readonly and drive.meet.readonly scopes present in
+     * the Workspace domain-wide delegation grant. Separate from
+     * recording_enabled, which governs the feature as a whole.
+     */
+    public bool $google_meet_recording_enabled;
+
+    /**
+     * Google Drive folder that owns the recording hierarchy
+     * (SIRI Education Recordings/YYYY/MM). Not a credential — an id.
+     * Empty means Drive recording storage is not configured, and
+     * ingestion fails closed rather than inventing a destination.
+     */
+    public ?string $recording_drive_root_folder_id;
+
+    /** Set when the root folder lives in a Workspace Shared Drive rather than the platform account's My Drive. */
+    public ?string $recording_drive_shared_drive_id;
+
+    /** A Transferring recording older than this was abandoned by a crashed worker; recordings:capture returns it to Pending. */
+    public int $recording_transfer_stale_minutes;
+
     public static function group(): string
     {
         return 'meeting';

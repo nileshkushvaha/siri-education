@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
-use App\Booking\DTOs\ProviderRecordingResult;
 use App\Booking\Enums\RecordingStatus;
 use App\Booking\Jobs\CaptureLessonRecordingJob;
 use App\Booking\Meetings\FakeMeetingProvider;
 use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Services\RecordingService;
+use App\Booking\Services\RecordingStagingArea;
+use App\Booking\Storage\FilesystemRecordingStorage;
 use App\Models\Recording;
 use App\Notifications\Booking\RecordingAvailableNotification;
 use App\Settings\MeetingSettings;
-use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Support\InMemoryRecordingStorage;
 use Tests\TestCase;
 
 /**
@@ -33,6 +35,8 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
 {
     use RefreshDatabase;
 
+    private InMemoryRecordingStorage $storage;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,9 +44,26 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
         Storage::fake('local');
         Notification::fake();
         FakeMeetingProvider::reset();
+
+        $this->storage = new InMemoryRecordingStorage;
+        $this->app->instance(InMemoryRecordingStorage::class, $this->storage);
+        config([
+            'recordings.storage_driver' => InMemoryRecordingStorage::KEY,
+            'recordings.drivers' => [
+                InMemoryRecordingStorage::KEY => InMemoryRecordingStorage::class,
+                FilesystemRecordingStorage::KEY => FilesystemRecordingStorage::class,
+            ],
+        ]);
     }
 
-    /** Minimal bytes finfo genuinely detects as video/mp4 — Recording's media collection validates real detected mime. */
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(app(RecordingStagingArea::class)->path());
+
+        parent::tearDown();
+    }
+
+    /** Minimal bytes finfo genuinely detects as video/mp4 — staging validates the real detected mime. */
     private function fakeMp4Bytes(): string
     {
         return "\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2avc1mp41".str_repeat("\x00", 200);
@@ -60,14 +81,8 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
     {
         $recording = $this->pendingRecording();
 
-        FakeMeetingProvider::$nextRecordingResult = new ProviderRecordingResult(
-            providerReference: 'ref-1',
-            content: $this->fakeMp4Bytes(),
-            filename: 'lesson.mp4',
-            mimeType: 'video/mp4',
-            durationSeconds: 600,
-            recordedAt: CarbonImmutable::now(),
-        );
+        FakeMeetingProvider::$nextRecordingContents = $this->fakeMp4Bytes();
+        FakeMeetingProvider::$nextRecordingReference = 'ref-1';
 
         (new CaptureLessonRecordingJob($recording->id))->handle(
             app(RecordingService::class),
@@ -102,14 +117,8 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
         $meetings->save();
 
         $recording = $this->pendingRecording();
-        FakeMeetingProvider::$nextRecordingResult = new ProviderRecordingResult(
-            providerReference: 'ref-sweep',
-            content: $this->fakeMp4Bytes(),
-            filename: 'lesson.mp4',
-            mimeType: 'video/mp4',
-            durationSeconds: 600,
-            recordedAt: CarbonImmutable::now(),
-        );
+        FakeMeetingProvider::$nextRecordingContents = $this->fakeMp4Bytes();
+        FakeMeetingProvider::$nextRecordingReference = 'ref-sweep';
 
         $this->artisan('recordings:capture')->assertSuccessful();
 
@@ -125,14 +134,8 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
         $recording = Recording::factory()->create(['provider' => FakeMeetingProvider::KEY]);
         $recording->bookingMeeting->update(['ends_at' => now()->subDays(10), 'provider' => FakeMeetingProvider::KEY]);
 
-        FakeMeetingProvider::$nextRecordingResult = new ProviderRecordingResult(
-            providerReference: 'ref-too-old',
-            content: 'binary-content',
-            filename: 'lesson.mp4',
-            mimeType: 'video/mp4',
-            durationSeconds: 600,
-            recordedAt: CarbonImmutable::now(),
-        );
+        FakeMeetingProvider::$nextRecordingContents = $this->fakeMp4Bytes();
+        FakeMeetingProvider::$nextRecordingReference = 'ref-too-old';
 
         $this->artisan('recordings:capture')->assertSuccessful();
 
@@ -148,7 +151,7 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
      */
     public function test_capture_sweep_query_count_is_unaffected_by_unrelated_settled_recordings(): void
     {
-        FakeMeetingProvider::$nextRecordingResult = null; // stays Pending — isolates the fetch/candidate query shape
+        FakeMeetingProvider::$nextRecordingContents = null; // stays Pending — isolates the fetch/candidate query shape
 
         // A single attempt is enough to exhaust each row's eligibility for
         // this run's own filter, so a later sweep never re-processes it —

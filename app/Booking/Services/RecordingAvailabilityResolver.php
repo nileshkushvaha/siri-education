@@ -24,11 +24,12 @@ use App\Settings\MeetingSettings;
  *
  * No meeting provider currently declares a recording capability of its
  * own — this resolver's result is the complete effective rule as of
- * today, with no further AND-term to apply. ZoomMeetingProvider, the
- * only provider that references recording at all, deliberately never
- * consults this resolver: it hardcodes recording off unconditionally,
- * since no capture/storage/retention pipeline exists to safely receive
- * a real recording yet.
+ * today, with no further AND-term to apply. The ingestion, storage,
+ * retention and delivery pipeline behind it IS built (see
+ * RecordingIngestionService and the RecordingStorage abstraction);
+ * what is still missing is a provider integration that can hand SIRI
+ * an actual recording file, which is a provider question rather than a
+ * storage one.
  */
 final class RecordingAvailabilityResolver
 {

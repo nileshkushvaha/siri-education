@@ -14,22 +14,45 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Queued, dispatched afterCommit (never from inside the
- * meeting-creation transaction), delayed until
- * meeting.recording_capture_delay_minutes after the booking ends.
- * Idempotent: RecordingService::capture() re-checks the row's status
- * under a row lock before doing anything, so a duplicate dispatch (or
- * the recordings:capture sweep re-processing the same row) can never
- * import twice. One recording's failure never throws past this job —
- * capture() handles and records its own failures.
+ * The ONLY place a class recording is transferred. Nothing about the
+ * download or upload ever happens in an HTTP request, a Livewire
+ * round-trip, or a controller — a webhook or a meeting creation does
+ * the minimal trusted work (identify the lesson, persist the
+ * discovery) and dispatches this afterCommit.
+ *
+ * Queue: a dedicated `recordings` connection and queue, because an
+ * upload can legitimately run for many minutes and must never sit in
+ * front of time-sensitive notification or payment work. That
+ * connection's retry_after is configured ABOVE this job's timeout
+ * (config/queue.php) — otherwise the queue would hand the same
+ * recording to a second worker while the first is still uploading it.
+ *
+ * tries = 1 on purpose. Retry is the domain's job, not the queue's:
+ * RecordingIngestionService records a retryable state on the row and
+ * the bounded recordings:capture sweep picks it up. Queue-level
+ * retries would multiply concurrent uploads of the same video and
+ * bypass the attempt budget and retry window entirely.
+ *
+ * Idempotent regardless: capture() re-checks and atomically claims the
+ * row, so a duplicate dispatch, a redelivered message, or the sweep
+ * arriving at the same moment all resolve to one transfer.
  */
 final class CaptureLessonRecordingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Long enough for a full-length lesson recording on a slow link. */
+    public int $timeout = 3600;
+
+    /** See the class docblock — retries belong to the domain, not the queue. */
+    public int $tries = 1;
+
     public function __construct(
         public readonly string $recordingId,
-    ) {}
+    ) {
+        $this->onConnection('recordings');
+        $this->onQueue('recordings');
+    }
 
     public function handle(RecordingService $recordings, MeetingProviderRegistry $registry): void
     {

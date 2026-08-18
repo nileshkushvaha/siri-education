@@ -5,12 +5,18 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Recordings\Tables;
 
 use App\Booking\Enums\RecordingStatus;
+use App\Filament\Resources\Recordings\Actions\RetryRecordingIngestionAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
-/** Read-only — no record actions besides View (requirement #6: no admin write path here). */
+/**
+ * Read-only apart from one audited recovery action. No create, no
+ * edit, no delete: RecordingService is the only writer, and a
+ * recording is never administratively deleted (only expired, keeping
+ * its metadata as evidence).
+ */
 class RecordingsTable
 {
     public static function configure(Table $table): Table
@@ -25,6 +31,10 @@ class RecordingsTable
                 TextColumn::make('teacher.name')
                     ->label('Instructor'),
                 TextColumn::make('provider'),
+                TextColumn::make('storage_driver')
+                    ->label('Storage')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (RecordingStatus $state): string => $state->label())
@@ -48,6 +58,7 @@ class RecordingsTable
             ])
             ->recordActions([
                 ViewAction::make(),
+                RetryRecordingIngestionAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
     }

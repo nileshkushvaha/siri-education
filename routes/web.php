@@ -303,9 +303,12 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     // student and instructor since either may be the authorized viewer.
     Route::get('/homework/resources/{media}/download', HomeworkResourceDownloadController::class)->name('homework.resources.download');
     // Authorization re-checked inside the controller on every
-    // request (RecordingPolicy::view()); shared by student and
-    // instructor since either may be the authorized viewer.
-    Route::get('/recordings/{media}/download', RecordingDownloadController::class)->name('recordings.download');
+    // request (RecordingPolicy::download()); shared by student and
+    // instructor since either may be the authorized viewer. The route
+    // key is the RECORDING, not a media/storage id: the application
+    // resolves the storage locator server-side, so no Google Drive (or
+    // later S3) identifier is ever exposed in a URL.
+    Route::get('/recordings/{recording}/download', RecordingDownloadController::class)->name('recordings.download');
     // The one reusable download boundary for every other
     // private collection (Message, SupportCase, LessonTechnicalIssueReport,
     // UserExperience::supporting_documents, UserEducation). Authorization

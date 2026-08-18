@@ -8,19 +8,24 @@ use Carbon\CarbonImmutable;
 
 /**
  * What a MeetingRecordingProviderInterface::fetchRecording() call
- * returns once the provider's recording is actually ready. $content
- * is the raw file content (already fetched into memory/temp storage by
- * the provider adapter) — RecordingService only ever writes bytes it
- * already has into our own private Media Library disk; it never streams
- * from or trusts a provider-hosted URL as a "download".
+ * returns once the provider's recording is actually ready.
+ *
+ * The payload is a StagedRecordingFile — a file already written to the
+ * local private staging disk by the provider adapter — never a string
+ * of bytes and never a provider URL. Two consequences, both
+ * deliberate:
+ *
+ *  - a multi-gigabyte class video never occupies PHP memory; and
+ *  - the domain never receives, stores, or follows a provider-hosted
+ *    download link, so a database value can never become an arbitrary
+ *    server-side fetch target. Fetching happens only inside a trusted
+ *    provider integration, against that provider's own API.
  */
 final readonly class ProviderRecordingResult
 {
     public function __construct(
         public string $providerReference,
-        public string $content,
-        public string $filename,
-        public string $mimeType,
+        public StagedRecordingFile $file,
         public ?int $durationSeconds,
         public CarbonImmutable $recordedAt,
     ) {}

@@ -23,6 +23,12 @@ enum OperationalAlertType: string
     case PayoutReconciliationIssue = 'payout_reconciliation_issue';
     case WalletRechargeCreditFailed = 'wallet_recharge_credit_failed';
     case RecordingCaptureFailed = 'recording_capture_failed';
+    /**
+     * A lesson produced more recording artifacts than SIRI's
+     * one-recording-per-lesson model stores — not a failure, a product
+     * signal. See RecordingIngestionService::reportExtraArtifacts().
+     */
+    case RecordingMultipleArtifacts = 'recording_multiple_artifacts';
 
     public function label(): string
     {
@@ -35,6 +41,7 @@ enum OperationalAlertType: string
             self::PayoutReconciliationIssue => 'Payout Reconciliation Issue',
             self::WalletRechargeCreditFailed => 'Wallet Recharge Credit Failed',
             self::RecordingCaptureFailed => 'Recording Capture Failed',
+            self::RecordingMultipleArtifacts => 'Multiple Recording Artifacts',
         };
     }
 
@@ -44,7 +51,8 @@ enum OperationalAlertType: string
             self::MeetingCreationFailed,
             self::MeetingCancellationFailed,
             self::MissingMeetingLink,
-            self::RecordingCaptureFailed => OperationalAlertCategory::BookingMeeting,
+            self::RecordingCaptureFailed,
+            self::RecordingMultipleArtifacts => OperationalAlertCategory::BookingMeeting,
 
             self::PaymentReconciliationIssue,
             self::PayoutReconciliationIssue,

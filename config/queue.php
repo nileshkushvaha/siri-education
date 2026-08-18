@@ -81,6 +81,36 @@ return [
             'driver' => 'background',
         ],
 
+        /*
+         * Dedicated connection for class-recording ingestion.
+         *
+         * Recording uploads are the only genuinely long-running jobs in
+         * this application — a full-length lesson video can take many
+         * minutes to move from the meeting provider into Google Drive
+         * (later S3). Two reasons this is its own connection rather
+         * than another queue on "database":
+         *
+         *  1. retry_after MUST exceed CaptureLessonRecordingJob::$timeout
+         *     (3600s). retry_after is a per-CONNECTION setting, so
+         *     raising it on "database" would delay recovery for every
+         *     other job in the system. A shorter retry_after would let
+         *     a second worker pick up a recording while the first is
+         *     still uploading it.
+         *  2. A long upload must never sit in front of notification,
+         *     payment, or payout work.
+         *
+         * Run it with its own Supervisor program — see
+         * docs/recordings.md.
+         */
+        'recordings' => [
+            'driver' => env('RECORDING_QUEUE_DRIVER', 'database'),
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'recordings',
+            'retry_after' => (int) env('RECORDING_QUEUE_RETRY_AFTER', 3900),
+            'after_commit' => false,
+        ],
+
         'failover' => [
             'driver' => 'failover',
             'connections' => [

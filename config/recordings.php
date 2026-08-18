@@ -96,6 +96,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Zoom Cloud Recording
+    |--------------------------------------------------------------------------
+    |
+    | Credentials are NOT here — the Server-to-Server OAuth client and
+    | the webhook secret are admin-managed (and encrypted) in
+    | MeetingSettings alongside the rest of the Zoom configuration.
+    | Only transfer mechanics live here.
+    |
+    | preferred_layouts orders which Zoom video layout is ingested when a
+    | meeting produced more than one. Zoom can emit several MP4s for the
+    | same meeting (speaker view, gallery view, shared screen variants),
+    | so an explicit, documented order is what stops SIRI from silently
+    | taking whichever the API happened to list first.
+    |
+    */
+
+    'zoom' => [
+        'download_timeout' => (int) env('RECORDING_ZOOM_DOWNLOAD_TIMEOUT', 900),
+        'preferred_layouts' => [
+            'shared_screen_with_speaker_view',
+            'shared_screen_with_gallery_view',
+            'active_speaker',
+            'gallery_view',
+            'shared_screen',
+            'speaker_view',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Ingestion Staging
     |--------------------------------------------------------------------------
     |

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BookingPaymentWebhookController;
 use App\Http\Controllers\Api\MeetingAttendanceWebhookController;
 use App\Http\Controllers\Api\PackagePurchaseWebhookController;
 use App\Http\Controllers\Api\RazorpayXPayoutWebhookController;
+use App\Http\Controllers\Api\RecordingWebhookController;
 use App\Http\Controllers\Api\WalletRechargeWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,16 @@ Route::post('/webhooks/packages/purchases/{provider}', PackagePurchaseWebhookCon
 Route::post('/webhooks/meetings/attendance/{provider}', MeetingAttendanceWebhookController::class)
     ->middleware('throttle:60,1')
     ->name('api.meetings.attendance.webhook');
+
+// Provider recording-ready notifications (Zoom today; any provider
+// implementing RecordingWebhookProvider). Signature is verified before
+// the payload is parsed; the handler only identifies the lesson and
+// queues the transfer — a recording is NEVER downloaded in-request.
+// Purely a latency optimization: recordings:capture reconciles
+// independently, so a missed webhook costs time, never a recording.
+Route::post('/webhooks/meetings/recordings/{provider}', RecordingWebhookController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.meetings.recordings.webhook');
 
 // RazorpayX instructor payout provider notifications — a separate
 // financial domain from booking payments; never shares a route,

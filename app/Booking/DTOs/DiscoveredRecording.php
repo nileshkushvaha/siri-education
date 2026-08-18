@@ -43,5 +43,19 @@ final readonly class DiscoveredRecording
          * silently, see RecordingIngestionService.
          */
         public int $artifactCount = 1,
+        /**
+         * An opaque, provider-internal handle the SAME adapter needs to
+         * fetch this artifact — for Zoom, the cloud-recording download
+         * URL.
+         *
+         * TRANSIENT ONLY. It lives in memory between discoverRecording()
+         * and stageRecording() within a single ingestion attempt and is
+         * NEVER persisted, serialized, logged, or returned to a caller:
+         * provider download URLs are short-lived and often carry
+         * credentials. Nothing outside the owning adapter may read it,
+         * and the adapter re-validates the host before fetching, so a
+         * value from anywhere else cannot become an outbound request.
+         */
+        public ?string $providerHandle = null,
     ) {}
 }

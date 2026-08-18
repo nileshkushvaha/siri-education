@@ -21,7 +21,6 @@ use App\Models\NotificationDispatchLog;
 use App\Models\OperationalAlert;
 use App\Models\Recording;
 use App\Models\User;
-use App\Notifications\Booking\RecordingAvailableNotification;
 use App\Settings\FeatureSettings;
 use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
@@ -30,6 +29,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\Support\InMemoryRecordingStorage;
 use Tests\TestCase;
@@ -195,11 +195,17 @@ final class RecordingServiceTest extends TestCase
         $this->assertNotNull($recording->storage_path);
         $this->assertCount(1, $this->storage->objects);
 
-        Notification::assertSentTo($this->student, RecordingAvailableNotification::class);
-        Notification::assertSentTo($this->instructor, RecordingAvailableNotification::class);
     }
 
-    public function test_capture_notifies_each_participant_only_once_even_if_run_twice(): void
+    /**
+     * This previously asserted that participants were notified exactly
+     * once across replays. The invariant it protected — no duplicate
+     * participant messages — has been superseded by a stronger product
+     * rule: participants are never notified about a recording at all,
+     * because recordings are admin-only and telling a student one
+     * exists would advertise something they cannot open.
+     */
+    public function test_capture_never_notifies_participants_about_an_available_recording(): void
     {
         $recording = Recording::factory()->create([
             'student_id' => $this->student->id,
@@ -208,19 +214,20 @@ final class RecordingServiceTest extends TestCase
         $recording->bookingMeeting->update(['ends_at' => now()->subHour()]);
 
         FakeMeetingProvider::$nextRecordingContents = $this->fakeMp4Bytes();
-        FakeMeetingProvider::$nextRecordingReference = 'ref-abc';
-        FakeMeetingProvider::$nextRecordingDurationSeconds = 900;
 
         $this->service->capture($recording, new FakeMeetingProvider);
-        // Second call is a no-op: status already left Pending.
         $this->service->capture($recording->fresh(), new FakeMeetingProvider);
 
+        $this->assertSame(RecordingStatus::Available, $recording->fresh()->status);
+
+        // No recording notification was dispatched to anyone. Asserted
+        // through the durable dispatch log rather than assertNothingSent(),
+        // because unrelated lifecycle notifications legitimately fire
+        // during fixture setup and are not what this test is about.
         $this->assertSame(
-            2,
-            NotificationDispatchLog::query()->where('idempotency_key', 'like', 'recording_available:'.$recording->id.':%')->count(),
+            0,
+            NotificationDispatchLog::query()->where('idempotency_key', 'like', 'recording_available:%')->count(),
         );
-        Notification::assertSentToTimes($this->student, RecordingAvailableNotification::class, 1);
-        Notification::assertSentToTimes($this->instructor, RecordingAvailableNotification::class, 1);
     }
 
     public function test_capture_leaves_recording_pending_when_provider_reports_not_ready(): void
@@ -238,8 +245,6 @@ final class RecordingServiceTest extends TestCase
 
         $this->assertSame(RecordingStatus::Pending, $recording->status);
         $this->assertSame(1, $recording->capture_attempts);
-        Notification::assertNotSentTo($this->student, RecordingAvailableNotification::class);
-        Notification::assertNotSentTo($this->instructor, RecordingAvailableNotification::class);
     }
 
     public function test_capture_is_a_no_op_for_a_recording_that_already_settled(): void
@@ -257,8 +262,6 @@ final class RecordingServiceTest extends TestCase
         $this->service->capture($recording, new FakeMeetingProvider);
 
         $this->assertSame('original-reference', $recording->fresh()->provider_reference);
-        Notification::assertNotSentTo($this->student, RecordingAvailableNotification::class);
-        Notification::assertNotSentTo($this->instructor, RecordingAvailableNotification::class);
     }
 
     public function test_capture_retries_within_the_configured_window_on_transient_failure(): void
@@ -392,16 +395,42 @@ final class RecordingServiceTest extends TestCase
 
     // ── assertCanAccess() ─────────────────────────────────────────────
 
-    public function test_assert_can_access_allows_the_recordings_own_student_and_instructor(): void
+    /**
+     * Inverted by an explicit product decision: recordings are an
+     * administrative asset, so the lesson's OWN student and instructor
+     * are refused. Participation is not a grant.
+     */
+    public function test_assert_can_access_denies_the_recordings_own_student_and_instructor(): void
     {
         $recording = Recording::factory()->available()->create([
             'student_id' => $this->student->id,
             'teacher_id' => $this->instructor->id,
         ]);
 
-        $this->service->assertCanAccess($this->student, $recording);
-        $this->service->assertCanAccess($this->instructor, $recording);
-        $this->addToAssertionCount(2);
+        foreach ([$this->student, $this->instructor] as $participant) {
+            try {
+                $this->service->assertCanAccess($participant, $recording);
+                $this->fail('a lesson participant must not be able to access the recording');
+            } catch (AuthorizationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function test_assert_can_access_allows_an_admin_holding_the_permission(): void
+    {
+        $recording = Recording::factory()->available()->create([
+            'student_id' => $this->student->id,
+            'teacher_id' => $this->instructor->id,
+        ]);
+
+        $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $admin->givePermissionTo(
+            Permission::firstOrCreate(['name' => 'View:Recording', 'guard_name' => 'web'])
+        );
+
+        $this->service->assertCanAccess($admin, $recording);
+        $this->addToAssertionCount(1);
     }
 
     public function test_assert_can_access_denies_an_unrelated_user_without_the_explicit_permission(): void

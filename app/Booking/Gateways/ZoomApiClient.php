@@ -90,6 +90,66 @@ final class ZoomApiClient implements ZoomMeetingClient
         return true;
     }
 
+    public function listMeetingRecordings(string $meetingId): ?array
+    {
+        $response = $this->request()->get(sprintf('%s/meetings/%s/recordings', self::API_BASE, rawurlencode($meetingId)));
+
+        // Zoom answers 404 both for "no recording exists" and "meeting
+        // unknown". Neither is an error worth failing a lesson over —
+        // the sweep simply tries again inside its bounded window.
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if ($response->failed()) {
+            throw new GatewayRequestException($this->safeError('list meeting recordings', $response));
+        }
+
+        return $this->sanitizeRecordings($response->json() ?? []);
+    }
+
+    public function openRecordingStream(string $downloadUrl, ?string $downloadToken = null)
+    {
+        $this->assertZoomDownloadUrl($downloadUrl);
+
+        // Zoom's own short-lived download token when we have one (it is
+        // scoped to that recording), otherwise the account token.
+        $token = $downloadToken !== null && $downloadToken !== ''
+            ? $downloadToken
+            : $this->accessToken();
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                // Bearer header, never a query parameter — a token in a
+                // URL ends up in proxy and access logs.
+                'header' => 'Authorization: Bearer '.$token."\r\n",
+                'follow_location' => 1,
+                // Zoom redirects downloads to its CDN; the cap stops a
+                // redirect loop from hanging a worker.
+                'max_redirects' => 5,
+                'timeout' => (int) config('recordings.zoom.download_timeout', 900),
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        $stream = @fopen($downloadUrl, 'rb', false, $context);
+
+        if ($stream === false) {
+            throw new GatewayRequestException('Zoom API failed to open the recording download stream.');
+        }
+
+        $status = $this->statusFromStreamHeaders($http_response_header ?? []);
+
+        if ($status >= 400) {
+            fclose($stream);
+
+            throw new GatewayRequestException(sprintf('Zoom API failed to download the recording (HTTP %d).', $status));
+        }
+
+        return $stream;
+    }
+
     public function validateCredentials(): bool
     {
         try {
@@ -144,6 +204,75 @@ final class ZoomApiClient implements ZoomMeetingClient
         Cache::put($this->tokenCacheKey(), $token, max(60, $expiresIn - self::TOKEN_EXPIRY_BUFFER_SECONDS));
 
         return $token;
+    }
+
+    /**
+     * The ONLY hosts this client will fetch a recording from.
+     *
+     * Zoom serves recording downloads from its own domains, so anything
+     * else means the URL did not come from Zoom — and a URL that
+     * reached us through a webhook payload or a database column must
+     * never become an arbitrary outbound request. This is the SSRF
+     * boundary for recording ingestion.
+     */
+    private function assertZoomDownloadUrl(string $url): void
+    {
+        $parts = parse_url($url);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+
+        $allowed = $host === 'zoom.us'
+            || str_ends_with($host, '.zoom.us')
+            || str_ends_with($host, '.zoom.com');
+
+        if ($scheme !== 'https' || ! $allowed) {
+            // The host is echoed (it is not a secret and is the whole
+            // point of the diagnostic); the URL itself is not, since it
+            // may carry a token in its query string.
+            throw new GatewayRequestException(sprintf(
+                'Refused to download a recording from a non-Zoom host [%s].',
+                $host !== '' ? $host : 'unknown',
+            ));
+        }
+    }
+
+    /** @param  list<string>  $headers */
+    private function statusFromStreamHeaders(array $headers): int
+    {
+        foreach ($headers as $header) {
+            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $header, $matches) === 1) {
+                // Last status wins — redirects mean several are present.
+                $status = (int) $matches[1];
+            }
+        }
+
+        return $status ?? 0;
+    }
+
+    /**
+     * Whitelists the recording fields the application actually uses.
+     * Deliberately DROPS `download_token` and every account/host field:
+     * a short-lived download credential must never travel further than
+     * the call that uses it.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{uuid: ?string, files: list<array<string, mixed>>}
+     */
+    private function sanitizeRecordings(array $data): array
+    {
+        $files = array_map(static fn (array $file): array => [
+            'id' => (string) ($file['id'] ?? ''),
+            'file_type' => $file['file_type'] ?? null,
+            'file_extension' => $file['file_extension'] ?? null,
+            'recording_type' => $file['recording_type'] ?? null,
+            'status' => $file['status'] ?? null,
+            'file_size' => isset($file['file_size']) ? (int) $file['file_size'] : null,
+            'recording_start' => $file['recording_start'] ?? null,
+            'recording_end' => $file['recording_end'] ?? null,
+            'download_url' => $file['download_url'] ?? null,
+        ], array_values(array_filter((array) ($data['recording_files'] ?? []), 'is_array')));
+
+        return ['uuid' => isset($data['uuid']) ? (string) $data['uuid'] : null, 'files' => $files];
     }
 
     /** Keyed on non-secret identifiers only — the secret never feeds a cache key. */

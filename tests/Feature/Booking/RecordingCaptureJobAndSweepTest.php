@@ -12,7 +12,6 @@ use App\Booking\Services\RecordingService;
 use App\Booking\Services\RecordingStagingArea;
 use App\Booking\Storage\FilesystemRecordingStorage;
 use App\Models\Recording;
-use App\Notifications\Booking\RecordingAvailableNotification;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -96,7 +95,6 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
 
         $this->assertSame(1, Recording::query()->count());
         $this->assertSame(RecordingStatus::Available, $recording->fresh()->status);
-        Notification::assertSentToTimes($recording->fresh()->student, RecordingAvailableNotification::class, 1);
     }
 
     public function test_capture_job_is_a_no_op_when_the_recording_no_longer_exists(): void

@@ -46,9 +46,11 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Timezone architecture (resolution, storage, snapshots, input trust) | `architecture/timezone.md` |
 | Teacher availability engine (DST/timezone detail) | `architecture/phase-6-instructor-availability-foundation.md` |
 | Student pricing matrix (resolution priority) | `architecture/phase-10.2d-student-pricing-matrix.md` |
-| Meeting creation (Manual, Google Meet, Zoom) | `architecture/meetings.md` |
+| Meeting providers (Google Meet + Zoom, provider/recording matrix, privacy) | `meetings.md` |
+| Meeting creation internals (Manual, Google Meet, Zoom) | `architecture/meetings.md` |
 | Class recording storage (ingestion, Google Drive now / S3 later, access, retention) | `recordings.md` |
 | Recording staging validation & production cutover runbook (Google scopes, rollback) | `deployment/recording-cutover.md` |
+| Zoom activation & staging validation runbook (account, scopes, webhook, privacy) | `deployment/zoom-activation.md` |
 | Lesson Lifecycle | `lessons.md` |
 | Wallet Ledger | `architecture/wallet.md` |
 | Financial Domain (Earnings, Compensation, Settlement, Withdrawals, Payout Execution) | `financial-domain-architecture.md` |

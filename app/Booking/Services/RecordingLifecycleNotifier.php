@@ -12,9 +12,7 @@ use App\Alerts\Services\OperationalAlertService;
 use App\Booking\Enums\RecordingFailureCode;
 use App\Models\Recording;
 use App\Models\User;
-use App\Notifications\Booking\RecordingAvailableNotification;
 use App\Services\AuditTrailService;
-use App\Services\Notifications\NotificationIdempotencyGuard;
 
 /**
  * Everything a recording lifecycle transition emits outward: the audit
@@ -28,17 +26,28 @@ use App\Services\Notifications\NotificationIdempotencyGuard;
  * participant, so a replayed job or a resumed verification cannot
  * re-notify anyone.
  *
- * SRS §12.36 defines "Recording available, if enabled" for both
- * student and instructor, and "Recording failed" as an ADMINISTRATOR
- * signal — which is why failure raises an operational alert and
- * notifies no participant.
+ * NOBODY IS NOTIFIED WHEN A RECORDING BECOMES AVAILABLE. Recordings
+ * are an administrative quality/evidence asset: students and
+ * instructors have no access to them (RecordingPolicy), so telling
+ * them one exists would advertise something they cannot open. The
+ * availability transition is audited and visible in the admin
+ * Recordings resource, which is where the people who may actually use
+ * it already look — a per-recording email to admins would be pure
+ * noise at lesson volume.
+ *
+ * This is distinct from recording NOTICE/CONSENT, which is about the
+ * live session and is unaffected: participants still consent to being
+ * recorded (RecordingEligibilityResolver, consent_snapshot) and still
+ * see the provider's own in-meeting recording indicator.
+ *
+ * Failure, by contrast, IS an administrator signal (SRS §12.36
+ * "Recording failed") and raises an operational alert.
  */
 final class RecordingLifecycleNotifier
 {
     public function __construct(
         private readonly AuditTrailService $audit,
         private readonly OperationalAlertService $alerts,
-        private readonly NotificationIdempotencyGuard $notifications,
     ) {}
 
     public function recordingRegistered(Recording $recording): void
@@ -68,17 +77,6 @@ final class RecordingLifecycleNotifier
             ],
         );
 
-        foreach ([$recording->student, $recording->teacher] as $participant) {
-            if ($participant === null) {
-                continue;
-            }
-
-            $this->notifications->once(
-                sprintf('recording_available:%s:%d', $recording->getKey(), $participant->id),
-                RecordingAvailableNotification::class,
-                fn () => $participant->notify(new RecordingAvailableNotification($recording)),
-            );
-        }
     }
 
     public function recordingFailed(Recording $recording, RecordingFailureCode $code): void

@@ -126,13 +126,32 @@ class MeetingSettings extends Settings
     public int $recording_expiry_batch_size;
 
     /**
-     * Enable Google Meet recording ACQUISITION (Meet REST API lookup +
-     * Drive artifact read). Ships OFF: it needs the
-     * meetings.space.readonly and drive.meet.readonly scopes present in
-     * the Workspace domain-wide delegation grant. Separate from
-     * recording_enabled, which governs the feature as a whole.
+     * PER-PROVIDER recording switch for Google Meet: may meetings
+     * created with this provider enter the recording workflow?
+     *
+     * Deliberately separate from `recording_enabled` (the platform-wide
+     * master switch) and from `google_meet_enabled` (may we create
+     * meetings with this provider at all). Provider selection and
+     * recording selection are independent decisions.
+     *
+     * Ships OFF: needs meetings.space.readonly and drive.meet.readonly
+     * in the Workspace domain-wide delegation grant.
      */
     public bool $google_meet_recording_enabled;
+
+    /**
+     * The Zoom counterpart of google_meet_recording_enabled. Ships OFF:
+     * needs a licensed Zoom account with cloud recording, a webhook
+     * subscription, and the account privacy settings that keep hosts
+     * away from recordings (docs/meetings.md).
+     */
+    public bool $zoom_recording_enabled;
+
+    /** Encrypted Zoom webhook secret token — verifies signatures and answers Zoom's URL-validation challenge. Never rendered back to the admin UI. */
+    public ?string $zoom_webhook_secret;
+
+    /** Accept Zoom recording webhooks. Separate from the secret so ingestion can be stopped without rotating credentials. */
+    public bool $zoom_recording_webhooks_enabled;
 
     /**
      * Google Drive folder that owns the recording hierarchy
@@ -168,6 +187,12 @@ class MeetingSettings extends Settings
     public function decryptedZoomClientSecret(): ?string
     {
         return $this->decrypt($this->zoom_client_secret);
+    }
+
+    /** And for the Zoom webhook secret token. */
+    public function decryptedZoomWebhookSecret(): ?string
+    {
+        return $this->decrypt($this->zoom_webhook_secret);
     }
 
     private function decrypt(?string $value): ?string

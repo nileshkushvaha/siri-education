@@ -48,6 +48,42 @@ interface ZoomMeetingClient
     public function deleteMeeting(string $meetingId): bool;
 
     /**
+     * The cloud-recording files Zoom holds for one meeting — the
+     * reconciliation counterpart of the recording.completed webhook, so
+     * a missed or undelivered event never permanently loses a class
+     * recording.
+     *
+     * Returns null when Zoom has no recording for the meeting (404),
+     * which is an ordinary "not ready / never recorded" answer rather
+     * than a failure. Each file is already sanitized: no download
+     * token, no account data, no raw payload.
+     *
+     * @param  string  $meetingId  the numeric Zoom meeting id, or a UUID for a past occurrence
+     * @return array{uuid: ?string, files: list<array{id: string, file_type: ?string, file_extension: ?string, recording_type: ?string, status: ?string, file_size: ?int, recording_start: ?string, recording_end: ?string, download_url: ?string}>}|null
+     *
+     * @throws GatewayRequestException
+     */
+    public function listMeetingRecordings(string $meetingId): ?array;
+
+    /**
+     * Opens an authenticated read stream for one cloud-recording file.
+     *
+     * $downloadUrl MUST be a Zoom-issued URL — implementations reject
+     * any other host, so a value that ever reached the database could
+     * not turn this into an arbitrary server-side fetcher.
+     *
+     * $downloadToken is the short-lived token Zoom includes with a
+     * recording webhook (valid ~24h). When absent the implementation
+     * falls back to the Server-to-Server access token. Neither is ever
+     * persisted or logged.
+     *
+     * @return resource
+     *
+     * @throws GatewayRequestException
+     */
+    public function openRecordingStream(string $downloadUrl, ?string $downloadToken = null);
+
+    /**
      * Prove the stored Server-to-Server OAuth credentials can actually
      * mint an access token. The only method an admin-facing validation
      * action may call; never invoked on ordinary page loads. Returns

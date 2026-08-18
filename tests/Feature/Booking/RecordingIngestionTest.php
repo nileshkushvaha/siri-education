@@ -11,7 +11,6 @@ use App\Booking\Meetings\FakeMeetingProvider;
 use App\Booking\Services\RecordingService;
 use App\Booking\Services\RecordingStagingArea;
 use App\Models\Recording;
-use App\Notifications\Booking\RecordingAvailableNotification;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -402,7 +401,5 @@ final class RecordingIngestionTest extends TestCase
 
         $this->service->capture($recording->fresh(), new FakeMeetingProvider);
 
-        Notification::assertSentTo($recording->student, RecordingAvailableNotification::class);
-        Notification::assertSentTo($recording->teacher, RecordingAvailableNotification::class);
     }
 }

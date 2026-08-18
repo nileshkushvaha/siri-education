@@ -12,7 +12,6 @@ use App\Booking\Services\RecordingService;
 use App\Booking\Services\RecordingStagingArea;
 use App\Models\Recording;
 use App\Models\User;
-use App\Notifications\Booking\RecordingAvailableNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -109,8 +108,6 @@ final class RecordingIdempotencyTest extends TestCase
         $this->assertSame(1, Recording::query()->count(), 'one canonical recording');
         $this->assertCount(1, $this->storage->objects, 'one stored binary');
         $this->assertSame(RecordingStatus::Available, $recording->fresh()->status);
-        Notification::assertSentToTimes($recording->fresh()->student, RecordingAvailableNotification::class, 1);
-        Notification::assertSentToTimes($recording->fresh()->teacher, RecordingAvailableNotification::class, 1);
     }
 
     /**

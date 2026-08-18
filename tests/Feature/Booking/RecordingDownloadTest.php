@@ -15,15 +15,16 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Delivery is where the "Drive is storage, SIRI is authorization"
- * rule either holds or does not.
+ * Delivery is where two rules either hold or do not:
  *
- * Every request re-checks the policy against the currently
- * authenticated user, the URL carries the recording — not a storage
- * identifier — and the response body is proxied from the backend, so
- * nothing about where the bytes live is ever exposed to the browser.
- * These tests assert exactly that, plus the ID-swapping attempt that
- * a broken authorization boundary would allow.
+ *  1. RECORDINGS ARE ADMIN-ONLY. A class recording is an
+ *     administrative asset; participating in the lesson grants no
+ *     access to it. The student and instructor tests below assert
+ *     DENIAL, and they are the most important tests in this file.
+ *  2. SIRI is the authorization layer, not the storage backend. Every
+ *     request re-checks the policy, the URL carries the recording
+ *     rather than a storage identifier, and the body is proxied — so
+ *     nothing about where the bytes live reaches the browser.
  */
 final class RecordingDownloadTest extends TestCase
 {
@@ -57,6 +58,14 @@ final class RecordingDownloadTest extends TestCase
         return $instructor;
     }
 
+    private function permittedAdmin(): User
+    {
+        $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $admin->givePermissionTo(Permission::firstOrCreate(['name' => 'View:Recording', 'guard_name' => 'web']));
+
+        return $admin;
+    }
+
     /** An Available recording whose object really exists on the faked disk. */
     private function storedRecording(User $student, User $instructor): Recording
     {
@@ -73,40 +82,64 @@ final class RecordingDownloadTest extends TestCase
         ]);
     }
 
-    // ── Who may download ──────────────────────────────────────────────
+    // ── Who may download: administrators, and nobody else ─────────────
 
-    public function test_the_recordings_own_student_and_instructor_can_download_it(): void
-    {
-        $student = $this->activeStudent();
-        $instructor = $this->activeInstructor();
-        $recording = $this->storedRecording($student, $instructor);
-
-        $this->actingAs($student)
-            ->get(route('dashboard.recordings.download', $recording))
-            ->assertOk();
-
-        $this->actingAs($instructor)
-            ->get(route('dashboard.recordings.download', $recording))
-            ->assertOk();
-    }
-
-    public function test_the_streamed_response_returns_the_stored_content(): void
+    /**
+     * THE core privacy assertion. The student whose own lesson this is
+     * must be refused — recordings are an administrative asset, and
+     * being recorded is not the same as being entitled to the
+     * recording.
+     */
+    public function test_the_recordings_own_student_is_denied(): void
     {
         $student = $this->activeStudent();
         $recording = $this->storedRecording($student, $this->activeInstructor());
 
-        $response = $this->actingAs($student)->get(route('dashboard.recordings.download', $recording));
-
-        $this->assertSame(self::CONTENT, $response->streamedContent());
+        $this->actingAs($student)
+            ->get(route('dashboard.recordings.download', $recording))
+            ->assertForbidden();
     }
 
-    public function test_an_unrelated_user_is_denied_without_the_explicit_view_permission(): void
+    /** Same rule for the instructor who actually delivered the lesson. */
+    public function test_the_recordings_own_instructor_is_denied(): void
+    {
+        $instructor = $this->activeInstructor();
+        $recording = $this->storedRecording($this->activeStudent(), $instructor);
+
+        $this->actingAs($instructor)
+            ->get(route('dashboard.recordings.download', $recording))
+            ->assertForbidden();
+    }
+
+    public function test_an_unrelated_user_is_denied(): void
     {
         $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
         $this->actingAs($this->activeStudent())
             ->get(route('dashboard.recordings.download', $recording))
             ->assertForbidden();
+    }
+
+    /** An admin WITHOUT the recording permission is denied too — role is not enough. */
+    public function test_an_admin_without_the_recording_permission_is_denied(): void
+    {
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
+        $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+
+        $this->actingAs($admin)
+            ->get(route('dashboard.recordings.download', $recording))
+            ->assertForbidden();
+    }
+
+    public function test_the_streamed_response_returns_the_stored_content_for_a_permitted_admin(): void
+    {
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
+        $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $admin->givePermissionTo(Permission::firstOrCreate(['name' => 'View:Recording', 'guard_name' => 'web']));
+
+        $response = $this->actingAs($admin)->get(route('dashboard.recordings.download', $recording));
+
+        $this->assertSame(self::CONTENT, $response->streamedContent());
     }
 
     public function test_a_guest_is_redirected_to_login(): void
@@ -118,8 +151,8 @@ final class RecordingDownloadTest extends TestCase
     }
 
     /**
-     * The classic IDOR attempt: a legitimate student swapping in
-     * another lesson's recording id.
+     * Guessing or swapping the route id gets a participant nowhere,
+     * because participation was never the grant in the first place.
      */
     public function test_a_student_cannot_reach_another_students_recording_by_changing_the_id(): void
     {
@@ -130,16 +163,6 @@ final class RecordingDownloadTest extends TestCase
 
         $this->actingAs($studentB)
             ->get(route('dashboard.recordings.download', $recordingA))
-            ->assertForbidden();
-    }
-
-    /** An instructor's access is scoped to lessons they actually delivered. */
-    public function test_an_instructor_cannot_reach_a_recording_from_a_lesson_they_did_not_teach(): void
-    {
-        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
-
-        $this->actingAs($this->activeInstructor())
-            ->get(route('dashboard.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -157,25 +180,23 @@ final class RecordingDownloadTest extends TestCase
 
     // ── What is downloadable ──────────────────────────────────────────
 
-    /** Metadata survives retention expiry, but there is no longer anything to serve. */
+    /** Metadata survives retention expiry, but there is no longer anything to serve — even for an admin. */
     public function test_an_expired_recording_cannot_be_downloaded(): void
     {
-        $student = $this->activeStudent();
-        $recording = $this->storedRecording($student, $this->activeInstructor());
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
         $recording->forceFill(['status' => RecordingStatus::Expired, 'storage_path' => null])->save();
 
-        $this->actingAs($student)
+        $this->actingAs($this->permittedAdmin())
             ->get(route('dashboard.recordings.download', $recording))
             ->assertForbidden();
     }
 
     public function test_a_recording_still_being_transferred_cannot_be_downloaded(): void
     {
-        $student = $this->activeStudent();
-        $recording = $this->storedRecording($student, $this->activeInstructor());
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
         $recording->forceFill(['status' => RecordingStatus::Stored])->save();
 
-        $this->actingAs($student)
+        $this->actingAs($this->permittedAdmin())
             ->get(route('dashboard.recordings.download', $recording))
             ->assertForbidden();
     }
@@ -189,10 +210,9 @@ final class RecordingDownloadTest extends TestCase
      */
     public function test_the_response_never_exposes_the_storage_locator_or_a_backend_url(): void
     {
-        $student = $this->activeStudent();
-        $recording = $this->storedRecording($student, $this->activeInstructor());
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
-        $response = $this->actingAs($student)->get(route('dashboard.recordings.download', $recording));
+        $response = $this->actingAs($this->permittedAdmin())->get(route('dashboard.recordings.download', $recording));
 
         $headers = json_encode($response->headers->all());
         $this->assertStringNotContainsString($recording->storage_path, $headers);
@@ -208,10 +228,9 @@ final class RecordingDownloadTest extends TestCase
 
     public function test_private_recordings_are_never_cacheable_by_a_shared_proxy(): void
     {
-        $student = $this->activeStudent();
-        $recording = $this->storedRecording($student, $this->activeInstructor());
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
-        $this->actingAs($student)
+        $this->actingAs($this->permittedAdmin())
             ->get(route('dashboard.recordings.download', $recording))
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertHeader('X-Content-Type-Options', 'nosniff');

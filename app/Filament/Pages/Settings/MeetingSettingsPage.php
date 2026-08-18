@@ -93,6 +93,7 @@ class MeetingSettingsPage extends Page
             'student_join_url_visible' => $meeting->student_join_url_visible,
             'instructor_join_url_visible' => $meeting->instructor_join_url_visible,
             'google_meet_enabled' => $meeting->google_meet_enabled,
+            'google_meet_recording_enabled' => $meeting->google_meet_recording_enabled,
             'google_calendar_id' => $meeting->google_calendar_id,
             'google_auth_type' => $meeting->google_auth_type,
             // Never render stored credentials back to the admin — these
@@ -103,6 +104,10 @@ class MeetingSettingsPage extends Page
             'google_last_checked_at' => $meeting->google_last_checked_at,
             'google_credentials_updated_at' => $meeting->google_credentials_updated_at,
             'zoom_enabled' => $meeting->zoom_enabled,
+            'zoom_recording_enabled' => $meeting->zoom_recording_enabled,
+            'zoom_recording_webhooks_enabled' => $meeting->zoom_recording_webhooks_enabled,
+            // Secrets are never re-displayed; a blank field keeps the stored value.
+            'zoom_webhook_secret' => null,
             'zoom_account_id' => $meeting->zoom_account_id,
             'zoom_client_id' => $meeting->zoom_client_id,
             'zoom_client_secret' => null,
@@ -192,6 +197,9 @@ class MeetingSettingsPage extends Page
                 ->schema([
                     Grid::make(2)->schema([
                         Toggle::make('google_meet_enabled')->label('Google Meet Enabled'),
+                        Toggle::make('google_meet_recording_enabled')
+                            ->label('Google Meet Recording')
+                            ->helperText('Independent of the toggle above: Google Meet can be enabled with recording off. Requires the meetings.space.readonly and drive.meet.readonly scopes in the Workspace delegation grant.'),
                         Select::make('google_auth_type')
                             ->options([
                                 'service_account' => 'Service Account',
@@ -234,6 +242,9 @@ class MeetingSettingsPage extends Page
                 ->schema([
                     Grid::make(2)->schema([
                         Toggle::make('zoom_enabled')->label('Zoom Enabled'),
+                        Toggle::make('zoom_recording_enabled')
+                            ->label('Zoom Recording')
+                            ->helperText('Independent of the toggle above: Zoom can be enabled with recording off. Requires a licensed Zoom account with cloud recording.'),
                         TextInput::make('zoom_account_id')
                             ->label('Account ID')
                             ->maxLength(255),
@@ -257,6 +268,14 @@ class MeetingSettingsPage extends Page
                             ->label('Default Timezone')
                             ->maxLength(64)
                             ->placeholder('e.g. Asia/Kolkata'),
+                        TextInput::make('zoom_webhook_secret')
+                            ->label('Webhook Secret Token')
+                            ->password()
+                            ->maxLength(255)
+                            ->helperText('From the Zoom app\'s Event Subscriptions. Verifies webhook signatures. Leave blank to keep the current value — it is never re-displayed here.'),
+                        Toggle::make('zoom_recording_webhooks_enabled')
+                            ->label('Accept Zoom Recording Webhooks')
+                            ->helperText('Low-latency recording discovery. The bounded reconciliation sweep runs regardless, so leaving this off only delays ingestion.'),
                         TextInput::make('zoom_config_status')
                             ->label('Configuration status')
                             ->disabled()
@@ -314,6 +333,7 @@ class MeetingSettingsPage extends Page
             $settings->instructor_join_url_visible = (bool) ($data['instructor_join_url_visible'] ?? false);
 
             $settings->google_meet_enabled = (bool) ($data['google_meet_enabled'] ?? false);
+            $settings->google_meet_recording_enabled = (bool) ($data['google_meet_recording_enabled'] ?? false);
             $settings->google_auth_type = $data['google_auth_type'];
             $settings->google_calendar_id = filled($data['google_calendar_id'] ?? null) ? $data['google_calendar_id'] : null;
 
@@ -326,6 +346,12 @@ class MeetingSettingsPage extends Page
             }
 
             $settings->zoom_enabled = (bool) ($data['zoom_enabled'] ?? false);
+            // A provider that cannot create meetings cannot record them
+            // either — normalized on save so the stored state can never
+            // express "recording on, provider off", which would read as
+            // enabled in the UI while doing nothing.
+            $settings->zoom_recording_enabled = (bool) ($data['zoom_enabled'] ?? false) && (bool) ($data['zoom_recording_enabled'] ?? false);
+            $settings->zoom_recording_webhooks_enabled = $settings->zoom_recording_enabled && (bool) ($data['zoom_recording_webhooks_enabled'] ?? false);
             $settings->zoom_account_id = filled($data['zoom_account_id'] ?? null) ? $data['zoom_account_id'] : null;
             $settings->zoom_client_id = filled($data['zoom_client_id'] ?? null) ? $data['zoom_client_id'] : null;
             $settings->zoom_host_user_id = filled($data['zoom_host_user_id'] ?? null) ? $data['zoom_host_user_id'] : null;
@@ -335,6 +361,10 @@ class MeetingSettingsPage extends Page
             // Same blank-preserves rule as the Google credential above.
             if (filled($data['zoom_client_secret'] ?? null)) {
                 $settings->zoom_client_secret = Crypt::encryptString((string) $data['zoom_client_secret']);
+            }
+
+            if (filled($data['zoom_webhook_secret'] ?? null)) {
+                $settings->zoom_webhook_secret = Crypt::encryptString((string) $data['zoom_webhook_secret']);
             }
         });
 

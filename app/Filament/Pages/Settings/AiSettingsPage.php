@@ -374,14 +374,20 @@ class AiSettingsPage extends Page
                             // ever hit. Rejected at save instead.
                             ->rules([
                                 fn (): Closure => function (string $attribute, $value, Closure $fail): void {
-                                    foreach ((array) $value as $model => $price) {
+                                    foreach ((array) $value as $key => $row) {
+                                        // Mid-edit, the field hands us raw
+                                        // rows (['key' => ..., 'value' => ...])
+                                        // rather than the dehydrated map.
+                                        $model = is_array($row) ? ($row['key'] ?? null) : $key;
+                                        $price = is_array($row) ? ($row['value'] ?? null) : $row;
+
                                         if (blank($model)) {
                                             $fail('Every price needs a model name.');
 
                                             return;
                                         }
 
-                                        if (preg_match('/^\\s*\\d+(\\.\\d+)?\\s*\\/\\s*\\d+(\\.\\d+)?\\s*$/', (string) $price) !== 1) {
+                                        if (! is_scalar($price) || preg_match('/^\\s*\\d+(\\.\\d+)?\\s*\\/\\s*\\d+(\\.\\d+)?\\s*$/', (string) $price) !== 1) {
                                             $fail(sprintf('The price for "%s" must be two numbers separated by a slash, e.g. "2.0/8.0".', $model));
 
                                             return;

@@ -57,7 +57,20 @@ enum AiFailureCode: string
     /** Credentials were rejected. Never retried — a retry cannot fix a bad key. */
     case AuthenticationFailed = 'authentication_failed';
 
+    /**
+     * Too many requests in too short a window. Transient by definition —
+     * the same request usually succeeds after a backoff.
+     */
     case RateLimited = 'rate_limited';
+
+    /**
+     * The account is out of credit or has hit a hard billing limit.
+     * OpenAI reports this as a 429 alongside genuine rate limiting, but
+     * it is the opposite kind of failure: no amount of waiting fixes it,
+     * so it is classified apart and never retried. Someone has to add
+     * credit.
+     */
+    case QuotaExhausted = 'quota_exhausted';
 
     case Timeout = 'timeout';
 
@@ -125,6 +138,7 @@ enum AiFailureCode: string
             self::ProviderUnavailable => 'Provider unreachable',
             self::AuthenticationFailed => 'Provider credentials rejected',
             self::RateLimited => 'Provider rate limit reached',
+            self::QuotaExhausted => 'Provider quota or credit exhausted',
             self::Timeout => 'Provider timed out',
             self::ProviderServerError => 'Provider server error',
             self::InvalidRequest => 'Provider rejected the request',

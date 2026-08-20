@@ -14,13 +14,24 @@ use App\Ai\Enums\AiFailureCode;
  * 401/403 is explicitly NOT retryable: retrying a rejected credential
  * only burns the rate limit and delays the alert an operator needs.
  * 400 likewise — the request shape will not fix itself.
+ *
+ * The error CODE is consulted before the status because OpenAI returns
+ * 429 for two unrelated conditions: a transient rate limit, and an
+ * exhausted account balance. Reading only the status would retry the
+ * second one, which can never succeed.
  */
 final class OpenAiFailureClassifier
 {
     public static function fromStatus(?int $status, ?string $errorCode = null): AiFailureCode
     {
-        if ($errorCode !== null && str_contains(strtolower($errorCode), 'content_filter')) {
+        $normalisedCode = $errorCode === null ? '' : strtolower($errorCode);
+
+        if (str_contains($normalisedCode, 'content_filter')) {
             return AiFailureCode::ContentFiltered;
+        }
+
+        if (str_contains($normalisedCode, 'insufficient_quota') || str_contains($normalisedCode, 'billing_hard_limit_reached')) {
+            return AiFailureCode::QuotaExhausted;
         }
 
         return match (true) {

@@ -153,6 +153,25 @@ class OpenAiProviderTest extends TestCase
         }
     }
 
+    public function test_an_exhausted_quota_is_not_retried_despite_arriving_as_a_429(): void
+    {
+        // The regression this guards: OpenAI reports "out of credit" with
+        // the same 429 status as a transient rate limit. Classifying on
+        // status alone burned the job's whole try budget on a condition
+        // only a human topping up the account can clear.
+        Http::fake(['api.openai.com/*' => Http::response([
+            'error' => ['message' => 'You exceeded your current quota', 'type' => 'insufficient_quota'],
+        ], 429)]);
+
+        try {
+            $this->provider()->generateText($this->textRequest());
+            $this->fail('Expected an OpenAiRequestException.');
+        } catch (OpenAiRequestException $e) {
+            $this->assertSame(AiFailureCode::QuotaExhausted, $e->failureCode);
+            $this->assertFalse($e->failureCode->isRetryable());
+        }
+    }
+
     public function test_a_provider_server_error_is_retryable(): void
     {
         Http::fake(['api.openai.com/*' => Http::response('', 503)]);

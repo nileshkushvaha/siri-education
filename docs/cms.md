@@ -117,6 +117,46 @@ $this->app->bind(ContentRenderer::class, PageRenderService::class);
 
 Sitemap and robots.txt are served by `SeoController` (`routes/web.php`): `GET /sitemap.xml`, `GET /robots.txt` — auto-generated from published pages and posts.
 
+## Policy pages
+
+Four legal pages required for payment-gateway merchant review, seeded by
+`PolicyPagesSeeder` (`php artisan db:seed --class=PolicyPagesSeeder`):
+
+| Page | URL |
+|---|---|
+| Terms and Conditions | `/terms-and-conditions` |
+| Privacy Policy | `/privacy-policy` |
+| Cancellation and Refund Policy | `/cancellation-and-refund-policy` |
+| Shipping and Exchange Policy | `/shipping-and-exchange-policy` |
+
+Ordinary CMS pages carrying prose in `content` (the About Us shape), not a
+block stack. Create-only on re-run, like `CountryLandingPageSeeder`.
+
+Deliberate constraints:
+
+- **No `data-cms-structured-page` marker.** It makes
+  `StructuredPageContentService` revert any update that drops it, which would
+  stop counsel replacing a legal document wholesale from the admin.
+- **No hardcoded cancellation window or refund timeline.**
+  `BookingSettings::cancellation_window_hours` is admin-editable, and refund
+  arrival time belongs to the bank. Tests assert both stay out of the copy.
+- **`[REPLACE: ...]` placeholders** mark every value that must match identity
+  documents. Search for them before going live.
+- **The operator is described as an individual sole proprietor**, not a
+  registered company, because that is the current position. Gateways verify
+  the merchant name against the ID and bank account behind the payout. If a
+  company is later incorporated, the entity sentences in `terms()` and
+  `privacy()` are the only places to change — a test asserts the current
+  wording so the change cannot be forgotten.
+
+`/terms-of-service` 301s to `/terms-and-conditions` via a managed `Redirect`
+row; it is inert wherever a real page still occupies that slug, since
+redirects resolve from the 404 handler.
+
+Shared styling is one rule set (`.cms-content .policy-document`) in
+`resources/css/app.css` — the pages hold semantic HTML only, because Tailwind
+does not scan DB content for utility classes.
+
 ## Contact form
 
 `ContactFormController::submit()` handles frontend contact-form submissions from `ContactForm` content blocks. Activity is logged via `AuditTrailService::logGuest()` — captures guest name, email, and phone from the submitted fields.

@@ -1,4 +1,9 @@
 {{-- CMS Hero Block — light public-site presentation; content and media remain administrator managed. --}}
+@php
+    // Layouts that already print the page title as an H1 (layouts.page)
+    // need this hero to start at H2 so the document keeps a single H1.
+    $headingTag = in_array($heading_level ?? 'h1', ['h1', 'h2'], true) ? ($heading_level ?? 'h1') : 'h1';
+@endphp
 <section class="relative overflow-hidden border-b border-indigo-100 bg-gradient-to-br from-[#f8fbff] via-white to-[#fff4ef] py-14 sm:py-16 lg:py-20">
     <div class="pointer-events-none absolute -left-24 top-12 h-80 w-80 rounded-full bg-cyan-200/35 blur-3xl" aria-hidden="true"></div>
     <div class="pointer-events-none absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-violet-200/40 blur-3xl" aria-hidden="true"></div>
@@ -8,7 +13,7 @@
             <div>
                 <span class="inline-flex rounded-full border border-indigo-200 bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.15em] text-indigo-700 shadow-sm">Personalised education</span>
                 @if($title ?? false)
-                    <h1 class="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl lg:text-6xl">{{ $title }}</h1>
+                    <{{ $headingTag }} class="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl lg:text-6xl">{{ $title }}</{{ $headingTag }}>
                 @endif
                 @if($subtitle ?? false)
                     <p class="mt-6 text-lg leading-8 text-slate-600">{{ $subtitle }}</p>
@@ -25,7 +30,14 @@
             @if($image ?? false)
                 <div class="relative">
                     <div class="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-cyan-300/30 via-indigo-300/30 to-rose-300/35 blur-2xl" aria-hidden="true"></div>
-                    <img src="{{ $image }}" alt="{{ $title ?? 'Featured learning experience' }}" class="relative aspect-[4/3] w-full rounded-[2rem] border border-white object-cover shadow-2xl shadow-indigo-200/60">
+                    {{-- A hero image is always above the fold, so it is the LCP
+                         candidate: eager, high priority, and given intrinsic
+                         dimensions so it reserves its box before it loads. --}}
+                    <img src="{{ $image }}"
+                         alt="{{ filled($image_alt ?? null) ? $image_alt : ($title ?? 'Featured learning experience') }}"
+                         width="1200" height="900"
+                         loading="eager" fetchpriority="high" decoding="async"
+                         class="relative aspect-[4/3] w-full rounded-[2rem] border border-white object-cover shadow-2xl shadow-indigo-200/60">
                 </div>
             @endif
         </div>

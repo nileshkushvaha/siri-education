@@ -36,6 +36,21 @@ class HeroBlockForm
                         ->directory('blocks/hero')
                         ->maxSize(5120),
 
+                    TextInput::make('image_alt')
+                        ->label('Image alt text')
+                        ->maxLength(255)
+                        ->helperText('Describes the image for screen readers and search engines. Falls back to the hero title when blank.')
+                        ->placeholder('e.g. Student studying at a laptop'),
+
+                    Select::make('heading_level')
+                        ->label('Heading level')
+                        ->options([
+                            'h1' => 'H1 — this hero is the page heading',
+                            'h2' => 'H2 — the layout already renders an H1 above',
+                        ])
+                        ->default('h1')
+                        ->helperText('Templates that render their own page title need H2 here so the page keeps one H1.'),
+
                     TextInput::make('button_text')
                         ->label('Button Text')
                         ->placeholder('e.g., Learn More'),

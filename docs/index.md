@@ -34,6 +34,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 |---|---|
 | CMS (Pages, Posts, Content Blocks) | `cms.md` |
 | Pages | `pages.md` |
+| Country SEO landing pages (nine markets, terminology, seeder) | `country-landing-pages.md` |
 | Posts | `posts.md` |
 | Navigation | `navigation.md` |
 | Media | `media.md` |

@@ -20,6 +20,25 @@ The navigation system is a standalone bounded context in `app/Navigation/`. It i
 
 `App\Models\NavigationMenu` — menu container (name, location slug).
 
+### Locations
+
+`App\Enums\Navigation\NavigationLocation` — `header`, `footer`, `footer_learning`, `mobile`, `sidebar`, `user_menu`, `custom`.
+
+`footer_learning` drives the **Learning** column of the public footer
+(`App\Livewire\Frontend\Layout\SiteFooter::learningNavigation()`). When no menu
+is published there the column falls back to the latest blog posts, then to a
+static link list — so leaving it empty changes nothing.
+
+It replaced the former `admin_menu` location, which had no renderer and no
+reader: the admin panel's navigation is Filament's own, not a `NavigationMenu`.
+Migration `2026_08_20_170000_rename_admin_menu_navigation_location_to_footer_learning`
+repoints existing rows rather than deleting them.
+
+**One published menu per location.** `NavigationRepository::findByLocation()`
+resolves with an unordered `->first()`, so two published menus at one location
+make the rendered menu non-deterministic. `NavigationSeeder` therefore skips any
+location that already has a menu, whatever it is named.
+
 `App\Models\NavigationItem` — uses **Kalnoy NestedSet** (`_lft`, `_rgt`, `parent_id`, `depth`). Never use raw adjacency list queries.
 
 ## Link types (`App\Enums\Navigation\NavigationLinkType`)

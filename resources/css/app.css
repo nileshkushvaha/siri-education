@@ -1661,3 +1661,34 @@ main:has(.contact-page) [data-contact-form-block] :is(input, textarea, select, b
         font-size: clamp(1.75rem, 9vw, 2.35rem);
     }
 }
+
+/* ------------------------------------------------------------
+   POLICY DOCUMENTS
+   Terms, Privacy, Cancellation/Refund and Shipping share one
+   measure. These pages are long-form legal prose inside the
+   default max-w-7xl container, which is far too wide to read
+   comfortably, so the document constrains itself rather than
+   each page carrying its own styling.
+   ------------------------------------------------------------ */
+.cms-content .policy-document {
+    max-width: 52rem;
+    margin-inline: auto;
+}
+
+.cms-content .policy-document .policy-meta {
+    padding: 1rem 1.25rem;
+    border-left: 3px solid #a5b4fc;
+    border-radius: 0 0.75rem 0.75rem 0;
+    background: #f5f3ff;
+    color: #475569;
+    font-size: 1rem;
+}
+
+.cms-content .policy-document h2 {
+    margin-top: 2.25em;
+    font-size: 1.375rem;
+}
+
+.cms-content .policy-document h2:first-of-type {
+    margin-top: 1.75em;
+}

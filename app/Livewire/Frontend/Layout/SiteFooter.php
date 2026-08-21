@@ -63,6 +63,17 @@ class SiteFooter extends Component
         return $this->navigation->forLocation(NavigationLocation::Footer, app()->getLocale());
     }
 
+    /**
+     * Drives the footer's "Learning" column. Optional: when no menu is
+     * published at this location the column keeps its previous
+     * behaviour, so adding the location never blanks the footer.
+     */
+    #[Computed]
+    public function learningNavigation(): ?NavigationTree
+    {
+        return $this->navigation->forLocation(NavigationLocation::FooterLearning, app()->getLocale());
+    }
+
     #[Computed]
     public function latestPosts(): Collection
     {

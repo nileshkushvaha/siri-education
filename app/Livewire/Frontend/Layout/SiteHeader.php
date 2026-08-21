@@ -64,11 +64,26 @@ class SiteHeader extends Component
         return $this->navigation->forLocation(NavigationLocation::Header, app()->getLocale());
     }
 
+    /**
+     * Falls back to the header menu when there is no usable mobile one.
+     *
+     * "Usable" has to mean "has links", not merely "exists": a published
+     * but empty mobile menu resolves to a tree with zero nodes, which is
+     * not null, so a ?? fallback would keep it and leave mobile visitors
+     * with no navigation at all. An empty menu row is easy to create by
+     * accident — NavigationSeeder produces exactly that for any location
+     * without one — so the emptiness is checked rather than assumed away.
+     */
     #[Computed]
     public function mobileNavigation(): ?NavigationTree
     {
-        return $this->navigation->forLocation(NavigationLocation::Mobile, app()->getLocale())
-            ?? $this->navigation->forLocation(NavigationLocation::Header, app()->getLocale());
+        $mobile = $this->navigation->forLocation(NavigationLocation::Mobile, app()->getLocale());
+
+        if ($mobile !== null && ! $mobile->isEmpty()) {
+            return $mobile;
+        }
+
+        return $this->navigation->forLocation(NavigationLocation::Header, app()->getLocale());
     }
 
     public function dashboardUrl(): ?string

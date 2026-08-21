@@ -8,6 +8,7 @@ use App\Models\Page;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 class PagePreviewController extends Controller
@@ -19,7 +20,10 @@ class PagePreviewController extends Controller
      */
     public function __invoke(Request $request, Page $page, ContentRenderer $renderService): Response
     {
-        $this->authorize('view', $page);
+        // The framework's base controller no longer provides
+        // AuthorizesRequests, so the Gate facade is the supported
+        // equivalent here — same policy, same AuthorizationException.
+        Gate::authorize('view', $page);
 
         // Render the page using the same service
         try {

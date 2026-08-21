@@ -46,6 +46,8 @@ class BlockContentConverter
             'title' => $data['title'] ?? '',
             'subtitle' => $data['subtitle'] ?? '',
             'image' => $data['image'] ?? null,
+            'image_alt' => $data['image_alt'] ?? '',
+            'heading_level' => $data['heading_level'] ?? 'h1',
             'button_text' => $data['button_text'] ?? '',
             'button_link' => $data['button_link'] ?? '',
             'button_style' => $data['button_style'] ?? 'primary',

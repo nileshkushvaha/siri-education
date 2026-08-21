@@ -92,7 +92,7 @@
         </fieldset>
 
         <x-ui.auth-checkbox name="terms" wire:model="terms" required>
-            I agree to the <a href="{{ url('/terms-of-service') }}" class="font-medium text-indigo-400 hover:text-indigo-300">Terms of Service</a>
+            I agree to the <a href="{{ url('/terms-and-conditions') }}" class="font-medium text-indigo-400 hover:text-indigo-300">Terms and Conditions</a>
             and <a href="{{ url('/privacy-policy') }}" class="font-medium text-indigo-400 hover:text-indigo-300">Privacy Policy</a>.
         </x-ui.auth-checkbox>
 

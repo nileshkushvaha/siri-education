@@ -28,6 +28,32 @@ class AdminPagePreviewTest extends TestCase
         $this->user->givePermissionTo(['pages.view', 'pages.list']);
     }
 
+    /**
+     * The existing cases below accept "200 or 302", which means a redirect
+     * at the middleware layer counts as a pass and the controller body is
+     * never entered. That is exactly how a fatal error inside it
+     * (a $this->authorize() call on a base controller that no longer has
+     * AuthorizesRequests) reached a browser while this suite stayed green.
+     * This case therefore insists on a real 200 from a real render.
+     */
+    public function test_permitted_admin_actually_renders_the_preview(): void
+    {
+        $admin = User::factory()->create([
+            'status' => User::STATUS_ACTIVE,
+            'email_verified_at' => now(),
+        ]);
+
+        Permission::firstOrCreate(['name' => 'View:Page', 'guard_name' => 'web']);
+        $admin->givePermissionTo('View:Page');
+
+        $page = $this->createPageWithBlock(['slug' => 'preview-renders']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.pages.preview', $page))
+            ->assertOk()
+            ->assertSee($page->title, false);
+    }
+
     private function createPageWithBlock(array $pageData = [], array $blockData = []): Page
     {
         $page = Page::create(array_merge([

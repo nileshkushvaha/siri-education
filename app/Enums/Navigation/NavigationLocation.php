@@ -9,7 +9,13 @@ enum NavigationLocation: string
     case Mobile = 'mobile';
     case Sidebar = 'sidebar';
     case UserMenu = 'user_menu';
-    case AdminMenu = 'admin_menu';
+    /**
+     * Renders the footer's "Learning" column. Replaced the former
+     * AdminMenu location, which had no renderer, no seeded content and
+     * no reader anywhere in the application — the admin panel is
+     * Filament's own navigation, not a NavigationMenu.
+     */
+    case FooterLearning = 'footer_learning';
     case Custom = 'custom';
 
     public function label(): string
@@ -20,7 +26,7 @@ enum NavigationLocation: string
             self::Mobile => 'Mobile',
             self::Sidebar => 'Sidebar',
             self::UserMenu => 'User Menu',
-            self::AdminMenu => 'Admin Menu',
+            self::FooterLearning => 'Footer Learning',
             self::Custom => 'Custom',
         };
     }
@@ -33,7 +39,7 @@ enum NavigationLocation: string
             self::Mobile => 'warning',
             self::Sidebar => 'primary',
             self::UserMenu => 'success',
-            self::AdminMenu => 'danger',
+            self::FooterLearning => 'gray',
             self::Custom => 'purple',
         };
     }

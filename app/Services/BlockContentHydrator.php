@@ -46,6 +46,10 @@ class BlockContentHydrator
             'title' => $content['title'] ?? '',
             'subtitle' => $content['subtitle'] ?? '',
             'image' => $content['image'] ?? null,
+            'image_alt' => $content['image_alt'] ?? '',
+            // Existing hero blocks predate the setting and are the page
+            // heading, so the default has to stay h1.
+            'heading_level' => $content['heading_level'] ?? 'h1',
             'button_text' => $content['button_text'] ?? '',
             'button_link' => $content['button_link'] ?? '',
             'button_style' => $content['button_style'] ?? 'primary',

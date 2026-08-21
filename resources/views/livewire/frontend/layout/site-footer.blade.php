@@ -1,6 +1,10 @@
 @php
 $footerNavigation = $this->footerNavigation;
 $latestPosts = $this->latestPosts;
+// The "Learning" column is admin-managed when a menu is published at the
+// Footer Learning location, and falls back to the previous behaviour
+// (latest posts, then a static list) when it is not.
+$learningNodes = $this->learningNavigation?->nodes ?? [];
 $navigationGroups = [];
 $standaloneNodes = [];
 
@@ -80,7 +84,15 @@ array_unshift($navigationGroups, ['heading' => null, 'nodes' => $standaloneNodes
             <section aria-labelledby="footer-learning" data-footer-column>
                 <h2 id="footer-learning" class="text-2xl font-black text-white">Learning</h2>
                 <span class="mt-3 block h-1 w-10 rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-500" aria-hidden="true"></span>
-                @if($latestPosts->isNotEmpty())
+                @if($learningNodes !== [])
+                <nav aria-labelledby="footer-learning">
+                    <ul class="mt-5 space-y-3" role="list">
+                        @foreach($learningNodes as $node)
+                        @include('livewire.frontend.layout.partials.footer-nav-node', ['node' => $node])
+                        @endforeach
+                    </ul>
+                </nav>
+                @elseif($latestPosts->isNotEmpty())
                 <ul class="mt-5 space-y-3" role="list">
                     @foreach($latestPosts->take(5) as $post)
                     <li>
@@ -153,7 +165,9 @@ array_unshift($navigationGroups, ['heading' => null, 'nodes' => $standaloneNodes
             <p>{!! $footerCopyright ?: '&copy; '.date('Y').' '.e($appName).'. All rights reserved.' !!}</p>
             <nav class="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal links">
                 <a href="{{ Route::has('privacy') ? route('privacy') : url('/privacy-policy') }}" class="transition hover:text-slate-300">Privacy Policy</a>
-                <a href="{{ Route::has('terms') ? route('terms') : url('/terms-of-service') }}" class="transition hover:text-slate-300">Terms of Service</a>
+                <a href="{{ Route::has('terms') ? route('terms') : url('/terms-and-conditions') }}" class="transition hover:text-slate-300">Terms and Conditions</a>
+                <a href="{{ url('/cancellation-and-refund-policy') }}" class="transition hover:text-slate-300">Cancellation &amp; Refund</a>
+                <a href="{{ url('/shipping-and-exchange-policy') }}" class="transition hover:text-slate-300">Shipping &amp; Exchange</a>
                 @if(Route::has('search.index'))<a href="{{ route('search.index') }}" class="transition hover:text-slate-300">Search</a>@endif
             </nav>
         </div>

@@ -14,18 +14,35 @@ let observer;
 const pendingElements = new Set();
 let sweepQueued = false;
 
-const revealIfVisible = (element) => {
-    const bounds = element.getBoundingClientRect();
-    if (bounds.bottom < 0 || bounds.top > window.innerHeight * 0.94) return false;
+const reveal = (element) => {
     element.dataset.publicVisible = 'true';
     pendingElements.delete(element);
     observer?.unobserve(element);
-    return true;
 };
 
+/*
+ * Every pending element's geometry is read in one pass before a single
+ * result is written back. The previous shape — a getBoundingClientRect()
+ * read immediately followed by a dataset write, per element, inside
+ * enhance()'s own write loops — invalidated layout on every iteration and
+ * forced the browser to recompute it on the next read. On a content page
+ * matching a few hundred elements that was the ~45 ms of forced reflow
+ * Lighthouse reported. Reads and writes are the same work in the same
+ * frame; only their order changed.
+ */
 const sweepVisible = () => {
     sweepQueued = false;
-    pendingElements.forEach(revealIfVisible);
+    if (!pendingElements.size) return;
+
+    const limit = window.innerHeight * 0.94;
+    const visible = [];
+
+    pendingElements.forEach((element) => {
+        const bounds = element.getBoundingClientRect();
+        if (bounds.bottom >= 0 && bounds.top <= limit) visible.push(element);
+    });
+
+    visible.forEach(reveal);
 };
 
 const queueSweep = () => {
@@ -81,8 +98,6 @@ const splitHeading = (heading) => {
 const observe = (element) => {
     if (element.dataset.publicVisible) return;
 
-    if (revealIfVisible(element)) return;
-
     element.dataset.publicObserved = 'true';
     pendingElements.add(element);
     observer?.observe(element);
@@ -133,6 +148,12 @@ const enhance = (root = document) => {
         image.dataset.publicMotionImage = '';
         image.closest('picture, figure, [class*="overflow-hidden"]')?.setAttribute('data-public-shine', '');
     });
+
+    // observe() no longer reveals an already-visible element itself, so the
+    // batched sweep runs here — synchronously, in the same frame enhance()
+    // was called in, so above-the-fold content still arrives revealed
+    // rather than animating in on load.
+    sweepVisible();
 };
 
 const boot = () => {

@@ -1,7 +1,7 @@
 {{-- CMS Hero Carousel Block — a fixed headline frame whose middle line rotates while the
      subject photography, badge card, highlight pills and name pill cross-fade behind it.
 
-     Photography spec (see public/images/hero/README.md): a transparent-background PNG
+     Photography spec (see public/images/hero/README.md): a transparent-background WebP
      cutout of the subject, waist-up, facing camera, roughly 1400x1600. The subject is
      anchored to the bottom-right and deliberately bleeds off the frame. Slides without a
      photo simply render the headline over the gradient — nothing breaks. --}}
@@ -19,7 +19,7 @@
             [
                 'tab_label' => 'One-to-One Tutoring',
                 'rotating_text' => 'personalised 1-on-1 lessons',
-                'image' => '/images/hero/student-one-to-one.png',
+                'image' => '/images/hero/student-one-to-one.webp',
                 'badge_title' => 'One-to-One Classes',
                 'badge_subtitle' => 'Powered by '.$appName,
                 'highlights' => ['Doubts Cleared', 'Homework Supported', 'Progress Tracked'],
@@ -31,7 +31,7 @@
             [
                 'tab_label' => 'Exam Preparation',
                 'rotating_text' => 'focused competitive exam prep',
-                'image' => '/images/hero/student-exam-prep.png',
+                'image' => '/images/hero/student-exam-prep.webp',
                 'badge_title' => 'Exam Preparation',
                 'badge_subtitle' => 'Powered by '.$appName,
                 'highlights' => ['Mock Tests', 'Weak Areas Fixed', 'Scores Improved'],
@@ -43,7 +43,7 @@
             [
                 'tab_label' => 'Flexible Scheduling',
                 'rotating_text' => 'lessons that fit your timezone',
-                'image' => '/images/hero/student-flexible.png',
+                'image' => '/images/hero/student-flexible.webp',
                 'badge_title' => 'Flexible Scheduling',
                 'badge_subtitle' => 'Powered by '.$appName,
                 'highlights' => ['Your Timezone', 'Reschedule Free', 'Evening Slots'],
@@ -55,7 +55,7 @@
             [
                 'tab_label' => 'Homework Support',
                 'rotating_text' => 'homework help when it matters',
-                'image' => '/images/hero/student-homework.png',
+                'image' => '/images/hero/student-homework.webp',
                 'badge_title' => 'Homework Support',
                 'badge_subtitle' => 'Powered by '.$appName,
                 'highlights' => ['Same-Day Answers', 'Step-by-Step Working', 'Marked Feedback'],
@@ -67,7 +67,7 @@
             [
                 'tab_label' => 'Progress Tracking',
                 'rotating_text' => 'progress you can actually see',
-                'image' => '/images/hero/student-progress.png',
+                'image' => '/images/hero/student-progress.webp',
                 'badge_title' => 'Progress Tracking',
                 'badge_subtitle' => 'Powered by '.$appName,
                 'highlights' => ['Goals Set', 'Reports Shared', 'Parents Updated'],

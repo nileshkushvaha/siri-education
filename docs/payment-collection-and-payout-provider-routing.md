@@ -151,6 +151,56 @@ integration and a verified live Stripe account — this phase leaves the
 switch at the current safe value and documents the blocker instead of
 flipping it.
 
+### 8.1 Multi-currency collection is live via Razorpay (2026-08-29)
+
+The Stripe blocker above is no longer the thing standing between the
+platform and international collection — Razorpay is. Nine markets
+(IN/US/GB/CA/AU/AE/SG/NZ/SA) now collect in their own currency through
+`razorpay_international_enabled` + `razorpay_international_currencies`.
+
+Two defects were closed to get there:
+
+1. **The attestation had no UI.** `razorpay_international_enabled` was
+   added by `2026_11_04_100000` defaulting to false, designed as an
+   operator attestation — but no admin screen ever exposed it, so it
+   could only ever BE false. `approvedCurrencies()` therefore collapsed
+   to `['INR']` and every non-INR market was refused at checkout with
+   "This provider does not support AUD", no matter how the country,
+   currency and price matrix were configured. Fixed by the
+   "International Collection" section on
+   `PaymentSettingsPage::razorpayInternationalSection()`, whose
+   currency options read active `Currency` rows rather than a hardcoded
+   list — so NZD and SAR, excluded even from the seeded default, are
+   selectable.
+
+2. **The market gate described in §6 was not actually closed.** All 196
+   seeded countries were `active` and NOT ONE carried
+   `payment_routing`, contradicting `2026_11_05_100000`'s own claim
+   that "every launch market carries an explicit `payment_routing`
+   entry". Every country fell through to `default_provider`; the only
+   thing stopping an unlaunched market was the incidental absence of a
+   `StudentLessonPrice` row, so those students failed at PRICING rather
+   than at the gate. Closed by
+   `2026_08_29_120000_restrict_active_countries_to_launch_markets`.
+
+**Drift is now visible rather than latent.** The same settings section
+renders a live Market Coverage readout naming any launched country
+whose currency is not attested — the failure in (1) reported from the
+screen that can fix it, instead of from a student's checkout.
+
+**Open: `countries.status` is overloaded.** It gates the market AND
+backs reference-data surfaces that have nothing to do with where the
+platform sells — `PhoneNumberService::normalize()` rejects a number
+whose country is inactive, and `user_educations`, `user_experiences`
+and `instructor_payout_methods` all pick from active countries. With
+187 countries now inactive, a person outside the nine cannot save a
+phone number, record a foreign degree, or add a payout bank account in
+their own country. Correct for students, who must be in a launch market
+anyway; **wrong for instructors**, who are routinely resident
+elsewhere, and the first non-launch-market instructor onboarding will
+hit it. The fix is to split "is a market" from "is a known country" —
+deliberately not attempted alongside a data migration.
+
 ## 9. Razorpay International fallback rules
 
 Not implemented as live routing this phase (no verified Razorpay

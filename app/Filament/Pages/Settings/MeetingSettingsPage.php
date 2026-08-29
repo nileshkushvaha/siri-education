@@ -12,6 +12,7 @@ use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\MeetingSettings;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -201,33 +202,36 @@ class MeetingSettingsPage extends Page
                             ->label('Google Meet Recording')
                             ->helperText('Independent of the toggle above: Google Meet can be enabled with recording off. Requires the meetings.space.readonly and drive.meet.readonly scopes in the Workspace delegation grant.'),
                         Select::make('google_auth_type')
+                            ->label('Authentication type')
                             ->options([
                                 'service_account' => 'Service Account',
-                                'oauth_user' => 'OAuth User (not yet supported)',
+                                'oauth_user' => 'OAuth User (not yet available)',
                             ])
-                            ->helperText('Only Service Account is currently supported — OAuth User will be available in a future connection screen.')
+                            // Selecting OAuth User silently stops Google Meet
+                            // creation, because the provider only treats a
+                            // service account as configured. Showing the option
+                            // explains the roadmap; disabling it prevents an
+                            // admin from breaking meetings to find that out.
+                            ->disableOptionWhen(fn (string $value): bool => $value === 'oauth_user')
+                            ->helperText('Service Account is the only supported type. OAuth User is reserved for a future connection screen and cannot be selected yet.')
                             ->required()
                             ->native(false),
                         TextInput::make('google_calendar_id')
                             ->label('Calendar ID')
                             ->maxLength(255),
-                        TextInput::make('google_credentials_configured')
-                            ->label('Credentials Stored')
-                            ->disabled()
-                            ->dehydrated(false),
-                        TextInput::make('google_config_status')
+                        Placeholder::make('google_credentials_configured_display')
+                            ->label('Credentials stored')
+                            ->content(fn (): string => $this->yesNo($this->data['google_credentials_configured'] ?? null)),
+                        Placeholder::make('google_config_status_display')
                             ->label('Configuration status')
-                            ->disabled()
-                            ->dehydrated(false),
-                        TextInput::make('google_last_checked_at')
-                            ->label('Last Checked')
-                            ->disabled()
-                            ->dehydrated(false),
-                        TextInput::make('google_credentials_updated_at')
-                            ->label('Credentials Last Replaced')
-                            ->helperText('Set only when a new service account JSON is pasted and saved — proves a key rotation actually took effect.')
-                            ->disabled()
-                            ->dehydrated(false),
+                            ->content(fn (): string => $this->configStatusLabel($this->data['google_config_status'] ?? null)),
+                        Placeholder::make('google_last_checked_at_display')
+                            ->label('Last checked')
+                            ->content(fn (): string => $this->timestampLabel($this->data['google_last_checked_at'] ?? null)),
+                        Placeholder::make('google_credentials_updated_at_display')
+                            ->label('Credentials last replaced')
+                            ->content(fn (): string => $this->timestampLabel($this->data['google_credentials_updated_at'] ?? null))
+                            ->helperText('Updates only when a new service account JSON is pasted and saved, so it confirms a key rotation actually took effect.'),
                     ]),
                     Textarea::make('google_credentials_json')
                         ->label('Service Account JSON')
@@ -237,7 +241,7 @@ class MeetingSettingsPage extends Page
                 ]),
 
             Section::make('Zoom')
-                ->description('Server-to-Server OAuth credentials for ZoomMeetingProvider (platform-owned host account). The client secret is never displayed after saving — leave it blank to keep the existing value.')
+                ->description('Server-to-Server OAuth credentials for the platform-owned Zoom host account. The client secret is never displayed after saving — leave it blank to keep the existing value.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
@@ -276,17 +280,57 @@ class MeetingSettingsPage extends Page
                         Toggle::make('zoom_recording_webhooks_enabled')
                             ->label('Accept Zoom Recording Webhooks')
                             ->helperText('Low-latency recording discovery. The bounded reconciliation sweep runs regardless, so leaving this off only delays ingestion.'),
-                        TextInput::make('zoom_config_status')
+                        Placeholder::make('zoom_config_status_display')
                             ->label('Configuration status')
-                            ->disabled()
-                            ->dehydrated(false),
-                        TextInput::make('zoom_last_checked_at')
-                            ->label('Last Checked')
-                            ->disabled()
-                            ->dehydrated(false),
+                            ->content(fn (): string => $this->configStatusLabel($this->data['zoom_config_status'] ?? null)),
+                        Placeholder::make('zoom_last_checked_at_display')
+                            ->label('Last checked')
+                            ->content(fn (): string => $this->timestampLabel($this->data['zoom_last_checked_at'] ?? null)),
                     ]),
                 ]),
         ]);
+    }
+
+    /**
+     * These three exist because the raw stored values are not admin-facing
+     * text. `google_credentials_configured` is a boolean, which a text
+     * input rendered as "1"; the status fields hold internal keys like
+     * `not_configured`; and the timestamps are stored as ISO-8601
+     * strings. Read-only readouts, so a Placeholder is the right
+     * component — a disabled input suggests something editable.
+     */
+    protected function yesNo(mixed $value): string
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'Yes' : 'No';
+    }
+
+    protected function configStatusLabel(mixed $status): string
+    {
+        return match ((string) $status) {
+            'ready' => 'Ready',
+            'incomplete' => 'Incomplete — some required details are missing',
+            'invalid' => 'Invalid — the stored credentials were rejected',
+            'not_configured' => 'Not configured',
+            '' => 'Not checked yet',
+            default => (string) $status,
+        };
+    }
+
+    protected function timestampLabel(mixed $value): string
+    {
+        if (blank($value)) {
+            return 'Never';
+        }
+
+        try {
+            $moment = Carbon::parse((string) $value);
+        } catch (\Throwable) {
+            // A stored value we cannot parse is still worth showing
+            // verbatim rather than swallowing into "Never".
+            return (string) $value;
+        }
+
+        return $moment->timezone(config('app.timezone'))->format('j M Y, H:i').' ('.$moment->diffForHumans().')';
     }
 
     public function save(): void

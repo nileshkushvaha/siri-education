@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Booking\Services\PaymentGatewayConfigurationService;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Settings\PaymentAdvancedSettings;
 use App\Settings\PaymentConfigurationSettings;
 use App\Settings\PaymentGatewaySettings;
@@ -31,6 +33,7 @@ use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 abstract class PaymentSettingsPage extends Page
@@ -107,6 +110,8 @@ abstract class PaymentSettingsPage extends Page
             'stripe_webhook_url' => $gateways->stripe_webhook_url ?? url('/api/webhooks/bookings/payments/stripe'),
 
             'razorpay_enabled' => $gateways->razorpay_enabled,
+            'razorpay_international_enabled' => $gateways->razorpay_international_enabled,
+            'razorpay_international_currencies' => $gateways->razorpay_international_currencies,
             'razorpay_key_id' => $gateways->razorpay_key_id,
             'razorpay_key_secret' => null,
             'razorpay_webhook_secret' => null,
@@ -411,7 +416,143 @@ abstract class PaymentSettingsPage extends Page
                             ->helperText('Stored encrypted. Leave blank to keep existing. ONE SECRET PER LINE. Prefix a line to scope it to one endpoint: "booking:whsec_..." or "package:whsec_...". Two lines with the same prefix = credential rotation (both stay valid). An unprefixed line works for every endpoint (legacy behaviour).'),
                         $this->gatewayUrls('razorpay'),
                     ]),
+                $this->razorpayInternationalSection(),
             ]);
+    }
+
+    /**
+     * International collection is a separate operational fact from
+     * "Razorpay works", and until now it had no UI at all — the
+     * attestation could only ever be false, so every non-INR market
+     * (US/GB/CA/AU/AE/SG/NZ/SA) was refused at checkout with
+     * "This provider does not support USD" no matter how the country,
+     * currency and lesson-price matrix were configured.
+     *
+     * The toggle stays an attestation, never an inference: live
+     * `rzp_live_*` credentials look identical on a domestic-only
+     * account, which accepts a foreign-currency order and then declines
+     * it at capture, after the student has entered card details. See
+     * PaymentGatewaySettings::$razorpay_international_enabled and
+     * RazorpayPaymentProvider::approvedCurrencies().
+     */
+    protected function razorpayInternationalSection(): Section
+    {
+        return Section::make('International Collection')
+            ->description('Lets Razorpay collect in currencies other than INR. INR is domestic and always collectable — it can never be switched off here.')
+            ->icon(Heroicon::OutlinedGlobeAlt)
+            ->schema([
+                Toggle::make('razorpay_international_enabled')
+                    ->label('International Payments Approved')
+                    ->live()
+                    ->helperText('Turn on ONLY after confirming on the Razorpay Dashboard that International Payments is approved for this merchant account. Live credentials are not evidence of approval.'),
+                Select::make('razorpay_international_currencies')
+                    ->label('Approved Currencies')
+                    ->options($this->internationalCurrencyOptions())
+                    ->multiple()
+                    ->native(false)
+                    ->live()
+                    ->helperText('The currencies this specific account is confirmed to collect. Razorpay\'s supported set is per-account — anything outside their standard list needs a support request first. A market whose currency is not listed here cannot check out.'),
+                Placeholder::make('razorpay_international_coverage')
+                    ->label('Market Coverage')
+                    ->content(fn (): HtmlString => $this->internationalCoverageWarning()),
+            ]);
+    }
+
+    /**
+     * Drift between "this market is launched" and "this market's
+     * currency is attested" is the exact failure that shipped to
+     * production once already: every non-INR country had an active
+     * Country row, a full lesson-price matrix and a default currency,
+     * while the attestation sat false — so students only discovered it
+     * at checkout, as "This provider does not support AUD".
+     *
+     * Nothing auto-attests to close that gap; a currency this account
+     * was never approved for would be accepted as an order and then
+     * declined AT CAPTURE, after the student has entered card details.
+     * Instead the drift is made loud at the one screen that can fix it,
+     * and it reads from live form state so an admin sees the
+     * consequence of a change before saving it.
+     */
+    protected function internationalCoverageWarning(): HtmlString
+    {
+        /** @var list<string> $attested */
+        $attested = array_map(
+            static fn ($code): string => strtoupper(trim((string) $code)),
+            (array) ($this->data['razorpay_international_currencies'] ?? []),
+        );
+
+        $enabled = (bool) ($this->data['razorpay_international_enabled'] ?? false);
+
+        // A launched market is an active Country whose default currency
+        // is active — precisely what PaymentCollectionEligibilityService
+        // lets through the market gate before it asks about currency.
+        $markets = Country::query()
+            ->where('status', 'active')
+            ->whereHas('defaultCurrency', fn ($q) => $q->where('status', 'active'))
+            ->with('defaultCurrency:id,code')
+            ->get(['id', 'iso2', 'name', 'default_currency_id']);
+
+        $blocked = $markets
+            ->filter(fn (Country $c): bool => $c->defaultCurrency?->code !== 'INR')
+            ->filter(fn (Country $c): bool => ! $enabled || ! in_array((string) $c->defaultCurrency?->code, $attested, true))
+            ->sortBy(fn (Country $c): string => (string) $c->defaultCurrency?->code);
+
+        if ($blocked->isEmpty()) {
+            $covered = $markets->count();
+
+            return new HtmlString(sprintf(
+                '<span class="text-success-600 dark:text-success-400">Every launched market can check out — %d %s covered.</span>',
+                $covered,
+                $covered === 1 ? 'country' : 'countries',
+            ));
+        }
+
+        $lines = $blocked
+            ->map(fn (Country $c): string => e(sprintf(
+                '%s (%s) — %s',
+                $c->name,
+                $c->iso2,
+                (string) $c->defaultCurrency?->code,
+            )))
+            ->implode('<br>');
+
+        return new HtmlString(sprintf(
+            '<span class="text-danger-600 dark:text-danger-400"><strong>%d %s cannot complete payment.</strong> %s</span><br><br>%s',
+            $blocked->count(),
+            $blocked->count() === 1 ? 'launched market' : 'launched markets',
+            $enabled
+                ? 'Their currency is not in the approved list above.'
+                : 'International Payments is switched off, so only INR collects.',
+            $lines,
+        ));
+    }
+
+    /**
+     * Sourced from the active Currency rows rather than a hardcoded
+     * list, so a new launch market's currency is selectable the moment
+     * it is added. INR is excluded: it is domestic and unconditional.
+     *
+     * @return array<string, string>
+     */
+    protected function internationalCurrencyOptions(): array
+    {
+        $options = Currency::query()
+            ->active()
+            ->whereNot('code', 'INR')
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->pluck('name', 'code')
+            ->map(fn (?string $name, string $code): string => filled($name) ? "{$code} — {$name}" : $code)
+            ->all();
+
+        // Anything already attested stays selectable even if its
+        // Currency row was later deactivated — otherwise saving an
+        // unrelated field would silently drop an approved currency.
+        foreach (app(PaymentGatewaySettings::class)->razorpay_international_currencies as $code) {
+            $options[$code] ??= $code;
+        }
+
+        return $options;
     }
 
     protected function paypalTab(): Tab
@@ -719,6 +860,22 @@ abstract class PaymentSettingsPage extends Page
             $settings->stripe_webhook_url = $data['stripe_webhook_url'] ?? null;
 
             $settings->razorpay_key_id = $data['razorpay_key_id'] ?? null;
+            // The attestation and its currency list. Normalised and
+            // INR-stripped here so approvedCurrencies() never has to
+            // defend against a hand-typed or lower-cased entry, and so
+            // INR can never be removed by editing this list.
+            $settings->razorpay_international_enabled = (bool) ($data['razorpay_international_enabled'] ?? false);
+
+            if (array_key_exists('razorpay_international_currencies', $data)) {
+                $settings->razorpay_international_currencies = array_values(array_diff(
+                    array_unique(array_map(
+                        static fn (string $code): string => strtoupper(trim($code)),
+                        array_filter((array) $data['razorpay_international_currencies'], 'is_string'),
+                    )),
+                    ['INR'],
+                ));
+            }
+
             $settings->razorpay_success_url = $data['razorpay_success_url'] ?? null;
             $settings->razorpay_failure_url = $data['razorpay_failure_url'] ?? null;
             $settings->razorpay_webhook_url = $data['razorpay_webhook_url'] ?? null;

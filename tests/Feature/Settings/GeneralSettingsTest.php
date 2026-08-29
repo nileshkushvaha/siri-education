@@ -8,6 +8,7 @@ use App\Filament\Pages\Settings\GeneralSettingsPage;
 use App\Models\Activity;
 use App\Models\User;
 use App\Settings\GeneralSettings;
+use App\Support\Timezone\IanaTimezone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -118,7 +119,12 @@ class GeneralSettingsTest extends TestCase
         $component->instance()->resetDefaults();
 
         $reloaded = app()->make(GeneralSettings::class)->refresh();
-        $this->assertSame('Asia/Kolkata', $reloaded->default_timezone);
+        // TZ-1: this settings tier IS the platform default, so there is
+        // nothing above it to inherit. Reset deliberately lands on the
+        // neutral fallback rather than reinstating an India-specific
+        // timezone on a multi-country deployment — see
+        // GeneralSettingsPage::resetDefaults().
+        $this->assertSame(IanaTimezone::FALLBACK, $reloaded->default_timezone);
         $this->assertSame('INR', $reloaded->default_currency);
 
         $activity = Activity::where('log_name', 'settings')
@@ -128,6 +134,6 @@ class GeneralSettingsTest extends TestCase
 
         $this->assertNotNull($activity, 'resetDefaults() must be audited — the pre-24S implementation called ->save() a second time outside the audited path.');
         $this->assertSame('America/New_York', $activity->properties['changed']['default_timezone']['from']);
-        $this->assertSame('Asia/Kolkata', $activity->properties['changed']['default_timezone']['to']);
+        $this->assertSame(IanaTimezone::FALLBACK, $activity->properties['changed']['default_timezone']['to']);
     }
 }

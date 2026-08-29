@@ -246,20 +246,12 @@ $subjectPalettes = [
                 <div class="max-w-3xl">
                     <span class="inline-flex rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.15em] text-indigo-600 shadow-sm backdrop-blur">Verified expertise · Student favourites</span>
                     <h2 id="home-instructors-heading" class="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Meet instructors students trust</h2>
-                    <p class="mt-4 max-w-2xl leading-7 text-slate-600">Explore approved public profiles, from marketplace-featured educators to instructors ranked by genuine student reviews.</p>
+                    <p class="mt-4 max-w-2xl leading-7 text-slate-600">Explore approved public profiles, ranked by genuine student reviews.</p>
                 </div>
                 <a href="{{ route('instructors.index') }}" class="inline-flex min-h-11 w-fit shrink-0 items-center rounded-xl border border-indigo-200 bg-white px-5 text-sm font-black text-indigo-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">Explore all instructors →</a>
             </div>
 
             <div class="mt-10 space-y-10">
-                <livewire:frontend.cms.featured-teachers
-                    eyebrow="Featured"
-                    title="Selected for marketplace visibility"
-                    description="Approved profiles highlighted for their expertise and teaching readiness."
-                    :limit="4"
-                    :columns="4"
-                    :embedded="true" />
-
                 <livewire:frontend.cms.featured-teachers
                     eyebrow="Loved by students"
                     title="Popular instructors"

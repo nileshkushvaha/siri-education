@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Pages\Settings;
 
 use App\Earnings\Contracts\FinancialFeatureConfigurationServiceInterface;
+use App\Earnings\Contracts\InstructorPayoutProviderRegistryInterface;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\CompensationException;
+use App\Earnings\Providers\Fake\FakeInstructorPayoutProvider;
+use App\Earnings\Providers\RazorpayX\RazorpayXInstructorPayoutProvider;
 use App\Filament\Concerns\HasRelatedResourceLinks;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
@@ -277,7 +280,7 @@ class InstructorEarningSettingsPage extends Page
                     ]),
 
                 Section::make('Payout Execution')
-                    ->description('Executes approved withdrawals through the configured payout provider. Only a test provider is currently available, so enabling this does not move any real money yet.')
+                    ->description('Executes approved withdrawals through the selected payout provider. RazorpayX sends real money to instructors — enable it only once its credentials are configured and verified.')
                     ->columnSpanFull()
                     ->schema([
                         Placeholder::make('payout_execution_overview')
@@ -289,10 +292,10 @@ class InstructorEarningSettingsPage extends Page
                                 ->helperText('Off = no provider is ever called. Enabling runs a server-side preflight and requires the Configure:InstructorPayoutExecution permission (enforced on save, not just in this form).'),
                             Select::make('payout_provider')
                                 ->label('Provider')
-                                ->options(['fake' => 'Test provider (no real payment is sent)'])
+                                ->options($this->payoutProviderOptions())
                                 ->required()
                                 ->native(false)
-                                ->helperText('Only a test provider is currently available.'),
+                                ->helperText('The test provider records an attempt without contacting a bank. RazorpayX transfers real money and stays unusable until its own settings page is fully configured.'),
                             Toggle::make('payout_maker_checker_enabled')
                                 ->label('Maker-checker enabled')
                                 ->helperText('On = the withdrawal approver cannot also execute its payout.'),
@@ -426,6 +429,52 @@ class InstructorEarningSettingsPage extends Page
     }
 
     /** Read-only operational counts for the payout execution section. */
+    /**
+     * Read from the registry rather than a hardcoded list.
+     *
+     * This dropdown offered `fake` alone while
+     * RazorpayXInstructorPayoutProvider was already registered, so real
+     * payouts could not be switched on from the one screen that selects
+     * a provider — and the copy beside it still told the admin no real
+     * money could move. Deriving the options from what is actually
+     * registered means the two can never disagree again.
+     *
+     * Offering a provider is not enabling it: an unconfigured RazorpayX
+     * still fails its health check in
+     * InstructorPayoutProviderResolver, so selecting it here cannot
+     * move money on its own.
+     *
+     * @return array<string, string>
+     */
+    protected function payoutProviderOptions(): array
+    {
+        $registry = app(InstructorPayoutProviderRegistryInterface::class);
+
+        $labels = [
+            FakeInstructorPayoutProvider::KEY => 'Test provider (no real payment is sent)',
+            RazorpayXInstructorPayoutProvider::KEY => 'RazorpayX (sends real payouts)',
+        ];
+
+        $options = [];
+
+        foreach ($labels as $key => $label) {
+            if ($registry->has($key)) {
+                $options[$key] = $label;
+            }
+        }
+
+        // Never strand a stored value: if a provider is de-registered
+        // later, the saved setting must still render as the current
+        // selection instead of silently resetting to the first option.
+        $current = (string) app(InstructorEarningSettings::class)->payout_provider;
+
+        if ($current !== '' && ! isset($options[$current])) {
+            $options[$current] = $current.' (no longer available)';
+        }
+
+        return $options;
+    }
+
     private function payoutExecutionOverview(): HtmlString
     {
         $byStatus = InstructorPayoutAttempt::query()

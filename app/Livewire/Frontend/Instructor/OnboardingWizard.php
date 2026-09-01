@@ -145,7 +145,6 @@ final class OnboardingWizard extends Component
             'profile.teaching_experience_summary' => ['required', 'string', 'max:2000'],
             'profile.teaching_philosophy' => ['required', 'string', 'max:2000'],
             'profilePhoto' => ['nullable', 'image', 'max:4096'],
-            'introductionVideo' => ['nullable', 'file', 'mimes:mp4,webm,quicktime', 'max:51200'],
         ]);
 
         $onboarding->updateProfile(auth()->user(), $data['profile']);
@@ -153,11 +152,6 @@ final class OnboardingWizard extends Component
         if ($this->profilePhoto instanceof TemporaryUploadedFile) {
             $onboarding->uploadMedia(auth()->user(), 'avatar', $this->profilePhoto);
             $this->profilePhoto = null;
-        }
-
-        if ($this->introductionVideo instanceof TemporaryUploadedFile) {
-            $onboarding->uploadMedia(auth()->user(), 'introduction_video', $this->introductionVideo);
-            $this->introductionVideo = null;
         }
 
         $this->refreshState();
@@ -427,6 +421,14 @@ final class OnboardingWizard extends Component
                 'collection' => $requirement->collection_name,
                 'label' => $requirement->label,
                 'uploaded' => (bool) $profile?->hasMedia($requirement->collection_name),
+                // Carried here rather than re-derived in the Blade: the
+                // view had its own copy of this map with no arm for
+                // introduction_video, so requiring the video crashed the
+                // step with an UnhandledMatchError.
+                'property' => $this->uploadPropertyFor($requirement->collection_name),
+                'help' => $requirement->collection_name === 'introduction_video'
+                    ? 'Record a short introduction. MP4, WebM, or MOV, up to 50 MB.'
+                    : 'Use a readable image or PDF-style document. Replace it before submission if needed.',
             ])
             ->values()
             ->all();

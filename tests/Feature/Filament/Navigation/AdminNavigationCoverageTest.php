@@ -158,7 +158,9 @@ class AdminNavigationCoverageTest extends TestCase
         [$labelToGroup] = $this->renderedNavigationLabelsAndGroups();
 
         $expectations = [
-            'Users' => 'People',
+            'All Users' => 'People',
+            'Students' => 'People',
+            'Instructors' => 'People',
             'Onboarding' => 'People',
             'Document Requirements' => 'People',
             'Learning Goals' => 'People',

@@ -4,46 +4,71 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\InstructorEvidenceCollection;
 use App\Models\InstructorDocumentRequirement;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds the exact current behavior of the now-removed
- * InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS constant —
- * all five as required=true, matching what every existing instructor
- * has always had to provide. Deliberately does NOT match an earlier
- * illustrative example's rows verbatim (which showed
- * teaching_certificate as required=false) — that would silently loosen
- * an existing requirement, a real behavior change outside this phase's
- * "preserve existing onboarding" scope. `introduction_video` is
- * intentionally not seeded here — it remains the hardcoded optional
- * profile-media item it always was (InstructorOnboardingService::
- * PROFILE_MEDIA_COLLECTIONS), not a KYC verification document.
+ * Seeds one requirement row per InstructorEvidenceCollection case, so
+ * every evidence type an instructor can upload is administrable from
+ * People → Instructors → Document Requirements instead of some of them
+ * being invisible to admins.
+ *
+ * Driven by the enum rather than its own list: adding a case to
+ * InstructorEvidenceCollection without seeding a row here used to be
+ * silent, and InstructorDocumentRequirementSeederTest now fails on it.
+ *
+ * Two things are deliberate about the values:
+ *
+ *  - The five KYC documents stay required=true, matching the behavior of
+ *    the removed InstructorOnboardingService::REQUIRED_DOCUMENT_COLLECTIONS
+ *    constant and what every existing instructor has always had to
+ *    provide. An earlier illustrative example showed teaching_certificate
+ *    as optional; seeding that would silently loosen a live requirement.
+ *  - introduction_video is required=true as well, so an application
+ *    cannot be submitted without it. It is still profile media rather
+ *    than a KYC document (InstructorOnboardingService::
+ *    PROFILE_MEDIA_COLLECTIONS), which only affects where it is
+ *    uploaded — being listed here is what makes it mandatory. Its mime
+ *    types and size cap are the video ones registered on UserProfile's
+ *    media collection, not the document set's, and match the wizard's
+ *    own upload validation.
+ *
+ * Every row is seeded required=true, but `required` stays a per-row
+ * column, not a hardcoded true: admins relax individual requirements
+ * from Document Requirements, and this seeder must not fight that.
+ *
+ * firstOrCreate, never updateOrCreate: these rows are admin-editable, so
+ * re-running the seeder must not revert a deliberate configuration
+ * change. Retiring a requirement is `active = false` (the model forbids
+ * hard deletion), which this seeder also leaves alone.
  */
 class InstructorDocumentRequirementSeeder extends Seeder
 {
     private const array DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
-    private const array REQUIREMENTS = [
-        ['collection_name' => 'government_id', 'label' => 'Government ID', 'sort_order' => 1],
-        ['collection_name' => 'address_proof', 'label' => 'Address Proof', 'sort_order' => 2],
-        ['collection_name' => 'education_certificate', 'label' => 'Education Certificate', 'sort_order' => 3],
-        ['collection_name' => 'teaching_certificate', 'label' => 'Teaching Certificate', 'sort_order' => 4],
-        ['collection_name' => 'resume', 'label' => 'Resume', 'sort_order' => 5],
-    ];
+    private const array VIDEO_MIME_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
+    private const int DOCUMENT_MAX_SIZE_KB = 4096;
+
+    private const int VIDEO_MAX_SIZE_KB = 51200;
 
     public function run(): void
     {
-        foreach (self::REQUIREMENTS as $requirement) {
+        foreach (InstructorEvidenceCollection::cases() as $index => $collection) {
+            $isVideo = $collection === InstructorEvidenceCollection::IntroductionVideo;
+
             InstructorDocumentRequirement::query()->firstOrCreate(
-                ['collection_name' => $requirement['collection_name']],
+                ['collection_name' => $collection->value],
                 [
-                    'label' => $requirement['label'],
+                    'label' => $collection->label(),
                     'required' => true,
-                    'accepted_mime_types' => self::DOCUMENT_MIME_TYPES,
-                    'max_size_kb' => 4096,
+                    'accepted_mime_types' => $isVideo ? self::VIDEO_MIME_TYPES : self::DOCUMENT_MIME_TYPES,
+                    'max_size_kb' => $isVideo ? self::VIDEO_MAX_SIZE_KB : self::DOCUMENT_MAX_SIZE_KB,
                     'active' => true,
-                    'sort_order' => $requirement['sort_order'],
+                    // Enum declaration order is the display order, which is
+                    // already the order an applicant is asked for them in.
+                    'sort_order' => $index + 1,
                 ],
             );
         }

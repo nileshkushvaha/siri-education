@@ -44,6 +44,15 @@ final class InstructorOnboardingService
      * replaced the old REQUIRED_DOCUMENT_COLLECTIONS/
      * OPTIONAL_DOCUMENT_COLLECTIONS constants).
      */
+    /**
+     * The non-document half of missingRequiredItems(): headline, bio,
+     * experience summary, teaching philosophy, subjects, academic levels,
+     * teaching languages, education, experience. Kept beside that method —
+     * a check added there must be counted here or progress() overstates
+     * completion.
+     */
+    private const int PROFILE_REQUIRED_ITEM_COUNT = 9;
+
     public const PROFILE_MEDIA_COLLECTIONS = [
         'avatar',
         'introduction_video',
@@ -497,7 +506,13 @@ final class InstructorOnboardingService
     public function progress(User $user): array
     {
         $missing = $this->missingRequiredItems($user);
-        $total = 14;
+
+        // Derived, never a hardcoded 14: the document half of the
+        // checklist is admin-configurable, so a requirement added or
+        // relaxed in Document Requirements must move the denominator with
+        // it. A fixed total silently reports >100% once a requirement is
+        // retired, and negative percentages once one is added.
+        $total = self::PROFILE_REQUIRED_ITEM_COUNT + count($this->documentRequirements->requiredCollections());
         $status = $user->profile?->instructor_status;
 
         return [

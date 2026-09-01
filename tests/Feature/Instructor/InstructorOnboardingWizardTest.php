@@ -199,6 +199,16 @@ class InstructorOnboardingWizardTest extends TestCase
             ->call('uploadDocument', 'resume')
             ->assertHasNoErrors();
 
+        // The five documents alone are no longer the whole set: the
+        // introduction video is a required requirement row too, so the step
+        // must still hold here.
+        $component->assertSet('step', 6);
+
+        $component
+            ->set('introductionVideo', UploadedFile::fake()->create('introduction.mp4', 512, 'video/mp4'))
+            ->call('uploadDocument', 'introduction_video')
+            ->assertHasNoErrors();
+
         $component->assertSet('step', 7);
     }
 
@@ -269,6 +279,8 @@ class InstructorOnboardingWizardTest extends TestCase
             ->call('uploadDocument', 'teaching_certificate')
             ->set('resume', UploadedFile::fake()->image('resume.jpg'))
             ->call('uploadDocument', 'resume')
+            ->set('introductionVideo', UploadedFile::fake()->create('introduction.mp4', 512, 'video/mp4'))
+            ->call('uploadDocument', 'introduction_video')
             ->assertHasNoErrors();
 
         foreach (app(InstructorDocumentRequirementService::class)->requiredCollections() as $collection) {
@@ -374,7 +386,9 @@ class InstructorOnboardingWizardTest extends TestCase
             ->set('teachingCertificate', UploadedFile::fake()->image('teaching.jpg'))
             ->call('uploadDocument', 'teaching_certificate')
             ->set('resume', UploadedFile::fake()->image('resume.jpg'))
-            ->call('uploadDocument', 'resume');
+            ->call('uploadDocument', 'resume')
+            ->set('introductionVideo', UploadedFile::fake()->create('introduction.mp4', 512, 'video/mp4'))
+            ->call('uploadDocument', 'introduction_video');
 
         return $user->fresh(['profile.media', 'teacherSubjects', 'educations', 'experiences']);
     }

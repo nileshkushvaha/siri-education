@@ -214,7 +214,7 @@ class AdminFormsPresentationPilotTest extends TestCase
         $this->actingAs($this->superAdmin());
 
         $html = Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
-            ->assertSeeInOrder(['People', 'Users', 'Jordan Rivera', 'Edit'])
+            ->assertSeeInOrder(['People', 'All Users', 'Jordan Rivera', 'Edit'])
             ->html();
 
         preg_match('/<nav[^>]*fi-breadcrumbs.*?<\/nav>/s', $html, $matches);

@@ -48,6 +48,13 @@ class InstructorOnboardingResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    // The model is User, so without these the page heading and breadcrumb
+    // on a screen that only ever shows instructor applications read
+    // "Users" — the exact confusion the People regroup set out to remove.
+    protected static ?string $modelLabel = 'instructor application';
+
+    protected static ?string $pluralModelLabel = 'instructor onboarding';
+
     public static function table(Table $table): Table
     {
         return InstructorOnboardingTable::configure($table);

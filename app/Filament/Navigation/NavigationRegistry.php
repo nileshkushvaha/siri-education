@@ -75,6 +75,7 @@ use App\Filament\Resources\InstructorPackageProposals\InstructorPackageProposalR
 use App\Filament\Resources\InstructorPayoutAttempts\InstructorPayoutAttemptResource;
 use App\Filament\Resources\InstructorPayoutMethods\InstructorPayoutMethodResource;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\InstructorPayoutReconciliationIssueResource;
+use App\Filament\Resources\Instructors\InstructorResource;
 use App\Filament\Resources\InstructorSettlementBatches\InstructorSettlementBatchResource;
 use App\Filament\Resources\InstructorWaitlistEntries\InstructorWaitlistEntryResource;
 use App\Filament\Resources\InstructorWithdrawalRequests\InstructorWithdrawalRequestResource;
@@ -109,6 +110,7 @@ use App\Filament\Resources\StudentLearningPlans\StudentLearningPlanResource;
 use App\Filament\Resources\StudentLessonPrices\StudentLessonPriceResource;
 use App\Filament\Resources\StudentPackageEntitlements\StudentPackageEntitlementResource;
 use App\Filament\Resources\StudentPackagePurchases\StudentPackagePurchaseResource;
+use App\Filament\Resources\Students\StudentResource;
 use App\Filament\Resources\SupportCases\SupportCaseResource;
 use App\Filament\Resources\SuspiciousActivityFlags\SuspiciousActivityFlagResource;
 use App\Filament\Resources\Tags\TagResource;
@@ -158,19 +160,37 @@ final class NavigationRegistry
             // ── People ───────────────────────────────────────────────────
             UserResource::class => new NavigationDestination(
                 id: 'people.users',
-                label: 'Users',
+                label: 'All Users',
                 group: 'People',
                 subgroup: 'Users',
                 sort: 1,
                 previousGroup: 'Users & Access',
                 previousLabel: 'Users',
             ),
+            // Role-scoped views of the same list, so the two roles admins
+            // work with daily are one click away instead of a role filter
+            // on "All Users". Same model and policy — only the query
+            // differs; see StudentResource/InstructorResource.
+            StudentResource::class => new NavigationDestination(
+                id: 'people.users.students',
+                label: 'Students',
+                group: 'People',
+                subgroup: 'Users',
+                sort: 2,
+            ),
+            InstructorResource::class => new NavigationDestination(
+                id: 'people.users.instructors',
+                label: 'Instructors',
+                group: 'People',
+                subgroup: 'Users',
+                sort: 3,
+            ),
             InstructorOnboardingResource::class => new NavigationDestination(
                 id: 'people.instructors.onboarding',
                 label: 'Onboarding',
                 group: 'People',
                 subgroup: 'Instructors',
-                sort: 2,
+                sort: 4,
                 previousGroup: 'Instructor',
                 previousLabel: 'Onboarding',
             ),
@@ -179,7 +199,7 @@ final class NavigationRegistry
                 label: 'Document Requirements',
                 group: 'People',
                 subgroup: 'Instructors',
-                sort: 3,
+                sort: 5,
                 previousGroup: 'Instructor',
                 previousLabel: 'Document Requirements',
             ),

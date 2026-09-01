@@ -218,19 +218,12 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-4">
                         <div class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
                             <label class="mb-3 block text-sm font-medium text-slate-200">Profile Photo</label>
                             <input type="file" wire:model="profilePhoto" @disabled(! $editable) class="block w-full cursor-pointer text-sm text-slate-300 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
                             <p class="{{ $helpClass }}">Upload a clear headshot. JPG or PNG works best, up to 4 MB.</p>
                             @error('profilePhoto') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
-                        </div>
-
-                        <div class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
-                            <label class="mb-3 block text-sm font-medium text-slate-200">Introduction Video</label>
-                            <input type="file" wire:model="introductionVideo" @disabled(! $editable) class="block w-full cursor-pointer text-sm text-slate-300 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
-                            <p class="{{ $helpClass }}">Optional short intro. Supported formats: MP4, WebM, or MOV, up to 50 MB.</p>
-                            @error('introductionVideo') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
@@ -569,15 +562,7 @@
 
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     @foreach($documents as $document)
-                        @php
-                            $property = match ($document['collection']) {
-                                'government_id' => 'governmentId',
-                                'address_proof' => 'addressProof',
-                                'education_certificate' => 'educationCertificate',
-                                'teaching_certificate' => 'teachingCertificate',
-                                'resume' => 'resume',
-                            };
-                        @endphp
+                        @php $property = $document['property']; @endphp
 
                         <div class="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4">
                             <div class="mb-4 flex items-center justify-between gap-3">
@@ -588,7 +573,7 @@
                             </div>
 
                             <input type="file" wire:model="{{ $property }}" @disabled(! $editable) class="block w-full cursor-pointer text-sm text-slate-300 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
-                            <p class="{{ $helpClass }}">Use a readable image or PDF-style document. Replace it before submission if needed.</p>
+                            <p class="{{ $helpClass }}">{{ $document['help'] }}</p>
                             @error($property) <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
 
                             <button type="button" wire:click="uploadDocument('{{ $document['collection'] }}')" @disabled(! $editable) class="mt-4 {{ $secondaryButtonClass }}">

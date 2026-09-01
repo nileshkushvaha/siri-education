@@ -46,6 +46,70 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
     // Unlock email token TTL — no corresponding settings field; keep as constant
     public const UNLOCK_TOKEN_MINUTES = 60;
 
+    /**
+     * Display label for an account status. Lives here, next to the
+     * constants, because three admin tables were each carrying their own
+     * match() over the same five values — and drifting (one showed
+     * 'pending_verification' verbatim, another called it 'Pending').
+     *
+     * Presentation only: nothing branches on the returned string.
+     */
+    public static function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            self::STATUS_ACTIVE => 'Active',
+            self::STATUS_PENDING => 'Pending verification',
+            self::STATUS_INACTIVE => 'Inactive',
+            self::STATUS_BLOCKED => 'Blocked',
+            self::STATUS_SUSPENDED => 'Suspended',
+            default => (string) str($status ?? '—')->headline(),
+        };
+    }
+
+    /**
+     * Stored status values whose label or value contains $search — the
+     * search-box counterpart to statusLabel(), so typing "pending" finds
+     * accounts stored as 'pending_verification'.
+     *
+     * @return list<string>
+     */
+    public static function statusesMatching(string $search): array
+    {
+        $needle = mb_strtolower(trim($search));
+
+        if ($needle === '') {
+            return [];
+        }
+
+        $statuses = [
+            self::STATUS_ACTIVE,
+            self::STATUS_PENDING,
+            self::STATUS_INACTIVE,
+            self::STATUS_BLOCKED,
+            self::STATUS_SUSPENDED,
+        ];
+
+        return array_values(array_filter(
+            $statuses,
+            fn (string $status): bool => str_contains(mb_strtolower(self::statusLabel($status)), $needle)
+                || str_contains($status, $needle),
+        ));
+    }
+
+    /**
+     * Filament badge color for an account status. Companion to
+     * statusLabel() — see its note.
+     */
+    public static function statusColor(?string $status): string
+    {
+        return match ($status) {
+            self::STATUS_ACTIVE => 'success',
+            self::STATUS_PENDING => 'warning',
+            self::STATUS_BLOCKED, self::STATUS_SUSPENDED => 'danger',
+            default => 'gray',
+        };
+    }
+
     // ────────────────────────────────────────────────────────────────
 
     protected $fillable = [

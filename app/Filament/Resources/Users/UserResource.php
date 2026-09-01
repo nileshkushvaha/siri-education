@@ -32,6 +32,12 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    // Page title, breadcrumb and empty states all read from here, so the
+    // "All Users" the sidebar promises is the same words the page shows —
+    // and it stays distinguishable from the role-scoped Students /
+    // Instructors lists once you have landed on one of them.
+    protected static ?string $pluralModelLabel = 'all users';
+
     public static function form(Schema $schema): Schema
     {
         return UserForm::configure($schema);

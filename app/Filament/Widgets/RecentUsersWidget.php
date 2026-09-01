@@ -56,18 +56,8 @@ class RecentUsersWidget extends BaseWidget
                     ->color('warning'),
 
                 BadgeColumn::make('status')
-                    ->colors([
-                        'success' => 'active',
-                        'warning' => 'pending_verification',
-                        'danger' => fn ($state) => in_array($state, ['blocked', 'suspended']),
-                    ])
-                    ->formatStateUsing(fn ($state) => match ($state) {
-                        'active' => 'Active',
-                        'pending_verification' => 'Pending',
-                        'blocked' => 'Blocked',
-                        'suspended' => 'Suspended',
-                        default => ucfirst($state),
-                    }),
+                    ->color(fn ($state): string => User::statusColor($state))
+                    ->formatStateUsing(fn ($state): string => User::statusLabel($state)),
 
                 IconColumn::make('email_verified_at')
                     ->label('Verified')

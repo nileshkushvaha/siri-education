@@ -289,8 +289,13 @@ class InstructorOnboardingServiceTest extends TestCase
         UserExperience::factory()->for($user)->create(['status' => 'active']);
 
         foreach (app(InstructorDocumentRequirementService::class)->requiredCollections() as $collection) {
-            $user->profile->addMedia(UploadedFile::fake()->image($collection.'.jpg'))
-                ->toMediaCollection($collection);
+            // introduction_video's media collection accepts video mime types
+            // only — a fake jpg is rejected outright, not silently stored.
+            $file = $collection === 'introduction_video'
+                ? UploadedFile::fake()->create('introduction_video.mp4', 512, 'video/mp4')
+                : UploadedFile::fake()->image($collection.'.jpg');
+
+            $user->profile->addMedia($file)->toMediaCollection($collection);
         }
 
         return $user->fresh(['profile.media', 'teacherSubjects']);

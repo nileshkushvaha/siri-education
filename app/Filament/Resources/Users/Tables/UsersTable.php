@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
-use App\Enums\InstructorStatus;
-use App\Enums\StudentStatus;
 use App\Exceptions\LastActiveSuperAdminException;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Models\InstructorCompensationAgreement;
@@ -17,12 +15,9 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -32,7 +27,7 @@ class UsersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['profile.media']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['profile.media', 'profile.country']))
             ->columns([
                 ImageColumn::make('avatar_url')
                     ->label('')
@@ -40,18 +35,7 @@ class UsersTable
                     ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&color=ffffff&background=6366f1')
                     ->size(40),
 
-                TextColumn::make('name')
-                    ->label('Name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight(FontWeight::Medium),
-
-                TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable()
-                    ->sortable()
-                    ->copyable()
-                    ->copyMessage('Email copied'),
+                UserColumns::person(),
 
                 TextColumn::make('roles.name')
                     ->label('Roles')
@@ -60,42 +44,21 @@ class UsersTable
                     ->searchable()
                     ->separator(','),
 
-                TextColumn::make('authored_posts_count')
-                    ->label('Posts')
-                    ->counts('authoredPosts'),
+                UserColumns::mobile(),
 
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'inactive' => 'danger',
-                        default => 'gray',
-                    })
-                    ->sortable(),
+                UserColumns::country(),
 
-                TextColumn::make('profile.instructor_status')
-                    ->label('Instructor')
-                    ->badge()
-                    ->formatStateUsing(fn (?InstructorStatus $state): string => $state?->label() ?? '—')
-                    ->color(fn (?InstructorStatus $state): string => $state?->color() ?? 'gray')
-                    ->sortable()
+                UserColumns::accountAccess(),
+
+                // Both lifecycle columns are available here but off by
+                // default — this list mixes every role, so neither applies
+                // to most rows. The Students / Instructors lists show the
+                // one that matters outright.
+                UserColumns::instructorLifecycle()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('profile.student_status')
-                    ->label('Student')
-                    ->badge()
-                    ->formatStateUsing(fn (?StudentStatus $state): string => $state?->label() ?? '—')
-                    ->color(fn (?StudentStatus $state): string => $state?->color() ?? 'gray')
-                    ->sortable()
+                UserColumns::studentLifecycle()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('email_verified_at')
-                    ->label('Verified')
-                    ->badge()
-                    ->formatStateUsing(fn ($state): string => $state ? 'Verified' : 'Unverified')
-                    ->color(fn ($state): string => $state ? 'success' : 'warning')
-                    ->sortable(),
 
                 TextColumn::make('created_at')
                     ->label('Joined')
@@ -114,58 +77,6 @@ class UsersTable
                     ->suffix('%')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-            ])
-
-            ->filters([
-                SelectFilter::make('roles')
-                    ->label('Role')
-                    ->relationship('roles', 'name')
-                    ->searchable()
-                    ->preload(),
-
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options([
-                        'active' => 'Active',
-                        'inactive' => 'Inactive',
-                    ]),
-
-                SelectFilter::make('instructor_status')
-                    ->label('Instructor Status')
-                    ->options(InstructorStatus::class)
-                    ->query(function (Builder $query, array $data): Builder {
-                        $value = $data['value'] ?? null;
-
-                        if (! filled($value)) {
-                            return $query;
-                        }
-
-                        return $query->whereHas('profile', fn (Builder $profileQuery) => $profileQuery->where('instructor_status', $value));
-                    }),
-
-                SelectFilter::make('student_status')
-                    ->label('Student Status')
-                    ->options(StudentStatus::class)
-                    ->query(function (Builder $query, array $data): Builder {
-                        $value = $data['value'] ?? null;
-
-                        if (! filled($value)) {
-                            return $query;
-                        }
-
-                        return $query->whereHas('profile', fn (Builder $profileQuery) => $profileQuery->where('student_status', $value));
-                    }),
-
-                TernaryFilter::make('email_verified_at')
-                    ->label('Email Verified')
-                    ->nullable()
-                    ->trueLabel('Verified')
-                    ->falseLabel('Unverified')
-                    ->queries(
-                        true: fn (Builder $query) => $query->whereNotNull('email_verified_at'),
-                        false: fn (Builder $query) => $query->whereNull('email_verified_at'),
-                        blank: fn (Builder $query) => $query,
-                    ),
             ])
 
             ->recordActions([
@@ -227,6 +138,18 @@ class UsersTable
                     ExportBulkAction::make(),
                 ]),
             ])
+
+            // One search box instead of a filter panel: the old five
+            // filters were a dropdown-per-question (role, status,
+            // instructor status, student status, verified) for what is
+            // almost always "find this one person". Every visible column
+            // is searchable — including mobile, country, role name and
+            // the account status *labels* — so typing "pending",
+            // "instructor" or a phone number narrows the list the same
+            // way picking a filter used to, without the extra clicks.
+            ->searchPlaceholder('Search by name, email, mobile, role, country or status')
+            ->searchDebounce('400ms')
+            ->persistSearchInSession()
 
             ->defaultSort('created_at', 'desc')
 

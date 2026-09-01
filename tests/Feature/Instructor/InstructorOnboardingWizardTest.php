@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\FakeMediaFiles;
 use Tests\TestCase;
 
 class InstructorOnboardingWizardTest extends TestCase
@@ -205,7 +206,7 @@ class InstructorOnboardingWizardTest extends TestCase
         $component->assertSet('step', 6);
 
         $component
-            ->set('introductionVideo', UploadedFile::fake()->create('introduction.mp4', 512, 'video/mp4'))
+            ->set('introductionVideo', FakeMediaFiles::introductionVideo('introduction.mp4'))
             ->call('uploadDocument', 'introduction_video')
             ->assertHasNoErrors();
 
@@ -279,7 +280,7 @@ class InstructorOnboardingWizardTest extends TestCase
             ->call('uploadDocument', 'teaching_certificate')
             ->set('resume', UploadedFile::fake()->image('resume.jpg'))
             ->call('uploadDocument', 'resume')
-            ->set('introductionVideo', UploadedFile::fake()->create('introduction.mp4', 512, 'video/mp4'))
+            ->set('introductionVideo', FakeMediaFiles::introductionVideo('introduction.mp4'))
             ->call('uploadDocument', 'introduction_video')
             ->assertHasNoErrors();
 
@@ -387,7 +388,7 @@ class InstructorOnboardingWizardTest extends TestCase
             ->call('uploadDocument', 'teaching_certificate')
             ->set('resume', UploadedFile::fake()->image('resume.jpg'))
             ->call('uploadDocument', 'resume')
-            ->set('introductionVideo', UploadedFile::fake()->create('introduction.mp4', 512, 'video/mp4'))
+            ->set('introductionVideo', FakeMediaFiles::introductionVideo('introduction.mp4'))
             ->call('uploadDocument', 'introduction_video');
 
         return $user->fresh(['profile.media', 'teacherSubjects', 'educations', 'experiences']);

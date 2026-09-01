@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Tests\Support\FakeMediaFiles;
 use Tests\TestCase;
 
 class InstructorOnboardingServiceTest extends TestCase
@@ -290,9 +291,10 @@ class InstructorOnboardingServiceTest extends TestCase
 
         foreach (app(InstructorDocumentRequirementService::class)->requiredCollections() as $collection) {
             // introduction_video's media collection accepts video mime types
-            // only — a fake jpg is rejected outright, not silently stored.
+            // only, and checks the detected mime — a fake jpg, or a
+            // zero-byte .mp4, is rejected outright rather than stored.
             $file = $collection === 'introduction_video'
-                ? UploadedFile::fake()->create('introduction_video.mp4', 512, 'video/mp4')
+                ? FakeMediaFiles::introductionVideo()
                 : UploadedFile::fake()->image($collection.'.jpg');
 
             $user->profile->addMedia($file)->toMediaCollection($collection);

@@ -135,6 +135,8 @@ final class MarketplaceSupplyDemandRepository
     private function instructors(ReportFilters $filters): Builder
     {
         $query = DB::table('users')
+            // Raw builder, so User's SoftDeletes scope does not apply here.
+            ->whereNull('users.deleted_at')
             ->whereExists(fn (Builder $q) => $q
                 ->from('model_has_roles')
                 ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')

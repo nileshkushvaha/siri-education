@@ -33,6 +33,18 @@ class UserObserver
         $user->profile()->create();
     }
 
+    public function deleted(User $user): void
+    {
+        // The users.id FK cascade no longer fires on a soft delete, so the
+        // profile has to follow the user explicitly.
+        $user->profile()?->withoutTrashed()->delete();
+    }
+
+    public function restored(User $user): void
+    {
+        $user->profile()?->onlyTrashed()->restore();
+    }
+
     public function updating(User $user): void
     {
         if (! $user->isDirty('name')) {
@@ -58,6 +70,8 @@ class UserObserver
         $i = 1;
 
         while (
+            // Includes soft-deleted rows on purpose: a trashed user still
+            // owns its slug, and restoring must not collide.
             DB::table('users')
                 ->where('slug', $slug)
                 ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))

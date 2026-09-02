@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -30,7 +31,8 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasMedia, MustVerifyEmail
 {
-    use HasFactory, HasRoles, HasStandardImageConversions, InteractsWithMedia, LogsActivity, Notifiable;
+    /** SoftDeletes: 83 RESTRICT/NO ACTION foreign keys make a hard delete impossible for any user with history. */
+    use HasFactory, HasRoles, HasStandardImageConversions, InteractsWithMedia, LogsActivity, Notifiable, SoftDeletes;
 
     // ── Status constants ────────────────────────────────────────────
     public const STATUS_PENDING = 'pending_verification';

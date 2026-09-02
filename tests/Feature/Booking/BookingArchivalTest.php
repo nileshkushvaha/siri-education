@@ -332,20 +332,25 @@ class BookingArchivalTest extends TestCase
     }
 
     /**
-     * `User` has no `SoftDeletes` in this codebase, so
-     * `$user->delete()` is a physical deletion attempt. That attempt
-     * must be restricted when historical records reference the
-     * account — `bookings.student_id`/`instructor_id` are RESTRICT, so
-     * the database itself rejects it and every dependent row survives.
+     * `User` soft deletes, so `$user->delete()` hides the account without
+     * touching history. A FORCE delete is the physical attempt, and
+     * `bookings.student_id`/`instructor_id` being RESTRICT means the
+     * database rejects it while every dependent row survives.
      */
-    public function test_user_physical_deletion_is_restricted_and_booking_history_survives(): void
+    public function test_user_deletion_preserves_booking_history_and_force_deletion_is_restricted(): void
     {
         $graph = $this->richBookingGraph();
         $student = $graph['booking']->student;
 
+        $student->delete();
+
+        $this->assertSoftDeleted('users', ['id' => $student->id]);
+        $this->assertDatabaseHas('bookings', ['id' => $graph['booking']->id]);
+        $this->assertDatabaseHas('lessons', ['id' => $graph['lesson']->id]);
+
         try {
-            $student->delete();
-            $this->fail('Expected deleting a user with booking history to be rejected.');
+            $student->forceDelete();
+            $this->fail('Expected force-deleting a user with booking history to be rejected.');
         } catch (QueryException) {
             // expected — RESTRICT rejected the physical deletion
         }
@@ -353,6 +358,18 @@ class BookingArchivalTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $student->id]);
         $this->assertDatabaseHas('bookings', ['id' => $graph['booking']->id]);
         $this->assertDatabaseHas('lessons', ['id' => $graph['lesson']->id]);
+    }
+
+    public function test_a_deleted_user_can_be_restored_with_their_history_intact(): void
+    {
+        $graph = $this->richBookingGraph();
+        $student = $graph['booking']->student;
+
+        $student->delete();
+        $student->restore();
+
+        $this->assertNotSoftDeleted('users', ['id' => $student->id]);
+        $this->assertDatabaseHas('bookings', ['id' => $graph['booking']->id]);
     }
 
     // ── 39–50. Historical query compatibility ────────────────────────────

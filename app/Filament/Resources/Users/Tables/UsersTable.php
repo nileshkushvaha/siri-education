@@ -7,12 +7,15 @@ use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensati
 use App\Models\InstructorCompensationAgreement;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
+use App\Services\Admin\UserDeletionGuard;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -20,6 +23,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 
 class UsersTable
@@ -28,6 +32,7 @@ class UsersTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['profile.media', 'profile.country']))
+
             ->columns([
                 ImageColumn::make('avatar_url')
                     ->label('')
@@ -104,6 +109,44 @@ class UsersTable
                             Notification::make()->title('User deleted')->success()->send();
                         } catch (LastActiveSuperAdminException $e) {
                             Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                        }
+                    }),
+
+                RestoreAction::make()
+                    ->successNotificationTitle('Account restored'),
+
+                // Mirrors EditUser: refuse with a readable reason before
+                // attempting, so a 1451 never becomes a generic page error.
+                ForceDeleteAction::make()
+                    ->hidden(fn ($record): bool => $record->id === auth()->id()
+                        || app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record)
+                    )
+                    ->action(function ($record): void {
+                        $guard = app(UserDeletionGuard::class);
+
+                        if (! $guard->canForceDelete($record)) {
+                            Notification::make()
+                                ->title('This account cannot be permanently deleted')
+                                ->body($guard->refusalMessage($record))
+                                ->danger()->persistent()->send();
+
+                            return;
+                        }
+
+                        try {
+                            app(SuperAdminGuardService::class)->protect($record, fn (User $user) => $user->forceDelete());
+
+                            Notification::make()->title('Account permanently deleted')->success()->send();
+                        } catch (LastActiveSuperAdminException $e) {
+                            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                        } catch (QueryException $e) {
+                            report($e);
+
+                            Notification::make()
+                                ->title('This account cannot be permanently deleted')
+                                ->body($guard->refusalMessage($record)
+                                    ?: 'It still has linked records that must be kept. The account remains deleted and hidden.')
+                                ->danger()->persistent()->send();
                         }
                     }),
             ])

@@ -10,13 +10,17 @@ use App\Filament\Resources\Users\UserResource;
 use App\Filament\Support\Presentation\BackAction;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
+use App\Services\Admin\UserDeletionGuard;
 use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
 use App\Services\Student\StudentLifecycleService;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\QueryException;
 use Spatie\Permission\Models\Role;
 
 class EditUser extends EditRecord
@@ -36,6 +40,8 @@ class EditUser extends EditRecord
             ViewAction::make(),
             ...$this->studentLifecycleActions(),
             DeleteAction::make()
+                ->modalDescription('This hides the account everywhere in the app. Bookings, lessons, earnings and audit history are kept, and the account can be restored later.')
+                ->successNotificationTitle('Account deleted')
                 ->hidden(fn (): bool => $this->record->id === auth()->id()
                     || app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($this->record)
                 )
@@ -43,11 +49,55 @@ class EditUser extends EditRecord
                     try {
                         app(SuperAdminGuardService::class)->protect($this->record, fn (User $user) => $user->delete());
 
-                        Notification::make()->title('User deleted')->success()->send();
+                        Notification::make()->title('Account deleted')
+                            ->body('It is hidden from the app but can be restored. All history has been kept.')
+                            ->success()->send();
 
                         $this->redirect($this->getResource()::getUrl('index'));
                     } catch (LastActiveSuperAdminException $e) {
                         Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                    }
+                }),
+
+            RestoreAction::make()
+                ->successNotificationTitle('Account restored'),
+
+            // Checked before the attempt so the operator is told what is
+            // linked; the QueryException catch is only a race backstop.
+            ForceDeleteAction::make()
+                ->modalDescription('This permanently removes the account and cannot be undone.')
+                ->hidden(fn (): bool => $this->record->id === auth()->id()
+                    || app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($this->record)
+                )
+                ->action(function (): void {
+                    $guard = app(UserDeletionGuard::class);
+
+                    if (! $guard->canForceDelete($this->record)) {
+                        Notification::make()
+                            ->title('This account cannot be permanently deleted')
+                            ->body($guard->refusalMessage($this->record))
+                            ->danger()->persistent()->send();
+
+                        return;
+                    }
+
+                    try {
+                        app(SuperAdminGuardService::class)->protect($this->record, fn (User $user) => $user->forceDelete());
+
+                        Notification::make()->title('Account permanently deleted')->success()->send();
+
+                        $this->redirect($this->getResource()::getUrl('index'));
+                    } catch (LastActiveSuperAdminException $e) {
+                        Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+                    } catch (QueryException $e) {
+                        // Logged, never displayed: the text names tables and constraints.
+                        report($e);
+
+                        Notification::make()
+                            ->title('This account cannot be permanently deleted')
+                            ->body($guard->refusalMessage($this->record)
+                                ?: 'It still has linked records that must be kept. The account remains deleted and hidden.')
+                            ->danger()->persistent()->send();
                     }
                 }),
         ]);

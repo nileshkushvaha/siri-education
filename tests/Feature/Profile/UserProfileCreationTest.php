@@ -66,12 +66,26 @@ class UserProfileCreationTest extends TestCase
         UserProfile::create(['user_id' => $user->id, 'phone' => '555-0100']);
     }
 
-    public function test_deleting_a_user_cascades_to_their_profile(): void
+    public function test_deleting_a_user_cascades_the_soft_delete_to_their_profile(): void
     {
         $user = User::factory()->create();
         $profileId = $user->profile->id;
 
         $user->delete();
+
+        $this->assertSoftDeleted('user_profiles', ['id' => $profileId]);
+
+        $user->restore();
+
+        $this->assertNotSoftDeleted('user_profiles', ['id' => $profileId]);
+    }
+
+    public function test_force_deleting_a_user_removes_their_profile(): void
+    {
+        $user = User::factory()->create();
+        $profileId = $user->profile->id;
+
+        $user->forceDelete();
 
         $this->assertDatabaseMissing('user_profiles', ['id' => $profileId]);
     }

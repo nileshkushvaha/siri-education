@@ -92,6 +92,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Pulse Monitoring | `pulse-monitoring.md` |
 | Payment gateway go-live checklist (Razorpay/Stripe) | `architecture/payment-gateway-production-checklist.md` |
 | Meeting-provider go-live checklist (Google Meet/Zoom) | `architecture/meeting-provider-production-checklist.md` |
+| Apple Pay domain verification (Razorpay Standard Checkout) | `deployment/apple-pay-domain-verification.md` |
 | Real-money provider activation status (RazorpayX payout, Stripe collection) | `financial-provider-activation-handoff.md` |
 
 ## Integrations

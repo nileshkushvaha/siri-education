@@ -33,6 +33,11 @@ final class Phase23JArchitectureTest extends TestCase
         // regression this test exists to catch, and must be justified
         // here before being added.
         $expectedHomeworkModels = [
+            // A suggestion attached to one submission, never an outcome:
+            // nothing reads it to grade, change status, touch the learning
+            // plan, notify, or show anything to the student. Not a parallel
+            // tracker.
+            'HomeworkAiFeedbackDraft.php',
             'HomeworkAssignment.php', // the single source of truth for assignment/submission/review state
             'HomeworkDueReminder.php', // due-date reminder claim/dispatch history
             'HomeworkReminderChannelDelivery.php', // per-channel reminder delivery record

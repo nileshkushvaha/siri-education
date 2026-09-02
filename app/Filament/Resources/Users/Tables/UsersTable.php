@@ -147,6 +147,11 @@ class UsersTable
             // the account status *labels* — so typing "pending",
             // "instructor" or a phone number narrows the list the same
             // way picking a filter used to, without the extra clicks.
+            ->header(view('filament.tables.user-search-bar', [
+                'heading' => 'Find a user',
+                'placeholder' => 'Type a name, email, mobile number, country, role or status…',
+                'fields' => ['Name', 'Email', 'Mobile', 'Country', 'Role', 'Account status'],
+            ]))
             ->searchPlaceholder('Search by name, email, mobile, role, country or status')
             ->searchDebounce('400ms')
             ->persistSearchInSession()

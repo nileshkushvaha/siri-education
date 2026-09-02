@@ -449,3 +449,16 @@ a.dash-card:hover .dash-go { transform: translateX(3px); }
     .dash-pulse { animation: none; }
     .dash-skeleton::after { animation: none; }
 }
+
+/* The people lists (All Users / Students / Instructors) render their own
+   search section as the table header — see
+   resources/views/filament/tables/user-search-bar.blade.php. Those lists
+   have no filter panel, so search is the only way to narrow them and it
+   is given stated space instead of the toolbar's small right-aligned box.
+   Hide that default box wherever the custom bar is present, so the page
+   offers exactly one place to type; both write to `tableSearch`, so this
+   is purely about where the input lives. Keyed on the bar's own class, so
+   every other table in the panel keeps the standard toolbar search. */
+.fi-ta-header-ctn:has(.fi-user-search-bar) .fi-ta-header-toolbar .fi-ta-search-field {
+    display: none;
+}

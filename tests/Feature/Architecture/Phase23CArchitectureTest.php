@@ -32,8 +32,11 @@ final class Phase23CArchitectureTest extends TestCase
         $allowed = [
             app_path('Services/Instructor/InstructorOnboardingService.php'),
             // Pre-existing admin "Force Approve" override — predates
-            // and is unrelated to the public application entry.
-            app_path('Filament/Resources/Users/Pages/EditUser.php'),
+            // and is unrelated to the public application entry. Moved out
+            // of EditUser.php with the rest of the lifecycle actions when
+            // instructor review split off into InstructorOnboardingResource
+            // (see docs/users.md); same single exception, new home.
+            app_path('Filament/Concerns/HasInstructorLifecycleActions.php'),
         ];
 
         $offenders = [];

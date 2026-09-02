@@ -51,16 +51,27 @@ final class Phase23EArchitectureTest extends TestCase
             );
         }
 
-        $this->assertStringContainsString('InstructorDocumentViewer', $form);
+        // The viewer moved with the documents themselves: instructor
+        // review lives on InstructorOnboardingResource now (see
+        // docs/users.md), so UserForm must have neither the raw uploads
+        // nor the viewer, and the onboarding form must have the viewer.
+        $this->assertStringNotContainsString('InstructorDocumentViewer', $form);
+
+        $onboardingForm = file_get_contents(app_path('Filament/Resources/InstructorOnboarding/Schemas/InstructorOnboardingForm.php'));
+        $this->assertIsString($onboardingForm);
+        $this->assertStringContainsString('InstructorDocumentViewer', $onboardingForm);
     }
 
     public function test_verification_documents_section_is_gated_by_the_document_policy(): void
     {
-        $form = file_get_contents(app_path('Filament/Resources/Users/Schemas/UserForm.php'));
+        $form = file_get_contents(app_path('Filament/Resources/InstructorOnboarding/Schemas/InstructorOnboardingForm.php'));
         $this->assertIsString($form);
 
-        $sectionStart = strpos($form, "Section::make('Verification Documents')");
-        $this->assertNotFalse($sectionStart, 'Verification Documents section not found.');
+        // Renamed "Verification Documents" -> "Verification Evidence" when
+        // it moved to the onboarding form; the gate it must carry is the
+        // unchanged part and the only thing this test is really about.
+        $sectionStart = strpos($form, "Section::make('Verification Evidence')");
+        $this->assertNotFalse($sectionStart, 'Verification Evidence section not found.');
 
         $sectionSnippet = substr($form, $sectionStart, 2000);
 

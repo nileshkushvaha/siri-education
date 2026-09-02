@@ -51,6 +51,7 @@ enum OperationalAlertType: string
             self::WalletRechargeCreditFailed => 'Wallet Recharge Credit Failed',
             self::RecordingCaptureFailed => 'Recording Capture Failed',
             self::RecordingMultipleArtifacts => 'Multiple Recording Artifacts',
+            self::AiBudgetThresholdReached => 'AI Budget Threshold Reached',
         };
     }
 

@@ -1,0 +1,12 @@
+Apple Pay domain verification.
+
+Razorpay Dashboard > Apple Pay > "Verification file" downloads a file named
+    apple-developer-merchantid-domain-association
+(no extension). Place it in THIS directory and commit it, so every deploy
+keeps serving it — Apple re-checks the file periodically, not just once.
+
+It must then answer, over HTTPS, with no redirect, at:
+    https://sirieducation.com/.well-known/apple-developer-merchantid-domain-association
+    https://www.sirieducation.com/.well-known/apple-developer-merchantid-domain-association
+
+See docs/deployment/apple-pay-domain-verification.md for the full runbook.

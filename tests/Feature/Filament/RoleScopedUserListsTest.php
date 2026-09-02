@@ -219,6 +219,34 @@ class RoleScopedUserListsTest extends TestCase
             ->assertCanNotSeeTableRecords([$active]);
     }
 
+    /**
+     * With no filter panel, search is the only way to narrow these lists,
+     * so it is a stated section above the table rather than the small box
+     * in the toolbar's corner — and it names the fields it reaches, so
+     * nobody has to guess whether a phone number will match.
+     */
+    public function test_every_user_list_leads_with_a_search_section_naming_its_fields(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        foreach ([ListUsers::class, ListStudents::class, ListInstructors::class] as $list) {
+            $html = Livewire::test($list)->html();
+
+            $this->assertStringContainsString('fi-user-search-bar', $html);
+            // The same Livewire property Filament's own field writes to:
+            // this moves where you type, never how searching works.
+            $this->assertStringContainsString('wire:model.live.debounce.400ms="tableSearch"', $html);
+
+            foreach (['Name', 'Email', 'Mobile', 'Country', 'Account status'] as $field) {
+                $this->assertStringContainsString($field, $html);
+            }
+        }
+
+        $this->assertStringContainsString('Find a user', Livewire::test(ListUsers::class)->html());
+        $this->assertStringContainsString('Find a student', Livewire::test(ListStudents::class)->html());
+        $this->assertStringContainsString('Find an instructor', Livewire::test(ListInstructors::class)->html());
+    }
+
     public function test_search_matches_email_as_well_as_name(): void
     {
         $student = $this->userWithRole('student');

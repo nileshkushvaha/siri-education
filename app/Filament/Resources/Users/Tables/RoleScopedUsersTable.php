@@ -100,8 +100,16 @@ class RoleScopedUsersTable
                     ExportBulkAction::make(),
                 ]),
             ])
-            // No "Role" in the placeholder — this list is already one
-            // role, which is the whole point of it existing.
+            // No "Role" anywhere in the search copy — this list is already
+            // one role, which is the whole point of it existing.
+            ->header(view('filament.tables.user-search-bar', [
+                'heading' => $role === 'instructor' ? 'Find an instructor' : 'Find a student',
+                'placeholder' => sprintf(
+                    'Type a name, email, mobile number, country or %s status…',
+                    $role,
+                ),
+                'fields' => ['Name', 'Email', 'Mobile', 'Country', ucfirst($role).' status', 'Account status'],
+            ]))
             ->searchPlaceholder(sprintf(
                 'Search by name, email, mobile, country or %s status',
                 $role,

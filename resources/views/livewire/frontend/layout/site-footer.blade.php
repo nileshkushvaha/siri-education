@@ -162,7 +162,7 @@ array_unshift($navigationGroups, ['heading' => null, 'nodes' => $standaloneNodes
 
     <div class="relative border-t border-white/[0.08] bg-white/[0.035]" data-footer-bottom>
         <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-slate-400 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-            <p>{!! $footerCopyright ?: '&copy; '.date('Y').' '.e($appName).'. All rights reserved.' !!}</p>
+            <p>{!! $this->copyrightLine !!}</p>
             <nav class="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal links">
                 <a href="{{ Route::has('privacy') ? route('privacy') : url('/privacy-policy') }}" class="transition hover:text-slate-300">Privacy Policy</a>
                 <a href="{{ Route::has('terms') ? route('terms') : url('/terms-and-conditions') }}" class="transition hover:text-slate-300">Terms and Conditions</a>

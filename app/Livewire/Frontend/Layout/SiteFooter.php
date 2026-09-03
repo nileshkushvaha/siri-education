@@ -57,6 +57,26 @@ class SiteFooter extends Component
         $this->address = $address;
     }
 
+    /**
+     * Footer copyright line. The stored setting may use the {year} and
+     * {name} placeholders so the year and site name stay dynamic; an
+     * empty setting falls back to the standard line.
+     */
+    #[Computed]
+    public function copyrightLine(): string
+    {
+        $replacements = [
+            '{year}' => date('Y'),
+            '{name}' => e($this->appName),
+        ];
+
+        $template = trim((string) $this->footerCopyright) !== ''
+            ? $this->footerCopyright
+            : '&copy; {year} {name}. All rights reserved.';
+
+        return strtr($template, $replacements);
+    }
+
     #[Computed]
     public function footerNavigation(): ?NavigationTree
     {

@@ -283,7 +283,8 @@ class GeneralSettingsPage extends Page
                         TextInput::make('footer_copyright')
                             ->label('Copyright Text')
                             ->maxLength(255)
-                            ->placeholder('© 2025 SIRI Education. All rights reserved.'),
+                            ->placeholder('© {year} {name}. All rights reserved.')
+                            ->helperText('Leave empty for the default line. Use {year} for the current year and {name} for the application name so both stay up to date.'),
 
                         Textarea::make('footer_text')
                             ->label('Footer Text')

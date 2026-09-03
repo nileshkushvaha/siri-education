@@ -52,6 +52,7 @@ Root `README.md` is the short project entry point; this file is the detailed cat
 | Class recording storage (ingestion, Google Drive now / S3 later, access, retention) | `recordings.md` |
 | Recording staging validation & production cutover runbook (Google scopes, rollback) | `deployment/recording-cutover.md` |
 | Zoom activation & staging validation runbook (account, scopes, webhook, privacy) | `deployment/zoom-activation.md` |
+| Role-scoped user lists + required introduction video deploy runbook | `deployment/user-lists-and-required-intro-video.md` |
 | Lesson Lifecycle | `lessons.md` |
 | Wallet Ledger | `architecture/wallet.md` |
 | Financial Domain (Earnings, Compensation, Settlement, Withdrawals, Payout Execution) | `financial-domain-architecture.md` |

@@ -57,4 +57,36 @@ return new class extends SettingsMigration
             $this->migrator->deleteIfExists($property);
         }
     }
+
+    /**
+     * Reversible on purpose. Without this, rolling back left
+     * `localization.country_detection_enabled` and
+     * `allow_user_locale_switching` deleted, and the older
+     * `move_country_fields_to_localization_settings` migration's own
+     * `down()` then tried to RENAME properties that no longer existed —
+     * so `migrate:reset` / `migrate:refresh` failed outright.
+     *
+     * Values are the originals from `fill_general_settings` /
+     * `add_platform_foundation_settings`. Restoring a row does not
+     * restore any behaviour: nothing read these before and nothing reads
+     * them now — see the note above about wiring one up before re-adding
+     * it for real.
+     */
+    public function down(): void
+    {
+        foreach ([
+            'general.maintenance_mode' => false,
+            'general.default_language' => 'en',
+            'general.date_format' => 'Y-m-d',
+            'general.time_format' => 'H:i',
+            'general.decimal_precision' => 2,
+            'general.logo_dark' => null,
+            'localization.country_detection_enabled' => false,
+            'localization.allow_user_locale_switching' => false,
+        ] as $property => $value) {
+            if (! $this->migrator->exists($property)) {
+                $this->migrator->add($property, $value);
+            }
+        }
+    }
 };

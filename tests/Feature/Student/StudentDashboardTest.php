@@ -57,7 +57,12 @@ class StudentDashboardTest extends TestCase
         $this->actingAs($student)
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Plan your next learning session')
+            // A student with no bookings is on the FIRST branch of
+            // StudentBookingJourneyService — "Plan your next learning
+            // session" is the third, for someone who has already booked.
+            // The hierarchy this test is about (a next-action section
+            // first, then homework, then the plan) is the same either way.
+            ->assertSee('Start with a free demo')
             ->assertSee('Homework requiring attention')
             ->assertSee('Learning journey')
             ->assertDontSee('Hours Learned')

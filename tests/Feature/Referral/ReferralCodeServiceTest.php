@@ -36,10 +36,11 @@ class ReferralCodeServiceTest extends TestCase
 
     private function student(): User
     {
-        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        $student->assignRole('student');
-
-        return $student;
+        // student_status, not just the role: ReferralCodeService goes
+        // through StudentLifecycleService::assertEligibleForStudentAction(),
+        // which requires Active. A bare role assignment leaves the status
+        // null, which is denied — see UserFactory::activeStudent().
+        return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
     }
 
     public function test_student_receives_an_uppercase_code_of_expected_shape(): void

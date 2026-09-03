@@ -77,6 +77,11 @@ class InstructorWaitlistTest extends TestCase
         UserProfile::updateOrCreate(['user_id' => $instructor->id], [
             'profile_visibility' => 'public',
             'instructor_status' => $status,
+            // Publishing availability requires a resolvable timezone —
+            // the rules are authored in the instructor's own zone, so an
+            // instructor without one is rejected before any window is
+            // created. UTC keeps the fixture times literal.
+            'timezone' => 'UTC',
         ]);
 
         return $instructor;

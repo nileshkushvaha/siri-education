@@ -15,13 +15,16 @@ use App\Booking\Exceptions\BookingException;
 use App\Livewire\Frontend\Booking\BookingWizard;
 use App\Models\Booking;
 use App\Models\BookingType;
+use App\Models\Country;
 use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -36,6 +39,7 @@ use Tests\TestCase;
  */
 class BookingTypeScopeTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use CreatesStudentLessonPrices;
     use RefreshDatabase;
 
@@ -74,6 +78,46 @@ class BookingTypeScopeTest extends TestCase
     private function paidTypeWithPrice(): array
     {
         return $this->createPaidBookingTypeWithPrice('paid_one_to_one', 499.00, 'INR', durationMinutes: 60);
+    }
+
+    /**
+     * The country-aware academic chain every booking now requires, with
+     * this file's instructor made eligible for it. Pass the billing
+     * country for paid flows so the student's single profile country
+     * satisfies the academic and pricing gates at once.
+     *
+     * @return array<string, mixed>
+     */
+    private function academicFor(?Country $country = null): array
+    {
+        $this->bootAcademicBookingContext();
+        $context = $this->seedAcademicContext(country: $country);
+
+        TeacherSubject::factory()->create([
+            'teacher_id' => $this->teacher->id,
+            'subject' => $context['subject']->name,
+            'subject_id' => $context['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->teacher->assignRole('instructor');
+        $this->makeInstructorEligible($this->teacher, $context['system'], $context['curriculum']);
+
+        return $context;
+    }
+
+    /** A student who can actually reach the slot step of the wizard. */
+    private function studentIn(array $context): User
+    {
+        $student = $this->student();
+        $this->assignAcademicCountry($student, $context['country']);
+
+        return $student;
+    }
+
+    private function slotAt(int $daysAhead = 3, int $hour = 10): CarbonImmutable
+    {
+        return CarbonImmutable::now('UTC')->addDays($daysAhead)->setTime($hour, 0);
     }
 
     // ── 1. No silent default type ─────────────────────────────────────────
@@ -121,7 +165,9 @@ class BookingTypeScopeTest extends TestCase
 
     public function test_free_demo_cta_preselects_free_demo_and_skips_the_mode_step(): void
     {
-        Livewire::actingAs($this->student())
+        $academic = $this->academicFor();
+
+        Livewire::actingAs($this->studentIn($academic))
             ->withQueryParams(['type' => 'free_demo'])
             ->test('frontend.booking.booking-wizard')
             ->assertSet('type', 'free_demo')
@@ -131,8 +177,9 @@ class BookingTypeScopeTest extends TestCase
     public function test_paid_lesson_cta_preselects_paid_lesson_and_skips_the_mode_step(): void
     {
         $priced = $this->paidTypeWithPrice();
+        $academic = $this->academicFor($priced['country']);
 
-        Livewire::actingAs($this->student())
+        Livewire::actingAs($this->studentIn($academic))
             ->withQueryParams(['type' => 'paid_one_to_one'])
             ->test('frontend.booking.booking-wizard')
             ->assertSet('type', 'paid_one_to_one')
@@ -152,16 +199,15 @@ class BookingTypeScopeTest extends TestCase
 
     public function test_free_demo_booking_never_requires_payment(): void
     {
-        $student = $this->student();
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $this->enableDemoLessons();
+        $academic = $this->academicFor();
+        $student = $this->studentIn($academic);
+        $slot = $this->slotAt();
 
-        $component = Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'free_demo')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+        $component = Livewire::actingAs($student)->test('frontend.booking.booking-wizard');
+        // Canonical navigation only — the legacy selectSubject()/selectGrade()
+        // pair this test used no longer exists on the wizard.
+        $this->navigateAcademicWizardToSlot($component, $academic, $slot, mode: 'free_demo', billingMode: null)
             ->call('submit');
 
         $this->assertFalse($component->get('result')['requires_payment']);
@@ -170,19 +216,13 @@ class BookingTypeScopeTest extends TestCase
     public function test_paid_single_session_creates_exactly_one_booking(): void
     {
         $priced = $this->paidTypeWithPrice();
-        $student = $this->student();
-        $this->assignBillingCountry($student, $priced['country']);
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $academic = $this->academicFor($priced['country']);
+        $this->seedStudentLessonPrice($priced['type'], $priced['country'], $priced['currency'], 499.00, $academic['subject']->slug, 60);
+        $student = $this->studentIn($academic);
+        $slot = $this->slotAt();
 
-        Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectBillingMode', 'single')
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
-            ->call('submit');
+        $component = Livewire::actingAs($student)->test('frontend.booking.booking-wizard');
+        $this->navigateAcademicWizardToSlot($component, $academic, $slot)->call('submit');
 
         $this->assertSame(1, Booking::query()->where('student_id', $student->id)->count());
     }
@@ -192,19 +232,22 @@ class BookingTypeScopeTest extends TestCase
     public function test_paid_recurring_weekly_creates_valid_occurrences(): void
     {
         $priced = $this->paidTypeWithPrice();
-        $student = $this->student();
-        $this->assignBillingCountry($student, $priced['country']);
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $academic = $this->academicFor($priced['country']);
+        $this->seedStudentLessonPrice($priced['type'], $priced['country'], $priced['currency'], 499.00, $academic['subject']->slug, 60);
+        $student = $this->studentIn($academic);
+        $slot = $this->slotAt();
 
         $component = Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
             ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
+            ->call('selectEducationSystem', $academic['system']->id)
+            ->call('selectLevel', $academic['level']->id)
+            ->call('selectAcademicSubject', $academic['subject']->id)
+            ->call('selectCurriculum', $academic['curriculum']->id)
             ->call('selectBillingMode', 'recurring')
             ->call('selectFrequency', 'weekly', 3)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+            ->call('selectDate', $slot->toDateString())
+            ->call('selectSlot', $slot->toIso8601String())
             ->call('submit');
 
         $result = $component->get('result');
@@ -220,19 +263,22 @@ class BookingTypeScopeTest extends TestCase
     public function test_paid_recurring_daily_creates_valid_occurrences(): void
     {
         $priced = $this->paidTypeWithPrice();
-        $student = $this->student();
-        $this->assignBillingCountry($student, $priced['country']);
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $academic = $this->academicFor($priced['country']);
+        $this->seedStudentLessonPrice($priced['type'], $priced['country'], $priced['currency'], 499.00, $academic['subject']->slug, 60);
+        $student = $this->studentIn($academic);
+        $slot = $this->slotAt();
 
         $component = Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
             ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
+            ->call('selectEducationSystem', $academic['system']->id)
+            ->call('selectLevel', $academic['level']->id)
+            ->call('selectAcademicSubject', $academic['subject']->id)
+            ->call('selectCurriculum', $academic['curriculum']->id)
             ->call('selectBillingMode', 'recurring')
             ->call('selectFrequency', 'daily', 3)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+            ->call('selectDate', $slot->toDateString())
+            ->call('selectSlot', $slot->toIso8601String())
             ->call('submit');
 
         $result = $component->get('result');
@@ -248,19 +294,22 @@ class BookingTypeScopeTest extends TestCase
     public function test_recurring_series_reuses_the_same_instructor_for_every_occurrence(): void
     {
         $priced = $this->paidTypeWithPrice();
-        $student = $this->student();
-        $this->assignBillingCountry($student, $priced['country']);
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $academic = $this->academicFor($priced['country']);
+        $this->seedStudentLessonPrice($priced['type'], $priced['country'], $priced['currency'], 499.00, $academic['subject']->slug, 60);
+        $student = $this->studentIn($academic);
+        $slot = $this->slotAt();
 
         Livewire::actingAs($student)
             ->test('frontend.booking.booking-wizard')
             ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
+            ->call('selectEducationSystem', $academic['system']->id)
+            ->call('selectLevel', $academic['level']->id)
+            ->call('selectAcademicSubject', $academic['subject']->id)
+            ->call('selectCurriculum', $academic['curriculum']->id)
             ->call('selectBillingMode', 'recurring')
             ->call('selectFrequency', 'weekly', 2)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+            ->call('selectDate', $slot->toDateString())
+            ->call('selectSlot', $slot->toIso8601String())
             ->call('submit');
 
         $instructorIds = Booking::query()->where('student_id', $student->id)->pluck('instructor_id')->unique();

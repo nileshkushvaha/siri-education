@@ -20,10 +20,12 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Settings\AuthenticationSettings;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -41,6 +43,7 @@ use Tests\TestCase;
  */
 class StudentFinancialVerificationGateTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use CreatesStudentLessonPrices;
     use RefreshDatabase;
 
@@ -219,17 +222,37 @@ class StudentFinancialVerificationGateTest extends TestCase
 
         $eligible = $this->activeVerifiedStudent();
         $priced = $this->createPaidBookingTypeWithPrice('paid_one_to_one', 499.00, 'INR', durationMinutes: 60);
+
+        // The academic chain is built on the billing country so the
+        // student's one profile country satisfies both the academic and
+        // the pricing gate; this test is about the verification gate.
+        $this->bootAcademicBookingContext();
+        $academic = $this->seedAcademicContext(country: $priced['country']);
+        $this->seedStudentLessonPrice($priced['type'], $priced['country'], $priced['currency'], 499.00, $academic['subject']->slug, 60);
         $this->assignBillingCountry($eligible, $priced['country']);
+        TeacherSubject::factory()->create([
+            'teacher_id' => $this->teacher->id,
+            'subject' => $academic['subject']->name,
+            'subject_id' => $academic['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->teacher->assignRole('instructor');
+        $this->makeInstructorEligible($this->teacher, $academic['system'], $academic['curriculum']);
+
+        $slot = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0);
 
         Livewire::actingAs($eligible)
             ->test('frontend.booking.booking-wizard')
             ->call('selectMode', 'paid_one_to_one')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
+            ->call('selectEducationSystem', $academic['system']->id)
+            ->call('selectLevel', $academic['level']->id)
+            ->call('selectAcademicSubject', $academic['subject']->id)
+            ->call('selectCurriculum', $academic['curriculum']->id)
             ->call('selectBillingMode', 'recurring')
             ->call('selectFrequency', 'weekly', 2)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String())
+            ->call('selectDate', $slot->toDateString())
+            ->call('selectSlot', $slot->toIso8601String())
             ->call('submit');
 
         $this->assertGreaterThanOrEqual(1, Booking::query()->where('student_id', $eligible->id)->count());

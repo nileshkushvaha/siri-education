@@ -75,7 +75,6 @@ use App\Filament\Resources\InstructorPackageProposals\InstructorPackageProposalR
 use App\Filament\Resources\InstructorPayoutAttempts\InstructorPayoutAttemptResource;
 use App\Filament\Resources\InstructorPayoutMethods\InstructorPayoutMethodResource;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\InstructorPayoutReconciliationIssueResource;
-use App\Filament\Resources\Instructors\InstructorResource;
 use App\Filament\Resources\InstructorSettlementBatches\InstructorSettlementBatchResource;
 use App\Filament\Resources\InstructorWaitlistEntries\InstructorWaitlistEntryResource;
 use App\Filament\Resources\InstructorWithdrawalRequests\InstructorWithdrawalRequestResource;
@@ -110,12 +109,13 @@ use App\Filament\Resources\StudentLearningPlans\StudentLearningPlanResource;
 use App\Filament\Resources\StudentLessonPrices\StudentLessonPriceResource;
 use App\Filament\Resources\StudentPackageEntitlements\StudentPackageEntitlementResource;
 use App\Filament\Resources\StudentPackagePurchases\StudentPackagePurchaseResource;
-use App\Filament\Resources\Students\StudentResource;
 use App\Filament\Resources\SupportCases\SupportCaseResource;
 use App\Filament\Resources\SuspiciousActivityFlags\SuspiciousActivityFlagResource;
 use App\Filament\Resources\Tags\TagResource;
 use App\Filament\Resources\TeacherAvailability\TeacherAvailabilityResource;
 use App\Filament\Resources\TeacherLeave\TeacherLeaveResource;
+use App\Filament\Resources\Users\InstructorResource;
+use App\Filament\Resources\Users\StudentResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Wallets\WalletResource;
 

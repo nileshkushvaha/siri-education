@@ -11,9 +11,11 @@ use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\TestCase;
 
 /**
@@ -25,6 +27,7 @@ use Tests\TestCase;
  */
 class BookingWizardLivewireTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use RefreshDatabase;
 
     private User $teacher;
@@ -65,6 +68,38 @@ class BookingWizardLivewireTest extends TestCase
     private function student(): User
     {
         return User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+    }
+
+    /**
+     * The country-aware academic chain the wizard requires, with this
+     * file's instructor made eligible for it.
+     *
+     * @return array<string, mixed>
+     */
+    private function academicFor(): array
+    {
+        $this->bootAcademicBookingContext();
+        $context = $this->seedAcademicContext();
+
+        TeacherSubject::factory()->create([
+            'teacher_id' => $this->teacher->id,
+            'subject' => $context['subject']->name,
+            'subject_id' => $context['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->teacher->assignRole('instructor');
+        $this->makeInstructorEligible($this->teacher, $context['system'], $context['curriculum']);
+
+        return $context;
+    }
+
+    private function studentIn(array $context): User
+    {
+        $student = $this->student();
+        $this->assignAcademicCountry($student, $context['country']);
+
+        return $student;
     }
 
     public function test_unauthenticated_visitor_is_redirected_to_login_from_booking_page(): void
@@ -118,23 +153,19 @@ class BookingWizardLivewireTest extends TestCase
 
     public function test_authenticated_student_can_complete_booking_wizard(): void
     {
-        $student = $this->student();
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $this->enableDemoLessons();
+        $academic = $this->academicFor();
+        $student = $this->studentIn($academic);
+        $slot = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0);
 
-        Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'free_demo')
-            ->assertSet('step', 2)
-            ->call('selectSubject', 'maths')
-            ->assertSet('step', 3)
-            ->call('selectGrade', 5)
-            ->assertSet('step', 4)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->assertSet('step', 5)
-            ->call('selectSlot', $start)
-            ->assertSet('step', 6)
+        // Canonical navigation: mode -> education system -> level ->
+        // academic subject -> curriculum -> date -> time. The per-step
+        // numbers this test used to assert belonged to the removed
+        // subject/grade flow; completion is what it is really about.
+        $component = Livewire::actingAs($student)->test('frontend.booking.booking-wizard');
+
+        $this->navigateAcademicWizardToSlot($component, $academic, $slot, mode: 'free_demo', billingMode: null)
             ->call('submit')
-            ->assertSet('step', 7)
             ->assertSee('Booking confirmed');
 
         $this->assertDatabaseHas('bookings', [
@@ -144,25 +175,26 @@ class BookingWizardLivewireTest extends TestCase
 
     public function test_instructor_profile_booking_link_locks_booking_to_that_instructor(): void
     {
-        $student = $this->student();
-        $start = now('UTC')->addDays(3)->setTime(10, 0)->toIso8601String();
+        $this->enableDemoLessons();
+        $academic = $this->academicFor();
+        $student = $this->studentIn($academic);
+        $slot = CarbonImmutable::now('UTC')->addDays(3)->setTime(10, 0);
 
-        Livewire::actingAs($student)
+        $component = Livewire::actingAs($student)
             ->withQueryParams([
                 'instructor' => $this->teacher->slug,
                 'type' => 'free_demo',
-                'subject' => 'maths',
             ])
             ->test('frontend.booking.booking-wizard')
             ->assertSet('lockedInstructorId', $this->teacher->id)
             ->assertSet('lockedInstructorName', $this->teacher->name)
-            ->assertSet('type', 'free_demo')
-            ->assertSet('subject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectDate', now('UTC')->addDays(3)->toDateString())
-            ->call('selectSlot', $start)
+            ->assertSet('type', 'free_demo');
+
+        // The instructor stays locked all the way through the academic
+        // steps — that lock, not the step number, is what this test guards.
+        $this->navigateAcademicWizardToSlot($component, $academic, $slot, mode: 'free_demo', billingMode: null)
             ->call('submit')
-            ->assertSet('step', 7);
+            ->assertSet('lockedInstructorId', $this->teacher->id);
 
         $this->assertDatabaseHas('bookings', [
             'student_id' => $student->id,

@@ -141,6 +141,18 @@ class ContentBlockService
                 'button_link' => '',
                 'button_style' => 'primary',
             ],
+            // Mirrors BlockContentHydrator::hydrateHeroCarousel() — the
+            // hydrator is the canonical shape, and a default that omitted
+            // a key it fills would hand the form a half-built block.
+            BlockType::HeroCarousel => [
+                'prefix_text' => '',
+                'suffix_text' => '',
+                'footnote' => '',
+                'slides' => [],
+                'autoplay' => true,
+                'interval' => 5000,
+                'show_arrows' => true,
+            ],
             BlockType::RichText => ['text' => ''],
             BlockType::Image => ['image' => null, 'caption' => '', 'alt_text' => ''],
             BlockType::Gallery => ['images' => [], 'columns' => 3, 'gap' => 'md'],

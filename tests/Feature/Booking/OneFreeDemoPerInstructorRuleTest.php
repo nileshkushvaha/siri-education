@@ -25,6 +25,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\TestCase;
 
 /**
@@ -38,6 +39,7 @@ use Tests\TestCase;
  */
 class OneFreeDemoPerInstructorRuleTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use RefreshDatabase;
 
     private BookingType $demoType;
@@ -337,16 +339,25 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
 
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
 
-        $firstStart = $this->slot(3)->toIso8601String();
-        Livewire::actingAs($student)
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectMode', 'free_demo')
-            ->call('selectSubject', 'maths')
-            ->call('selectGrade', 5)
-            ->call('selectDate', $this->slot(3)->toDateString())
-            ->call('selectSlot', $firstStart)
-            ->call('submit')
-            ->assertSet('step', 6);
+        // Country-aware academics are mandatory before any slot is offered;
+        // this test is about the one-demo-per-instructor banner, so the
+        // chain is pure precondition.
+        $this->bootAcademicBookingContext();
+        $academic = $this->seedAcademicContext();
+        $this->assignAcademicCountry($student, $academic['country']);
+        TeacherSubject::factory()->create([
+            'teacher_id' => $teacher->id,
+            'subject' => $academic['subject']->name,
+            'subject_id' => $academic['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $teacher->assignRole('instructor');
+        $this->makeInstructorEligible($teacher, $academic['system'], $academic['curriculum']);
+
+        $first = Livewire::actingAs($student)->test('frontend.booking.booking-wizard');
+        $this->navigateAcademicWizardToSlot($first, $academic, $this->slot(3), mode: 'free_demo', billingMode: null)
+            ->call('submit');
 
         $secondSlot = $this->slot(7);
         $secondStart = $secondSlot->toIso8601String();
@@ -359,19 +370,19 @@ class OneFreeDemoPerInstructorRuleTest extends TestCase
         // user would click "next month", rather than assuming a
         // same-month offset.
         $component = Livewire::actingAs($student)
-            ->withQueryParams(['instructor' => $teacher->slug, 'type' => 'free_demo', 'subject' => 'maths'])
-            ->test('frontend.booking.booking-wizard')
-            ->call('selectGrade', 5);
+            ->withQueryParams(['instructor' => $teacher->slug, 'type' => 'free_demo'])
+            ->test('frontend.booking.booking-wizard');
 
-        for ($month = CarbonImmutable::now('UTC')->startOfMonth(); $month->lt($secondSlot->startOfMonth()); $month = $month->addMonthNoOverflow()) {
-            $component->call('nextMonth');
-        }
+        // navigateAcademicWizardToSlot() advances the calendar's visible
+        // month itself, so the month-stepping loop this test used to do by
+        // hand lives there now.
+        $this->navigateAcademicWizardToSlot($component, $academic, $secondSlot, mode: 'free_demo', billingMode: null);
+
+        $reviewStep = $component->get('step');
 
         $component
-            ->call('selectDate', $secondSlot->toDateString())
-            ->call('selectSlot', $secondStart)
             ->call('submit')
-            ->assertSet('step', 6)
+            ->assertSet('step', $reviewStep)
             ->assertSet('banner', "You've already used your free demo lesson with this instructor. You can book a paid lesson with them, or try a free demo with a different instructor.");
 
         $this->assertDatabaseCount('bookings', 1);

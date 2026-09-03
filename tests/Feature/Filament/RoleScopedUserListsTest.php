@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Filament;
 
 use App\Enums\InstructorStatus;
-use App\Filament\Resources\Instructors\InstructorResource;
-use App\Filament\Resources\Instructors\Pages\ListInstructors;
-use App\Filament\Resources\Students\Pages\ListStudents;
-use App\Filament\Resources\Students\StudentResource;
+use App\Filament\Resources\Users\InstructorResource;
+use App\Filament\Resources\Users\Pages\ListInstructors;
+use App\Filament\Resources\Users\Pages\ListStudents;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Resources\Users\StudentResource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;

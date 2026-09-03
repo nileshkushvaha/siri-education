@@ -384,10 +384,16 @@ class BlockContentHydratorTest extends TestCase
     /** @test */
     public function test_round_trips_converter_and_hydrator(): void
     {
+        // Every key in the Hero shape, not a subset: the round trip is
+        // form data -> JSON -> form data, so a field the hydrator fills
+        // (image_alt, heading_level) but the fixture omits comes back as
+        // an addition and fails equality without anything being wrong.
         $originalFormData = [
             'title' => 'Test Hero',
             'subtitle' => 'Subtitle',
             'image' => null,
+            'image_alt' => 'Test hero image',
+            'heading_level' => 'h2',
             'button_text' => 'Click',
             'button_link' => '/test',
             'button_style' => 'secondary',

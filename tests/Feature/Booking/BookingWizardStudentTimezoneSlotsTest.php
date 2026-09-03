@@ -18,6 +18,7 @@ use App\Support\UserTimezoneResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\TestCase;
 
 /**
@@ -34,7 +35,10 @@ use Tests\TestCase;
  */
 class BookingWizardStudentTimezoneSlotsTest extends TestCase
 {
-    use RefreshDatabase;
+    use CreatesAcademicBookingContext, RefreshDatabase;
+
+    /** @var array<string, mixed> */
+    private array $academicContext;
 
     protected function setUp(): void
     {
@@ -42,13 +46,31 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         BookingType::factory()->create(['key' => 'free_demo', 'name' => 'Free Demo', 'duration_minutes' => 30, 'sort_order' => 1]);
+
+        // Country-aware academics are mandatory for any booking; this file
+        // is about timezone/slot fidelity, so the chain is pure precondition.
+        $this->bootAcademicBookingContext();
+        $this->academicContext = $this->seedAcademicContext();
     }
 
     private function teacher(): User
     {
         $teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $teacher->assignRole('instructor');
         UserProfile::updateOrCreate(['user_id' => $teacher->id], ['instructor_status' => 'approved', 'profile_visibility' => 'public']);
-        TeacherSubject::factory()->state(['teacher_id' => $teacher->id])->subject('maths', 1, 12)->create();
+
+        TeacherSubject::factory()->create([
+            'teacher_id' => $teacher->id,
+            'subject' => $this->academicContext['subject']->name,
+            'subject_id' => $this->academicContext['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->makeInstructorEligible(
+            $teacher,
+            $this->academicContext['system'],
+            $this->academicContext['curriculum'],
+        );
 
         return $teacher;
     }
@@ -56,7 +78,10 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
     private function student(string $timezone): User
     {
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
-        UserProfile::updateOrCreate(['user_id' => $student->id], ['timezone' => $timezone]);
+        UserProfile::updateOrCreate(['user_id' => $student->id], [
+            'timezone' => $timezone,
+            'country_id' => $this->academicContext['country']->id,
+        ]);
 
         return $student;
     }
@@ -272,11 +297,15 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
         $this->actingAs($student);
         $booking = app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
-            subject: 'maths',
+            subject: $this->academicContext['subject']->name,
             grade: 6,
             startsAt: $slot->startsAt,
             timezone: $studentTimezone,
             teacherId: $teacher->id,
+            educationSystemId: $this->academicContext['system']->id,
+            educationSystemLevelId: $this->academicContext['level']->id,
+            subjectId: $this->academicContext['subject']->id,
+            curriculumId: $this->academicContext['curriculum']->id,
         ));
 
         // The persisted canonical instant matches the exact instant the
@@ -300,11 +329,15 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
         $this->actingAs($student);
         $booking = app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
-            subject: 'maths',
+            subject: $this->academicContext['subject']->name,
             grade: 6,
             startsAt: $slot->startsAt,
             timezone: $originalTimezone,
             teacherId: $teacher->id,
+            educationSystemId: $this->academicContext['system']->id,
+            educationSystemLevelId: $this->academicContext['level']->id,
+            subjectId: $this->academicContext['subject']->id,
+            curriculumId: $this->academicContext['curriculum']->id,
         ));
 
         $this->assertSame($originalTimezone, $booking->timezone);

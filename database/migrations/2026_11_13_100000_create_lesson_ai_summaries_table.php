@@ -38,7 +38,14 @@ return new class extends Migration
         Schema::create('lesson_ai_summaries', function (Blueprint $table): void {
             $table->uuid('id')->primary();
 
-            $table->foreignUuid('lesson_id')->unique()->constrained('lessons')->cascadeOnDelete();
+            // RESTRICT, not cascade: a lesson is a historical educational
+            // record and the database itself rejects deleting one that
+            // still has dependents (see
+            // 2026_08_31_100000_restrict_booking_historical_dependency_deletes,
+            // which swept every other lesson dependent). This table was
+            // created after that sweep and has to ship the rule from its
+            // own baseline, exactly as booking_meetings.booking_id does.
+            $table->foreignUuid('lesson_id')->unique()->constrained('lessons')->restrictOnDelete();
             $table->foreignUuid('ai_run_id')->nullable()->constrained('ai_runs')->nullOnDelete();
 
             // Always the instructor who asked — generation is never

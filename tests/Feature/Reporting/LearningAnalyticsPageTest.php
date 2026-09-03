@@ -106,7 +106,10 @@ class LearningAnalyticsPageTest extends TestCase
     public function test_undefined_rates_render_na_never_zero_percent(): void
     {
         // One assignment with a future due date → no elapsed denominator.
-        HomeworkAssignment::query()->create([
+        // Through the factory, not a raw create: homework_assignments
+        // carries a CHECK requiring booking_id OR learning_plan_id, and
+        // the factory is what supplies that context.
+        HomeworkAssignment::factory()->create([
             'teacher_id' => $this->instructor()->id,
             'student_id' => $this->student()->id,
             'subject' => 'Maths',
@@ -164,7 +167,7 @@ class LearningAnalyticsPageTest extends TestCase
             'reviewed_at' => now()->subHour(),
         ]);
 
-        HomeworkAssignment::query()->create([
+        HomeworkAssignment::factory()->create([
             'teacher_id' => $instructor->id,
             'student_id' => $student->id,
             'subject' => 'Maths',

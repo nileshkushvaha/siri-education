@@ -17,6 +17,7 @@ use App\Models\Booking;
 use App\Models\BookingActivity;
 use App\Models\BookingPayment;
 use App\Models\BookingType;
+use App\Models\Country;
 use App\Models\Currency;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -71,6 +72,14 @@ class WalletLessonPaymentTest extends TestCase
     private function pendingBooking(int $priceMinor = 49900, string $currency = 'INR', ?BookingType $type = null): array
     {
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
+
+        // A real student always has a billing country, and the gateway
+        // checkout path refuses to quote one without an active country
+        // ("Payments are not available in your country yet"). The wallet
+        // path never consulted it, which is why this was missing.
+        $country = Country::factory()->create(['status' => 'active']);
+        UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => $country->id]);
+
         $type ??= $this->paidType;
         $startsAt = CarbonImmutable::now('UTC')->addDays(3);
 

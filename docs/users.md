@@ -23,8 +23,15 @@ People → Users offers three entries into the same table:
 | Nav label | Resource | Scope |
 |---|---|---|
 | All Users | `UserResource` (`/admin/users`) | every user |
-| Students | `App\Filament\Resources\Students\StudentResource` (`/admin/students`) | `whereHasRoleNamed('student')` |
-| Instructors | `App\Filament\Resources\Instructors\InstructorResource` (`/admin/instructors`) | `whereHasRoleNamed('instructor')` |
+| Students | `App\Filament\Resources\Users\StudentResource` (`/admin/students`) | `whereHasRoleNamed('student')` |
+| Instructors | `App\Filament\Resources\Users\InstructorResource` (`/admin/instructors`) | `whereHasRoleNamed('instructor')` |
+
+They live in the `Users` namespace, not `Resources\Students` /
+`Resources\Instructors`: `StudentDashboardFoundationTest` guards against
+a parallel student identity domain and asserts no
+`App\Filament\Resources\Students\StudentResource` exists. These are views
+of `User`, not a second identity, so the `Users` namespace is both
+accurate and clear of that guard.
 
 The two scoped resources exist so the roles admins work with daily are
 one click away instead of a role filter re-applied every visit. They are

@@ -45,6 +45,13 @@ class ViewerTimezoneDisplayTest extends TestCase
     {
         parent::setUp();
 
+        // INSTANT is a fixed date chosen so the local calendar date differs
+        // east and west (and so the August offsets quoted in the comments
+        // hold). Once it fell into the past, "upcoming" surfaces correctly
+        // showed nothing and every assertion here failed for a reason that
+        // has nothing to do with viewer timezones. Freeze just before it.
+        $this->travelTo(CarbonImmutable::parse(self::INSTANT, 'UTC')->subDay());
+
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
     }

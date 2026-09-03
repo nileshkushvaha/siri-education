@@ -53,6 +53,8 @@ class ReviewModerationWidgetActionsTest extends TestCase
         $this->outcomes = app(LessonOutcomeServiceInterface::class);
         $this->submissions = app(StudentReviewServiceInterface::class);
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $this->enableReviews();
     }
 
@@ -181,6 +183,11 @@ class ReviewModerationWidgetActionsTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create(array_filter([
+            // BookingFactory's default student_id is a bare User with no
+            // role and a null student_status; review submission runs
+            // through assertEligibleForStudentAction(), which requires
+            // Active. Build the student explicitly instead.
+            'student_id' => User::factory()->activeStudent()->create(['status' => 'active'])->id,
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor?->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),

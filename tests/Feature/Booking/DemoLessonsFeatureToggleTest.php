@@ -35,6 +35,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\TestCase;
 
 /**
@@ -46,6 +47,7 @@ use Tests\TestCase;
  */
 class DemoLessonsFeatureToggleTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use RefreshDatabase;
 
     private BookingType $demoType;
@@ -244,22 +246,40 @@ class DemoLessonsFeatureToggleTest extends TestCase
 
         Livewire::component('frontend.booking.booking-wizard', BookingWizard::class);
 
-        $start = $this->slot(3)->toIso8601String();
+        // The wizard cannot reach its review step without the country-aware
+        // academic chain, and this test is about what happens AT that step
+        // when demos are disabled underneath it.
+        $this->bootAcademicBookingContext();
+        $academic = $this->seedAcademicContext();
+        $this->assignAcademicCountry($student, $academic['country']);
+        TeacherSubject::factory()->create([
+            'teacher_id' => $teacher->id,
+            'subject' => $academic['subject']->name,
+            'subject_id' => $academic['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $teacher->assignRole('instructor');
+        $this->makeInstructorEligible($teacher, $academic['system'], $academic['curriculum']);
 
         $component = Livewire::actingAs($student)
-            ->withQueryParams(['instructor' => $teacher->slug, 'type' => 'free_demo', 'subject' => 'maths'])
+            ->withQueryParams(['instructor' => $teacher->slug, 'type' => 'free_demo'])
             ->test('frontend.booking.booking-wizard')
-            ->assertSet('type', 'free_demo')
-            ->call('selectGrade', 5)
-            ->call('selectDate', $this->slot(3)->toDateString())
-            ->call('selectSlot', $start);
+            ->assertSet('type', 'free_demo');
+
+        $this->navigateAcademicWizardToSlot($component, $academic, $this->slot(3), mode: 'free_demo', billingMode: null);
 
         // Admin disables demos while the form is still open on "review".
         $this->disableDemos();
 
+        // Rejected means "stays exactly where it was" — asserted against the
+        // step the wizard actually reached rather than a hardcoded number,
+        // which drifts every time the flow gains or loses a step.
+        $reviewStep = $component->get('step');
+
         $component
             ->call('submit')
-            ->assertSet('step', 6)
+            ->assertSet('step', $reviewStep)
             ->assertSet('banner', 'Free demo lessons are currently unavailable. You can still book a paid lesson.');
 
         $this->assertDatabaseCount('bookings', 0);

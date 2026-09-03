@@ -21,6 +21,7 @@ use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\TestCase;
 
 /**
@@ -37,7 +38,10 @@ use Tests\TestCase;
  */
 class BookingInstantNormalizationTest extends TestCase
 {
-    use RefreshDatabase;
+    use CreatesAcademicBookingContext, RefreshDatabase;
+
+    /** @var array<string, mixed> */
+    private array $academicContext;
 
     protected function setUp(): void
     {
@@ -45,13 +49,36 @@ class BookingInstantNormalizationTest extends TestCase
 
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         BookingType::factory()->create(['key' => 'free_demo', 'name' => 'Free Demo', 'duration_minutes' => 30, 'sort_order' => 1]);
+
+        // Country-aware academics are mandatory — a booking cannot be made
+        // without a country-mapped academic chain and a student pointed at
+        // that country. Nothing here is about instant normalization; it is
+        // the precondition the booking path now enforces.
+        $this->bootAcademicBookingContext();
+        $this->academicContext = $this->seedAcademicContext();
     }
 
     private function teacher(): User
     {
         $teacher = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $teacher->assignRole('instructor');
         UserProfile::updateOrCreate(['user_id' => $teacher->id], ['instructor_status' => 'approved', 'profile_visibility' => 'public']);
-        TeacherSubject::factory()->state(['teacher_id' => $teacher->id])->subject('maths', 1, 12)->create();
+
+        // Teaches the context's subject and is eligible for its curriculum:
+        // without both, the booking is rejected before any instant is
+        // persisted and this file tests nothing.
+        TeacherSubject::factory()->create([
+            'teacher_id' => $teacher->id,
+            'subject' => $this->academicContext['subject']->name,
+            'subject_id' => $this->academicContext['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->makeInstructorEligible(
+            $teacher,
+            $this->academicContext['system'],
+            $this->academicContext['curriculum'],
+        );
 
         foreach (Weekday::cases() as $day) {
             TeacherAvailability::factory()->state(['teacher_id' => $teacher->id])->forDay($day)->between('09:00:00', '17:00:00')->create();
@@ -63,7 +90,10 @@ class BookingInstantNormalizationTest extends TestCase
     private function student(string $timezone): User
     {
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
-        UserProfile::updateOrCreate(['user_id' => $student->id], ['timezone' => $timezone]);
+        UserProfile::updateOrCreate(['user_id' => $student->id], [
+            'timezone' => $timezone,
+            'country_id' => $this->academicContext['country']->id,
+        ]);
 
         return $student;
     }
@@ -109,11 +139,15 @@ class BookingInstantNormalizationTest extends TestCase
         $this->actingAs($student);
         $booking = app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
-            subject: 'maths',
+            subject: $this->academicContext['subject']->name,
             grade: 6,
             startsAt: $nonUtcInstant,
             timezone: 'America/New_York',
             teacherId: $teacher->id,
+            educationSystemId: $this->academicContext['system']->id,
+            educationSystemLevelId: $this->academicContext['level']->id,
+            subjectId: $this->academicContext['subject']->id,
+            curriculumId: $this->academicContext['curriculum']->id,
         ));
 
         $this->assertTrue($booking->starts_at->equalTo($nonUtcInstant));
@@ -135,11 +169,15 @@ class BookingInstantNormalizationTest extends TestCase
         $this->actingAs($student);
         $booking = app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
-            subject: 'maths',
+            subject: $this->academicContext['subject']->name,
             grade: 6,
             startsAt: $originalInstant,
             timezone: 'Asia/Kolkata',
             teacherId: $teacher->id,
+            educationSystemId: $this->academicContext['system']->id,
+            educationSystemLevelId: $this->academicContext['level']->id,
+            subjectId: $this->academicContext['subject']->id,
+            curriculumId: $this->academicContext['curriculum']->id,
         ));
 
         // Reschedule to a slot expressed in the student's own timezone
@@ -181,11 +219,15 @@ class BookingInstantNormalizationTest extends TestCase
         $this->actingAs($student);
         $booking = app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
-            subject: 'maths',
+            subject: $this->academicContext['subject']->name,
             grade: 6,
             startsAt: $studentLocalInstant,
             timezone: 'Pacific/Auckland',
             teacherId: $teacher->id,
+            educationSystemId: $this->academicContext['system']->id,
+            educationSystemLevelId: $this->academicContext['level']->id,
+            subjectId: $this->academicContext['subject']->id,
+            curriculumId: $this->academicContext['curriculum']->id,
         ));
 
         $this->assertTrue($booking->starts_at->equalTo($instructorSlotUtc));
@@ -212,11 +254,15 @@ class BookingInstantNormalizationTest extends TestCase
         $this->actingAs($student);
         $booking = app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'free_demo',
-            subject: 'maths',
+            subject: $this->academicContext['subject']->name,
             grade: 6,
             startsAt: $nonUtcInstant,
             timezone: 'America/New_York',
             teacherId: $teacher->id,
+            educationSystemId: $this->academicContext['system']->id,
+            educationSystemLevelId: $this->academicContext['level']->id,
+            subjectId: $this->academicContext['subject']->id,
+            curriculumId: $this->academicContext['curriculum']->id,
         ));
 
         $this->assertSame(BookingStatus::Confirmed, $booking->fresh()->status);

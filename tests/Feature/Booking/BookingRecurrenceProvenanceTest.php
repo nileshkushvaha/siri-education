@@ -20,6 +20,7 @@ use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
+use Tests\Support\CreatesAcademicBookingContext;
 use Tests\Support\CreatesStudentLessonPrices;
 use Tests\TestCase;
 
@@ -34,6 +35,7 @@ use Tests\TestCase;
  */
 class BookingRecurrenceProvenanceTest extends TestCase
 {
+    use CreatesAcademicBookingContext;
     use CreatesStudentLessonPrices;
     use RefreshDatabase;
 
@@ -124,13 +126,44 @@ class BookingRecurrenceProvenanceTest extends TestCase
         $this->assignBillingCountry($student, $priced['country']);
         $this->actingAs($student);
 
+        // book() enforces the country-aware academic chain (bookRecurring()
+        // above does not), so the single-booking path needs the full
+        // selection set. Built on the billing country so the student's one
+        // country satisfies both gates.
+        $this->bootAcademicBookingContext();
+        $academic = $this->seedAcademicContext(country: $priced['country']);
+        // The price seeded by paidTypeWithPrice() is for the default
+        // 'maths' subject; the booking now resolves the academic subject,
+        // so that subject needs its own price in the same country/type.
+        $this->seedStudentLessonPrice(
+            $priced['type'],
+            $priced['country'],
+            $priced['currency'],
+            499.00,
+            $academic['subject']->slug,
+            60,
+        );
+        TeacherSubject::factory()->create([
+            'teacher_id' => $this->teacher->id,
+            'subject' => $academic['subject']->name,
+            'subject_id' => $academic['subject']->id,
+            'grade_from' => 1,
+            'grade_to' => 12,
+        ]);
+        $this->teacher->assignRole('instructor');
+        $this->makeInstructorEligible($this->teacher, $academic['system'], $academic['curriculum']);
+
         app(WizardBookingServiceInterface::class)->book(new WizardBookingData(
             typeKey: 'paid_one_to_one',
-            subject: 'maths',
+            subject: $academic['subject']->name,
             grade: 5,
             startsAt: now('UTC')->addDays(3)->setTime(10, 0)->toImmutable(),
             timezone: 'UTC',
             teacherId: $this->teacher->id,
+            educationSystemId: $academic['system']->id,
+            educationSystemLevelId: $academic['level']->id,
+            subjectId: $academic['subject']->id,
+            curriculumId: $academic['curriculum']->id,
         ));
 
         $booking = Booking::query()->firstOrFail();

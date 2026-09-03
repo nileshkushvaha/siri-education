@@ -220,11 +220,17 @@
                                 inputmode="numeric"
                                 autocomplete="off"
                                 required
-                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('captcha_answer') border-red-500 @enderror"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 @if(isset($errors)) @error('captcha_answer') border-red-500 @enderror @endif"
                                 placeholder="Your answer">
-                            @error('captcha_answer')
-                                <p class="mt-1.5 text-xs text-red-600" role="alert">{{ $message }}</p>
-                            @enderror
+                            {{-- $errors is request-scoped: this block also renders
+                                 outside a request (page preview, block renderer),
+                                 where the session error bag was never shared. Same
+                                 guard the other fields in this form already use. --}}
+                            @if(isset($errors))
+                                @error('captcha_answer')
+                                    <p class="mt-1.5 text-xs text-red-600" role="alert">{{ $message }}</p>
+                                @enderror
+                            @endif
                         </div>
 
                         <x-ui.turnstile-static />

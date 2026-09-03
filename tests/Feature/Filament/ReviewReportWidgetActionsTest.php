@@ -53,6 +53,8 @@ class ReviewReportWidgetActionsTest extends TestCase
         $this->lifecycle = app(LessonLifecycleServiceInterface::class);
         $this->outcomes = app(LessonOutcomeServiceInterface::class);
 
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+
         $this->enableReviews();
     }
 
@@ -174,6 +176,11 @@ class ReviewReportWidgetActionsTest extends TestCase
         $endsAt = now()->subHours(2)->startOfHour();
 
         $booking = Booking::factory()->confirmed()->create(array_filter([
+            // BookingFactory's default student_id is a bare User with no
+            // role and a null student_status; review submission runs
+            // through assertEligibleForStudentAction(), which requires
+            // Active. Build the student explicitly instead.
+            'student_id' => User::factory()->activeStudent()->create(['status' => 'active'])->id,
             'booking_type_id' => BookingType::factory()->paid(),
             'instructor_id' => $instructor?->id,
             'starts_at' => $endsAt->copy()->subMinutes(60),
@@ -202,10 +209,10 @@ class ReviewReportWidgetActionsTest extends TestCase
 
     private function reportFor(LessonReview $review, ReviewReportReason $reason = ReviewReportReason::Spam): ReviewReport
     {
-        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         $this->seed(ReviewPermissionSeeder::class);
-        $reporter = User::factory()->create(['status' => 'active']);
-        $reporter->assignRole('student');
+        // Reporting a review is a student action too, so the reporter needs
+        // the same Active student lifecycle as the reviewer.
+        $reporter = User::factory()->activeStudent()->create(['status' => 'active']);
 
         return app(ReviewReportServiceInterface::class)->submit($review->fresh(), $reporter, new SubmitReviewReportData(reason: $reason));
     }

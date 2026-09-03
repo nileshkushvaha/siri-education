@@ -49,6 +49,16 @@ class AvailabilityLocalDayTest extends TestCase
     {
         parent::setUp();
 
+        // Every fixture here is anchored to one fixed week whose local and
+        // UTC dates deliberately straddle (see the class docblock) — the
+        // offsets quoted in the comments are August ones. Once that week
+        // fell into the past the availability query correctly returned
+        // nothing, so the "must be empty" tests passed for the wrong
+        // reason and the "must not be empty" ones failed for a reason
+        // unrelated to local-day handling. Freeze the clock just before
+        // it so the file keeps testing what it says it tests.
+        $this->travelTo(CarbonImmutable::parse('2026-08-10 00:00:00', 'UTC'));
+
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         BookingType::factory()->create([
             'key' => 'free_demo', 'name' => 'Free Demo',

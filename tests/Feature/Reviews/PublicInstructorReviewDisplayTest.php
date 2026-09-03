@@ -419,15 +419,11 @@ class PublicInstructorReviewDisplayTest extends TestCase
         // "Book a Paid Class" renders only alongside a demo CTA.
         // InstructorService::offersDemo() needs all three of: a bookable
         // instructor, profile.offers_demo, and DemoAvailabilityResolver
-        // (feature flag + active free_demo type). All three are supplied
-        // below and were verified true at request time, yet the page
-        // still takes the single-button branch — so one more input inside
-        // InstructorService's public-profile payload is unaccounted for.
-        //
-        // This assertion was previously unreachable: the test died on the
-        // student-lifecycle guard before rendering, which masked the gap.
-        // It is a public-profile CTA concern with no connection to
-        // reviews, packages, or the student lifecycle.
+        // (feature flag + active free_demo type) — all supplied below, and
+        // the page does now take the two-button branch. (An earlier note
+        // here recorded it taking the single-button branch instead; that
+        // is no longer what happens, and the only thing still wrong was
+        // the expected label: the button reads "Book a Free Demo".)
         $features = app(FeatureSettings::class);
         $features->demo_lessons_enabled = true;
         $features->save();
@@ -438,7 +434,7 @@ class PublicInstructorReviewDisplayTest extends TestCase
 
         $this->get(route('instructors.show', $instructor))
             ->assertOk()
-            ->assertSee('Book a Demo Session')
+            ->assertSee('Book a Free Demo')
             ->assertSee('Book a Paid Class')
             ->assertSee('Instructor Snapshot');
     }

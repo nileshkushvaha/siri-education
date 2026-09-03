@@ -1146,113 +1146,81 @@ html { scroll-behavior: smooth; }
     transform: translateY(0);
 }
 
-/* Authenticated booking wizard: a light decision workspace beneath a dark
-   trust-oriented hero, isolated from the portal's global dark class. */
-[data-booking-wizard-page] .booking-workspace [class*='bg-white/'],
-[data-booking-wizard-page] .booking-workspace [class*='bg-slate-900'] {
-    background-color: #ffffff !important;
+/* Authenticated booking wizard. Colour comes from the portal theme tokens
+   (resources/css/frontend/theme.css) so the page follows the user's
+   light/dark preference; only structural rules live here. */
+[data-booking-wizard-page] .booking-error-alert {
+    border-color: rgb(244 63 94 / 0.35);
+    background-color: rgb(244 63 94 / 0.08);
+    color: #be123c;
 }
+.dark [data-booking-wizard-page] .booking-error-alert { color: #fda4af; }
+[data-booking-wizard-page] .booking-error-alert svg { color: currentColor; }
 
-[data-booking-wizard-page] .booking-workspace [class*='border-white'] {
-    border-color: #e2e8f0 !important;
+[data-booking-wizard-page] .booking-payment-error {
+    border-color: rgb(249 115 22 / 0.4);
+    background-color: rgb(249 115 22 / 0.08);
+    color: #9a3412;
 }
+.dark [data-booking-wizard-page] .booking-payment-error { color: #fdba74; }
 
-[data-booking-wizard-page] .booking-workspace .text-white,
-[data-booking-wizard-page] .booking-workspace .text-slate-100 {
-    color: #0f172a !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .text-slate-200,
-[data-booking-wizard-page] .booking-workspace .text-slate-300 {
-    color: #475569 !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .text-slate-400,
-[data-booking-wizard-page] .booking-workspace .text-slate-500 {
-    color: #64748b !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .text-indigo-100,
-[data-booking-wizard-page] .booking-workspace .text-indigo-200 {
-    color: #4338ca !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .text-emerald-100,
-[data-booking-wizard-page] .booking-workspace .text-emerald-200 {
-    color: #047857 !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .text-fuchsia-100,
-[data-booking-wizard-page] .booking-workspace .text-fuchsia-200 {
-    color: #a21caf !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .booking-error-alert {
-    border-color: #fca5a5 !important;
-    background-color: #fff1f2 !important;
-    color: #991b1b !important;
-    box-shadow: 0 8px 24px rgb(190 24 93 / 0.08);
-}
-
-[data-booking-wizard-page] .booking-workspace .booking-error-alert svg {
-    color: #dc2626 !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .booking-payment-error {
-    border-color: #fdba74 !important;
-    background-color: #fff7ed !important;
-    color: #9a3412 !important;
-}
-
-/* Checkout actions need explicit contrast because the booking workspace
-   intentionally remaps legacy dark-theme utility colours to a light canvas. */
-[data-booking-wizard-page] .booking-workspace .booking-checkout-primary {
+[data-booking-wizard-page] .booking-checkout-primary,
+[data-booking-wizard-page] .booking-checkout-secondary,
+[data-booking-wizard-page] .booking-checkout-test-success,
+[data-booking-wizard-page] .booking-checkout-test-failure {
+    display: inline-flex;
     min-height: 3rem;
-    border: 1px solid #4f46e5 !important;
-    background-color: #4f46e5 !important;
-    color: #ffffff !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+
+[data-booking-wizard-page] .booking-checkout-primary {
+    border: 1px solid #4f46e5;
+    background-color: #4f46e5;
+    color: #ffffff;
     box-shadow: 0 10px 22px rgb(79 70 229 / 0.2);
 }
-
-[data-booking-wizard-page] .booking-workspace .booking-checkout-primary:hover:not(:disabled) {
-    border-color: #4338ca !important;
-    background-color: #4338ca !important;
+[data-booking-wizard-page] .booking-checkout-primary:hover:not(:disabled) {
+    border-color: #4338ca;
+    background-color: #4338ca;
 }
 
-[data-booking-wizard-page] .booking-workspace .booking-checkout-secondary {
-    min-height: 3rem;
-    border: 1px solid #cbd5e1 !important;
-    background-color: #ffffff !important;
-    color: #334155 !important;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+[data-booking-wizard-page] .booking-checkout-secondary {
+    border: 1px solid var(--portal-edge-strong);
+    background-color: var(--portal-surface-raised);
+    color: var(--portal-fg);
+    box-shadow: 0 1px 2px rgb(var(--portal-shadow) / 0.05);
 }
-
-[data-booking-wizard-page] .booking-workspace .booking-checkout-secondary:hover:not(:disabled) {
-    border-color: #a5b4fc !important;
-    background-color: #eef2ff !important;
-    color: #3730a3 !important;
+[data-booking-wizard-page] .booking-checkout-secondary:hover:not(:disabled) {
+    border-color: #a5b4fc;
+    background-color: rgb(99 102 241 / 0.10);
+    color: #4338ca;
 }
+.dark [data-booking-wizard-page] .booking-checkout-secondary:hover:not(:disabled) { color: #c7d2fe; }
 
-[data-booking-wizard-page] .booking-workspace .booking-checkout-test-success {
-    border: 1px solid #059669 !important;
-    background-color: #059669 !important;
-    color: #ffffff !important;
+[data-booking-wizard-page] .booking-checkout-test-success {
+    border: 1px solid #059669;
+    background-color: #059669;
+    color: #ffffff;
 }
+[data-booking-wizard-page] .booking-checkout-test-success:hover:not(:disabled) { background-color: #047857; }
 
-[data-booking-wizard-page] .booking-workspace .booking-checkout-test-success:hover:not(:disabled) {
-    background-color: #047857 !important;
+[data-booking-wizard-page] .booking-checkout-test-failure {
+    border: 1px solid rgb(244 63 94 / 0.45);
+    background-color: var(--portal-surface-raised);
+    color: #be123c;
 }
+.dark [data-booking-wizard-page] .booking-checkout-test-failure { color: #fda4af; }
 
-[data-booking-wizard-page] .booking-workspace .booking-checkout-test-failure {
-    border-color: #fda4af !important;
-    background-color: #ffffff !important;
-    color: #be123c !important;
-}
-
-[data-booking-wizard-page] .booking-workspace .booking-checkout-primary:disabled,
-[data-booking-wizard-page] .booking-workspace .booking-checkout-secondary:disabled,
-[data-booking-wizard-page] .booking-workspace .booking-checkout-test-success:disabled,
-[data-booking-wizard-page] .booking-workspace .booking-checkout-test-failure:disabled {
+[data-booking-wizard-page] .booking-checkout-primary:disabled,
+[data-booking-wizard-page] .booking-checkout-secondary:disabled,
+[data-booking-wizard-page] .booking-checkout-test-success:disabled,
+[data-booking-wizard-page] .booking-checkout-test-failure:disabled {
     opacity: 0.55;
 }
 
@@ -1262,16 +1230,12 @@ html { scroll-behavior: smooth; }
     }
 }
 
-[data-booking-wizard-page] .booking-workspace [class*='ring-white'] {
-    --tw-ring-color: #e2e8f0 !important;
-}
-
 [data-booking-wizard-page] .booking-workspace input,
 [data-booking-wizard-page] .booking-workspace textarea,
 [data-booking-wizard-page] .booking-workspace select {
-    border-color: #cbd5e1 !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
+    border-color: var(--portal-edge-strong);
+    background-color: var(--portal-surface-raised);
+    color: var(--portal-fg-strong);
 }
 
 [data-booking-wizard-page] a[href],
@@ -1298,11 +1262,6 @@ html { scroll-behavior: smooth; }
 
 [data-booking-wizard-page] .booking-step-back {
     z-index: 2;
-    color: #334155 !important;
-}
-
-[data-booking-wizard-page] .booking-step-back:hover {
-    color: #4338ca !important;
 }
 
 [data-booking-wizard-page] .booking-progress-scroll {

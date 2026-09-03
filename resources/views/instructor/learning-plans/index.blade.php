@@ -11,8 +11,8 @@
 
 @section('account-content')
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">Assigned Learning Plans</h1>
-        <p class="text-slate-400 text-sm mt-1">Record assessments, milestones, and reviews for students assigned to you.</p>
+        <h1 class="text-xl font-bold text-fg-strong">Assigned Learning Plans</h1>
+        <p class="text-fg-muted text-sm mt-1">Record assessments, milestones, and reviews for students assigned to you.</p>
     </div>
 
     <livewire:frontend.instructor.learning-plans />

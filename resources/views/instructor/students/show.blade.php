@@ -12,8 +12,8 @@
 
 @section('account-content')
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">{{ $student->name }}</h1>
-        <p class="text-slate-400 text-sm mt-1">Your teaching relationship with this student.</p>
+        <h1 class="text-xl font-bold text-fg-strong">{{ $student->name }}</h1>
+        <p class="text-fg-muted text-sm mt-1">Your teaching relationship with this student.</p>
     </div>
 
     <livewire:frontend.instructor.student-detail :student="$student" />

@@ -1,7 +1,7 @@
 <div>
     <div class="mb-4 flex items-center justify-end">
         <select wire:model.live="statusFilter"
-                class="rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-300 px-3 py-2 focus:outline-none focus:border-indigo-500/40">
+                class="rounded-xl bg-surface-raised border border-edge text-sm text-fg-muted px-3 py-2 focus:outline-none focus:border-indigo-500/40">
             <option value="">All statuses</option>
             @foreach($statuses as $status)
                 <option value="{{ $status->value }}">{{ $status->label() }}</option>
@@ -14,36 +14,36 @@
             <div
                 wire:key="booking-history-{{ $booking->id }}"
                 wire:click="viewBooking('{{ $booking->id }}')"
-                class="flex cursor-pointer items-center justify-between py-4 transition hover:bg-white/[0.03] {{ !$loop->last ? 'border-b border-white/[0.05]' : '' }}"
+                class="flex cursor-pointer items-center justify-between py-4 transition hover:bg-surface-hover {{ !$loop->last ? 'border-b border-edge' : '' }}"
             >
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 mb-1">
-                        <p class="text-sm font-medium text-white truncate">{{ $booking->type?->name ?? 'Session' }}</p>
+                        <p class="text-sm font-medium text-fg-strong truncate">{{ $booking->type?->name ?? 'Session' }}</p>
                         <x-ui.badge :color="$booking->status->color()">{{ $booking->status->label() }}</x-ui.badge>
                     </div>
-                    <p class="text-xs text-slate-400">
+                    <p class="text-xs text-fg-muted">
                         with
                         @if($booking->instructor)
-                            <a href="{{ route('instructors.show', $booking->instructor) }}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-indigo-300 hover:text-indigo-200 hover:underline">{{ $booking->instructor->name }}</a>
+                            <a href="{{ route('instructors.show', $booking->instructor) }}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 hover:dark:text-indigo-200 hover:underline">{{ $booking->instructor->name }}</a>
                         @else
                             Teacher
                         @endif
                     </p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
-                    <p class="text-sm font-medium text-slate-300">{{ viewer_date($booking->starts_at) }}</p>
-                    <p class="text-xs text-slate-400 mt-0.5">{{ viewer_time($booking->starts_at) }}</p>
+                    <p class="text-sm font-medium text-fg-muted">{{ viewer_date($booking->starts_at) }}</p>
+                    <p class="text-xs text-fg-muted mt-0.5">{{ viewer_time($booking->starts_at) }}</p>
                 </div>
             </div>
         @empty
             <div class="flex flex-col items-center justify-center py-16 text-center">
-                <h3 class="text-slate-300 font-semibold mb-2">No bookings found</h3>
-                <p class="text-slate-400 text-sm max-w-xs">Your booking history will appear here.</p>
+                <h3 class="text-fg-muted font-semibold mb-2">No bookings found</h3>
+                <p class="text-fg-muted text-sm max-w-xs">Your booking history will appear here.</p>
             </div>
         @endforelse
 
         @if($history->hasPages())
-            <div class="mt-6 pt-4 border-t border-white/[0.04]">
+            <div class="mt-6 pt-4 border-t border-edge">
                 {{ $history->links() }}
             </div>
         @endif
@@ -62,29 +62,29 @@
 
             <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
-                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</dt>
+                    <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Status</dt>
                     <dd class="mt-1"><x-ui.badge :color="$booking->status->color()">{{ $booking->status->label() }}</x-ui.badge></dd>
                 </div>
                 <div>
-                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Session</dt>
-                    <dd class="mt-1 font-semibold text-white">{{ $booking->type?->name ?? 'Session' }}</dd>
+                    <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Session</dt>
+                    <dd class="mt-1 font-semibold text-fg-strong">{{ $booking->type?->name ?? 'Session' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">When</dt>
-                    <dd class="mt-1 font-semibold text-white">{{ viewer_datetime_labelled($booking->starts_at) }}</dd>
+                    <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">When</dt>
+                    <dd class="mt-1 font-semibold text-fg-strong">{{ viewer_datetime_labelled($booking->starts_at) }}</dd>
                 </div>
                 <div>
                     {{-- TZ-4: provenance, not the viewer's clock. The "When"
                          line above already carries the viewer's own timezone
                          label; this records which timezone the booking was
                          originally made in (see Booking's class docblock). --}}
-                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Booked in</dt>
-                    <dd class="mt-1 font-semibold text-white">{{ $booking->timezone }}</dd>
+                    <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Booked in</dt>
+                    <dd class="mt-1 font-semibold text-fg-strong">{{ $booking->timezone }}</dd>
                 </div>
                 @if(($booking->meta['subject'] ?? null) !== null)
                     <div>
-                        <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Subject</dt>
-                        <dd class="mt-1 font-semibold capitalize text-white">
+                        <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Subject</dt>
+                        <dd class="mt-1 font-semibold capitalize text-fg-strong">
                             {{ str_replace(['_', '-'], ' ', $booking->meta['subject']) }}
                             {{-- Phase 3.1: a country-aware academic booking carries its own
                                  immutable snapshot (e.g. "Class 10") — prefer it over the
@@ -100,33 +100,33 @@
                     </div>
                 @endif
                 <div>
-                    <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Instructor</dt>
+                    <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Instructor</dt>
                     <dd class="mt-1 font-semibold">
                         @if($booking->instructor)
-                            <a href="{{ route('instructors.show', $booking->instructor) }}" target="_blank" rel="noopener" class="text-indigo-300 hover:text-indigo-200 hover:underline">{{ $booking->instructor->name }}</a>
+                            <a href="{{ route('instructors.show', $booking->instructor) }}" target="_blank" rel="noopener" class="text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 hover:dark:text-indigo-200 hover:underline">{{ $booking->instructor->name }}</a>
                         @else
-                            <span class="text-white">Teacher</span>
+                            <span class="text-fg-strong">Teacher</span>
                         @endif
                     </dd>
                 </div>
                 {{-- $joinUrl comes exclusively from BookingMeetingService::studentJoinUrlFor(); this blade never reads meeting->join_url directly. --}}
                 @if($booking->status->value === 'confirmed')
                     <div>
-                        <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Meeting</dt>
+                        <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Meeting</dt>
                         @if($joinUrl)
-                            <dd class="mt-1"><a href="{{ $joinUrl }}" target="_blank" rel="noopener" class="font-semibold text-indigo-300 underline underline-offset-2">Join link</a></dd>
+                            <dd class="mt-1"><a href="{{ $joinUrl }}" target="_blank" rel="noopener" class="font-semibold text-indigo-600 dark:text-indigo-300 underline underline-offset-2">Join link</a></dd>
                             @if($booking->meeting?->password)
-                                <dd class="mt-1 text-xs text-slate-400">Passcode: {{ $booking->meeting->password }}</dd>
+                                <dd class="mt-1 text-xs text-fg-muted">Passcode: {{ $booking->meeting->password }}</dd>
                             @endif
                         @else
-                            <dd class="mt-1 text-sm text-slate-400">Meeting link is being prepared.</dd>
+                            <dd class="mt-1 text-sm text-fg-muted">Meeting link is being prepared.</dd>
                         @endif
                     </div>
                 @endif
             </dl>
 
             @if($booking->status->value === 'cancelled')
-                <p class="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-300">
+                <p class="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-600 dark:text-red-300">
                     Cancelled
                     @if($booking->cancellation_reason)
                         &mdash; {{ $booking->cancellation_reason }}
@@ -134,14 +134,14 @@
                 </p>
 
                 @if($outcome = $this->cancellationOutcomeMessage())
-                    <p class="mt-2 rounded-xl bg-white/[0.04] px-4 py-3 text-sm text-slate-300">{{ $outcome }}</p>
+                    <p class="mt-2 rounded-xl bg-surface-raised px-4 py-3 text-sm text-fg-muted">{{ $outcome }}</p>
                 @endif
             @endif
 
             @if($booking->payment_status->value === 'paid')
-                <p class="mt-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-300">Paid</p>
+                <p class="mt-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-300">Paid</p>
             @elseif($booking->payment_status->value === 'refunded')
-                <p class="mt-4 rounded-xl bg-slate-500/10 border border-slate-500/20 px-4 py-3 text-sm text-slate-300">
+                <p class="mt-4 rounded-xl bg-slate-500/10 border border-slate-500/20 px-4 py-3 text-sm text-fg-muted">
                     @if($this->paymentWasCreditedToWallet())
                         Payment received after this booking's slot was released — the amount was credited to your wallet.
                     @else
@@ -152,7 +152,7 @@
 
             @if($isActive && ($booking->payment_status->value === 'pending' || $booking->payment_status->value === 'failed'))
                 <div class="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3">
-                    <p class="text-sm text-indigo-200">Payment is {{ $booking->payment_status->label() }}. Complete payment to confirm this booking.</p>
+                    <p class="text-sm text-indigo-700 dark:text-indigo-200">Payment is {{ $booking->payment_status->label() }}. Complete payment to confirm this booking.</p>
 
                     <x-ui.button type="button" class="mt-3" size="sm" wire:click="initiatePayment" wire:loading.attr="disabled" wire:target="initiatePayment">
                         <span wire:loading.remove wire:target="initiatePayment">Pay now</span>
@@ -160,9 +160,9 @@
                     </x-ui.button>
 
                     @if($this->walletOption()['available'] ?? false)
-                        <div class="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                            <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Pay with wallet</p>
-                            <p class="mt-1 text-xs text-slate-400">Wallet balance: <span class="font-semibold text-white">{{ $this->walletOption()['balance_formatted'] }}</span></p>
+                        <div class="mt-3 rounded-xl border border-edge bg-surface-raised p-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wide text-fg-muted">Pay with wallet</p>
+                            <p class="mt-1 text-xs text-fg-muted">Wallet balance: <span class="font-semibold text-fg-strong">{{ $this->walletOption()['balance_formatted'] }}</span></p>
 
                             @if($this->walletOption()['sufficient'] ?? false)
                                 <x-ui.button type="button" variant="ghost" size="sm" class="mt-2" wire:click="payWithWallet" wire:loading.attr="disabled" wire:target="payWithWallet">
@@ -170,7 +170,7 @@
                                     <span wire:loading wire:target="payWithWallet">Paying...</span>
                                 </x-ui.button>
                             @else
-                                <p class="mt-2 text-[11px] text-amber-300">Your wallet balance is not sufficient to pay for this booking.</p>
+                                <p class="mt-2 text-[11px] text-amber-600 dark:text-amber-300">Your wallet balance is not sufficient to pay for this booking.</p>
                             @endif
                         </div>
                     @endif
@@ -182,7 +182,7 @@
                              be torn down mid-confirmation. --}}
                         <div class="mt-3" wire:ignore>
                             <div id="stripe-payment-element" class="rounded-lg bg-white p-3"></div>
-                            <p id="stripe-payment-errors" class="mt-2 text-xs font-semibold text-rose-300" role="alert"></p>
+                            <p id="stripe-payment-errors" class="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-300" role="alert"></p>
                             <x-ui.button type="button" id="stripe-confirm-button" class="mt-3 w-full justify-center" disabled>
                                 Confirm card payment
                             </x-ui.button>
@@ -191,7 +191,7 @@
 
                     @if(($paymentOrder['provider'] ?? null) === 'fake' && app()->environment(['local', 'testing']))
                         <div class="mt-3 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3">
-                            <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200">Test mode — fake provider</p>
+                            <p class="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-200">Test mode — fake provider</p>
                             <div class="mt-2 flex gap-2">
                                 <x-ui.button type="button" size="sm" wire:click="simulateFakePayment(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
                                 <x-ui.button type="button" size="sm" variant="ghost" wire:click="simulateFakePayment(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
@@ -204,7 +204,7 @@
             @if($isActive)
                 @php($rescheduleAllowance = $this->rescheduleAllowance())
 
-                <div class="mt-6 flex flex-wrap gap-3 border-t border-white/[0.07] pt-5">
+                <div class="mt-6 flex flex-wrap gap-3 border-t border-edge pt-5">
                     @if($rescheduleAllowance === null || $rescheduleAllowance['allowed'])
                         <x-ui.button type="button" wire:click="openReschedulePanel" size="sm">Reschedule</x-ui.button>
                     @endif
@@ -212,27 +212,27 @@
                 </div>
 
                 @if($rescheduleAllowance !== null && ! $rescheduleAllowance['allowed'])
-                    <p class="mt-2 text-xs text-amber-300">You have reached the reschedule limit for this lesson.</p>
+                    <p class="mt-2 text-xs text-amber-600 dark:text-amber-300">You have reached the reschedule limit for this lesson.</p>
                 @endif
 
                 @if($reschedulePanelOpen)
-                    <section class="mt-4 rounded-2xl bg-white/[0.04] p-4" aria-label="Reschedule booking">
+                    <section class="mt-4 rounded-2xl bg-surface-raised p-4" aria-label="Reschedule booking">
                         @if($rescheduleAllowance !== null)
-                            <p class="text-xs text-slate-400">
+                            <p class="text-xs text-fg-muted">
                                 {{ $rescheduleAllowance['remaining'] === 1 ? '1 reschedule remaining' : $rescheduleAllowance['remaining'].' reschedules remaining' }}
                             </p>
                         @endif
 
-                        <label for="reschedule-date" class="mt-2 block text-sm font-semibold text-slate-200">New date</label>
+                        <label for="reschedule-date" class="mt-2 block text-sm font-semibold text-fg">New date</label>
                         <input
                             id="reschedule-date"
                             type="date"
                             wire:model.live="rescheduleDate"
                             min="{{ now()->addDay()->toDateString() }}"
-                            class="mt-1.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20"
+                            class="mt-1.5 rounded-xl border border-edge bg-surface-raised px-3.5 py-2.5 text-sm text-fg-strong shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-400/20"
                         >
 
-                        <div wire:loading wire:target="rescheduleDate" class="mt-3 text-sm text-slate-400">Loading times...</div>
+                        <div wire:loading wire:target="rescheduleDate" class="mt-3 text-sm text-fg-muted">Loading times...</div>
 
                         @if(!empty($rescheduleSlots))
                             <div wire:loading.remove wire:target="rescheduleDate" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4" role="group" aria-label="Choose a new time">
@@ -241,12 +241,12 @@
                                         type="button"
                                         wire:click="selectRescheduleSlot('{{ $slot['starts_at'] }}')"
                                         aria-pressed="{{ $rescheduleSlotStartsAt === $slot['starts_at'] ? 'true' : 'false' }}"
-                                        class="rounded-xl border-2 p-2 text-sm font-semibold transition {{ $rescheduleSlotStartsAt === $slot['starts_at'] ? 'border-indigo-500 bg-indigo-500/10 text-indigo-200' : 'border-white/10 bg-white/5 text-slate-200 hover:border-indigo-400/40' }}"
+                                        class="rounded-xl border-2 p-2 text-sm font-semibold transition {{ $rescheduleSlotStartsAt === $slot['starts_at'] ? 'border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'border-edge bg-surface-raised text-fg hover:border-indigo-400/40' }}"
                                     >{{ viewer_time($slot['starts_at']) }}</button>
                                 @endforeach
                             </div>
                         @elseif($rescheduleDate)
-                            <p wire:loading.remove wire:target="rescheduleDate" class="mt-3 text-sm text-slate-400">No open times on that date &mdash; try another.</p>
+                            <p wire:loading.remove wire:target="rescheduleDate" class="mt-3 text-sm text-fg-muted">No open times on that date &mdash; try another.</p>
                         @endif
 
                         <x-ui.button type="button" wire:click="confirmReschedule" :disabled="!$rescheduleSlotStartsAt" class="mt-4" size="sm">Confirm new time</x-ui.button>
@@ -257,21 +257,21 @@
                     <section class="mt-4 rounded-2xl bg-red-500/[0.06] p-4" aria-label="Cancel booking">
                         @if($preview = $this->cancellationRefundPreview())
                             @if($preview['eligible'])
-                                <p class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-300">Eligible for a full wallet refund.</p>
+                                <p class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-300">Eligible for a full wallet refund.</p>
                             @else
-                                <p class="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300">
+                                <p class="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-600 dark:text-amber-300">
                                     This cancellation is outside the refund window and will not be refunded.
                                     @if($preview['cutoff_at'])
                                         The refund deadline was {{ viewer_datetime_labelled($preview['cutoff_at'], 'D, M j Y \a\t H:i') }}.
                                     @endif
                                 </p>
                             @endif
-                            <p class="mt-2 text-xs text-slate-400">Eligible refunds are credited to your wallet, not your original payment method.</p>
+                            <p class="mt-2 text-xs text-fg-muted">Eligible refunds are credited to your wallet, not your original payment method.</p>
                         @endif
 
-                        <label for="cancel-reason" class="mt-3 block text-sm font-semibold text-slate-200">Reason (optional)</label>
+                        <label for="cancel-reason" class="mt-3 block text-sm font-semibold text-fg">Reason (optional)</label>
                         <textarea id="cancel-reason" rows="2" wire:model="cancelReason" maxlength="500"
-                                  class="mt-1.5 block w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white shadow-sm focus:border-red-400 focus:outline-none focus:ring-4 focus:ring-red-400/20"></textarea>
+                                  class="mt-1.5 block w-full rounded-xl border border-edge bg-surface-raised px-3.5 py-2.5 text-sm text-fg-strong shadow-sm focus:border-red-400 focus:outline-none focus:ring-4 focus:ring-red-400/20"></textarea>
                         <x-ui.button type="button" variant="danger" wire:click="confirmCancel" class="mt-3" size="sm">Yes, cancel this booking</x-ui.button>
                     </section>
                 @endif

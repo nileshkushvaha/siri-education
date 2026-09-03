@@ -12,22 +12,22 @@
 
     <x-account.card title="Attendance History">
         @forelse($history as $booking)
-            <div wire:key="attendance-{{ $booking->id }}" class="flex items-center justify-between py-4 {{ !$loop->last ? 'border-b border-white/[0.05]' : '' }}">
+            <div wire:key="attendance-{{ $booking->id }}" class="flex items-center justify-between py-4 {{ !$loop->last ? 'border-b border-edge' : '' }}">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 mb-1">
-                        <p class="text-sm font-medium text-white truncate">{{ $booking->type?->name ?? 'Session' }}</p>
+                        <p class="text-sm font-medium text-fg-strong truncate">{{ $booking->type?->name ?? 'Session' }}</p>
                         <x-ui.badge :color="$booking->status->color()">{{ $booking->status->label() }}</x-ui.badge>
                     </div>
-                    <p class="text-xs text-slate-400">with {{ $booking->instructor?->name ?? 'Teacher' }}</p>
+                    <p class="text-xs text-fg-muted">with {{ $booking->instructor?->name ?? 'Teacher' }}</p>
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
-                    <p class="text-sm font-medium text-slate-300">{{ viewer_date($booking->starts_at) }}</p>
+                    <p class="text-sm font-medium text-fg-muted">{{ viewer_date($booking->starts_at) }}</p>
                 </div>
             </div>
         @empty
             <div class="flex flex-col items-center justify-center py-16 text-center">
-                <h3 class="text-slate-300 font-semibold mb-2">No attendance records yet</h3>
-                <p class="text-slate-400 text-sm max-w-xs">Completed and missed sessions will appear here.</p>
+                <h3 class="text-fg-muted font-semibold mb-2">No attendance records yet</h3>
+                <p class="text-fg-muted text-sm max-w-xs">Completed and missed sessions will appear here.</p>
             </div>
         @endforelse
     </x-account.card>

@@ -41,7 +41,7 @@
                 </div>
 
                 @if($instructor['current_position'] || $instructor['headline'])
-                    <p class="mt-1 line-clamp-2 text-sm text-slate-500">
+                    <p class="mt-1 line-clamp-2 text-sm text-fg-faint">
                         {{ $instructor['current_position'] ?: $instructor['headline'] }}
                     </p>
                 @endif
@@ -73,27 +73,27 @@
         <div class="mt-5 grid gap-3 text-sm text-slate-600">
             @if($languages->isNotEmpty())
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Languages</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-fg-muted">Languages</span>
                     <p class="mt-1">{{ $languages->join(', ') }}</p>
                 </div>
             @endif
 
             @if($instructor['country'] || $instructor['timezone'])
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Location</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-fg-muted">Location</span>
                     <p class="mt-1">{{ collect([$instructor['country'], $instructor['timezone']])->filter()->join(' · ') }}</p>
                 </div>
             @endif
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Rating</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-fg-muted">Rating</span>
                     <p class="mt-1 font-medium text-slate-900">
                         {{ $ratings['average'] !== null ? number_format($ratings['average'], 1) : 'Not rated' }}
                     </p>
                 </div>
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Experience</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-fg-muted">Experience</span>
                     <p class="mt-1 font-medium text-slate-900">
                         {{ $instructor['years_experience'] > 0 ? $instructor['years_experience'].' years' : 'New' }}
                     </p>
@@ -102,7 +102,7 @@
 
             @if($availability->isNotEmpty())
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Availability Preview</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-fg-muted">Availability Preview</span>
                     <div class="mt-2 space-y-1">
                         @foreach($availability as $slot)
                             <p>{{ $slot['day'] }} · {{ $slot['time'] }}</p>
@@ -115,15 +115,15 @@
         @if($price)
             <div class="mt-5 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
                 @if($price->state === \App\Booking\Enums\MarketplacePriceState::Available)
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $price->isFrom ? 'From' : 'Lesson price' }}</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-fg-muted">{{ $price->isFrom ? 'From' : 'Lesson price' }}</span>
                     <p class="mt-0.5 text-lg font-black text-slate-950">
                         {{ $price->isFrom ? $price->lowest->formattedAmount : $price->exact->formattedAmount }}
-                        <span class="text-xs font-semibold text-slate-500">/ {{ ($price->isFrom ? $price->lowest->durationMinutes : $price->exact->durationMinutes) }} min</span>
+                        <span class="text-xs font-semibold text-fg-faint">/ {{ ($price->isFrom ? $price->lowest->durationMinutes : $price->exact->durationMinutes) }} min</span>
                     </p>
                 @elseif($price->state === \App\Booking\Enums\MarketplacePriceState::MissingCountry)
-                    <p class="text-xs font-semibold text-slate-500">Select your billing country to view prices</p>
+                    <p class="text-xs font-semibold text-fg-faint">Select your billing country to view prices</p>
                 @else
-                    <p class="text-xs font-semibold text-slate-500">Price unavailable for this selection</p>
+                    <p class="text-xs font-semibold text-fg-faint">Price unavailable for this selection</p>
                 @endif
             </div>
         @endif
@@ -149,7 +149,7 @@
             @elseif(! $viewer)
                 <form method="POST" action="{{ $model ? route('dashboard.favorite-instructors.store', $model) : '#' }}">
                     @csrf
-                    <button type="submit" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500">
+                    <button type="submit" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-fg-muted transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500">
                         <span class="sr-only">Add to favorites</span>
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>

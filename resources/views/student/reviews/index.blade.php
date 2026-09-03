@@ -12,8 +12,8 @@
 @section('account-content')
 
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">Reviews</h1>
-        <p class="text-slate-400 text-sm mt-1">Review your completed lessons and manage what you have shared.</p>
+        <h1 class="text-xl font-bold text-fg-strong">Reviews</h1>
+        <p class="text-fg-muted text-sm mt-1">Review your completed lessons and manage what you have shared.</p>
     </div>
 
     <livewire:frontend.student.reviews-portal />

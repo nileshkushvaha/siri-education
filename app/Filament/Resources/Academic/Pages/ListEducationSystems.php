@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Academic\Pages;
 
 use App\Filament\Resources\Academic\EducationSystemResource;
+use App\Filament\Support\Tables\AcademicStatusTabs;
+use App\Models\EducationSystem;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListEducationSystems extends ListRecords
 {
@@ -22,5 +25,11 @@ class ListEducationSystems extends ListRecords
         return [
             CreateAction::make(),
         ];
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return AcademicStatusTabs::make(EducationSystem::class);
     }
 }

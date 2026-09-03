@@ -12,8 +12,8 @@
 @section('account-content')
 
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">Refer a Friend</h1>
-        <p class="text-slate-400 text-sm mt-1">Share your code and invite friends to start learning.</p>
+        <h1 class="text-xl font-bold text-fg-strong">Refer a Friend</h1>
+        <p class="text-fg-muted text-sm mt-1">Share your code and invite friends to start learning.</p>
     </div>
 
     <livewire:frontend.student.refer-friend />

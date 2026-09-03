@@ -14,6 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 
 class InstructorSubjectTopicResource extends Resource
 {
@@ -34,6 +36,22 @@ class InstructorSubjectTopicResource extends Resource
     protected static ?int $navigationSort = 9;
 
     protected static bool $shouldRegisterNavigation = false;
+
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof InstructorSubjectTopic) {
+            return null;
+        }
+
+        $record->loadMissing(['teacher', 'topic.subject', 'academicLevel']);
+
+        return collect([
+            $record->teacher?->name,
+            $record->topic?->subject?->name,
+            $record->topic?->name,
+            $record->academicLevel?->name,
+        ])->filter()->implode(' · ');
+    }
 
     public static function form(Schema $schema): Schema
     {

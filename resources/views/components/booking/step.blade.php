@@ -13,9 +13,9 @@
          aria-labelledby="step-title-{{ $step }}"
          {{ $attributes }}>
     <h2 id="step-title-{{ $step }}" tabindex="-1"
-        class="text-xl font-bold text-slate-900 focus:outline-none">{{ $title }}</h2>
+        class="text-xl font-bold text-fg-strong focus:outline-none">{{ $title }}</h2>
     @if($subtitle)
-        <p class="mt-1 text-sm text-slate-400">{{ $subtitle }}</p>
+        <p class="mt-1 text-sm text-fg-muted">{{ $subtitle }}</p>
     @endif
 
     <div class="mt-5">

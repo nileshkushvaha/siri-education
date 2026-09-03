@@ -11,8 +11,8 @@
 
 @section('account-content')
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-white">Reviews & Quality</h1>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+        <h1 class="text-3xl font-bold text-fg-strong">Reviews & Quality</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-fg-muted">
             A private summary of your published student ratings and feedback. Only you can see this page.
         </p>
     </div>

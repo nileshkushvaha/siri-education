@@ -7,15 +7,15 @@
         $url = ($href !== '#' && Route::has($href)) ? route($href) : '#';
     @endphp
     <a href="{{ $url }}"
-       class="rounded-2xl border border-white/[0.07] p-5 hover:border-white/[0.12] transition-all group cursor-pointer"
-       style="background:rgba(255,255,255,0.03)">
+       class="rounded-2xl border border-edge p-5 hover:border-edge-strong transition-all group cursor-pointer"
+       style="background:var(--portal-surface-raised)">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br {{ $gradient }} flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $icon }}"/>
             </svg>
         </div>
-        <p class="text-slate-200 font-semibold text-sm mb-0.5">{{ $title }}</p>
-        <p class="text-slate-400 text-xs">{{ $sub }}</p>
+        <p class="text-fg font-semibold text-sm mb-0.5">{{ $title }}</p>
+        <p class="text-fg-muted text-xs">{{ $sub }}</p>
     </a>
     @endforeach
 </div>

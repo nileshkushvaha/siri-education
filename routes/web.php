@@ -379,6 +379,7 @@ Route::prefix('profile')->name('profile.')->middleware([
     Route::post('/cover', [ProfileController::class, 'uploadCover'])->name('cover.upload');
     Route::delete('/cover', [ProfileController::class, 'deleteCover'])->name('cover.delete');
     Route::post('/visibility', [ProfileController::class, 'updateVisibility'])->name('visibility.update');
+    Route::post('/theme', [ProfileController::class, 'updateTheme'])->name('theme.update');
     Route::post('/phone/verification/send', [PhoneVerificationController::class, 'send'])->name('phone.verification.send');
     Route::post('/phone/verification/verify', [PhoneVerificationController::class, 'verify'])->name('phone.verification.verify');
 

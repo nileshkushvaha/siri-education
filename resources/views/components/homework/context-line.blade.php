@@ -3,7 +3,7 @@
 {{-- Safe educational-context labels. Historical
      context stays visible even when the plan is archived/removed. --}}
 @if ($assignment->booking !== null || $assignment->learningPlan !== null)
-    <p class="text-xs text-slate-500 mt-1">
+    <p class="text-xs text-fg-faint mt-1">
         @if ($assignment->booking !== null)
             Lesson: {{ viewer_datetime($assignment->booking->starts_at) }}@if ($assignment->booking->type !== null) ({{ $assignment->booking->type->name }})@endif
         @endif

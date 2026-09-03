@@ -26,3 +26,64 @@
     --radius-card: 1rem;
     --radius-pill: 9999px;
 }
+
+/* ================================================================
+   Account Portal — light / dark colour tokens
+
+   The student and instructor portal (layouts.account and everything
+   rendered inside it) reads colour from these semantic tokens instead
+   of literal Tailwind palette utilities. Light is the product default;
+   `.dark` on <html> (set from the user's stored preference by
+   App\Services\ThemeResolver, or by the "system" bootstrap script in
+   layouts.frontend) swaps the values.
+
+   Utilities: bg-surface, bg-surface-raised, bg-surface-hover,
+   bg-surface-solid, border-edge, border-edge-strong, text-fg-strong,
+   text-fg, text-fg-muted, text-fg-faint. Opacity modifiers work as
+   usual (bg-surface-solid/90).
+   ================================================================ */
+:root {
+    --portal-surface: #f4f6fb;
+    --portal-surface-raised: #ffffff;
+    --portal-surface-hover: #eef2f8;
+    --portal-surface-solid: #ffffff;
+    --portal-edge: #e2e8f0;
+    --portal-edge-strong: #cbd5e1;
+    --portal-fg-strong: #0f172a;
+    --portal-fg: #1e293b;
+    --portal-fg-muted: #475569;
+    --portal-fg-faint: #64748b;
+    --portal-shadow: 15 23 42;
+    --portal-glass-highlight: rgb(255 255 255 / 0.9);
+}
+
+.dark {
+    --portal-surface: #020617;
+    --portal-surface-raised: rgb(255 255 255 / 0.04);
+    --portal-surface-hover: rgb(255 255 255 / 0.08);
+    --portal-surface-solid: #020617;
+    --portal-edge: rgb(255 255 255 / 0.08);
+    --portal-edge-strong: rgb(255 255 255 / 0.16);
+    --portal-fg-strong: #ffffff;
+    --portal-fg: #f1f5f9;
+    --portal-fg-muted: #94a3b8;
+    --portal-fg-faint: #64748b;
+    --portal-shadow: 0 0 0;
+    --portal-glass-highlight: rgb(255 255 255 / 0.035);
+}
+
+[data-account-portal], [data-booking-wizard-page] { color-scheme: light; }
+.dark [data-account-portal], .dark [data-booking-wizard-page] { color-scheme: dark; }
+
+@theme inline {
+    --color-surface: var(--portal-surface);
+    --color-surface-raised: var(--portal-surface-raised);
+    --color-surface-hover: var(--portal-surface-hover);
+    --color-surface-solid: var(--portal-surface-solid);
+    --color-edge: var(--portal-edge);
+    --color-edge-strong: var(--portal-edge-strong);
+    --color-fg-strong: var(--portal-fg-strong);
+    --color-fg: var(--portal-fg);
+    --color-fg-muted: var(--portal-fg-muted);
+    --color-fg-faint: var(--portal-fg-faint);
+}

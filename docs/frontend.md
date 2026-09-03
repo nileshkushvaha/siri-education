@@ -56,6 +56,36 @@ without coupling to (or duplicating) the underlying shell/portal
 implementation. This is the same pattern Laravel's own starter kits
 use (`layouts/guest.blade.php` alongside `layouts/app.blade.php`).
 
+## Account Portal theming (light / dark)
+
+The student and instructor portal (`layouts.account` and everything rendered
+inside it, plus the booking wizard which yields `theme-aware`) supports a per-user light or dark theme. **Light is the product
+default.** The public site and the Filament admin panel are unaffected.
+
+| Piece | Where |
+|---|---|
+| Stored preference | `user_profiles.theme_preference` (`light` / `dark` / `system`, nullable = light), cast to `App\Enums\ThemePreference` |
+| Resolution | `App\Services\ThemeResolver` — the only place that decides the theme; layouts read `$portalTheme` / `$portalThemeHtmlClass` shared by `FrontendServiceProvider` |
+| `<html>` class | `layouts/frontend.blade.php`: portal pages get `class="dark"` only when resolved dark; `system` adds an inline `prefers-color-scheme` bootstrap before first paint. Public pages keep the fixed `class="dark"` kit |
+| Persisting | `POST /profile/theme` (`profile.theme.update`) → `ProfileService::updateThemePreference()` → audit entry `theme_changed` |
+| UI | Sun/moon toggle in `x-account.portal-header` (uses `window.portalTheme` from `resources/js/frontend/theme.js`); Light / Dark / Match my device select on the profile page |
+| Tokens | `resources/css/frontend/theme.css` — `:root` light values, `.dark` overrides, exposed via `@theme inline` |
+
+### Writing portal views
+
+Use the semantic utilities, never raw dark-palette literals:
+
+| Use | Instead of |
+|---|---|
+| `bg-surface` / `bg-surface-raised` / `bg-surface-hover` / `bg-surface-solid` | `bg-slate-950`, `bg-slate-900`, `bg-white/[0.04]`, `hover:bg-white/[0.08]` |
+| `border-edge` / `border-edge-strong` (also `ring-`, `divide-`) | `border-white/[0.08]`, `border-white/15` |
+| `text-fg-strong` / `text-fg` / `text-fg-muted` / `text-fg-faint` | `text-white`, `text-slate-200`, `text-slate-400`, `text-slate-500` |
+| `text-emerald-600 dark:text-emerald-400` | `text-emerald-400` (accent text needs a deeper hue on a light canvas) |
+
+`text-white` is still correct on a solid brand background (`bg-indigo-600`,
+brand gradients, `bg-rose-500` badges) — those stay white in both themes.
+`x-ui.*` components are light-first with `dark:` variants and need nothing extra.
+
 ## Shared Blade components
 
 `resources/views/components/ui/` — new generic, presentation-only

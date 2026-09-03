@@ -12,12 +12,12 @@
                 $max = $subjects->max('sessions') ?: 1;
                 $percent = (int) round(($row->sessions / $max) * 100);
             @endphp
-            <div wire:key="subject-{{ $row->subject }}" class="py-3 {{ !$loop->last ? 'border-b border-white/[0.05]' : '' }}">
+            <div wire:key="subject-{{ $row->subject }}" class="py-3 {{ !$loop->last ? 'border-b border-edge' : '' }}">
                 <div class="flex items-center justify-between mb-2">
-                    <p class="text-sm font-medium text-slate-200">{{ $row->subject }}</p>
-                    <p class="text-xs text-slate-400">{{ $row->sessions }} {{ Str::plural('session', $row->sessions) }}</p>
+                    <p class="text-sm font-medium text-fg">{{ $row->subject }}</p>
+                    <p class="text-xs text-fg-muted">{{ $row->sessions }} {{ Str::plural('session', $row->sessions) }}</p>
                 </div>
-                <div class="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div class="h-1.5 rounded-full bg-surface-raised overflow-hidden">
                     <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500" style="width: {{ $percent }}%"></div>
                 </div>
             </div>

@@ -28,26 +28,26 @@
     </div>
 
     <div>
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-300">Recent Lessons</h2>
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300">Recent Lessons</h2>
         <x-account.card>
             @forelse ($earnings as $earning)
-                <div wire:key="earning-{{ $earning->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
+                <div wire:key="earning-{{ $earning->id }}" class="py-4 {{ ! $loop->last ? 'border-b border-edge' : '' }}">
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2 mb-1">
-                                <p class="text-sm font-medium text-white truncate">{{ $earning->subject?->name ?? 'General' }}</p>
+                                <p class="text-sm font-medium text-fg-strong truncate">{{ $earning->subject?->name ?? 'General' }}</p>
                                 <x-ui.badge :color="$earning->status->color()">{{ $earning->status->label() }}</x-ui.badge>
                             </div>
-                            <p class="text-xs text-slate-400">
+                            <p class="text-xs text-fg-muted">
                                 {{ viewer_date($earning->lesson?->starts_at) ?? viewer_date($earning->created_at) }}
                                 &middot; {{ $earning->student?->name ?? 'Student' }}
                             </p>
                             @if ($earning->settlementBatch)
-                                <p class="text-xs text-slate-500 mt-1">Settlement: {{ $earning->settlementBatch->batch_reference }} &middot; {{ $earning->settlementBatch->status->label() }}</p>
+                                <p class="text-xs text-fg-faint mt-1">Settlement: {{ $earning->settlementBatch->batch_reference }} &middot; {{ $earning->settlementBatch->status->label() }}</p>
                             @endif
                         </div>
                         <div class="text-left sm:text-right">
-                            <p class="text-sm font-bold text-white">{{ \App\Support\MoneyFormatter::format($earning->earning_amount_minor, $earning->currency_code) }}</p>
+                            <p class="text-sm font-bold text-fg-strong">{{ \App\Support\MoneyFormatter::format($earning->earning_amount_minor, $earning->currency_code) }}</p>
                         </div>
                     </div>
                 </div>
@@ -56,7 +56,7 @@
             @endforelse
 
             @if ($earnings->hasPages())
-                <div class="mt-6 pt-4 border-t border-white/[0.04]">
+                <div class="mt-6 pt-4 border-t border-edge">
                     {{ $earnings->links() }}
                 </div>
             @endif

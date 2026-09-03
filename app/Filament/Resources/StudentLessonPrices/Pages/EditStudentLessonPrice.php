@@ -19,6 +19,11 @@ class EditStudentLessonPrice extends EditRecord
 
     protected static string $resource = StudentLessonPriceResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return StudentLessonPriceResource::getRecordTitle($this->getRecord());
+    }
+
     protected function getHeaderActions(): array
     {
         return array_filter([

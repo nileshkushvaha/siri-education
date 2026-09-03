@@ -10,25 +10,25 @@
 
     <x-account.card>
         <div class="mb-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Learning plan</p>
-            <h2 class="mt-1 text-lg font-semibold text-white">Current status</h2>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">Learning plan</p>
+            <h2 class="mt-1 text-lg font-semibold text-fg-strong">Current status</h2>
         </div>
         @if($summary->learningPlanStatus)
             <x-ui.badge :color="$summary->learningPlanStatus->color()">{{ $summary->learningPlanStatus->label() }}</x-ui.badge>
         @else
-            <p class="text-sm text-slate-400">No active learning plan.</p>
+            <p class="text-sm text-fg-muted">No active learning plan.</p>
         @endif
     </x-account.card>
 
     <div>
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-300">Recent Lessons</h2>
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300">Recent Lessons</h2>
         <x-account.card>
             @forelse ($recentLessons as $lesson)
-                <div wire:key="recent-lesson-{{ $lesson['id'] }}" class="py-4 {{ ! $loop->last ? 'border-b border-white/[0.05]' : '' }}">
+                <div wire:key="recent-lesson-{{ $lesson['id'] }}" class="py-4 {{ ! $loop->last ? 'border-b border-edge' : '' }}">
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="text-sm font-medium text-white truncate">{{ $lesson['subject'] }}</p>
-                            <p class="text-xs text-slate-400">{{ viewer_datetime($lesson['starts_at']) }}</p>
+                            <p class="text-sm font-medium text-fg-strong truncate">{{ $lesson['subject'] }}</p>
+                            <p class="text-xs text-fg-muted">{{ viewer_datetime($lesson['starts_at']) }}</p>
                         </div>
                         <x-ui.badge :color="$lesson['status']->color()">{{ $lesson['status']->label() }}</x-ui.badge>
                     </div>

@@ -11,7 +11,7 @@
         ]" />
 
         <a href="{{ route('dashboard') }}"
-           class="inline-flex w-fit items-center justify-center rounded-lg border border-white/[0.10] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.05]">
+           class="inline-flex w-fit items-center justify-center rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-fg transition hover:bg-surface-hover">
             Back to Dashboard
         </a>
     </div>

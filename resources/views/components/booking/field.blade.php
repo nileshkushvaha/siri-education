@@ -14,7 +14,7 @@
 ])
 
 <div>
-    <label for="guest-{{ $name }}" class="block text-sm font-semibold text-slate-700">
+    <label for="guest-{{ $name }}" class="block text-sm font-semibold text-fg">
         {{ $label }}
         @if($required)<span class="text-red-500" aria-hidden="true">*</span>@endif
     </label>
@@ -27,7 +27,7 @@
                   @if($placeholder) placeholder="{{ $placeholder }}" @endif
                   :aria-invalid="errors.{{ $name }} ? 'true' : null"
                   aria-describedby="error-{{ $name }}"
-                  class="mt-1.5 block w-full rounded-xl border-slate-300 border bg-white px-3.5 py-2.5 text-sm shadow-sm
+                  class="mt-1.5 block w-full rounded-xl border-edge-strong border bg-surface-raised px-3.5 py-2.5 text-sm shadow-sm
                          focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none"
                   :class="errors.{{ $name }} && 'border-red-400 focus:border-red-500 focus:ring-red-100'"></textarea>
     @else
@@ -40,7 +40,7 @@
                @if($placeholder) placeholder="{{ $placeholder }}" @endif
                :aria-invalid="errors.{{ $name }} ? 'true' : null"
                aria-describedby="error-{{ $name }}"
-               class="mt-1.5 block w-full rounded-xl border-slate-300 border bg-white px-3.5 py-2.5 text-sm shadow-sm
+               class="mt-1.5 block w-full rounded-xl border-edge-strong border bg-surface-raised px-3.5 py-2.5 text-sm shadow-sm
                       focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none"
                :class="errors.{{ $name }} && 'border-red-400 focus:border-red-500 focus:ring-red-100'">
     @endif

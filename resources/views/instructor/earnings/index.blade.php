@@ -11,8 +11,8 @@
 
 @section('account-content')
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">My Earnings</h1>
-        <p class="text-slate-400 text-sm mt-1">Your earning history and status, lesson by lesson.</p>
+        <h1 class="text-xl font-bold text-fg-strong">My Earnings</h1>
+        <p class="text-fg-muted text-sm mt-1">Your earning history and status, lesson by lesson.</p>
     </div>
 
     <livewire:frontend.instructor.earnings-overview />

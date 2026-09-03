@@ -16,7 +16,9 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
@@ -36,9 +38,30 @@ class StudentLessonPriceResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Booking';
 
-    protected static ?string $recordTitleAttribute = 'id';
-
     protected static ?int $navigationSort = 3;
+
+    /**
+     * Rows have random UUID keys, which mean nothing to an admin. Titles
+     * (breadcrumb, edit heading, global search) describe the match
+     * criteria instead: "Paid lesson · Mathematics · Grade 10 · India · 60 min".
+     */
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof StudentLessonPrice) {
+            return null;
+        }
+
+        $record->loadMissing(['bookingType', 'subject', 'academicLevel', 'country', 'instructor']);
+
+        return collect([
+            $record->bookingType?->name,
+            $record->subject?->name,
+            $record->academicLevel?->name ?? 'All levels',
+            $record->country?->name,
+            $record->duration_minutes.' min',
+            $record->instructor?->name ? 'for '.$record->instructor->name : null,
+        ])->filter()->implode(' · ');
+    }
 
     public static function form(Schema $schema): Schema
     {

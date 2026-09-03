@@ -12,8 +12,8 @@
 @section('account-content')
 
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">Certificates</h1>
-        <p class="text-slate-400 text-sm mt-1">Download and share your earned certificates.</p>
+        <h1 class="text-xl font-bold text-fg-strong">Certificates</h1>
+        <p class="text-fg-muted text-sm mt-1">Download and share your earned certificates.</p>
     </div>
 
     <x-account.card title="My Certificates">

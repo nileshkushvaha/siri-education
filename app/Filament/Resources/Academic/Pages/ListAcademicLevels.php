@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\Academic\Pages;
 
 use App\Filament\Resources\Academic\AcademicLevelResource;
+use App\Filament\Support\Tables\AcademicStatusTabs;
+use App\Models\AcademicLevel;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListAcademicLevels extends ListRecords
 {
@@ -20,5 +23,11 @@ class ListAcademicLevels extends ListRecords
         return [
             CreateAction::make(),
         ];
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return AcademicStatusTabs::make(AcademicLevel::class);
     }
 }

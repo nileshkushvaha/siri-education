@@ -16,6 +16,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Versions are never created directly from this resource (no 'create'
@@ -44,6 +46,17 @@ class CurriculumVersionResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = 'Academic';
 
     protected static bool $shouldRegisterNavigation = false;
+
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof CurriculumVersion) {
+            return null;
+        }
+
+        $record->loadMissing('curriculum');
+
+        return trim(($record->curriculum?->name ?? 'Curriculum').' v'.$record->version_number);
+    }
 
     public static function form(Schema $schema): Schema
     {

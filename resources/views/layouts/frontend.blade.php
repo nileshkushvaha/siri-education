@@ -12,11 +12,26 @@
     $address         = $generalSettings->address ?? null;
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+@php
+    // Account Portal pages follow the user's theme (ThemeResolver via
+    // FrontendServiceProvider); public pages keep the fixed dark kit.
+    // Pages yielding 'theme-aware' (booking wizard) opt in too while
+    // keeping the public site header and footer.
+    $isPortalShell = $__env->hasSection('portal-shell') || $__env->hasSection('theme-aware');
+    $htmlThemeClass = $isPortalShell ? ($portalThemeHtmlClass ?? '') : 'dark';
+@endphp
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $htmlThemeClass }}" @if($isPortalShell) data-portal-theme="{{ $portalTheme ?? 'light' }}" @endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if($isPortalShell && auth()->check())
+        <meta name="portal-theme-endpoint" content="{{ route('profile.theme.update') }}">
+        @if(($portalTheme ?? 'light') === 'system')
+            {{-- Runs before first paint so a "match my device" user never sees a flash. --}}
+            <script>if (window.matchMedia('(prefers-color-scheme: dark)').matches) { document.documentElement.classList.add('dark'); }</script>
+        @endif
+    @endif
 
     <title>@yield('title', $appName)</title>
     <meta name="description" content="@yield('meta_description', '')">

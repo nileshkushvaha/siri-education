@@ -12,8 +12,8 @@
 @section('account-content')
 
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">Wallet</h1>
-        <p class="text-slate-400 text-sm mt-1">Your balance and activity statement.</p>
+        <h1 class="text-xl font-bold text-fg-strong">Wallet</h1>
+        <p class="text-fg-muted text-sm mt-1">Your balance and activity statement.</p>
     </div>
 
     <livewire:frontend.student.wallet-overview />

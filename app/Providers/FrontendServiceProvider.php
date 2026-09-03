@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\ThemeResolver;
 use App\View\Composers\AccountPortalComposer;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -61,5 +62,18 @@ class FrontendServiceProvider extends ServiceProvider
             'profile.show',
             'booking.manage',
         ], AccountPortalComposer::class);
+
+        // The <html> theme class lives on the base shell. Only Account Portal
+        // pages (those yielding 'portal-shell') honour it; public pages keep
+        // their fixed styling. Resolution stays inside ThemeResolver.
+        View::composer('layouts.frontend', function (\Illuminate\View\View $view): void {
+            $resolver = app(ThemeResolver::class);
+            $user = auth()->user();
+
+            $view->with([
+                'portalTheme' => $resolver->resolve($user)->value,
+                'portalThemeHtmlClass' => $resolver->htmlClass($user),
+            ]);
+        });
     }
 }

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\InstructorResponseTime;
 use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
+use App\Enums\ThemePreference;
 use App\Support\Media\Concerns\HasStandardImageConversions;
 use App\Support\Media\StandardImageConversion;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -59,6 +60,7 @@ class UserProfile extends Model implements HasMedia
         'show_social_links',
         'consents_to_recording',
         'notification_preferences',
+        'theme_preference',
         'is_featured',
         'featured_order',
         'is_instructor_verified',
@@ -88,6 +90,7 @@ class UserProfile extends Model implements HasMedia
             'date_of_birth' => 'date',
             'phone_verified_at' => 'datetime',
             'notification_preferences' => 'array',
+            'theme_preference' => ThemePreference::class,
             'show_email' => 'boolean',
             'show_phone' => 'boolean',
             'show_social_links' => 'boolean',

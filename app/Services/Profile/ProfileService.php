@@ -6,6 +6,7 @@ namespace App\Services\Profile;
 
 use App\Actions\Profile\UpdateProfileAction;
 use App\Actions\Profile\UploadAvatarAction;
+use App\Enums\ThemePreference;
 use App\Models\User;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Services\AuditTrailService;
@@ -131,6 +132,26 @@ final class ProfileService
 
         $this->auditTrail->logUser($user, 'profile', 'visibility_changed', 'Profile visibility updated', $user, [
             'fields' => array_keys($data),
+        ]);
+    }
+
+    /**
+     * Frontend-portal colour theme. Stored on the profile row; resolved
+     * for rendering by App\Services\ThemeResolver (light when unset).
+     */
+    public function updateThemePreference(User $user, ThemePreference $theme): void
+    {
+        $previous = $user->profile->theme_preference;
+
+        if ($previous === $theme) {
+            return;
+        }
+
+        $user->profile->update(['theme_preference' => $theme]);
+
+        $this->auditTrail->logUser($user, 'profile', 'theme_changed', 'Portal theme changed', $user, [
+            'from' => $previous?->value,
+            'to' => $theme->value,
         ]);
     }
 }

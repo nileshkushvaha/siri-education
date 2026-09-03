@@ -6,6 +6,6 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="{{ $icon }}"/>
         </svg>
     </div>
-    <h3 class="text-slate-300 font-semibold mb-2">{{ $title }}</h3>
-    <p class="text-slate-400 text-sm max-w-xs">{{ $message }}</p>
+    <h3 class="text-fg-muted font-semibold mb-2">{{ $title }}</h3>
+    <p class="text-fg-muted text-sm max-w-xs">{{ $message }}</p>
 </div>

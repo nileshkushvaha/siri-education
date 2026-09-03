@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\ChangePasswordRequest;
 use App\Http\Requests\Profile\UpdateProfileRequest;
 use App\Http\Requests\Profile\UpdateProfileVisibilityRequest;
+use App\Http\Requests\Profile\UpdateThemePreferenceRequest;
 use App\Http\Requests\Profile\UploadAvatarRequest;
 use App\Http\Requests\Profile\UploadCoverRequest;
 use App\Models\AcademicLevel;
@@ -129,5 +130,21 @@ class ProfileController extends Controller
         $this->profileService->updateVisibility(auth()->user(), $request->validated());
 
         return back()->with('success', 'Profile visibility updated.');
+    }
+
+    /**
+     * Portal theme toggle. Called by the header switch (fetch, expects JSON)
+     * and by the profile page form (expects a redirect).
+     */
+    public function updateTheme(UpdateThemePreferenceRequest $request): JsonResponse|RedirectResponse
+    {
+        $theme = $request->theme();
+        $this->profileService->updateThemePreference(auth()->user(), $theme);
+
+        if ($request->expectsJson()) {
+            return response()->json(['theme' => $theme->value]);
+        }
+
+        return back()->with('success', 'Appearance updated.');
     }
 }

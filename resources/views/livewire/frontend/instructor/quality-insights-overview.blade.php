@@ -29,7 +29,7 @@
         </div>
     @else
         <x-account.card>
-            <p class="text-sm text-slate-400">
+            <p class="text-sm text-fg-muted">
                 You do not have any published reviews yet. Once students leave public reviews after completed lessons, your rating summary will appear here.
             </p>
         </x-account.card>
@@ -43,16 +43,16 @@
                     @for($star = 5; $star >= 1; $star--)
                         @php($starCount = $insights->ratingSummary->ratingDistribution[(string) $star] ?? 0)
                         <div class="flex items-center gap-3 text-xs">
-                            <span class="w-8 shrink-0 text-slate-400">{{ $star }}★</span>
-                            <span class="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                            <span class="w-8 shrink-0 text-fg-muted">{{ $star }}★</span>
+                            <span class="h-2 flex-1 overflow-hidden rounded-full bg-surface-raised">
                                 <span class="block h-full rounded-full bg-amber-400" style="width: {{ round(($starCount / $insights->ratingSummary->reviewCount) * 100) }}%"></span>
                             </span>
-                            <span class="w-8 shrink-0 text-right text-slate-400">{{ $starCount }}</span>
+                            <span class="w-8 shrink-0 text-right text-fg-muted">{{ $starCount }}</span>
                         </div>
                     @endfor
                 </div>
             @else
-                <p class="text-sm text-slate-400">No ratings yet.</p>
+                <p class="text-sm text-fg-muted">No ratings yet.</p>
             @endif
         </x-account.card>
 
@@ -64,12 +64,12 @@
                     @php($average = $insights->ratingSummary->dimensionAverages[$key] ?? null)
                     @php($count = $insights->ratingSummary->dimensionCounts[$key] ?? 0)
                     <div class="flex items-center justify-between gap-4 text-sm">
-                        <dt class="text-slate-400">{{ $label }}</dt>
-                        <dd class="font-semibold text-white">
+                        <dt class="text-fg-muted">{{ $label }}</dt>
+                        <dd class="font-semibold text-fg-strong">
                             @if($average !== null)
-                                {{ number_format($average, 1) }} <span class="text-xs font-normal text-slate-500">({{ $count }})</span>
+                                {{ number_format($average, 1) }} <span class="text-xs font-normal text-fg-faint">({{ $count }})</span>
                             @else
-                                <span class="text-xs font-normal text-slate-500">Limited data available</span>
+                                <span class="text-xs font-normal text-fg-faint">Limited data available</span>
                             @endif
                         </dd>
                     </div>
@@ -84,14 +84,14 @@
             @if(count($insights->topDimensions) > 0)
                 <ul class="space-y-3">
                     @foreach($insights->topDimensions as $dimension)
-                        <li class="flex items-center justify-between gap-4 rounded-xl bg-white/[0.03] px-4 py-3 text-sm">
-                            <span class="text-slate-200">{{ $dimension->label }}</span>
-                            <span class="font-semibold text-emerald-300">{{ number_format($dimension->average, 1) }} <span class="text-xs font-normal text-slate-500">({{ $dimension->reviewCount }} reviews)</span></span>
+                        <li class="flex items-center justify-between gap-4 rounded-xl bg-surface-raised px-4 py-3 text-sm">
+                            <span class="text-fg">{{ $dimension->label }}</span>
+                            <span class="font-semibold text-emerald-600 dark:text-emerald-300">{{ number_format($dimension->average, 1) }} <span class="text-xs font-normal text-fg-faint">({{ $dimension->reviewCount }} reviews)</span></span>
                         </li>
                     @endforeach
                 </ul>
             @else
-                <p class="text-sm text-slate-400">Limited data available — highlights appear once enough published reviews rate the same area highly.</p>
+                <p class="text-sm text-fg-muted">Limited data available — highlights appear once enough published reviews rate the same area highly.</p>
             @endif
         </x-account.card>
 
@@ -100,17 +100,17 @@
             @if(count($insights->improvementAreas) > 0)
                 <ul class="space-y-3">
                     @foreach($insights->improvementAreas as $dimension)
-                        <li class="rounded-xl bg-white/[0.03] px-4 py-3 text-sm">
+                        <li class="rounded-xl bg-surface-raised px-4 py-3 text-sm">
                             <div class="flex items-center justify-between gap-4">
-                                <span class="text-slate-200">{{ $dimension->label }}</span>
-                                <span class="font-semibold text-amber-300">{{ number_format($dimension->average, 1) }}</span>
+                                <span class="text-fg">{{ $dimension->label }}</span>
+                                <span class="font-semibold text-amber-600 dark:text-amber-300">{{ number_format($dimension->average, 1) }}</span>
                             </div>
-                            <p class="mt-1 text-xs text-slate-500">Students rated this area lower across {{ $dimension->reviewCount }} {{ Str::plural('review', $dimension->reviewCount) }}.</p>
+                            <p class="mt-1 text-xs text-fg-faint">Students rated this area lower across {{ $dimension->reviewCount }} {{ Str::plural('review', $dimension->reviewCount) }}.</p>
                         </li>
                     @endforeach
                 </ul>
             @else
-                <p class="text-sm text-slate-400">Limited data available — no lower-rated area stands out yet.</p>
+                <p class="text-sm text-fg-muted">Limited data available — no lower-rated area stands out yet.</p>
             @endif
         </x-account.card>
     </div>
@@ -120,14 +120,14 @@
         @if(count($insights->feedbackTags) > 0)
             <div class="flex flex-wrap gap-2">
                 @foreach($insights->feedbackTags as $tag)
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200 ring-1 ring-white/10">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-surface-raised px-3 py-1.5 text-xs text-fg ring-1 ring-edge">
                         {{ $tag->label }}
-                        <span class="text-slate-500">{{ $tag->count }}</span>
+                        <span class="text-fg-faint">{{ $tag->count }}</span>
                     </span>
                 @endforeach
             </div>
         @else
-            <p class="text-sm text-slate-400">No feedback tags selected on your published reviews yet.</p>
+            <p class="text-sm text-fg-muted">No feedback tags selected on your published reviews yet.</p>
         @endif
     </x-account.card>
 
@@ -136,30 +136,30 @@
         @if($reviews->isNotEmpty())
             <div class="space-y-4">
                 @foreach($reviews as $review)
-                    <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div class="rounded-xl border border-edge bg-surface-raised p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <p class="font-semibold text-white">{{ $review->reviewerLabel }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500">{{ viewer_date($review->submittedAt) }}</p>
+                                <p class="font-semibold text-fg-strong">{{ $review->reviewerLabel }}</p>
+                                <p class="mt-0.5 text-xs text-fg-faint">{{ viewer_date($review->submittedAt) }}</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 @if($review->verifiedLesson)
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/20">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-300 ring-1 ring-emerald-400/20">
                                         {{ $review->isDemo() ? 'Verified Demo Lesson' : 'Verified Lesson' }}
                                     </span>
                                 @endif
-                                <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-amber-400/20">{{ $review->overallRating }} ★</span>
+                                <span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-300 ring-1 ring-amber-400/20">{{ $review->overallRating }} ★</span>
                             </div>
                         </div>
 
                         @if($review->content)
-                            <p class="mt-3 text-sm leading-6 text-slate-300">{{ $review->content }}</p>
+                            <p class="mt-3 text-sm leading-6 text-fg-muted">{{ $review->content }}</p>
                         @endif
 
                         @if(!empty($review->tags))
                             <div class="mt-3 flex flex-wrap gap-2">
                                 @foreach($review->tags as $tag)
-                                    <span class="rounded-full bg-white/[0.05] px-2.5 py-1 text-xs text-slate-300 ring-1 ring-white/10">{{ $tag['label'] ?? $tag['key'] ?? '' }}</span>
+                                    <span class="rounded-full bg-surface-raised px-2.5 py-1 text-xs text-fg-muted ring-1 ring-edge">{{ $tag['label'] ?? $tag['key'] ?? '' }}</span>
                                 @endforeach
                             </div>
                         @endif
@@ -171,7 +171,7 @@
                 <x-ui.pagination :paginator="$reviews" />
             </div>
         @else
-            <p class="text-sm text-slate-400">No published reviews yet.</p>
+            <p class="text-sm text-fg-muted">No published reviews yet.</p>
         @endif
     </x-account.card>
 </div>

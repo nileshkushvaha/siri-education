@@ -11,8 +11,8 @@
 
 @section('account-content')
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-white">My Lessons</h1>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+        <h1 class="text-3xl font-bold text-fg-strong">My Lessons</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-fg-muted">
             Review your lessons and record private feedback after a lesson completes. Feedback is never shared publicly.
         </p>
     </div>

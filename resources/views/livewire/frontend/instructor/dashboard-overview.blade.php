@@ -1,19 +1,19 @@
 <div class="space-y-6">
-    <section class="relative overflow-hidden rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-indigo-600/20 via-slate-900 to-violet-600/10 p-5 sm:p-7">
+    <section class="relative overflow-hidden rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-indigo-600/20 via-surface to-violet-600/10 p-5 sm:p-7">
         <div class="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-indigo-500/15 blur-3xl"></div>
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
                 <div class="mb-3 flex flex-wrap items-center gap-2">
-                    <span class="rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1 text-xs font-semibold text-indigo-200">Instructor workspace</span>
+                    <span class="rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-200">Instructor workspace</span>
                     @if($todayCount > 0)
-                        <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">{{ $todayCount }} {{ Str::plural('lesson', $todayCount) }} today</span>
+                        <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">{{ $todayCount }} {{ Str::plural('lesson', $todayCount) }} today</span>
                     @endif
                 </div>
-                <h2 class="max-w-2xl text-2xl font-bold tracking-tight text-white sm:text-3xl">Plan the day. Teach with confidence.</h2>
-                <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Your lessons, student learning plans, reviews, and earnings are organized in one focused workspace.</p>
+                <h2 class="max-w-2xl text-2xl font-bold tracking-tight text-fg-strong sm:text-3xl">Plan the day. Teach with confidence.</h2>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-fg-muted">Your lessons, student learning plans, reviews, and earnings are organized in one focused workspace.</p>
             </div>
             <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">
-                <a href="{{ route('dashboard.instructor.availability') }}" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.10] focus:outline-none focus:ring-2 focus:ring-indigo-400">Set availability</a>
+                <a href="{{ route('dashboard.instructor.availability') }}" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-edge bg-surface-raised px-4 text-sm font-semibold text-fg-strong transition hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-indigo-400">Set availability</a>
                 <a href="{{ route('dashboard.instructor.lessons') }}" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300">View lessons</a>
             </div>
         </div>
@@ -22,8 +22,8 @@
     <section aria-labelledby="teaching-snapshot-title">
         <div class="mb-3 flex items-end justify-between">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-300">At a glance</p>
-                <h2 id="teaching-snapshot-title" class="mt-1 text-lg font-semibold text-white">Teaching snapshot</h2>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600 dark:text-indigo-300">At a glance</p>
+                <h2 id="teaching-snapshot-title" class="mt-1 text-lg font-semibold text-fg-strong">Teaching snapshot</h2>
             </div>
         </div>
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -38,25 +38,25 @@
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.85fr)]">
         <x-account.card>
             <div class="mb-4 flex items-center justify-between gap-4">
-                <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-300">Schedule</p><h2 class="mt-1 text-lg font-semibold text-white">Next lessons</h2></div>
-                <a href="{{ route('dashboard.instructor.lessons') }}" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200">View all</a>
+                <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-300">Schedule</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">Next lessons</h2></div>
+                <a href="{{ route('dashboard.instructor.lessons') }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 hover:dark:text-indigo-200">View all</a>
             </div>
             <div class="space-y-2">
                 @forelse($nextClasses as $booking)
-                    <article wire:key="instructor-next-class-{{ $booking['id'] }}" class="group grid grid-cols-[3.4rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/20 hover:bg-white/[0.04] sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-center">
+                    <article wire:key="instructor-next-class-{{ $booking['id'] }}" class="group grid grid-cols-[3.4rem_minmax(0,1fr)] gap-3 rounded-2xl border border-edge bg-surface-raised p-3 transition hover:border-indigo-400/20 hover:bg-surface-hover sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-center">
                         <div class="rounded-xl bg-indigo-500/10 py-2 text-center">
-                            <p class="text-[10px] font-bold uppercase tracking-wide text-indigo-300">{{ viewer_datetime($booking['starts_at'], 'M') }}</p>
-                            <p class="text-xl font-bold text-white">{{ viewer_datetime($booking['starts_at'], 'j') }}</p>
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">{{ viewer_datetime($booking['starts_at'], 'M') }}</p>
+                            <p class="text-xl font-bold text-fg-strong">{{ viewer_datetime($booking['starts_at'], 'j') }}</p>
                         </div>
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold text-white">{{ $booking['subject'] }}</p>
-                            <p class="mt-1 truncate text-xs text-slate-400">{{ $booking['student'] }} · {{ $booking['type'] }}</p>
-                            @if($booking['is_demo'])<p class="mt-1 text-xs font-medium text-cyan-300">Intro session · Learn the student’s goals and discuss the best next step.</p>@endif
+                            <p class="truncate text-sm font-semibold text-fg-strong">{{ $booking['subject'] }}</p>
+                            <p class="mt-1 truncate text-xs text-fg-muted">{{ $booking['student'] }} · {{ $booking['type'] }}</p>
+                            @if($booking['is_demo'])<p class="mt-1 text-xs font-medium text-cyan-600 dark:text-cyan-300">Intro session · Learn the student’s goals and discuss the best next step.</p>@endif
                         </div>
                         <div class="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:justify-end">
                             <div class="text-left sm:text-right">
-                                <p class="text-sm font-semibold text-slate-200">{{ viewer_time($booking['starts_at']) }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500">{{ viewer_time($booking['ends_at']) }}</p>
+                                <p class="text-sm font-semibold text-fg">{{ viewer_time($booking['starts_at']) }}</p>
+                                <p class="mt-0.5 text-xs text-fg-faint">{{ viewer_time($booking['ends_at']) }}</p>
                             </div>
                             @if($booking['join_url'])
                                 <a href="{{ $booking['join_url'] }}" target="_blank" rel="noopener noreferrer"
@@ -68,10 +68,10 @@
                         </div>
                     </article>
                 @empty
-                    <div class="rounded-2xl border border-dashed border-white/10 px-5 py-10 text-center">
-                        <p class="font-semibold text-slate-200">Your schedule is clear</p>
-                        <p class="mx-auto mt-2 max-w-sm text-sm text-slate-400">No upcoming lessons yet. Keep your availability current so students can find the right time.</p>
-                        <a href="{{ route('dashboard.instructor.availability') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl bg-indigo-500/10 px-4 text-sm font-semibold text-indigo-300 hover:bg-indigo-500/20">Update availability</a>
+                    <div class="rounded-2xl border border-dashed border-edge px-5 py-10 text-center">
+                        <p class="font-semibold text-fg">Your schedule is clear</p>
+                        <p class="mx-auto mt-2 max-w-sm text-sm text-fg-muted">No upcoming lessons yet. Keep your availability current so students can find the right time.</p>
+                        <a href="{{ route('dashboard.instructor.availability') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl bg-indigo-500/10 px-4 text-sm font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20">Update availability</a>
                     </div>
                 @endforelse
             </div>
@@ -79,42 +79,42 @@
 
         <div class="space-y-6">
             <x-account.card>
-                <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-300">Action needed</p><h2 class="mt-1 text-lg font-semibold text-white">Teaching queue</h2></div><span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-200">{{ $reviewDueLearningPlanCount + $pendingAssessmentLearningPlanCount + $homework['pending_reviews'] }}</span></div>
+                <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">Action needed</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">Teaching queue</h2></div><span class="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-200">{{ $reviewDueLearningPlanCount + $pendingAssessmentLearningPlanCount + $homework['pending_reviews'] }}</span></div>
                 <div class="space-y-2">
-                    <a href="{{ route('dashboard.instructor.learning-plans') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">Learning plan reviews</span><span class="font-bold text-white">{{ $reviewDueLearningPlanCount }}</span></a>
-                    <a href="{{ route('dashboard.instructor.learning-plans') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">Assessments to prepare</span><span class="font-bold text-white">{{ $pendingAssessmentLearningPlanCount }}</span></a>
+                    <a href="{{ route('dashboard.instructor.learning-plans') }}" class="flex items-center justify-between rounded-xl bg-surface-raised p-3 hover:bg-surface-hover"><span class="text-sm text-fg-muted">Learning plan reviews</span><span class="font-bold text-fg-strong">{{ $reviewDueLearningPlanCount }}</span></a>
+                    <a href="{{ route('dashboard.instructor.learning-plans') }}" class="flex items-center justify-between rounded-xl bg-surface-raised p-3 hover:bg-surface-hover"><span class="text-sm text-fg-muted">Assessments to prepare</span><span class="font-bold text-fg-strong">{{ $pendingAssessmentLearningPlanCount }}</span></a>
                     @if($homework['pending_reviews'] > 0)
-                        <a href="{{ route('dashboard.instructor.homework') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">{{ $homework['pending_reviews'] }} {{ Str::plural('submission', $homework['pending_reviews']) }} waiting for review</span><span class="text-xs font-semibold text-indigo-300">Review Homework</span></a>
+                        <a href="{{ route('dashboard.instructor.homework') }}" class="flex items-center justify-between rounded-xl bg-surface-raised p-3 hover:bg-surface-hover"><span class="text-sm text-fg-muted">{{ $homework['pending_reviews'] }} {{ Str::plural('submission', $homework['pending_reviews']) }} waiting for review</span><span class="text-xs font-semibold text-indigo-600 dark:text-indigo-300">Review Homework</span></a>
                     @else
-                        <div class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3"><span class="text-sm text-slate-300">Homework submissions</span><span class="font-bold text-white">0</span></div>
+                        <div class="flex items-center justify-between rounded-xl bg-surface-raised p-3"><span class="text-sm text-fg-muted">Homework submissions</span><span class="font-bold text-fg-strong">0</span></div>
                     @endif
-                    <a href="{{ route('dashboard.notifications') }}" class="flex items-center justify-between rounded-xl bg-white/[0.035] p-3 hover:bg-white/[0.06]"><span class="text-sm text-slate-300">Unread notifications</span><span class="font-bold text-white">{{ $unreadCount }}</span></a>
+                    <a href="{{ route('dashboard.notifications') }}" class="flex items-center justify-between rounded-xl bg-surface-raised p-3 hover:bg-surface-hover"><span class="text-sm text-fg-muted">Unread notifications</span><span class="font-bold text-fg-strong">{{ $unreadCount }}</span></a>
                 </div>
             </x-account.card>
 
             <x-account.card>
-                <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">Money</p><h2 class="mt-1 text-lg font-semibold text-white">Earnings</h2></div>@if($payoutsAvailable)<a href="{{ route('dashboard.instructor.payout-methods') }}" class="text-xs font-semibold text-indigo-300 hover:text-indigo-200">Payouts</a>@endif</div>
+                <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">Money</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">Earnings</h2></div>@if($payoutsAvailable)<a href="{{ route('dashboard.instructor.payout-methods') }}" class="text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 hover:dark:text-indigo-200">Payouts</a>@endif</div>
                 @forelse($earnings as $earning)
-                    <div class="{{ !$loop->first ? 'mt-4 border-t border-white/[0.06] pt-4' : '' }}">
-                        <div class="flex items-end justify-between gap-3"><div><p class="text-xs text-slate-400">Available</p><p class="mt-1 text-2xl font-bold text-white">{{ $earning['available'] }}</p></div><span class="text-xs font-semibold text-slate-500">{{ $earning['currency'] }}</span></div>
-                        <p class="mt-2 text-xs text-slate-400">{{ $earning['on_hold'] }} pending release</p>
+                    <div class="{{ !$loop->first ? 'mt-4 border-t border-edge pt-4' : '' }}">
+                        <div class="flex items-end justify-between gap-3"><div><p class="text-xs text-fg-muted">Available</p><p class="mt-1 text-2xl font-bold text-fg-strong">{{ $earning['available'] }}</p></div><span class="text-xs font-semibold text-fg-faint">{{ $earning['currency'] }}</span></div>
+                        <p class="mt-2 text-xs text-fg-muted">{{ $earning['on_hold'] }} pending release</p>
                     </div>
                 @empty
-                    <p class="text-sm leading-6 text-slate-400">Earnings from completed eligible lessons will appear here after processing.</p>
+                    <p class="text-sm leading-6 text-fg-muted">Earnings from completed eligible lessons will appear here after processing.</p>
                 @endforelse
-                <a href="{{ route('dashboard.instructor.earnings') }}" class="mt-4 inline-flex items-center text-xs font-semibold text-indigo-300 hover:text-indigo-200">View Earnings &rarr;</a>
+                <a href="{{ route('dashboard.instructor.earnings') }}" class="mt-4 inline-flex items-center text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 hover:dark:text-indigo-200">View Earnings &rarr;</a>
             </x-account.card>
         </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
         <x-account.card>
-            <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Student progress</p><h2 class="mt-1 text-lg font-semibold text-white">Learning plans</h2></div><a href="{{ route('dashboard.instructor.learning-plans') }}" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200">Manage</a></div>
+            <div class="mb-4 flex items-center justify-between"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">Student progress</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">Learning plans</h2></div><a href="{{ route('dashboard.instructor.learning-plans') }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 hover:dark:text-indigo-200">Manage</a></div>
             {{-- Review-due/assessment counts live only in the
                  "Teaching queue" card above — this card no longer repeats them. --}}
-            <div class="rounded-2xl bg-white/[0.035] p-4">
-                <p class="text-2xl font-bold text-white">{{ $assignedActiveLearningPlanCount }}</p>
-                <p class="mt-1 text-xs text-slate-400">Active learning {{ Str::plural('plan', $assignedActiveLearningPlanCount) }}</p>
+            <div class="rounded-2xl bg-surface-raised p-4">
+                <p class="text-2xl font-bold text-fg-strong">{{ $assignedActiveLearningPlanCount }}</p>
+                <p class="mt-1 text-xs text-fg-muted">Active learning {{ Str::plural('plan', $assignedActiveLearningPlanCount) }}</p>
             </div>
         </x-account.card>
 
@@ -123,25 +123,25 @@
              even if a completeness percentage is stale (e.g. an admin Force Approve). --}}
         @if($onboarding['show_prompt'] && $onboarding['variant'] === 'rejected')
             <x-account.card>
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-rose-300">Application status</p>
-                <h2 class="mt-1 text-lg font-semibold text-white">Application not approved</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-400">Your instructor application was not approved. Contact support if you have questions about this decision.</p>
-                <a href="{{ route('page.show', 'contact-us') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Contact support</a>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-rose-600 dark:text-rose-300">Application status</p>
+                <h2 class="mt-1 text-lg font-semibold text-fg-strong">Application not approved</h2>
+                <p class="mt-2 text-sm leading-6 text-fg-muted">Your instructor application was not approved. Contact support if you have questions about this decision.</p>
+                <a href="{{ route('page.show', 'contact-us') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-edge px-4 text-sm font-semibold text-fg hover:bg-surface-hover">Contact support</a>
             </x-account.card>
         @elseif($onboarding['show_prompt'])
             <x-account.card>
-                <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">Profile readiness</p><h2 class="mt-1 text-lg font-semibold text-white">{{ $onboarding['status']?->label() ?? 'Complete instructor setup' }}</h2></div><span class="text-sm font-bold text-indigo-300">{{ $onboarding['percentage'] }}%</span></div>
-                <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-label="Instructor profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $onboarding['percentage'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $onboarding['percentage'] }}%"></div></div>
-                @if($onboarding['missing'])<p class="mt-3 text-sm text-slate-400">Next: {{ implode(', ', array_slice($onboarding['missing'], 0, 2)) }}</p>@endif
-                <div class="mt-4 flex gap-2"><a href="{{ route('dashboard.instructor.onboarding') }}" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Continue setup</a>@if($onboarding['next_action'] === 'submit_application')<form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">@csrf<button type="submit" class="min-h-10 w-full rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400">Submit for review</button></form>@endif</div>
+                <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">Profile readiness</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">{{ $onboarding['status']?->label() ?? 'Complete instructor setup' }}</h2></div><span class="text-sm font-bold text-indigo-600 dark:text-indigo-300">{{ $onboarding['percentage'] }}%</span></div>
+                <div class="mt-4 h-2 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Instructor profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $onboarding['percentage'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $onboarding['percentage'] }}%"></div></div>
+                @if($onboarding['missing'])<p class="mt-3 text-sm text-fg-muted">Next: {{ implode(', ', array_slice($onboarding['missing'], 0, 2)) }}</p>@endif
+                <div class="mt-4 flex gap-2"><a href="{{ route('dashboard.instructor.onboarding') }}" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-edge px-4 text-sm font-semibold text-fg hover:bg-surface-hover">Continue setup</a>@if($onboarding['next_action'] === 'submit_application')<form method="POST" action="{{ route('dashboard.instructor.submit') }}" class="flex-1">@csrf<button type="submit" class="min-h-10 w-full rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-400">Submit for review</button></form>@endif</div>
             </x-account.card>
         @elseif($onboarding['status'] === \App\Enums\InstructorStatus::Vacation)
             <x-account.card>
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-300">Teaching status</p><h2 class="mt-1 text-lg font-semibold text-white">Vacation Mode Active</h2><p class="mt-2 text-sm leading-6 text-slate-400">New students cannot book lessons with you right now. Your schedule and existing lessons are unaffected.</p><a href="{{ route('dashboard.instructor.vacation') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Resume Teaching &rarr;</a>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">Teaching status</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">Vacation Mode Active</h2><p class="mt-2 text-sm leading-6 text-fg-muted">New students cannot book lessons with you right now. Your schedule and existing lessons are unaffected.</p><a href="{{ route('dashboard.instructor.vacation') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-edge px-4 text-sm font-semibold text-fg hover:bg-surface-hover">Resume Teaching &rarr;</a>
             </x-account.card>
         @else
             <x-account.card>
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">Workspace tip</p><h2 class="mt-1 text-lg font-semibold text-white">Keep your schedule bookable</h2><p class="mt-2 text-sm leading-6 text-slate-400">Review availability every week and block time you cannot teach to prevent scheduling conflicts.</p><a href="{{ route('dashboard.instructor.availability') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.05]">Review availability</a>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">Workspace tip</p><h2 class="mt-1 text-lg font-semibold text-fg-strong">Keep your schedule bookable</h2><p class="mt-2 text-sm leading-6 text-fg-muted">Review availability every week and block time you cannot teach to prevent scheduling conflicts.</p><a href="{{ route('dashboard.instructor.availability') }}" class="mt-4 inline-flex min-h-10 items-center rounded-xl border border-edge px-4 text-sm font-semibold text-fg hover:bg-surface-hover">Review availability</a>
             </x-account.card>
         @endif
     </div>

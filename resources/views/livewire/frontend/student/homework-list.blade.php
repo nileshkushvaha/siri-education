@@ -9,34 +9,34 @@
     </div>
 
     @if (session('success'))
-        <div class="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+        <div class="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-300">
             {{ session('success') }}
         </div>
     @endif
 
     <x-account.card>
         @forelse($assignments as $assignment)
-            <div wire:key="homework-{{ $assignment->id }}" class="py-4 {{ !$loop->last ? 'border-b border-white/[0.05]' : '' }}">
+            <div wire:key="homework-{{ $assignment->id }}" class="py-4 {{ !$loop->last ? 'border-b border-edge' : '' }}">
                 <div class="flex items-center justify-between">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 mb-1">
-                            <p class="text-sm font-medium text-white truncate">{{ $assignment->title }}</p>
+                            <p class="text-sm font-medium text-fg-strong truncate">{{ $assignment->title }}</p>
                             <x-ui.badge :color="$assignment->status->color()">{{ $assignment->status->label() }}</x-ui.badge>
                             @if($assignment->isOverdue())
                                 <x-ui.badge color="danger">Overdue</x-ui.badge>
                             @endif
                         </div>
-                        <p class="text-xs text-slate-400">{{ $assignment->subject }} &middot; with {{ $assignment->teacher?->name ?? 'Teacher' }}</p>
+                        <p class="text-xs text-fg-muted">{{ $assignment->subject }} &middot; with {{ $assignment->teacher?->name ?? 'Teacher' }}</p>
                         <x-homework.context-line :assignment="$assignment" />
-                        <p class="text-xs text-slate-400 mt-1">Due {{ viewer_datetime_labelled($assignment->due_at) }}</p>
+                        <p class="text-xs text-fg-muted mt-1">Due {{ viewer_datetime_labelled($assignment->due_at) }}</p>
                         @if($assignment->grade)
-                            <p class="text-xs text-emerald-400 mt-1">Grade: {{ $assignment->grade }}</p>
+                            <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Grade: {{ $assignment->grade }}</p>
                         @endif
 
                         @if($assignment->getMedia('instructor_resources')->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach($assignment->getMedia('instructor_resources') as $media)
-                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-300 underline">
+                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-300 underline">
                                         @if(str_starts_with($media->mime_type, 'image/'))
                                             <img src="{{ route('dashboard.homework.resources.download', $media) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
                                         @endif
@@ -49,7 +49,7 @@
                         @if($assignment->getMedia('submission_attachments')->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach($assignment->getMedia('submission_attachments') as $media)
-                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-slate-400 underline">
+                                    <a href="{{ route('dashboard.homework.resources.download', $media) }}" class="inline-flex items-center gap-1.5 text-xs text-fg-muted underline">
                                         @if(str_starts_with($media->mime_type, 'image/'))
                                             <img src="{{ route('dashboard.homework.resources.download', $media) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
                                         @endif
@@ -63,7 +63,7 @@
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach($assignment->resourceVersions as $version)
                                     @if($version->getFirstMedia('file'))
-                                        <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-300 underline">
+                                        <a href="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-300 underline">
                                             @if(str_starts_with($version->getFirstMedia('file')->mime_type, 'image/'))
                                                 <img src="{{ route('dashboard.homework.resources.download', $version->getFirstMedia('file')) }}?preview=1" alt="" class="h-6 w-6 rounded object-cover no-underline">
                                             @endif
@@ -86,16 +86,16 @@
                 @if($submittingId === $assignment->id)
                     <div class="mt-4 pl-0">
                         <textarea wire:model="submissionText" rows="4"
-                                  class="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500/40"
+                                  class="w-full rounded-xl bg-surface-raised border border-edge text-sm text-fg px-3 py-2 focus:outline-none focus:border-indigo-500/40"
                                   placeholder="Type your answer here..."></textarea>
                         @error('submissionText')
-                            <p class="text-xs text-rose-400 mt-1">{{ $message }}</p>
+                            <p class="text-xs text-rose-600 dark:text-rose-400 mt-1">{{ $message }}</p>
                         @enderror
 
                         <div class="mt-3">
-                            <label for="submissionAttachment" class="block text-xs text-slate-400 mb-1">Attach a file (optional, PDF or image)</label>
-                            <input type="file" id="submissionAttachment" wire:model="submissionAttachment" accept=".pdf,.jpg,.jpeg,.png,.webp" class="text-xs text-slate-300">
-                            @error('submissionAttachment')<p class="text-xs text-rose-400 mt-1">{{ $message }}</p>@enderror
+                            <label for="submissionAttachment" class="block text-xs text-fg-muted mb-1">Attach a file (optional, PDF or image)</label>
+                            <input type="file" id="submissionAttachment" wire:model="submissionAttachment" accept=".pdf,.jpg,.jpeg,.png,.webp" class="text-xs text-fg-muted">
+                            @error('submissionAttachment')<p class="text-xs text-rose-600 dark:text-rose-400 mt-1">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="flex items-center gap-2 mt-3">
@@ -104,7 +104,7 @@
                                 Submit Homework
                             </button>
                             <button wire:click="cancelSubmission"
-                                    class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-all">
+                                    class="px-4 py-2 rounded-xl text-xs font-medium text-fg-muted hover:text-fg-strong transition-all">
                                 Cancel
                             </button>
                         </div>
@@ -113,13 +113,13 @@
             </div>
         @empty
             <div class="flex flex-col items-center justify-center py-16 text-center">
-                <h3 class="text-slate-300 font-semibold mb-2">No homework assigned</h3>
-                <p class="text-slate-400 text-sm max-w-xs">Assignments from your teachers will appear here.</p>
+                <h3 class="text-fg-muted font-semibold mb-2">No homework assigned</h3>
+                <p class="text-fg-muted text-sm max-w-xs">Assignments from your teachers will appear here.</p>
             </div>
         @endforelse
 
         @if($assignments->hasPages())
-            <div class="mt-6 pt-4 border-t border-white/[0.04]">
+            <div class="mt-6 pt-4 border-t border-edge">
                 {{ $assignments->links() }}
             </div>
         @endif

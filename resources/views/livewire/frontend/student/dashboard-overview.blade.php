@@ -1,34 +1,34 @@
 <div class="space-y-6">
     @if($dashboard->nextLesson)
         @php($lesson = $dashboard->nextLesson)
-        <section class="relative overflow-hidden rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-indigo-500/15 via-slate-900 to-violet-500/10 p-6 md:p-8">
+        <section class="relative overflow-hidden rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-indigo-500/15 via-surface to-violet-500/10 p-6 md:p-8">
             <div class="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl"></div>
             <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-300">Your next lesson</p>
-                    <h2 class="mt-3 text-2xl font-bold text-white md:text-3xl">{{ $lesson['subject'] }}</h2>
-                    <p class="mt-2 text-sm text-slate-300">with {{ $lesson['instructor'] }} · {{ $lesson['type'] }}</p>
-                    <p class="mt-4 text-base font-semibold text-white">{{ viewer_datetime($lesson['starts_at'], 'l, M j · g:i A') }}</p>
-                    <p class="mt-1 text-xs text-slate-400" role="status">Meeting: {{ $lesson['meeting_status'] }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-600 dark:text-indigo-300">Your next lesson</p>
+                    <h2 class="mt-3 text-2xl font-bold text-fg-strong md:text-3xl">{{ $lesson['subject'] }}</h2>
+                    <p class="mt-2 text-sm text-fg-muted">with {{ $lesson['instructor'] }} · {{ $lesson['type'] }}</p>
+                    <p class="mt-4 text-base font-semibold text-fg-strong">{{ viewer_datetime($lesson['starts_at'], 'l, M j · g:i A') }}</p>
+                    <p class="mt-1 text-xs text-fg-muted" role="status">Meeting: {{ $lesson['meeting_status'] }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     @if($lesson['join_url'])
                         <a href="{{ $lesson['join_url'] }}" target="_blank" rel="noopener noreferrer" class="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-400">Join Class</a>
                     @elseif($lesson['meeting_status'] === 'Created' && !$lesson['join_window_open'])
-                        <span class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">Join link available near lesson time</span>
+                        <span class="rounded-xl border border-edge bg-surface-raised px-4 py-3 text-sm text-fg-muted">Join link available near lesson time</span>
                     @endif
-                    <a href="{{ route('dashboard.my-bookings') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10">View Booking</a>
-                    @if($lesson['can_reschedule'])<a href="{{ route('dashboard.my-bookings') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Reschedule</a>@endif
-                    @if($lesson['can_cancel'])<a href="{{ route('dashboard.my-bookings') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300">Cancel</a>@endif
+                    <a href="{{ route('dashboard.my-bookings') }}" class="rounded-xl border border-edge bg-surface-raised px-4 py-3 text-sm font-semibold text-fg-strong hover:bg-surface-hover">View Booking</a>
+                    @if($lesson['can_reschedule'])<a href="{{ route('dashboard.my-bookings') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Reschedule</a>@endif
+                    @if($lesson['can_cancel'])<a href="{{ route('dashboard.my-bookings') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-rose-600 dark:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300">Cancel</a>@endif
                 </div>
             </div>
         </section>
     @else
         @php($journey = $dashboard->bookingJourney ?? [])
         <section class="rounded-3xl border border-indigo-400/20 bg-gradient-to-r from-indigo-500/15 to-violet-500/10 p-7 md:flex md:items-center md:justify-between">
-            <div class="max-w-2xl"><p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-300">{{ $journey['eyebrow'] ?? 'Ready when you are' }}</p><h2 class="mt-2 text-2xl font-bold text-white">{{ $journey['title'] ?? 'Plan your next learning session' }}</h2><p class="mt-2 text-sm leading-6 text-slate-400">{{ $journey['description'] ?? 'Choose an instructor and a time that works for you.' }}</p></div>
+            <div class="max-w-2xl"><p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-600 dark:text-indigo-300">{{ $journey['eyebrow'] ?? 'Ready when you are' }}</p><h2 class="mt-2 text-2xl font-bold text-fg-strong">{{ $journey['title'] ?? 'Plan your next learning session' }}</h2><p class="mt-2 text-sm leading-6 text-fg-muted">{{ $journey['description'] ?? 'Choose an instructor and a time that works for you.' }}</p></div>
             <div class="mt-5 flex shrink-0 flex-wrap gap-3 md:ml-6 md:mt-0">
-                @if(! empty($journey['secondary_url']))<a href="{{ $journey['secondary_url'] }}" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white hover:bg-white/10">{{ $journey['secondary_label'] }}</a>@endif
+                @if(! empty($journey['secondary_url']))<a href="{{ $journey['secondary_url'] }}" class="inline-flex min-h-11 items-center rounded-xl border border-edge bg-surface-raised px-5 text-sm font-semibold text-fg-strong hover:bg-surface-hover">{{ $journey['secondary_label'] }}</a>@endif
                 <a href="{{ $journey['primary_url'] ?? route('booking.create') }}" class="inline-flex min-h-11 items-center rounded-xl bg-indigo-500 px-5 text-sm font-bold text-white hover:bg-indigo-400">{{ $journey['primary_label'] ?? 'Book a lesson' }}</a>
             </div>
         </section>
@@ -36,27 +36,27 @@
 
     @if($dashboard->homework)
         @php($homework = $dashboard->homework)
-        <section class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 md:p-6">
-            <div class="flex items-center justify-between gap-4"><div><h2 class="text-lg font-bold text-white">Homework requiring attention</h2><p class="mt-1 text-sm text-slate-400"><span class="text-rose-300">{{ $homework['overdue'] }} overdue</span> · {{ $homework['pending'] }} upcoming</p></div><a href="{{ route('dashboard.homework') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">View all →</a></div>
-            <div class="mt-4 divide-y divide-white/[.06]">
+        <section class="rounded-2xl border border-edge bg-surface-raised p-5 md:p-6">
+            <div class="flex items-center justify-between gap-4"><div><h2 class="text-lg font-bold text-fg-strong">Homework requiring attention</h2><p class="mt-1 text-sm text-fg-muted"><span class="text-rose-600 dark:text-rose-300">{{ $homework['overdue'] }} overdue</span> · {{ $homework['pending'] }} upcoming</p></div><a href="{{ route('dashboard.homework') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">View all →</a></div>
+            <div class="mt-4 divide-y divide-edge">
                 @forelse($homework['items'] as $item)
-                    <a href="{{ route('dashboard.homework') }}" class="flex items-center justify-between gap-4 py-4 hover:bg-white/[.02]">
-                        <div class="min-w-0"><p class="truncate text-sm font-semibold text-white">{{ $item['title'] }}</p><p class="mt-1 text-xs text-slate-400">{{ $item['subject'] }}</p></div>
-                        <div class="text-right"><span class="rounded-full px-2 py-1 text-xs font-semibold {{ $item['overdue'] ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300' }}">{{ $item['overdue'] ? 'Overdue' : $item['status'] }}</span><p class="mt-2 text-xs text-slate-400">Due {{ viewer_datetime($item['due_at'], 'M j, g:i A') }}</p></div>
+                    <a href="{{ route('dashboard.homework') }}" class="flex items-center justify-between gap-4 py-4 hover:bg-surface-hover">
+                        <div class="min-w-0"><p class="truncate text-sm font-semibold text-fg-strong">{{ $item['title'] }}</p><p class="mt-1 text-xs text-fg-muted">{{ $item['subject'] }}</p></div>
+                        <div class="text-right"><span class="rounded-full px-2 py-1 text-xs font-semibold {{ $item['overdue'] ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300' : 'bg-amber-500/10 text-amber-600 dark:text-amber-300' }}">{{ $item['overdue'] ? 'Overdue' : $item['status'] }}</span><p class="mt-2 text-xs text-fg-muted">Due {{ viewer_datetime($item['due_at'], 'M j, g:i A') }}</p></div>
                     </a>
-                @empty<p class="py-6 text-sm text-slate-400" role="status">You’re all caught up.</p>@endforelse
+                @empty<p class="py-6 text-sm text-fg-muted" role="status">You’re all caught up.</p>@endforelse
             </div>
         </section>
     @endif
 
-    <section class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 md:p-6">
-        <div class="flex items-center justify-between"><h2 class="text-lg font-bold text-white">Learning journey</h2><a href="{{ route('dashboard.learning-plans') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">View plan →</a></div>
+    <section class="rounded-2xl border border-edge bg-surface-raised p-5 md:p-6">
+        <div class="flex items-center justify-between"><h2 class="text-lg font-bold text-fg-strong">Learning journey</h2><a href="{{ route('dashboard.learning-plans') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">View plan →</a></div>
         @if($dashboard->learningJourney)
             @php($journey = $dashboard->learningJourney)
             <div class="mt-5 grid gap-6 lg:grid-cols-[1fr_auto]">
                 <div>
-                    <p class="text-xl font-bold text-white">{{ $journey['title'] }}</p>
-                    <p class="mt-1 text-sm text-slate-400">
+                    <p class="text-xl font-bold text-fg-strong">{{ $journey['title'] }}</p>
+                    <p class="mt-1 text-sm text-fg-muted">
                         {{ $journey['subject'] ?: 'Subject not specified' }}
                         @if($journey['instructor'])
                             · {{ $journey['instructor'] }}
@@ -65,36 +65,36 @@
                         @endif
                     </p>
                     @if($journey['goal'])
-                        <p class="mt-4 text-sm text-slate-300"><span class="text-slate-500">Goal:</span> {{ $journey['goal'] }}</p>
+                        <p class="mt-4 text-sm text-fg-muted"><span class="text-fg-faint">Goal:</span> {{ $journey['goal'] }}</p>
                     @else
-                        <p class="mt-4 text-sm text-slate-400">No current goal is linked to this plan.</p>
+                        <p class="mt-4 text-sm text-fg-muted">No current goal is linked to this plan.</p>
                     @endif
                 </div>
-                <div class="lg:w-64"><div class="flex justify-between text-sm"><span class="text-slate-400">Progress</span><strong class="text-white">{{ $journey['progress'] }}%</strong></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-white/[.07]" role="progressbar" aria-label="Learning plan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $journey['progress'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $journey['progress'] }}%"></div></div><p class="mt-2 text-xs text-slate-400">{{ $journey['completed_milestones'] }} of {{ $journey['total_milestones'] }} milestones complete</p></div>
+                <div class="lg:w-64"><div class="flex justify-between text-sm"><span class="text-fg-muted">Progress</span><strong class="text-fg-strong">{{ $journey['progress'] }}%</strong></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-surface-hover" role="progressbar" aria-label="Learning plan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $journey['progress'] }}"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" style="width: {{ $journey['progress'] }}%"></div></div><p class="mt-2 text-xs text-fg-muted">{{ $journey['completed_milestones'] }} of {{ $journey['total_milestones'] }} milestones complete</p></div>
             </div>
-            <div class="mt-5 grid gap-3 md:grid-cols-2">@if($journey['next_milestone'])<div class="rounded-xl bg-white/[.035] p-4"><p class="text-xs uppercase tracking-wide text-slate-500">Next milestone</p><p class="mt-2 text-sm font-semibold text-white">{{ $journey['next_milestone'] }}</p></div>@endif @if($journey['last_review_at'])<div class="rounded-xl bg-white/[.035] p-4"><p class="text-xs uppercase tracking-wide text-slate-500">Latest progress review</p><p class="mt-2 text-sm text-slate-300">{{ $journey['last_review'] ?: 'Review completed' }}</p>@if(! is_null($journey['last_review_progress_percent']))<p class="mt-2 text-sm font-semibold text-white">{{ $journey['last_review_progress_percent'] }}% overall progress assessed</p>@endif<p class="mt-2 text-xs text-slate-500">{{ viewer_date($journey['last_review_at']) }}</p></div>@endif</div>
-        @else<p class="mt-4 text-sm text-slate-400">Your active learning plan will appear here once one is created.</p>@endif
+            <div class="mt-5 grid gap-3 md:grid-cols-2">@if($journey['next_milestone'])<div class="rounded-xl bg-surface-raised p-4"><p class="text-xs uppercase tracking-wide text-fg-faint">Next milestone</p><p class="mt-2 text-sm font-semibold text-fg-strong">{{ $journey['next_milestone'] }}</p></div>@endif @if($journey['last_review_at'])<div class="rounded-xl bg-surface-raised p-4"><p class="text-xs uppercase tracking-wide text-fg-faint">Latest progress review</p><p class="mt-2 text-sm text-fg-muted">{{ $journey['last_review'] ?: 'Review completed' }}</p>@if(! is_null($journey['last_review_progress_percent']))<p class="mt-2 text-sm font-semibold text-fg-strong">{{ $journey['last_review_progress_percent'] }}% overall progress assessed</p>@endif<p class="mt-2 text-xs text-fg-faint">{{ viewer_date($journey['last_review_at']) }}</p></div>@endif</div>
+        @else<p class="mt-4 text-sm text-fg-muted">Your active learning plan will appear here once one is created.</p>@endif
     </section>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        @if($dashboard->wallet)<a href="{{ route('dashboard.wallet') }}" class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 hover:bg-white/[.045]"><p class="text-sm text-slate-400">Wallet</p><p class="mt-2 text-xl font-bold text-emerald-300">{{ $dashboard->wallet['available'] }}</p><p class="mt-2 truncate text-xs text-slate-500">{{ $dashboard->wallet['latest'] ?: 'No recent wallet activity' }}</p></a>@endif
-        @if($dashboard->referral)<a href="{{ route('dashboard.refer-a-friend') }}" class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 hover:bg-white/[.045]"><p class="text-sm text-slate-400">Referrals</p><p class="mt-2 text-xl font-bold text-white">{{ $dashboard->referral['credited_count'] }} rewards</p><p class="mt-2 text-xs text-slate-500">{{ $dashboard->referral['code'] ? 'Code: '.$dashboard->referral['code'] : 'View referral program' }}</p></a>@endif
-        <a href="{{ route('dashboard.wishlist') }}" class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 hover:bg-white/[.045]"><p class="text-sm text-slate-400">Favorite tutors</p><p class="mt-2 text-xl font-bold text-white">{{ count($dashboard->favorites ?? []) }} bookable</p><p class="mt-2 truncate text-xs text-slate-500">{{ collect($dashboard->favorites ?? [])->pluck('name')->join(', ') ?: 'Browse your favorites' }}</p></a>
-        @if($dashboard->notifications)<a href="{{ route('dashboard.notifications') }}" class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 hover:bg-white/[.045]"><p class="text-sm text-slate-400">Notifications</p><p class="mt-2 text-xl font-bold text-white">{{ $dashboard->notifications['unread'] }} unread</p><p class="mt-2 truncate text-xs text-slate-500">{{ $dashboard->notifications['items'][0]['title'] ?? 'You’re up to date' }}</p></a>@endif
+        @if($dashboard->wallet)<a href="{{ route('dashboard.wallet') }}" class="rounded-2xl border border-edge bg-surface-raised p-5 hover:bg-surface-hover"><p class="text-sm text-fg-muted">Wallet</p><p class="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-300">{{ $dashboard->wallet['available'] }}</p><p class="mt-2 truncate text-xs text-fg-faint">{{ $dashboard->wallet['latest'] ?: 'No recent wallet activity' }}</p></a>@endif
+        @if($dashboard->referral)<a href="{{ route('dashboard.refer-a-friend') }}" class="rounded-2xl border border-edge bg-surface-raised p-5 hover:bg-surface-hover"><p class="text-sm text-fg-muted">Referrals</p><p class="mt-2 text-xl font-bold text-fg-strong">{{ $dashboard->referral['credited_count'] }} rewards</p><p class="mt-2 text-xs text-fg-faint">{{ $dashboard->referral['code'] ? 'Code: '.$dashboard->referral['code'] : 'View referral program' }}</p></a>@endif
+        <a href="{{ route('dashboard.wishlist') }}" class="rounded-2xl border border-edge bg-surface-raised p-5 hover:bg-surface-hover"><p class="text-sm text-fg-muted">Favorite tutors</p><p class="mt-2 text-xl font-bold text-fg-strong">{{ count($dashboard->favorites ?? []) }} bookable</p><p class="mt-2 truncate text-xs text-fg-faint">{{ collect($dashboard->favorites ?? [])->pluck('name')->join(', ') ?: 'Browse your favorites' }}</p></a>
+        @if($dashboard->notifications)<a href="{{ route('dashboard.notifications') }}" class="rounded-2xl border border-edge bg-surface-raised p-5 hover:bg-surface-hover"><p class="text-sm text-fg-muted">Notifications</p><p class="mt-2 text-xl font-bold text-fg-strong">{{ $dashboard->notifications['unread'] }} unread</p><p class="mt-2 truncate text-xs text-fg-faint">{{ $dashboard->notifications['items'][0]['title'] ?? 'You’re up to date' }}</p></a>@endif
     </div>
 
     @if($dashboard->profile && $dashboard->profile['completion'] < 100)
-        <div class="flex flex-col gap-3 rounded-2xl border border-amber-400/15 bg-amber-500/[.05] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-semibold text-white">Complete your profile · {{ $dashboard->profile['completion'] }}%</p><p class="mt-1 text-xs text-slate-400">Add {{ implode(', ', array_slice($dashboard->profile['missing'], 0, 2)) }} to get more relevant learning options.</p></div><a href="{{ route('profile.show') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">Complete profile →</a></div>
+        <div class="flex flex-col gap-3 rounded-2xl border border-amber-400/15 bg-amber-500/[.05] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-semibold text-fg-strong">Complete your profile · {{ $dashboard->profile['completion'] }}%</p><p class="mt-1 text-xs text-fg-muted">Add {{ implode(', ', array_slice($dashboard->profile['missing'], 0, 2)) }} to get more relevant learning options.</p></div><a href="{{ route('profile.show') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-amber-600 dark:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">Complete profile →</a></div>
     @endif
 
     @if(! empty($dashboard->recommendedInstructors))
-        <section class="rounded-2xl border border-white/[.08] bg-white/[.025] p-5 md:p-6">
+        <section class="rounded-2xl border border-edge bg-surface-raised p-5 md:p-6">
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-lg font-bold text-white">Recommended for you</h2>
-                    <p class="mt-1 text-sm text-slate-400">Matched to your learning plans and favorite instructors.</p>
+                    <h2 class="text-lg font-bold text-fg-strong">Recommended for you</h2>
+                    <p class="mt-1 text-sm text-fg-muted">Matched to your learning plans and favorite instructors.</p>
                 </div>
-                <a href="{{ route('instructors.index') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Explore all →</a>
+                <a href="{{ route('instructors.index') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Explore all →</a>
             </div>
             <div class="mt-5 flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory xl:grid xl:grid-cols-4 xl:overflow-visible xl:pb-0">
                 @foreach($dashboard->recommendedInstructors as $recommendedInstructor)
@@ -106,5 +106,5 @@
         </section>
     @endif
 
-    @if($dashboard->errors)<p class="text-center text-xs text-slate-400" role="status">Some dashboard information is temporarily unavailable. Your learning data is safe.</p>@endif
+    @if($dashboard->errors)<p class="text-center text-xs text-fg-muted" role="status">Some dashboard information is temporarily unavailable. Your learning data is safe.</p>@endif
 </div>

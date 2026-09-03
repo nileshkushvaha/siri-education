@@ -11,8 +11,8 @@
 
 @section('account-content')
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-white">Lesson Packages</h1>
-        <p class="text-slate-400 text-sm mt-1">Review instructor-approved packages, complete payment, and track your remaining lessons.</p>
+        <h1 class="text-xl font-bold text-fg-strong">Lesson Packages</h1>
+        <p class="text-fg-muted text-sm mt-1">Review instructor-approved packages, complete payment, and track your remaining lessons.</p>
     </div>
 
     <livewire:frontend.student.package-proposals />

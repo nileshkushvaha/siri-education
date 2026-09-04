@@ -95,15 +95,34 @@ class StudentLessonPriceForm
                                 ->maxValue(600)
                                 ->suffix('min')
                                 ->placeholder('e.g. 60')
-                                // Two active rows matching the exact same
-                                // criteria would make resolution ambiguous
-                                // (priority is a tie-breaker for edge cases,
-                                // not an invitation to create duplicates).
+                                ->helperText('Must equal the booking type\'s lesson length — the resolver matches on it exactly, so any other value can never be found.')
                                 ->rule(function (Get $get, ?StudentLessonPrice $record): Closure {
                                     return function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
+                                        // A row whose duration differs from its booking
+                                        // type is dead on arrival: StudentLessonPriceResolver
+                                        // matches duration exactly, so the student is told
+                                        // the price "is not configured" while the admin
+                                        // sees a perfectly good-looking row. (A 55-minute
+                                        // High School row for a 60-minute type did exactly
+                                        // that on 4 Sep 2026.)
+                                        $typeDuration = $get('booking_type_id') !== null
+                                            ? BookingType::query()->find($get('booking_type_id'))?->duration_minutes
+                                            : null;
+
+                                        if ($typeDuration !== null && (int) $value !== (int) $typeDuration) {
+                                            $fail(sprintf('This booking type\'s lessons last %d minutes, so the price must be for %d minutes — a %d-minute row would never match a booking.', $typeDuration, $typeDuration, (int) $value));
+
+                                            return;
+                                        }
+
                                         if (! $get('is_active')) {
                                             return;
                                         }
+
+                                        // Two active rows matching the exact same
+                                        // criteria would make resolution ambiguous
+                                        // (priority is a tie-breaker for edge cases,
+                                        // not an invitation to create duplicates).
 
                                         $exists = StudentLessonPrice::query()
                                             ->where('booking_type_id', $get('booking_type_id'))

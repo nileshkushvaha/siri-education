@@ -95,6 +95,7 @@
                 <label class="block text-sm font-medium text-fg-muted">End</label>
                 <input wire:model="endTime" type="time" class="mt-2 w-full rounded-xl border border-edge bg-surface-raised px-3 py-3 text-sm text-fg-strong outline-none focus:border-indigo-400">
                 @error('endTime') <p class="mt-1 text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p> @enderror
+                <p class="mt-1 text-xs text-fg-muted">Enter 23:59 to stay available until midnight.</p>
             </div>
 
             <div>

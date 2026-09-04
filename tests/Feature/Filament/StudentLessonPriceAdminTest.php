@@ -88,6 +88,33 @@ class StudentLessonPriceAdminTest extends TestCase
         ]);
     }
 
+    /**
+     * A row whose duration differs from its booking type can never be
+     * matched by the resolver — the admin sees a healthy-looking row while
+     * students are told the price "is not configured". Refuse it at entry.
+     */
+    public function test_a_duration_that_differs_from_the_booking_type_is_rejected(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(CreateStudentLessonPrice::class)
+            ->fillForm([
+                'booking_type_id' => $this->paidType->id,
+                'subject_id' => $this->subject->id,
+                'academic_level_id' => $this->level->id,
+                'country_id' => $this->country->id,
+                'currency_id' => $this->currency->id,
+                'duration_minutes' => 55,
+                'amount' => 1,
+                'is_active' => true,
+                'priority' => 0,
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['duration_minutes']);
+
+        $this->assertDatabaseMissing('student_lesson_prices', ['duration_minutes' => 55]);
+    }
+
     public function test_duplicate_active_price_for_the_same_match_key_is_rejected(): void
     {
         StudentLessonPrice::factory()->create([

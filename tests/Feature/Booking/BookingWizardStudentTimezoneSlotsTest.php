@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
+use App\Booking\Contracts\AvailabilityRepositoryInterface;
 use App\Booking\Contracts\AvailabilityServiceInterface;
 use App\Booking\Contracts\WizardBookingServiceInterface;
 use App\Booking\DTOs\AvailabilityQueryData;
@@ -394,5 +395,47 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
         // No two slots may collapse onto the same clock label — that was the visible symptom.
         $labels = $slots->map(fn ($slot): string => $slot->startsAt->format('g:i A'));
         $this->assertSame($labels->count(), $labels->unique()->count());
+    }
+
+    /**
+     * Regression: production windows read 00:00-23:59 (a time input cannot
+     * say 24:00). Read literally, the last lesson of the instructor's day
+     * (23:30-00:00 for a 30-min demo, 23:00-00:00 for an hour) fell one
+     * minute outside the window and was never offered — for a New York
+     * student that was the missing "1:30 PM" in an otherwise full day.
+     */
+    public function test_a_window_ending_at_2359_still_offers_the_last_slot_before_midnight(): void
+    {
+        $teacher = $this->teacher();
+        $monday = $this->nextWeekday(CarbonImmutable::now('Asia/Kolkata')->addWeek(), Weekday::Monday);
+        $this->availability($teacher, Weekday::Monday, '00:00:00', '23:59:00', 'Asia/Kolkata');
+
+        $slots = app(AvailabilityServiceInterface::class)->slots(
+            new AvailabilityQueryData($teacher->id, 'free_demo', $monday, $monday->addDay(), 'Asia/Kolkata'),
+        );
+
+        $lastStart = $slots->map(fn ($slot) => $slot->startsAt->format('H:i'))->sort()->last();
+
+        $this->assertSame('23:30', $lastStart, 'The 23:30-00:00 slot must be generated from a 00:00-23:59 window.');
+
+        // …and booking that slot is accepted by the same coverage rule.
+        $slot = $slots->first(fn ($slot) => $slot->startsAt->format('H:i') === '23:30');
+        $this->assertTrue(
+            app(AvailabilityRepositoryInterface::class)->windowCovers($teacher->id, $slot->startsAt, $slot->endsAt),
+        );
+    }
+
+    /** 23:58 is not "midnight": the literal reading still applies, so the last slot is dropped as before. */
+    public function test_a_window_ending_at_2358_is_taken_literally(): void
+    {
+        $teacher = $this->teacher();
+        $monday = $this->nextWeekday(CarbonImmutable::now('Asia/Kolkata')->addWeek(), Weekday::Monday);
+        $this->availability($teacher, Weekday::Monday, '00:00:00', '23:58:00', 'Asia/Kolkata');
+
+        $slots = app(AvailabilityServiceInterface::class)->slots(
+            new AvailabilityQueryData($teacher->id, 'free_demo', $monday, $monday->addDay(), 'Asia/Kolkata'),
+        );
+
+        $this->assertSame('23:00', $slots->map(fn ($slot) => $slot->startsAt->format('H:i'))->sort()->last());
     }
 }

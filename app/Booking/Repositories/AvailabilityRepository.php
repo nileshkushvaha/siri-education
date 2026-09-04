@@ -66,7 +66,12 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
                 }
 
                 $startsAt = $date->setTimeFromTimeString($row->start_time)->utc();
-                $endsAt = $date->setTimeFromTimeString($row->end_time)->utc();
+                // $date is already this instructor-local midnight (the loop
+                // steps whole local days), so the next midnight is a plain
+                // addDay() — DST-safe, and never a UTC startOfDay().
+                $endsAt = self::endsAtMidnight($row->end_time)
+                    ? $date->addDay()->utc()
+                    : $date->setTimeFromTimeString($row->end_time)->utc();
 
                 if ($endsAt->greaterThan($from) && $startsAt->lessThan($to)) {
                     $windows->push(['starts_at' => $startsAt, 'ends_at' => $endsAt]);
@@ -134,13 +139,31 @@ final class AvailabilityRepository implements AvailabilityRepositoryInterface
             }
 
             $endTime = $localStart->isSameDay($localEnd) ? $localEnd->format('H:i:s') : '24:00:00';
+            $rowEnd = self::endsAtMidnight($row->end_time) ? '24:00:00' : (string) $row->end_time;
 
-            if ($row->start_time <= $localStart->format('H:i:s') && $row->end_time >= $endTime) {
+            if ($row->start_time <= $localStart->format('H:i:s') && $rowEnd >= $endTime) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * "Until midnight" as instructors can actually type it.
+     *
+     * The availability form is an HTML time input, which cannot express
+     * 24:00, so an instructor who teaches to the end of the day enters
+     * 23:59 — every window in production reads 00:00-23:59. Taken
+     * literally that window is one minute short of midnight and the LAST
+     * lesson of the day can never be generated (a 23:00-00:00 slot ends a
+     * minute past it) or, if a student tries to book it, is rejected by
+     * windowCovers(). Both call sites therefore treat 23:59 as the next
+     * midnight. Only the final minute is affected; 23:58 stays literal.
+     */
+    public static function endsAtMidnight(string $endTime): bool
+    {
+        return str_starts_with($endTime, '23:59');
     }
 
     /**

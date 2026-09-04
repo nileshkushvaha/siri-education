@@ -42,7 +42,7 @@
                 Wallets: <span class="font-semibold text-gray-950 dark:text-white">{{ $summary->walletCount }}</span> ·
                 Positive balance: <span class="font-semibold text-gray-950 dark:text-white">{{ $summary->positiveBalanceWallets }}</span> ·
                 Zero balance: <span class="font-semibold text-gray-950 dark:text-white">{{ $summary->zeroBalanceWallets }}</span> ·
-                Low balance (&lt; {{ $summary->lowBalanceThreshold }}): <span class="font-semibold text-gray-950 dark:text-white">{{ $summary->lowBalanceWallets }}</span> ·
+                Low balance (below the currency's alert threshold): <span class="font-semibold text-gray-950 dark:text-white">{{ $summary->lowBalanceWallets }}</span> ·
                 Balance/ledger mismatches: <span class="font-semibold {{ $summary->balanceMismatchCount > 0 ? 'text-danger-600' : 'text-gray-950 dark:text-white' }}">{{ $summary->balanceMismatchCount }}</span>
             </div>
         </div>

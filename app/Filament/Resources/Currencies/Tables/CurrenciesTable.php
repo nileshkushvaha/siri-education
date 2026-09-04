@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Currencies\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -22,7 +23,7 @@ class CurrenciesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('code')
                     ->badge()
@@ -82,5 +83,7 @@ class CurrenciesTable
             ->emptyStateIcon(Heroicon::OutlinedBanknotes)
             ->emptyStateHeading('No currencies found')
             ->emptyStateDescription('Add currencies before assigning country defaults.');
+
+        return AdminListTable::apply($table);
     }
 }

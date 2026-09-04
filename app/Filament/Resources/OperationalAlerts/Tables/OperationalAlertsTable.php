@@ -11,6 +11,7 @@ use App\Alerts\Enums\OperationalAlertType;
 use App\Alerts\Exceptions\OperationalAlertValidationException;
 use App\Alerts\Services\OperationalAlertService;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\OperationalAlert;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -31,7 +32,7 @@ class OperationalAlertsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -141,6 +142,8 @@ class OperationalAlertsTable
                     ->visible(fn (OperationalAlert $record): bool => $record->subjectUrl() !== null),
             ])
             ->defaultSort('last_observed_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

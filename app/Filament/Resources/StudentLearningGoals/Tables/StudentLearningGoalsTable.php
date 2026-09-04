@@ -6,6 +6,7 @@ namespace App\Filament\Resources\StudentLearningGoals\Tables;
 
 use App\Enums\LearningGoalStatus;
 use App\Enums\LearningGoalType;
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -17,7 +18,7 @@ class StudentLearningGoalsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Student')
@@ -54,5 +55,7 @@ class StudentLearningGoalsTable
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

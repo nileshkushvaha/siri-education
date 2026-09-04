@@ -28,6 +28,12 @@ class BookingSettings extends Settings
     // settings spec; do not add a second pair of fields for this concept.
     public int $minimum_booking_notice_minutes;
 
+    /**
+     * Lead time for FREE demo bookings only — shorter than the paid
+     * notice so a student can try an instructor who is free right now.
+     */
+    public int $demo_minimum_booking_notice_minutes;
+
     public int $maximum_advance_booking_days;
 
     /** Key of the AssignmentStrategyInterface used to auto-assign teachers. */

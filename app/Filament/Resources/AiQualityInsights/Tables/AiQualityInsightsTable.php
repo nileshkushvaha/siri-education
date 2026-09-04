@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\AiQualityInsights\Tables;
 
 use App\Filament\Resources\AiQualityInsights\AiQualityInsightResource;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Quality\Intelligence\Enums\QualityInsightStatus;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -22,7 +23,7 @@ class AiQualityInsightsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('instructor.full_name')
                     ->label('Instructor')
@@ -61,5 +62,7 @@ class AiQualityInsightsTable
             ->recordUrl(fn ($record): string => AiQualityInsightResource::getUrl('view', ['record' => $record]))
             ->emptyStateHeading('No AI quality insights yet')
             ->emptyStateDescription('Generate one for an instructor and reporting period. Insights are advisory and always reviewed by a person.');
+
+        return AdminListTable::apply($table);
     }
 }

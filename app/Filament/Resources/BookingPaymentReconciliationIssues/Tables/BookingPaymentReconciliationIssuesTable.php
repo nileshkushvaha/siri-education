@@ -9,6 +9,7 @@ use App\Booking\Enums\BookingPaymentReconciliationIssueStatus;
 use App\Booking\Enums\BookingPaymentReconciliationIssueType;
 use App\Booking\Enums\BookingPaymentReconciliationSeverity;
 use App\Booking\Exceptions\BookingException;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\BookingPaymentReconciliationIssue;
 use App\Models\User;
 use App\Support\MoneyFormatter;
@@ -32,7 +33,7 @@ class BookingPaymentReconciliationIssuesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -203,6 +204,8 @@ class BookingPaymentReconciliationIssuesTable
                     )),
             ])
             ->defaultSort('last_detected_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

@@ -231,7 +231,7 @@ final class BookingService implements BookingServiceInterface
     public function reschedule(Booking $booking, RescheduleBookingData $data): Booking
     {
         $this->assertStudentInitiatorNotRestricted($booking, $data->actor);
-        $this->window->assertWithinWindow($data->startsAt);
+        $this->window->assertWithinWindow($data->startsAt, isDemo: $booking->type?->is_paid === false);
 
         $previousStartsAt = $booking->starts_at;
         $previousEndsAt = $booking->ends_at;

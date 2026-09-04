@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tags\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -18,7 +19,7 @@ class TagsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -55,5 +56,7 @@ class TagsTable
             ])
             ->defaultSort('sort_order')
             ->modifyQueryUsing(fn ($query) => $query->withCount('posts'));
+
+        return AdminListTable::apply($table);
     }
 }

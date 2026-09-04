@@ -8,6 +8,7 @@ use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
 use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\AcademicLevel;
 use App\Models\Currency;
 use App\Models\InstructorCompensationAgreement;
@@ -36,7 +37,7 @@ class InstructorCompensationAgreementsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -279,6 +280,8 @@ class InstructorCompensationAgreementsTable
                     ])),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

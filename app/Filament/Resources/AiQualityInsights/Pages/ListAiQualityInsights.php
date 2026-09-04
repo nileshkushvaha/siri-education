@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources\AiQualityInsights\Pages;
 
 use App\Filament\Resources\AiQualityInsights\AiQualityInsightResource;
+use App\Filament\Support\Tables\StatusTabs;
 use App\Models\AiQualityInsight;
 use App\Models\User;
 use App\Quality\Intelligence\Contracts\QualityInsightServiceInterface;
+use App\Quality\Intelligence\Enums\QualityInsightStatus;
 use App\Quality\Intelligence\Exceptions\QualityInsightException;
 use App\Reporting\Enums\ReportingPeriodPreset;
 use App\Reporting\ValueObjects\ReportingPeriod;
@@ -15,6 +17,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Contracts\Support\Htmlable;
 use Throwable;
 
@@ -126,5 +129,11 @@ class ListAiQualityInsights extends ListRecords
             ->body('It will appear here shortly. Refresh the page to see the result.')
             ->success()
             ->send();
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return StatusTabs::forEnum(AiQualityInsight::class, QualityInsightStatus::class);
     }
 }

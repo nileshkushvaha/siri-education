@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\TeacherLeave\Tables;
 
 use App\Filament\Support\CsvExport;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\TeacherUnavailability;
 use App\Services\Instructor\InstructorTimeOffService;
 use Filament\Actions\BulkAction;
@@ -26,7 +27,7 @@ class TeacherLeaveTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('teacher.name')
                     ->searchable()
@@ -109,5 +110,7 @@ class TeacherLeaveTable
                 ]),
             ])
             ->defaultSort('starts_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

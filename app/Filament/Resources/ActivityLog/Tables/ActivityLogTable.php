@@ -6,6 +6,7 @@ namespace App\Filament\Resources\ActivityLog\Tables;
 
 use App\Enums\ActivityActorType;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Activity;
 use App\Models\User;
 use App\Support\ActivityLogColors;
@@ -24,7 +25,7 @@ class ActivityLogTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('log_name')
@@ -187,5 +188,7 @@ class ActivityLogTable
             ->paginated([25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->poll(null);
+
+        return AdminListTable::apply($table);
     }
 }

@@ -15,6 +15,16 @@
             </x-account.card>
         </div>
 
+        @if($lowBalance)
+            <div class="flex items-start gap-3 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200" role="status" data-low-balance-alert>
+                <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                <div>
+                    <p class="font-semibold">Your balance is running low</p>
+                    <p class="mt-0.5">Your available balance is below {{ $lowBalance['threshold'] }}. Recharge now so your next lesson is not interrupted.</p>
+                </div>
+            </div>
+        @endif
+
         @if($wallet->status->value !== 'active')
             <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-200">
                 This wallet is currently <strong>{{ $wallet->status->label() }}</strong>.
@@ -39,6 +49,7 @@
                      unconfigured limit is not enforced, so printing one would be a lie. --}}
                 @if($rechargeLimits['min']) &middot; Min {{ $rechargeLimits['min'] }} @endif
                 @if($rechargeLimits['max']) &middot; Max {{ $rechargeLimits['max'] }} @endif
+                @if($rechargeLimits['multiple']) &middot; In multiples of {{ $rechargeLimits['multiple'] }} @endif
             </p>
 
             @if($rechargeBanner)

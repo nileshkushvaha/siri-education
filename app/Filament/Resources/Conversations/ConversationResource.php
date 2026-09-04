@@ -19,6 +19,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,7 +39,16 @@ class ConversationResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Support';
 
-    protected static ?string $recordTitleAttribute = 'id';
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof Conversation) {
+            return null;
+        }
+
+        $record->loadMissing(['student', 'instructor']);
+
+        return trim(($record->student?->name ?? 'Student').' · '.($record->instructor?->name ?? 'Instructor'));
+    }
 
     public static function infolist(Schema $schema): Schema
     {

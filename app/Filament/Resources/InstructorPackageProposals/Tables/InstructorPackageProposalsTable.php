@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\InstructorPackageProposals\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorPackageProposal;
 use App\Package\Enums\InstructorPackageProposalStatus;
 use App\Package\Exceptions\PackageException;
@@ -28,7 +29,7 @@ class InstructorPackageProposalsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('instructor.name')
                     ->label('Instructor')
@@ -152,6 +153,8 @@ class InstructorPackageProposalsTable
                     )),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     /**

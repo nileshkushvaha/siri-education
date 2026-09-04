@@ -20,6 +20,7 @@ use App\Booking\Meetings\ManualMeetingProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
 use App\Filament\Support\AdminDayRange;
 use App\Filament\Support\CsvExport;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Lessons\Enums\LessonStatus;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
@@ -52,7 +53,7 @@ class BookingsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             // The meeting/lesson badge columns and the meeting actions read
             // $record->meeting / $record->lesson — eager-load once per page.
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['meeting', 'lesson']))
@@ -417,6 +418,8 @@ class BookingsTable
                 ]),
             ])
             ->defaultSort('starts_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     /**

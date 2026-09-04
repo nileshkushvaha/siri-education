@@ -20,7 +20,6 @@ use App\Services\Student\StudentLifecycleService;
 use App\Support\Financial\CurrencyEligibilityPolicy;
 use App\Support\Financial\Exceptions\CurrencyNotUsableException;
 use App\Support\Financial\FinancialOperation;
-use App\Support\MoneyFormatter;
 use App\Wallet\Contracts\WalletRechargeServiceInterface;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Enums\WalletStatus;
@@ -255,23 +254,6 @@ final class WalletRechargeService implements WalletRechargeServiceInterface
      */
     private function assertAmountWithinLimits(int $amountMinor, string $currencyCode): void
     {
-        $currency = Currency::query()
-            ->where('code', strtoupper($currencyCode))
-            ->first(['minimum_recharge_minor', 'maximum_recharge_minor']);
-
-        if ($currency === null) {
-            return;
-        }
-
-        $minMinor = $currency->minimum_recharge_minor;
-        $maxMinor = $currency->maximum_recharge_minor;
-
-        if ($minMinor !== null && $amountMinor < $minMinor) {
-            throw new WalletException(sprintf('The minimum recharge amount is %s.', MoneyFormatter::format($minMinor, $currencyCode)));
-        }
-
-        if ($maxMinor !== null && $amountMinor > $maxMinor) {
-            throw new WalletException(sprintf('The maximum recharge amount is %s.', MoneyFormatter::format($maxMinor, $currencyCode)));
-        }
+        app(WalletRechargeAmountPolicy::class)->assert($amountMinor, $currencyCode);
     }
 }

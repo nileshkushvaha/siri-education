@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorSettlementBatches\Pages;
 
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
+use App\Earnings\Enums\SettlementBatchStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Filament\Concerns\HasRelatedResourceLinks;
 use App\Filament\Resources\InstructorEarnings\InstructorEarningResource;
 use App\Filament\Resources\InstructorSettlementBatches\InstructorSettlementBatchResource;
 use App\Filament\Support\Presentation\BackAction;
 use App\Filament\Support\RelatedResourceLinkGroups;
+use App\Filament\Support\Tables\StatusTabs;
 use App\Models\InstructorEarning;
 use App\Models\InstructorSettlementBatch;
 use App\Models\User;
@@ -21,6 +23,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListInstructorSettlementBatches extends ListRecords
 {
@@ -89,5 +92,11 @@ class ListInstructorSettlementBatches extends ListRecords
     protected function getRelatedResourceLinks(): array
     {
         return RelatedResourceLinkGroups::instructorFinance();
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return StatusTabs::forEnum(InstructorSettlementBatch::class, SettlementBatchStatus::class);
     }
 }

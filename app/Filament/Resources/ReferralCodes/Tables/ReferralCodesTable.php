@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralCodes\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\ReferralCode;
 use App\Referral\Contracts\ReferralCodeServiceInterface;
 use App\Referral\Enums\ReferralCodeStatus;
@@ -20,7 +21,7 @@ class ReferralCodesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('code')
                     ->fontFamily('mono')
@@ -83,5 +84,7 @@ class ReferralCodesTable
                     }),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

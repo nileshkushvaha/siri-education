@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PromotionalCreditIssuances\Tables;
 
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Currency;
 use App\Models\PromotionalCreditCampaign;
 use App\Models\PromotionalCreditIssuance;
@@ -38,7 +39,7 @@ class PromotionalCreditIssuancesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('issued_at')->dateTime()->sortable(),
                 TextColumn::make('student.name')->label('Student')->searchable(),
@@ -137,5 +138,7 @@ class PromotionalCreditIssuancesTable
                 ViewAction::make(),
             ])
             ->defaultSort('issued_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

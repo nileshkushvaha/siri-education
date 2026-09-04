@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\NotificationTemplates\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\NotificationTemplate;
 use App\Notifications\Templates\NotificationTemplateKey;
 use App\Notifications\Templates\NotificationTemplateRegistry;
@@ -23,7 +24,7 @@ class NotificationTemplatesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->defaultSort('template_key')
             ->columns([
                 TextColumn::make('template_key')
@@ -113,5 +114,7 @@ class NotificationTemplatesTable
             ])
             ->toolbarActions([])
             ->paginated([15, 25, 50]);
+
+        return AdminListTable::apply($table);
     }
 }

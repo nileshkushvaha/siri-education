@@ -12,7 +12,6 @@ use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
 use App\Settings\LocalizationSettings;
 use App\Settings\MeetingSettings;
-use App\Settings\WalletSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -32,7 +31,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
     public function test_platform_foundation_settings_load_defaults(): void
     {
         $booking = app(BookingSettings::class);
-        $wallet = app(WalletSettings::class);
         $meeting = app(MeetingSettings::class);
         $instructor = app(InstructorSettings::class);
         $localization = app(LocalizationSettings::class);
@@ -41,14 +39,9 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(30, $booking->demo_duration_minutes);
         $this->assertSame(120, $booking->minimum_booking_notice_minutes);
         $this->assertSame(90, $booking->maximum_advance_booking_days);
-        // Recharge min/max are no longer platform-wide settings — they
-        // are per-currency minor-unit columns on `currencies` (SRS
-        // §13.12), because one scalar cannot express a limit across nine
-        // billing currencies. What remains here is the low-balance
-        // threshold and the recurring-deduction window.
-        $this->assertSame(500.0, $wallet->low_balance_threshold);
-        $this->assertFalse(property_exists($wallet, 'minimum_recharge_amount'));
-        $this->assertFalse(property_exists($wallet, 'maximum_recharge_amount'));
+        // Wallet rules (recharge min/max/step, low-balance alert) are
+        // per-currency columns on `currencies`, edited on Settings → Wallet;
+        // no wallet settings class exists any more.
         $this->assertSame('manual', $meeting->default_provider);
         $this->assertTrue($instructor->approval_required);
         $this->assertSame('IN', $localization->default_country);
@@ -61,11 +54,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
 
     public function test_feature_settings_is_the_single_switch_per_module(): void
     {
-        // WalletSettings never redeclares its own "enabled" —
-        // FeatureSettings is the only on/off switch. ReferralSettings was
-        // retired entirely: referral_campaigns is the single
-        // source of reward rules, so no settings class may compete.
-        $this->assertFalse(property_exists(app(WalletSettings::class), 'enabled'));
         $this->assertFalse(class_exists('App\Settings\ReferralSettings'));
 
         $features = app(FeatureSettings::class);
@@ -104,7 +92,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.reservation_expiry_minutes', 25)
             ->set('data.minimum_booking_notice_minutes', 180)
             ->set('data.maximum_advance_booking_days', 45)
-            ->set('data.low_balance_threshold', 250)
             ->set('data.wallet_enabled', true)
             ->set('data.referral_enabled', true)
             ->set('data.recording_enabled', true)
@@ -116,8 +103,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertSame(40, $booking->demo_duration_minutes);
         $this->assertSame(180, $booking->minimum_booking_notice_minutes);
         $this->assertSame(45, $booking->maximum_advance_booking_days);
-
-        $this->assertSame(250.0, app()->make(WalletSettings::class)->refresh()->low_balance_threshold);
 
         $features = app()->make(FeatureSettings::class)->refresh();
         $this->assertTrue($features->wallet_enabled);
@@ -192,7 +177,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         Livewire::test(PlatformFoundationSettingsPage::class)
             ->set('data.demo_duration_minutes', 40)
             ->set('data.reservation_expiry_minutes', 25)
-            ->set('data.low_balance_threshold', 250)
             ->set('data.approval_required', false)
             ->set('data.default_country', 'us')
             ->set('data.wallet_enabled', true)
@@ -210,7 +194,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertArrayHasKey('demo_duration_minutes', $bookingChanged);
         $this->assertArrayHasKey('reservation_expiry_minutes', $bookingChanged);
 
-        $this->assertCount(1, $events->get(WalletSettings::class, collect()));
         $this->assertCount(1, $events->get(InstructorSettings::class, collect()));
         $this->assertCount(1, $events->get(LocalizationSettings::class, collect()));
         $this->assertCount(1, $events->get(FeatureSettings::class, collect()));
@@ -223,7 +206,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->actingAs($admin);
 
         $booking = app(BookingSettings::class);
-        $wallet = app(WalletSettings::class);
         $instructor = app(InstructorSettings::class);
         $localization = app(LocalizationSettings::class);
         $features = app(FeatureSettings::class);
@@ -237,8 +219,6 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.reschedule_limit', $booking->reschedule_limit)
             ->set('data.no_show_grace_minutes', $booking->no_show_grace_minutes)
             ->set('data.auto_completion_delay_minutes', $booking->auto_completion_delay_minutes)
-            ->set('data.low_balance_threshold', $wallet->low_balance_threshold)
-            ->set('data.recurring_deduction_hours_before_lesson', $wallet->recurring_deduction_hours_before_lesson)
             ->set('data.approval_required', $instructor->approval_required)
             ->set('data.profile_publish_requires_approval', $instructor->profile_publish_requires_approval)
             ->set('data.featured_instructor_limit', $instructor->featured_instructor_limit)

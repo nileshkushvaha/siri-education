@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Languages\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -22,7 +23,7 @@ class LanguagesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('code')
                     ->badge()
@@ -85,5 +86,7 @@ class LanguagesTable
             ->emptyStateIcon(Heroicon::OutlinedLanguage)
             ->emptyStateHeading('No languages found')
             ->emptyStateDescription('Add languages before assigning country defaults.');
+
+        return AdminListTable::apply($table);
     }
 }

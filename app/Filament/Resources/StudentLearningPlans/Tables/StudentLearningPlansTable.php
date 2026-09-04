@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\StudentLearningPlans\Tables;
 
 use App\Enums\LearningPlanStatus;
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -14,7 +15,7 @@ class StudentLearningPlansTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('student.name')->label('Student')->searchable()->sortable(),
                 TextColumn::make('title')->searchable()->limit(40),
@@ -31,5 +32,7 @@ class StudentLearningPlansTable
             ])
             ->recordActions([EditAction::make()])
             ->defaultSort('updated_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

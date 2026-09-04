@@ -7,6 +7,7 @@ namespace App\Filament\Resources\InstructorSettlementBatches\Tables;
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Enums\SettlementBatchStatus;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorSettlementBatch;
 use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
@@ -26,7 +27,7 @@ class InstructorSettlementBatchesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('batch_reference')
                     ->label('Reference')
@@ -119,6 +120,8 @@ class InstructorSettlementBatchesTable
                     )),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Pages\Tables;
 
 use App\Enums\PageStatus;
 use App\Enums\PageVisibility;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Page;
 use App\Services\PageService;
 use Filament\Actions\Action;
@@ -27,7 +28,7 @@ class PagesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 ImageColumn::make('featured_image_url')
                     ->label('Featured Image')
@@ -150,5 +151,7 @@ class PagesTable
             ])
             ->searchable()
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

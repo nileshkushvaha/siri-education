@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Recordings\Tables;
 
 use App\Booking\Enums\RecordingStatus;
 use App\Filament\Resources\Recordings\Actions\RetryRecordingIngestionAction;
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -21,7 +22,7 @@ class RecordingsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('booking.reference')
                     ->label('Booking')
@@ -61,5 +62,7 @@ class RecordingsTable
                 RetryRecordingIngestionAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

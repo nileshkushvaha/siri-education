@@ -12,7 +12,6 @@ use App\Reporting\DTOs\Finance\WalletRechargeMonitoringRow;
 use App\Reporting\DTOs\Finance\WalletRechargeMonitoringSummary;
 use App\Reporting\Filters\ReportFilters;
 use App\Reporting\ValueObjects\ReportingPeriod;
-use App\Settings\WalletSettings;
 use App\Wallet\Enums\WalletRechargeOperationalClassification;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Services\WalletRechargeReconciliationService;
@@ -32,7 +31,6 @@ final class WalletFinancialReportRepository
 {
     public function summary(ReportingPeriod $period, ReportFilters $filters): WalletFinancialSummaryData
     {
-        $settings = app(WalletSettings::class);
 
         return new WalletFinancialSummaryData(
             movements: $this->movements($period, $filters),
@@ -41,8 +39,7 @@ final class WalletFinancialReportRepository
             walletCount: (int) DB::table('wallets')->count(),
             positiveBalanceWallets: (int) DB::table('wallets')->where('balance_minor', '>', 0)->count(),
             zeroBalanceWallets: (int) DB::table('wallets')->where('balance_minor', 0)->count(),
-            lowBalanceWallets: $this->lowBalanceWallets($settings),
-            lowBalanceThreshold: $settings->low_balance_threshold,
+            lowBalanceWallets: $this->lowBalanceWallets(),
             reversalCount: (int) DB::table('wallet_ledger_entries')
                 ->where('status', 'reversed')
                 ->where('created_at', '>=', $period->startUtc)
@@ -455,13 +452,16 @@ final class WalletFinancialReportRepository
 
     // ── Internals ─────────────────────────────────────────────────────────
 
-    private function lowBalanceWallets(WalletSettings $settings): int
+    /**
+     * Wallets below their own currency's low-balance alert threshold
+     * (Settings → Wallet). Currencies with no threshold contribute nothing.
+     */
+    private function lowBalanceWallets(): int
     {
-        // The configured threshold is a major-unit float; wallets store minor
-        // units. Compare per-currency using the currency's own exponent.
         return (int) DB::table('wallets')
             ->join('currencies', 'currencies.id', '=', 'wallets.currency_id')
-            ->whereRaw('wallets.balance_minor < ? * POW(10, currencies.minor_units)', [$settings->low_balance_threshold])
+            ->whereNotNull('currencies.low_balance_threshold_minor')
+            ->whereColumn('wallets.balance_minor', '<', 'currencies.low_balance_threshold_minor')
             ->where('wallets.balance_minor', '>', 0)
             ->count();
     }

@@ -28,16 +28,22 @@ final class BookingWindowRule implements BookingRuleInterface
             throw new BookingException('Booking duration must be at least one minute.');
         }
 
-        $this->assertWithinWindow($data->startsAt);
+        $this->assertWithinWindow($data->startsAt, isDemo: ! $type->isPaid());
     }
 
-    /** Shared with reschedule, which has no CreateBookingData. */
-    public function assertWithinWindow(CarbonImmutable $startsAt): void
+    /**
+     * Shared with reschedule, which has no CreateBookingData.
+     *
+     * @param  bool  $isDemo  free (unpaid) bookings use the shorter demo notice
+     */
+    public function assertWithinWindow(CarbonImmutable $startsAt, bool $isDemo = false): void
     {
-        if ($startsAt->lessThan(now()->addMinutes($this->settings->minimum_booking_notice_minutes))) {
+        $notice = $this->noticeMinutes($isDemo);
+
+        if ($startsAt->lessThan(now()->addMinutes($notice))) {
             throw new BookingException(sprintf(
-                'Bookings require at least %d minutes notice.',
-                $this->settings->minimum_booking_notice_minutes,
+                $isDemo ? 'Demo bookings require at least %d minutes notice.' : 'Bookings require at least %d minutes notice.',
+                $notice,
             ));
         }
 
@@ -49,14 +55,21 @@ final class BookingWindowRule implements BookingRuleInterface
         }
     }
 
-    public function isWithinWindow(CarbonImmutable $startsAt): bool
+    public function isWithinWindow(CarbonImmutable $startsAt, bool $isDemo = false): bool
     {
         try {
-            $this->assertWithinWindow($startsAt);
+            $this->assertWithinWindow($startsAt, $isDemo);
 
             return true;
         } catch (BookingException) {
             return false;
         }
+    }
+
+    public function noticeMinutes(bool $isDemo): int
+    {
+        return $isDemo
+            ? $this->settings->demo_minimum_booking_notice_minutes
+            : $this->settings->minimum_booking_notice_minutes;
     }
 }

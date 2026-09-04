@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorWaitlistEntries\Tables;
 
 use App\Enums\WaitlistEntryStatus;
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -14,7 +15,7 @@ class InstructorWaitlistEntriesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('instructor.name')
                     ->label('Instructor')
@@ -49,5 +50,7 @@ class InstructorWaitlistEntriesTable
             ])
             ->bulkActions([])
             ->defaultSort('joined_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

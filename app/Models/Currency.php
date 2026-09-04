@@ -26,6 +26,8 @@ class Currency extends Model
         'minor_units',
         'minimum_recharge_minor',
         'maximum_recharge_minor',
+        'low_balance_threshold_minor',
+        'recharge_multiple_minor',
         'status',
         'sort_order',
         'remarks',
@@ -41,6 +43,8 @@ class Currency extends Model
             // "unconfigured", which is not the same as 0.
             'minimum_recharge_minor' => 'integer',
             'maximum_recharge_minor' => 'integer',
+            'low_balance_threshold_minor' => 'integer',
+            'recharge_multiple_minor' => 'integer',
             'sort_order' => 'integer',
         ];
     }

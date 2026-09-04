@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Exceptions\LastActiveSuperAdminException;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
@@ -30,7 +31,7 @@ class UsersTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['profile.media', 'profile.country']))
 
             ->columns([
@@ -206,5 +207,7 @@ class UsersTable
             ->emptyStateDescription('Create your first user to get started.')
 
             ->striped();
+
+        return AdminListTable::apply($table);
     }
 }

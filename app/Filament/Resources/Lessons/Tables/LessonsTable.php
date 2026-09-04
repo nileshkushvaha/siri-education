@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Lessons\Tables;
 
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Lessons\Contracts\LessonLifecycleServiceInterface;
 use App\Lessons\Enums\LessonAttendanceStatus;
 use App\Lessons\Enums\LessonStatus;
@@ -31,7 +32,7 @@ class LessonsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('booking.reference')
                     ->label('Booking')
@@ -228,6 +229,8 @@ class LessonsTable
                     )),
             ])
             ->defaultSort('starts_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     /** Run a service call, converting domain failures into panel notifications. */

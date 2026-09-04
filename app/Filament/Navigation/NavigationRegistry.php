@@ -31,6 +31,7 @@ use App\Filament\Pages\Security\SessionPage;
 use App\Filament\Pages\Settings\AiSettingsPage;
 use App\Filament\Pages\Settings\DemoConversionIncentiveSettingsPage;
 use App\Filament\Pages\Settings\GeneralSettingsPage;
+use App\Filament\Pages\Settings\WalletSettingsPage;
 use App\Filament\Pages\Settings\HomeworkReminderSettingsPage;
 use App\Filament\Pages\Settings\InstructorEarningSettingsPage;
 use App\Filament\Pages\Settings\MailSettingsPage;
@@ -1075,6 +1076,15 @@ final class NavigationRegistry
                 sort: 2,
                 previousGroup: 'Platform',
                 previousLabel: 'Platform Foundation',
+            ),
+            WalletSettingsPage::class => new NavigationDestination(
+                id: 'settings.platform.wallet',
+                label: 'Wallet',
+                group: 'Settings',
+                subgroup: 'Platform',
+                sort: 3,
+                previousGroup: 'Platform',
+                previousLabel: 'Wallet',
             ),
             // Inspected — this page is configuration-only
             // (provider toggles, credentials, auto-creation rules, join-link

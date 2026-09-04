@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Wallets\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Wallet;
 use App\Wallet\Enums\WalletStatus;
 use App\Wallet\Support\WalletMoneyFormatter;
@@ -16,7 +17,7 @@ class WalletsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('user.name')
                     ->label('User')
@@ -60,5 +61,7 @@ class WalletsTable
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

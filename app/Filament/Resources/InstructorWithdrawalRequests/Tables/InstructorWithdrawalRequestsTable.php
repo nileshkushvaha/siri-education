@@ -11,6 +11,7 @@ use App\Earnings\Exceptions\EarningException;
 use App\Filament\Resources\InstructorPayoutAttempts\InstructorPayoutAttemptResource;
 use App\Filament\Resources\InstructorPayoutReconciliationIssues\InstructorPayoutReconciliationIssueResource;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorPayoutAttempt;
 use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\InstructorWithdrawalRequest;
@@ -38,7 +39,7 @@ class InstructorWithdrawalRequestsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -239,6 +240,8 @@ class InstructorWithdrawalRequestsTable
                     ->url(fn (InstructorWithdrawalRequest $record): string => InstructorPayoutReconciliationIssueResource::getUrl('index')),
             ])
             ->defaultSort('requested_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function money(int $minor, string $currencyCode): string

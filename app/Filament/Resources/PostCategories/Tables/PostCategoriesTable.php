@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PostCategories\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -19,7 +20,7 @@ class PostCategoriesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -65,5 +66,7 @@ class PostCategoriesTable
             ])
             ->defaultSort('sort_order')
             ->modifyQueryUsing(fn ($query) => $query->withCount('posts'));
+
+        return AdminListTable::apply($table);
     }
 }

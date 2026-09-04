@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Invoices\Tables;
 
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Invoice;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -19,7 +20,7 @@ class InvoicesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('invoice_number')
                     ->label('Invoice #')
@@ -69,5 +70,7 @@ class InvoicesTable
             ])
             ->bulkActions([])
             ->defaultSort('issued_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

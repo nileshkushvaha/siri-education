@@ -10,6 +10,7 @@ use App\Earnings\Enums\InstructorPayoutAttemptStatus;
 use App\Earnings\Enums\PayoutFailureCategory;
 use App\Earnings\Exceptions\EarningException;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorPayoutAttempt;
 use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
@@ -32,7 +33,7 @@ class InstructorPayoutAttemptsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -147,6 +148,8 @@ class InstructorPayoutAttemptsTable
                     )),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

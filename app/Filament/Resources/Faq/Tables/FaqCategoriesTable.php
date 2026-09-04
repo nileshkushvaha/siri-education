@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Faq\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -18,7 +19,7 @@ class FaqCategoriesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -55,5 +56,7 @@ class FaqCategoriesTable
                 ]),
             ])
             ->defaultSort('display_order');
+
+        return AdminListTable::apply($table);
     }
 }

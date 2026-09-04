@@ -9,6 +9,7 @@ use App\Earnings\Enums\PayoutReconciliationIssueStatus;
 use App\Earnings\Enums\PayoutReconciliationIssueType;
 use App\Earnings\Enums\PayoutReconciliationSeverity;
 use App\Earnings\Exceptions\EarningException;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorPayoutReconciliationIssue;
 use App\Models\User;
 use App\Support\MoneyFormatter;
@@ -29,7 +30,7 @@ class InstructorPayoutReconciliationIssuesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -154,6 +155,8 @@ class InstructorPayoutReconciliationIssuesTable
                     )),
             ])
             ->defaultSort('last_detected_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

@@ -9,6 +9,7 @@ use App\Earnings\Enums\EarningCalculationType;
 use App\Earnings\Enums\InstructorEarningStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorEarning;
 use App\Support\MoneyFormatter;
 use Filament\Actions\Action;
@@ -30,7 +31,7 @@ class InstructorEarningsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('booking_reference')
                     ->label('Booking')
@@ -124,6 +125,8 @@ class InstructorEarningsTable
                     )),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     /** Admin display only — storage stays integer minor units. */

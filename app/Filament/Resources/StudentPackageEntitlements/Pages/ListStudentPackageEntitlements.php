@@ -9,7 +9,11 @@ use App\Filament\Resources\PackageBenefitRules\PackageBenefitRuleResource;
 use App\Filament\Resources\StudentPackageEntitlements\StudentPackageEntitlementResource;
 use App\Filament\Support\Presentation\BackAction;
 use App\Filament\Support\RelatedResourceLinkGroups;
+use App\Filament\Support\Tables\StatusTabs;
+use App\Models\StudentPackageEntitlement;
+use App\Package\Enums\PackageEntitlementStatus;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListStudentPackageEntitlements extends ListRecords
 {
@@ -27,5 +31,11 @@ class ListStudentPackageEntitlements extends ListRecords
     protected function getRelatedResourceLinks(): array
     {
         return RelatedResourceLinkGroups::packages();
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return StatusTabs::forEnum(StudentPackageEntitlement::class, PackageEntitlementStatus::class);
     }
 }

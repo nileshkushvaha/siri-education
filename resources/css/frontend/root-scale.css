@@ -1,0 +1,23 @@
+/* ================================================================
+   Viewport-aware root font size
+
+   Every size in the UI is rem-based (Tailwind), so the root font size
+   is the one dial that scales the whole layout. Windows laptops usually
+   run 125–150% display scaling, which leaves a 1280–1536px CSS viewport
+   where the browser-default 16px base feels oversized (clients were
+   zooming the browser to 80% to compensate). Macs report 1470px+ and
+   keep the full size.
+
+   16px ≥ 1537px · 15px ≤ 1536px · 14px ≤ 1400px · 13px ≤ 1100px
+   ================================================================ */
+@media (max-width: 1536px) {
+    html { font-size: 15px; }
+}
+
+@media (max-width: 1400px) {
+    html { font-size: 14px; }
+}
+
+@media (max-width: 1100px) and (min-width: 768px) {
+    html { font-size: 13.5px; }
+}

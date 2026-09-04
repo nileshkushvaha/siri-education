@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PaymentReconciliationIssues\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\PaymentReconciliationIssue;
 use App\Models\StudentPackagePurchase;
 use App\Payments\Enums\PaymentReconciliationIssueStatus;
@@ -36,7 +37,7 @@ class PaymentReconciliationIssuesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('payment.idempotency_key')
                     ->label('Payment Ref')
@@ -165,6 +166,8 @@ class PaymentReconciliationIssuesTable
             ])
             ->emptyStateHeading('No payment discrepancies')
             ->emptyStateDescription('Verified provider events have matched every approved amount and currency.');
+
+        return AdminListTable::apply($table);
     }
 
     private static function money(?int $amountMinor, ?string $currency): string

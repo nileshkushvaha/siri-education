@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Permissions\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\User;
 use App\Services\Admin\PermissionAuditRecorder;
 use Filament\Actions\BulkActionGroup;
@@ -21,7 +22,7 @@ class PermissionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->weight(FontWeight::Medium)
@@ -79,5 +80,7 @@ class PermissionsTable
                         }),
                 ]),
             ]);
+
+        return AdminListTable::apply($table);
     }
 }

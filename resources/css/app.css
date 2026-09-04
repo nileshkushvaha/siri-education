@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './frontend/theme.css';
+@import './frontend/root-scale.css';
 
 /*
  * Inter, self-hosted. Previously three render-blocking tags in every

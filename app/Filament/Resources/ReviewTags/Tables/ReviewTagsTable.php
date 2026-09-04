@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReviewTags\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\ReviewTag;
 use App\Reviews\Enums\LessonReviewEligibilityMode;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -27,7 +28,7 @@ class ReviewTagsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('label')
                     ->searchable()
@@ -39,9 +40,9 @@ class ReviewTagsTable
                 TextColumn::make('applicable_modes')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => LessonReviewEligibilityMode::from($state)->label()),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
+                ToggleColumn::make('is_active')
+                    ->label('Active')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('sort_order')
                     ->sortable(),
             ])
@@ -82,5 +83,7 @@ class ReviewTagsTable
                 ]),
             ])
             ->defaultSort('sort_order');
+
+        return AdminListTable::apply($table);
     }
 }

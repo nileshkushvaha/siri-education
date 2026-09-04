@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentPackagePurchases\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Package\Enums\PackagePurchaseStatus;
 use App\Support\MoneyFormatter;
 use Filament\Tables\Columns\TextColumn;
@@ -23,7 +24,7 @@ class StudentPackagePurchasesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -70,5 +71,7 @@ class StudentPackagePurchasesTable
                     ),
             ])
             ->defaultSort('accepted_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

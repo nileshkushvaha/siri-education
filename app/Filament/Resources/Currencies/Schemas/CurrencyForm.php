@@ -2,16 +2,12 @@
 
 namespace App\Filament\Resources\Currencies\Schemas;
 
-use App\Support\MoneyFormatter;
-use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use InvalidArgumentException;
 
 class CurrencyForm
 {
@@ -86,64 +82,14 @@ class CurrencyForm
                 ])
                 ->columnSpanFull(),
 
-            // SRS §13.12. These live per currency rather than in
-            // WalletSettings because a recharge limit is an amount of
-            // money: one platform-wide number cannot mean ₹500 and $10
-            // at once, and this application has no exchange rate.
-            Section::make('Wallet Recharge Limits')
-                ->description('Optional minimum and maximum wallet recharge for this currency. Leave blank for no limit — an empty minimum still requires a positive amount.')
+            // Wallet rules for this currency (recharge min/max/step and the
+            // low-balance alert) are edited together on Settings → Wallet,
+            // where an admin sees every currency side by side.
+            Section::make('Wallet rules')
+                ->description('Recharge limits, the recharge step and the low-balance alert for this currency are managed on Settings → Wallet.')
                 ->icon('heroicon-o-wallet')
-                ->schema([
-                    Grid::make(2)->schema([
-                        self::limitInput('minimum_recharge_minor', 'Minimum recharge'),
-                        self::limitInput('maximum_recharge_minor', 'Maximum recharge'),
-                    ]),
-                ])
+                ->schema([])
                 ->columnSpanFull(),
         ]);
-    }
-
-    /**
-     * A major-unit money input over a minor-unit column. Admins type
-     * "500.00"; the column stores 50000. Conversion goes through
-     * MoneyFormatter in both directions using THIS currency's own
-     * decimal places, so nothing here assumes a two-decimal currency
-     * and no float ever touches the value.
-     *
-     * Blank stays NULL — "unconfigured", which is not the same as a
-     * limit of zero.
-     */
-    private static function limitInput(string $name, string $label): TextInput
-    {
-        return TextInput::make($name)
-            ->label($label)
-            ->nullable()
-            ->helperText('In this currency\'s own units, e.g. 500 or 500.00.')
-            ->formatStateUsing(fn (?int $state, Get $get): ?string => $state === null
-                ? null
-                : MoneyFormatter::toMajor($state, self::exponent($get)))
-            ->rule(fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
-                if (blank($value)) {
-                    return;
-                }
-
-                try {
-                    MoneyFormatter::toMinor((string) $value, self::exponent($get));
-                } catch (InvalidArgumentException $e) {
-                    // Surfaced as a field error rather than a 500: the
-                    // decimal-places rule is currency-specific, so
-                    // "1500.5" is valid for USD and invalid for JPY.
-                    $fail($e->getMessage());
-                }
-            })
-            ->dehydrateStateUsing(fn (?string $state, Get $get): ?int => blank($state)
-                ? null
-                : MoneyFormatter::toMinor($state, self::exponent($get)));
-    }
-
-    /** The decimal places currently entered on this same form — never a hardcoded 2. */
-    private static function exponent(Get $get): int
-    {
-        return (int) ($get('minor_units') ?? 2);
     }
 }

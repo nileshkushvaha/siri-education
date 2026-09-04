@@ -185,6 +185,8 @@ final class StudentDashboardService
 
         return [
             'available' => WalletMoneyFormatter::format($wallet->available_balance_minor, $wallet->currency, $wallet->currency_code),
+            'low_balance' => $wallet->currency?->low_balance_threshold_minor !== null
+                && $wallet->available_balance_minor < $wallet->currency->low_balance_threshold_minor,
             'latest' => $latest?->description,
             'latest_at' => $latest?->posted_at,
         ];

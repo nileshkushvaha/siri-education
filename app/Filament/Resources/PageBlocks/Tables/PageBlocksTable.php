@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PageBlocks\Tables;
 
 use App\Enums\BlockType;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Services\BlockService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -23,7 +24,7 @@ class PageBlocksTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->label('Name')
@@ -120,5 +121,7 @@ class PageBlocksTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+
+        return AdminListTable::apply($table);
     }
 }

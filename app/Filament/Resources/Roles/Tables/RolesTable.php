@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Roles\Tables;
 
 use App\Exceptions\CanonicalSuperAdminRoleProtectedException;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\User;
 use App\Services\Admin\RoleAuditRecorder;
 use App\Services\Admin\SuperAdminGuardService;
@@ -35,7 +36,7 @@ class RolesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->label('Role Name')
@@ -235,5 +236,7 @@ class RolesTable
             ->emptyStateDescription('Create your first role and assign permissions to it.')
 
             ->striped();
+
+        return AdminListTable::apply($table);
     }
 }

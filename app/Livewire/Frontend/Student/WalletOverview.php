@@ -23,6 +23,7 @@ use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Exceptions\WalletException;
 use App\Wallet\Services\WalletLedgerService;
 use App\Wallet\Services\WalletRechargeSettlementService;
+use App\Wallet\Support\WalletMoneyFormatter;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorImpl;
@@ -275,6 +276,7 @@ final class WalletOverview extends Component
             'rechargeAvailable' => $this->rechargeAvailable($currencyCode),
             'rechargeCurrencyCode' => $currencyCode,
             'rechargeLimits' => $this->rechargeLimits($currencyCode),
+            'lowBalance' => $this->lowBalance($wallet),
         ]);
     }
 
@@ -346,11 +348,33 @@ final class WalletOverview extends Component
      *
      * @return array{min: ?string, max: ?string}
      */
+    /**
+     * Low-balance alert (Settings → Wallet, per currency). Null when the
+     * student has no wallet, the currency has no threshold, or the
+     * available balance is at or above it.
+     *
+     * @return array{threshold: string}|null
+     */
+    private function lowBalance(?Wallet $wallet): ?array
+    {
+        if ($wallet === null) {
+            return null;
+        }
+
+        $threshold = $wallet->currency?->low_balance_threshold_minor;
+
+        if ($threshold === null || $wallet->available_balance_minor >= $threshold) {
+            return null;
+        }
+
+        return ['threshold' => WalletMoneyFormatter::format($threshold, $wallet->currency, $wallet->currency_code)];
+    }
+
     private function rechargeLimits(string $currencyCode): array
     {
         $currency = Currency::query()
             ->where('code', strtoupper($currencyCode))
-            ->first(['minimum_recharge_minor', 'maximum_recharge_minor']);
+            ->first(['minimum_recharge_minor', 'maximum_recharge_minor', 'recharge_multiple_minor']);
 
         return [
             'min' => $currency?->minimum_recharge_minor === null
@@ -359,6 +383,9 @@ final class WalletOverview extends Component
             'max' => $currency?->maximum_recharge_minor === null
                 ? null
                 : MoneyFormatter::format($currency->maximum_recharge_minor, $currencyCode),
+            'multiple' => $currency?->recharge_multiple_minor === null
+                ? null
+                : MoneyFormatter::format($currency->recharge_multiple_minor, $currencyCode),
         ];
     }
 

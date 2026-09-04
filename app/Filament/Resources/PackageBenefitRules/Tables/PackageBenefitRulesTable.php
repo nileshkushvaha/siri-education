@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PackageBenefitRules\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -17,7 +18,7 @@ class PackageBenefitRulesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->label('Offer Name')
@@ -36,9 +37,9 @@ class PackageBenefitRulesTable
                     ->label('Validity')
                     ->formatStateUsing(fn (?int $state): string => $state === null ? 'No expiry' : sprintf('%d days', $state))
                     ->sortable(),
-                IconColumn::make('is_active')
+                ToggleColumn::make('is_active')
                     ->label('Active')
-                    ->boolean(),
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -54,5 +55,7 @@ class PackageBenefitRulesTable
                 RestoreAction::make(),
             ])
             ->defaultSort('name');
+
+        return AdminListTable::apply($table);
     }
 }

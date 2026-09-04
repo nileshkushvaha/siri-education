@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralCampaigns\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\ReferralCampaign;
 use App\Referral\Contracts\ReferralCampaignServiceInterface;
 use App\Referral\Enums\ReferralCampaignStatus;
@@ -31,7 +32,7 @@ class ReferralCampaignsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -151,6 +152,8 @@ class ReferralCampaignsTable
                     )),
             ])
             ->defaultSort('starts_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function reasonField(): Textarea

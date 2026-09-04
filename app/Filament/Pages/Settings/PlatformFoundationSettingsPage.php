@@ -10,7 +10,6 @@ use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
 use App\Settings\LocalizationSettings;
-use App\Settings\WalletSettings;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -59,13 +58,12 @@ class PlatformFoundationSettingsPage extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Prepare booking, wallet, instructor, localization, and feature flag defaults. Referral reward rules live in Referral Campaigns; meeting providers live under Meeting Settings.';
+        return 'Prepare booking, instructor, localization, and feature flag defaults. Wallet limits live under Wallet Settings. Referral reward rules live in Referral Campaigns; meeting providers live under Meeting Settings.';
     }
 
     public function mount(): void
     {
         $booking = app(BookingSettings::class);
-        $wallet = app(WalletSettings::class);
         $instructor = app(InstructorSettings::class);
         $localization = app(LocalizationSettings::class);
         $features = app(FeatureSettings::class);
@@ -74,13 +72,12 @@ class PlatformFoundationSettingsPage extends Page
             'demo_duration_minutes' => $booking->demo_duration_minutes,
             'reservation_expiry_minutes' => $booking->reservation_expiry_minutes,
             'minimum_booking_notice_minutes' => $booking->minimum_booking_notice_minutes,
+            'demo_minimum_booking_notice_minutes' => $booking->demo_minimum_booking_notice_minutes,
             'maximum_advance_booking_days' => $booking->maximum_advance_booking_days,
             'cancellation_window_hours' => $booking->cancellation_window_hours,
             'reschedule_limit' => $booking->reschedule_limit,
             'no_show_grace_minutes' => $booking->no_show_grace_minutes,
             'auto_completion_delay_minutes' => $booking->auto_completion_delay_minutes,
-            'low_balance_threshold' => $wallet->low_balance_threshold,
-            'recurring_deduction_hours_before_lesson' => $wallet->recurring_deduction_hours_before_lesson,
             'approval_required' => $instructor->approval_required,
             'profile_publish_requires_approval' => $instructor->profile_publish_requires_approval,
             'featured_instructor_limit' => $instructor->featured_instructor_limit,
@@ -127,25 +124,15 @@ class PlatformFoundationSettingsPage extends Page
                         Grid::make(2)->schema([
                             $this->integerInput('demo_duration_minutes', 'Demo Duration', 1, 480),
                             $this->integerInput('reservation_expiry_minutes', 'Reservation Expiry', 1, 240),
-                            $this->integerInput('minimum_booking_notice_minutes', 'Minimum Notice (minutes)', 0, 43200),
+                            $this->integerInput('minimum_booking_notice_minutes', 'Minimum Notice (minutes)', 0, 43200)
+                                ->helperText('Paid lessons: earliest a student may book before the start time.'),
+                            $this->integerInput('demo_minimum_booking_notice_minutes', 'Demo Minimum Notice (minutes)', 0, 43200)
+                                ->helperText('Free demos only. Keep this short so a student can try an instructor who is free right now.'),
                             $this->integerInput('maximum_advance_booking_days', 'Advance Window (days)', 1, 365),
                             $this->integerInput('cancellation_window_hours', 'Cancellation Window', 0, 720),
                             $this->integerInput('reschedule_limit', 'Reschedule Limit', 0, 20),
                             $this->integerInput('no_show_grace_minutes', 'No-show Grace', 0, 120),
                             $this->integerInput('auto_completion_delay_minutes', 'Auto-completion Delay', 0, 10080),
-                        ]),
-                    ]),
-
-                // Recharge minimum/maximum are set per currency on
-                // Finance → Currencies, not here: one platform-wide
-                // number cannot express a limit across nine billing
-                // currencies (SRS §13.12).
-                Section::make('Wallet')
-                    ->description('Recharge minimums and maximums are configured per currency under Currencies. Enable the Wallet module in Feature Flags below.')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            $this->numericInput('low_balance_threshold', 'Low Balance Threshold', 0),
-                            $this->integerInput('recurring_deduction_hours_before_lesson', 'Deduct Before Lesson', 0, 720),
                         ]),
                     ]),
 
@@ -201,12 +188,11 @@ class PlatformFoundationSettingsPage extends Page
         }
 
         $bookingOk = $this->saveBooking($data);
-        $walletOk = $this->saveWallet($data);
         $instructorOk = $this->saveInstructor($data);
         $localizationOk = $this->saveLocalization($data);
         $featuresOk = $this->saveFeatures($data);
 
-        if (! $bookingOk || ! $walletOk || ! $instructorOk || ! $localizationOk || ! $featuresOk) {
+        if (! $bookingOk || ! $instructorOk || ! $localizationOk || ! $featuresOk) {
             // A failure notification was already shown by
             // saveSettingsWithAudit() for whichever group failed.
             return;
@@ -228,15 +214,6 @@ class PlatformFoundationSettingsPage extends Page
             ->required();
     }
 
-    private function numericInput(string $name, string $label, int|float $min): TextInput
-    {
-        return TextInput::make($name)
-            ->label($label)
-            ->numeric()
-            ->minValue($min)
-            ->required();
-    }
-
     /** @param array<string, mixed> $data */
     private function saveBooking(array $data): bool
     {
@@ -244,20 +221,12 @@ class PlatformFoundationSettingsPage extends Page
             $settings->demo_duration_minutes = (int) $data['demo_duration_minutes'];
             $settings->reservation_expiry_minutes = (int) $data['reservation_expiry_minutes'];
             $settings->minimum_booking_notice_minutes = (int) $data['minimum_booking_notice_minutes'];
+            $settings->demo_minimum_booking_notice_minutes = (int) $data['demo_minimum_booking_notice_minutes'];
             $settings->maximum_advance_booking_days = (int) $data['maximum_advance_booking_days'];
             $settings->cancellation_window_hours = (int) $data['cancellation_window_hours'];
             $settings->reschedule_limit = (int) $data['reschedule_limit'];
             $settings->no_show_grace_minutes = (int) $data['no_show_grace_minutes'];
             $settings->auto_completion_delay_minutes = (int) $data['auto_completion_delay_minutes'];
-        });
-    }
-
-    /** @param array<string, mixed> $data */
-    private function saveWallet(array $data): bool
-    {
-        return $this->saveSettingsWithAudit(WalletSettings::class, 'settings', function (WalletSettings $settings) use ($data): void {
-            $settings->low_balance_threshold = (float) $data['low_balance_threshold'];
-            $settings->recurring_deduction_hours_before_lesson = (int) $data['recurring_deduction_hours_before_lesson'];
         });
     }
 

@@ -13,6 +13,7 @@ use App\Compliance\Exceptions\ComplianceValidationException;
 use App\Compliance\Exceptions\InvalidSuspiciousActivityFlagTransitionException;
 use App\Compliance\Services\ComplianceMonitoringService;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\SuspiciousActivityFlag;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -36,7 +37,7 @@ class SuspiciousActivityFlagsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('reference')
                     ->label('Reference')
@@ -168,6 +169,8 @@ class SuspiciousActivityFlagsTable
                     )),
             ])
             ->defaultSort('last_observed_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle, string $failureTitle): void

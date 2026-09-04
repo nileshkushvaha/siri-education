@@ -40,7 +40,6 @@ final readonly class WalletFinancialSummaryData
         public int $positiveBalanceWallets,
         public int $zeroBalanceWallets,
         public int $lowBalanceWallets,
-        public float $lowBalanceThreshold,
         public int $reversalCount,
         public int $balanceMismatchCount,
     ) {}

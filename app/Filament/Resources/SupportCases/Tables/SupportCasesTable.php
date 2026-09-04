@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SupportCases\Tables;
 
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\SupportCase;
 use App\Models\User;
 use App\SupportCases\Enums\SupportCaseCategory;
@@ -36,7 +37,7 @@ class SupportCasesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('case_number')
                     ->label('Reference')
@@ -179,6 +180,8 @@ class SupportCasesTable
                     )),
             ])
             ->defaultSort('opened_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

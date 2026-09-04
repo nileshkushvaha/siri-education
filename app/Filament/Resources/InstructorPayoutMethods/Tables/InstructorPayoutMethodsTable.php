@@ -12,6 +12,7 @@ use App\Earnings\Enums\RazorpayXProviderLinkStatus;
 use App\Earnings\Exceptions\EarningException;
 use App\Earnings\Providers\RazorpayX\RazorpayXProvisioningException;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorPayoutDestinationProviderLink;
 use App\Models\InstructorPayoutMethod;
 use Filament\Actions\Action;
@@ -39,7 +40,7 @@ class InstructorPayoutMethodsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('razorpayXProviderLink'))
             ->columns([
                 TextColumn::make('instructor.name')
@@ -254,6 +255,8 @@ class InstructorPayoutMethodsTable
                     )),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

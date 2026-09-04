@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PromotionalCreditCampaigns\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\PromotionalCreditCampaign;
 use App\PromotionalCredits\Enums\PromotionalCreditCampaignStatus;
 use App\PromotionalCredits\Exceptions\PromotionalCreditException;
@@ -29,7 +30,7 @@ class PromotionalCreditCampaignsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -133,6 +134,8 @@ class PromotionalCreditCampaignsTable
                     )),
             ])
             ->defaultSort('starts_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function reasonField(): Textarea

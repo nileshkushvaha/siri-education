@@ -40,7 +40,6 @@ ls app/Settings/*.php | xargs -n1 basename -s .php
 | `PaymentAdvancedSettings` | `payment_advanced` | Payment Settings (Advanced tab) |
 | `BankSettings` | `payment_bank` | Payment Settings (Bank Account tab) |
 | `BookingSettings` | `booking` | Platform Foundation |
-| `WalletSettings` | `wallet` | Platform Foundation |
 | `MeetingSettings` | `meeting` | Meeting Settings |
 | `InstructorSettings` | `instructor` | Platform Foundation |
 | `LocalizationSettings` | `localization` | Platform Foundation |

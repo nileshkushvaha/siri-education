@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
 class LoginHistoryResource extends Resource
@@ -37,7 +38,16 @@ class LoginHistoryResource extends Resource
 
     protected static ?string $slug = 'login-history';
 
-    protected static ?string $recordTitleAttribute = 'id';
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof LoginHistory) {
+            return null;
+        }
+
+        $record->loadMissing('user');
+
+        return trim(($record->user?->name ?? 'Unknown user').' · '.($record->logged_in_at?->format('d M Y H:i') ?? ''));
+    }
 
     public static function canViewAny(): bool
     {

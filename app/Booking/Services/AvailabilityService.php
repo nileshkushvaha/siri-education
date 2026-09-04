@@ -75,7 +75,7 @@ final class AvailabilityService implements AvailabilityServiceInterface
         foreach ($this->generator->candidates($windows, $duration, $buffer) as $candidate) {
             [$start, $end] = [$candidate['starts_at'], $candidate['ends_at']];
 
-            if (! $this->window->isWithinWindow($start)) {
+            if (! $this->window->isWithinWindow($start, isDemo: ! $type->is_paid)) {
                 continue;
             }
 

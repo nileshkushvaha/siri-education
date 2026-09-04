@@ -11,6 +11,7 @@ use App\Booking\Enums\PaymentProviderCode;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\GatewayRequestException;
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\BookingPayment;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -28,7 +29,7 @@ class BookingPaymentsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('booking.reference')
                     ->label('Booking')
@@ -177,5 +178,7 @@ class BookingPaymentsTable
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

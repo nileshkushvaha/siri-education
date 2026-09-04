@@ -7,13 +7,14 @@ namespace App\Filament\Resources\Redirects\Tables;
 use App\Content\Redirects\Enums\RedirectType;
 use App\Content\Redirects\Exceptions\RedirectException;
 use App\Content\Redirects\Services\RedirectService;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Redirect;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -28,7 +29,7 @@ class RedirectsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('source_path')
                     ->label('Source')
@@ -41,9 +42,9 @@ class RedirectsTable
                 TextColumn::make('type')
                     ->badge()
                     ->formatStateUsing(fn (RedirectType $state): string => $state->label()),
-                IconColumn::make('is_active')
+                ToggleColumn::make('is_active')
                     ->label('Active')
-                    ->boolean(),
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('description')
                     ->limit(60)
                     ->placeholder('—')
@@ -88,6 +89,8 @@ class RedirectsTable
                     )),
             ])
             ->defaultSort('updated_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function callService(callable $callback, string $successTitle): void

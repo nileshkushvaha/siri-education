@@ -17,7 +17,7 @@ Business logic is not wired to every setting yet (full feature-flag enforcement 
 | 3 | MailSettings | Existing, unchanged | `app/Settings/MailSettings.php` (`mail` group) |
 | 4 | PaymentSettings | Existing split, kept split | `PaymentGatewaySettings`, `PaymentConfigurationSettings`, `PaymentAdvancedSettings`, `BankSettings` |
 | 5 | BookingSettings | Existing, fields renamed | `app/Settings/BookingSettings.php` (`booking` group) |
-| 6 | WalletSettings | Existing, `enabled` removed | `app/Settings/WalletSettings.php` (`wallet` group) |
+| 6 | Wallet configuration | Per currency, not a settings class | `currencies` recharge/low-balance columns, edited on Settings → Wallet (`WalletSettingsPage`) |
 | 7 | MeetingSettings | Existing, unchanged | `app/Settings/MeetingSettings.php` (`meeting` group) |
 | 8 | InstructorSettings | Existing, unchanged | `app/Settings/InstructorSettings.php` (`instructor` group) |
 | 9 | Referral configuration | Per-campaign, not a global settings class | `ReferralCampaign` model (reward type/value, eligibility, timing) — there is no `ReferralSettings` class; only the platform-wide on/off switch lives in `FeatureSettings::$referral_enabled` |
@@ -123,3 +123,76 @@ Restated from `docs/architecture/duplicate-prevention-rules.md`, applied specifi
 3. A feature's on/off switch lives in exactly one place. If a domain class needs configuration once a feature is on, that's fine — it doesn't need its own enabled flag too.
 4. Settings migrations are forward-only. To fix a mistake in an already-applied migration, write a new migration that renames/deletes/adds — never edit the old file.
 5. If two fields must legitimately share a name across two classes (like `recording_enabled`), document *why* in both classes' docblocks so the next person doesn't "fix" it into a duplicate or, worse, a silent divergence.
+
+## Field reference — Settings → Platform Foundation (`/admin/settings/platform-foundation`)
+
+Audited 2026-09-03 by tracing every property to its consumers in `app/`. **Status** means
+whether saving the field changes anything the platform does. Fields marked *Not wired* are
+stored and audited but read by no code path.
+
+### Booking (`BookingSettings`)
+
+| Field | Property | Unit | What it is meant to control | Consumer | Status |
+|---|---|---|---|---|---|
+| Demo Duration | `demo_duration_minutes` | minutes | Length of a free demo lesson | none — the demo length comes from the *Free Demo* booking type's own `duration_minutes` | **Not wired** |
+| Reservation Expiry | `reservation_expiry_minutes` | minutes | How long an unpaid paid-booking reservation holds the slot | none — `BookingService` uses `BookingSettings::$payment_reservation_minutes`, which has no admin field | **Not wired** (duplicate of a hidden field) |
+| Minimum Notice | `minimum_booking_notice_minutes` | minutes | Earliest a student may book a **paid** lesson before the start time | `BookingWindowRule`, `AvailabilityService` | Wired |
+| Demo Minimum Notice | `demo_minimum_booking_notice_minutes` | minutes | Earliest a student may book a **free demo** (default 30) | `BookingWindowRule`, `AvailabilityService` | Wired |
+| Advance Window | `maximum_advance_booking_days` | days | Furthest ahead a student may book | `BookingWindowRule` | Wired |
+| Cancellation Window | `cancellation_window_hours` | hours | Cut-off before start after which a cancellation is no longer free / refundable | `CancellationRefundPolicy` | Wired |
+| Reschedule Limit | `reschedule_limit` | count | How many times one booking may be rescheduled | `RescheduleLimitPolicy` | Wired |
+| No-show Grace | `no_show_grace_minutes` | minutes | How long after start before a no-show may be recorded | none — `LessonLifecycleService` reads `LessonSettings::$no_show_grace_minutes`, a different settings class with the same property name | **Not wired** (misrouted) |
+| Auto-completion Delay | `auto_completion_delay_minutes` | minutes | How long after end time a lesson auto-completes | none — the sweep reads `LessonSettings::$auto_complete_grace_minutes` | **Not wired** (misrouted) |
+
+`LessonSettings` (auto-complete, no-show grace per party, attendance thresholds, finalization
+batch size) currently has **no admin page**; its values come only from settings migrations.
+
+### Wallet
+
+Removed from this page on 2026-09-04. `WalletSettings` no longer exists: the low-balance threshold
+moved per currency to **Settings → Wallet** (with recharge minimum, maximum and step), and
+"Deduct Before Lesson" was deleted because nothing ever read it.
+
+**Recharge minimum and maximum are not on this page.** They are per currency
+(`currencies.minimum_recharge_minor` / `maximum_recharge_minor`, edited on Settings → Wallet) and enforced by `WalletRechargeService::assertAmountWithinLimits()`
+before any payment record exists. Seeded minimums: INR 500, USD 10, GBP 10; every other currency has
+no floor beyond "amount must be positive" and no ceiling. The student wallet page shows the limit
+only when the wallet's currency has one. Verified in the browser: a 100 INR recharge is refused with
+"The minimum recharge amount is 500.00 INR." The Low Balance Threshold default of 500 is a
+coincidence and has nothing to do with the recharge floor.
+
+### Instructor (`InstructorSettings`)
+
+| Field | Property | What it is meant to control | Consumer | Status |
+|---|---|---|---|---|
+| Approval Required | `approval_required` | Whether a new instructor must be approved before going live | none — onboarding review is always required (`InstructorStatus` lifecycle) | **Not wired** |
+| Publish Requires Approval | `profile_publish_requires_approval` | Whether profile publication needs admin sign-off | none | **Not wired** |
+| Featured Limit | `featured_instructor_limit` | How many instructors the featured block shows | none — the *Featured Teachers* content block carries its own per-block limit (default 4, max 12) | **Not wired** |
+| Require Availability | `availability_required_for_public_profile` | Hide public profiles with no availability | none | **Not wired** |
+
+### Localization (`LocalizationSettings`)
+
+| Field | Property | Consumer | Status |
+|---|---|---|---|
+| Default Country | `default_country` (ISO 3166-1 alpha-2) | `MarketplaceCountryResolver` — the market used when a visitor's country cannot be resolved | Wired |
+
+### Feature Flags (`FeatureSettings`)
+
+All flags are the single on/off source of truth for their module and are consumed:
+
+| Flag | Consumers |
+|---|---|
+| Demo Lessons | `DemoAvailabilityResolver`, `DemoLessonsEnabledRule`, `CountryFeatureResolver` |
+| Wallet | `StudentWalletController` (404 when off), `WalletOverview`, `BookingWizard`, `BookingHistory`, account menu |
+| Referral | `ReferralEligibilityService`, `StudentReferralController`, `ReferFriend`, reports |
+| Waitlist | `WaitlistService`, `CountryFeatureResolver` |
+| Homework | `StudentDashboardService`, `PortalBadgeService`, `AccountMenuService`, `CountryFeatureResolver` |
+| Recording | `RecordingAvailabilityResolver` (outer switch; Meeting Settings' default cannot override it) |
+
+### Recommended follow-ups
+
+1. Point *No-show Grace* and *Auto-completion Delay* at `LessonSettings`, or give `LessonSettings`
+   its own page and drop the two Booking fields. Today an admin can edit them with no effect.
+2. Either wire or remove Demo Duration, Reservation Expiry (expose `payment_reservation_minutes`
+   instead), Deduct Before Lesson, and the four Instructor fields. A field that saves but does
+   nothing is worse than no field.

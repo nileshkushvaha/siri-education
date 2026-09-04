@@ -17,6 +17,8 @@ class PlatformSettingsPermissionSeeder extends Seeder
     private const PERMISSIONS = [
         'settings.platform_foundation.view',
         'settings.platform_foundation.update',
+        'settings.wallet.view',
+        'settings.wallet.update',
     ];
 
     public function run(): void

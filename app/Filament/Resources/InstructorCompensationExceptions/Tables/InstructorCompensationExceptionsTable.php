@@ -6,6 +6,7 @@ namespace App\Filament\Resources\InstructorCompensationExceptions\Tables;
 
 use App\Earnings\Contracts\InstructorEarningServiceInterface;
 use App\Earnings\Enums\CompensationExceptionCategory;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorCompensationException;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -25,7 +26,7 @@ class InstructorCompensationExceptionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('booking_reference')
                     ->label('Booking / Lesson')
@@ -121,5 +122,7 @@ class InstructorCompensationExceptionsTable
                     }),
             ])
             ->defaultSort('first_failed_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

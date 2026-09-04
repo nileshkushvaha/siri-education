@@ -7,6 +7,7 @@ namespace App\Filament\Resources\InstructorOnboarding\Tables;
 use App\Enums\InstructorStatus;
 use App\Filament\Resources\InstructorOnboarding\InstructorOnboardingResource;
 use App\Filament\Resources\Users\Tables\UserColumns;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\User;
 use App\Services\Instructor\InstructorOnboardingService;
 use Filament\Actions\Action;
@@ -17,7 +18,7 @@ class InstructorOnboardingTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 // Shared with the Users / Students / Instructors lists so a
                 // reviewer reads the same cells here as everywhere else —
@@ -70,5 +71,7 @@ class InstructorOnboardingTable
             ->searchDebounce('400ms')
             ->persistSearchInSession()
             ->defaultSort('instructor_application_submitted_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

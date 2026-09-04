@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StudentPackageEntitlements\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Package\Enums\PackageEntitlementStatus;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -18,7 +19,7 @@ class StudentPackageEntitlementsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('student.name')
                     ->label('Student')
@@ -71,5 +72,7 @@ class StudentPackageEntitlementsTable
                     ),
             ])
             ->defaultSort('activated_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

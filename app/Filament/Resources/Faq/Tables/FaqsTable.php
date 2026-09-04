@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Faq\Tables;
 
 use App\Enums\FaqAudience;
 use App\Enums\FaqStatus;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Faq;
 use App\Services\Faq\FaqService;
 use Filament\Actions\Action;
@@ -15,8 +16,8 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -26,7 +27,7 @@ class FaqsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('question')
                     ->searchable()
@@ -45,9 +46,9 @@ class FaqsTable
                         (array) $state
                     )))
                     ->wrap(),
-                IconColumn::make('featured')
-                    ->boolean()
-                    ->label('Featured'),
+                ToggleColumn::make('featured')
+                    ->label('Featured')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('display_order')
                     ->label('Order')
                     ->sortable()
@@ -116,5 +117,7 @@ class FaqsTable
             ])
             ->searchable(['question', 'answer', 'category.name'])
             ->defaultSort('display_order');
+
+        return AdminListTable::apply($table);
     }
 }

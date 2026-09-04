@@ -9,7 +9,11 @@ use App\Filament\Resources\BookingPayments\BookingPaymentResource;
 use App\Filament\Resources\PaymentReconciliationIssues\PaymentReconciliationIssueResource;
 use App\Filament\Support\Presentation\BackAction;
 use App\Filament\Support\RelatedResourceLinkGroups;
+use App\Filament\Support\Tables\StatusTabs;
+use App\Models\PaymentReconciliationIssue;
+use App\Payments\Enums\PaymentReconciliationIssueStatus;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListPaymentReconciliationIssues extends ListRecords
 {
@@ -27,5 +31,11 @@ class ListPaymentReconciliationIssues extends ListRecords
     protected function getRelatedResourceLinks(): array
     {
         return RelatedResourceLinkGroups::paymentCollection();
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return StatusTabs::forEnum(PaymentReconciliationIssue::class, PaymentReconciliationIssueStatus::class);
     }
 }

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorCompensationAgreements\Pages;
 
 use App\Earnings\Contracts\InstructorCompensationAgreementServiceInterface;
+use App\Earnings\Enums\CompensationAgreementStatus;
 use App\Earnings\Enums\CompensationPayBasis;
 use App\Earnings\Exceptions\EarningException;
 use App\Filament\Concerns\HasRelatedResourceLinks;
 use App\Filament\Resources\InstructorCompensationAgreements\InstructorCompensationAgreementResource;
 use App\Filament\Support\RelatedResourceLinkGroups;
+use App\Filament\Support\Tables\StatusTabs;
 use App\Models\Currency;
 use App\Models\InstructorCompensationAgreement;
 use App\Models\User;
@@ -20,6 +22,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 
 class ListInstructorCompensationAgreements extends ListRecords
 {
@@ -106,5 +109,11 @@ class ListInstructorCompensationAgreements extends ListRecords
     protected function getRelatedResourceLinks(): array
     {
         return RelatedResourceLinkGroups::instructorFinance();
+    }
+
+    /** @return array<string, Tab> */
+    public function getTabs(): array
+    {
+        return StatusTabs::forEnum(InstructorCompensationAgreement::class, CompensationAgreementStatus::class);
     }
 }

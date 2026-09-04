@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\States\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -23,7 +24,7 @@ class StatesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->label('State')
@@ -123,5 +124,7 @@ class StatesTable
             ->emptyStateIcon(Heroicon::OutlinedMapPin)
             ->emptyStateHeading('No states found')
             ->emptyStateDescription('Add your first state to get started.');
+
+        return AdminListTable::apply($table);
     }
 }

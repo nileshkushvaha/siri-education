@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Navigation\Tables;
 use App\Enums\Navigation\NavigationLayoutType;
 use App\Enums\Navigation\NavigationLocation;
 use App\Enums\Navigation\NavigationStatus;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\NavigationMenu;
 use App\Navigation\Contracts\NavigationCacheInterface;
 use Filament\Actions\Action;
@@ -28,7 +29,7 @@ class NavigationMenusTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -129,5 +130,7 @@ class NavigationMenusTable
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

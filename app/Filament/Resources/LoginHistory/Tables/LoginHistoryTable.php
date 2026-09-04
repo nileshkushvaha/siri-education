@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\LoginHistory\Tables;
 
 use App\Filament\Support\AdminDayRange;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\LoginHistory;
 use App\Models\User;
 use App\Support\LoginHistoryColors;
@@ -22,7 +23,7 @@ class LoginHistoryTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->defaultSort('logged_in_at', 'desc')
             ->columns([
                 TextColumn::make('user.name')
@@ -169,5 +170,7 @@ class LoginHistoryTable
             ->paginated([25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->poll(null);
+
+        return AdminListTable::apply($table);
     }
 }

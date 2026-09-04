@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralAttributions\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\ReferralAttribution;
 use App\Models\User;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
@@ -22,7 +23,7 @@ class ReferralAttributionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('id')
                     ->label('#')
@@ -89,5 +90,7 @@ class ReferralAttributionsTable
                     }),
             ])
             ->defaultSort('attributed_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

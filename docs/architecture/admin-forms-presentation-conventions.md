@@ -139,3 +139,27 @@ Documented here; not yet re-applied to every existing lifecycle action across th
 
 Always via Filament's semantic `->color()` API (or an enum's own `->color()` method) — never a hardcoded hex/RGB value or a raw Tailwind palette class in a form component. The Navigation Menu Builder's existing hardcoded panel colors are a known exception, tracked in the remediation backlog as its own custom-component task, not touched here.
 
+
+## List tables (index pages)
+
+Every resource table ends with `AdminListTable::apply($table, 'Search …')`
+(`app/Filament/Support/Tables/AdminListTable.php`). That gives each list:
+
+- every filter as its own always-visible control above the table (no filter dropdown), four per row on large screens
+- filters applied instantly and remembered for the session, as is the search box
+- striped rows, 25 / 50 / 100 per page
+
+On top of that, per resource:
+
+- **Tabs.** List pages of models with a status enum expose `getTabs()` via
+  `StatusTabs::forEnum(Model::class, StatusEnum::class)` (All + one tab per case with
+  live counts; uses the enum's `label()` / `color()` when defined). Academic catalogue models use
+  `AcademicStatusTabs::make()` which adds a Deleted tab and pairs with
+  `AcademicStatusTabs::activeToggleColumn()` and `bulkStatusActions()`.
+- **Inline toggles.** Boolean flags an admin may change directly (`is_active`, `featured`,
+  `required`…) render as `ToggleColumn`, disabled when the admin lacks `update` on the row.
+  Read-only booleans (audit or provider facts such as `requires_fraud_review`) stay as `IconColumn`.
+- **Record titles.** Never let a UUID reach a breadcrumb or heading: give the resource a
+  `$recordTitleAttribute` or override `getRecordTitle()` with a readable summary of the row.
+- **Groups.** Where a list has an obvious parent (subject, category, instructor), offer it under
+  `->groups([...])` so an admin can review a whole slice at once.

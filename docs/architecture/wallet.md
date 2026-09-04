@@ -32,7 +32,7 @@ Every balance-mutating method: `DB::transaction()` wraps a `Wallet::query()->whe
 
 ## Recharge limits
 
-Per currency, not platform-wide: `currencies.minimum_recharge_minor` / `maximum_recharge_minor`, integer minor units in that currency's own exponent (SRS §13.12), edited on the Currency admin form and enforced by `WalletRechargeService::assertAmountWithinLimits()`. NULL means unconfigured — no floor beyond `amount > 0`, no ceiling beyond the provider's technical limits — and is deliberately not the same as 0.
+Per currency, not platform-wide: `currencies.minimum_recharge_minor` / `maximum_recharge_minor` / `recharge_multiple_minor` / `low_balance_threshold_minor`, integer minor units in that currency's own exponent (SRS §13.12 / §13.16), edited together on **Settings → Wallet** (`WalletSettingsPage` → `WalletCurrencyLimitService`, audited as `wallet_limits_updated`) and enforced by `WalletRechargeAmountPolicy` (minimum, maximum, and "amount must be a whole multiple of the step" — seeded as 10 major units for every currency). NULL means unconfigured — no floor beyond `amount > 0`, no ceiling beyond the provider's technical limits — and is deliberately not the same as 0.
 
 This replaced two platform-wide floats (`wallet.minimum_recharge_amount` / `maximum_recharge_amount`) that the service re-expressed in each wallet's own minor units, so one configured `100` meant ₹100 in India *and* $100 in the United States. With no exchange rate anywhere in the application, a single scalar cannot express a limit meaningful in more than one currency; the old shape was unsound rather than merely under-configured. Only the three minimums SRS §13.12 states (INR 500, USD 10, GBP 10) are seeded, and no maximum is seeded anywhere.
 
@@ -130,7 +130,7 @@ The refund notification's idempotency key is scoped to disposition id **and** `v
 
 - **Referral/promotional credits**: `WalletLedgerEntryType::ReferralCredit`/`PromotionalCredit` already exist in the enum — a future engine only needs to call `WalletLedgerService::credit()`.
 - **Recurring lesson auto-deduction** (SRS §13.14/§13.15): `WalletSettings::$recurring_deduction_hours_before_lesson` is seeded but has no consumer yet.
-- **Low-balance notifications** (SRS §13.16): `WalletSettings::$low_balance_threshold` has one consumer (`WalletFinancialReportRepository`) but carries the same currency-blind shape the recharge limits were moved off — one scalar compared against every currency's balance. It needs the same per-currency treatment before it drives anything student-facing.
+- **Low-balance alert** (SRS §13.16): per currency (`currencies.low_balance_threshold_minor`, Settings → Wallet). Students see an in-app warning on the wallet page and the dashboard wallet tile when their available balance is below it; the wallet financial report counts such wallets. No email/push notification is sent yet — that would be the next step, via the Activity Log pipeline.
 - **Instructor earnings**: kept separate — `wallets.user_id` is not role-restricted at the DB level (an instructor wallet can reuse the same table), but no payout/earnings concept is wired to it, and the current UI is student-only.
 
 ## Tests

@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Filament\Resources\InstructorDocumentRequirements\Tables;
 
 use App\Enums\InstructorEvidenceCollection;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\InstructorDocumentRequirement;
 use App\Models\User;
 use App\Services\Instructor\InstructorDocumentRequirementService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
@@ -20,7 +21,7 @@ class InstructorDocumentRequirementsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('collection_name')
                     ->label('Evidence Type')
@@ -30,10 +31,10 @@ class InstructorDocumentRequirementsTable
                     ->sortable(),
                 TextColumn::make('label')
                     ->searchable(),
-                IconColumn::make('required')
-                    ->boolean(),
-                IconColumn::make('active')
-                    ->boolean(),
+                ToggleColumn::make('required')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
+                ToggleColumn::make('active')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('max_size_kb')
                     ->label('Max Size (KB)')
                     ->sortable(),
@@ -55,6 +56,8 @@ class InstructorDocumentRequirementsTable
             ])
             ->bulkActions([])
             ->defaultSort('sort_order');
+
+        return AdminListTable::apply($table);
     }
 
     private static function toggleActiveAction(): Action

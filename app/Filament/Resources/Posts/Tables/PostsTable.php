@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Posts\Tables;
 
 use App\Enums\PageStatus;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\Post;
 use App\Services\PostService;
 use Filament\Actions\Action;
@@ -14,9 +15,9 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -28,7 +29,7 @@ class PostsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 ImageColumn::make('featured_image_url')
                     ->label('Featured Image')
@@ -43,9 +44,9 @@ class PostsTable
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn (PageStatus $state): string => $state->color()),
-                IconColumn::make('featured')
-                    ->boolean()
-                    ->label('Featured'),
+                ToggleColumn::make('featured')
+                    ->label('Featured')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('published_at')
                     ->label('Published')
                     ->dateTime()
@@ -144,5 +145,7 @@ class PostsTable
             ])
             ->searchable(['title', 'slug', 'excerpt', 'author.name'])
             ->defaultSort('created_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

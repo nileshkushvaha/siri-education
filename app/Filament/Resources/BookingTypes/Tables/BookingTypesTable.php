@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\BookingTypes\Tables;
 
 use App\Filament\Support\CsvExport;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\BookingType;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -17,6 +18,7 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -26,7 +28,7 @@ class BookingTypesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -49,9 +51,9 @@ class BookingTypesTable
                 IconColumn::make('requires_approval')
                     ->boolean()
                     ->label('Approval'),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
+                ToggleColumn::make('is_active')
+                    ->label('Active')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
                 TextColumn::make('bookings_count')
                     ->counts('bookings')
                     ->label('Bookings')
@@ -106,5 +108,7 @@ class BookingTypesTable
                 ]),
             ])
             ->defaultSort('sort_order');
+
+        return AdminListTable::apply($table);
     }
 }

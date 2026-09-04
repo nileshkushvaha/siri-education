@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\TeacherAvailability\Tables;
 
 use App\Booking\Enums\Weekday;
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\TeacherAvailability;
 use App\Services\Instructor\InstructorAvailabilityService;
 use App\Support\AvailabilityImpactConfirmation;
@@ -14,8 +15,8 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -27,7 +28,7 @@ class TeacherAvailabilityTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('teacher.name')
                     ->searchable()
@@ -52,9 +53,9 @@ class TeacherAvailabilityTable
                     ->date()
                     ->placeholder('No end')
                     ->toggleable(),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
+                ToggleColumn::make('is_active')
+                    ->label('Active')
+                    ->disabled(fn ($record): bool => ! (auth()->user()?->can('update', $record) ?? false)),
             ])
             ->filters([
                 SelectFilter::make('teacher_id')
@@ -162,5 +163,7 @@ class TeacherAvailabilityTable
                 ]),
             ])
             ->defaultSort('teacher.name');
+
+        return AdminListTable::apply($table);
     }
 }

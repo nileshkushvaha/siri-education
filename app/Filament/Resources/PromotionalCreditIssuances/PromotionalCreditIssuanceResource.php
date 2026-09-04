@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -37,9 +38,18 @@ class PromotionalCreditIssuanceResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Referral';
 
-    protected static ?string $recordTitleAttribute = 'id';
-
     protected static ?int $navigationSort = 3;
+
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof PromotionalCreditIssuance) {
+            return null;
+        }
+
+        $record->loadMissing(['campaign', 'student']);
+
+        return trim(($record->campaign?->name ?? 'Promotional credit').' · '.($record->student?->name ?? 'Student'));
+    }
 
     public static function infolist(Schema $schema): Schema
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Conversations\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Messaging\Enums\ConversationStatus;
 use App\Messaging\Exceptions\MessagingException;
 use App\Messaging\Services\MessagingService;
@@ -25,7 +26,7 @@ class ConversationsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('student.name')
                     ->label('Student')
@@ -125,5 +126,7 @@ class ConversationsTable
             ])
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->withCount('messages'))
             ->defaultSort('last_message_at', 'desc');
+
+        return AdminListTable::apply($table);
     }
 }

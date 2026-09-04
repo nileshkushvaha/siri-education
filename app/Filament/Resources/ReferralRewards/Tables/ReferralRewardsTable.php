@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ReferralRewards\Tables;
 
+use App\Filament\Support\Tables\AdminListTable;
 use App\Models\ReferralReward;
 use App\Referral\Contracts\ReferralRewardServiceInterface;
 use App\Referral\Enums\ReferralRewardStatus;
@@ -28,7 +29,7 @@ class ReferralRewardsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table
             ->columns([
                 TextColumn::make('id')
                     ->label('#')
@@ -141,6 +142,8 @@ class ReferralRewardsTable
                     )),
             ])
             ->defaultSort('id', 'desc');
+
+        return AdminListTable::apply($table);
     }
 
     private static function reasonField(): Textarea

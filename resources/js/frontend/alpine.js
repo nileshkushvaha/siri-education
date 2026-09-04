@@ -20,5 +20,87 @@ import collapse from '@alpinejs/collapse';
 document.addEventListener('alpine:init', () => {
     Alpine.plugin(collapse);
 
-    // Alpine.data('example', () => ({ ... }));
+    /**
+     * Student recording player (resources/views/student/recordings/watch).
+     *
+     * Owns two things the native <video> cannot: a viewer watermark that
+     * moves on a timer (a redistribution deterrent — it identifies the
+     * account a capture came from; it is not DRM and is not presented as
+     * such), and fullscreen on the WRAPPER rather than the video element,
+     * so the watermark stays on screen in fullscreen. Where element
+     * fullscreen is unavailable (iPhone Safari) the button is hidden and
+     * playback stays inline with the watermark intact.
+     */
+    Alpine.data('recordingPlayer', ({ platform, reference, moveSeconds = 12 }) => ({
+        platform,
+        reference,
+        moveSeconds: Number(moveSeconds) || 0,
+        clock: '',
+        ready: false,
+        playing: false,
+        fullscreen: false,
+        canFullscreen: false,
+        position: 0,
+        positions: [
+            { top: '6%', left: '4%' },
+            { top: '6%', right: '14%' },
+            { bottom: '16%', right: '4%' },
+            { bottom: '16%', left: '4%' },
+            { top: '42%', left: '38%' },
+        ],
+        timers: [],
+
+        init() {
+            this.canFullscreen = Boolean(
+                document.fullscreenEnabled
+                || document.webkitFullscreenEnabled
+                || this.$refs.wrapper.webkitRequestFullscreen,
+            );
+
+            this.tick();
+            this.timers.push(setInterval(() => this.tick(), 30 * 1000));
+            if (this.moveSeconds > 0) {
+                this.timers.push(setInterval(() => this.move(), this.moveSeconds * 1000));
+            }
+        },
+
+        destroy() {
+            this.timers.forEach((t) => clearInterval(t));
+        },
+
+        tick() {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            this.clock = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        },
+
+        move() {
+            let next = Math.floor(Math.random() * this.positions.length);
+            if (next === this.position) {
+                next = (next + 1) % this.positions.length;
+            }
+            this.position = next;
+        },
+
+        watermarkStyle() {
+            const p = this.positions[this.position];
+            return Object.entries(p).map(([k, v]) => `${k}:${v}`).join(';');
+        },
+
+        syncFullscreen() {
+            const el = document.fullscreenElement || document.webkitFullscreenElement;
+            this.fullscreen = el === this.$refs.wrapper;
+        },
+
+        toggleFullscreen() {
+            const wrapper = this.$refs.wrapper;
+
+            if (this.fullscreen) {
+                (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+                return;
+            }
+
+            (wrapper.requestFullscreen || wrapper.webkitRequestFullscreen)?.call(wrapper);
+        },
+    }));
 });

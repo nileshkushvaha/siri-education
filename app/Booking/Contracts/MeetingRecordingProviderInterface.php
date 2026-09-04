@@ -12,11 +12,11 @@ use App\Models\BookingMeeting;
  * An OPTIONAL capability a MeetingProviderInterface may also implement
  * (mirrors MeetingAttendanceProviderInterface's existing pattern
  * exactly). SRS §12.31 "Meeting Recording": "the system shall support
- * meeting recording WHERE THE ACTIVE PROVIDER SUPPORTS IT" — no real
- * provider in this codebase implements this yet (Zoom/Google Meet/Manual
- * all decline), so recording never activates against a real provider
- * unless one is added later. Only
- * FakeMeetingProvider (test/dev-only) implements it today.
+ * meeting recording WHERE THE ACTIVE PROVIDER SUPPORTS IT".
+ * GoogleCalendarMeetProvider (Meet REST v2 artifacts) and
+ * ZoomMeetingProvider (cloud recordings) implement it; each reports
+ * supportsRecording() from its own per-provider switch and credentials.
+ * ManualMeetingProvider does not, and never can.
  */
 interface MeetingRecordingProviderInterface
 {

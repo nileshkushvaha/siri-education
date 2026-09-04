@@ -53,9 +53,28 @@
             </p>
 
             @if($rechargeBanner)
-                <div class="mt-3 rounded-xl border border-indigo-300/30 bg-indigo-400/10 px-4 py-3 text-sm text-indigo-700 dark:text-indigo-200" role="alert">
-                    {{ $rechargeBanner }}
+                @php $rechargeBannerIsSuccess = str_starts_with($rechargeBanner, 'Payment received'); @endphp
+                <div @class([
+                        'mt-3 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm',
+                        'border-emerald-300/40 bg-emerald-400/10 text-emerald-800 dark:text-emerald-200' => $rechargeBannerIsSuccess,
+                        'border-indigo-300/30 bg-indigo-400/10 text-indigo-700 dark:text-indigo-200' => ! $rechargeBannerIsSuccess,
+                    ])
+                    role="status" aria-live="polite">
+                    @if($pendingRazorpayPaymentId)
+                        <x-ui.spinner size="sm" label="Confirming payment" class="mt-0.5 shrink-0" />
+                    @elseif($rechargeBannerIsSuccess)
+                        <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    @endif
+                    <span>{{ $rechargeBanner }}</span>
                 </div>
+            @endif
+
+            @if($pendingRazorpayPaymentId)
+                {{-- Polls while the provider confirms a payment the student
+                     just made, so the credited balance appears in place.
+                     pollWalletRechargeStatus() clears the id (and so this
+                     poller) on any terminal outcome or after its cap. --}}
+                <span wire:poll.3s="pollWalletRechargeStatus" class="sr-only" data-wallet-recharge-poller>Confirming payment</span>
             @endif
 
             <form wire:submit.prevent="initiateRecharge" class="mt-3 flex flex-wrap items-end gap-3">

@@ -16,10 +16,12 @@ use App\Booking\DTOs\RescheduleBookingData;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\RecordingPlaybackState;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\CancellationRefundPolicy;
+use App\Booking\Services\RecordingPlaybackAccessResolver;
 use App\Booking\Services\RescheduleLimitPolicy;
 use App\Booking\Support\FakePaymentSimulator;
 use App\Models\Booking;
@@ -536,6 +538,14 @@ final class BookingHistory extends Component
                 ? app(BookingMeetingServiceInterface::class)
                     ->studentJoinUrlFor($this->selectedBooking, auth()->user())
                 : null,
+            // Same discipline for the recording: the blade renders only
+            // the state RecordingPlaybackAccessResolver releases for the
+            // authenticated viewer (playback setting, ownership, lifecycle,
+            // withholding) and never inspects the recording row itself.
+            'recordingState' => $this->selectedBooking !== null
+                ? app(RecordingPlaybackAccessResolver::class)
+                    ->stateFor($this->selectedBooking->loadMissing('recording'), auth()->user())
+                : RecordingPlaybackState::Hidden,
         ]);
     }
 

@@ -29,6 +29,16 @@ class MeetingSettings extends Settings
 
     public int $recording_retention_days;
 
+    /**
+     * SRS §12.20 access policy: may the student of a recorded lesson
+     * watch the finished recording inside SIRI? Ships OFF — recordings
+     * remain an administrative asset until an administrator opens
+     * student playback deliberately. Never widens anything on its own:
+     * the platform-wide FeatureSettings::recording_enabled switch and
+     * the country recording rules still apply first.
+     */
+    public bool $recording_student_playback_enabled;
+
     /** Auto-create a meeting for demo/free (payment_status = not_required) confirmed bookings. */
     public bool $create_after_demo_booking_confirmation;
 

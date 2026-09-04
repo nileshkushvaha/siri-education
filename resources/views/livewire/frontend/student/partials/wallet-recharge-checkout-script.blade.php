@@ -31,11 +31,19 @@
             description: 'Wallet recharge',
             prefill: { name: event.name, email: event.email },
             handler: function (response) {
+                // Server-side: verifies the signature, then asks Razorpay
+                // directly whether the order is paid and credits the
+                // wallet in the same request when it is.
                 $wire.verifyWalletRecharge(
                     response.razorpay_order_id,
                     response.razorpay_payment_id,
                     response.razorpay_signature,
                 );
+            },
+            modal: {
+                ondismiss: function () {
+                    $wire.call('razorpayCheckoutDismissed');
+                },
             },
         });
 

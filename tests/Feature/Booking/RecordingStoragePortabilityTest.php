@@ -248,7 +248,11 @@ final class RecordingStoragePortabilityTest extends TestCase
             glob(app_path('Booking/Jobs/CaptureLessonRecordingJob.php')) ?: [],
             glob(app_path('Models/Recording.php')) ?: [],
             glob(app_path('Policies/RecordingPolicy.php')) ?: [],
-            glob(app_path('Http/Controllers/Dashboard/RecordingDownloadController.php')) ?: [],
+            glob(app_path('Booking/Enums/RecordingPlaybackState.php')) ?: [],
+            glob(app_path('Http/Controllers/Admin/RecordingDownloadController.php')) ?: [],
+            glob(app_path('Http/Controllers/Dashboard/Recording*.php')) ?: [],
+            glob(resource_path('views/student/recordings/*.blade.php')) ?: [],
+            glob(app_path('Filament/Resources/Recordings/Actions/*.php')) ?: [],
         );
 
         $this->assertNotEmpty($domainFiles);

@@ -145,6 +145,17 @@ class Booking extends Model
     }
 
     /**
+     * The lesson's recording, when one was registered. One per booking
+     * because one meeting per booking and one recording per meeting
+     * (recordings.idempotency_key = recording:<meeting id>). Null is
+     * the common case — recording is opt-in and consent-gated.
+     */
+    public function recording(): HasOne
+    {
+        return $this->hasOne(Recording::class);
+    }
+
+    /**
      * Phase 3 — the immutable academic-context snapshot, present only
      * for country-aware Free Demo bookings created while
      * CountryFeature::CountryAcademicBooking was enabled for the

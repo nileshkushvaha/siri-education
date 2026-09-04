@@ -11,6 +11,7 @@ use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Services\RecordingService;
 use App\Booking\Services\RecordingStagingArea;
 use App\Booking\Storage\FilesystemRecordingStorage;
+use App\Models\BookingMeeting;
 use App\Models\Recording;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -151,12 +152,9 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
     {
         FakeMeetingProvider::$nextRecordingContents = null; // stays Pending — isolates the fetch/candidate query shape
 
-        // A single attempt is enough to exhaust each row's eligibility for
-        // this run's own filter, so a later sweep never re-processes it —
-        // isolating each measurement to only its own freshly-due rows.
-        $meetings = app(MeetingSettings::class);
-        $meetings->recording_capture_max_attempts = 1;
-        $meetings->save();
+        // Read once, before either measurement: a settings read between
+        // the runs would add its own query to the second count.
+        $maxAgeHours = app(MeetingSettings::class)->recording_capture_max_age_hours;
 
         for ($i = 0; $i < 3; $i++) {
             $this->pendingRecording();
@@ -167,6 +165,11 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
         $withoutNoise = count(DB::getQueryLog());
         DB::flushQueryLog();
         DB::disableQueryLog();
+
+        // "Not ready" refunds the attempt, so the first rows are still
+        // eligible. Age their meetings out of the sweep's due window so the
+        // second measurement covers only its own freshly-due rows.
+        BookingMeeting::query()->update(['ends_at' => now()->subHours($maxAgeHours + 1)]);
 
         // Add a large number of already-settled recordings unrelated to
         // this run's due candidates — the sweep must never scan these.

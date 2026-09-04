@@ -6,8 +6,6 @@
 @php
 $authSettings = app(\App\Settings\AuthenticationSettings::class);
 $regSettings = app(\App\Settings\RegistrationSettings::class);
-$generalSettings = app(\App\Settings\GeneralSettings::class);
-$appBadgeLetter = mb_substr($generalSettings->app_short_name ?: $generalSettings->app_name, 0, 1);
 @endphp
 
 @section('content')
@@ -20,8 +18,7 @@ $appBadgeLetter = mb_substr($generalSettings->app_short_name ?: $generalSettings
         <div class="relative flex min-h-screen flex-col p-8 xl:p-10">
             <div class="flex items-center justify-between gap-5">
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 font-black">{{ $appBadgeLetter }}</span>
-                    <span class="text-lg font-bold">{{ config('app.name') }}</span>
+                    <x-ui.brand-logo variant="dark" class="block h-11 w-auto" />
                 </a>
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">Explore website <span class="ml-1" aria-hidden="true">↗</span></a>
             </div>
@@ -74,7 +71,7 @@ $appBadgeLetter = mb_substr($generalSettings->app_short_name ?: $generalSettings
         <div class="w-full max-w-lg">
             <div class="mb-5 flex items-center justify-between lg:hidden">
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center gap-2 rounded-xl font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500">{{ $appBadgeLetter }}</span>{{ config('app.name') }}
+                    <x-ui.brand-logo variant="dark" class="block h-9 w-auto" />
                 </a>
                 <a href="{{ route('home') }}" class="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">Explore website</a>
             </div>

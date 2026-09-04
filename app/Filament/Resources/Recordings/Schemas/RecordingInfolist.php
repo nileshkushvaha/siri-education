@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Recordings\Schemas;
 
 use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Enums\RecordingStatus;
+use App\Models\Recording;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -66,6 +67,24 @@ class RecordingInfolist
                         ->formatStateUsing(fn (RecordingFailureCode $state): string => $state->label())
                         ->placeholder('—'),
                     TextEntry::make('capture_attempts')->label('Attempts'),
+                ]),
+            Section::make('Student access')
+                ->description('Whether the lesson\'s student may watch this recording. Governed by the platform playback setting (Settings → Meetings) and this per-recording override.')
+                ->schema([
+                    Grid::make(3)->schema([
+                        TextEntry::make('student_access')
+                            ->label('Student access')
+                            ->badge()
+                            ->state(fn (Recording $record): string => $record->isStudentAccessWithheld() ? 'Withheld' : 'Per platform policy')
+                            ->color(fn (string $state): string => $state === 'Withheld' ? 'danger' : 'success'),
+                        TextEntry::make('student_access_revoked_at')
+                            ->label('Withheld since')
+                            ->dateTime()
+                            ->placeholder('—'),
+                        TextEntry::make('studentAccessRevokedBy.name')
+                            ->label('Withheld by')
+                            ->placeholder('—'),
+                    ]),
                 ]),
         ]);
     }

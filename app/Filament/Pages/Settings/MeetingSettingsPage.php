@@ -88,6 +88,7 @@ class MeetingSettingsPage extends Page
             'meeting_recording_enabled' => $meeting->recording_enabled,
             'effective_recording_availability' => app(RecordingAvailabilityResolver::class)->isAvailable() ? 'Available' : 'Unavailable',
             'recording_retention_days' => $meeting->recording_retention_days,
+            'recording_student_playback_enabled' => $meeting->recording_student_playback_enabled,
             'create_after_demo_booking_confirmation' => $meeting->create_after_demo_booking_confirmation,
             'create_after_paid_booking_confirmation' => $meeting->create_after_paid_booking_confirmation,
             'manual_provider_enabled' => $meeting->manual_provider_enabled,
@@ -183,6 +184,9 @@ class MeetingSettingsPage extends Page
                             ->disabled()
                             ->dehydrated(false),
                         $this->integerInput('recording_retention_days', 'Retention Days', 0, 3650),
+                        Toggle::make('recording_student_playback_enabled')
+                            ->label('Students Can Watch Their Recordings')
+                            ->helperText('SRS §12.20 access policy, OFF by default. Lets the student of a recorded lesson watch it inside their account until it expires. Independent of the acquisition switches above and of the per-provider recording toggles — turning those off stops NEW recordings but does not hide existing ones; only this switch and the platform-wide Recording feature flag (Settings → Platform Foundation) govern playback. Individual recordings can still be withheld from the Recordings screen.'),
                         Toggle::make('create_after_demo_booking_confirmation')
                             ->label('Auto-create for Demo/Free Bookings'),
                         Toggle::make('create_after_paid_booking_confirmation')
@@ -371,6 +375,7 @@ class MeetingSettingsPage extends Page
             $settings->meeting_link_visible_after_minutes = (int) $data['meeting_link_visible_after_minutes'];
             $settings->recording_enabled = (bool) ($data['meeting_recording_enabled'] ?? false);
             $settings->recording_retention_days = (int) $data['recording_retention_days'];
+            $settings->recording_student_playback_enabled = (bool) ($data['recording_student_playback_enabled'] ?? false);
             $settings->create_after_demo_booking_confirmation = (bool) ($data['create_after_demo_booking_confirmation'] ?? false);
             $settings->create_after_paid_booking_confirmation = (bool) ($data['create_after_paid_booking_confirmation'] ?? false);
             $settings->student_join_url_visible = (bool) ($data['student_join_url_visible'] ?? false);

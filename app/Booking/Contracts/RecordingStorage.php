@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Contracts;
 
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingStorageRequest;
 use App\Booking\DTOs\StoredRecording;
@@ -69,11 +70,18 @@ interface RecordingStorage
      * authorized the viewer; this method performs no access checks of
      * its own and must never be reachable without one.
      *
+     * With a $range, the stream is positioned at $range->start and the
+     * caller reads at most $range->length() bytes — this is what lets
+     * a browser video element seek. How the window is honoured is the
+     * backend's business (an HTTP Range header, an fseek); the caller
+     * only ever sees a stream. A backend that cannot position a stream
+     * natively must still return one that begins at the right offset.
+     *
      * @return resource
      *
      * @throws RecordingStorageException
      */
-    public function read(RecordingLocator $locator);
+    public function read(RecordingLocator $locator, ?RecordingByteRange $range = null);
 
     /**
      * Removes the object. Idempotent: deleting an already-absent

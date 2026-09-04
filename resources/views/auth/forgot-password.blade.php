@@ -13,12 +13,9 @@
         <div class="absolute inset-0 pointer-events-none" style="background-image:radial-gradient(circle,rgba(99,102,241,.06) 1px,transparent 1px);background-size:36px 36px;"></div>
 
         <div class="relative z-10">
-            <div class="flex items-center gap-3 mb-16">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                </div>
-                <span class="text-xl font-bold text-white tracking-tight">{{ config('app.name') }}</span>
-            </div>
+            <a href="{{ route('home') }}" class="flex items-center mb-16 w-fit rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                <x-ui.brand-logo variant="dark" class="block h-12 w-auto" />
+            </a>
 
             <h1 class="text-4xl xl:text-5xl font-bold text-white leading-tight mb-4">
                 Reset in<br>2 easy steps
@@ -73,11 +70,8 @@
         <div class="relative z-10 w-full max-w-md">
 
             {{-- Mobile logo --}}
-            <div class="flex items-center justify-center gap-3 mb-8 lg:hidden">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                </div>
-                <span class="text-xl font-bold text-white">{{ config('app.name') }}</span>
+            <div class="flex items-center justify-center mb-8 lg:hidden">
+                <a href="{{ route('home') }}" class="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"><x-ui.brand-logo variant="dark" class="block h-11 w-auto" /></a>
             </div>
 
             <livewire:frontend.auth.forgot-password-form />

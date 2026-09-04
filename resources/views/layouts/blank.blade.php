@@ -13,6 +13,10 @@
 
     @if($favicon)
         <link rel="icon" href="{{ $favicon }}">
+    @else
+        <link rel="icon" type="image/svg+xml" href="{{ asset('images/brand/siri-mark.svg') }}">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/brand/favicon-32.png') }}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/brand/apple-touch-icon.png') }}">
     @endif
 
     @if(isset($seo))
@@ -28,7 +32,11 @@
 
     {{-- Inter is self-hosted (see resources/css/app.css); this preload starts
          the download alongside the stylesheet rather than after it parses. --}}
-    <link rel="preload" as="font" type="font/woff2" href="{{ asset('fonts/inter-latin.woff2') }}" crossorigin>
+    {{-- Skipped under the Vite dev server: there the CSS loads the font from
+         Vite's origin (proxied to Laravel), so this URL would never be consumed. --}}
+    @unless(app(\Illuminate\Foundation\Vite::class)->isRunningHot())
+        <link rel="preload" as="font" type="font/woff2" href="{{ asset('fonts/inter-latin.woff2') }}" crossorigin>
+    @endunless
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 

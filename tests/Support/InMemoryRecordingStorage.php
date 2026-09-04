@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Booking\Contracts\RecordingStorage;
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingStorageRequest;
 use App\Booking\DTOs\StoredRecording;
@@ -93,14 +94,21 @@ final class InMemoryRecordingStorage implements RecordingStorage
         }
     }
 
-    public function read(RecordingLocator $locator)
+    /** @var list<?RecordingByteRange> */
+    public array $readRanges = [];
+
+    public function read(RecordingLocator $locator, ?RecordingByteRange $range = null)
     {
         if (! isset($this->objects[$locator->path])) {
             throw RecordingStorageException::verificationFailed('Object missing.');
         }
 
+        $this->readRanges[] = $range;
+
+        $bytes = $this->objects[$locator->path]['bytes'];
+
         $stream = fopen('php://memory', 'r+b');
-        fwrite($stream, $this->objects[$locator->path]['bytes']);
+        fwrite($stream, $range === null ? $bytes : substr($bytes, $range->start, $range->length()));
         rewind($stream);
 
         return $stream;

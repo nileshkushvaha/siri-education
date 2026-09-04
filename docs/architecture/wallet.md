@@ -71,6 +71,16 @@ That single call covers `payments_enabled`, the collection rollout scope, `Count
 
 Two independent reasons the callback must not settle: it is browser-supplied and replayable, and Checkout.js fires on **authorization, not capture** — an authorized-but-uncaptured payment is money SIRI does not have. It is generic rather than wallet-specific because the wallet previously carried its own copy of the HMAC check, so there were two implementations of "is this callback real" that could drift.
 
+### Instant confirmation on return from checkout
+
+The callback not being *authoritative* does not mean the student waits for the webhook. `WalletOverview::verifyWalletRecharge()` runs the signature check and then, in the same request, calls `WalletRechargeReconciliationService::reconcileOne()` — the exact server-to-server confirmation the scheduled sweep performs. Razorpay is asked for the order; if it reports `paid` with the recorded amount and currency, `settle()` credits the wallet before the response is sent, and the student sees the new balance and a "Payment received" banner as the popup closes.
+
+If the provider has not caught up (capture still in flight), nothing is credited. The component sets `pendingRazorpayPaymentId`, the view renders a `wire:poll.3s` poller, and each `pollWalletRechargeStatus()` tick re-reads the record and, at most every `PROVIDER_RECHECK_SECONDS`, asks the provider again through the same path. A webhook landing mid-poll is a replay for the poller: one credit. After `MAX_RECHARGE_POLLS` ticks (~2 minutes) the page stops asking and tells the student the credit will arrive automatically and not to pay again; the signed webhook and the ten-minute sweep remain behind it. Stripe reuses the same poller with the same provider re-check. Closing Checkout.js without paying calls `razorpayCheckoutDismissed()`, which only explains that nothing was charged.
+
+The invariant is unchanged: the browser never proves payment, the provider does, and `settle()` is still the only path to a credit. What changed is *when* the provider is asked — at the moment the student is looking, instead of ten minutes later.
+
+Because that lookup now sits on a page the student is watching, `RazorpaySdkClient::fetchOrder()` bypasses the SDK (which hardcodes a 60s timeout) and calls the order endpoint through Laravel's HTTP client with `FETCH_ORDER_TIMEOUT_SECONDS` (8s). A slow gateway surfaces as `GatewayRequestException` → "unreachable, not unpaid" → the confirming banner and another poll, never a minute-long hang.
+
 ## Two-phase settlement, and why it differs from packages
 
 `PackagePurchaseSettlementService` writes everything in one transaction. Wallet settlement cannot, because crediting a wallet has a **real, persistent** business failure that package activation does not: the destination wallet may be frozen or closed.

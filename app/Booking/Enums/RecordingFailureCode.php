@@ -66,6 +66,15 @@ enum RecordingFailureCode: string
     case RetriesExhausted = 'capture_retries_exhausted';
 
     /**
+     * The provider never produced a recording inside the retry window —
+     * nobody pressed Record, the conference produced no artifact, or
+     * Google never finished generating one. Permanent: the window IS
+     * the business bound (recording_capture_retry_minutes), and a row
+     * left Pending forever would show a student "processing" forever.
+     */
+    case SourceNotFound = 'source_not_found';
+
+    /**
      * Storage-auth and quota are deliberately NOT permanent: both are
      * routinely fixed by an operator (re-grant delegation, free space)
      * while the retry window is still open, and a stalled recording is
@@ -78,7 +87,8 @@ enum RecordingFailureCode: string
             self::SourceExpired,
             self::SourceRejected,
             self::StorageNotConfigured,
-            self::RetriesExhausted => true,
+            self::RetriesExhausted,
+            self::SourceNotFound => true,
             default => false,
         };
     }
@@ -88,6 +98,7 @@ enum RecordingFailureCode: string
         return match ($this) {
             self::ProviderCapabilityMissing => 'Provider cannot supply recordings',
             self::SourceExpired => 'Provider recording no longer available',
+            self::SourceNotFound => 'No recording was produced for this lesson',
             self::SourceDownloadFailed => 'Download from provider failed',
             self::SourceAccessDenied => 'Provider denied access to the recording',
             self::SourceRateLimited => 'Provider rate limit reached',

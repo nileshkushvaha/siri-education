@@ -96,6 +96,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Playback Delivery
+    |--------------------------------------------------------------------------
+    |
+    | Student playback is proxied through the application, so every byte
+    | a viewer watches passes through one PHP worker. A browser's first
+    | media request is `Range: bytes=0-` — the WHOLE object — and if it
+    | were honoured literally that worker would stay occupied for the
+    | entire viewing session, trickling bytes as fast as the player
+    | consumes them. max_range_bytes caps how much of a single ranged
+    | response is served (RFC 9110 permits a 206 to enclose less than was
+    | asked; the player simply asks again), so worker occupancy per
+    | request is bounded by transfer time of this many bytes, not by the
+    | length of the lesson. chunk_bytes bounds peak memory per request.
+    |
+    */
+
+    'playback' => [
+        'max_range_bytes' => (int) env('RECORDING_PLAYBACK_MAX_RANGE_BYTES', 8 * 1024 * 1024),
+        'chunk_bytes' => (int) env('RECORDING_PLAYBACK_CHUNK_BYTES', 512 * 1024),
+        // The viewer watermark is repositioned this often (a
+        // redistribution deterrent, not DRM); 0 keeps it still.
+        'watermark_move_seconds' => (int) env('RECORDING_WATERMARK_MOVE_SECONDS', 12),
+        // Repeated refusals of the same viewer for the same recording
+        // inside this window go to the application log, not the audit
+        // table — the first one is the durable record.
+        'denial_audit_window_seconds' => (int) env('RECORDING_DENIAL_AUDIT_WINDOW_SECONDS', 900),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Zoom Cloud Recording
     |--------------------------------------------------------------------------
     |

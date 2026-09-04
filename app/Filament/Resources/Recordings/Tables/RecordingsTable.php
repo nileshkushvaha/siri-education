@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Recordings\Tables;
 
 use App\Booking\Enums\RecordingStatus;
+use App\Filament\Resources\Recordings\Actions\DownloadRecordingAction;
+use App\Filament\Resources\Recordings\Actions\RestoreStudentAccessAction;
 use App\Filament\Resources\Recordings\Actions\RetryRecordingIngestionAction;
+use App\Filament\Resources\Recordings\Actions\WithholdStudentAccessAction;
 use App\Filament\Support\Tables\AdminListTable;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -59,6 +62,9 @@ class RecordingsTable
             ])
             ->recordActions([
                 ViewAction::make(),
+                DownloadRecordingAction::make(),
+                WithholdStudentAccessAction::make(),
+                RestoreStudentAccessAction::make(),
                 RetryRecordingIngestionAction::make(),
             ])
             ->defaultSort('created_at', 'desc');

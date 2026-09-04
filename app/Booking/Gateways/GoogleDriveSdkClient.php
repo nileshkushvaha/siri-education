@@ -6,6 +6,7 @@ namespace App\Booking\Gateways;
 
 use App\Booking\Contracts\GoogleDriveClient;
 use App\Booking\DTOs\GoogleDriveTarget;
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\Exceptions\GatewayRequestException;
 use Google\Client;
 use Google\Http\MediaFileUpload;
@@ -13,6 +14,8 @@ use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
 use Google\Service\Exception as GoogleServiceException;
 use GuzzleHttp\Exception\RequestException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
@@ -76,6 +79,23 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
     /** The metadata verification actually needs — never the full resource. */
     private const string FILE_FIELDS = 'id,size,mimeType,md5Checksum,trashed';
 
+    /** Drive's media download endpoint — every media read goes through it, streamed (see openReadStream). */
+    private const string MEDIA_DOWNLOAD_URL = 'https://www.googleapis.com/drive/v3/files/%s';
+
+    /**
+     * A delegated access token is cached for its lifetime minus this
+     * buffer. Playback is the reason: a seeking video element issues
+     * many Range requests per minute, and each would otherwise sign
+     * and exchange a fresh JWT assertion. The token lives only in the
+     * application cache — never in a row, a log, or a response.
+     */
+    private const int TOKEN_EXPIRY_BUFFER_SECONDS = 120;
+
+    /** How long one request may hold the mint lock, and how long others wait for it. */
+    private const int TOKEN_MINT_LOCK_SECONDS = 15;
+
+    private const int TOKEN_MINT_WAIT_SECONDS = 10;
+
     public function requestedScopes(): array
     {
         return self::REQUESTED_SCOPES;
@@ -83,8 +103,14 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
 
     public function verifyTokenAcquisition(string $credentialsJson, string $delegatedSubject): void
     {
+        $target = new GoogleDriveTarget($credentialsJson, $delegatedSubject);
+
+        // A diagnostic must exercise the grant NOW, not be answered by
+        // a token minted before an administrator changed anything.
+        Cache::forget($this->tokenCacheKey($target));
+
         try {
-            $this->service(new GoogleDriveTarget($credentialsJson, $delegatedSubject));
+            $this->service($target);
         } catch (GatewayRequestException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -254,31 +280,88 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
         }
     }
 
-    public function openReadStream(GoogleDriveTarget $target, string $fileId)
+    /**
+     * A media download, streamed. The file id comes ONLY from a
+     * RecordingLocator the calling adapter resolved from an authorized
+     * Recording row — nothing in this class, or above it, accepts a
+     * file id from a request.
+     *
+     * The SDK's files.get(alt=media) buffers the whole body before
+     * returning and cannot attach a Range header, so every media read
+     * goes through the SDK's own authorized Guzzle client with
+     * `stream => true`: same credentials, same delegated subject, same
+     * scopes; only the transport differs. Bytes are handed back as a
+     * socket-backed resource and read chunk by chunk by the caller —
+     * a multi-gigabyte recording never lands in PHP memory or on this
+     * host's disk on its way out.
+     *
+     * With a $range, Drive answers 206 and exactly that window. A 200
+     * to a ranged request (a proxy ignoring Range) is tolerated: the
+     * stream is advanced to the window start by reading and
+     * discarding, so the caller never receives a silently wrong window.
+     *
+     * @return resource
+     */
+    public function openReadStream(GoogleDriveTarget $target, string $fileId, ?RecordingByteRange $range = null)
     {
         try {
-            $response = $this->service($target)->files->get(
-                $fileId,
-                $this->driveParams($target, ['alt' => 'media']),
-            );
+            $http = $this->authorizedClient($target)->authorize();
 
-            // With alt=media the SDK hands back a PSR-7 response whose
-            // body is a stream — detach it so the caller can hand it
-            // straight to a StreamedResponse without buffering.
-            $stream = $response->getBody()->detach();
-
-            if (! is_resource($stream)) {
-                throw new GatewayRequestException('Google Drive returned an unreadable recording stream.');
-            }
-
-            return $stream;
+            $response = $http->request('GET', sprintf(self::MEDIA_DOWNLOAD_URL, rawurlencode($fileId)), [
+                'query' => $this->driveParams($target, ['alt' => 'media']),
+                'headers' => $range !== null ? ['Range' => $range->toHttpHeader()] : [],
+                'stream' => true,
+                'http_errors' => false,
+            ]);
         } catch (GatewayRequestException $e) {
             throw $e;
-        } catch (GoogleServiceException $e) {
-            throw $this->translateApiException($e, $target, 'downloading a recording');
         } catch (Throwable $e) {
-            throw new GatewayRequestException($e->getMessage(), previous: $e);
+            throw new GatewayRequestException('Google Drive media request failed: '.$e->getMessage(), previous: $e);
         }
+
+        $status = $response->getStatusCode();
+
+        if ($status === 401) {
+            // A cached token that Google no longer honours must not
+            // poison every subsequent read until it expires.
+            Cache::forget($this->tokenCacheKey($target));
+        }
+
+        $acceptable = $range !== null ? [200, 206] : [200];
+
+        if (! in_array($status, $acceptable, true)) {
+            $response->getBody()->close();
+
+            throw new GatewayRequestException(sprintf(
+                'Google Drive API error while reading a recording (HTTP %d%s). Delegated account: %s. Shared drive: %s',
+                $status,
+                $status === 404 ? ', reason: notFound' : '',
+                $target->delegatedSubject,
+                $target->usesSharedDrive() ? 'yes' : 'no',
+            ));
+        }
+
+        $stream = $response->getBody()->detach();
+
+        if (! is_resource($stream)) {
+            throw new GatewayRequestException('Google Drive returned an unreadable recording stream.');
+        }
+
+        if ($range !== null && $status === 200 && $range->start > 0) {
+            $remaining = $range->start;
+
+            while ($remaining > 0 && ! feof($stream)) {
+                $chunk = fread($stream, min($remaining, 1024 * 1024));
+
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+
+                $remaining -= strlen($chunk);
+            }
+        }
+
+        return $stream;
     }
 
     public function deleteFile(GoogleDriveTarget $target, string $fileId): void
@@ -390,6 +473,16 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
      */
     private function service(GoogleDriveTarget $target): Drive
     {
+        return new Drive($this->authorizedClient($target));
+    }
+
+    /**
+     * A Google client holding a valid delegated access token. The token
+     * is served from the application cache when one is still live for
+     * this credential + subject, otherwise minted and cached.
+     */
+    private function authorizedClient(GoogleDriveTarget $target): Client
+    {
         $decoded = json_decode($target->credentialsJson, true, flags: JSON_THROW_ON_ERROR);
 
         $client = new Client;
@@ -401,13 +494,85 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
             'timeout' => max(30, (int) config('recordings.google_drive.request_timeout_seconds', 600)),
         ]));
 
-        $this->assertTokenAcquired($client, $decoded, $target->delegatedSubject);
+        $cacheKey = $this->tokenCacheKey($target);
 
-        return new Drive($client);
+        if ($this->applyCachedToken($client, $cacheKey)) {
+            return $client;
+        }
+
+        // A seeking player fires many requests at once when the cache
+        // is cold; a short lock lets one of them mint and the rest reuse
+        // it, instead of every request signing its own JWT assertion.
+        // If the lock cannot be obtained in time, minting proceeds
+        // anyway — a duplicate token is wasteful, a stalled request is
+        // not acceptable.
+        $lock = Cache::lock($cacheKey.':mint', self::TOKEN_MINT_LOCK_SECONDS);
+
+        try {
+            $lock->block(self::TOKEN_MINT_WAIT_SECONDS);
+
+            if ($this->applyCachedToken($client, $cacheKey)) {
+                return $client;
+            }
+
+            $token = $this->assertTokenAcquired($client, $decoded, $target->delegatedSubject);
+
+            // TTL from the token's OWN lifetime, less a buffer — never a
+            // fixed guess. A token without a usable lifetime is used for
+            // this request only and not cached.
+            $ttl = (int) ($token['expires_in'] ?? 0) - self::TOKEN_EXPIRY_BUFFER_SECONDS;
+
+            if ($ttl > 0) {
+                Cache::put($cacheKey, $token, $ttl);
+            }
+        } catch (LockTimeoutException) {
+            $this->assertTokenAcquired($client, $decoded, $target->delegatedSubject);
+        } finally {
+            $lock->release();
+        }
+
+        return $client;
     }
 
-    /** @param array<string, mixed> $decodedCredentials */
-    private function assertTokenAcquired(Client $client, array $decodedCredentials, string $delegatedSubject): void
+    /** Installs a still-valid cached token on the client; false when none is usable. */
+    private function applyCachedToken(Client $client, string $cacheKey): bool
+    {
+        $cached = Cache::get($cacheKey);
+
+        if (! is_array($cached) || ! isset($cached['access_token'])) {
+            return false;
+        }
+
+        $client->setAccessToken($cached);
+
+        if ($client->isAccessTokenExpired()) {
+            Cache::forget($cacheKey);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Keyed on WHICH identity is being impersonated with WHICH key —
+     * never on anything a caller controls — so rotating the service
+     * account or changing the platform account naturally misses.
+     */
+    private function tokenCacheKey(GoogleDriveTarget $target): string
+    {
+        return 'recordings:google-drive:token:'.hash('sha256', implode('|', [
+            hash('sha256', $target->credentialsJson),
+            $target->delegatedSubject,
+            implode(' ', self::REQUESTED_SCOPES),
+        ]));
+    }
+
+    /**
+     * @param  array<string, mixed>  $decodedCredentials
+     * @return array<string, mixed> the minted token, as the SDK returns it
+     */
+    private function assertTokenAcquired(Client $client, array $decodedCredentials, string $delegatedSubject): array
     {
         try {
             $token = $client->fetchAccessTokenWithAssertion();
@@ -423,6 +588,8 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
                 $delegatedSubject,
             ));
         }
+
+        return is_array($token) ? $token : [];
     }
 
     /** @param array<string, mixed> $decodedCredentials */
@@ -471,6 +638,12 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
      */
     private function translateApiException(GoogleServiceException $e, GoogleDriveTarget $target, string $operation): GatewayRequestException
     {
+        if ($e->getCode() === 401) {
+            // Google no longer honours the token we hold — whether it was
+            // minted or cached, the next call must acquire a fresh one.
+            Cache::forget($this->tokenCacheKey($target));
+        }
+
         $errors = $e->getErrors();
         $reason = $errors[0]['reason'] ?? 'unknown';
         $message = $errors[0]['message'] ?? $e->getMessage();

@@ -6,6 +6,7 @@ namespace Tests\Support;
 
 use App\Booking\Contracts\GoogleDriveClient;
 use App\Booking\DTOs\GoogleDriveTarget;
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\Exceptions\GatewayRequestException;
 
 /**
@@ -102,12 +103,22 @@ final class FakeGoogleDriveClient implements GoogleDriveClient
         return $this->files[$fileId] ?? null;
     }
 
-    public function openReadStream(GoogleDriveTarget $target, string $fileId)
+    /** @var list<?RecordingByteRange> */
+    public array $readRanges = [];
+
+    public function openReadStream(GoogleDriveTarget $target, string $fileId, ?RecordingByteRange $range = null)
     {
         $this->calls[] = 'openReadStream';
+        $this->readRanges[] = $range;
+
+        // Mirrors what Drive does with a Range header: only the window
+        // is returned, so the adapter's caller must not need to skip.
+        $bytes = $range === null
+            ? $this->downloadBytes
+            : substr($this->downloadBytes, $range->start, $range->length());
 
         $stream = fopen('php://memory', 'r+b');
-        fwrite($stream, $this->downloadBytes);
+        fwrite($stream, $bytes);
         rewind($stream);
 
         return $stream;

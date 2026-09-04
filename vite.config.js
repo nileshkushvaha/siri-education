@@ -17,6 +17,13 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
+        // app.css references the self-hosted Inter files by root-relative
+        // path (/fonts/...). In dev the stylesheet is served from Vite's
+        // origin, which has no public/ folder, so forward those requests
+        // to Laravel. No effect on production builds.
+        proxy: {
+            '/fonts': 'http://127.0.0.1:8000',
+        },
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },

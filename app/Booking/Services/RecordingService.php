@@ -17,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -35,6 +36,14 @@ use Throwable;
  */
 final class RecordingService
 {
+    /**
+     * The withhold reason lives on the audit trail entry (override_reason),
+     * not on the row — it is evidence about an administrative decision,
+     * which is exactly what the activity log is for. Bounded so a form
+     * or API cannot turn one audit row into a document.
+     */
+    public const int WITHHOLD_REASON_MAX_LENGTH = 500;
+
     public function __construct(
         private readonly RecordingEligibilityResolver $eligibility,
         private readonly RecordingIngestionService $ingestion,
@@ -234,6 +243,70 @@ final class RecordingService
                 'capture_attempts' => 0,
                 'transfer_started_at' => null,
             ])->save();
+
+            return true;
+        });
+    }
+
+    /**
+     * Withholds one recording from its student (SRS §12.20 — access
+     * rules are configurable; this is the per-recording exception to
+     * the platform rule). Authorized, audited as an override with the
+     * reason, idempotent: withholding an already-withheld recording
+     * changes nothing and logs nothing. Never touches the object,
+     * the lifecycle, retention, or administrative access.
+     */
+    public function withholdStudentAccess(Recording $recording, User $admin, string $reason): bool
+    {
+        Gate::forUser($admin)->authorize('withhold', $recording);
+
+        $reason = trim($reason);
+
+        if ($reason === '' || mb_strlen($reason) > self::WITHHOLD_REASON_MAX_LENGTH) {
+            throw new InvalidArgumentException(sprintf(
+                'A reason of 1–%d characters is required to withhold a recording from its student.',
+                self::WITHHOLD_REASON_MAX_LENGTH,
+            ));
+        }
+
+        return (bool) DB::transaction(function () use ($recording, $admin, $reason): bool {
+            /** @var Recording $fresh */
+            $fresh = Recording::query()->whereKey($recording->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($fresh->isStudentAccessWithheld()) {
+                return false;
+            }
+
+            $fresh->fill([
+                'student_access_revoked_at' => now(),
+                'student_access_revoked_by' => $admin->id,
+            ])->save();
+
+            $this->lifecycle->studentAccessWithheld($fresh, $admin, $reason);
+
+            return true;
+        });
+    }
+
+    /** The inverse of withholdStudentAccess(); same guarantees. */
+    public function restoreStudentAccess(Recording $recording, User $admin): bool
+    {
+        Gate::forUser($admin)->authorize('withhold', $recording);
+
+        return (bool) DB::transaction(function () use ($recording, $admin): bool {
+            /** @var Recording $fresh */
+            $fresh = Recording::query()->whereKey($recording->getKey())->lockForUpdate()->firstOrFail();
+
+            if (! $fresh->isStudentAccessWithheld()) {
+                return false;
+            }
+
+            $fresh->fill([
+                'student_access_revoked_at' => null,
+                'student_access_revoked_by' => null,
+            ])->save();
+
+            $this->lifecycle->studentAccessRestored($fresh, $admin);
 
             return true;
         });

@@ -22,14 +22,12 @@ use App\Settings\MeetingSettings;
  * status) is unaffected; a caller with a specific country in scope
  * should pass it.
  *
- * No meeting provider currently declares a recording capability of its
- * own — this resolver's result is the complete effective rule as of
- * today, with no further AND-term to apply. The ingestion, storage,
- * retention and delivery pipeline behind it IS built (see
- * RecordingIngestionService and the RecordingStorage abstraction);
- * what is still missing is a provider integration that can hand SIRI
- * an actual recording file, which is a provider question rather than a
- * storage one.
+ * This is the PLATFORM term only. RecordingEligibilityResolver ANDs it
+ * with the provider's own capability (google_meet_recording_enabled /
+ * zoom_recording_enabled plus credentials) and both participants'
+ * consent before a recording is ever registered; and
+ * RecordingPlaybackAccessResolver ANDs it with
+ * recording_student_playback_enabled before a student may watch one.
  */
 final class RecordingAvailabilityResolver
 {

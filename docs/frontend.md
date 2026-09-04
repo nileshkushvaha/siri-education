@@ -99,6 +99,7 @@ generic layer):
 | `<x-ui.alert>` | generic inline banner (`success`\|`error`\|`warning`\|`info`), `role="alert"` |
 | `<x-ui.avatar>` | image or initials avatar with size variants |
 | `<x-ui.badge>` | small status pill, semantic colors |
+| `<x-ui.brand-logo>` | inline-SVG SIRI Education logo; `variant="light\|dark\|auto"` (auto follows `html.dark`), `:mark="true"` for the nib symbol only. Standalone SVG/PNG copies for `<img>`, email and favicons live in `public/images/brand/` |
 | `<x-ui.breadcrumb>` | accessible breadcrumb navigation from item arrays or slot content |
 | `<x-ui.button>` | variant (`primary`\|`secondary`\|`ghost`\|`danger`) + size; renders `<a>` when `href` is passed |
 | `<x-ui.card>` | generic bordered/padded container |

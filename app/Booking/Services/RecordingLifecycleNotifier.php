@@ -164,4 +164,33 @@ final class RecordingLifecycleNotifier
             ['previous_failure_code' => $recording->failure_code?->value],
         );
     }
+
+    /**
+     * An administrator withholding one recording from its student is
+     * an override of the platform playback policy, so it is recorded
+     * as such — with the mandatory reason — rather than as a plain
+     * action (AuditTrailService::logOverride).
+     */
+    public function studentAccessWithheld(Recording $recording, User $admin, string $reason): void
+    {
+        $this->audit->logOverride(
+            $admin,
+            'recordings',
+            'recording_student_access_withheld',
+            'Student access to a lesson recording withheld by an administrator.',
+            $reason,
+            $recording,
+        );
+    }
+
+    public function studentAccessRestored(Recording $recording, User $admin): void
+    {
+        $this->audit->logUser(
+            $admin,
+            'recordings',
+            'recording_student_access_restored',
+            'Student access to a lesson recording restored by an administrator.',
+            $recording,
+        );
+    }
 }

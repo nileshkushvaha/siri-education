@@ -34,23 +34,7 @@
     text-decoration: none;
     gap: 10px;
   }
-  .logo-icon {
-    width: 44px; height: 44px;
-    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-    border-radius: 12px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 20px rgba(99,102,241,0.4);
-    flex-shrink: 0;
-  }
-  .logo-text {
-    font-size: 20px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: -0.3px;
-    text-decoration: none;
-  }
+  .logo-wrap img { display:block; width:240px; height:auto; }
 
   /* Card */
   .email-card {
@@ -194,12 +178,7 @@
     {{-- ── Header / Logo ──────────────────────────────────────── --}}
     <div class="email-header">
       <a href="{{ $appUrl ?? config('app.url') }}" class="logo-wrap" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-        <span class="logo-icon" style="width:44px;height:44px;background:linear-gradient(135deg,#6366F1,#8B5CF6);border-radius:12px;display:inline-block;box-shadow:0 4px 20px rgba(99,102,241,0.4);text-align:center;line-height:44px;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;">
-            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-          </svg>
-        </span>
-        <span class="logo-text" style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">{{ $appName ?? config('app.name') }}</span>
+        <img src="{{ asset('images/brand/siri-logo-dark@2x.png') }}" width="240" height="93" alt="{{ $appName ?? config('app.name') }}" style="display:block;width:240px;height:auto;border:0;outline:none;text-decoration:none;">
       </a>
     </div>
 

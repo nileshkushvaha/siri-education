@@ -233,6 +233,14 @@ recording.
 
 Both ship OFF so steps 2–3 cannot be skipped.
 
+**Leave `meeting.recording_student_playback_enabled` OFF for now.** It
+is the SRS §12.20 access-policy switch (students watch their own
+recordings inside SIRI) and is independent of acquisition: recordings
+are captured, stored and retained for administrators whether or not it
+is on. Turn it on only after §10–§11 below have proven the pipeline
+and after the student-facing check in §11a — it is a product
+activation, not a deploy step.
+
 **Consent gate check (negative test) — do this before the positive one:**
 
 - [ ] A lesson where either participant has `consents_to_recording` =
@@ -283,6 +291,63 @@ Then verify:
 - [ ] Student and instructor each received exactly one "recording
       available" notification, containing no Drive URL or file id
 - [ ] If fallback ran: staged temp file deleted, disk returned to baseline
+
+---
+
+## 11a. Student playback validation (real Google, controlled)
+
+Only after §10 has produced one `available` recording, and only on a
+staging environment or with a consenting internal test student. Global
+flags stay as they are; this validates the CAPABILITY, it does not
+activate the policy for real students.
+
+Local fakes prove the pipeline's logic; **only this section proves a
+real Drive ranged read.** Until it has been run, treat Drive playback as
+unvalidated.
+
+1. [ ] Create one lesson between an internal test student and an
+       internal instructor; both profiles have `consents_to_recording`.
+2. [ ] Instructor presses Record in Meet; stop; end the conference.
+3. [ ] Wait for Google to generate the file (minutes); watch the row go
+       `pending → transferring → stored → available`.
+4. [ ] Confirm discovery found the conference by meeting code + window
+       (audit `recording_registered` → `recording_available`).
+5. [ ] Confirm the SIRI copy exists under `<root>/YYYY/MM/` with the
+       booking-reference filename and that the Meet original is untouched.
+6. [ ] Admin → Recordings → the row shows `google_drive`, size,
+       duration; **Download** returns the full file with
+       `Content-Disposition: attachment`.
+7. [ ] Enable `meeting.recording_student_playback_enabled` **on staging
+       only**; log in as the test student; My Bookings → the booking →
+       "Recording available" → Watch.
+8. [ ] Initial stream: browser devtools shows the first request
+       `Range: bytes=0-` answered `206` with `Content-Range: bytes 0-N/total`
+       where N+1 = `RECORDING_PLAYBACK_MAX_RANGE_BYTES`; playback starts.
+9. [ ] Seek forward past the first window: a new `206` with the
+       expected offset; video continues without a reload.
+10. [ ] Seek backward: another `206`; no error in the console.
+11. [ ] `curl -I` the stream URL with the student's cookie: `200`,
+        `Accept-Ranges: bytes`, `Content-Length`, no body. `curl -H
+        "Range: bytes=999999999999-"`: `416` with `Content-Range: bytes */total`.
+12. [ ] Withhold the recording from the admin screen with a reason:
+        the student now sees "Recording unavailable", the stream URL
+        returns `403`, one `recording_student_access_withheld` audit row
+        with `override_reason`. Restore; playback works again.
+13. [ ] Log in as a different student: the booking is not theirs, the
+        watch and stream URLs return `403`, one
+        `recording_access_denied` audit row (repeats within 15 minutes
+        do not add rows).
+14. [ ] Turn `meeting.recording_student_playback_enabled` off: the
+        booking shows nothing about recordings; URLs return `403`.
+        Turn `meeting.recording_enabled` off with playback on: playback
+        still works (acquisition switches never hide existing recordings).
+15. [ ] Move the SIRI copy to Drive trash: the stream URL returns `503`
+        and the application log carries "could not be opened" with the
+        recording id and a failure code; restore from trash; playback
+        works again. (Retention expiry, by contrast, sets the row to
+        `expired` and the student sees "no longer available".)
+16. [ ] Turn the staging playback switch back off. Nothing in
+        production has changed.
 
 ---
 

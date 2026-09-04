@@ -65,19 +65,13 @@
 
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex min-h-[5.5rem] items-center justify-between gap-4">
-            <a href="{{ route('home') }}" class="group flex min-w-0 items-center gap-3 rounded-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100">
+            <a href="{{ route('home') }}" class="group relative flex min-w-0 shrink-0 items-center rounded-2xl px-3.5 py-2.5 transition duration-300 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 sm:px-4 sm:py-3">
+                <span class="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-100/40 via-transparent to-fuchsia-100/40 opacity-0 transition duration-300 group-hover:opacity-100" aria-hidden="true"></span>
                 @if($logo)
-                    <img src="{{ $logo }}" alt="{{ $appName }}" class="h-10 w-auto max-w-40 object-contain">
+                    <img src="{{ $logo }}" alt="{{ $appName }}" class="relative h-12 w-auto max-w-48 object-contain sm:h-14">
                 @else
-                    <span class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-base font-black text-white shadow-lg shadow-indigo-200 transition group-hover:-rotate-3 group-hover:scale-105">
-                        <span class="absolute inset-0 bg-gradient-to-tr from-white/0 to-white/25" aria-hidden="true"></span>
-                        <span class="relative">{{ mb_substr($appName ?: config('app.name'), 0, 1) }}</span>
-                    </span>
+                    <x-ui.brand-logo variant="light" :label="$appName" class="relative block h-12 w-auto transition duration-300 group-hover:scale-[1.02] sm:h-14" />
                 @endif
-                <span class="min-w-0">
-                    <span class="block truncate text-base font-black tracking-tight text-slate-950">{{ $appName }}</span>
-                    <span class="hidden text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-500 sm:block">Learn · Teach · Grow</span>
-                </span>
             </a>
 
             <nav class="hidden flex-1 items-center justify-center lg:flex" aria-label="Primary navigation">

@@ -56,21 +56,10 @@
             gap: 0.75rem;
         }
 
-        .brand-mark {
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 0.75rem;
-            display: inline-grid;
-            place-items: center;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            box-shadow: 0 1rem 2.5rem rgba(79, 70, 229, 0.22);
-            font-weight: 900;
-        }
-
-        .brand-name {
-            font-size: 1rem;
-            font-weight: 800;
-            letter-spacing: 0;
+        .brand svg {
+            display: block;
+            height: 2.75rem;
+            width: auto;
         }
 
         main {
@@ -180,8 +169,7 @@
     @include('partials.seo.tracking-body')
     <div class="shell">
         <header class="brand" aria-label="{{ $appName }}">
-            <span class="brand-mark" aria-hidden="true">{{ mb_substr($appName, 0, 1) }}</span>
-            <span class="brand-name">{{ $appName }}</span>
+            <x-ui.brand-logo variant="dark" :label="$appName" />
         </header>
 
         <main>

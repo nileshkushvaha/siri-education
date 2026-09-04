@@ -34,9 +34,9 @@ array_unshift($navigationGroups, ['heading' => null, 'nodes' => $standaloneNodes
                     @if($logo)
                     <img src="{{ $logo }}" alt="{{ $appName }}" class="h-11 w-auto max-w-48 object-contain">
                     @else
-                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-lg font-black text-white shadow-lg shadow-violet-900/40" aria-hidden="true">{{ mb_substr($appName, 0, 1) }}</span>
+                    <x-ui.brand-logo variant="dark" :label="$appName" class="block h-12 w-auto" />
                     @endif
-                    <span id="public-footer-brand" class="text-2xl font-extrabold tracking-tight text-white">{{ $appName }}</span>
+                    <span id="public-footer-brand" class="sr-only">{{ $appName }}</span>
                 </a>
 
                 <p class="mt-5 max-w-sm text-base leading-8 text-slate-300">

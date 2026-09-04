@@ -52,12 +52,13 @@
             pollHandle = setInterval(async () => {
                 pollAttempts++;
 
-                // pollWalletRechargeStatus() only ever re-reads server
-                // state — it never marks anything succeeded. A terminal
-                // outcome re-renders the Livewire view and removes this
-                // button/container, at which point polling stops itself;
-                // a ~2 minute cap is the fallback if the outcome never
-                // arrives.
+                // pollWalletRechargeStatus() re-reads server state and,
+                // throttled, asks Stripe directly through the same
+                // reconciliation path the sweep uses — the browser still
+                // proves nothing. A terminal outcome re-renders the
+                // Livewire view and removes this button/container, at
+                // which point polling stops itself; a ~2 minute cap is
+                // the fallback if the outcome never arrives.
                 await $wire.call('pollWalletRechargeStatus');
 
                 if (! document.body.contains(confirmButton) || pollAttempts >= 40) {

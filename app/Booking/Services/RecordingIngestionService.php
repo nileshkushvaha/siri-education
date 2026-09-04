@@ -103,7 +103,7 @@ final class RecordingIngestionService
                 $discovered = $provider->discoverRecording($claimed->bookingMeeting);
 
                 if ($discovered === null) {
-                    $this->release($claimed);
+                    $this->notReady($claimed);
 
                     return;
                 }
@@ -119,10 +119,7 @@ final class RecordingIngestionService
             $result = $provider->fetchRecording($claimed->bookingMeeting);
 
             if ($result === null) {
-                // Still processing on the provider side — a transient,
-                // expected state, not a failure. Back to Pending for
-                // the next sweep within the retry window.
-                $this->release($claimed);
+                $this->notReady($claimed);
 
                 return;
             }
@@ -311,9 +308,9 @@ final class RecordingIngestionService
     }
 
     /** Back to Pending without penalty — the next sweep retries. */
-    private function release(Recording $recording): void
+    private function release(Recording $recording, bool $refundAttempt = false): void
     {
-        DB::transaction(function () use ($recording): void {
+        DB::transaction(function () use ($recording, $refundAttempt): void {
             /** @var Recording $fresh */
             $fresh = Recording::query()->whereKey($recording->getKey())->lockForUpdate()->firstOrFail();
 
@@ -321,8 +318,45 @@ final class RecordingIngestionService
                 return;
             }
 
-            $fresh->fill(['status' => RecordingStatus::Pending, 'transfer_started_at' => null])->save();
+            $fresh->fill([
+                'status' => RecordingStatus::Pending,
+                'transfer_started_at' => null,
+                'capture_attempts' => $refundAttempt ? max(0, $fresh->capture_attempts - 1) : $fresh->capture_attempts,
+            ])->save();
         });
+    }
+
+    /**
+     * The provider has no artifact for this meeting YET. Google generates
+     * a Meet recording minutes to hours after the conference, and a
+     * lesson nobody recorded never produces one at all — so "not ready"
+     * is neither a failure nor a wasted attempt:
+     *
+     *  - inside the retry window the row goes back to Pending and the
+     *    attempt is REFUNDED. The attempt budget exists for real
+     *    failures; a slow Google must not consume it, or five quiet
+     *    sweeps (75 minutes) would strand a legitimate recording in
+     *    Pending with no attempts left and no failure recorded;
+     *  - once the window (recording_capture_retry_minutes after the
+     *    lesson ended) has closed, the recording fails permanently as
+     *    SourceNotFound. That is the terminal state a student sees as
+     *    "unavailable" rather than "processing" forever, and the
+     *    administrator sees as an alert with a stable label.
+     */
+    private function notReady(Recording $recording): void
+    {
+        $endsAt = $recording->bookingMeeting?->ends_at;
+        $windowClosed = $endsAt !== null && now()->greaterThan(
+            $endsAt->addMinutes(max(0, $this->settings->recording_capture_retry_minutes)),
+        );
+
+        if ($windowClosed) {
+            $this->failLocked($recording, RecordingFailureCode::SourceNotFound);
+
+            return;
+        }
+
+        $this->release($recording, refundAttempt: true);
     }
 
     /**

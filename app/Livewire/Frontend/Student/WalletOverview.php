@@ -22,6 +22,7 @@ use App\Wallet\Contracts\WalletRechargeServiceInterface;
 use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Exceptions\WalletException;
 use App\Wallet\Services\WalletLedgerService;
+use App\Wallet\Services\WalletRechargeReconciliationService;
 use App\Wallet\Services\WalletRechargeSettlementService;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -54,6 +55,22 @@ final class WalletOverview extends Component
 
     /** Display-only — set after Stripe initiation so the browser knows which attempt to poll; never trusted as authoritative. */
     public ?string $pendingStripeRechargeId = null;
+
+    /**
+     * Razorpay attempt whose browser callback ran but whose capture the
+     * provider had not yet confirmed. While set, the view polls
+     * pollWalletRechargeStatus() so the balance appears without a reload.
+     */
+    public ?string $pendingRazorpayPaymentId = null;
+
+    /** Polls made for the current pending attempt; caps how long the page keeps asking. */
+    public int $rechargePollCount = 0;
+
+    /** Poll ticks (3s apart) before we stop and hand over to the webhook/sweep. */
+    public const int MAX_RECHARGE_POLLS = 40;
+
+    /** Minimum gap between two provider status calls made on behalf of one student. */
+    public const int PROVIDER_RECHECK_SECONDS = 5;
 
     /** @var array<string, mixed> */
     public array $pendingFakeRecharge = [];
@@ -133,12 +150,20 @@ final class WalletOverview extends Component
     /**
      * Razorpay Checkout.js success callback.
      *
-     * Strictly non-authoritative: PaymentCallbackVerifier proves the
-     * signature and that the order belongs to THIS student's recharge,
-     * records the reported provider payment id on the Payment attempt,
-     * and settles nothing. The wallet stays uncredited until the signed
-     * webhook (or reconciliation) says the money was captured, so the
-     * banner below never claims a balance changed.
+     * The browser is never the authority: PaymentCallbackVerifier proves
+     * the signature and that the order belongs to THIS student's
+     * recharge, and records the reported provider payment id. What
+     * settles the money is the same server-to-server confirmation the
+     * reconciliation sweep uses — run right now instead of ten minutes
+     * from now. Razorpay is asked for the order; if it reports `paid`
+     * with the expected amount and currency, WalletRechargeSettlementService
+     * credits the wallet in this very request and the student sees the
+     * new balance on return from checkout.
+     *
+     * If the provider has not caught up yet (capture still in flight),
+     * nothing is credited, the "confirming" banner shows, and the view
+     * starts polling — see pollWalletRechargeStatus(). The signed webhook
+     * and the scheduled sweep remain the safety nets behind both.
      */
     public function verifyWalletRecharge(string $orderId, string $paymentId, string $signature): void
     {
@@ -151,14 +176,71 @@ final class WalletOverview extends Component
         }
 
         try {
-            app(PaymentCallbackVerifier::class)->verifyRazorpayCheckout($recharge, $orderId, $paymentId, $signature);
+            $payment = app(PaymentCallbackVerifier::class)->verifyRazorpayCheckout($recharge, $orderId, $paymentId, $signature);
         } catch (PaymentException $e) {
             $this->rechargeBanner = $e->getMessage();
 
             return;
         }
 
-        $this->applySettlementBanner($recharge->refresh());
+        $this->confirmWithProvider($payment);
+        $this->trackPendingRecharge($payment, $recharge->refresh());
+    }
+
+    /**
+     * Razorpay Checkout.js closed without a payment. Nothing was taken,
+     * and nothing here can change money: it only stops the student from
+     * wondering whether the closed window "did something".
+     */
+    public function razorpayCheckoutDismissed(): void
+    {
+        $recharge = $this->openRecharge();
+
+        if ($recharge === null || $this->pendingRazorpayPaymentId !== null) {
+            return;
+        }
+
+        $hasPaymentEvidence = $recharge->payments()->whereNotNull('provider_payment_id')->exists();
+
+        if (! $hasPaymentEvidence) {
+            $this->rechargeBanner = 'The payment window was closed before completing. No money was taken — you can try again whenever you like.';
+        }
+    }
+
+    /**
+     * Asks the provider, server to server, whether this attempt is paid
+     * and settles it through the ONE settlement path if so. Idempotent
+     * and safe to repeat: an attempt already settled by the webhook comes
+     * back as a replay and credits nothing twice. Throttled per attempt so
+     * a polling page never hammers the gateway.
+     */
+    private function confirmWithProvider(Payment $payment): void
+    {
+        $lastChecked = $payment->last_synced_at;
+
+        if ($lastChecked !== null && $lastChecked->gt(now()->subSeconds(self::PROVIDER_RECHECK_SECONDS))) {
+            return;
+        }
+
+        app(WalletRechargeReconciliationService::class)->reconcileOne($payment);
+    }
+
+    /** Applies the banner for the attempt's current state and arms or disarms polling. */
+    private function trackPendingRecharge(Payment $payment, WalletRecharge $recharge): void
+    {
+        $this->applySettlementBanner($recharge);
+
+        if ($recharge->status->isTerminal() || $recharge->status->needsCreditRetry()) {
+            $this->pendingRazorpayPaymentId = null;
+            $this->rechargePollCount = 0;
+
+            return;
+        }
+
+        if ($this->pendingRazorpayPaymentId !== $payment->id) {
+            $this->pendingRazorpayPaymentId = $payment->id;
+            $this->rechargePollCount = 0;
+        }
     }
 
     /** The student's own most recent recharge that is still awaiting payment. */
@@ -172,25 +254,37 @@ final class WalletOverview extends Component
     }
 
     /**
-     * Stripe has no browser-side settlement step — confirmPayment()
-     * completing only means checkout progressed, never that the wallet
-     * was credited. This re-reads the server's own record, scoped to the
-     * authenticated student's own recharge, and never settles anything
-     * itself.
+     * Polled by the view (Razorpay: wire:poll; Stripe: the checkout script)
+     * while a recharge the student just paid is not yet confirmed.
+     *
+     * Each tick re-reads the server's own record and, at most every few
+     * seconds, asks the provider again through the same reconciliation
+     * path the sweep uses — so a capture that lands two seconds after the
+     * callback is credited two seconds after the callback, not on the
+     * next scheduled sweep. Scoped to the authenticated student's own
+     * attempt; nothing here trusts the browser about money.
+     *
+     * After MAX_RECHARGE_POLLS ticks the page stops asking and tells the
+     * student plainly that the credit will arrive automatically, so they
+     * neither refresh forever nor pay twice.
      */
     public function pollWalletRechargeStatus(): void
     {
-        if ($this->pendingStripeRechargeId === null) {
+        $paymentId = $this->pendingRazorpayPaymentId ?? $this->pendingStripeRechargeId;
+
+        if ($paymentId === null) {
             return;
         }
 
         $payment = Payment::query()
-            ->whereKey($this->pendingStripeRechargeId)
+            ->whereKey($paymentId)
             ->where('user_id', auth()->id())
             ->where('payable_type', WalletRecharge::PAYABLE_TYPE)
             ->first();
 
         if ($payment === null) {
+            $this->clearPendingRecharge();
+
             return;
         }
 
@@ -200,20 +294,39 @@ final class WalletOverview extends Component
             ->first();
 
         if ($recharge === null) {
+            $this->clearPendingRecharge();
+
             return;
         }
 
         if (! $recharge->status->isTerminal() && ! $recharge->status->needsCreditRetry()) {
-            $this->rechargeBanner = 'We are confirming your payment with the gateway. Your balance will update shortly.';
+            $this->rechargePollCount++;
 
-            return;
+            if ($this->rechargePollCount > self::MAX_RECHARGE_POLLS) {
+                $this->rechargeBanner = 'Your payment is taking longer than usual to confirm. If it went through, your wallet will be credited automatically and we will email you — there is no need to pay again.';
+                $this->clearPendingRecharge();
+
+                return;
+            }
+
+            $this->confirmWithProvider($payment);
+            $recharge->refresh();
         }
 
         $this->applySettlementBanner($recharge);
 
-        if ($recharge->status->isTerminal()) {
-            $this->pendingStripeRechargeId = null;
+        if ($recharge->status->isTerminal() || $recharge->status->needsCreditRetry()) {
+            $this->clearPendingRecharge();
+        } elseif ($this->pendingStripeRechargeId === null) {
+            $this->rechargeBanner = 'We are confirming your payment with the gateway. Your balance will update here in a moment.';
         }
+    }
+
+    private function clearPendingRecharge(): void
+    {
+        $this->pendingRazorpayPaymentId = null;
+        $this->pendingStripeRechargeId = null;
+        $this->rechargePollCount = 0;
     }
 
     /**
@@ -283,7 +396,14 @@ final class WalletOverview extends Component
     private function applySettlementBanner(WalletRecharge $recharge): void
     {
         $this->rechargeBanner = match ($recharge->status) {
-            WalletRechargeStatus::Succeeded => '',
+            WalletRechargeStatus::Succeeded => sprintf(
+                'Payment received — %s has been added to your wallet.',
+                WalletMoneyFormatter::format(
+                    (int) $recharge->amount_minor,
+                    Currency::query()->where('code', $recharge->currency_code)->first(),
+                    (string) $recharge->currency_code,
+                ),
+            ),
             WalletRechargeStatus::CreditFailed => 'Your payment was received. We are completing your wallet credit — this can take a few minutes.',
             WalletRechargeStatus::Failed => 'Your recharge could not be completed. Please try again.',
             // Includes AwaitingConfirmation, the state a Razorpay

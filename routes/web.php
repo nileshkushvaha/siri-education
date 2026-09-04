@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\InstructorDocumentDownloadController;
 use App\Http\Controllers\Admin\PagePreviewController;
 use App\Http\Controllers\Admin\PostPreviewController;
+use App\Http\Controllers\Admin\RecordingDownloadController;
 use App\Http\Controllers\Auth\AccountUnlockController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -19,7 +20,8 @@ use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\HomeworkResourceDownloadController;
 use App\Http\Controllers\Dashboard\MessagingController;
-use App\Http\Controllers\Dashboard\RecordingDownloadController;
+use App\Http\Controllers\Dashboard\RecordingStreamController;
+use App\Http\Controllers\Dashboard\RecordingWatchController;
 use App\Http\Controllers\Dashboard\SecureMediaDownloadController;
 use App\Http\Controllers\Dashboard\SupportCaseController;
 use App\Http\Controllers\Faq\DashboardFaqController;
@@ -302,13 +304,17 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     // every request (HomeworkAssignmentPolicy::view()); shared by
     // student and instructor since either may be the authorized viewer.
     Route::get('/homework/resources/{media}/download', HomeworkResourceDownloadController::class)->name('homework.resources.download');
-    // Authorization re-checked inside the controller on every
-    // request (RecordingPolicy::download()); shared by student and
-    // instructor since either may be the authorized viewer. The route
-    // key is the RECORDING, not a media/storage id: the application
-    // resolves the storage locator server-side, so no Google Drive (or
-    // later S3) identifier is ever exposed in a URL.
-    Route::get('/recordings/{recording}/download', RecordingDownloadController::class)->name('recordings.download');
+    // Student playback of a lesson recording (SRS §12.20). Authorization
+    // is re-checked inside each controller on every request — including
+    // every Range request the player issues — via RecordingPolicy::watch(),
+    // which grants only the lesson's own student (while student playback
+    // is enabled and the recording is not withheld) and permitted admins.
+    // The route key is the RECORDING, never a media/storage id: the
+    // application resolves the storage locator server-side, so no Google
+    // Drive (or later S3) identifier is ever exposed in a URL. There is
+    // deliberately no student download route.
+    Route::get('/recordings/{recording}', RecordingWatchController::class)->name('recordings.watch');
+    Route::get('/recordings/{recording}/stream', RecordingStreamController::class)->name('recordings.stream');
     // The one reusable download boundary for every other
     // private collection (Message, SupportCase, LessonTechnicalIssueReport,
     // UserExperience::supporting_documents, UserEducation). Authorization
@@ -406,6 +412,14 @@ Route::prefix('admin')->name('admin.')->middleware([
     // inside the controller on every request; see InstructorDocumentPolicy.
     Route::get('/instructor-documents/{media}/download', InstructorDocumentDownloadController::class)
         ->name('instructor-documents.download');
+    // Administrative download of the ORIGINAL recording file —
+    // RecordingPolicy::download() (View:Recording + a stored object) is
+    // re-checked on every request. Registered here rather than under
+    // /dashboard because managers and super admins are redirected away
+    // from the frontend portal; students have playback there, never a
+    // download.
+    Route::get('/recordings/{recording}/download', RecordingDownloadController::class)
+        ->name('recordings.download');
     // The SAME SecureMediaDownloadController as the
     // dashboard route below, registered here too since managers/staff
     // use the admin portal and cannot reach /dashboard/* at all

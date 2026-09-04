@@ -63,6 +63,8 @@ class Recording extends Model
         'available_at',
         'failed_at',
         'expires_at',
+        'student_access_revoked_at',
+        'student_access_revoked_by',
     ];
 
     /**
@@ -92,6 +94,7 @@ class Recording extends Model
             'available_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
             'expires_at' => 'immutable_datetime',
+            'student_access_revoked_at' => 'immutable_datetime',
         ];
     }
 
@@ -115,12 +118,29 @@ class Recording extends Model
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
+    /** The administrator who withheld student access, when one has. */
+    public function studentAccessRevokedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'student_access_revoked_by');
+    }
+
     /** Whether a viewer could be served this recording's content right now. */
     public function isPlayable(): bool
     {
         return $this->status === RecordingStatus::Available
             && $this->storage_driver !== null
             && $this->storage_path !== null;
+    }
+
+    /**
+     * A per-recording administrative exception to the student playback
+     * policy (SRS §12.20). Orthogonal to the ingestion lifecycle: a
+     * withheld recording is still Available to administrators, still
+     * verified, still subject to retention.
+     */
+    public function isStudentAccessWithheld(): bool
+    {
+        return $this->student_access_revoked_at !== null;
     }
 
     /**

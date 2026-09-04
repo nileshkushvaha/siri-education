@@ -880,4 +880,195 @@ class WalletRechargeTest extends TestCase
         $this->assertSame(PaymentStatus::Pending, $openPayment->refresh()->status);
         $this->assertSame(PaymentStatus::Failed, $failedPayment->refresh()->status);
     }
+
+    // ── Instant confirmation on return from Razorpay Checkout ────────────
+
+    /**
+     * A Mockery Razorpay client whose order lookup answers as given; the
+     * order creation the initiation step needs is faked alongside.
+     *
+     * @param  array<string, mixed>  $order  what fetchOrder() reports
+     */
+    private function fakeRazorpayOrderStatus(string $orderId, array $order): Mockery\MockInterface
+    {
+        $gateway = Mockery::mock(RazorpayGatewayClient::class);
+        $gateway->shouldReceive('createOrder')->andReturn(['id' => $orderId]);
+        $gateway->shouldReceive('fetchOrder')->andReturn($order)->byDefault();
+        $this->app->instance(RazorpayGatewayClient::class, $gateway);
+
+        return $gateway;
+    }
+
+    private function razorpaySignature(string $orderId, string $paymentId): string
+    {
+        return hash_hmac('sha256', $orderId.'|'.$paymentId, 'test_key_secret');
+    }
+
+    /** The common case: capture is done by the time the popup closes, so the balance is credited in the callback request itself. */
+    public function test_razorpay_callback_credits_the_wallet_immediately_when_the_provider_confirms_payment(): void
+    {
+        Notification::fake();
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderStatus('order_NOW1', ['id' => 'order_NOW1', 'status' => 'paid', 'amount' => 50000, 'currency' => 'INR']);
+        $student = $this->student();
+        [$recharge, $payment] = $this->initiateRecharge($student, 50000);
+
+        $component = Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('verifyWalletRecharge', 'order_NOW1', 'pay_NOW1', $this->razorpaySignature('order_NOW1', 'pay_NOW1'));
+
+        $this->assertSame(WalletRechargeStatus::Succeeded, $recharge->refresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $payment->refresh()->status);
+        $this->assertSame('pay_NOW1', $payment->provider_payment_id);
+        $this->assertSame(50000, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+        $this->assertSame(1, WalletLedgerEntry::query()->where('user_id', $student->id)->count());
+
+        $component->assertSet('pendingRazorpayPaymentId', null)
+            ->assertSet('rechargeAmount', '');
+        $this->assertStringStartsWith('Payment received', $component->get('rechargeBanner'));
+    }
+
+    /** The provider's own figures still govern: a callback cannot talk settlement into crediting a mismatched order. */
+    public function test_razorpay_callback_never_credits_when_the_provider_reports_a_different_amount(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderStatus('order_MIS1', ['id' => 'order_MIS1', 'status' => 'paid', 'amount' => 10000, 'currency' => 'INR']);
+        $student = $this->student();
+        [$recharge] = $this->initiateRecharge($student, 50000);
+
+        Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('verifyWalletRecharge', 'order_MIS1', 'pay_MIS1', $this->razorpaySignature('order_MIS1', 'pay_MIS1'));
+
+        $this->assertNotSame(WalletRechargeStatus::Succeeded, $recharge->refresh()->status);
+        $this->assertSame(0, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+        $this->assertSame(0, WalletLedgerEntry::query()->where('user_id', $student->id)->count());
+    }
+
+    /** Capture still in flight: nothing is credited, the page says so, and polling is armed. */
+    public function test_razorpay_callback_before_capture_credits_nothing_and_starts_polling(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderStatus('order_LATE1', ['id' => 'order_LATE1', 'status' => 'attempted']);
+        $student = $this->student();
+        [$recharge, $payment] = $this->initiateRecharge($student, 50000);
+
+        $component = Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('verifyWalletRecharge', 'order_LATE1', 'pay_LATE1', $this->razorpaySignature('order_LATE1', 'pay_LATE1'));
+
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->refresh()->status);
+        $this->assertSame(0, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+        $this->assertSame('pay_LATE1', $payment->refresh()->provider_payment_id);
+
+        $component->assertSet('pendingRazorpayPaymentId', $payment->id)
+            ->assertSeeHtml('wire:poll.3s="pollWalletRechargeStatus"');
+        $this->assertStringContainsString('confirming your payment', $component->get('rechargeBanner'));
+    }
+
+    /** The poll re-asks the provider (throttled) and credits the moment it says paid — no sweep, no reload. */
+    public function test_polling_credits_the_wallet_once_the_provider_confirms_and_then_stops(): void
+    {
+        $this->configureRazorpay();
+        $gateway = $this->fakeRazorpayOrderStatus('order_POLL1', ['id' => 'order_POLL1', 'status' => 'attempted']);
+        $student = $this->student();
+        [$recharge, $payment] = $this->initiateRecharge($student, 50000);
+
+        $component = Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('verifyWalletRecharge', 'order_POLL1', 'pay_POLL1', $this->razorpaySignature('order_POLL1', 'pay_POLL1'))
+            ->assertSet('pendingRazorpayPaymentId', $payment->id);
+
+        // Within the throttle window the provider is NOT asked again.
+        $gateway->shouldReceive('fetchOrder')->never();
+        $component->call('pollWalletRechargeStatus')
+            ->assertSet('pendingRazorpayPaymentId', $payment->id)
+            ->assertSet('rechargePollCount', 1);
+        $this->assertSame(0, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+
+        // Past the throttle window, the provider now reports paid.
+        $this->travel(WalletOverview::PROVIDER_RECHECK_SECONDS + 1)->seconds();
+        $gateway->shouldReceive('fetchOrder')->once()
+            ->andReturn(['id' => 'order_POLL1', 'status' => 'paid', 'amount' => 50000, 'currency' => 'INR']);
+
+        $component->call('pollWalletRechargeStatus')
+            ->assertSet('pendingRazorpayPaymentId', null)
+            ->assertSet('rechargePollCount', 0)
+            ->assertDontSeeHtml('wire:poll.3s="pollWalletRechargeStatus"');
+
+        $this->assertSame(WalletRechargeStatus::Succeeded, $recharge->refresh()->status);
+        $this->assertSame(50000, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+        $this->assertSame(1, WalletLedgerEntry::query()->where('user_id', $student->id)->count());
+        $this->assertStringStartsWith('Payment received', $component->get('rechargeBanner'));
+    }
+
+    /** A webhook that lands mid-poll is a replay for the poller: one credit, and polling stops. */
+    public function test_polling_after_the_webhook_already_settled_credits_nothing_twice(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderStatus('order_RACE1', ['id' => 'order_RACE1', 'status' => 'attempted']);
+        $student = $this->student();
+        [$recharge, $payment] = $this->initiateRecharge($student, 50000);
+
+        $component = Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('verifyWalletRecharge', 'order_RACE1', 'pay_RACE1', $this->razorpaySignature('order_RACE1', 'pay_RACE1'))
+            ->assertSet('pendingRazorpayPaymentId', $payment->id);
+
+        $this->settle($payment->refresh(), $this->capturedEvent($payment->refresh()));
+        $this->travel(WalletOverview::PROVIDER_RECHECK_SECONDS + 1)->seconds();
+
+        $component->call('pollWalletRechargeStatus')->assertSet('pendingRazorpayPaymentId', null);
+
+        $this->assertSame(WalletRechargeStatus::Succeeded, $recharge->refresh()->status);
+        $this->assertSame(50000, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+        $this->assertSame(1, WalletLedgerEntry::query()->where('user_id', $student->id)->count());
+    }
+
+    /** The page stops asking after its cap and tells the student the credit will still arrive — never to pay again. */
+    public function test_polling_gives_up_after_the_cap_with_a_reassuring_message(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderStatus('order_SLOW1', ['id' => 'order_SLOW1', 'status' => 'attempted']);
+        $student = $this->student();
+        [, $payment] = $this->initiateRecharge($student, 50000);
+
+        $component = Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('verifyWalletRecharge', 'order_SLOW1', 'pay_SLOW1', $this->razorpaySignature('order_SLOW1', 'pay_SLOW1'))
+            ->set('rechargePollCount', WalletOverview::MAX_RECHARGE_POLLS)
+            ->call('pollWalletRechargeStatus')
+            ->assertSet('pendingRazorpayPaymentId', null);
+
+        $this->assertStringContainsString('no need to pay again', $component->get('rechargeBanner'));
+        $this->assertSame(PaymentStatus::Pending, $payment->refresh()->status);
+        $this->assertSame(0, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+    }
+
+    /** Only the owning student's poll can touch an attempt. */
+    public function test_polling_ignores_an_attempt_that_belongs_to_another_student(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderStatus('order_OTHER1', ['id' => 'order_OTHER1', 'status' => 'paid', 'amount' => 50000, 'currency' => 'INR']);
+        $owner = $this->student();
+        [$recharge, $payment] = $this->initiateRecharge($owner, 50000);
+
+        Livewire::actingAs($this->student())->test(WalletOverview::class)
+            ->set('pendingRazorpayPaymentId', $payment->id)
+            ->call('pollWalletRechargeStatus')
+            ->assertSet('pendingRazorpayPaymentId', null);
+
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->refresh()->status);
+        $this->assertSame(0, Wallet::query()->forUser($owner->id)->sole()->balance_minor);
+    }
+
+    /** Closing the popup without paying is explained, and changes no money. */
+    public function test_dismissing_razorpay_checkout_explains_that_nothing_was_charged(): void
+    {
+        $this->configureRazorpay();
+        $this->fakeRazorpayOrderApi('order_DISMISS1');
+        $student = $this->student();
+        [$recharge] = $this->initiateRecharge($student, 50000);
+
+        $component = Livewire::actingAs($student)->test(WalletOverview::class)
+            ->call('razorpayCheckoutDismissed');
+
+        $this->assertStringContainsString('No money was taken', $component->get('rechargeBanner'));
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->refresh()->status);
+        $this->assertSame(0, Wallet::query()->forUser($student->id)->sole()->balance_minor);
+    }
 }

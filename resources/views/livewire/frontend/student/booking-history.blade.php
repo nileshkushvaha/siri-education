@@ -123,6 +123,19 @@
                         @endif
                     </div>
                 @endif
+                {{-- $recordingState comes exclusively from RecordingPlaybackAccessResolver::stateFor(); the recording row is used here only as the route key, never inspected. --}}
+                @if($recordingState->isVisible())
+                    <div class="col-span-2">
+                        <dt class="text-[11px] font-bold uppercase tracking-wide text-fg-faint">Recording</dt>
+                        <dd class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <x-ui.badge :color="$recordingState->color()">{{ $recordingState->label() }}</x-ui.badge>
+                            @if($recordingState === \App\Booking\Enums\RecordingPlaybackState::Available && $booking->recording)
+                                <a href="{{ route('dashboard.recordings.watch', $booking->recording) }}" class="font-semibold text-indigo-600 dark:text-indigo-300 underline underline-offset-2">Watch recording</a>
+                            @endif
+                        </dd>
+                        <dd class="mt-1 text-xs text-fg-muted">{{ $recordingState->description() }}</dd>
+                    </div>
+                @endif
             </dl>
 
             @if($booking->status->value === 'cancelled')

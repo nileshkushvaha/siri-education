@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Storage;
 
 use App\Booking\Contracts\RecordingStorage;
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingStorageRequest;
 use App\Booking\DTOs\StoredRecording;
@@ -110,7 +111,7 @@ final class FilesystemRecordingStorage implements RecordingStorage
         }
     }
 
-    public function read(RecordingLocator $locator)
+    public function read(RecordingLocator $locator, ?RecordingByteRange $range = null)
     {
         $this->assertConfigured();
 
@@ -128,7 +129,44 @@ final class FilesystemRecordingStorage implements RecordingStorage
             throw RecordingStorageException::verificationFailed('Stored recording object is no longer readable.');
         }
 
+        if ($range !== null) {
+            $this->position($stream, $range->start);
+        }
+
         return $stream;
+    }
+
+    /**
+     * Moves a disk stream to the requested offset. A local disk seeks
+     * directly; a Flysystem stream that reports itself unseekable (some
+     * remote adapters) is advanced by reading and discarding, in bounded
+     * chunks, so the caller still receives bytes from the right place.
+     *
+     * @param  resource  $stream
+     */
+    private function position($stream, int $offset): void
+    {
+        if ($offset === 0) {
+            return;
+        }
+
+        $meta = stream_get_meta_data($stream);
+
+        if (($meta['seekable'] ?? false) && fseek($stream, $offset) === 0) {
+            return;
+        }
+
+        $remaining = $offset;
+
+        while ($remaining > 0 && ! feof($stream)) {
+            $chunk = fread($stream, min($remaining, 1024 * 1024));
+
+            if ($chunk === false || $chunk === '') {
+                break;
+            }
+
+            $remaining -= strlen($chunk);
+        }
     }
 
     public function delete(RecordingLocator $locator): void

@@ -37,14 +37,16 @@ class BookingPermissionSeeder extends Seeder
         // Student-facing pricing matrix — admin only, never
         // granted to the instructor role.
         'ViewAny:StudentLessonPrice', 'View:StudentLessonPrice', 'Create:StudentLessonPrice', 'Update:StudentLessonPrice', 'Delete:StudentLessonPrice', 'Restore:StudentLessonPrice',
-        // Recording access is participant-or-explicitly-
-        // permitted-admin only; no Create/Update/Delete permission
-        // exists because RecordingService is the only writer.
-        // Retry is the one administrative WRITE: it returns a failed
-        // recording to the ingestion pipeline. It creates no data and
-        // deletes nothing, which is why it sits with the manager set
-        // rather than being super-admin only.
-        'ViewAny:Recording', 'View:Recording', 'Retry:Recording',
+        // Recording access: administrators hold these explicitly; the
+        // lesson's own student watches through RecordingPolicy's
+        // participant rule and holds no permission at all. No
+        // Create/Update/Delete permission exists because
+        // RecordingService is the only writer. The two administrative
+        // WRITES create no data and delete nothing, which is why they
+        // sit with the manager set rather than being super-admin only:
+        //   Retry     returns a failed recording to the ingestion pipeline
+        //   Withhold  removes (or restores) one recording's student access
+        'ViewAny:Recording', 'View:Recording', 'Retry:Recording', 'Withhold:Recording',
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [

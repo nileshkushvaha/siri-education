@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\GoogleDriveTarget;
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\Exceptions\GatewayRequestException;
 
 /**
@@ -102,11 +103,15 @@ interface GoogleDriveClient
      * An open read stream for the file's content, for authenticated
      * application-proxied delivery. Never returns a shareable URL.
      *
+     * With a $range, only that byte window is requested from Drive
+     * (an HTTP Range on the media download), so a player seek costs
+     * one partial read rather than a full transfer.
+     *
      * @return resource
      *
      * @throws GatewayRequestException
      */
-    public function openReadStream(GoogleDriveTarget $target, string $fileId);
+    public function openReadStream(GoogleDriveTarget $target, string $fileId, ?RecordingByteRange $range = null);
 
     /**
      * Permanently deletes the file. Must succeed silently when the

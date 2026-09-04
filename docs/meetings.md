@@ -35,7 +35,11 @@ A provider that is disabled cannot record (the settings page normalizes
 this on save, so the stored state can never read "recording on, provider
 off"). Above both sit the platform-wide master switches —
 `FeatureSettings::recording_enabled`, `MeetingSettings::recording_enabled`
-and the country feature rules — which can only ever *narrow*.
+and the country feature rules — which can only ever *narrow*. All of
+these govern whether NEW recordings are made; whether a student may
+watch one that already exists is a separate switch
+(`meeting.recording_student_playback_enabled`, see §5 and
+`docs/recordings.md` §8).
 
 ---
 
@@ -56,7 +60,7 @@ and the country feature rules — which can only ever *narrow*.
 | Recording webhook | ❌ | ✅ | n/a |
 | Reconciliation sweep | ✅ | ✅ | n/a |
 | SIRI storage integration | ✅ | ✅ | n/a |
-| Admin-only access | ✅ | ✅ | n/a |
+| Student playback (policy-gated, SIRI-proxied) | ✅ | ✅ | n/a |
 
 ### Provider selection
 
@@ -197,25 +201,33 @@ request.
 
 ---
 
-## 5. Recording privacy — admin only
+## 5. Recording access — who may open the file
 
-> **Class recordings are an administrative quality-assurance, evidence
-> and dispute-handling asset. Students and instructors do not receive
-> playback or download access through SIRI.**
+> **Class recordings are a platform asset (SRS §12.18). Who may open
+> one is decided by `RecordingPolicy` alone — never by the meeting
+> provider and never by the storage backend.** SRS §12.20 allows
+> Version 1 visibility to be "limited to administrators only or
+> expanded to students based on policy"; the policy switch is
+> `meeting.recording_student_playback_enabled`, which ships OFF.
 
-| Who | Access |
-|---|---|
-| Admin with `View:Recording` | ✅ |
-| Student — even their own lesson | ❌ |
-| Instructor — even one they delivered | ❌ |
-| Any other user | ❌ |
-| Public / link | ❌ |
+| Who | Watch (in SIRI) | Download original |
+|---|---|---|
+| Admin with `View:Recording` | ✅ | ✅ |
+| Student — their own lesson, **while student playback is enabled**, the recording is `available`, and it has not been withheld | ✅ | ❌ |
+| Student — any other lesson | ❌ | ❌ |
+| Instructor — even one they delivered | ❌ (no SRS grant exists) | ❌ |
+| Any other user | ❌ | ❌ |
+| Public / link | ❌ | ❌ |
 
 This applies identically to Google Meet and Zoom recordings, and to
-Drive and future S3 storage. There is no participant route, no
-participant UI, and **no "your recording is available" notification** —
-telling someone about a file they cannot open would be worse than
-silence.
+Drive and future S3 storage. Playback is inside the student's account
+only (`/dashboard/recordings/{recording}`), proxied by SIRI with the
+policy re-checked on every request; an administrator may withhold any
+single recording from its student (`Withhold:Recording`, audited with
+a reason). There is still **no "your recording is available"
+notification** — SRS §17 permits one "if enabled", but no decision has
+enabled it, and an architecture test keeps it absent until one does.
+Full detail: `docs/recordings.md` §8.
 
 Two concepts that must not be confused:
 
@@ -223,7 +235,7 @@ Two concepts that must not be confused:
 |---|---|
 | Participants agree to be recorded and see the provider's in-meeting indicator | Who may open the finished file |
 | Enforced by `RecordingEligibilityResolver` + consent snapshot | Enforced by `RecordingPolicy` |
-| **Unchanged** by the admin-only rule | Administrators only |
+| **Unchanged** by the access rule | Administrators; the student under the playback policy |
 
 Recording remains opt-in and consent-gated. Nothing here creates hidden
 recording.

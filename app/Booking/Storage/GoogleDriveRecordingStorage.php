@@ -10,6 +10,7 @@ use App\Booking\Contracts\SupportsNativeIngestion;
 use App\Booking\DTOs\GoogleDriveTarget;
 use App\Booking\DTOs\NativeIngestionRequest;
 use App\Booking\DTOs\NativeRecordingSource;
+use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingStorageRequest;
 use App\Booking\DTOs\StoredRecording;
@@ -186,10 +187,13 @@ final class GoogleDriveRecordingStorage implements RecordingStorage, SupportsNat
         }
     }
 
-    public function read(RecordingLocator $locator)
+    public function read(RecordingLocator $locator, ?RecordingByteRange $range = null)
     {
         try {
-            return $this->client->openReadStream($this->target(), $locator->path);
+            // The window becomes a Range header on the media download,
+            // so a seek costs Drive one partial read — never a full
+            // transfer that this host then skips through.
+            return $this->client->openReadStream($this->target(), $locator->path, $range);
         } catch (GatewayRequestException $e) {
             throw $this->translate($e);
         }

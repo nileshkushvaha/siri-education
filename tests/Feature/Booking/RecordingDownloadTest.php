@@ -17,10 +17,11 @@ use Tests\TestCase;
 /**
  * Delivery is where two rules either hold or do not:
  *
- *  1. RECORDINGS ARE ADMIN-ONLY. A class recording is an
- *     administrative asset; participating in the lesson grants no
- *     access to it. The student and instructor tests below assert
- *     DENIAL, and they are the most important tests in this file.
+ *  1. DOWNLOAD IS ADMIN-ONLY. The lesson's own student may WATCH a
+ *     recording inside SIRI (RecordingStudentPlaybackTest), but being
+ *     able to watch is not being able to take the file away. The
+ *     student and instructor tests below assert DENIAL of download,
+ *     and they are the most important tests in this file.
  *  2. SIRI is the authorization layer, not the storage backend. Every
  *     request re-checks the policy, the URL carries the recording
  *     rather than a storage identifier, and the body is proxied — so
@@ -85,10 +86,9 @@ final class RecordingDownloadTest extends TestCase
     // ── Who may download: administrators, and nobody else ─────────────
 
     /**
-     * THE core privacy assertion. The student whose own lesson this is
-     * must be refused — recordings are an administrative asset, and
-     * being recorded is not the same as being entitled to the
-     * recording.
+     * THE core assertion. The student whose own lesson this is must be
+     * refused a DOWNLOAD — playback is their route, and it is
+     * deliberately separate from taking the original away.
      */
     public function test_the_recordings_own_student_is_denied(): void
     {
@@ -96,7 +96,7 @@ final class RecordingDownloadTest extends TestCase
         $recording = $this->storedRecording($student, $this->activeInstructor());
 
         $this->actingAs($student)
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -107,7 +107,7 @@ final class RecordingDownloadTest extends TestCase
         $recording = $this->storedRecording($this->activeStudent(), $instructor);
 
         $this->actingAs($instructor)
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -116,7 +116,7 @@ final class RecordingDownloadTest extends TestCase
         $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
         $this->actingAs($this->activeStudent())
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -127,7 +127,7 @@ final class RecordingDownloadTest extends TestCase
         $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
 
         $this->actingAs($admin)
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -137,7 +137,7 @@ final class RecordingDownloadTest extends TestCase
         $admin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $admin->givePermissionTo(Permission::firstOrCreate(['name' => 'View:Recording', 'guard_name' => 'web']));
 
-        $response = $this->actingAs($admin)->get(route('dashboard.recordings.download', $recording));
+        $response = $this->actingAs($admin)->get(route('admin.recordings.download', $recording));
 
         $this->assertSame(self::CONTENT, $response->streamedContent());
     }
@@ -146,13 +146,16 @@ final class RecordingDownloadTest extends TestCase
     {
         $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
-        $this->get(route('dashboard.recordings.download', $recording))
-            ->assertRedirect(route('auth.login'));
+        // The admin group's guest redirect targets the admin login.
+        $response = $this->get(route('admin.recordings.download', $recording));
+
+        $response->assertRedirect();
+        $this->assertStringEndsWith('/login', (string) $response->headers->get('Location'));
     }
 
     /**
      * Guessing or swapping the route id gets a participant nowhere,
-     * because participation was never the grant in the first place.
+     * because participation was never the download grant.
      */
     public function test_a_student_cannot_reach_another_students_recording_by_changing_the_id(): void
     {
@@ -162,7 +165,7 @@ final class RecordingDownloadTest extends TestCase
         $this->storedRecording($studentB, $this->activeInstructor());
 
         $this->actingAs($studentB)
-            ->get(route('dashboard.recordings.download', $recordingA))
+            ->get(route('admin.recordings.download', $recordingA))
             ->assertForbidden();
     }
 
@@ -174,8 +177,40 @@ final class RecordingDownloadTest extends TestCase
         $admin->givePermissionTo(Permission::firstOrCreate(['name' => 'View:Recording', 'guard_name' => 'web']));
 
         $this->actingAs($admin)
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertOk();
+    }
+
+    /**
+     * The people who actually hold View:Recording use the admin portal
+     * and are redirected away from /dashboard/*. The download therefore
+     * lives under /admin — and a real manager must reach it, not only a
+     * role-less test user.
+     */
+    public function test_a_manager_with_the_permission_reaches_the_download_through_the_admin_portal(): void
+    {
+        $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
+
+        $manager = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $manager->assignRole(Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']));
+        $manager->givePermissionTo(Permission::firstOrCreate(['name' => 'View:Recording', 'guard_name' => 'web']));
+
+        $response = $this->actingAs($manager)->get(route('admin.recordings.download', $recording));
+
+        $response->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="lesson-'.$recording->booking->reference.'.mp4"');
+        $this->assertSame(self::CONTENT, $response->streamedContent());
+    }
+
+    /** The admin route is a real route for a student too — and refuses them by policy, not by obscurity. */
+    public function test_a_student_reaching_the_admin_download_route_is_refused(): void
+    {
+        $student = $this->activeStudent();
+        $recording = $this->storedRecording($student, $this->activeInstructor());
+
+        $this->actingAs($student)
+            ->get(route('admin.recordings.download', $recording))
+            ->assertForbidden();
     }
 
     // ── What is downloadable ──────────────────────────────────────────
@@ -187,7 +222,7 @@ final class RecordingDownloadTest extends TestCase
         $recording->forceFill(['status' => RecordingStatus::Expired, 'storage_path' => null])->save();
 
         $this->actingAs($this->permittedAdmin())
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -197,7 +232,7 @@ final class RecordingDownloadTest extends TestCase
         $recording->forceFill(['status' => RecordingStatus::Stored])->save();
 
         $this->actingAs($this->permittedAdmin())
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertForbidden();
     }
 
@@ -212,7 +247,7 @@ final class RecordingDownloadTest extends TestCase
     {
         $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
-        $response = $this->actingAs($this->permittedAdmin())->get(route('dashboard.recordings.download', $recording));
+        $response = $this->actingAs($this->permittedAdmin())->get(route('admin.recordings.download', $recording));
 
         $headers = json_encode($response->headers->all());
         $this->assertStringNotContainsString($recording->storage_path, $headers);
@@ -222,7 +257,7 @@ final class RecordingDownloadTest extends TestCase
         // The URL itself keys on the recording, never on a storage id.
         $this->assertStringNotContainsString(
             $recording->storage_path,
-            route('dashboard.recordings.download', $recording),
+            route('admin.recordings.download', $recording),
         );
     }
 
@@ -231,7 +266,7 @@ final class RecordingDownloadTest extends TestCase
         $recording = $this->storedRecording($this->activeStudent(), $this->activeInstructor());
 
         $this->actingAs($this->permittedAdmin())
-            ->get(route('dashboard.recordings.download', $recording))
+            ->get(route('admin.recordings.download', $recording))
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
     }

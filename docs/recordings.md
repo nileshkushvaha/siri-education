@@ -50,7 +50,7 @@ RecordingIngestionService::ingest()
         ↓                                    status: stored   ← locator persisted
   RecordingStorage::verify()  → metadata check at the backend
         ↓                                    status: available
-  notify student + instructor (once each)
+  audit entry (nobody is notified — see §8)
         ↓
   … retention window elapses …
         ↓
@@ -139,6 +139,43 @@ must both be refused.
 
 No new identifier column was needed: the meeting code was already
 persisted. The join URL is a documented fallback.
+
+### Source original versus SIRI-managed copy
+
+Two Drive objects exist for every Meet recording, and the code never
+confuses them:
+
+| | Created by | Lives in | Referenced by SIRI | Lifecycle |
+|---|---|---|---|---|
+| **Source original** | Google Meet | the platform account's own "Meet Recordings" area | never persisted — read once through `drive.meet.readonly` during discovery | Google's; untouched by SIRI, outside SIRI retention |
+| **SIRI-managed copy** | `files.copy` by SIRI | `<root folder>/YYYY/MM/` (Shared Drive recommended) | `recordings.storage_path` — the ONLY object the domain knows | SIRI's: verified, served, expired by `recordings:expire` |
+
+The copy is the canonical object: playback, verification, download and
+retention all operate on it and on nothing else. The copy exists so
+that SIRI owns an object it can name, verify and delete on its own
+schedule, independent of what Google does with the original (and so
+that pointing storage at S3 later changes nothing above the storage
+seam). Whether the original should also be removed, and when, is a
+retention/Workspace-policy decision that has not been taken; SIRI
+deletes nothing it did not create. `GoogleMeetRecordingAcquisitionTest`
+asserts the original's file id is never persisted and the original is
+never moved or deleted.
+
+### Several artifacts for one lesson
+
+One Meet space can produce several recording artifacts for one
+conference (each Record start/stop is its own file; a reconnect can do
+the same). The locator collects every `FILE_GENERATED` artifact inside
+the lesson's window, sorts by start time and ingests the **earliest**;
+the count is carried on the `DiscoveredRecording` and, when it exceeds
+one, `RecordingLifecycleNotifier::multipleArtifactsDiscovered()` writes
+an audit entry and raises a `RecordingMultipleArtifacts` operational
+alert. The remaining segments stay in the provider account only. One
+row per meeting is guaranteed by the unique `idempotency_key`
+(`recording:<meeting id>`), one stored object by the unique
+`(storage_driver, storage_path)`, and a duplicated Google API response
+or a replayed job converges on the same row through the row-locked
+`pending → transferring` claim (`RecordingIdempotencyTest`).
 
 ### Discovery strategy: bounded reconciliation, not events
 
@@ -346,41 +383,174 @@ The filesystem driver mirrors the same layout:
 
 SIRI is the authorization layer; the storage backend never is.
 
-| Who | May access |
+| Who | May do |
 |---|---|
-| Student | recordings of their own lessons |
-| Instructor | recordings of lessons **they delivered** — no blanket instructor right exists, because the SRS grants none |
-| Admin | with the explicit `View:Recording` permission (`ViewAny:Recording` for the list) |
+| Student | **watch** recordings of their own lessons, inside their account — only while `meeting.recording_student_playback_enabled` is on (and the platform recording feature is on for their country), the recording is `available`, and no administrator has withheld it. Never download. |
+| Instructor | nothing — the SRS grants no instructor right, so none is implemented |
+| Admin | with the explicit `View:Recording` permission: view metadata, watch, download the original (`ViewAny:Recording` for the list); with `Withhold:Recording`: withhold one recording from its student, or restore it |
 | Super admin | via `Gate::before`, as everywhere |
 
 Enforced by `RecordingPolicy`, re-checked **live on every single
-request** by `RecordingDownloadController`. Notably:
+request** — the watch page, the stream, every Range request a seeking
+player issues, and the admin download. The student rule is written
+once, in `RecordingPlaybackAccessResolver`, which the policy, the
+booking detail and the watch page all read, so they cannot drift.
+Notably:
 
+- The student grant is the canonical row's `student_id` against the
+  authenticated session — never an id from the request. Knowing a
+  recording id, booking id, lesson id, Drive file id, or the stream URL
+  grants nothing; a copied `<video src>` is worthless outside an
+  authorized session.
 - Drive files are created with default (private) permissions. This
   codebase never sets an "anyone with the link" permission, never
   requests a `webContentLink`, and never issues a shareable URL — a
   test asserts those API surfaces are absent from the adapter.
-- The download URL keys on the **recording**, not on a storage id, so
-  no backend identifier is ever exposed in a URL.
-- `download` is stricter than `view`: it additionally requires the
-  recording to be `available` and to still have a locator, so an
-  expired or failed recording is never half-served.
-- There is no signed or pre-generated URL anywhere, so there is nothing
-  to leak or forward.
+- Every URL keys on the **recording**, not on a storage id, so no
+  backend identifier is ever exposed.
+- `download` (admin) is stricter than `view`: it additionally requires
+  the recording to be `available` and to still have a locator, so an
+  expired or failed recording is never half-served. `watch` has the
+  same object requirement.
+- There is no signed, tokenised or pre-generated URL anywhere, so there
+  is nothing to leak or forward.
+- Opening the player and every refusal of an authenticated user are
+  written to the audit trail (`recordings` channel:
+  `recording_playback_opened`, `recording_access_denied`) with the
+  standard request context. Range requests are deliberately **not**
+  individually audited.
 
-### Delivery: download, not playback
+### Withholding one recording
 
-The current product requirement (§12.20) is permission-controlled
-access to a stored recording, and no student-facing player exists.
-Delivery is therefore an **authenticated, application-proxied
-download**, streamed in 1 MB chunks so a recording is never held in PHP
-memory on the way out either.
+`Withhold:Recording` lets an administrator remove a single recording
+from its student (a dispute, a safety review, a guardian request)
+without touching the object, the lifecycle, retention, or admin access
+(`recordings.student_access_revoked_at/_by`). It is audited as an
+override with a mandatory reason, idempotent, and reversible from the
+same screen. The student sees "Recording unavailable".
 
-Range requests are explicitly **not advertised** (`Accept-Ranges:
-none`) rather than half-implemented. If in-browser seeking becomes a
-requirement, the honest implementation is a ranged read added to
-`RecordingStorage` — not a faked range response, and certainly not a
-public Drive file.
+### Which switches govern what
+
+| Switch | New recordings made | Discovery / ingestion | Existing playback | Student UI state |
+|---|---|---|---|---|
+| `features.recording_enabled` (+ country rule) | required | required | required | required |
+| `meeting.recording_enabled` ("record sessions by default") | required | required | **no effect** | no effect |
+| `meeting.google_meet_recording_enabled` / `zoom_recording_enabled` | required for that provider | required for that provider | **no effect** | no effect |
+| `meeting.recording_student_playback_enabled` | no effect | no effect | required | required |
+| per-recording withhold | no effect | no effect | denies that recording | "Recording unavailable" |
+
+The acquisition switches decide whether *new* recordings are made.
+Turning them off must not make recordings that already exist vanish
+from the students they were made for — `RecordingPlaybackAccessResolver`
+deliberately reads only the platform capability flag and the playback
+switch. `RecordingStudentPlaybackTest::test_the_playback_flag_matrix`
+asserts the table above.
+
+### Delivery: application-proxied, seekable playback
+
+Delivery is an **authenticated, application-proxied stream**
+(`RecordingDeliveryService`), used for both student playback (inline)
+and admin download (attachment).
+
+How bytes move: browser → Laravel → `RecordingDeliveryService` →
+`RecordingStorage::read(locator, window)` → backend. On Google Drive
+that is one streamed HTTPS media GET with a `Range` header, through the
+same delegated service-account client the ingestion uses; the body is
+a socket, not a buffer. The service reads it in
+`recordings.playback.chunk_bytes` pieces (512 KiB default) and flushes
+each before reading the next, and closes the socket when the viewer
+disconnects. **Peak memory per request is one chunk plus transport
+overhead, independent of the recording's size**: `Range: bytes=0-` for
+a 5 GB file allocates what it does for a 5 MB file. Nothing is staged
+on disk on the way out.
+
+**Bounded window.** A browser's first media request is `bytes=0-`, the
+whole object. Honoured literally, one PHP-FPM worker would stay
+occupied for the entire viewing session, trickling bytes at the
+player's consumption rate. So a ranged playback response encloses at
+most `recordings.playback.max_range_bytes` (8 MiB default): the 206's
+`Content-Range` says what was enclosed and the player asks for the next
+window when it needs it. A worker is therefore held for the transfer
+time of one window (well under a second on a normal link), not for the
+length of the lesson.
+
+**Operational limitation, stated plainly.** Every byte a student
+watches still passes through PHP once. Concurrency is bounded by
+PHP-FPM's `pm.max_children`: N students actively pulling windows at the
+same instant occupy up to N workers for the duration of those
+transfers. Because windows are short and players buffer ahead, steady
+state is far below one worker per viewer, but a burst of viewers on a
+small pool will queue at the FPM level like any other request. Size
+`pm.max_children` with playback in mind, keep `max_range_bytes`
+modest, and prefer a fast link to Google. The admin **download** is the
+deliberate exception — an attachment must be the whole file, so that
+request does hold a worker for the full transfer; administrators are
+few. When throughput ever becomes the constraint, the seam to change is
+`RecordingDeliveryService` alone (§11). A `Range`-less GET on the
+playback route (no browser sends one) is answered with the whole
+object as a 200 stream.
+
+**Failure before headers.** The storage stream is opened before the
+response is constructed, so a row that says Available whose object has
+gone becomes a clean 503 plus a warning in the application log
+(recording id and failure code, never the locator) — not a truncated
+body behind a 200.
+
+### Delegated token cache
+
+Every Drive call, including every playback window, needs a delegated
+access token. Minting one is a signed JWT assertion exchanged with
+Google, so `GoogleDriveSdkClient` caches the token it receives in the
+application cache (the same approach `ZoomApiClient` already takes):
+
+- **Key:** `recordings:google-drive:token:` + sha256 of (sha256 of the
+  credential JSON, the delegated subject, the scope list). Nothing a
+  caller controls enters it; rotating the key or changing the platform
+  account misses naturally; the prefix cannot collide with the Zoom,
+  Calendar or Meet clients.
+- **TTL:** the token's own `expires_in` minus 120 s. A token without a
+  usable lifetime is used once and not cached.
+- **Invalidation:** any 401 from Drive — on the SDK path or the media
+  path — forgets the cached token, so one revoked token never lingers
+  until expiry. A token that reports itself expired on read is
+  discarded too.
+- **Diagnostic:** the admin "Test Google Configuration" action clears
+  the cache first, so it always exercises the grant as it is now.
+- **Storms:** minting runs under a short cache lock (15 s hold, 10 s
+  wait); a cold cache and a burst of Range requests produce one token,
+  not one per request. If the lock cannot be obtained in time the
+  request mints anyway rather than stalling.
+- **Never exposed:** the token appears in no log line, no exception
+  message (credential-free translation is unchanged), no response, and
+  no row.
+
+The cache store is therefore a place a live bearer token lives for up
+to an hour. In production `CACHE_STORE=database` holds it in the
+`cache` table, plaintext, exactly as the Zoom account token already is.
+That is the established convention here; it is acceptable because the
+database is already the store for sessions and encrypted settings, and
+the token is scoped to `drive.file` + `drive.meet.readonly` on one
+account. If that posture ever changes, both clients change together.
+
+### What the player does, and what it does not promise
+
+The watch page uses the browser's native `<video>` with a moving,
+viewer-specific overlay: platform name · the booking's public reference · clock,
+repositioned every few seconds and kept on screen in fullscreen by
+fullscreening the wrapper rather than the element. The download
+control and picture-in-picture are disabled and the context menu is
+suppressed. **These are deterrents against casual saving and a way to
+attribute a leaked capture — they are not DRM.** A viewer with
+developer tools, a network capture, screen-recording software, or a
+phone camera can still copy what they are authorized to watch. That is
+a policy and terms-of-service matter; what SIRI guarantees is that
+*nobody unauthorized* can reach the bytes, and that every authorized
+access is attributable.
+
+Known player limitation: iPhone Safari offers no element fullscreen,
+so the button is hidden there and playback stays inline (watermark
+intact); the native player's own fullscreen, if the user reaches it,
+shows no overlay.
 
 ---
 
@@ -502,9 +672,13 @@ object. The domain would not need to know it happened.
 | `RECORDING_MAX_SOURCE_BYTES` | hard ceiling on an accepted source (default 5 GB) |
 | `RECORDING_DRIVE_CHUNK_BYTES`, `RECORDING_DRIVE_TIMEOUT` | resumable upload mechanics |
 | `RECORDING_QUEUE_DRIVER`, `RECORDING_QUEUE_RETRY_AFTER` | the dedicated ingestion connection |
+| `RECORDING_PLAYBACK_MAX_RANGE_BYTES`, `RECORDING_PLAYBACK_CHUNK_BYTES` | playback window cap and read chunk (§8) |
+| `RECORDING_WATERMARK_MOVE_SECONDS` | how often the viewer watermark moves; 0 keeps it still |
+| `RECORDING_DENIAL_AUDIT_WINDOW_SECONDS` | repeated refusals inside this window are logged, not audited |
 
 **Admin settings** (`meeting.*`, database, encrypted where sensitive):
 `recording_enabled`, `recording_retention_days`,
+`recording_student_playback_enabled` (student watch policy, ships OFF),
 `recording_drive_root_folder_id`, `recording_drive_shared_drive_id`,
 `recording_transfer_stale_minutes`, and the capture window/attempt
 knobs. Google credentials reuse the existing encrypted
@@ -651,7 +825,7 @@ failure label — never a credential, token, locator, or provider URL.
 | Domain | `app/Models/Recording.php`, `app/Booking/Services/Recording{Service,IngestionService,EligibilityResolver,AvailabilityResolver,StagingArea,FileNamer,LifecycleNotifier}.php` |
 | Lifecycle | `app/Booking/Enums/Recording{Status,FailureCode}.php` |
 | Jobs / commands | `app/Booking/Jobs/CaptureLessonRecordingJob.php`, `app/Console/Commands/{CaptureLessonRecordings,ExpireLessonRecordings}.php` |
-| Access | `app/Policies/RecordingPolicy.php`, `app/Http/Controllers/Dashboard/RecordingDownloadController.php` |
+| Access | `app/Policies/RecordingPolicy.php`, `app/Booking/Services/{RecordingPlaybackAccessResolver,RecordingDeliveryService,RecordingAccessAuditor}.php`, `app/Booking/Enums/RecordingPlaybackState.php`, `app/Http/Controllers/Dashboard/Recording{Watch,Stream}Controller.php`, `app/Http/Controllers/Admin/RecordingDownloadController.php`, `resources/views/student/recordings/watch.blade.php` |
 | Admin | `app/Filament/Resources/Recordings/` |
 | Config | `config/recordings.php`, `config/queue.php` (`recordings` connection) |
 | Tests | `tests/Feature/Booking/Recording*.php`, `GoogleDriveRecordingStorageTest.php`, `tests/Support/InMemoryRecordingStorage.php` |

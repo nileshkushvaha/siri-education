@@ -244,7 +244,46 @@ final class RecordingServiceTest extends TestCase
         $recording->refresh();
 
         $this->assertSame(RecordingStatus::Pending, $recording->status);
-        $this->assertSame(1, $recording->capture_attempts);
+        // "Not ready yet" is not a failed attempt: the budget is for real failures.
+        $this->assertSame(0, $recording->capture_attempts);
+    }
+
+    /**
+     * Google can take hours to generate a recording, and a lesson nobody
+     * recorded never produces one. Inside the window the row stays
+     * Pending without spending attempts; once the window closes it
+     * fails permanently as SourceNotFound — the terminal state a
+     * student sees as "unavailable" instead of "processing" forever.
+     */
+    public function test_not_ready_never_spends_attempts_and_fails_as_not_found_once_the_window_closes(): void
+    {
+        $settings = app(MeetingSettings::class);
+        $settings->recording_capture_retry_minutes = 60;
+        $settings->recording_capture_max_attempts = 2;
+        $settings->save();
+
+        $recording = Recording::factory()->create([
+            'student_id' => $this->student->id,
+            'teacher_id' => $this->instructor->id,
+        ]);
+        $recording->bookingMeeting->update(['ends_at' => now()->subMinutes(30)]);
+        FakeMeetingProvider::$nextRecordingContents = null;
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->service->capture($recording->fresh(), new FakeMeetingProvider);
+        }
+
+        $recording->refresh();
+        $this->assertSame(RecordingStatus::Pending, $recording->status, 'still inside the window');
+        $this->assertSame(0, $recording->capture_attempts, 'five quiet sweeps spent nothing');
+
+        $recording->bookingMeeting->update(['ends_at' => now()->subMinutes(61)]);
+        $this->service->capture($recording->fresh(), new FakeMeetingProvider);
+
+        $recording->refresh();
+        $this->assertSame(RecordingStatus::Failed, $recording->status);
+        $this->assertSame(RecordingFailureCode::SourceNotFound, $recording->failure_code);
+        $this->assertNotNull($recording->failed_at);
     }
 
     public function test_capture_is_a_no_op_for_a_recording_that_already_settled(): void

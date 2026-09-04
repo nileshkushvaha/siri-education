@@ -8,6 +8,7 @@ use App\Enums\InstructorResponseTime;
 use App\Enums\InstructorStatus;
 use App\Enums\StudentStatus;
 use App\Enums\ThemePreference;
+use App\Rules\IntroductionVideoFile;
 use App\Support\Media\Concerns\HasStandardImageConversions;
 use App\Support\Media\StandardImageConversion;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -18,6 +19,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\File;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class UserProfile extends Model implements HasMedia
@@ -180,10 +182,18 @@ class UserProfile extends Model implements HasMedia
                 ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
         }
 
+        // Same acceptance rule as validation (IntroductionVideoFile): the
+        // name must carry a video extension and the detected type must be a
+        // video type OR an "unidentified" answer — libmagic cannot be relied
+        // on to recognise every MP4 flavour, and a strict MIME whitelist here
+        // refused real videos that validation had already accepted.
         $this->addMediaCollection('introduction_video')
             ->useDisk('local')
             ->singleFile()
-            ->acceptsMimeTypes(['video/mp4', 'video/webm', 'video/quicktime']);
+            ->acceptsFile(fn (File $file): bool => IntroductionVideoFile::accepts(
+                pathinfo($file->name, PATHINFO_EXTENSION),
+                $file->mimeType,
+            ));
     }
 
     /**

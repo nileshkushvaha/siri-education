@@ -28,6 +28,7 @@ use App\Booking\Events\BookingRescheduled;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\DuplicateBookingException;
 use App\Booking\Exceptions\FreeDemoAlreadyUsedException;
+use App\Booking\Exceptions\LessonAlreadyStartedException;
 use App\Booking\Exceptions\RescheduleLimitReachedException;
 use App\Booking\Registry\BookingTypeRegistry;
 use App\Booking\Types\FreeDemoType;
@@ -235,6 +236,7 @@ final class BookingService implements BookingServiceInterface
     public function reschedule(Booking $booking, RescheduleBookingData $data): Booking
     {
         $this->assertStudentInitiatorNotRestricted($booking, $data->actor);
+        $this->assertNotStartedForParticipant($booking, $data->actor, LessonAlreadyStartedException::forReschedule());
         $this->window->assertWithinWindow($data->startsAt, isDemo: $booking->type?->is_paid === false);
 
         $previousStartsAt = $booking->starts_at;
@@ -309,6 +311,13 @@ final class BookingService implements BookingServiceInterface
     public function cancel(Booking $booking, CancelBookingData $data): Booking
     {
         $this->assertStudentInitiatorNotRestricted($booking, $data->cancelledBy);
+
+        // System cancellations (expired payment holds) and admin overrides
+        // are not subject to this; a student or instructor acting on a
+        // lesson that has already begun is.
+        if (! $data->expired) {
+            $this->assertNotStartedForParticipant($booking, $data->cancelledBy, LessonAlreadyStartedException::forCancellation());
+        }
 
         $from = $booking->status;
         $decision = null;
@@ -472,6 +481,26 @@ final class BookingService implements BookingServiceInterface
      * own status, since that's an administrative/protective action, not
      * a student-initiated one.
      */
+    /**
+     * A STUDENT loses self-service once the lesson's start time has
+     * passed: what happened then is a lesson OUTCOME (completed, no-show),
+     * settled by the lesson lifecycle — not a booking to cancel, which
+     * would erase the instructor's earning for a lesson they gave.
+     *
+     * Deliberately student-only. An instructor cancelling after the start
+     * is how an instructor no-show is recorded and refunded in full; Admin
+     * and System actors are operational overrides and hold-expiry
+     * cancellations. Terminal bookings are left to the existing status
+     * transition error so that message does not change. Mirrors
+     * BookingPolicy::cancel()/reschedule().
+     */
+    private function assertNotStartedForParticipant(Booking $booking, BookingActor $actor, LessonAlreadyStartedException $exception): void
+    {
+        if ($actor === BookingActor::Student && ! $booking->status->isTerminal() && $booking->hasStarted()) {
+            throw $exception;
+        }
+    }
+
     private function assertStudentInitiatorNotRestricted(Booking $booking, BookingActor $actor): void
     {
         if ($actor !== BookingActor::Student) {

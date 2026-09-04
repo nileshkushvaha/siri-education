@@ -19,6 +19,7 @@ use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\RecordingPlaybackState;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
+use App\Booking\Exceptions\LessonAlreadyStartedException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\CancellationRefundPolicy;
 use App\Booking\Services\RecordingPlaybackAccessResolver;
@@ -151,6 +152,12 @@ final class BookingHistory extends Component
             return;
         }
 
+        if ($this->selectedBooking->hasStarted()) {
+            $this->modalBanner = LessonAlreadyStartedException::forReschedule()->getMessage();
+
+            return;
+        }
+
         Gate::authorize('reschedule', $this->selectedBooking);
 
         $this->cancelPanelOpen = false;
@@ -160,6 +167,12 @@ final class BookingHistory extends Component
     public function openCancelPanel(): void
     {
         if (! $this->selectedBooking) {
+            return;
+        }
+
+        if ($this->selectedBooking->hasStarted()) {
+            $this->modalBanner = LessonAlreadyStartedException::forCancellation()->getMessage();
+
             return;
         }
 

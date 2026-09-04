@@ -214,7 +214,15 @@
                 </div>
             @endif
 
-            @if($isActive)
+            @if($isActive && $booking->hasStarted())
+                <div class="mt-6 rounded-xl border border-edge bg-surface-raised px-4 py-3 text-sm text-fg-muted" data-lesson-started-notice>
+                    @if($booking->hasEnded())
+                        This lesson has ended. It will be marked as completed automatically, and rescheduling or cancelling is no longer available.
+                    @else
+                        This lesson is in progress. Rescheduling or cancelling is no longer available.
+                    @endif
+                </div>
+            @elseif($isActive)
                 @php($rescheduleAllowance = $this->rescheduleAllowance())
 
                 <div class="mt-6 flex flex-wrap gap-3 border-t border-edge pt-5">

@@ -18,6 +18,12 @@ class BookingSettings extends Settings
 
     public int $no_show_grace_minutes;
 
+    /**
+     * @deprecated Not read anywhere. The lesson lifecycle uses
+     *             LessonSettings::$auto_complete_grace_minutes, which the
+     *             Platform Foundation page now edits. Kept only so existing
+     *             stored settings rows keep loading.
+     */
     public int $auto_completion_delay_minutes;
 
     /** Active bookings a teacher may hold per day. null = unlimited. */

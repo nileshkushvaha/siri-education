@@ -71,16 +71,34 @@ class BookingPolicy
             || $this->hasPermission($user, 'Confirm:Booking');
     }
 
+    /**
+     * The student may cancel or reschedule only BEFORE the lesson starts.
+     * A lesson that has begun is delivered or missed — an outcome for the
+     * lesson lifecycle, not a booking the student may still undo (which
+     * would also erase the instructor's earning for a lesson they gave).
+     * The instructor keeps the ability after start: that is how an
+     * instructor no-show is recorded and refunded. Operators keep the
+     * permission-based path as an explicit override.
+     */
     public function cancel(User $user, Booking $booking): bool
     {
-        return $this->isParticipant($user, $booking)
+        return $this->participantMayStillAct($user, $booking)
             || $this->hasPermission($user, 'Cancel:Booking');
     }
 
     public function reschedule(User $user, Booking $booking): bool
     {
-        return $this->isParticipant($user, $booking)
+        return $this->participantMayStillAct($user, $booking)
             || $this->hasPermission($user, 'Reschedule:Booking');
+    }
+
+    private function participantMayStillAct(User $user, Booking $booking): bool
+    {
+        if (! $this->isParticipant($user, $booking)) {
+            return false;
+        }
+
+        return $this->isInstructor($user, $booking) || ! $booking->hasStarted();
     }
 
     public function complete(User $user, Booking $booking): bool

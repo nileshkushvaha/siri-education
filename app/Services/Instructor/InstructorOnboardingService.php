@@ -160,11 +160,11 @@ final class InstructorOnboardingService
             $education->fill([
                 'institution_name' => $data['institution_name'],
                 'degree' => $data['degree'],
-                'field_of_study' => $data['field_of_study'] ?? null,
+                'field_of_study' => self::blankToNull($data['field_of_study'] ?? null),
                 'education_level' => $data['education_level'],
-                'description' => $data['description'] ?? null,
+                'description' => self::blankToNull($data['description'] ?? null),
                 'start_date' => $data['start_date'],
-                'end_date' => ($data['is_current'] ?? false) ? null : ($data['end_date'] ?? null),
+                'end_date' => ($data['is_current'] ?? false) ? null : self::blankToNull($data['end_date'] ?? null),
                 'is_current' => (bool) ($data['is_current'] ?? false),
                 'status' => 'active',
             ]);
@@ -202,12 +202,12 @@ final class InstructorOnboardingService
                 'organization_name' => $data['organization_name'],
                 'designation' => $data['designation'],
                 'employment_type' => $data['employment_type'],
-                'industry' => $data['industry'] ?? null,
-                'location' => $data['location'] ?? null,
-                'description' => $data['description'] ?? null,
+                'industry' => self::blankToNull($data['industry'] ?? null),
+                'location' => self::blankToNull($data['location'] ?? null),
+                'description' => self::blankToNull($data['description'] ?? null),
                 'skills' => $this->skillsArray($data['skills'] ?? []),
                 'start_date' => $data['start_date'],
-                'end_date' => ($data['is_current'] ?? false) ? null : ($data['end_date'] ?? null),
+                'end_date' => ($data['is_current'] ?? false) ? null : self::blankToNull($data['end_date'] ?? null),
                 'is_current' => (bool) ($data['is_current'] ?? false),
                 'status' => 'active',
             ]);
@@ -788,5 +788,18 @@ final class InstructorOnboardingService
         } catch (PermissionDoesNotExist) {
             return false;
         }
+    }
+
+    /**
+     * Livewire posts an untouched optional field as "" rather than null,
+     * and `nullable` validation lets "" through untouched. MySQL in strict
+     * mode then refuses "" for a DATE column ("Incorrect date value: ''
+     * for column 'end_date'") — the crash an instructor hit leaving
+     * "End date" empty on a past education entry. Optional columns take
+     * null or a value, never an empty string.
+     */
+    private static function blankToNull(mixed $value): mixed
+    {
+        return is_string($value) && trim($value) === '' ? null : $value;
     }
 }

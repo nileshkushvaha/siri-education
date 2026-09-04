@@ -213,6 +213,40 @@ class InstructorOnboardingWizardTest extends TestCase
         $component->assertSet('step', 7);
     }
 
+    /**
+     * Regression: a real MP4 was refused on staging because libmagic
+     * reported it as application/octet-stream and `mimes:` trusts only that
+     * guess. The extension plus an "unidentified" content type is a video.
+     */
+    public function test_an_mp4_that_libmagic_cannot_identify_is_still_accepted_as_an_introduction_video(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        // Bytes with no recognisable signature: finfo answers application/octet-stream.
+        $unidentifiable = UploadedFile::fake()->createWithContent('intro.mp4', random_bytes(2048));
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('step', 6)
+            ->set('introductionVideo', $unidentifiable)
+            ->call('uploadDocument', 'introduction_video')
+            ->assertHasNoErrors();
+
+        $this->assertTrue($user->profile->fresh()->hasMedia('introduction_video'));
+    }
+
+    public function test_a_mov_file_is_accepted_as_an_introduction_video(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $mov = UploadedFile::fake()->createWithContent('intro.mov', "\x00\x00\x00\x14ftypqt  \x00\x00\x00\x00qt  ".str_repeat("\x00", 200));
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('step', 6)
+            ->set('introductionVideo', $mov)
+            ->call('uploadDocument', 'introduction_video')
+            ->assertHasNoErrors();
+    }
+
     public function test_user_can_add_and_update_education(): void
     {
         $user = User::factory()->create(['status' => 'active']);
@@ -237,6 +271,57 @@ class InstructorOnboardingWizardTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('Bachelor of Applied Science', $education->fresh()->degree);
+    }
+
+    /**
+     * Regression: an untouched "End date" arrives as "" (not null), passed
+     * `nullable|date`, and MySQL strict mode rejected the INSERT with
+     * "Incorrect date value: '' for column 'end_date'".
+     */
+    public function test_education_with_an_empty_end_date_is_saved_with_null(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('educationForm.institution_name', 'State University')
+            ->set('educationForm.degree', 'Bachelor of Science')
+            ->set('educationForm.field_of_study', '')
+            ->set('educationForm.education_level', EducationLevel::Bachelor->value)
+            ->set('educationForm.start_date', '2015-01-01')
+            ->set('educationForm.end_date', '')
+            ->set('educationForm.is_current', false)
+            ->call('saveEducation')
+            ->assertHasNoErrors();
+
+        $education = $user->educations()->firstOrFail();
+
+        $this->assertNull($education->end_date);
+        $this->assertNull($education->field_of_study);
+    }
+
+    public function test_experience_with_an_empty_end_date_is_saved_with_null(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('experienceForm.organization_name', 'Learning Lab')
+            ->set('experienceForm.designation', 'Teacher')
+            ->set('experienceForm.employment_type', EmploymentType::FullTime->value)
+            ->set('experienceForm.industry', '')
+            ->set('experienceForm.location', '')
+            ->set('experienceForm.start_date', '2018-01-01')
+            ->set('experienceForm.end_date', '')
+            ->set('experienceForm.is_current', false)
+            ->call('saveExperience')
+            ->assertHasNoErrors();
+
+        $experience = $user->experiences()->firstOrFail();
+
+        $this->assertNull($experience->end_date);
+        $this->assertNull($experience->industry);
+        $this->assertNull($experience->location);
     }
 
     public function test_user_can_add_and_update_experience(): void

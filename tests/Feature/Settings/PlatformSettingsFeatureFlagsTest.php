@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
+use App\Settings\LessonSettings;
 use App\Settings\LocalizationSettings;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -199,6 +200,35 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
         $this->assertCount(1, $events->get(FeatureSettings::class, collect()));
     }
 
+    /**
+     * Regression: "Auto-completion Delay" and "No-show Grace" were saved to
+     * BookingSettings, which nothing reads, while the lesson sweeps read
+     * LessonSettings. Changing the admin value had no effect on when a
+     * finished lesson was marked completed.
+     */
+    public function test_auto_completion_delay_and_no_show_grace_drive_the_lesson_settings_the_sweep_reads(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+        $this->actingAs($admin);
+
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->set('data.auto_completion_delay_minutes', 120)
+            ->set('data.no_show_grace_minutes', 20)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $lessons = app(LessonSettings::class)->refresh();
+
+        $this->assertSame(120, $lessons->auto_complete_grace_minutes);
+        $this->assertSame(20, $lessons->no_show_grace_minutes);
+
+        // Reopening the page shows the value the sweep will actually use.
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->assertSet('data.auto_completion_delay_minutes', 120)
+            ->assertSet('data.no_show_grace_minutes', 20);
+    }
+
     public function test_saving_platform_foundation_settings_with_no_changes_creates_no_audit_events(): void
     {
         $admin = User::factory()->create(['status' => 'active']);
@@ -217,8 +247,8 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             ->set('data.maximum_advance_booking_days', $booking->maximum_advance_booking_days)
             ->set('data.cancellation_window_hours', $booking->cancellation_window_hours)
             ->set('data.reschedule_limit', $booking->reschedule_limit)
-            ->set('data.no_show_grace_minutes', $booking->no_show_grace_minutes)
-            ->set('data.auto_completion_delay_minutes', $booking->auto_completion_delay_minutes)
+            ->set('data.no_show_grace_minutes', app(LessonSettings::class)->no_show_grace_minutes)
+            ->set('data.auto_completion_delay_minutes', app(LessonSettings::class)->auto_complete_grace_minutes)
             ->set('data.approval_required', $instructor->approval_required)
             ->set('data.profile_publish_requires_approval', $instructor->profile_publish_requires_approval)
             ->set('data.featured_instructor_limit', $instructor->featured_instructor_limit)

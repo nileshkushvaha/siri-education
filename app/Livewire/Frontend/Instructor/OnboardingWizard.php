@@ -12,6 +12,7 @@ use App\Models\Country;
 use App\Models\InstructorDocumentRequirement;
 use App\Models\Language;
 use App\Models\Subject;
+use App\Rules\IntroductionVideoFile;
 use App\Services\Instructor\InstructorDocumentRequirementService;
 use App\Services\Instructor\InstructorOnboardingService;
 use App\Support\InstructorApplicationStart;
@@ -20,6 +21,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use Spatie\MediaLibrary\MediaCollections\Exceptions\FileUnacceptableForCollection;
 
 final class OnboardingWizard extends Component
 {
@@ -311,7 +313,7 @@ final class OnboardingWizard extends Component
 
         $this->validate([
             $property => $collection === 'introduction_video'
-                ? ['required', 'file', 'mimes:mp4,webm,quicktime', 'max:51200']
+                ? ['required', 'file', new IntroductionVideoFile, 'max:51200']
                 : ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
         ], attributes: [
             // The requirement's admin-configured label (e.g. "Pan Card"),
@@ -325,7 +327,18 @@ final class OnboardingWizard extends Component
 
         $file = $this->{$property};
         if ($file instanceof TemporaryUploadedFile) {
-            $onboarding->uploadMedia(auth()->user(), $collection, $file);
+            try {
+                $onboarding->uploadMedia(auth()->user(), $collection, $file);
+            } catch (FileUnacceptableForCollection) {
+                // The collection's own acceptance check is the last line
+                // of defence behind validation; when it disagrees, tell
+                // the instructor what to upload instead of failing the page.
+                $this->addError($property, $collection === 'introduction_video'
+                    ? 'That file is not a video we can play. Please upload an MP4, WebM or MOV file.'
+                    : 'That file type is not accepted. Please upload a JPG, PNG, WebP or PDF.');
+
+                return;
+            }
         }
 
         $this->{$property} = null;

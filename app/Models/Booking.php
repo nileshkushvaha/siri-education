@@ -189,6 +189,24 @@ class Booking extends Model
         return $query->where('starts_at', '>=', now());
     }
 
+    /**
+     * The lesson's scheduled start is in the past. Used to close the
+     * student/instructor self-service window: once a lesson has begun it
+     * is delivered (or a no-show), never something to reschedule or cancel
+     * — those outcomes belong to the lesson lifecycle, not the booking
+     * actions. Independent of status, because auto-completion runs on a
+     * grace delay and the row stays Confirmed for a while after the fact.
+     */
+    public function hasStarted(): bool
+    {
+        return $this->starts_at !== null && $this->starts_at->lessThanOrEqualTo(now());
+    }
+
+    public function hasEnded(): bool
+    {
+        return $this->ends_at !== null && $this->ends_at->lessThanOrEqualTo(now());
+    }
+
     public function scopePast(Builder $query): Builder
     {
         return $query->where('ends_at', '<', now());

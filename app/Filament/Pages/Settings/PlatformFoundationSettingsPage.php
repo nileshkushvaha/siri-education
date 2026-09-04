@@ -9,6 +9,7 @@ use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Settings\InstructorSettings;
+use App\Settings\LessonSettings;
 use App\Settings\LocalizationSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -64,6 +65,7 @@ class PlatformFoundationSettingsPage extends Page
     public function mount(): void
     {
         $booking = app(BookingSettings::class);
+        $lessons = app(LessonSettings::class);
         $instructor = app(InstructorSettings::class);
         $localization = app(LocalizationSettings::class);
         $features = app(FeatureSettings::class);
@@ -76,8 +78,12 @@ class PlatformFoundationSettingsPage extends Page
             'maximum_advance_booking_days' => $booking->maximum_advance_booking_days,
             'cancellation_window_hours' => $booking->cancellation_window_hours,
             'reschedule_limit' => $booking->reschedule_limit,
-            'no_show_grace_minutes' => $booking->no_show_grace_minutes,
-            'auto_completion_delay_minutes' => $booking->auto_completion_delay_minutes,
+            // These two are READ by the lesson lifecycle from LessonSettings.
+            // BookingSettings carries same-named copies that nothing reads;
+            // for a while this page wrote only those, so changing
+            // "Auto-completion Delay" in the admin had no effect at all.
+            'no_show_grace_minutes' => $lessons->no_show_grace_minutes,
+            'auto_completion_delay_minutes' => $lessons->auto_complete_grace_minutes,
             'approval_required' => $instructor->approval_required,
             'profile_publish_requires_approval' => $instructor->profile_publish_requires_approval,
             'featured_instructor_limit' => $instructor->featured_instructor_limit,
@@ -131,8 +137,10 @@ class PlatformFoundationSettingsPage extends Page
                             $this->integerInput('maximum_advance_booking_days', 'Advance Window (days)', 1, 365),
                             $this->integerInput('cancellation_window_hours', 'Cancellation Window', 0, 720),
                             $this->integerInput('reschedule_limit', 'Reschedule Limit', 0, 20),
-                            $this->integerInput('no_show_grace_minutes', 'No-show Grace', 0, 120),
-                            $this->integerInput('auto_completion_delay_minutes', 'Auto-completion Delay', 0, 10080),
+                            $this->integerInput('no_show_grace_minutes', 'No-show Grace (minutes)', 0, 120)
+                                ->helperText('How long after the start time a no-show may be recorded.'),
+                            $this->integerInput('auto_completion_delay_minutes', 'Auto-completion Delay (minutes)', 0, 10080)
+                                ->helperText('How long after a lesson ends before it is marked completed automatically. Until then the booking stays Confirmed. 1440 = one day.'),
                         ]),
                     ]),
 
@@ -188,11 +196,12 @@ class PlatformFoundationSettingsPage extends Page
         }
 
         $bookingOk = $this->saveBooking($data);
+        $lessonsOk = $this->saveLessons($data);
         $instructorOk = $this->saveInstructor($data);
         $localizationOk = $this->saveLocalization($data);
         $featuresOk = $this->saveFeatures($data);
 
-        if (! $bookingOk || ! $instructorOk || ! $localizationOk || ! $featuresOk) {
+        if (! $bookingOk || ! $lessonsOk || ! $instructorOk || ! $localizationOk || ! $featuresOk) {
             // A failure notification was already shown by
             // saveSettingsWithAudit() for whichever group failed.
             return;
@@ -225,8 +234,17 @@ class PlatformFoundationSettingsPage extends Page
             $settings->maximum_advance_booking_days = (int) $data['maximum_advance_booking_days'];
             $settings->cancellation_window_hours = (int) $data['cancellation_window_hours'];
             $settings->reschedule_limit = (int) $data['reschedule_limit'];
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function saveLessons(array $data): bool
+    {
+        return $this->saveSettingsWithAudit(LessonSettings::class, 'settings', function (LessonSettings $settings) use ($data): void {
             $settings->no_show_grace_minutes = (int) $data['no_show_grace_minutes'];
-            $settings->auto_completion_delay_minutes = (int) $data['auto_completion_delay_minutes'];
+            $settings->auto_complete_grace_minutes = (int) $data['auto_completion_delay_minutes'];
         });
     }
 

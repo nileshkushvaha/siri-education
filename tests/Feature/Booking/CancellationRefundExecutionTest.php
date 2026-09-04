@@ -13,6 +13,7 @@ use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
 use App\Booking\Exceptions\BookingException;
+use App\Booking\Exceptions\LessonAlreadyStartedException;
 use App\Booking\Services\CancellationRefundPolicy;
 use App\Models\Booking;
 use App\Models\BookingActivity;
@@ -152,15 +153,34 @@ class CancellationRefundExecutionTest extends TestCase
 
     // ── 4. Cancel at/after start → no refund ────────────────────────────────
 
-    public function test_student_cancels_after_lesson_start_and_receives_no_refund(): void
+    /** Once the lesson has begun, a student can no longer cancel it at all — the outcome belongs to the lesson lifecycle. */
+    public function test_student_cannot_cancel_after_lesson_start(): void
     {
         $this->setWindow(24);
         $startsAt = CarbonImmutable::parse('2026-08-10 10:00:00', 'UTC');
         [$booking, , $student] = $this->paidBooking($startsAt);
 
-        $this->cancel($booking, BookingActor::Student, $startsAt->addMinutes(5));
+        try {
+            $this->cancel($booking, BookingActor::Student, $startsAt->addMinutes(5));
+            $this->fail('A student cancellation after the lesson started must be refused.');
+        } catch (LessonAlreadyStartedException) {
+            // expected
+        }
 
+        $this->assertSame(BookingStatus::Confirmed, $booking->fresh()->status);
         $this->assertSame(0, WalletLedgerEntry::query()->where('user_id', $student->id)->count());
+    }
+
+    /** An admin override after the start still works; its refund follows the responsibility rules, not the student window. */
+    public function test_admin_can_still_cancel_after_lesson_start(): void
+    {
+        $this->setWindow(24);
+        $startsAt = CarbonImmutable::parse('2026-08-10 10:00:00', 'UTC');
+        [$booking] = $this->paidBooking($startsAt);
+
+        $cancelled = $this->cancel($booking, BookingActor::Admin, $startsAt->addMinutes(5));
+
+        $this->assertSame(BookingStatus::Cancelled, $cancelled->status);
     }
 
     // ── 6. Free demo cancellation creates no wallet entry ───────────────────
@@ -180,7 +200,7 @@ class CancellationRefundExecutionTest extends TestCase
             'ends_at' => $startsAt->addMinutes(30),
         ]);
 
-        $this->cancel($booking, BookingActor::Student, $startsAt->addMinutes(1));
+        $this->cancel($booking, BookingActor::Student, $startsAt->subMinutes(30));
 
         $this->assertSame(0, WalletLedgerEntry::query()->where('user_id', $student->id)->count());
         $this->assertSame(0, BookingPayment::query()->where('booking_id', $booking->id)->count());

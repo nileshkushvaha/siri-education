@@ -3,6 +3,40 @@
 @import './frontend/root-scale.css';
 
 /*
+ * Tailwind v4's preflight no longer sets `cursor: pointer` on buttons (v3
+ * did), so every <button> fell back to the arrow cursor and read as
+ * non-interactive. Restore it once here for every clickable control, and
+ * make disabled ones say so.
+ */
+@layer base {
+    button,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    input[type="submit"],
+    input[type="button"],
+    input[type="reset"],
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="file"],
+    input[type="range"],
+    select,
+    summary,
+    label[for] {
+        cursor: pointer;
+    }
+
+    button:disabled,
+    [role="button"][aria-disabled="true"],
+    input:disabled,
+    select:disabled,
+    [disabled] {
+        cursor: not-allowed;
+    }
+}
+
+/*
  * Inter, self-hosted. Previously three render-blocking tags in every
  * layout (two preconnects plus a fonts.googleapis.com stylesheet) that
  * cost a round trip to a third-party origin before the first paint, and
@@ -360,6 +394,29 @@ html { scroll-behavior: smooth; }
 .auth-input.error {
     border-color: rgba(239,68,68,0.6);
     box-shadow: 0 0 0 3px rgba(239,68,68,0.10);
+}
+
+/*
+ * Native <select> popups. Windows Chrome/Edge paint the option list from
+ * the element's colour scheme but let each <option> inherit the page text
+ * colour, so a white-text select on a dark page opened a WHITE list with
+ * WHITE text (macOS draws a system popup and never showed the problem).
+ * Declare the scheme and give options explicit, matching colours in every
+ * context so the list is readable on both platforms.
+ */
+select { color-scheme: light; }
+select option { color: #0f172a; background-color: #ffffff; }
+
+select.auth-input,
+.dark [data-account-portal] select,
+.dark [data-booking-wizard-page] select {
+    color-scheme: dark;
+}
+select.auth-input option,
+.dark [data-account-portal] select option,
+.dark [data-booking-wizard-page] select option {
+    color: #f1f5f9;
+    background-color: #0f172a;
 }
 .auth-label {
     display: block;

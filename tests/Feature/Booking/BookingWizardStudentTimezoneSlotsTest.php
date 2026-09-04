@@ -353,4 +353,46 @@ class BookingWizardStudentTimezoneSlotsTest extends TestCase
         $this->assertSame($originalTimezone, $booking->timezone);
         $this->assertNotSame(UserTimezoneResolver::resolve($student->fresh()), $booking->timezone);
     }
+
+    /**
+     * Regression: a New York student's local day overlaps two Kolkata
+     * instructor days. windowsFor() legitimately returns both days'
+     * windows (they overlap the range), but the slots handed back for
+     * "this date" must all START within that date in the student's
+     * timezone — previously ~29 hours of slots came back and the wizard
+     * showed e.g. 7:30 AM twice with no date to tell them apart.
+     */
+    public function test_slots_for_one_student_local_day_never_spill_into_the_next_or_previous_day(): void
+    {
+        $studentTimezone = 'America/New_York';
+        $teacher = $this->teacher();
+        // Every day of the week, all day, so both overlapping instructor days produce windows.
+        foreach (Weekday::cases() as $weekday) {
+            $this->availability($teacher, $weekday, '00:00:00', '23:30:00', 'Asia/Kolkata');
+        }
+
+        $localDay = CarbonImmutable::now($studentTimezone)->addDays(7)->startOfDay();
+
+        $slots = app(AvailabilityServiceInterface::class)->slots(
+            new AvailabilityQueryData($teacher->id, 'free_demo', $localDay, $localDay->addDay(), $studentTimezone),
+        );
+
+        $this->assertNotEmpty($slots);
+
+        foreach ($slots as $slot) {
+            $this->assertSame($studentTimezone, $slot->startsAt->tzName);
+            $this->assertSame(
+                $localDay->toDateString(),
+                $slot->startsAt->toDateString(),
+                sprintf('Slot %s does not fall on the requested student-local day %s', $slot->startsAt->toIso8601String(), $localDay->toDateString()),
+            );
+        }
+
+        // Nothing at or after the next local midnight, nothing before this one.
+        $this->assertTrue($slots->every(fn ($slot): bool => $slot->startsAt->greaterThanOrEqualTo($localDay) && $slot->startsAt->lessThan($localDay->addDay())));
+
+        // No two slots may collapse onto the same clock label — that was the visible symptom.
+        $labels = $slots->map(fn ($slot): string => $slot->startsAt->format('g:i A'));
+        $this->assertSame($labels->count(), $labels->unique()->count());
+    }
 }

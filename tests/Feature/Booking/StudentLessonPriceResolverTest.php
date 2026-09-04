@@ -132,6 +132,91 @@ class StudentLessonPriceResolverTest extends TestCase
         $this->assertSame('INR', $booking->currency);
     }
 
+    // ── 3b. several levels cover the same grade ───────────────────────
+
+    /**
+     * Regression: with per-country and band levels, more than one active
+     * level can cover a grade. The price may be configured on ANY of them.
+     * The old resolver tried only the first level `coversGrade()` hit in
+     * table order, so a price on "Middle School" was invisible when
+     * "Grade 7" happened to sort first — and the student was told the
+     * price was "not configured".
+     */
+    public function test_price_configured_on_another_level_covering_the_same_grade_is_still_found(): void
+    {
+        // Sorts ahead of "Middle School" (display_order 0, then name) and
+        // also covers grade 7 — but carries no price.
+        AcademicLevel::create(['name' => 'Grade 7', 'slug' => 'grade-7', 'min_grade' => 7, 'max_grade' => 7, 'display_order' => 0]);
+
+        StudentLessonPrice::factory()->create([
+            'booking_type_id' => $this->paidType->id,
+            'subject_id' => $this->subject->id,
+            'academic_level_id' => $this->level->id, // Middle School, 6-8
+            'country_id' => $this->country->id,
+            'currency_id' => $this->currency->id,
+            'currency_code' => 'INR',
+            'duration_minutes' => 60,
+            'amount_minor' => 75000,
+        ]);
+
+        $booking = app(BookingServiceInterface::class)->request($this->bookingData($this->student()));
+
+        $this->assertSame('750.00', $booking->price);
+    }
+
+    /** The level the student actually selected wins over any other level that merely covers the grade. */
+    public function test_the_students_selected_academic_level_is_priced_ahead_of_other_covering_levels(): void
+    {
+        $grade7 = AcademicLevel::create(['name' => 'Grade 7', 'slug' => 'grade-7', 'min_grade' => 7, 'max_grade' => 7, 'display_order' => 0]);
+
+        foreach ([[$grade7, 50000], [$this->level, 75000]] as [$level, $amount]) {
+            StudentLessonPrice::factory()->create([
+                'booking_type_id' => $this->paidType->id,
+                'subject_id' => $this->subject->id,
+                'academic_level_id' => $level->id,
+                'country_id' => $this->country->id,
+                'currency_id' => $this->currency->id,
+                'currency_code' => 'INR',
+                'duration_minutes' => 60,
+                'amount_minor' => $amount,
+            ]);
+        }
+
+        $calculator = app(BookingPriceCalculator::class);
+        $student = $this->student();
+
+        $chosenMiddleSchool = $calculator->calculate($this->paidType, $student, 'maths', 7, null, (string) $this->level->id);
+        $chosenGrade7 = $calculator->calculate($this->paidType, $student, 'maths', 7, null, (string) $grade7->id);
+
+        $this->assertSame(750.0, $chosenMiddleSchool->baseAmount);
+        $this->assertSame(500.0, $chosenGrade7->baseAmount);
+    }
+
+    /** A level from ANOTHER country that also covers the grade is tried after the student's own country's levels. */
+    public function test_own_country_level_is_preferred_over_another_countrys_level_covering_the_same_grade(): void
+    {
+        $otherCountry = Country::factory()->create(['iso2' => 'US', 'default_currency_id' => $this->currency->id]);
+        $foreignLevel = AcademicLevel::create(['name' => 'Class 7', 'slug' => 'class-7', 'min_grade' => 7, 'max_grade' => 7, 'display_order' => 0, 'country_id' => $otherCountry->id]);
+        $ownLevel = AcademicLevel::create(['name' => 'Year 7', 'slug' => 'year-7', 'min_grade' => 7, 'max_grade' => 7, 'display_order' => 0, 'country_id' => $this->country->id]);
+
+        foreach ([[$foreignLevel, 10000], [$ownLevel, 65000]] as [$level, $amount]) {
+            StudentLessonPrice::factory()->create([
+                'booking_type_id' => $this->paidType->id,
+                'subject_id' => $this->subject->id,
+                'academic_level_id' => $level->id,
+                'country_id' => $this->country->id,
+                'currency_id' => $this->currency->id,
+                'currency_code' => 'INR',
+                'duration_minutes' => 60,
+                'amount_minor' => $amount,
+            ]);
+        }
+
+        $price = app(BookingPriceCalculator::class)->calculate($this->paidType, $this->student(), 'maths', 7);
+
+        $this->assertSame(650.0, $price->baseAmount);
+    }
+
     // ── 4. academic_level null ("all levels") fallback ────────────────
 
     public function test_academic_level_null_fallback_works(): void

@@ -86,8 +86,19 @@ free-text string `TeacherSubject.subject` already uses (e.g.
 `Subject.name`. This mirrors the existing, already-documented
 relationship between `TeacherSubject` and `Subject` (optional
 reconciliation, not a hard link) rather than inventing a new one.
-Grade → academic level uses the existing
-`AcademicLevel::coversGrade()` bridge, unchanged.
+Grade → academic level: the resolver is given an **ordered list of
+candidate levels**, not one. `BookingPriceCalculator::candidateLevels()`
+puts the level the student actually selected in the booking flow first
+(`BookingAcademicContextData::$academicLevelId`), then the student's own
+country's levels (and global ones) whose `coversGrade()` range covers
+the grade, then any other covering level. Each candidate is tried at the
+exact-level tiers before the "all levels" row is consulted. This matters
+because levels are per-country ("Grade 10" US, "Class 10" India) and
+band levels ("Secondary 6-10") can cover the same grade: the earlier
+single-level bridge used whichever covering level sorted first, so a
+price configured on the right level could be reported to the student as
+"not configured". A miss now also writes a `Log::warning` with every
+match criterion so support can see which one the configured row fails.
 
 ## Student / admin / instructor visibility
 

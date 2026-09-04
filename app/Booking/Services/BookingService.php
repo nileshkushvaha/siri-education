@@ -141,6 +141,10 @@ final class BookingService implements BookingServiceInterface
                     $data->meta['subject'] ?? null,
                     $data->meta['grade'] ?? null,
                     $data->instructorId,
+                    // The level the student actually chose — the price row
+                    // is keyed on it, not on whichever level merely covers
+                    // the grade.
+                    $data->academicContext?->academicLevelId,
                 );
 
                 // Phase 4D — a package-funded booking is PREPAID, not

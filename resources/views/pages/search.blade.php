@@ -58,16 +58,16 @@
 </div>
 
 {{-- ── Results ── --}}
-<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-slate-900">
 
     @if($query !== '' && $totalResults === 0)
         <div class="text-center py-16 animate-fade-in-up">
-            <div class="mx-auto mb-4 h-16 w-16 rounded-2xl bg-slate-800 flex items-center justify-center">
+            <div class="mx-auto mb-4 h-16 w-16 rounded-2xl bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center">
                 <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
             </div>
-            <p class="text-slate-400 font-medium">No results for "<span class="text-white">{{ $query }}</span>"</p>
-            <p class="text-slate-400 text-sm mt-1">Try different keywords or browse the blog.</p>
-            <a href="{{ route('blog.index') }}" class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/10 transition-all">
+            <p class="text-slate-700 font-semibold">No results for "<span class="text-slate-950">{{ $query }}</span>"</p>
+            <p class="text-slate-500 text-sm mt-1">Try different keywords or browse the blog.</p>
+            <a href="{{ route('blog.index') }}" class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-indigo-600 border border-indigo-200 hover:bg-indigo-50 transition-all">
                 Browse blog
             </a>
         </div>
@@ -78,25 +78,25 @@
             @if($results['pages']->isNotEmpty())
             <section>
                 <div class="flex items-center gap-3 mb-5">
-                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pages</h2>
-                    <div class="flex-1 h-px bg-white/[0.04]"></div>
-                    <span class="text-xs text-slate-400">{{ $results['pages']->count() }}</span>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-[0.14em]">Pages</h2>
+                    <div class="flex-1 h-px bg-slate-200"></div>
+                    <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{{ $results['pages']->count() }}</span>
                 </div>
                 <div class="space-y-2">
                     @foreach($results['pages'] as $page)
                     <a href="{{ $page->slug === 'home' ? route('home') : route('page.show', $page->slug) }}"
-                       class="group flex items-start gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-indigo-500/20 transition-all">
-                        <div class="mt-0.5 h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-                            <svg class="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                       class="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/[0.03] hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 transition-all">
+                        <div class="mt-0.5 h-8 w-8 rounded-lg bg-indigo-50 ring-1 ring-indigo-100 flex items-center justify-center flex-shrink-0">
+                            <svg class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="font-medium text-white text-sm group-hover:text-indigo-300 transition-colors truncate">{{ $page->title }}</p>
-                            <p class="text-xs text-slate-400 mt-0.5">/{{ $page->slug }}</p>
+                            <p class="font-bold text-slate-900 text-base group-hover:text-indigo-600 transition-colors truncate">{{ $page->title }}</p>
+                            <p class="text-xs font-medium text-indigo-500/80 mt-0.5">/{{ $page->slug }}</p>
                             @if($page->excerpt)
-                                <p class="text-sm text-slate-400 mt-1 line-clamp-1">{{ $page->excerpt }}</p>
+                                <p class="text-sm text-slate-600 mt-1.5 line-clamp-2 leading-6">{{ $page->excerpt }}</p>
                             @endif
                         </div>
-                        <svg class="h-4 w-4 text-slate-700 group-hover:text-indigo-400 transition-colors flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                        <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                     </a>
                     @endforeach
                 </div>
@@ -107,25 +107,25 @@
             @if($results['posts']->isNotEmpty())
             <section>
                 <div class="flex items-center gap-3 mb-5">
-                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Blog Posts</h2>
-                    <div class="flex-1 h-px bg-white/[0.04]"></div>
-                    <span class="text-xs text-slate-400">{{ $results['posts']->count() }}</span>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-[0.14em]">Blog Posts</h2>
+                    <div class="flex-1 h-px bg-slate-200"></div>
+                    <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{{ $results['posts']->count() }}</span>
                 </div>
                 <div class="space-y-2">
                     @foreach($results['posts'] as $post)
                     <a href="{{ route('blog.show', $post->slug) }}"
-                       class="group flex items-start gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-indigo-500/20 transition-all">
-                        <div class="mt-0.5 h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                            <svg class="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+                       class="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/[0.03] hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 transition-all">
+                        <div class="mt-0.5 h-8 w-8 rounded-lg bg-violet-50 ring-1 ring-violet-100 flex items-center justify-center flex-shrink-0">
+                            <svg class="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="font-medium text-white text-sm group-hover:text-indigo-300 transition-colors truncate">{{ $post->title }}</p>
-                            <p class="text-xs text-slate-400 mt-0.5">/blog/{{ $post->slug }}</p>
+                            <p class="font-bold text-slate-900 text-base group-hover:text-indigo-600 transition-colors truncate">{{ $post->title }}</p>
+                            <p class="text-xs font-medium text-indigo-500/80 mt-0.5">/blog/{{ $post->slug }}</p>
                             @if($post->excerpt)
-                                <p class="text-sm text-slate-400 mt-1 line-clamp-1">{{ $post->excerpt }}</p>
+                                <p class="text-sm text-slate-600 mt-1.5 line-clamp-2 leading-6">{{ $post->excerpt }}</p>
                             @endif
                         </div>
-                        <svg class="h-4 w-4 text-slate-700 group-hover:text-indigo-400 transition-colors flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                        <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
                     </a>
                     @endforeach
                 </div>
@@ -134,7 +134,7 @@
 
             {{-- Empty state when query is empty --}}
             @if($query === '')
-            <div class="text-center py-8 text-slate-400 text-sm">
+            <div class="text-center py-8 text-slate-500 text-sm">
                 Start typing to search pages and posts.
             </div>
             @endif

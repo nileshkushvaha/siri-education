@@ -75,6 +75,21 @@ final class AvailabilityService implements AvailabilityServiceInterface
         foreach ($this->generator->candidates($windows, $duration, $buffer) as $candidate) {
             [$start, $end] = [$candidate['starts_at'], $candidate['ends_at']];
 
+            // windowsFor() returns every availability window that OVERLAPS
+            // [$from, $to) — whole, never clipped, because the slot grid
+            // must stay anchored to the instructor's own window start. So
+            // when a student's local day straddles two instructor-local
+            // days (New York student, Kolkata instructor), both days'
+            // windows come back and the generator emits every slot in
+            // them. Without this check a "Sep 4" request returned ~29
+            // hours of slots: the wizard printed each as a bare clock
+            // time, so 7:30 AM appeared twice with no way to tell Sep 4
+            // from Sep 5. Only slots that START inside the requested
+            // range belong to it.
+            if ($start->lessThan($from) || $start->greaterThanOrEqualTo($to)) {
+                continue;
+            }
+
             if (! $this->window->isWithinWindow($start, isDemo: ! $type->is_paid)) {
                 continue;
             }

@@ -330,9 +330,9 @@
                                 <label class="block text-xs font-semibold text-fg-muted mb-2">Gender</label>
                                 <select name="gender"
                                     class="w-full px-4 py-3 rounded-xl bg-surface-raised border border-edge text-fg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
-                                    <option value="" class="bg-[#0d1117]">— Select —</option>
+                                    <option value="">— Select —</option>
                                     @foreach(['male' => 'Male', 'female' => 'Female', 'other' => 'Other', 'prefer_not_to_say' => 'Prefer not to say'] as $val => $label)
-                                    <option value="{{ $val }}" class="bg-[#0d1117]" {{ old('gender', $user->profile->gender) === $val ? 'selected' : '' }}>{{ $label }}</option>
+                                    <option value="{{ $val }}" {{ old('gender', $user->profile->gender) === $val ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -399,9 +399,9 @@
                                 <label class="block text-xs font-semibold text-fg-muted mb-2">Current Academic Level</label>
                                 <select name="student_academic_level_id"
                                     class="w-full px-4 py-3 rounded-xl bg-surface-raised border @error('student_academic_level_id') border-red-500/50 @else border-edge @enderror text-fg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
-                                    <option value="" class="bg-[#0d1117]">— Select academic level —</option>
+                                    <option value="">— Select academic level —</option>
                                     @foreach($academicLevels as $level)
-                                    <option value="{{ $level->id }}" class="bg-[#0d1117]" {{ old('student_academic_level_id', $user->profile->student_academic_level_id) === $level->id ? 'selected' : '' }}>
+                                    <option value="{{ $level->id }}" {{ old('student_academic_level_id', $user->profile->student_academic_level_id) === $level->id ? 'selected' : '' }}>
                                         {{ $level->name }}
                                     </option>
                                     @endforeach
@@ -413,9 +413,9 @@
                                 <label class="block text-xs font-semibold text-fg-muted mb-2">Preferred Lesson Language</label>
                                 <select name="student_preferred_language_id"
                                     class="w-full px-4 py-3 rounded-xl bg-surface-raised border @error('student_preferred_language_id') border-red-500/50 @else border-edge @enderror text-fg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
-                                    <option value="" class="bg-[#0d1117]">— Select preferred language —</option>
+                                    <option value="">— Select preferred language —</option>
                                     @foreach($languages as $language)
-                                    <option value="{{ $language->id }}" class="bg-[#0d1117]" {{ (string) old('student_preferred_language_id', $user->profile->student_preferred_language_id) === (string) $language->id ? 'selected' : '' }}>
+                                    <option value="{{ $language->id }}" {{ (string) old('student_preferred_language_id', $user->profile->student_preferred_language_id) === (string) $language->id ? 'selected' : '' }}>
                                         {{ $language->name }}
                                     </option>
                                     @endforeach
@@ -475,9 +475,9 @@
                                 @if($billingCountryChangeBlocked)<input type="hidden" name="country_id" value="{{ $user->profile->country_id }}">@endif
                                 <select name="country_id" x-model="selectedCountryId" autocomplete="country" @disabled($billingCountryChangeBlocked)
                                     class="w-full px-4 py-3 rounded-xl bg-surface-raised border @error('country_id') border-red-500/50 @else border-edge @enderror text-fg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none disabled:cursor-not-allowed disabled:opacity-60">
-                                    <option value="" class="bg-[#0d1117]">— Select Country —</option>
+                                    <option value="">— Select Country —</option>
                                     @foreach($countries as $country)
-                                    <option value="{{ $country->id }}" class="bg-[#0d1117]">
+                                    <option value="{{ $country->id }}">
                                         {{ $country->flag }} {{ $country->name }} — {{ $country->defaultCurrency->code }}
                                     </option>
                                     @endforeach
@@ -491,9 +491,9 @@
                                 <label class="block text-xs font-semibold text-fg-muted mb-2">State / Province</label>
                                 <select name="state_id" autocomplete="address-level1"
                                     class="w-full px-4 py-3 rounded-xl bg-surface-raised border border-edge text-fg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all appearance-none">
-                                    <option value="" class="bg-[#0d1117]">— Select State —</option>
+                                    <option value="">— Select State —</option>
                                     <template x-for="state in statesForSelectedCountry" :key="state.id">
-                                        <option :value="state.id" class="bg-[#0d1117]" x-text="state.name"
+                                        <option :value="state.id" x-text="state.name"
                                             :selected="String(state.id) === '{{ old('state_id', $user->profile->state_id) }}'"></option>
                                     </template>
                                 </select>
@@ -611,7 +611,7 @@
                             <select name="profile_visibility"
                                 class="w-full sm:w-64 px-4 py-3 rounded-xl bg-surface-raised border border-edge text-fg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all appearance-none">
                                 @foreach(['public' => 'Public', 'members_only' => 'Members Only', 'private' => 'Private'] as $val => $label)
-                                <option value="{{ $val }}" class="bg-[#0d1117]" {{ $user->profile->profile_visibility === $val ? 'selected' : '' }}>{{ $label }}</option>
+                                <option value="{{ $val }}" {{ $user->profile->profile_visibility === $val ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>

@@ -6,6 +6,7 @@ namespace App\Booking\Meetings;
 
 use App\Booking\Contracts\DiscoversRecordingArtifacts;
 use App\Booking\Contracts\GoogleCalendarClient;
+use App\Booking\Contracts\GoogleMeetClient;
 use App\Booking\Contracts\MeetingProviderInterface;
 use App\Booking\Contracts\MeetingRecordingProviderInterface;
 use App\Booking\DTOs\DiscoveredRecording;
@@ -21,10 +22,13 @@ use App\Booking\Meetings\Concerns\BuildsSafeMeetingContent;
 use App\Booking\Meetings\Concerns\SanitizesProviderMessages;
 use App\Booking\Services\GoogleMeetRecordingLocator;
 use App\Booking\Services\GoogleMeetRecordingStager;
+use App\Booking\Services\RecordingAvailabilityResolver;
+use App\Country\Services\CountryResolver;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
 use App\Settings\MeetingSettings;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -74,9 +78,12 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, M
 
     public function __construct(
         private readonly GoogleCalendarClient $client,
+        private readonly GoogleMeetClient $meet,
         private readonly MeetingSettings $settings,
         private readonly GoogleMeetRecordingLocator $recordings,
         private readonly GoogleMeetRecordingStager $stager,
+        private readonly RecordingAvailabilityResolver $availability,
+        private readonly CountryResolver $countries,
     ) {}
 
     public function key(): string
@@ -100,20 +107,118 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, M
     public function createMeeting(Booking $booking, MeetingCreationContext $context): MeetingCreationResult
     {
         $requestId = 'meet-'.$booking->id.'-'.Str::random(8);
-        $payload = $this->eventPayload($booking, $context, $requestId);
         $credentials = $this->credentialsOrFail();
         $calendarId = $this->calendarIdOrFail();
         $subject = $this->delegatedSubjectOrFail();
 
         $this->assertMeetSupported($credentials, $calendarId, $subject);
 
+        // AUTO-RECORDING. A lesson the platform will record gets a space
+        // created through the Meet API with automatic recording ON, so
+        // nobody has to press Record. Meet only allows that configuration
+        // on spaces the app created itself — a Calendar-created
+        // conference can never carry it — which is why the space comes
+        // first and the Calendar event is attached to it. If the space
+        // cannot be created (settings scope not yet granted, Meet API
+        // down) the lesson still gets a Calendar-created conference,
+        // recorded manually as before: a missing auto-record must never
+        // cost a lesson its meeting.
+        $space = $this->autoRecordingSpace($booking, $credentials, $subject);
+        $payload = $this->eventPayload($booking, $context, $requestId, $space);
+
         try {
             $event = $this->client->insertEvent($credentials, $calendarId, $payload, $subject);
         } catch (Throwable $e) {
-            throw new BookingException($this->sanitize($e->getMessage()));
+            if ($space === null) {
+                throw new BookingException($this->sanitize($e->getMessage()));
+            }
+
+            // Calendar refused the attached conference: keep the space
+            // (it is what records) and carry the link as the event's
+            // location instead, so the platform calendar still shows it.
+            Log::warning('Google Calendar refused the attached Meet space; retrying with the link as location.', [
+                'booking_id' => $booking->id,
+                'reason' => $this->sanitize($e->getMessage()),
+            ]);
+
+            $fallback = $this->eventPayload($booking, $context, $requestId, null);
+            unset($fallback['conferenceRequestId']);
+            $fallback['location'] = $space['meetingUri'];
+
+            try {
+                $event = $this->client->insertEvent($credentials, $calendarId, $fallback, $subject);
+            } catch (Throwable $again) {
+                throw new BookingException($this->sanitize($again->getMessage()));
+            }
+        }
+
+        if ($space !== null) {
+            return $this->resultFromSpace($booking, $space, $event);
         }
 
         return $this->resultFromEvent($booking->starts_at, $booking->ends_at, $booking->timezone, $event);
+    }
+
+    /**
+     * Whether THIS lesson will be recorded by the platform — the same
+     * platform capability and per-provider switch RecordingEligibilityResolver
+     * applies, evaluated before the meeting exists. Consent is
+     * platform-wide (docs/decisions.md) and is not re-checked here.
+     */
+    private function shouldAutoRecord(Booking $booking): bool
+    {
+        if (! $this->recordings->isConfigured()) {
+            return false;
+        }
+
+        $student = $booking->student;
+
+        return $student !== null && $this->availability->isAvailable($this->countries->forStudent($student));
+    }
+
+    /** @return array{name: string, meetingCode: string, meetingUri: string}|null */
+    private function autoRecordingSpace(Booking $booking, string $credentials, string $subject): ?array
+    {
+        if (! $this->shouldAutoRecord($booking)) {
+            return null;
+        }
+
+        try {
+            return $this->meet->createSpace($credentials, $subject, autoRecording: true);
+        } catch (Throwable $e) {
+            Log::warning('Google Meet auto-recording space could not be created; falling back to a Calendar-created conference (manual Record).', [
+                'booking_id' => $booking->id,
+                'reason' => $this->sanitize($e->getMessage()),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * A meeting on a Meet-API-created space is Created the moment the
+     * space exists: unlike a Calendar conference there is no asynchronous
+     * creation to wait for. The meeting code is the space's own, which is
+     * exactly what GoogleMeetRecordingLocator later matches on.
+     *
+     * @param  array{name: string, meetingCode: string, meetingUri: string}  $space
+     * @param  array{id: string, hangoutLink: ?string, conferenceData: array<string, mixed>}  $event
+     */
+    private function resultFromSpace(Booking $booking, array $space, array $event): MeetingCreationResult
+    {
+        return new MeetingCreationResult(
+            provider: self::KEY,
+            providerMeetingId: $space['meetingCode'],
+            providerEventId: $event['id'] ?? null,
+            joinUrl: $space['meetingUri'],
+            hostUrl: null,
+            password: null,
+            startsAt: $booking->starts_at,
+            endsAt: $booking->ends_at,
+            timezone: $booking->timezone,
+            status: MeetingStatus::Created,
+            metadata: ['conference_status' => 'success', 'auto_recording' => true, 'space' => $space['name']],
+        );
     }
 
     public function updateMeeting(BookingMeeting $meeting, MeetingUpdateContext $context): MeetingCreationResult
@@ -280,20 +385,30 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, M
         return null;
     }
 
-    /** @return array<string, mixed> */
-    private function eventPayload(Booking $booking, MeetingCreationContext $context, string $requestId): array
+    /**
+     * @param  array{name: string, meetingCode: string, meetingUri: string}|null  $space  an existing Meet space to attach instead of requesting a new conference
+     * @return array<string, mixed>
+     */
+    private function eventPayload(Booking $booking, MeetingCreationContext $context, string $requestId, ?array $space = null): array
     {
         $startsAt = $context->startsAt ?? $booking->starts_at;
         $endsAt = $context->endsAt ?? $booking->ends_at;
         $timezone = $context->timezone ?? $booking->timezone;
 
-        return [
+        $payload = [
             'summary' => $this->safeTitle($booking),
             'description' => $this->safeDescription($booking),
             'start' => ['dateTime' => $startsAt->toIso8601String(), 'timeZone' => $timezone],
             'end' => ['dateTime' => $endsAt->toIso8601String(), 'timeZone' => $timezone],
-            'conferenceRequestId' => $requestId,
         ];
+
+        if ($space !== null) {
+            $payload['attachConference'] = ['meetingCode' => $space['meetingCode'], 'meetingUri' => $space['meetingUri']];
+        } else {
+            $payload['conferenceRequestId'] = $requestId;
+        }
+
+        return $payload;
     }
 
     private function calendarIdOrFail(): string

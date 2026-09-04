@@ -76,3 +76,4 @@ There is no general AI access in SIRI: no chat endpoint, no free-form prompt sur
 
 Prompt-injection defence is structural, not textual. No AI schema carries an action field, authorization is always evaluated before AI runs, and output is re-validated locally — so a model that fully complies with an injected instruction still has nowhere to put a command.
 
+Lesson recordings are platform-wide, not per-profile opt-in (2026-09-05). `user_profiles.consents_to_recording` defaults to true and the profile opt-out was withdrawn; notice is given via the Terms, the booking confirmation and the provider's in-meeting indicator (SRS §12.19). The eligibility gate and `consent_snapshot` remain for audit. Whether a student may WATCH stays a separate switch (`meeting.recording_student_playback_enabled`).

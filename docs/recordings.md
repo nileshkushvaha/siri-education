@@ -33,7 +33,7 @@ Booking confirmed
         ↓
 BookingMeetingService::createMeeting()
         ↓
-RecordingService::registerIfEligible()      ← consent + eligibility gates
+RecordingService::registerIfEligible()      ← eligibility gates (consent is platform-wide, see §4)
         ↓
 Recording row created                        status: pending
         ↓
@@ -200,35 +200,40 @@ slots in ahead of the same job with no downstream change.
 Every Meet query is bounded: filtered by meeting code, constrained to the
 lesson's own window, page-size capped, and hard-limited to 5 pages.
 
-### Automatic recording is NOT enabled — and cannot be
+### Automatic recording (since 2026-09-05)
 
 Meet can auto-record a space via
-`spaces.config.artifactConfig.recordingConfig.autoRecordingGeneration`.
-SIRI does not set it, for a reason that is a genuine Google constraint
-rather than a choice:
+`spaces.config.artifactConfig.recordingConfig.autoRecordingGeneration`,
+but only on a space the app created itself through the Meet API — a
+Calendar-created conference can never carry it. So a lesson the
+platform will record (`google_meet_recording_enabled`, credentials, and
+the platform recording capability for the student's country) now gets
+its space **from the Meet API with auto-recording ON**, and the Calendar
+event is attached to that space (`conferenceData` with the space's
+meeting code and URI). The meeting code is the space's own, so
+discovery is unchanged.
 
-> Configuring a space requires the `meetings.space.settings` scope, and
-> Meet only permits an app to configure **spaces it created itself
-> through the Meet API**. SIRI's conferences are created by the
-> **Calendar API** (`conferenceData.createRequest`), which makes their
-> spaces Calendar-created. Google provides no scope that lets an app
-> configure another app's space.
+Nobody presses Record. Recording starts when the conference starts and
+Google generates the file when it ends.
 
-**Operational consequence: a human must press Record in the meeting for
-a recording to exist at all.** Everything downstream is automatic; the
-start is not. This must be part of instructor onboarding.
+**Fallback, always.** The space is an optimisation of how recording
+starts, never a condition for the meeting to exist. If the space cannot
+be created (the `meetings.space.settings` scope not granted, Meet API
+unavailable) the lesson gets a Calendar-created conference exactly as
+before and a warning is logged; if Calendar refuses the attached
+conference, the space is kept and its link rides on the event's
+`location`. `GoogleMeetAutoRecordingTest` covers each path.
 
-The remedy, if auto-recording becomes a requirement, is to create the
-meeting space via the Meet API and attach it to the Calendar event
-instead of letting Calendar create the conference. That is a change to
-meeting *creation*, not to recording, and it would additionally allow
-dropping to the narrower `meetings.space.created` scope. It was not done
-now because it alters a working, tested booking flow for a benefit that
-consent rules must gate anyway — see §14.
+**Scopes are requested separately.** Reads use `meetings.space.readonly`
+on their own token and space creation uses `meetings.space.settings` on
+its own, so a delegation grant that lacks the settings scope degrades to
+manual recording instead of breaking discovery for every lesson.
 
-A test asserts the integration never reaches for auto-recording, so a
-future change has to confront the consent question deliberately rather
-than switching it on by accident.
+Workspace prerequisites: the edition must include Meet recording, and
+Admin console → Apps → Google Workspace → Google Meet → Recording must
+allow recording (and automatic recording) for the platform account's
+organisational unit. External participants still need to be admitted
+unless the Meet access settings allow them in.
 
 ---
 
@@ -246,7 +251,7 @@ than switching it on by accident.
 | **`storage_checksum`** | sha256 of the source bytes, computed while staged locally |
 | `status` | see the lifecycle above |
 | `idempotency_key` | `recording:<meeting id>`, uniquely indexed |
-| `consent_snapshot` | both participants' consent at registration time (§12.19) |
+| `consent_snapshot` | both participants' consent values at registration time (§12.19). Since 2026-09-05 recording consent is platform-wide: `user_profiles.consents_to_recording` defaults to true, existing rows were backfilled, and the profile opt-out was withdrawn — notice is given via the Terms, the booking confirmation and the provider's in-meeting indicator. The gate and the snapshot remain so the audit trail is unchanged. |
 | `duration_seconds`, `size_bytes`, `mime_type` | metadata that must outlive the file (§12.21) |
 | `capture_attempts`, `failure_code` | bounded retry budget and a stable failure label |
 | `recorded_at`, `transfer_started_at`, `stored_at`, `available_at`, `failed_at`, `expires_at` | lifecycle timestamps |
@@ -316,6 +321,7 @@ drives).
 |---|---|---|
 | Calendar | `calendar` | Creates the Meet conference (pre-existing) |
 | Meet REST v2 | `meetings.space.readonly` | Read `conferenceRecords` and `recordings` to locate the artifact |
+| Meet REST v2 | `meetings.space.created` + `meetings.space.settings` | Create the lesson's space (created) with automatic recording ON (settings) — §3 |
 | Drive | `drive.meet.readonly` | **Read the Meet-created MP4** |
 | Drive | `drive.file` | Create/manage SIRI's own recording folders, copies and uploads |
 
@@ -414,6 +420,16 @@ Notably:
   same object requirement.
 - There is no signed, tokenised or pre-generated URL anywhere, so there
   is nothing to leak or forward.
+- The stream route serves **player requests only**, using Fetch
+  Metadata: a navigation (`Sec-Fetch-Mode: navigate`, a URL pasted into
+  the address bar) is redirected to the watch page; anything not
+  `same-origin`/`same-site` is refused; browsers without Fetch Metadata
+  must carry a same-origin `Referer`. Media elements pass in every
+  browser (Chrome labels them dest `empty` / mode `no-cors`, Firefox
+  and Safari dest `video`). Refusals are logged with the request shape.
+  This closes the "open the link and save the file" path. It is a
+  deterrent — an authorized viewer with developer tools can still copy
+  bytes they may watch.
 - Opening the player and every refusal of an authenticated user are
   written to the audit trail (`recordings` channel:
   `recording_playback_opened`, `recording_access_denied`) with the
@@ -753,11 +769,14 @@ Before enabling recording acquisition and Drive storage:
    **all four**, keeping the existing Calendar scope:
    - `https://www.googleapis.com/auth/calendar`
    - `https://www.googleapis.com/auth/meetings.space.readonly`
+   - `https://www.googleapis.com/auth/meetings.space.created`
+   - `https://www.googleapis.com/auth/meetings.space.settings`
    - `https://www.googleapis.com/auth/drive.meet.readonly`
    - `https://www.googleapis.com/auth/drive.file`
 
-   All four in one grant. Omitting any one breaks **every** scope,
-   including meeting creation.
+   All six in one grant. Omitting the created/settings scopes only disables
+   automatic recording (manual Record still works); omitting any other
+   breaks the scopes requested together with it.
 3. Confirm the Workspace edition includes **Meet recording** (Business
    Standard and above, Enterprise, Education Plus, Teaching & Learning
    Upgrade). Without it no recording is ever produced and there is
@@ -774,8 +793,10 @@ Before enabling recording acquisition and Drive storage:
    `siri-recordings` Supervisor program.
 8. Turn on **`meeting.google_meet_recording_enabled`**. It ships OFF
    precisely so steps 1–2 cannot be skipped.
-9. **Brief instructors that they must press Record** — see §3;
-   auto-recording is not available to this integration.
+9. Recording starts automatically on Meet-API-created spaces (§3);
+   brief instructors that a lesson whose meeting fell back to a
+   Calendar conference (see the warning in the log) must be recorded
+   manually.
 10. Verify with one real lesson end to end before enabling broadly.
 
 No credential value is ever entered into `.env` or committed.
@@ -786,13 +807,13 @@ No credential value is ever entered into `.env` or committed.
 
 | Symptom | Likely cause | What to do |
 |---|---|---|
-| **No recording exists at all** | Nobody pressed Record. Auto-recording is not available to this integration (§3), and Meet produces no artifact without it. | Confirm with the instructor; check the Workspace edition includes Meet recording. |
+| **No recording exists at all** | The space was Calendar-created (auto-record fallback — check the log for the warning) and nobody pressed Record, or the Workspace edition/admin setting does not allow recording. | Grant `meetings.space.settings`, allow automatic recording in the Workspace admin console, confirm the edition includes Meet recording. |
 | **`source_access_denied`** | The `meetings.space.readonly` or `drive.meet.readonly` scope is missing from the domain-wide delegation grant. | Complete step 2 of §14. Transient, so the sweep recovers automatically once fixed. |
 | **`source_rate_limited`** | Meet API quota or rate limit. | Transient; the bounded sweep retries. Investigate only if persistent. |
 | **`source_expired` on a Meet lesson** | Google's conference record no longer exists (artifacts expire). | Permanent — unrecoverable. |
 | **Recording stays pending for a while after class** | Normal. Google reconciles the conference record and generates the MP4 asynchronously. | Wait for a sweep cycle or two before investigating. |
 | **Multiple segments alert** | The class was recorded in several Record start/stop sessions. SIRI stores the earliest. | Product decision — see §15 of the report / `RecordingMultipleArtifacts` alerts. |
-| **Recording never discovered** — no row exists | Eligibility gate. Recording disabled globally/per-country, booking not confirmed, a participant has not consented, or the provider declines recording. | Check `FeatureSettings::recording_enabled`, `MeetingSettings::recording_enabled`, both profiles' `consents_to_recording`, and whether the active provider implements `MeetingRecordingProviderInterface`. `RecordingEligibilityResolver` returns a specific reason code for each. |
+| **Recording never discovered** — no row exists | Eligibility gate at meeting creation: recording disabled globally/per-country, booking not confirmed, or the provider declines recording. | The application log carries `Lesson recording not registered.` with the reason code for every skipped meeting. Check `FeatureSettings::recording_enabled`, `MeetingSettings::recording_enabled`, the provider's own recording switch and credentials. Once the switches are fixed, `recordings:capture` registers the missing row itself for any confirmed/completed lesson that ended inside `recording_capture_retry_minutes`. |
 | **Row stuck `pending`** | Provider not ready yet, or the queue worker is down. | Normal for a while after a lesson. If it persists, check the `recordings` worker and run `php artisan recordings:capture`. |
 | **Row stuck `transferring`** | Worker crashed mid-upload. | The sweep reclaims it after `recording_transfer_stale_minutes` (default 120). Force with `recordings:capture`. |
 | **Row stuck `stored`** | Verification is failing repeatedly. | The object exists but the backend reports a different size, or is trashed. Check the failure code and the Drive file; a retry re-verifies without re-uploading. |

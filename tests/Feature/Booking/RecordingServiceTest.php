@@ -27,6 +27,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
@@ -228,6 +229,22 @@ final class RecordingServiceTest extends TestCase
             0,
             NotificationDispatchLog::query()->where('idempotency_key', 'like', 'recording_available:%')->count(),
         );
+    }
+
+    /** An ineligible lesson leaves an operator-readable reason in the application log. */
+    public function test_an_ineligible_registration_logs_its_reason(): void
+    {
+        $this->student->profile()->update(['consents_to_recording' => false]);
+        $booking = Booking::factory()->confirmed()->create(['student_id' => $this->student->id, 'instructor_id' => $this->instructor->id]);
+        $meeting = BookingMeeting::factory()->create(['booking_id' => $booking->id]);
+
+        Log::shouldReceive('info')->once()->withArgs(function (string $message, array $context) use ($booking): bool {
+            return str_contains($message, 'not registered')
+                && $context['booking_id'] === $booking->id
+                && $context['reason'] === 'student_consent_missing';
+        });
+
+        $this->assertNull($this->service->registerIfEligible($booking, $meeting, new FakeMeetingProvider));
     }
 
     public function test_capture_leaves_recording_pending_when_provider_reports_not_ready(): void

@@ -180,6 +180,18 @@ final class RecordingEligibilityResolverTest extends TestCase
         $this->assertSame('booking_not_confirmed', $result->reason);
     }
 
+    /** A completed booking is a confirmed booking that ran — the sweep may register it late. */
+    public function test_a_completed_booking_is_eligible_but_a_cancelled_one_is_not(): void
+    {
+        $this->enableAllGlobalFlags();
+
+        $completed = Booking::factory()->create(['status' => BookingStatus::Completed, 'student_id' => $this->student->id, 'instructor_id' => $this->instructor->id]);
+        $this->assertTrue($this->resolver->evaluate($completed, new FakeMeetingProvider)->eligible);
+
+        $cancelled = Booking::factory()->create(['status' => BookingStatus::Cancelled, 'student_id' => $this->student->id, 'instructor_id' => $this->instructor->id]);
+        $this->assertSame('booking_not_confirmed', $this->resolver->evaluate($cancelled, new FakeMeetingProvider)->reason);
+    }
+
     public function test_ineligible_when_the_student_is_not_an_active_account(): void
     {
         $this->enableAllGlobalFlags();

@@ -85,4 +85,19 @@ interface GoogleMeetClient
      * @throws GatewayRequestException with a credential-free message
      */
     public function verifyTokenAcquisition(string $credentialsJson, string $delegatedSubject): void;
+
+    /**
+     * Creates a Meet space owned by the delegated account, optionally
+     * configured to record every conference automatically. Only a space
+     * created THROUGH the Meet API can carry that configuration — a
+     * Calendar-created conference cannot — which is the whole reason
+     * this method exists. Requires the meetings.space.settings scope;
+     * the caller must treat a failure as "fall back to a
+     * Calendar-created conference", never as a meeting failure.
+     *
+     * @return array{name: string, meetingCode: string, meetingUri: string}
+     *
+     * @throws GatewayRequestException
+     */
+    public function createSpace(string $credentialsJson, string $delegatedSubject, bool $autoRecording): array;
 }

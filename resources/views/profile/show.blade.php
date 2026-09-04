@@ -621,7 +621,6 @@
                             ['show_email', 'Show email on profile', $user->profile->show_email],
                             ['show_phone', 'Show phone on profile', $user->profile->show_phone],
                             ['show_social_links', 'Show social links on profile', $user->profile->show_social_links],
-                            ['consents_to_recording', 'Allow my lessons to be recorded', $user->profile->consents_to_recording],
                             ] as [$field, $label, $enabled])
                             <label class="flex items-center justify-between gap-4 p-4 rounded-xl border border-edge hover:border-edge-strong hover:bg-surface-hover cursor-pointer transition-all">
                                 <span class="text-sm font-medium text-fg">{{ $label }}</span>

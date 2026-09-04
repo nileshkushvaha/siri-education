@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Booking\Enums\BookingStatus;
 use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Services\RecordingService;
 use App\Booking\Services\RecordingStagingArea;
@@ -47,6 +48,10 @@ final class CaptureLessonRecordings extends Command
 
         $reclaimed = $recordings->reclaimStalledTransfers($settings->recording_transfer_stale_minutes, $batchSize);
 
+        // Row reconciliation first, so a lesson registered late in this
+        // run is also captured in this run when it is already due.
+        $registered = $recordings->registerMissing($registry, $settings->recording_capture_retry_minutes, $batchSize);
+
         $endedBefore = now()->subMinutes(max(0, $settings->recording_capture_delay_minutes));
         $endedAfter = now()->subHours(max(1, $settings->recording_capture_max_age_hours));
 
@@ -54,6 +59,10 @@ final class CaptureLessonRecordings extends Command
             ->dueForCapture()
             ->where('capture_attempts', '<', max(1, $settings->recording_capture_max_attempts))
             ->whereHas('bookingMeeting', fn ($query) => $query->whereBetween('ends_at', [$endedAfter, $endedBefore]))
+            // A lesson that was cancelled after its meeting (and recording
+            // row) were created produced nothing: never look for it, and
+            // never raise a "no recording" alert for it.
+            ->whereHas('booking', fn ($query) => $query->whereIn('status', [BookingStatus::Confirmed, BookingStatus::Completed]))
             ->with('bookingMeeting')
             ->lazyById($batchSize);
 
@@ -75,7 +84,8 @@ final class CaptureLessonRecordings extends Command
         $purged = $staging->purgeStale();
 
         $this->info(sprintf(
-            'Processed %d pending recording(s); reclaimed %d stalled transfer(s); purged %d stale staged file(s).',
+            'Registered %d missing recording(s); processed %d pending recording(s); reclaimed %d stalled transfer(s); purged %d stale staged file(s).',
+            $registered,
             $processed,
             $reclaimed,
             $purged,

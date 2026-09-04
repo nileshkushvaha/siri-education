@@ -36,7 +36,10 @@ final class RecordingEligibilityResolver
 
     public function evaluate(Booking $booking, MeetingProviderInterface $provider): RecordingEligibilityResult
     {
-        if ($booking->status !== BookingStatus::Confirmed) {
+        // Confirmed at creation time; Completed when the sweep registers a
+        // row that was missed (switches fixed after the lesson ran). Never
+        // Pending, Cancelled or NoShow — nothing was, or will be, delivered.
+        if (! in_array($booking->status, [BookingStatus::Confirmed, BookingStatus::Completed], true)) {
             return RecordingEligibilityResult::ineligible('booking_not_confirmed');
         }
 

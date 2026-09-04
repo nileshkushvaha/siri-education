@@ -9,8 +9,10 @@ use App\Booking\Exceptions\GatewayRequestException;
 use Google\Client;
 use Google\Service\Calendar;
 use Google\Service\Calendar\ConferenceData;
+use Google\Service\Calendar\ConferenceSolution;
 use Google\Service\Calendar\ConferenceSolutionKey;
 use Google\Service\Calendar\CreateConferenceRequest;
+use Google\Service\Calendar\EntryPoint;
 use Google\Service\Calendar\Event;
 use Google\Service\Calendar\EventDateTime;
 use Google\Service\Exception as GoogleServiceException;
@@ -248,15 +250,43 @@ final class GoogleCalendarSdkClient implements GoogleCalendarClient
         $end->setTimeZone($payload['end']['timeZone']);
         $event->setEnd($end);
 
+        if (isset($payload['location'])) {
+            $event->setLocation((string) $payload['location']);
+        }
+
         $solutionKey = new ConferenceSolutionKey;
         $solutionKey->setType(self::GOOGLE_MEET_CONFERENCE_TYPE);
 
-        $createRequest = new CreateConferenceRequest;
-        $createRequest->setRequestId($payload['conferenceRequestId'] ?? Str::uuid()->toString());
-        $createRequest->setConferenceSolutionKey($solutionKey);
-
         $conferenceData = new ConferenceData;
-        $conferenceData->setCreateRequest($createRequest);
+
+        if (isset($payload['attachConference'])) {
+            // An EXISTING Meet space (created through the Meet API so it
+            // can carry auto-recording) attached to the event, rather
+            // than a new Calendar-created conference.
+            $attach = $payload['attachConference'];
+
+            $solution = new ConferenceSolution;
+            $solution->setKey($solutionKey);
+
+            $entryPoint = new EntryPoint;
+            $entryPoint->setEntryPointType('video');
+            $entryPoint->setUri((string) $attach['meetingUri']);
+            $entryPoint->setLabel(preg_replace('#^https?://#', '', (string) $attach['meetingUri']) ?: null);
+
+            $conferenceData->setConferenceId((string) $attach['meetingCode']);
+            $conferenceData->setConferenceSolution($solution);
+            $conferenceData->setEntryPoints([$entryPoint]);
+        } elseif (! array_key_exists('conferenceRequestId', $payload) && isset($payload['location'])) {
+            // Fallback event with the Meet link as location only — no
+            // conference requested.
+            return $event;
+        } else {
+            $createRequest = new CreateConferenceRequest;
+            $createRequest->setRequestId($payload['conferenceRequestId'] ?? Str::uuid()->toString());
+            $createRequest->setConferenceSolutionKey($solutionKey);
+            $conferenceData->setCreateRequest($createRequest);
+        }
+
         $event->setConferenceData($conferenceData);
 
         return $event;

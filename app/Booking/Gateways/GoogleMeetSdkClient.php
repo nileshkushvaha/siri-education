@@ -9,6 +9,10 @@ use App\Booking\Exceptions\GatewayRequestException;
 use Google\Client;
 use Google\Service\Exception as GoogleServiceException;
 use Google\Service\Meet;
+use Google\Service\Meet\ArtifactConfig;
+use Google\Service\Meet\RecordingConfig;
+use Google\Service\Meet\Space;
+use Google\Service\Meet\SpaceConfig;
 use GuzzleHttp\Exception\RequestException;
 use Throwable;
 
@@ -22,26 +26,48 @@ use Throwable;
  * google/apiclient-services package this project uses for Calendar and
  * Drive.
  *
- * SCOPE, verified rather than assumed: `meetings.space.created` grants
- * access only to spaces the calling app created THROUGH THE MEET API.
- * SIRI's Meet conferences are created by the Calendar API, so they are
- * Calendar-created and that scope reads none of them. This client
- * therefore requests `meetings.space.readonly`, which is read-only and
- * covers spaces the impersonated Workspace account can see. It is the
- * narrowest scope that actually works for this architecture — see
- * docs/recordings.md for the alternative (moving space creation onto
- * the Meet API) and why it was not taken now.
+ * SCOPES, verified against the live API rather than assumed:
+ * `meetings.space.readonly` reads conference records of every space the
+ * impersonated account can see (including the Calendar-created spaces
+ * of older lessons); `meetings.space.created` + `meetings.space.settings`
+ * create a lesson's space through the Meet API with automatic recording
+ * configured. Reads and creation use separate tokens — see READ_SCOPES /
+ * SPACE_SCOPES below and docs/recordings.md §3/§6.
  */
 final class GoogleMeetSdkClient implements GoogleMeetClient
 {
     /**
-     * Read-only, and deliberately NOT meetings.space.created — see the
-     * class docblock. Any change here must be mirrored exactly in the
-     * Workspace domain-wide delegation grant, or token acquisition
-     * fails for EVERY scope with `401 unauthorized_client`, not just
-     * the changed one.
+     * Read and create scopes, requested on SEPARATE tokens:
+     *
+     *  meetings.space.readonly  read conferenceRecords/recordings of any
+     *                           space the account can see — including the
+     *                           Calendar-created spaces of older lessons
+     *  meetings.space.created   create a space through the Meet API
+     *  meetings.space.settings  set that space's config (auto-recording)
+     *
+     * A delegation grant that lacks the create/settings scopes would
+     * otherwise fail token acquisition for the read scope too, silently
+     * breaking recording discovery for every lesson. Reads use the
+     * read-only token; createSpace() uses the space token and fails on
+     * its own, which the provider turns into a Calendar-created
+     * conference without auto-recording. Any change here must be
+     * mirrored exactly in the Workspace delegation grant.
      */
-    private const REQUESTED_SCOPES = [Meet::MEETINGS_SPACE_READONLY];
+    private const READ_SCOPES = [Meet::MEETINGS_SPACE_READONLY];
+
+    /**
+     * spaces.create itself needs meetings.space.created (verified against
+     * the live API: settings alone answers 403 insufficientPermissions
+     * even for an unconfigured space); the auto-recording config on that
+     * space needs meetings.space.settings. Both go on the one token used
+     * for space creation.
+     */
+    private const SPACE_SCOPES = [Meet::MEETINGS_SPACE_CREATED, Meet::MEETINGS_SPACE_SETTINGS];
+
+    private const REQUESTED_SCOPES = [Meet::MEETINGS_SPACE_READONLY, Meet::MEETINGS_SPACE_CREATED, Meet::MEETINGS_SPACE_SETTINGS];
+
+    /** The scope set of the token most recently minted — for credential-free diagnostics only. */
+    private array $activeScopes = self::READ_SCOPES;
 
     /** Google coerces anything above this; stated explicitly so paging is bounded by intent, not by a default. */
     private const MAX_PAGE_SIZE = 100;
@@ -57,9 +83,47 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
     public function verifyTokenAcquisition(string $credentialsJson, string $delegatedSubject): void
     {
         try {
-            $this->service($credentialsJson, $delegatedSubject);
+            // Both grants, each on its own token, so the diagnostic names
+            // exactly which scope the delegation entry is missing.
+            $this->service($credentialsJson, $delegatedSubject, self::READ_SCOPES);
+            $this->service($credentialsJson, $delegatedSubject, self::SPACE_SCOPES);
         } catch (GatewayRequestException $e) {
             throw $e;
+        } catch (Throwable $e) {
+            throw new GatewayRequestException($e->getMessage(), previous: $e);
+        }
+    }
+
+    public function createSpace(string $credentialsJson, string $delegatedSubject, bool $autoRecording): array
+    {
+        try {
+            $space = new Space;
+
+            if ($autoRecording) {
+                $recording = new RecordingConfig;
+                $recording->setAutoRecordingGeneration('ON');
+                $artifacts = new ArtifactConfig;
+                $artifacts->setRecordingConfig($recording);
+                $config = new SpaceConfig;
+                $config->setArtifactConfig($artifacts);
+                $space->setConfig($config);
+            }
+
+            $created = $this->service($credentialsJson, $delegatedSubject, self::SPACE_SCOPES)->spaces->create($space);
+
+            $name = (string) $created->getName();
+            $code = (string) $created->getMeetingCode();
+            $uri = (string) $created->getMeetingUri();
+
+            if ($name === '' || $code === '' || $uri === '') {
+                throw new GatewayRequestException('Google Meet returned an incomplete space (missing name, meeting code or URI).');
+            }
+
+            return ['name' => $name, 'meetingCode' => $code, 'meetingUri' => $uri];
+        } catch (GatewayRequestException $e) {
+            throw $e;
+        } catch (GoogleServiceException $e) {
+            throw $this->translateApiException($e, $delegatedSubject);
         } catch (Throwable $e) {
             throw new GatewayRequestException($e->getMessage(), previous: $e);
         }
@@ -185,14 +249,17 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
      * explicit token exchange so a delegation problem is diagnosed
      * here rather than surfacing as an opaque API error later.
      */
-    private function service(string $credentialsJson, string $delegatedSubject): Meet
+    /** @param  list<string>|null  $scopes  defaults to the read-only scope */
+    private function service(string $credentialsJson, string $delegatedSubject, ?array $scopes = null): Meet
     {
+        $scopes ??= self::READ_SCOPES;
+        $this->activeScopes = $scopes;
         $decoded = json_decode($credentialsJson, true, flags: JSON_THROW_ON_ERROR);
 
         $client = new Client;
         $client->setApplicationName(config('app.name', 'Enterprise App').' Meet Recordings');
         $client->setAuthConfig($decoded);
-        $client->setScopes(self::REQUESTED_SCOPES);
+        $client->setScopes($scopes);
         $client->setSubject($delegatedSubject);
 
         $this->assertTokenAcquired($client, $decoded, $delegatedSubject);
@@ -254,7 +321,7 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
             $description !== null ? sprintf('Description: %s', $description) : null,
             sprintf('Client email: %s', $decodedCredentials['client_email'] ?? 'unknown'),
             sprintf('Delegated subject: %s', $delegatedSubject),
-            sprintf('Requested scopes: [%s]', implode(', ', self::REQUESTED_SCOPES)),
+            sprintf('Requested scopes: [%s]', implode(', ', $this->activeScopes)),
         ], static fn (?string $part): bool => $part !== null));
     }
 
@@ -267,7 +334,7 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
         return new GatewayRequestException(implode('. ', [
             sprintf('Google Meet API error (HTTP %d, reason: %s): %s', $e->getCode(), $reason, $message),
             sprintf('Delegated account: %s', $delegatedSubject),
-            sprintf('Requested scopes: [%s]', implode(', ', self::REQUESTED_SCOPES)),
+            sprintf('Requested scopes: [%s]', implode(', ', $this->activeScopes)),
         ]), previous: $e);
     }
 

@@ -52,6 +52,10 @@ final class RecordingStudentPlaybackTest extends TestCase
         Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
 
+        // Every request in this suite is what a <video> element sends
+        // (Chrome's shape) unless a test says otherwise.
+        $this->withServerVariables(['HTTP_SEC_FETCH_DEST' => 'empty', 'HTTP_SEC_FETCH_MODE' => 'no-cors', 'HTTP_SEC_FETCH_SITE' => 'same-origin']);
+
         $this->setPlayback(true);
     }
 
@@ -415,6 +419,45 @@ final class RecordingStudentPlaybackTest extends TestCase
 
         $response->assertOk();
         $this->assertSame(self::CONTENT, $response->streamedContent());
+    }
+
+    // ── Only the player may fetch the stream ──────────────────────────
+
+    /** Pasting the stream URL into the address bar lands on the watch page, never on a raw file. */
+    public function test_a_direct_navigation_to_the_stream_is_sent_to_the_watch_page(): void
+    {
+        $student = $this->activeStudent();
+        $recording = $this->storedRecording($student, $this->activeInstructor());
+
+        $this->withServerVariables(['HTTP_SEC_FETCH_DEST' => 'document', 'HTTP_SEC_FETCH_MODE' => 'navigate', 'HTTP_SEC_FETCH_SITE' => 'none']);
+
+        $this->actingAs($student)
+            ->get(route('dashboard.recordings.stream', $recording))
+            ->assertRedirect(route('dashboard.recordings.watch', $recording));
+    }
+
+    /** Every browser's media-element shape is served; foreign sites and legacy clients without a same-origin Referer are not. */
+    public function test_only_same_site_player_requests_can_pull_the_stream(): void
+    {
+        $student = $this->activeStudent();
+        $recording = $this->storedRecording($student, $this->activeInstructor());
+        $url = route('dashboard.recordings.stream', $recording);
+
+        // Firefox/Safari label the element itself.
+        $this->withServerVariables(['HTTP_SEC_FETCH_DEST' => 'video', 'HTTP_SEC_FETCH_MODE' => 'no-cors', 'HTTP_SEC_FETCH_SITE' => 'same-origin']);
+        $this->actingAs($student)->get($url)->assertOk();
+
+        // A foreign page embedding the URL.
+        $this->withServerVariables(['HTTP_SEC_FETCH_DEST' => 'video', 'HTTP_SEC_FETCH_MODE' => 'no-cors', 'HTTP_SEC_FETCH_SITE' => 'cross-site']);
+        $this->actingAs($student)->get($url)->assertForbidden();
+
+        // A legacy browser without Fetch Metadata: no Referer, or a foreign one, is refused …
+        $this->withServerVariables(['HTTP_SEC_FETCH_DEST' => null, 'HTTP_SEC_FETCH_MODE' => null, 'HTTP_SEC_FETCH_SITE' => null]);
+        $this->actingAs($student)->get($url)->assertForbidden();
+        $this->actingAs($student)->withHeaders(['Referer' => 'https://evil.example/page'])->get($url)->assertForbidden();
+
+        // … while the page's own media element (same-origin Referer) is served.
+        $this->actingAs($student)->withHeaders(['Referer' => route('dashboard.recordings.watch', $recording)])->get($url)->assertOk();
     }
 
     // ── Seeking ───────────────────────────────────────────────────────

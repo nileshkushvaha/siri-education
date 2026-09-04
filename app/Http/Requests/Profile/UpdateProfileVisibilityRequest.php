@@ -24,9 +24,6 @@ class UpdateProfileVisibilityRequest extends FormRequest
             'show_email' => ['nullable', 'boolean'],
             'show_phone' => ['nullable', 'boolean'],
             'show_social_links' => ['nullable', 'boolean'],
-            // SRS §12.19 — standing consent to being recorded
-            // during lessons; opt-in, defaults false.
-            'consents_to_recording' => ['nullable', 'boolean'],
         ];
     }
 
@@ -36,7 +33,6 @@ class UpdateProfileVisibilityRequest extends FormRequest
             'show_email' => $this->boolean('show_email'),
             'show_phone' => $this->boolean('show_phone'),
             'show_social_links' => $this->boolean('show_social_links'),
-            'consents_to_recording' => $this->boolean('consents_to_recording'),
         ]);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Booking;
 
+use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\RecordingStatus;
 use App\Booking\Jobs\CaptureLessonRecordingJob;
 use App\Booking\Meetings\FakeMeetingProvider;
@@ -11,8 +12,11 @@ use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Services\RecordingService;
 use App\Booking\Services\RecordingStagingArea;
 use App\Booking\Storage\FilesystemRecordingStorage;
+use App\Models\Booking;
 use App\Models\BookingMeeting;
 use App\Models\Recording;
+use App\Models\User;
+use App\Settings\FeatureSettings;
 use App\Settings\MeetingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +77,8 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
     {
         $recording = Recording::factory()->create(['provider' => FakeMeetingProvider::KEY]);
         $recording->bookingMeeting->update(['ends_at' => now()->subHours(2), 'provider' => FakeMeetingProvider::KEY]);
+        // The sweep only looks at confirmed/completed bookings.
+        $recording->booking->update(['status' => BookingStatus::Confirmed]);
 
         return $recording->fresh();
     }
@@ -187,6 +193,92 @@ final class RecordingCaptureJobAndSweepTest extends TestCase
         DB::disableQueryLog();
 
         $this->assertSame($withoutNoise, $withNoise, 'sweep query count should not grow from unrelated settled recordings in the table');
+    }
+
+    // ── Row reconciliation ────────────────────────────────────────────
+
+    private function enableRecording(): void
+    {
+        $features = app(FeatureSettings::class);
+        $features->recording_enabled = true;
+        $features->save();
+
+        $meetings = app(MeetingSettings::class);
+        $meetings->recording_enabled = true;
+        $meetings->save();
+    }
+
+    /** A created meeting for a booking in $status that ended $endedMinutesAgo ago, with NO recording row. */
+    private function unregisteredMeeting(BookingStatus $status, int $endedMinutesAgo = 60): BookingMeeting
+    {
+        $student = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $instructor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $booking = Booking::factory()->create(['status' => $status, 'student_id' => $student->id, 'instructor_id' => $instructor->id]);
+
+        return BookingMeeting::factory()->created()->create([
+            'booking_id' => $booking->id,
+            'provider' => FakeMeetingProvider::KEY,
+            'starts_at' => now()->subMinutes($endedMinutesAgo + 60),
+            'ends_at' => now()->subMinutes($endedMinutesAgo),
+        ]);
+    }
+
+    /**
+     * A lesson that ran while a switch was off — or whose registration
+     * was missed for any reason — gets its row from the sweep once it is
+     * eligible, and is captured in the same run. This is what turns
+     * "always record" into a guarantee rather than a hope.
+     */
+    public function test_the_sweep_registers_a_missing_recording_for_a_completed_lesson_and_captures_it(): void
+    {
+        $this->enableRecording();
+        FakeMeetingProvider::$nextRecordingContents = "\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2avc1mp41".str_repeat("\x00", 200);
+
+        $meeting = $this->unregisteredMeeting(BookingStatus::Completed);
+
+        $this->artisan('recordings:capture')
+            ->expectsOutputToContain('Registered 1 missing recording(s)')
+            ->assertSuccessful();
+
+        $recording = Recording::query()->where('booking_meeting_id', $meeting->id)->first();
+        $this->assertNotNull($recording);
+        $this->assertSame('recording:'.$meeting->id, $recording->idempotency_key);
+        $this->assertSame(RecordingStatus::Available, $recording->status, 'captured in the same run');
+
+        // Idempotent: a second sweep registers nothing new.
+        $this->artisan('recordings:capture')->expectsOutputToContain('Registered 0 missing recording(s)');
+        $this->assertSame(1, Recording::query()->where('booking_meeting_id', $meeting->id)->count());
+    }
+
+    /** A pending row whose booking was later cancelled is never captured or alerted on. */
+    public function test_the_sweep_skips_pending_recordings_of_cancelled_bookings(): void
+    {
+        FakeMeetingProvider::$nextRecordingContents = 'x';
+        $recording = $this->pendingRecording();
+        $recording->booking->update(['status' => BookingStatus::Cancelled]);
+
+        $this->artisan('recordings:capture')->expectsOutputToContain('processed 0 pending recording(s)');
+
+        $this->assertSame(RecordingStatus::Pending, $recording->fresh()->status);
+        $this->assertSame(0, $recording->fresh()->capture_attempts);
+    }
+
+    public function test_the_sweep_never_registers_cancelled_out_of_window_or_ineligible_lessons(): void
+    {
+        $this->enableRecording();
+
+        $cancelled = $this->unregisteredMeeting(BookingStatus::Cancelled);
+        $tooOld = $this->unregisteredMeeting(BookingStatus::Completed, endedMinutesAgo: app(MeetingSettings::class)->recording_capture_retry_minutes + 30);
+        $notEnded = BookingMeeting::factory()->created()->create(['provider' => FakeMeetingProvider::KEY, 'starts_at' => now()->addHour(), 'ends_at' => now()->addHours(2)]);
+
+        FakeMeetingProvider::$supportsRecording = false;
+        $providerCannot = $this->unregisteredMeeting(BookingStatus::Completed);
+
+        $this->artisan('recordings:capture')->expectsOutputToContain('Registered 0 missing recording(s)');
+
+        foreach ([$cancelled, $tooOld, $notEnded, $providerCannot] as $meeting) {
+            $this->assertSame(0, Recording::query()->where('booking_meeting_id', $meeting->id)->count());
+        }
     }
 
     public function test_expire_sweep_command_delegates_to_the_configured_batch_size(): void

@@ -55,7 +55,7 @@ watch one that already exists is a separate switch
 | Provider meeting id | ✅ meeting code | ✅ numeric id | — |
 | Recording capable | ✅ | ✅ | ❌ |
 | Recording optional | ✅ | ✅ | n/a |
-| Auto-recording | ❌ (see §4) | ✅ per meeting | n/a |
+| Auto-recording | ✅ Meet-API space (see §3) | ✅ per meeting | n/a |
 | Recording discovery | ✅ Meet REST v2 | ✅ Zoom API | n/a |
 | Recording webhook | ❌ | ✅ | n/a |
 | Reconciliation sweep | ✅ | ✅ | n/a |
@@ -101,12 +101,15 @@ bytes cross the application server.
 
 Full detail, scopes and setup: `docs/recordings.md`.
 
-### Auto-recording is not available to Meet
+### Auto-recording
 
-Meet only lets an app configure spaces **it created through the Meet
-API**. SIRI's conferences are created by the Calendar API, so an
-instructor must press Record manually. This is a verified Google
-constraint, not a choice — see `docs/recordings.md` §3.
+Since 2026-09-05 a recording-eligible lesson's space is created through
+the Meet REST API with automatic recording ON and attached to the
+Calendar event, so nobody presses Record. Needs the
+`meetings.space.created` and `meetings.space.settings` scopes in the delegation grant and automatic
+recording allowed in the Workspace admin console; without them the
+lesson falls back to a Calendar-created conference recorded manually.
+Detail: `docs/recordings.md` §3.
 
 ---
 
@@ -237,8 +240,10 @@ Two concepts that must not be confused:
 | Enforced by `RecordingEligibilityResolver` + consent snapshot | Enforced by `RecordingPolicy` |
 | **Unchanged** by the access rule | Administrators; the student under the playback policy |
 
-Recording remains opt-in and consent-gated. Nothing here creates hidden
-recording.
+Recording consent is platform-wide (profiles default to consenting; the
+opt-out toggle was withdrawn on 2026-09-05) and notice is given through
+the Terms, the booking confirmation and the provider's in-meeting
+indicator. Nothing here creates hidden recording.
 
 ### Provider-side controls are required too
 

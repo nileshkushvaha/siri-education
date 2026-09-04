@@ -6,7 +6,11 @@ namespace App\Booking\Services;
 
 use App\Booking\Contracts\MeetingProviderInterface;
 use App\Booking\DTOs\RecordingLocator;
+use App\Booking\Enums\BookingStatus;
+use App\Booking\Enums\MeetingStatus;
 use App\Booking\Enums\RecordingStatus;
+use App\Booking\Jobs\CaptureLessonRecordingJob;
+use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Storage\RecordingStorageResolver;
 use App\Models\Booking;
 use App\Models\BookingMeeting;
@@ -57,11 +61,27 @@ final class RecordingService
      * the unique idempotency_key — a retried/duplicate call for the
      * same meeting can never create a second row.
      */
-    public function registerIfEligible(Booking $booking, BookingMeeting $meeting, MeetingProviderInterface $provider): ?Recording
+    public function registerIfEligible(Booking $booking, BookingMeeting $meeting, MeetingProviderInterface $provider, bool $logIneligible = true): ?Recording
     {
         $result = $this->eligibility->evaluate($booking, $provider);
 
         if (! $result->eligible) {
+            // Operational breadcrumb, not an audit event: a lesson with no
+            // recording row must be explainable ("provider cannot record",
+            // "recording disabled") without an operator reverse-engineering
+            // the eligibility gates. Info level — this fires for every lesson
+            // the platform deliberately does not record. The sweep's
+            // re-evaluation passes $logIneligible = false so a lesson that is
+            // still ineligible is not re-logged every fifteen minutes.
+            if ($logIneligible) {
+                Log::info('Lesson recording not registered.', [
+                    'booking_id' => $booking->id,
+                    'booking_meeting_id' => $meeting->id,
+                    'provider' => $provider->key(),
+                    'reason' => $result->reason,
+                ]);
+            }
+
             return null;
         }
 
@@ -102,6 +122,50 @@ final class RecordingService
         $this->lifecycle->recordingRegistered($recording);
 
         return $recording;
+    }
+
+    /**
+     * Reconciliation for the ROW, not the bytes: registers a recording for
+     * every created meeting that ended inside the retry window, belongs to
+     * a confirmed or completed booking, has no recording row, and is
+     * eligible NOW. Closes the gap where a lesson ran while a switch was
+     * off (or a provider credential was missing) and the switches were
+     * fixed afterwards — the artifact is still at the provider, and the
+     * capture pipeline can still fetch it, but nothing would ever look.
+     *
+     * Bounded (retry window, batch size), idempotent (the unique
+     * idempotency_key makes a second registration return the existing
+     * row), and quiet for lessons that remain ineligible.
+     *
+     * @return int number of recordings newly registered
+     */
+    public function registerMissing(MeetingProviderRegistry $registry, int $retryMinutes, int $batchSize): int
+    {
+        $registered = 0;
+
+        BookingMeeting::query()
+            ->where('status', MeetingStatus::Created)
+            ->whereDoesntHave('recording')
+            ->whereBetween('ends_at', [now()->subMinutes(max(1, $retryMinutes)), now()])
+            ->whereHas('booking', fn ($query) => $query->whereIn('status', [BookingStatus::Confirmed, BookingStatus::Completed]))
+            ->with('booking')
+            ->orderBy('ends_at')
+            ->limit(max(1, $batchSize))
+            ->get()
+            ->each(function (BookingMeeting $meeting) use ($registry, &$registered): void {
+                if ($meeting->booking === null || ! $registry->has($meeting->provider)) {
+                    return;
+                }
+
+                $recording = $this->registerIfEligible($meeting->booking, $meeting, $registry->get($meeting->provider), logIneligible: false);
+
+                if ($recording?->wasRecentlyCreated) {
+                    $registered++;
+                    CaptureLessonRecordingJob::dispatch($recording->id);
+                }
+            });
+
+        return $registered;
     }
 
     /**

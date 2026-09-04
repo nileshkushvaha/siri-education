@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Booking;
 
 use App\Booking\Contracts\ZoomMeetingClient;
+use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Enums\RecordingStatus;
 use App\Booking\Exceptions\GatewayRequestException;
@@ -89,6 +90,8 @@ final class ZoomRecordingAcquisitionTest extends TestCase
     private function lesson(): Recording
     {
         $recording = Recording::factory()->create(['provider' => ZoomMeetingProvider::KEY]);
+        // The sweep only looks at confirmed/completed bookings.
+        $recording->booking->update(['status' => BookingStatus::Confirmed]);
         $recording->bookingMeeting->update([
             'provider' => ZoomMeetingProvider::KEY,
             'provider_meeting_id' => self::MEETING_ID,

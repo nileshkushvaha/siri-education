@@ -98,6 +98,8 @@ Set the scope list to **all four, as one edit**:
 ```text
 https://www.googleapis.com/auth/calendar
 https://www.googleapis.com/auth/meetings.space.readonly
+https://www.googleapis.com/auth/meetings.space.created
+https://www.googleapis.com/auth/meetings.space.settings
 https://www.googleapis.com/auth/drive.meet.readonly
 https://www.googleapis.com/auth/drive.file
 ```
@@ -241,20 +243,23 @@ is on. Turn it on only after §10–§11 below have proven the pipeline
 and after the student-facing check in §11a — it is a product
 activation, not a deploy step.
 
-**Consent gate check (negative test) — do this before the positive one:**
+**Eligibility check (negative test) — do this before the positive one:**
 
-- [ ] A lesson where either participant has `consents_to_recording` =
-      false creates **no** `recordings` row, and no Meet API call is made
+- [ ] With `meeting.google_meet_recording_enabled` still OFF, confirming a
+      lesson creates **no** `recordings` row and the application log
+      shows `Lesson recording not registered.` with reason
+      `provider_capability_missing`. (Consent is platform-wide since
+      2026-09-05 and no longer a per-profile gate.)
 
 ---
 
 ## 10. One controlled production lesson
 
-- [ ] Instructor joins and **manually presses Record**
-
-  Auto-recording is deliberately not implemented — Meet only lets an app
-  configure spaces it created via the Meet API, and SIRI's spaces are
-  Calendar-created. **This must be in instructor onboarding.**
+- [ ] Instructor joins; recording starts **automatically** (the space was
+  created through the Meet API with auto-recording ON). If the red
+  Recording indicator does not appear, the meeting fell back to a
+  Calendar-created conference — check the application log for the
+  auto-record warning and press Record manually for this run.
 
 - [ ] Record a short session, stop, end the conference
 - [ ] Note: scheduled start, conference start, record start/stop, end
@@ -306,7 +311,7 @@ real Drive ranged read.** Until it has been run, treat Drive playback as
 unvalidated.
 
 1. [ ] Create one lesson between an internal test student and an
-       internal instructor; both profiles have `consents_to_recording`.
+       internal instructor.
 2. [ ] Instructor presses Record in Meet; stop; end the conference.
 3. [ ] Wait for Google to generate the file (minutes); watch the row go
        `pending → transferring → stored → available`.

@@ -36,9 +36,33 @@ final class FakeGoogleMeetClient implements GoogleMeetClient
 
     public ?GatewayRequestException $throwOnRecordingList = null;
 
+    /** @var list<array{autoRecording: bool, meetingCode: string}> */
+    public array $spacesCreated = [];
+
+    public ?GatewayRequestException $throwOnCreateSpace = null;
+
+    public string $nextMeetingCode = 'auto-rec-spce';
+
     public function requestedScopes(): array
     {
-        return ['https://www.googleapis.com/auth/meetings.space.readonly'];
+        return ['https://www.googleapis.com/auth/meetings.space.readonly', 'https://www.googleapis.com/auth/meetings.space.created', 'https://www.googleapis.com/auth/meetings.space.settings'];
+    }
+
+    public function createSpace(string $credentialsJson, string $delegatedSubject, bool $autoRecording): array
+    {
+        $this->calls[] = 'createSpace';
+
+        if ($this->throwOnCreateSpace !== null) {
+            throw $this->throwOnCreateSpace;
+        }
+
+        $this->spacesCreated[] = ['autoRecording' => $autoRecording, 'meetingCode' => $this->nextMeetingCode];
+
+        return [
+            'name' => 'spaces/fake-'.$this->nextMeetingCode,
+            'meetingCode' => $this->nextMeetingCode,
+            'meetingUri' => 'https://meet.google.com/'.$this->nextMeetingCode,
+        ];
     }
 
     public function verifyTokenAcquisition(string $credentialsJson, string $delegatedSubject): void

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * One meeting per booking (unique booking_id). Never stores raw
@@ -75,6 +76,12 @@ class BookingMeeting extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    /** The one recording registered for this meeting, when eligible (recordings.idempotency_key = recording:<id>). */
+    public function recording(): HasOne
+    {
+        return $this->hasOne(Recording::class);
     }
 
     public function creator(): BelongsTo

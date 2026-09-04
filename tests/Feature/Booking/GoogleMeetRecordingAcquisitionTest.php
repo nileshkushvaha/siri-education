@@ -6,6 +6,7 @@ namespace Tests\Feature\Booking;
 
 use App\Booking\Contracts\GoogleDriveClient;
 use App\Booking\Contracts\GoogleMeetClient;
+use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Enums\RecordingStatus;
 use App\Booking\Exceptions\GatewayRequestException;
@@ -89,6 +90,8 @@ final class GoogleMeetRecordingAcquisitionTest extends TestCase
     private function lesson(?string $meetingCode = self::MEETING_CODE): Recording
     {
         $recording = Recording::factory()->create(['provider' => GoogleCalendarMeetProvider::KEY]);
+        // The sweep only looks at confirmed/completed bookings.
+        $recording->booking->update(['status' => BookingStatus::Confirmed]);
 
         $recording->bookingMeeting->update([
             'provider' => GoogleCalendarMeetProvider::KEY,
@@ -463,23 +466,11 @@ final class GoogleMeetRecordingAcquisitionTest extends TestCase
     }
 
     /**
-     * SIRI never turns Meet's automatic recording on. It cannot — the
-     * space is created by the Calendar API, and Meet only lets an app
-     * configure spaces it created itself — and it deliberately does not
-     * try: an auto-recording switch that outran the consent gates would
-     * record classes nobody agreed to record. Asserted structurally so
-     * a future change has to confront the consent question explicitly.
+     * Auto-recording is now deliberate product behaviour (2026-09-05,
+     * docs/decisions.md): see GoogleMeetAutoRecordingTest. Discovery
+     * itself is unchanged — it still matches by meeting code + window,
+     * whichever way the space was created.
      */
-    public function test_the_integration_never_configures_automatic_recording(): void
-    {
-        $sources = php_strip_whitespace(app_path('Booking/Gateways/GoogleMeetSdkClient.php'))
-            .php_strip_whitespace(app_path('Booking/Services/GoogleMeetRecordingLocator.php'))
-            .php_strip_whitespace(app_path('Booking/Meetings/GoogleCalendarMeetProvider.php'));
-
-        foreach (['autoRecordingGeneration', 'ArtifactConfig', 'RecordingConfig', 'spaces->patch', 'spaces->create'] as $forbidden) {
-            $this->assertStringNotContainsString($forbidden, $sources);
-        }
-    }
 
     // ── Multiple recording sessions ───────────────────────────────────
 
@@ -615,11 +606,16 @@ final class GoogleMeetRecordingAcquisitionTest extends TestCase
         $this->assertStringNotContainsString('exportUri', $sources);
     }
 
-    /** Meet's read-only scope, and nothing wider. */
-    public function test_the_meet_integration_requests_only_the_readonly_space_scope(): void
+    /**
+     * Exactly three Meet scopes: read-only for discovery, created +
+     * settings for creating the lesson's auto-recording space — never meetings.space
+     * (full) or anything wider. Asserted exactly so a permission error
+     * is never "fixed" by widening the grant.
+     */
+    public function test_the_meet_integration_requests_only_the_readonly_created_and_settings_space_scopes(): void
     {
         $this->assertSame(
-            ['https://www.googleapis.com/auth/meetings.space.readonly'],
+            ['https://www.googleapis.com/auth/meetings.space.readonly', 'https://www.googleapis.com/auth/meetings.space.created', 'https://www.googleapis.com/auth/meetings.space.settings'],
             app(GoogleMeetSdkClient::class)->requestedScopes(),
         );
     }

@@ -96,6 +96,8 @@ class MeetingSettingsPage extends Page
             'instructor_join_url_visible' => $meeting->instructor_join_url_visible,
             'google_meet_enabled' => $meeting->google_meet_enabled,
             'google_meet_recording_enabled' => $meeting->google_meet_recording_enabled,
+            'recording_drive_root_folder_id' => $meeting->recording_drive_root_folder_id,
+            'recording_drive_shared_drive_id' => $meeting->recording_drive_shared_drive_id,
             'google_calendar_id' => $meeting->google_calendar_id,
             'google_auth_type' => $meeting->google_auth_type,
             // Never render stored credentials back to the admin — these
@@ -219,6 +221,14 @@ class MeetingSettingsPage extends Page
                         Toggle::make('google_meet_recording_enabled')
                             ->label('Google Meet Recording')
                             ->helperText('Fetch Meet recordings from Drive after each lesson. The service account needs the Meet and Drive read scopes.'),
+                        TextInput::make('recording_drive_root_folder_id')
+                            ->label('Recording Drive Root Folder ID')
+                            ->helperText('The Google Drive folder (owned by the platform account, ideally in a Shared Drive) under which SIRI keeps its recording copies as YYYY/MM. Copy the id from the folder URL. Empty means Drive recording storage is not configured and ingestion fails closed.')
+                            ->maxLength(255),
+                        TextInput::make('recording_drive_shared_drive_id')
+                            ->label('Recording Shared Drive ID')
+                            ->helperText('Only when the root folder lives in a Workspace Shared Drive. Leave empty for the platform account\'s My Drive.')
+                            ->maxLength(255),
                         Select::make('google_auth_type')
                             ->label('Authentication type')
                             ->options([
@@ -397,6 +407,8 @@ class MeetingSettingsPage extends Page
 
             $settings->google_meet_enabled = (bool) ($data['google_meet_enabled'] ?? false);
             $settings->google_meet_recording_enabled = (bool) ($data['google_meet_recording_enabled'] ?? false);
+            $settings->recording_drive_root_folder_id = filled($data['recording_drive_root_folder_id'] ?? null) ? trim((string) $data['recording_drive_root_folder_id']) : null;
+            $settings->recording_drive_shared_drive_id = filled($data['recording_drive_shared_drive_id'] ?? null) ? trim((string) $data['recording_drive_shared_drive_id']) : null;
             $settings->google_auth_type = $data['google_auth_type'];
             $settings->google_calendar_id = filled($data['google_calendar_id'] ?? null) ? $data['google_calendar_id'] : null;
 

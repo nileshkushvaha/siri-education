@@ -155,56 +155,70 @@ class MeetingSettingsPage extends Page
     {
         return $schema->components([
             Section::make('Meeting')
-                ->description('Platform switches, provider selection, auto-creation rules, and per-session recording defaults.')
+                ->description('Which provider creates lesson links, when links are shown, and whether lessons are recorded.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         Toggle::make('meetings_enabled')
                             ->label('Meetings Enabled')
-                            ->helperText('Platform-wide kill switch — off blocks every provider, including Manual.'),
+                            ->helperText('Off: no lesson gets a meeting link from any provider.'),
                         Select::make('default_provider')
                             ->options([
                                 'manual' => 'Manual',
                                 'google_meet' => 'Google Meet',
                                 'zoom' => 'Zoom',
                             ])
-                            ->helperText('Automatic creation on booking confirmation uses this provider unless an admin explicitly picks another from the Booking action. Selecting an unconfigured provider makes creation fail safely (status: failed) — it never silently falls back.')
+                            ->helperText('Used for every automatically created meeting. The provider must be configured below, or meeting creation fails and the booking shows no link.')
                             ->required()
                             ->native(false),
-                        Toggle::make('manual_provider_enabled')->label('Manual Provider Enabled'),
-                        TextInput::make('platform_meeting_account')->maxLength(255),
-                        $this->integerInput('meeting_link_visible_before_minutes', 'Visible Before', 0, 10080),
-                        $this->integerInput('meeting_link_visible_after_minutes', 'Visible After', 0, 10080),
+                        Toggle::make('manual_provider_enabled')
+                            ->label('Manual Provider Enabled')
+                            ->helperText('Lets an admin paste a meeting link by hand on a booking.'),
+                        TextInput::make('platform_meeting_account')
+                            ->label('Platform meeting account')
+                            ->maxLength(255)
+                            ->helperText('The account meetings are created under. Shown for reference only.'),
+                        $this->integerInput('meeting_link_visible_before_minutes', 'Visible Before (minutes)', 0, 10080)
+                            ->helperText('How long before the start the join link appears to participants.'),
+                        $this->integerInput('meeting_link_visible_after_minutes', 'Visible After (minutes)', 0, 10080)
+                            ->helperText('How long after the start the join link stays available.'),
                         Toggle::make('meeting_recording_enabled')
                             ->label('Record Sessions by Default')
-                            ->helperText('Never takes effect on its own — the platform-wide Recording feature flag (Settings → Platform Foundation) must also be enabled. This setting cannot override a disabled global switch.'),
+                            ->helperText('Records new lessons when the provider supports it. Also requires the Recording feature flag in Platform Foundation.'),
                         TextInput::make('effective_recording_availability')
                             ->label('Effective Recording Availability')
-                            ->helperText('Computed live from the platform-wide Recording flag AND this meeting-level default — both must be enabled for recording to be considered available.')
+                            ->helperText('Whether new lessons will actually be recorded, given both switches.')
                             ->disabled()
                             ->dehydrated(false),
-                        $this->integerInput('recording_retention_days', 'Retention Days', 0, 3650),
+                        $this->integerInput('recording_retention_days', 'Retention Days', 0, 3650)
+                            ->helperText('Days a recording stays available to students before it is removed.'),
                         Toggle::make('recording_student_playback_enabled')
                             ->label('Students Can Watch Their Recordings')
-                            ->helperText('SRS §12.20 access policy, OFF by default. Lets the student of a recorded lesson watch it inside their account until it expires. Independent of the acquisition switches above and of the per-provider recording toggles — turning those off stops NEW recordings but does not hide existing ones; only this switch and the platform-wide Recording feature flag (Settings → Platform Foundation) govern playback. Individual recordings can still be withheld from the Recordings screen.'),
+                            ->helperText('Shows a "Watch recording" link on the student\'s completed lessons. Off hides all recordings from students, including existing ones. Individual recordings can still be withheld from the Recordings screen.'),
                         Toggle::make('create_after_demo_booking_confirmation')
-                            ->label('Auto-create for Demo/Free Bookings'),
+                            ->label('Auto-create for Demo/Free Bookings')
+                            ->helperText('Create the meeting link as soon as a free demo is confirmed.'),
                         Toggle::make('create_after_paid_booking_confirmation')
-                            ->label('Auto-create for Paid Bookings'),
-                        Toggle::make('student_join_url_visible')->label('Student Can See Join Link'),
-                        Toggle::make('instructor_join_url_visible')->label('Instructor Can See Join Link'),
+                            ->label('Auto-create for Paid Bookings')
+                            ->helperText('Create the meeting link as soon as a paid lesson is confirmed. Off means an admin must create it.'),
+                        Toggle::make('student_join_url_visible')
+                            ->label('Student Can See Join Link')
+                            ->helperText('Off: students never see the link, even inside the visibility window.'),
+                        Toggle::make('instructor_join_url_visible')
+                            ->label('Instructor Can See Join Link')
+                            ->helperText('Off: instructors never see the link, even inside the visibility window.'),
                     ]),
                 ]),
 
             Section::make('Google Calendar + Meet')
-                ->description('Service account credentials used to create Google Meet links for lessons. The JSON is never displayed after saving — leave it blank to keep the existing value.')
+                ->description('Google Workspace service account used to create Meet links and fetch recordings. Saved credentials are never shown again.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         Toggle::make('google_meet_enabled')->label('Google Meet Enabled'),
                         Toggle::make('google_meet_recording_enabled')
                             ->label('Google Meet Recording')
-                            ->helperText('Independent of the toggle above: Google Meet can be enabled with recording off. Requires the meetings.space.readonly and drive.meet.readonly scopes in the Workspace delegation grant.'),
+                            ->helperText('Fetch Meet recordings from Drive after each lesson. The service account needs the Meet and Drive read scopes.'),
                         Select::make('google_auth_type')
                             ->label('Authentication type')
                             ->options([
@@ -217,7 +231,7 @@ class MeetingSettingsPage extends Page
                             // explains the roadmap; disabling it prevents an
                             // admin from breaking meetings to find that out.
                             ->disableOptionWhen(fn (string $value): bool => $value === 'oauth_user')
-                            ->helperText('Service Account is the only supported type. OAuth User is reserved for a future connection screen and cannot be selected yet.')
+                            ->helperText('Service Account is the only supported type at present.')
                             ->required()
                             ->native(false),
                         TextInput::make('google_calendar_id')
@@ -235,24 +249,24 @@ class MeetingSettingsPage extends Page
                         Placeholder::make('google_credentials_updated_at_display')
                             ->label('Credentials last replaced')
                             ->content(fn (): string => $this->timestampLabel($this->data['google_credentials_updated_at'] ?? null))
-                            ->helperText('Updates only when a new service account JSON is pasted and saved, so it confirms a key rotation actually took effect.'),
+                            ->helperText('Changes only when a new JSON key is saved.'),
                     ]),
                     Textarea::make('google_credentials_json')
                         ->label('Service Account JSON')
                         ->rows(4)
-                        ->helperText('Paste the downloaded service-account JSON to replace the stored credential. Leave blank to keep the current one — it is never re-displayed here.')
+                        ->helperText('Paste a new key to replace the stored one. Leave blank to keep the current key.')
                         ->columnSpanFull(),
                 ]),
 
             Section::make('Zoom')
-                ->description('Server-to-Server OAuth credentials for the platform-owned Zoom host account. The client secret is never displayed after saving — leave it blank to keep the existing value.')
+                ->description('Server-to-Server OAuth app for the platform\'s Zoom host account. Saved secrets are never shown again.')
                 ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         Toggle::make('zoom_enabled')->label('Zoom Enabled'),
                         Toggle::make('zoom_recording_enabled')
                             ->label('Zoom Recording')
-                            ->helperText('Independent of the toggle above: Zoom can be enabled with recording off. Requires a licensed Zoom account with cloud recording.'),
+                            ->helperText('Fetch Zoom cloud recordings after each lesson. Needs a licensed Zoom account with cloud recording.'),
                         TextInput::make('zoom_account_id')
                             ->label('Account ID')
                             ->maxLength(255),
@@ -263,11 +277,11 @@ class MeetingSettingsPage extends Page
                             ->label('Client Secret')
                             ->password()
                             ->maxLength(255)
-                            ->helperText('Leave blank to keep the current secret — it is never re-displayed here.'),
+                            ->helperText('Leave blank to keep the current secret.'),
                         TextInput::make('zoom_host_user_id')
                             ->label('Host User ID')
                             ->maxLength(255)
-                            ->helperText('Zoom user id the platform schedules meetings under. Takes precedence over host email.'),
+                            ->helperText('The Zoom user meetings are scheduled under. Used instead of Host Email when both are set.'),
                         TextInput::make('zoom_host_email')
                             ->label('Host Email')
                             ->email()
@@ -280,10 +294,10 @@ class MeetingSettingsPage extends Page
                             ->label('Webhook Secret Token')
                             ->password()
                             ->maxLength(255)
-                            ->helperText('From the Zoom app\'s Event Subscriptions. Verifies webhook signatures. Leave blank to keep the current value — it is never re-displayed here.'),
+                            ->helperText('From the Zoom app\'s Event Subscriptions page. Leave blank to keep the current value.'),
                         Toggle::make('zoom_recording_webhooks_enabled')
                             ->label('Accept Zoom Recording Webhooks')
-                            ->helperText('Low-latency recording discovery. The bounded reconciliation sweep runs regardless, so leaving this off only delays ingestion.'),
+                            ->helperText('Lets Zoom notify us the moment a recording is ready. Off still works, recordings are just picked up later by the scheduled check.'),
                         Placeholder::make('zoom_config_status_display')
                             ->label('Configuration status')
                             ->content(fn (): string => $this->configStatusLabel($this->data['zoom_config_status'] ?? null)),

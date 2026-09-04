@@ -6,7 +6,14 @@ namespace Tests\Feature\Profile;
 
 use App\Enums\EducationLevel;
 use App\Enums\EmploymentType;
+use App\Enums\LearningGoalStatus;
+use App\Enums\LearningGoalType;
+use App\Models\AcademicCategory;
+use App\Models\AcademicLevel;
 use App\Models\Country;
+use App\Models\Language;
+use App\Models\StudentLearningGoal;
+use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserEducation;
 use App\Models\UserExperience;
@@ -14,6 +21,7 @@ use App\Services\Profile\ProfileCompletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ProfileCompletionServiceTest extends TestCase
@@ -148,5 +156,67 @@ class ProfileCompletionServiceTest extends TestCase
         $this->assertSame(0.0, $breakdown['avatar']['score']);
         $this->assertGreaterThan(0.0, $breakdown['basic_profile']['score']);
         $this->assertLessThan(1.0, $breakdown['basic_profile']['score']);
+    }
+
+    // ── Students get a student checklist ─────────────────────────────
+
+    private function student(): User
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $user = User::factory()->create(['first_name' => 'Rohit', 'last_name' => null, 'email_verified_at' => now()]);
+        $user->assignRole('student');
+
+        return $user->fresh();
+    }
+
+    /** Regression: a student was shown "still missing: Work experience, Education, Social links" — sections a student can never fill. */
+    public function test_a_student_is_not_scored_on_instructor_sections(): void
+    {
+        $breakdown = $this->service->breakdown($this->student());
+
+        $this->assertArrayNotHasKey('experience', $breakdown);
+        $this->assertArrayNotHasKey('education', $breakdown);
+        $this->assertArrayNotHasKey('social_links', $breakdown);
+        $this->assertArrayNotHasKey('bio', $breakdown);
+        $this->assertSame(['basic_profile', 'avatar', 'phone_verified', 'academic_profile', 'learning_goals'], array_keys($breakdown));
+        $this->assertSame(100, (int) array_sum(array_column($breakdown, 'weight')));
+    }
+
+    public function test_a_student_reaches_100_percent_with_student_facing_information_only(): void
+    {
+        $student = $this->student();
+        $student->update(['last_name' => 'Sharma']);
+        $student->profile->update([
+            'phone' => '2025551023',
+            'phone_verified_at' => now(),
+            'country_id' => Country::factory()->create()->id,
+            'timezone' => 'America/New_York',
+            'date_of_birth' => '2010-05-01',
+            'student_academic_level_id' => AcademicLevel::create(['name' => 'Grade 10', 'slug' => 'grade-10', 'min_grade' => 10, 'max_grade' => 10])->id,
+            'student_preferred_language_id' => Language::factory()->create()->id,
+        ]);
+        $category = AcademicCategory::create(['name' => 'Science', 'slug' => 'science']);
+        $biology = Subject::create(['academic_category_id' => $category->id, 'name' => 'Biology', 'slug' => 'biology']);
+        $student->preferredSubjects()->attach($biology->id);
+        StudentLearningGoal::create([
+            'user_id' => $student->id,
+            'subject_id' => $biology->id,
+            'title' => 'Pass Grade 10 Biology',
+            'type' => LearningGoalType::Academic,
+            'status' => LearningGoalStatus::Active,
+            'priority' => 1,
+        ]);
+        $student->profile->addMedia(UploadedFile::fake()->image('avatar.jpg'))->toMediaCollection('avatar');
+
+        $this->assertSame(100, $this->service->calculate($student->fresh()));
+    }
+
+    public function test_an_instructor_who_is_also_a_student_keeps_the_professional_checklist(): void
+    {
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        $user = $this->student();
+        $user->assignRole('instructor');
+
+        $this->assertArrayHasKey('experience', $this->service->breakdown($user->fresh()));
     }
 }

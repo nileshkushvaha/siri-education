@@ -50,6 +50,12 @@ class ProfileController extends Controller
         $loginHistory = $user->loginHistories()->limit(10)->get();
         $activeSessions = $this->sessionService->getSessionsForUser($user);
         $currentSessionId = $request->session()->getId();
+        // The header badge shows the STORED percentage (no computation on
+        // ordinary page loads); this page is where the checklist itself is
+        // shown, so refresh the stored value here and both agree — also how
+        // a student whose number was computed under the old, instructor-
+        // shaped checklist gets a correct one on their next visit.
+        $this->completionService->recalculateAndStore($user);
         $completionBreakdown = $this->completionService->breakdown($user);
         $portalAudience = $this->audiences->resolve($user);
         $phonePlaceholders = $countries->mapWithKeys(fn (Country $country): array => [

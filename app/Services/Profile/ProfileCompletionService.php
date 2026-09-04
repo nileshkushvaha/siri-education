@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Profile;
 
+use App\Models\StudentLearningGoal;
 use App\Models\User;
 
 /**
@@ -13,6 +14,14 @@ use App\Models\User;
  * filled = 0.6). calculate() sums weight x score. Adding a new weighted
  * section is a one-line array entry — never a hardcoded percentage in a
  * controller or view.
+ *
+ * The checklist is ROLE-AWARE. Work experience, education and social
+ * links describe an instructor; a student was being told their profile
+ * was 11% complete and "still missing: Work experience" for sections
+ * they can never fill. Students are scored on what the platform actually
+ * uses for them: identity, contact verification, academic profile and
+ * learning goals. Instructors (and any other frontend role) keep the
+ * professional checklist.
  */
 final class ProfileCompletionService
 {
@@ -24,7 +33,77 @@ final class ProfileCompletionService
     /**
      * @return array<string, array{weight: int, score: callable(User): float}>
      */
-    private function sections(): array
+    private function sections(User $user): array
+    {
+        return $this->isStudentOnly($user) ? $this->studentSections() : $this->professionalSections();
+    }
+
+    /** A student who is not also an instructor. Role checks go through Spatie directly, per the portal rules. */
+    private function isStudentOnly(User $user): bool
+    {
+        return $user->hasRole('student') && ! $user->hasRole('instructor');
+    }
+
+    /**
+     * @return array<string, array{weight: int, score: callable(User): float}>
+     */
+    private function studentSections(): array
+    {
+        return [
+            'basic_profile' => [
+                'weight' => 20,
+                'score' => fn (User $user): float => $this->studentBasicProfileScore($user),
+            ],
+            'avatar' => [
+                'weight' => 15,
+                'score' => fn (User $user): float => $user->profile->hasMedia('avatar') ? 1.0 : 0.0,
+            ],
+            'phone_verified' => [
+                'weight' => 15,
+                'score' => fn (User $user): float => $user->profile->phone_verified_at !== null ? 1.0 : 0.0,
+            ],
+            'academic_profile' => [
+                'weight' => 30,
+                'score' => fn (User $user): float => $this->academicProfileScore($user),
+            ],
+            'learning_goals' => [
+                'weight' => 20,
+                'score' => fn (User $user): float => StudentLearningGoal::query()->where('user_id', $user->id)->activeForDashboard()->exists() ? 1.0 : 0.0,
+            ],
+        ];
+    }
+
+    private function studentBasicProfileScore(User $user): float
+    {
+        $checks = [
+            filled($user->first_name),
+            filled($user->last_name),
+            (bool) $user->email_verified_at,
+            filled($user->profile->phone),
+            filled($user->profile->country_id),
+            filled($user->profile->timezone),
+            $user->profile->date_of_birth !== null,
+        ];
+
+        return count(array_filter($checks)) / count($checks);
+    }
+
+    /** Level, preferred language and at least one preferred subject — what lesson matching keys off. */
+    private function academicProfileScore(User $user): float
+    {
+        $checks = [
+            filled($user->profile->student_academic_level_id),
+            filled($user->profile->student_preferred_language_id),
+            $user->preferredSubjects()->exists(),
+        ];
+
+        return count(array_filter($checks)) / count($checks);
+    }
+
+    /**
+     * @return array<string, array{weight: int, score: callable(User): float}>
+     */
+    private function professionalSections(): array
     {
         return [
             'basic_profile' => [
@@ -85,7 +164,7 @@ final class ProfileCompletionService
     {
         $user->loadMissing('profile');
 
-        return collect($this->sections())
+        return collect($this->sections($user))
             ->map(function (array $section) use ($user): array {
                 $score = ($section['score'])($user);
 

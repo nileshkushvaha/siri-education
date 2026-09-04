@@ -127,6 +127,26 @@ class ProfileFrontendRenderingTest extends TestCase
             ->assertForbidden();
     }
 
+    /** Regression: a student saw "Still missing: Work experience, Education, Social links" and a stale 11%. */
+    public function test_a_student_sees_a_student_checklist_and_a_refreshed_percentage(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $student = $this->activeUser();
+        $student->assignRole('student');
+        // A stale value computed under the old instructor-shaped checklist.
+        $student->profile->forceFill(['profile_completion' => 11])->saveQuietly();
+
+        $response = $this->actingAs($student)->get(route('profile.show'));
+
+        $response->assertOk()
+            ->assertSee('Learning goals')
+            ->assertSee('Verified mobile number')
+            ->assertDontSee('Work experience')
+            ->assertDontSee('Social links');
+
+        $this->assertNotSame(11, $student->profile->fresh()->profile_completion);
+    }
+
     public function test_profile_page_renders_the_completion_component(): void
     {
         $user = $this->activeUser();

@@ -8,6 +8,10 @@
         'experience' => 'Work experience',
         'education' => 'Education',
         'social_links' => 'Social links',
+        // student checklist
+        'phone_verified' => 'Verified mobile number',
+        'academic_profile' => 'Academic level, language & subjects',
+        'learning_goals' => 'Learning goals',
     ];
     $missing = collect($breakdown)->filter(fn ($section) => $section['score'] < 1.0)->keys();
 @endphp

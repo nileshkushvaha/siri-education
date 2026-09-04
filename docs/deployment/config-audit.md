@@ -23,6 +23,16 @@ writes to the database.
 | Time zones | A profile or availability window carries a non-IANA time zone | Slots and reminders silently fall back to the platform default. |
 | Instructor availability | An approved instructor has no active window | They never appear in search or the wizard. |
 | Academic levels | No active level; or (warning) several levels cover the same grade in one country | Price rows keyed on a level must be on the one students pick — see `architecture/phase-10.2d-student-pricing-matrix.md`. |
+| Meetings & recordings | Meetings disabled or default provider unconfigured; recording captured but feature flag or student playback off; (warning) auto-completion delay ≥ 12 h | "Meeting link is being prepared" forever; recordings in Drive that no student can open. |
+| Queue | Database queue has a job waiting ≥ 15 min (no worker); (warning) failures in the last 24 h | Webhooks, recording capture and emails all ride the queue. |
+
+## Explaining one student's recording — `recordings:explain`
+
+```bash
+php artisan recordings:explain BK-6QEOFCJ6NB
+```
+
+Prints every gate `RecordingPlaybackAccessResolver` applies for that booking — playback switch, country feature flag, student standing, lesson finalized as Completed, recording ingested, not withheld — marks each OPEN or CLOSED, and names the first closed one. The student UI shows nothing for most closed gates by design, so this is how support answers "the recording is in Drive but the student cannot see it".
 
 Implementation: `App\Platform\Audit\PlatformConfigAuditor` (checks) and
 `App\Console\Commands\AuditPlatformConfig` (presentation). Add a new check as a

@@ -14,6 +14,7 @@ use App\Lessons\Enums\LessonOutcome;
 use App\Models\Booking;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\FeatureSettings;
+use App\Settings\LessonSettings;
 use App\Settings\MeetingSettings;
 use Illuminate\Console\Command;
 
@@ -95,7 +96,7 @@ final class ExplainRecordingAccess extends Command
                 $booking->ends_at?->diffForHumans() ?? '?'));
 
         if (! $delivered && $lesson !== null && $lesson->outcome !== LessonOutcome::Completed) {
-            $rows[] = ['NOTE', 'Auto-completion', sprintf('lessons:auto-complete finalizes %d minutes after the lesson ends (Platform Foundation → Auto-completion Delay); until then the recording stays hidden.', app(\App\Settings\LessonSettings::class)->auto_complete_grace_minutes)];
+            $rows[] = ['NOTE', 'Auto-completion', sprintf('lessons:auto-complete finalizes %d minutes after the lesson ends (Platform Foundation → Auto-completion Delay); until then the recording stays hidden.', app(LessonSettings::class)->auto_complete_grace_minutes)];
         }
 
         // 4. recording row
@@ -103,7 +104,7 @@ final class ExplainRecordingAccess extends Command
         if ($recording === null) {
             $rows[] = $note('Recording registered', false, $booking->meeting === null
                 ? 'no meeting was ever created for this booking, so no recording could be captured'
-                : sprintf('meeting exists (%s, %s) but no recording row — capture never ran; check meeting.recording_enabled, the provider recording flag, and that a queue worker processes the "%s" queue', $booking->meeting->provider ?? '?', $booking->meeting->status?->value ?? '?', config('recordings.queue', 'recordings')));
+                : sprintf('meeting exists (%s, %s) but no recording row — capture never ran; check "Record Sessions by Default", the provider recording flag, and that a queue worker is running', $booking->meeting->provider ?? '?', $booking->meeting->status?->value ?? '?'));
         } else {
             $rows[] = $note('Recording registered', true, sprintf('status=%s driver=%s path=%s size=%s',
                 $recording->status->value, $recording->storage_driver ?? 'null', $recording->storage_path ?? 'null', $recording->size_bytes ?? '?'));

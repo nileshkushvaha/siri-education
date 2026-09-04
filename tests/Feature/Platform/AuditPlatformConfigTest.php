@@ -17,9 +17,12 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Platform\Audit\ConfigAuditFinding;
 use App\Platform\Audit\PlatformConfigAuditor;
+use App\Settings\FeatureSettings;
+use App\Settings\MeetingSettings;
 use App\Settings\PaymentGatewaySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -75,6 +78,12 @@ class AuditPlatformConfigTest extends TestCase
         $gateways->razorpay_international_enabled = true;
         $gateways->razorpay_international_currencies = ['AUD'];
         $gateways->save();
+
+        $meetings = app(MeetingSettings::class);
+        $meetings->meetings_enabled = true;
+        $meetings->default_provider = 'fake';
+        $meetings->create_after_paid_booking_confirmation = true;
+        $meetings->save();
     }
 
     private function messages(string $severity): array
@@ -188,5 +197,42 @@ class AuditPlatformConfigTest extends TestCase
 
         $this->artisan('platform:audit-config')->assertExitCode(0);
         $this->artisan('platform:audit-config --json')->assertExitCode(0)->expectsOutputToContain('"fails": 0');
+    }
+
+    public function test_disabled_meetings_are_a_failure(): void
+    {
+        $meetings = app(MeetingSettings::class);
+        $meetings->meetings_enabled = false;
+        $meetings->save();
+
+        $this->assertNotEmpty(array_filter($this->messages(ConfigAuditFinding::FAIL), fn (string $m): bool => str_contains($m, 'Meetings are disabled')));
+    }
+
+    public function test_recordings_captured_but_student_playback_off_is_a_failure(): void
+    {
+        $features = app(FeatureSettings::class);
+        $features->recording_enabled = true;
+        $features->save();
+        $meetings = app(MeetingSettings::class);
+        $meetings->recording_enabled = true;
+        $meetings->recording_student_playback_enabled = false;
+        $meetings->save();
+
+        $this->assertNotEmpty(array_filter($this->messages(ConfigAuditFinding::FAIL), fn (string $m): bool => str_contains($m, 'Students Can Watch Their Recordings')));
+    }
+
+    public function test_a_stale_database_queue_backlog_is_a_failure(): void
+    {
+        config(['queue.default' => 'database']);
+        DB::table('jobs')->insert([
+            'queue' => 'default',
+            'payload' => '{}',
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->subMinutes(40)->getTimestamp(),
+            'created_at' => now()->subMinutes(40)->getTimestamp(),
+        ]);
+
+        $this->assertNotEmpty(array_filter($this->messages(ConfigAuditFinding::FAIL), fn (string $m): bool => str_contains($m, 'no queue worker appears to be running')));
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Audit;
 
+use App\Booking\Services\MeetingProviderResolver;
 use App\Models\AcademicLevel;
 use App\Models\BookingType;
 use App\Models\Country;
@@ -14,9 +15,15 @@ use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\Payment\PaymentWebhookSignatureService;
+use App\Settings\FeatureSettings;
+use App\Settings\LessonSettings;
+use App\Settings\MeetingSettings;
 use App\Settings\PaymentGatewaySettings;
 use App\Support\Timezone\IanaTimezone;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 /**
  * Read-only audit of the DATA a working platform depends on but no test
@@ -34,6 +41,10 @@ final class PlatformConfigAuditor
 {
     public function __construct(
         private readonly PaymentGatewaySettings $gateways,
+        private readonly MeetingSettings $meetings,
+        private readonly FeatureSettings $features,
+        private readonly LessonSettings $lessons,
+        private readonly MeetingProviderResolver $meetingProviders,
     ) {}
 
     /** @return Collection<int, ConfigAuditFinding> */
@@ -46,6 +57,8 @@ final class PlatformConfigAuditor
             ->concat($this->timezones())
             ->concat($this->availability())
             ->concat($this->academicLevels())
+            ->concat($this->meetingsAndRecordings())
+            ->concat($this->queue())
             ->values();
     }
 
@@ -302,6 +315,99 @@ final class PlatformConfigAuditor
 
         if ($out === []) {
             $out[] = ConfigAuditFinding::ok($section, sprintf('%d active levels, no overlapping grade coverage.', $levels->count()));
+        }
+
+        return $out;
+    }
+
+    /** @return list<ConfigAuditFinding> */
+    private function meetingsAndRecordings(): array
+    {
+        $section = 'Meetings & recordings';
+        $out = [];
+
+        if (! $this->meetings->meetings_enabled) {
+            $out[] = ConfigAuditFinding::fail($section, 'Meetings are disabled — no lesson gets a join link.', 'Meeting Settings → Meetings Enabled.');
+        } else {
+            try {
+                $provider = $this->meetingProviders->current();
+
+                if (! $provider->isConfigured()) {
+                    $out[] = ConfigAuditFinding::fail($section, sprintf('Default meeting provider "%s" is not configured — bookings show "Meeting link is being prepared" forever.', $this->meetings->default_provider), 'Meeting Settings → configure the provider credentials or pick another default provider.');
+                }
+            } catch (Throwable $e) {
+                $out[] = ConfigAuditFinding::fail($section, sprintf('Default meeting provider "%s" cannot be resolved: %s', $this->meetings->default_provider, $e->getMessage()), 'Meeting Settings → Default provider.');
+            }
+
+            if (! $this->meetings->create_after_paid_booking_confirmation) {
+                $out[] = ConfigAuditFinding::warn($section, 'Meetings are not created automatically after a PAID booking is confirmed.', 'Meeting Settings → Create after paid booking confirmation.');
+            }
+        }
+
+        // The recording chain has three switches that must agree.
+        $capture = $this->meetings->recording_enabled;
+        $capability = $this->features->recording_enabled;
+        $playback = $this->meetings->recording_student_playback_enabled;
+
+        if ($capture && ! $capability) {
+            $out[] = ConfigAuditFinding::fail($section, 'Sessions are recorded by default, but the platform Recording feature flag is OFF — students can never see any recording.', 'Platform Foundation → Recording (feature flag).');
+        }
+
+        if ($capture && $capability && ! $playback) {
+            $out[] = ConfigAuditFinding::fail($section, 'Recordings are captured and the feature is on, but "Students Can Watch Their Recordings" is OFF — recordings exist that no student can open.', 'Meeting Settings → Students Can Watch Their Recordings.');
+        }
+
+        if ($playback && ! $capture) {
+            $out[] = ConfigAuditFinding::warn($section, 'Student playback is on but sessions are not recorded by default — nothing will be there to watch.', 'Meeting Settings → Record Sessions by Default.');
+        }
+
+        if ($this->lessons->auto_complete_grace_minutes >= 720) {
+            $out[] = ConfigAuditFinding::warn($section, sprintf('Auto-completion delay is %d minutes (%.0f h): finished lessons stay Confirmed, and their recordings hidden, for that long.', $this->lessons->auto_complete_grace_minutes, $this->lessons->auto_complete_grace_minutes / 60), 'Platform Foundation → Auto-completion Delay (e.g. 120).');
+        }
+
+        if ($out === []) {
+            $out[] = ConfigAuditFinding::ok($section, 'Meeting provider configured; recording capture, feature flag and student playback agree.');
+        }
+
+        return $out;
+    }
+
+    /**
+     * A database-queue backlog nobody is draining is the silent killer of
+     * webhooks, recordings and notifications alike.
+     *
+     * @return list<ConfigAuditFinding>
+     */
+    private function queue(): array
+    {
+        $section = 'Queue';
+
+        if (config('queue.default') !== 'database' || ! Schema::hasTable('jobs')) {
+            return [ConfigAuditFinding::ok($section, sprintf('Queue driver is "%s"; backlog not inspected.', config('queue.default')))];
+        }
+
+        $out = [];
+        $oldest = DB::table('jobs')->whereNull('reserved_at')->min('available_at');
+
+        if ($oldest !== null) {
+            $ageMinutes = (int) floor((time() - (int) $oldest) / 60);
+            $pending = DB::table('jobs')->count();
+
+            if ($ageMinutes >= 15) {
+                $out[] = ConfigAuditFinding::fail($section, sprintf('%d queued job(s); the oldest has waited %d minutes — no queue worker appears to be running. Recordings, webhooks and emails are stuck.', $pending, $ageMinutes), 'Start/restart the worker: php artisan queue:work (supervisor) and check php artisan queue:failed.');
+            }
+        }
+
+        if (Schema::hasTable('failed_jobs')) {
+            $failed = DB::table('failed_jobs')->where('failed_at', '>=', now()->subDay())->count();
+
+            if ($failed > 0) {
+                $out[] = ConfigAuditFinding::warn($section, sprintf('%d job(s) failed in the last 24 hours.', $failed), 'php artisan queue:failed, then queue:retry once the cause is fixed.');
+            }
+        }
+
+        if ($out === []) {
+            $out[] = ConfigAuditFinding::ok($section, 'No stale queue backlog and no failures in the last 24 hours.');
         }
 
         return $out;

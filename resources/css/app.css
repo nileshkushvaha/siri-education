@@ -404,12 +404,17 @@ html { scroll-behavior: smooth; }
  * Declare the scheme and give options explicit, matching colours in every
  * context so the list is readable on both platforms.
  */
-select { color-scheme: light; }
+select,
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] { color-scheme: light; }
 select option { color: #0f172a; background-color: #ffffff; }
 
 select.auth-input,
-.dark [data-account-portal] select,
-.dark [data-booking-wizard-page] select {
+input.auth-input[type="date"],
+.dark [data-account-portal] :is(select, input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"]),
+.dark [data-booking-wizard-page] :is(select, input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"]) {
     color-scheme: dark;
 }
 select.auth-input option,
@@ -1331,8 +1336,18 @@ select.auth-input option,
 
 [data-booking-wizard-page] .booking-progress-steps {
     display: grid;
-    grid-template-columns: repeat(var(--booking-step-count), minmax(7.5rem, 1fr));
+    grid-template-columns: repeat(var(--booking-step-count), minmax(6rem, 1fr));
     min-width: max(100%, var(--booking-progress-min-width));
+}
+
+/* From the large breakpoint the panel is wide enough for every step, so
+   let them share the row (labels may wrap to two lines) instead of
+   forcing a horizontal scrollbar on a desktop screen. */
+@media (min-width: 64rem) {
+    [data-booking-wizard-page] .booking-progress-steps {
+        grid-template-columns: repeat(var(--booking-step-count), minmax(0, 1fr));
+        min-width: 100%;
+    }
 }
 
 [data-booking-wizard-page] .booking-progress-steps--single {

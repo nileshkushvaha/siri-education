@@ -31,8 +31,11 @@ use App\Settings\FeatureSettings;
 use App\Support\MoneyFormatter;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -96,6 +99,27 @@ final class BookingHistory extends Component
         $this->razorpay = $razorpay;
         $this->refundPolicy = $refundPolicy;
         $this->reschedulePolicy = $reschedulePolicy;
+    }
+
+    /**
+     * Deep link from the Payments page ("Complete payment"): opens this
+     * booking's detail modal on load. Authorisation is viewBooking()'s —
+     * a foreign or unknown id is ignored, never an error page.
+     */
+    #[Url(as: 'booking', except: null)]
+    public ?string $openBookingId = null;
+
+    public function mount(): void
+    {
+        if ($this->openBookingId === null) {
+            return;
+        }
+
+        try {
+            $this->viewBooking($this->openBookingId);
+        } catch (AuthorizationException|ModelNotFoundException) {
+            $this->openBookingId = null;
+        }
     }
 
     public function updatingStatusFilter(): void

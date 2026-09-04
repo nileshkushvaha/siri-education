@@ -58,9 +58,14 @@
                                         {{ $isCurrent ? 'bg-indigo-500 text-white' : '' }}
                                         {{ $isComplete ? 'bg-emerald-500 text-white' : '' }}
                                         {{ ! $isCurrent && ! $isComplete ? 'bg-surface-hover text-fg-muted' : '' }}">
-                                        {{ $isComplete ? 'OK' : $item['number'] }}
+                                        @if($isComplete)
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                            <span class="sr-only">Completed:</span>
+                                        @else
+                                            {{ $item['number'] }}
+                                        @endif
                                     </span>
-                                    <span class="max-w-full whitespace-nowrap text-xs font-black leading-4 sm:text-sm">{{ $item['label'] }}</span>
+                                    <span class="max-w-full text-balance text-xs font-black leading-4 sm:text-sm">{{ $item['label'] }}</span>
                                 </div>
                             </li>
                         @endforeach
@@ -364,8 +369,20 @@
                     @if($currentPhase === 'time')
                         <div>
                             <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black text-fg-strong outline-none">Choose a time</h2>
+                            @php
+                                // "America/New_York" is an identifier, not a place a
+                                // student recognises. Show the city and the current
+                                // UTC offset, and say where to change it.
+                                $tzNow = \Carbon\CarbonImmutable::now($timezone);
+                                $tzCity = str_replace('_', ' ', \Illuminate\Support\Str::afterLast($timezone, '/'));
+                                $tzOffset = 'GMT'.$tzNow->format('P');
+                            @endphp
                             <p class="mt-2 text-sm leading-6 text-fg-muted">
-                                All times are shown in your local timezone: {{ $timezone }}.
+                                All times are shown in your local time zone,
+                                <span class="font-semibold text-fg">{{ $tzCity }} ({{ $tzOffset }})</span>.
+                                @auth
+                                    Not right? <a href="{{ route('profile.show') }}#timezone" class="font-semibold text-indigo-600 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-700 dark:text-indigo-300">Change it in your profile</a>.
+                                @endauth
                             </p>
 
                             <div wire:loading.flex wire:target="selectDate" class="mt-6 items-center justify-center gap-3 text-sm text-fg-muted">

@@ -40,6 +40,7 @@ class SeoSettingsTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(SeoSettingsPage::class)
+            ->set('data.selected_page', 'defaults')
             ->set('data.meta_title', 'Learn Anything, Anywhere')
             ->set('data.meta_description', 'Book tutoring sessions with vetted teachers.')
             ->set('data.robots', 'noindex,nofollow')
@@ -61,6 +62,7 @@ class SeoSettingsTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(SeoSettingsPage::class)
+            ->set('data.selected_page', 'defaults')
             ->set('data.meta_title', 'Learn Anything, Anywhere')
             ->set('data.robots', 'noindex,nofollow')
             ->set('data.twitter_card', 'summary')

@@ -49,6 +49,9 @@
     @if(filled($routeSeo['canonical']))
         <link rel="canonical" href="{{ $routeSeo['canonical'] }}">
     @endif
+    @if(filled($routeSeo['robots']))
+        <meta name="robots" content="{{ $routeSeo['robots'] }}">
+    @endif
     <meta property="og:title" content="{{ $routeSeo['title'] }}">
     @if($routeSeo['description'] !== '')
         <meta property="og:description" content="{{ $routeSeo['description'] }}">

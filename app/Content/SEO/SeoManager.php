@@ -28,12 +28,12 @@ class SeoManager
 
     /**
      * Metadata for a Blade-rendered route. Priority: the page override
-     * for the route → (home page only) the global SEO defaults → the
-     * template's own values → app name. Keywords and the Open Graph
+     * for the route → the template's own values → the site defaults →
+     * app name. Keywords and the Open Graph
      * image fall back to the global SEO Settings; the canonical URL falls
      * back to the current URL without its query string.
      *
-     * @return array{title: string, description: string, keywords: ?string, canonical: ?string, og_image: string, managed: bool}
+     * @return array{title: string, description: string, keywords: ?string, canonical: ?string, og_image: string, robots: ?string, managed: bool}
      */
     public function getRouteMetadata(?string $routeName, ?string $defaultTitle = null, ?string $defaultDescription = null, ?string $currentUrl = null): array
     {
@@ -41,20 +41,20 @@ class SeoManager
         $entry = $route !== null ? ($this->seoSettings->pages[$route->value] ?? []) : [];
         $value = fn (string $key): ?string => filled($entry[$key] ?? null) ? trim((string) $entry[$key]) : null;
 
-        $title = $value('meta_title');
-        $description = $value('meta_description');
-
-        if ($route === SeoRoute::Home) {
-            $title ??= filled($this->seoSettings->meta_title) ? $this->seoSettings->meta_title : null;
-            $description ??= filled($this->seoSettings->meta_description) ? $this->seoSettings->meta_description : null;
-        }
+        $title = $value('meta_title')
+            ?? (filled($defaultTitle) ? $defaultTitle : null)
+            ?? (filled($this->seoSettings->meta_title) ? $this->seoSettings->meta_title : null);
+        $description = $value('meta_description')
+            ?? (filled($defaultDescription) ? $defaultDescription : null)
+            ?? (filled($this->seoSettings->meta_description) ? $this->seoSettings->meta_description : null);
 
         return [
-            'title' => $title ?? (filled($defaultTitle) ? $defaultTitle : $this->appName()),
-            'description' => $description ?? ($defaultDescription ?? ''),
+            'title' => $title ?? $this->appName(),
+            'description' => $description ?? '',
             'keywords' => $value('meta_keywords') ?? (filled($this->seoSettings->meta_keywords) ? $this->seoSettings->meta_keywords : null),
             'canonical' => $value('canonical_url') ?? ($route !== null && $currentUrl !== null ? strtok($currentUrl, '?') : null),
             'og_image' => $this->resolveOgImage((string) ($value('og_image') ?? '')),
+            'robots' => $route !== null ? $this->normaliseRobots($value('robots') ?? ($this->seoSettings->robots ?: 'index, follow')) : null,
             'managed' => $route !== null,
         ];
     }
@@ -67,8 +67,8 @@ class SeoManager
         $appName = $this->appName();
         $globalSeo = $this->seoSettings;
 
-        $title = $page->meta_title ?: ($globalSeo?->meta_title ?: ($page->title ?: $appName));
-        $description = $page->meta_description ?: ($globalSeo?->meta_description ?: ($page->excerpt ?: $this->firstCharsOfContent($page->content) ?: "Read more on {$appName}."));
+        $title = $page->meta_title ?: ($page->title ?: ($globalSeo?->meta_title ?: $appName));
+        $description = $page->meta_description ?: ($page->excerpt ?: $this->firstCharsOfContent($page->content) ?: ($globalSeo?->meta_description ?: "Read more on {$appName}."));
         $keywords = $page->meta_keywords ?: ($globalSeo?->meta_keywords ?? null);
         $robots = $this->normaliseRobots($page->robots ?: ($globalSeo?->robots ?? 'index, follow'));
         $canonical = $page->canonical_url ?: ($globalSeo?->canonical_url ?: $pageUrl);
@@ -113,8 +113,8 @@ class SeoManager
         $appName = $this->appName();
         $globalSeo = $this->seoSettings;
 
-        $title = $post->meta_title ?: ($globalSeo?->meta_title ?: ($post->title ?: $appName));
-        $description = $post->meta_description ?: ($globalSeo?->meta_description ?: ($post->excerpt ?: $this->firstCharsOfContent($post->content) ?: "Read more on {$appName}."));
+        $title = $post->meta_title ?: ($post->title ?: ($globalSeo?->meta_title ?: $appName));
+        $description = $post->meta_description ?: ($post->excerpt ?: $this->firstCharsOfContent($post->content) ?: ($globalSeo?->meta_description ?: "Read more on {$appName}."));
         $keywords = $post->meta_keywords ?: ($globalSeo?->meta_keywords ?? null);
         $robots = $this->normaliseRobots($post->robots ?: ($globalSeo?->robots ?? 'index, follow'));
         $canonical = $post->canonical_url ?: ($globalSeo?->canonical_url ?: $postUrl);

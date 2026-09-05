@@ -82,26 +82,37 @@ class SeoPageOverridesTest extends TestCase
         $this->assertSame(1, substr_count($html, 'rel="canonical"'));
     }
 
-    public function test_home_page_uses_the_defaults_until_it_has_its_own_override(): void
+    public function test_site_defaults_only_fill_what_a_page_lacks(): void
     {
         $this->actingAs($this->admin());
 
         $this->seoPage()
+            ->set('data.selected_page', 'defaults')
             ->set('data.meta_title', 'Learn Anything, Anywhere')
             ->set('data.meta_description', 'Book tutoring sessions with vetted teachers.')
+            ->set('data.meta_keywords', 'tutoring, online lessons')
             ->call('save');
 
-        $html = $this->get('/')->assertOk()->getContent();
-        $this->assertStringContainsString('<title>Learn Anything, Anywhere</title>', $html);
+        // The login template has a title but no description of its own.
+        auth()->logout();
+        $html = $this->get('/login')->assertOk()->getContent();
+        $this->assertStringContainsString('<meta name="robots" content="index, follow">', $html);
+        $this->assertStringContainsString('<title>Sign In', $html);
         $this->assertStringContainsString('content="Book tutoring sessions with vetted teachers."', $html);
-        $this->assertStringContainsString('<title>Help Center', $this->get('/faqs')->getContent());
+        $this->assertStringContainsString('<meta name="keywords" content="tutoring, online lessons">', $html);
 
+        $this->actingAs($this->admin());
         $this->seoPage()
             ->set('data.selected_page', 'home')
             ->set('data.pages.home.meta_title', 'SIRI Education — 1-on-1 Online Tutoring')
+            ->set('data.pages.home.robots', 'noindex,nofollow')
             ->call('save');
 
-        $this->assertStringContainsString('<title>SIRI Education — 1-on-1 Online Tutoring</title>', $this->get('/')->getContent());
+        $home = $this->get('/')->getContent();
+        $this->assertStringContainsString('<title>SIRI Education — 1-on-1 Online Tutoring</title>', $home);
+        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $home);
+        $this->assertSame(1, substr_count($home, 'name="robots"'));
+        $this->assertSame('Learn Anything, Anywhere', app()->make(SeoSettings::class)->refresh()->meta_title);
     }
 
     public function test_saving_one_page_keeps_the_others_and_the_defaults(): void
@@ -109,7 +120,11 @@ class SeoPageOverridesTest extends TestCase
         $this->actingAs($this->admin());
 
         $this->seoPage()
+            ->set('data.selected_page', 'defaults')
             ->set('data.meta_title', 'Default title')
+            ->call('save');
+
+        $this->seoPage()
             ->set('data.selected_page', 'blog')
             ->set('data.pages.blog.meta_title', 'SIRI Blog')
             ->call('save');

@@ -30,7 +30,16 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class SeoSettingsPage extends Page
 {
-    private const array PAGE_FIELDS = ['meta_title', 'meta_description', 'meta_keywords', 'canonical_url', 'og_image'];
+    private const array PAGE_FIELDS = ['meta_title', 'meta_description', 'meta_keywords', 'canonical_url', 'og_image', 'robots'];
+
+    private const array ROBOTS_OPTIONS = [
+        'index,follow' => 'index, follow',
+        'noindex,follow' => 'noindex, follow',
+        'index,nofollow' => 'index, nofollow',
+        'noindex,nofollow' => 'noindex, nofollow',
+    ];
+
+    private const string DEFAULTS = 'defaults';
 
     use HasCentralizedNavigation;
     use HasSettingsAccess;
@@ -81,7 +90,7 @@ class SeoSettingsPage extends Page
             'facebook_pixel_id' => $settings->facebook_pixel_id,
             'og_image' => $settings->og_image,
             'twitter_card' => $settings->twitter_card,
-            'selected_page' => SeoRoute::Home->value,
+            'selected_page' => self::DEFAULTS,
             'pages' => collect(SeoRoute::cases())
                 ->mapWithKeys(fn (SeoRoute $route): array => [$route->value => $this->pageEntry($settings->pages, $route)])
                 ->all(),
@@ -115,52 +124,88 @@ class SeoSettingsPage extends Page
         return $schema->components([
             Grid::make(2)->schema([
 
-                // ── SEO Meta ──────────────────────────────────── full width
-                Section::make('SEO Meta')
-                    ->description('Default meta tags applied to all pages without specific overrides.')
+                // ── Search & social metadata ──────────────────── full width
+                Section::make('Search & social metadata')
+                    ->description('Choose Site defaults or a public page. Page fields override that page; empty page fields keep its built-in text, and anything still missing falls back to Site defaults.')
                     ->columnSpanFull()
                     ->schema([
-                        Grid::make(2)->schema([
-                            TextInput::make('meta_title')
-                                ->label('Meta Title')
-                                ->maxLength(70)
-                                ->helperText('Max 70 characters. Shown in browser tab and search results.')
-                                ->suffixAction(
-                                    Action::make('count')
-                                        ->label(fn ($state) => strlen($state ?? '').'/70')
-                                        ->disabled()
-                                ),
+                        Select::make('selected_page')
+                            ->label('Page')
+                            ->options([
+                                self::DEFAULTS => 'Site defaults  ·  used when a page has nothing of its own',
+                                ...collect(SeoRoute::cases())->mapWithKeys(fn (SeoRoute $route): array => [$route->value => $route->label().'  ·  '.$route->path()])->all(),
+                            ])
+                            ->native(false)
+                            ->required()
+                            ->live()
+                            ->dehydrated(false),
 
-                            TextInput::make('meta_keywords')
-                                ->label('Meta Keywords')
-                                ->maxLength(255)
-                                ->helperText('Comma-separated keywords (less important for modern SEO).'),
-                        ]),
+                        Grid::make(2)
+                            ->visible(fn (Get $get): bool => $get('selected_page') === self::DEFAULTS)
+                            ->schema([
+                                TextInput::make('meta_title')
+                                    ->label('Default Meta Title')
+                                    ->maxLength(70)
+                                    ->helperText('Max 70 characters. Used only when a page has no title of its own.'),
+                                TextInput::make('meta_keywords')
+                                    ->label('Default Meta Keywords')
+                                    ->maxLength(255)
+                                    ->helperText('Comma-separated. Used when a page sets no keywords.'),
+                                Textarea::make('meta_description')
+                                    ->label('Default Meta Description')
+                                    ->rows(3)
+                                    ->maxLength(160)
+                                    ->columnSpanFull()
+                                    ->helperText('Max 160 characters. Used only when a page has no description of its own.'),
+                                Select::make('robots')
+                                    ->label('Robots Directive')
+                                    ->options(self::ROBOTS_OPTIONS)
+                                    ->native(false)
+                                    ->required()
+                                    ->helperText('Site-wide: robots.txt and the robots meta tag of every page without its own directive.'),
+                            ]),
 
-                        Textarea::make('meta_description')
-                            ->label('Meta Description')
-                            ->rows(3)
-                            ->maxLength(160)
-                            ->helperText('Max 160 characters. Shown in search engine results.'),
-
-                        Grid::make(2)->schema([
-                            Select::make('robots')
-                                ->label('Robots Directive')
-                                ->options([
-                                    'index,follow' => 'index, follow (default)',
-                                    'noindex,follow' => 'noindex, follow',
-                                    'index,nofollow' => 'index, nofollow',
-                                    'noindex,nofollow' => 'noindex, nofollow',
-                                ])
-                                ->native(false)
-                                ->required(),
-
-                            TextInput::make('canonical_url')
-                                ->label('Canonical URL')
-                                ->url()
-                                ->maxLength(255)
-                                ->placeholder('https://sirieducation.com'),
-                        ]),
+                        ...collect(SeoRoute::cases())
+                            ->map(fn (SeoRoute $route) => Grid::make(2)
+                                ->visible(fn (Get $get): bool => $get('selected_page') === $route->value)
+                                ->schema([
+                                    TextInput::make("pages.{$route->value}.meta_title")
+                                        ->label('Meta Title')
+                                        ->maxLength(70)
+                                        ->helperText('Max 70 characters. Browser tab and search result headline.'),
+                                    TextInput::make("pages.{$route->value}.meta_keywords")
+                                        ->label('Meta Keywords')
+                                        ->maxLength(255)
+                                        ->helperText('Comma-separated. Falls back to the default keywords above.'),
+                                    Textarea::make("pages.{$route->value}.meta_description")
+                                        ->label('Meta Description')
+                                        ->rows(3)
+                                        ->maxLength(160)
+                                        ->columnSpanFull()
+                                        ->helperText('Max 160 characters. Search result snippet and social sharing description.'),
+                                    TextInput::make("pages.{$route->value}.canonical_url")
+                                        ->label('Canonical URL')
+                                        ->url()
+                                        ->maxLength(255)
+                                        ->placeholder(url($route->path()))
+                                        ->helperText('Leave empty to use the page\'s own URL.'),
+                                    Select::make("pages.{$route->value}.robots")
+                                        ->label('Robots Directive')
+                                        ->options(self::ROBOTS_OPTIONS)
+                                        ->native(false)
+                                        ->placeholder('Use site default')
+                                        ->helperText('Robots meta tag for this page only.'),
+                                    FileUpload::make("pages.{$route->value}.og_image")
+                                        ->label('Open Graph Image')
+                                        ->image()
+                                        ->disk('public')
+                                        ->acceptedFileTypes(['image/png', 'image/jpeg'])
+                                        ->maxSize(2048)
+                                        ->directory('settings/seo/pages')
+                                        ->imagePreviewHeight('120')
+                                        ->helperText('PNG or JPG, max 2MB, ideally 1200×630. Falls back to the default OG image.'),
+                                ]))
+                            ->all(),
                     ]),
 
                 // ── Verification & Analytics ──────────────────────── left
@@ -217,56 +262,6 @@ class SeoSettingsPage extends Page
                             ->required(),
                     ]),
 
-                // ── Page-specific SEO ─────────────────────────────── full width
-                Section::make('Page-specific SEO')
-                    ->description('Choose a public page and override its metadata. Empty fields keep the page\'s built-in text (the home page falls back to the defaults above).')
-                    ->columnSpanFull()
-                    ->schema([
-                        Select::make('selected_page')
-                            ->label('Page')
-                            ->options(collect(SeoRoute::cases())->mapWithKeys(fn (SeoRoute $route): array => [$route->value => $route->label().'  ·  '.$route->path()])->all())
-                            ->native(false)
-                            ->required()
-                            ->live()
-                            ->dehydrated(false),
-
-                        ...collect(SeoRoute::cases())
-                            ->map(fn (SeoRoute $route) => Grid::make(2)
-                                ->visible(fn (Get $get): bool => $get('selected_page') === $route->value)
-                                ->schema([
-                                    TextInput::make("pages.{$route->value}.meta_title")
-                                        ->label('Meta Title')
-                                        ->maxLength(70)
-                                        ->helperText('Max 70 characters. Browser tab and search result headline.'),
-                                    TextInput::make("pages.{$route->value}.meta_keywords")
-                                        ->label('Meta Keywords')
-                                        ->maxLength(255)
-                                        ->helperText('Comma-separated. Falls back to the default keywords above.'),
-                                    Textarea::make("pages.{$route->value}.meta_description")
-                                        ->label('Meta Description')
-                                        ->rows(3)
-                                        ->maxLength(160)
-                                        ->columnSpanFull()
-                                        ->helperText('Max 160 characters. Search result snippet and social sharing description.'),
-                                    TextInput::make("pages.{$route->value}.canonical_url")
-                                        ->label('Canonical URL')
-                                        ->url()
-                                        ->maxLength(255)
-                                        ->placeholder(url($route->path()))
-                                        ->helperText('Leave empty to use the page\'s own URL.'),
-                                    FileUpload::make("pages.{$route->value}.og_image")
-                                        ->label('Open Graph Image')
-                                        ->image()
-                                        ->disk('public')
-                                        ->acceptedFileTypes(['image/png', 'image/jpeg'])
-                                        ->maxSize(2048)
-                                        ->directory('settings/seo/pages')
-                                        ->imagePreviewHeight('120')
-                                        ->helperText('PNG or JPG, max 2MB, ideally 1200×630. Falls back to the default OG image.'),
-                                ]))
-                            ->all(),
-                    ]),
-
             ]),
         ]);
     }
@@ -280,11 +275,14 @@ class SeoSettingsPage extends Page
         }
 
         $saved = $this->saveSettingsWithAudit(SeoSettings::class, 'settings', function (SeoSettings $settings) use ($data): void {
-            $settings->meta_title = $data['meta_title'] ?? null;
-            $settings->meta_description = $data['meta_description'] ?? null;
-            $settings->meta_keywords = $data['meta_keywords'] ?? null;
-            $settings->robots = $data['robots'];
-            $settings->canonical_url = $data['canonical_url'] ?? null;
+            // The Site defaults grid is only dehydrated while it is the
+            // selected entry; otherwise keep what is stored.
+            if (array_key_exists('robots', $data)) {
+                $settings->meta_title = filled($data['meta_title'] ?? null) ? trim((string) $data['meta_title']) : null;
+                $settings->meta_description = filled($data['meta_description'] ?? null) ? trim((string) $data['meta_description']) : null;
+                $settings->meta_keywords = filled($data['meta_keywords'] ?? null) ? trim((string) $data['meta_keywords']) : null;
+                $settings->robots = $data['robots'];
+            }
             $settings->google_search_console_verification = $data['google_search_console_verification'] ?? null;
             $settings->google_analytics_id = $data['google_analytics_id'] ?? null;
             $settings->google_tag_manager_id = $data['google_tag_manager_id'] ?? null;

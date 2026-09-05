@@ -102,8 +102,7 @@ php artisan queue:restart
    message on `/login`.
 5. Admin → Activity Log filter events `google_student_registered`,
    `google_account_linked`, `account_activated`, `profile_completed`.
-6. An existing form-registered student can still open `/book` directly (no
-   redirect).
+6. An existing form-registered student can still open `/book` directly (no redirect).
 
 ## Rollback
 

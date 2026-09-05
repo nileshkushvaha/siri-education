@@ -46,8 +46,18 @@ class GoogleActivationController extends Controller
             return $this->fail(GoogleActivationResult::Disabled);
         }
 
-        // User declined consent, or Google reported an error.
+        // User declined consent, Google reported an error (e.g. access_denied
+        // when the OAuth app is still in "Testing" and this account is not a
+        // test user), or the callback was opened without parameters. Log what
+        // Google said — never the authorization code.
         if ($request->filled('error') || ! $request->filled('code')) {
+            Log::warning('Google activation callback returned without a code.', [
+                'error' => $request->query('error'),
+                'error_description' => $request->query('error_description'),
+                'has_state' => $request->filled('state'),
+                'referer_host' => parse_url((string) $request->headers->get('referer'), PHP_URL_HOST),
+            ]);
+
             return $this->fail(GoogleActivationResult::OAuthFailed);
         }
 

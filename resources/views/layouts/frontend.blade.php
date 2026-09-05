@@ -33,8 +33,19 @@
         @endif
     @endif
 
-    <title>@yield('title', $appName)</title>
-    <meta name="description" content="@yield('meta_description', '')">
+    @php
+        $routeSeo = app(\App\Content\SEO\SeoManager::class)->getRouteMetadata(
+            Route::currentRouteName(),
+            trim($__env->yieldContent('title')),
+            trim($__env->yieldContent('meta_description')),
+        );
+    @endphp
+    <title>{{ $routeSeo['title'] }}</title>
+    <meta name="description" content="{{ $routeSeo['description'] }}">
+    <meta property="og:title" content="{{ $routeSeo['title'] }}">
+    @if($routeSeo['description'] !== '')
+        <meta property="og:description" content="{{ $routeSeo['description'] }}">
+    @endif
 
     @if($favicon)
         <link rel="icon" href="{{ $favicon }}">

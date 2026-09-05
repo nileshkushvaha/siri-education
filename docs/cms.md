@@ -115,6 +115,8 @@ $this->app->bind(ContentRenderer::class, PageRenderService::class);
 
 `SeoManager` (`app/Content/SEO/SeoManager.php`) generates `<title>`/meta description/canonical, Open Graph tags, JSON-LD structured data, and robots meta (`SeoSettings::robots_default` + page override). Priority: Page/Post fields → `SeoSettings` defaults → hardcoded defaults.
 
+**Template-rendered routes** (home template, `/blog`, `/instructors`, `/faqs`, `/login`, `/register`, `/become-instructor`, `/forgot-password`) do not go through a CMS Page. Their `<title>`, `meta description`, `og:title` and `og:description` are resolved once in `layouts/frontend.blade.php` by `SeoManager::getRouteMetadata()`: the matching entry in **Admin → Content → Page SEO** (`PageSeoSettings`, keyed by `SeoRoute`) wins; the home page then falls back to the global SEO Settings meta title/description; finally the template's own `@section('title')` / `@section('meta_description')` apply. Templates must set those sections rather than pushing their own `<meta name="description">`, so each page carries exactly one description tag. A CMS page marked as homepage is rendered by `ContentRenderer` and keeps using its own SEO fields.
+
 Sitemap and robots.txt are served by `SeoController` (`routes/web.php`): `GET /sitemap.xml`, `GET /robots.txt` — auto-generated from published pages and posts.
 
 ## Policy pages

@@ -2,10 +2,9 @@
 
 @section('title', 'Find an Instructor — '.config('app.name'))
 
+@section('meta_description', 'Discover verified instructors by subject, academic level, teaching language, location, timezone, and availability.')
+
 @push('meta')
-    <meta name="description" content="Discover verified instructors by subject, academic level, teaching language, location, timezone, and availability.">
-    <meta property="og:title" content="Find an Instructor — {{ config('app.name') }}">
-    <meta property="og:description" content="Compare approved public instructor profiles and find the right match for your learning goals.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ route('instructors.index') }}">
 @endpush

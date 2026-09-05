@@ -31,11 +31,11 @@ use App\Filament\Pages\Security\SessionPage;
 use App\Filament\Pages\Settings\AiSettingsPage;
 use App\Filament\Pages\Settings\DemoConversionIncentiveSettingsPage;
 use App\Filament\Pages\Settings\GeneralSettingsPage;
-use App\Filament\Pages\Settings\WalletSettingsPage;
 use App\Filament\Pages\Settings\HomeworkReminderSettingsPage;
 use App\Filament\Pages\Settings\InstructorEarningSettingsPage;
 use App\Filament\Pages\Settings\MailSettingsPage;
 use App\Filament\Pages\Settings\MeetingSettingsPage;
+use App\Filament\Pages\Settings\PageSeoSettingsPage;
 use App\Filament\Pages\Settings\PaymentAdvancedPage;
 use App\Filament\Pages\Settings\PaymentConfigurationPage;
 use App\Filament\Pages\Settings\PaymentGatewayPage;
@@ -43,6 +43,7 @@ use App\Filament\Pages\Settings\PlatformFoundationSettingsPage;
 use App\Filament\Pages\Settings\RazorpayXPayoutSettingsPage;
 use App\Filament\Pages\Settings\ReviewQualitySettingsPage;
 use App\Filament\Pages\Settings\SeoSettingsPage;
+use App\Filament\Pages\Settings\WalletSettingsPage;
 use App\Filament\Pages\Settings\WhatsAppSettingsPage;
 use App\Filament\Pages\StudentEngagement;
 use App\Filament\Pages\WalletRefunds;
@@ -771,6 +772,15 @@ final class NavigationRegistry
                 sort: 10,
                 previousGroup: 'Platform',
                 previousLabel: 'SEO',
+            ),
+            PageSeoSettingsPage::class => new NavigationDestination(
+                id: 'content.page-seo',
+                label: 'Page SEO',
+                group: 'Content & Communication',
+                subgroup: 'Content',
+                sort: 11,
+                previousGroup: 'Platform',
+                previousLabel: 'Page SEO',
             ),
             MailSettingsPage::class => new NavigationDestination(
                 id: 'content.communication.mail',

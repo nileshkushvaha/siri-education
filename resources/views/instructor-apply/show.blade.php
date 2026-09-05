@@ -2,10 +2,9 @@
 
 @section('title', 'Become an Instructor — ' . config('app.name'))
 
+@section('meta_description', 'Share your knowledge with students worldwide. Apply to teach on '.config('app.name').' — university students, graduates, professionals and experienced teachers welcome.')
+
 @push('meta')
-    <meta name="description" content="Share your knowledge with students worldwide. Apply to teach on {{ config('app.name') }} — university students, graduates, professionals and experienced teachers welcome.">
-    <meta property="og:title" content="Become an Instructor — {{ config('app.name') }}">
-    <meta property="og:description" content="Build a trusted teaching profile, set your availability, and help students make meaningful progress.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ route('instructor.apply') }}">
 @endpush

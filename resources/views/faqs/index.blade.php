@@ -2,9 +2,7 @@
 
 @section('title', 'Help Center — '.config('app.name'))
 
-@push('meta')
-    <meta name="description" content="Find clear answers about accounts, instructor verification, lesson bookings, payments, privacy, and support at {{ config('app.name') }}.">
-@endpush
+@section('meta_description', 'Find clear answers about accounts, instructor verification, lesson bookings, payments, privacy, and support at '.config('app.name').'.')
 
 @php
     $activeCategory = $categories->firstWhere('id', $categoryId);

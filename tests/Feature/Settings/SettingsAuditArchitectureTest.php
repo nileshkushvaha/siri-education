@@ -40,6 +40,7 @@ class SettingsAuditArchitectureTest extends TestCase
             $base.'/app/Filament/Pages/Settings/GeneralSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/MailSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/SeoSettingsPage.php',
+            $base.'/app/Filament/Pages/Settings/PageSeoSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/MeetingSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/InstructorEarningSettingsPage.php',
             $base.'/app/Filament/Pages/Settings/PlatformFoundationSettingsPage.php',

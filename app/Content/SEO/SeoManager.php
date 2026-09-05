@@ -7,6 +7,7 @@ namespace App\Content\SEO;
 use App\Models\Page;
 use App\Models\Post;
 use App\Settings\GeneralSettings;
+use App\Settings\PageSeoSettings;
 use App\Settings\SeoSettings;
 use Illuminate\Support\Facades\Storage;
 
@@ -22,7 +23,36 @@ class SeoManager
     public function __construct(
         private readonly GeneralSettings $generalSettings,
         private readonly SeoSettings $seoSettings,
+        private readonly PageSeoSettings $pageSeo,
     ) {}
+
+    // ── Template-rendered routes ─────────────────────────────────────────
+
+    /**
+     * Title/description for a Blade-rendered route. Priority: the Page SEO
+     * entry for the route → (home page only) the global SEO defaults →
+     * the template's own values → app name.
+     *
+     * @return array{title: string, description: string}
+     */
+    public function getRouteMetadata(?string $routeName, ?string $defaultTitle = null, ?string $defaultDescription = null): array
+    {
+        $route = SeoRoute::fromRouteName($routeName);
+        $entry = $route !== null ? ($this->pageSeo->pages[$route->value] ?? []) : [];
+
+        $title = filled($entry['meta_title'] ?? null) ? (string) $entry['meta_title'] : null;
+        $description = filled($entry['meta_description'] ?? null) ? (string) $entry['meta_description'] : null;
+
+        if ($route === SeoRoute::Home) {
+            $title ??= filled($this->seoSettings->meta_title) ? $this->seoSettings->meta_title : null;
+            $description ??= filled($this->seoSettings->meta_description) ? $this->seoSettings->meta_description : null;
+        }
+
+        return [
+            'title' => $title ?? (filled($defaultTitle) ? $defaultTitle : $this->appName()),
+            'description' => $description ?? ($defaultDescription ?? ''),
+        ];
+    }
 
     // ── Pages ────────────────────────────────────────────────────────────
 

@@ -2,9 +2,7 @@
 
 @section('title', config('app.name').' — Personalised 1-on-1 Learning')
 
-@push('meta')
-<meta name="description" content="Find verified instructors, book flexible one-to-one lessons, and follow a personalised learning plan with {{ config('app.name') }}.">
-@endpush
+@section('meta_description', 'Find verified instructors, book flexible one-to-one lessons, and follow a personalised learning plan with '.config('app.name').'.')
 
 @php
 $appName ??= config('app.name', 'SIRI Education');

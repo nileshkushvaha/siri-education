@@ -223,6 +223,147 @@ The authenticated `/book` wizard (`BookingWizard` Livewire component, `WizardBoo
   `expectsJson()` in bootstrap/app.php (exceptions + BookingException
   → 422).
 
+## Student booking wizard (student-facing UX)
+
+The `/book` wizard (`BookingWizard` Livewire component,
+`resources/views/livewire/frontend/booking/`) presents **four conceptual
+stages** over the unchanged internal phase list. `BookingWizard::phases()`
+and `$step` remain the authoritative state machine; stages are how that
+machine is presented (`BookingWizard::STAGE_PHASES`).
+
+| Stage | Internal phases | What the student does |
+|---|---|---|
+| 1 Learning details | `mode`, `level`, `academic_subject`, `curriculum` (legacy: `subject`, `grade`) | Session type, then level → subject → curriculum, disclosed progressively in one panel. Answered questions collapse to a "Change" row (`x-booking.chosen-row`, `editPhase()`). |
+| 2 Schedule | `billing_mode`, `frequency`, `date`, `time` | "How often?" (paid only), repeat pattern (only after "Repeating sessions"), month calendar, grouped Morning/Afternoon/Evening times — one panel, one "Review booking" CTA. |
+| 3 Review | `funding`, `review` | Learning / Schedule / Instructor / Pricing cards with Edit links, package choice when one qualifies, notes, configured cancellation/reschedule facts. CTA "Proceed to payment" or "Confirm booking". |
+| 4 Payment / Confirmed | `confirmed` | Unchanged reservation + checkout screen (`partials/confirmed.blade.php`). |
+
+Navigation is server-side: `continueStage()` advances only when the
+current stage is complete, `editStage()`/`backStage()` return to an
+earlier stage with every selection intact and resume at the furthest
+valid phase (`resumeSchedulePhase()`), and `editPhase()` re-opens one
+answered question inside the current stage. Re-selecting the same level,
+subject or curriculum keeps everything after it; choosing a different one
+clears only its dependants (subject/curriculum lists, availability, the
+price preview) — see `selectLevel()`/`selectAcademicSubject()`/
+`selectCurriculum()` and `selectBillingMode()` (switching one-time ↔
+repeating clears the chosen date/time). The last selection of a stage no
+longer auto-advances: tests that walk the component call
+`continueStage()` where the UI would.
+
+**Pre-filled learning details (returning students).**
+`BookingWizardService::learningPrefill()` returns the ids from the
+student's most recent non-cancelled booking's `BookingAcademicContext`
+(`BookingRepositoryInterface::latestAcademicContextForStudent()`), falling
+back to the profile's `student_academic_level_id`. `BookingWizard::
+applyLearningPrefill()` feeds them through the ordinary `select*()`
+chain, so validation, locked-instructor narrowing and the
+no-normalized-grade refusal apply unchanged; the chain stops at the
+first id no longer offered. A profile academic level is used only when
+exactly one offered level maps to it. A fully pre-filled selection lands
+on the Schedule stage (the header and progress show "Subject • Level •
+System" with Edit); `$prefilledLearning` drives the explanatory copy and
+is cleared on the first manual change. Fresh students are never
+pre-filled.
+
+**Terminology.** Every level label comes from the selected
+`EducationSystem` (`levelTermSingular()`: Class / Grade / Year, generic
+"Level" fallback) and from `EducationSystemLevel::display_label`; no
+booking view hardcodes a term.
+
+**Availability.** Dates and times are exactly what
+`WizardBookingService::availableDates()/availableSlots()` return
+(`AvailabilityService` over the eligible candidate set); the UI never
+synthesises slots or counts. Submission still runs the full
+`BookingService::request()` path under the instructor lock. If the slot
+was taken in between (`SlotUnavailableException` /
+`NoEligibleTeacherException`), `submit()` clears only the slot, reloads
+the same day's times and returns to the Schedule stage with "That time
+is no longer available. Please choose another time." — every other
+selection survives.
+
+**Pricing.** The sidebar/review/mobile-footer amount is
+`BookingWizardService::pricePreview()`, a display-only call to the same
+`BookingPriceCalculator` `BookingService::request()` charges with
+(instructor-specific override when an instructor is locked, base price
+otherwise, null when unresolvable or for a free type). Discount/tax rows
+render only when non-zero. Nothing from the browser feeds the price;
+the booking's price is recalculated at creation and shown again on the
+payment screen.
+
+**Recurring.** Only the supported cadence is exposed: Daily / Weekly,
+2–`RecurrenceData::MAX_OCCURRENCES` sessions, first session = the chosen
+date/time. Once a slot is chosen the summary reads "Every Monday at
+6:00 PM • Starting 12 September • 4 sessions" (`recurrenceSummary()`);
+the price is shown per session because each occurrence is reserved and
+paid separately. Package funding stays single-lesson only (selecting
+"Repeating sessions" clears a chosen package and says so).
+
+**Payment.** Unchanged: `submit()` reserves, the confirmed screen calls
+`initiatePayment()` / wallet / fake simulator exactly as before, and only
+webhooks/reconciliation settle. `submit()` is a no-op once `$result`
+exists (duplicate-click protection alongside `wire:loading` disabling).
+
+**Layout.** Compact header (title, learning summary, locked instructor,
+"Area/City (GMT±hh:mm)"), `x-booking.progress` (stage numbers, completed
+summaries, Edit), main panel + sticky "Your session" sidebar from `lg`
+(`partials/summary.blade.php`, rows appear only once known). Below `lg`
+the summary is a collapsible card and a fixed footer carries the
+authoritative price/"Free"/"Package" and the stage CTA
+(`partials/cta.blade.php`); touch targets are ≥ 44px and the page never
+scrolls horizontally. Selected options (`x-booking.option-card`) combine
+border, tint, and a checkmark with `aria-pressed`; stage lists carry
+`aria-current="step"`; loading and empty states exist for availability
+("No times are available this month / on this date"), price and
+submission.
+
+**Reserved / payment-pending screen (stage 4).** Rendered by
+`partials/confirmed.blade.php` once `submit()` has reserved a paid
+booking: `status = pending`, `payment_status = pending` (or `failed`
+after a declined attempt), `reserved_until = now + BookingSettings::
+payment_reservation_minutes`. Everything shown comes from
+`BookingWizardService::result()` — amount/currency are the booking's own
+`price`/`currency` formatted by `MoneyFormatter` (no client arithmetic,
+no hardcoded currency), the reference is `bookings.reference`, and the
+lesson line uses the `BookingAcademicContext` snapshot (`subject_name`,
+`level_display`, `education_system_name`) so the level term is the
+education system's own. Layout: compact header + stage progress
+("4 of 4 • Payment" on mobile), a status pill, then a two-column
+checkout from `md` (Your lesson · Payment); below `md` the columns
+stack and a fixed footer repeats "Total due" + "Pay securely"
+(hidden while the Stripe Payment Element is mounted, so it never
+competes with card entry). The wallet block is an alternate method,
+rendered only when `walletOption.available` (feature enabled and a
+wallet in the booking's currency exists): sufficient balance offers
+"Pay <amount> from wallet", otherwise a muted "Insufficient balance"
+tag — never an error style. The only navigation is a low-emphasis
+"Back to my bookings" link; "Book another session" is offered only once
+the booking is confirmed or the reservation has expired, so a held
+reservation is not abandoned by accident.
+
+The reservation countdown is display-only: it is computed in the
+browser from the server's `reserved_until` instant (re-derived from
+`Date.now()` every tick, so a slept tab catches up), and when it reaches
+zero it calls `checkPaymentStatus()` — which only re-reads the booking.
+Validity is decided by the server: `BookingPaymentService::initiate()`
+refuses terminal or non-payable bookings, and `booking:release-expired`
+cancels lapsed holds. States: pending → Pay CTA (`initiatePayment`,
+disabled while the checkout is being prepared; the service reuses one
+payment reference, so a repeated click cannot mint a second attempt);
+failed → "Payment wasn't completed" + "Try payment again"; cancelled
+while unpaid (expired hold) → "This reservation has expired" with
+"Choose another time" and no Pay CTA; paid → "Booking confirmed" with
+"View my bookings" / "Book another session". Provider routing, Razorpay
+callback verification, Stripe polling and webhook settlement are
+unchanged — the page never marks anything paid itself.
+
+**Coverage.** `tests/Feature/Booking/BookingWizardStagesTest.php`
+(stage grouping, prefill from history and profile, change-after-prefill
+invalidation, same-answer reselect, price preview presence/absence,
+slot-taken recovery, duplicate submit, back/edit/resume, recurring
+summary, funding on review, timezone label, per-system terminology) on
+top of the existing wizard suites listed elsewhere in this document.
+
 ## Booking-type scope
 
 Exactly two booking modes exist: `free_demo` and `paid_one_to_one` ("Paid Lesson"), each single-occurrence or recurring. `BookingTypeRegistry` only ever contains these two drivers; `BookingTypeSeeder` (idempotent, `firstOrCreate` per driver) cannot create a third row through a fresh install. The Filament Booking Type form's `key` field is a closed `Select` populated from `BookingTypeRegistry::options()` with a `unique` constraint — an admin cannot type an arbitrary key.

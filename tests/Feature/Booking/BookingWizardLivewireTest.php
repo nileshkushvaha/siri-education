@@ -234,6 +234,7 @@ class BookingWizardLivewireTest extends TestCase
             ->call('selectGrade', 5)
             ->call('selectDate', now('UTC')->addDays(3)->toDateString())
             ->call('selectSlot', $start)
+            ->call('continueStage')
             ->call('submit')
             ->assertSet('step', 6)
             ->assertSet('banner', 'Please log in or create an account to book a lesson.');

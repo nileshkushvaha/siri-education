@@ -225,6 +225,7 @@ class RazorpayCheckoutLivewireTest extends TestCase
             $this->academic,
             $slot,
         )
+            ->call('continueStage')
             ->call('submit')
             // Submission is refused on the review step (8 of 9) — the
             // student never reaches payment without a resolvable price.

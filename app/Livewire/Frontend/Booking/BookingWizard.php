@@ -9,13 +9,17 @@ use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\DTOs\RecurrenceData;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\InvalidPaymentWebhookException;
+use App\Booking\Exceptions\NoEligibleTeacherException;
+use App\Booking\Exceptions\SlotUnavailableException;
 use App\Booking\Payments\RazorpayPaymentProvider;
 use App\Booking\Services\BookingWizardService;
 use App\Booking\Support\FakePaymentSimulator;
 use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\Country;
 use App\Models\EducationSystem;
+use App\Models\User;
 use App\Models\Wallet;
+use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Support\MoneyFormatter;
 use App\Support\Timezone\IanaTimezone;
@@ -43,27 +47,25 @@ use Livewire\Component;
  */
 final class BookingWizard extends Component
 {
-    private const array PHASE_LABELS = [
-        'mode' => 'Session type',
-        'subject' => 'Subject',
-        // 'level' is deliberately absent here — its label is always the
-        // selected EducationSystem's configured terminology ("Class" /
-        // "Grade" / "Year"), computed dynamically in steps(), never a
-        // static string (Phase 3.1 §13: no hardcoded country-aware copy).
-        'academic_subject' => 'Subject',
-        'curriculum' => 'Curriculum',
-        // Legacy (non-academic) flow only — the country-aware flow never
-        // visits this phase (§12: level implies grade).
-        'grade' => 'Grade',
-        'billing_mode' => 'Schedule',
-        'frequency' => 'Frequency',
-        'date' => 'Date',
-        'time' => 'Time',
-        // Phase 4D — only present when a qualifying package exists.
-        'funding' => 'Payment',
-        'review' => 'Review',
-        'confirmed' => 'Confirmed',
+    /**
+     * Student-facing stages. Each groups consecutive internal phases;
+     * the phase list and `$step` stay the authoritative state machine,
+     * stages are how it is presented.
+     */
+    private const array STAGE_PHASES = [
+        'learning' => ['mode', 'level', 'academic_subject', 'curriculum', 'subject', 'grade'],
+        'schedule' => ['billing_mode', 'frequency', 'date', 'time'],
+        'review' => ['funding', 'review'],
+        'outcome' => ['confirmed'],
     ];
+
+    private const array STAGE_LABELS = [
+        'learning' => 'Learning details',
+        'schedule' => 'Schedule',
+        'review' => 'Review',
+    ];
+
+    private const string SLOT_TAKEN_MESSAGE = 'That time is no longer available. Please choose another time.';
 
     public int $step = 1;
 
@@ -195,6 +197,19 @@ final class BookingWizard extends Component
     /** @var list<array<string, mixed>> every qualifying package — never auto-narrowed to one (§29) */
     public array $fundingOptions = [];
 
+    /**
+     * Display-only price for the current selection from
+     * BookingWizardService::pricePreview(); empty until a complete
+     * learning selection resolves one. Never submitted — the booking's
+     * price is recalculated server-side at creation.
+     *
+     * @var array<string, mixed>
+     */
+    public array $pricePreview = [];
+
+    /** True when the learning selection was pre-filled from the student's own history and not yet changed. */
+    public bool $prefilledLearning = false;
+
     #[Locked]
     public ?int $studentCountryId = null;
 
@@ -238,6 +253,8 @@ final class BookingWizard extends Component
     private BookingPaymentServiceInterface $payments;
 
     private RazorpayPaymentProvider $razorpay;
+
+    private ?EducationSystem $educationSystemMemo = null;
 
     public function boot(
         BookingWizardService $wizard,
@@ -309,7 +326,7 @@ final class BookingWizard extends Component
         if ($this->type !== null) {
             $this->initializeAcademicFlow();
 
-            if (! $this->academicFlowBlocked && $this->academicFlowActive) {
+            if (! $this->academicFlowBlocked && $this->academicFlowActive && $this->step === 1) {
                 $this->goToPhase('level');
             }
         }
@@ -348,9 +365,12 @@ final class BookingWizard extends Component
         }
 
         $this->banner = '';
+        $this->step = 1;
         $this->type = $type;
         $this->recurring = false;
         $this->frequency = null;
+        $this->grade = null;
+        $this->subject = null;
         $this->resetAvailability();
         $this->resetAcademicSelection();
 
@@ -362,7 +382,7 @@ final class BookingWizard extends Component
             return;
         }
 
-        if ($this->academicFlowActive) {
+        if ($this->academicFlowActive && $this->step === 1) {
             $this->goToPhase('level');
         }
     }
@@ -371,6 +391,7 @@ final class BookingWizard extends Component
     {
         $this->subject = $subject;
         $this->grade = null;
+        $this->pricePreview = [];
         $this->resetAvailability();
         $this->goToPhase('grade');
     }
@@ -390,6 +411,7 @@ final class BookingWizard extends Component
         $this->levels = [];
         $this->academicSubjects = [];
         $this->curricula = [];
+        $this->pricePreview = [];
         $this->resetAvailability();
 
         $country = $this->currentCountry();
@@ -425,12 +447,20 @@ final class BookingWizard extends Component
             return;
         }
 
+        if ($this->educationSystemLevelId === $educationSystemLevelId && $this->academicSubjects !== []) {
+            $this->goToPhase($this->furthestLearningPhase());
+
+            return;
+        }
+
+        $this->prefilledLearning = false;
         $this->educationSystemLevelId = $educationSystemLevelId;
         $this->grade = (int) $selected['normalized_grade'];
         $this->academicSubjectId = null;
         $this->curriculumId = null;
         $this->academicSubjects = [];
         $this->curricula = [];
+        $this->pricePreview = [];
         $this->resetAvailability();
 
         $country = $this->currentCountry();
@@ -449,9 +479,17 @@ final class BookingWizard extends Component
             return;
         }
 
+        if ($this->academicSubjectId === $academicSubjectId && $this->curricula !== []) {
+            $this->goToPhase($this->furthestLearningPhase());
+
+            return;
+        }
+
+        $this->prefilledLearning = false;
         $this->academicSubjectId = $academicSubjectId;
         $this->curriculumId = null;
         $this->curricula = [];
+        $this->pricePreview = [];
         $this->resetAvailability();
 
         // Legacy-compat: $subject (the free-text field TeacherSubject /
@@ -478,18 +516,23 @@ final class BookingWizard extends Component
             return;
         }
 
-        $this->curriculumId = $curriculumId;
-        $this->resetAvailability();
-        $this->validateSelection(['educationSystemId', 'educationSystemLevelId', 'academicSubjectId', 'curriculumId']);
-
-        if ($this->isPaidType()) {
-            $this->goToPhase('billing_mode');
+        if ($this->curriculumId === $curriculumId) {
+            $this->goToPhase('curriculum');
 
             return;
         }
 
-        $this->loadDates();
-        $this->goToPhase('date');
+        $this->prefilledLearning = false;
+        $this->curriculumId = $curriculumId;
+        $this->resetAvailability();
+        $this->validateSelection(['educationSystemId', 'educationSystemLevelId', 'academicSubjectId', 'curriculumId']);
+        $this->refreshPricePreview();
+
+        if (! $this->isPaidType()) {
+            $this->loadDates();
+        }
+
+        $this->goToPhase('curriculum');
     }
 
     /** Legacy (non-academic) flow only — the country-aware flow finalizes its selection in selectCurriculum() instead. */
@@ -498,21 +541,23 @@ final class BookingWizard extends Component
         $this->grade = $grade;
         $this->resetAvailability();
         $this->validateSelection(['subject', 'grade']);
+        $this->refreshPricePreview();
 
-        if ($this->isPaidType()) {
-            $this->goToPhase('billing_mode');
-
-            return;
+        if (! $this->isPaidType()) {
+            $this->loadDates();
         }
 
-        $this->loadDates();
-        $this->goToPhase('date');
+        $this->goToPhase('grade');
     }
 
     public function selectBillingMode(string $mode): void
     {
         if (! in_array($mode, ['single', 'recurring'], true)) {
             return;
+        }
+
+        if ($this->recurring !== ($mode === 'recurring')) {
+            $this->resetAvailability();
         }
 
         $this->recurring = $mode === 'recurring';
@@ -585,7 +630,7 @@ final class BookingWizard extends Component
         // loaded here, once a concrete instant exists.
         $this->loadFundingOptions();
 
-        $this->goToPhase($this->fundingOptions === [] ? 'review' : 'funding');
+        $this->goToPhase('time');
     }
 
     /**
@@ -603,6 +648,10 @@ final class BookingWizard extends Component
 
     public function submit(): void
     {
+        if ($this->result !== null) {
+            return;
+        }
+
         $this->banner = '';
         $this->validate($this->rulesForSubmit(), [], $this->validationAttributes());
 
@@ -644,9 +693,27 @@ final class BookingWizard extends Component
             }
 
             $this->goToPhase('confirmed');
+        } catch (SlotUnavailableException|NoEligibleTeacherException) {
+            $this->returnToTimeSelection();
         } catch (BookingException $exception) {
             $this->banner = $exception->getMessage();
         }
+    }
+
+    /**
+     * The chosen slot was taken between selection and confirmation.
+     * Every other selection is still valid, so only the slot is cleared
+     * and the (freshly reloaded) times for the same day are offered
+     * again — the student is not sent back to the start.
+     */
+    private function returnToTimeSelection(): void
+    {
+        $this->selectedSlotStartsAt = null;
+        $this->fundingOptions = [];
+        $this->packageEntitlementId = null;
+        $this->loadSlots();
+        $this->goToPhase('time');
+        $this->banner = self::SLOT_TAKEN_MESSAGE;
     }
 
     public function initiatePayment(): void
@@ -851,19 +918,12 @@ final class BookingWizard extends Component
         }
 
         $booking = $this->bookings->findOrFail($this->bookingId)->refresh();
+        $this->result = $this->wizard->result($booking);
 
         if ($booking->payment_status->value === 'paid') {
             $this->paymentBanner = '';
-            $this->result = $this->wizard->result($booking);
         } elseif ($booking->payment_status->value === 'failed') {
             $this->paymentBanner = 'Payment failed. Please try again.';
-        }
-    }
-
-    public function back(): void
-    {
-        if ($this->step > 1 && $this->step < count($this->phases())) {
-            $this->step--;
         }
     }
 
@@ -887,6 +947,11 @@ final class BookingWizard extends Component
             'bookingId',
             'paymentOrder',
             'paymentBanner',
+            'walletOption',
+            'fundingOptions',
+            'packageEntitlementId',
+            'pricePreview',
+            'prefilledLearning',
         ]);
 
         $this->resetAcademicSelection();
@@ -905,16 +970,33 @@ final class BookingWizard extends Component
     {
         $phases = $this->phases();
 
+        $currentPhase = $phases[$this->step - 1] ?? 'mode';
+
         return view('livewire.frontend.booking.booking-wizard', [
-            'currentPhase' => $phases[$this->step - 1] ?? 'mode',
+            'currentPhase' => $currentPhase,
+            'currentStage' => $this->stageOf($currentPhase),
+            'stages' => $this->stages($currentPhase),
             'selectedType' => collect($this->types)->firstWhere('key', $this->type),
             'selectedSlot' => collect($this->availableSlots)->firstWhere('starts_at', $this->selectedSlotStartsAt),
+            'selectedLevel' => collect($this->levels)->firstWhere('id', $this->educationSystemLevelId),
+            'selectedCurriculum' => collect($this->curricula)->firstWhere('id', $this->curriculumId),
+            'selectedFunding' => collect($this->fundingOptions)->firstWhere('id', $this->packageEntitlementId),
             'calendar' => $this->calendar(),
-            'steps' => $this->steps(),
+            'slotGroups' => $this->slotGroups(),
             'canGoPreviousMonth' => $this->monthDate()->greaterThan(now($this->timezone)->startOfMonth()),
             'canGoNextMonth' => $this->monthDate()->lessThan(now($this->timezone)->addDays(90)->startOfMonth()),
             'levelTermSingular' => $this->levelTermSingular(),
             'levelTermPlural' => $this->levelTermPlural(),
+            'timezoneLabel' => $this->timezoneLabel(),
+            'learningSummary' => $this->learningSummary(),
+            'scheduleSummary' => $this->scheduleSummary(),
+            'recurrenceSummary' => $this->recurrenceSummary(),
+            'billingModeChosen' => $this->recurring || $this->phaseIndex($currentPhase) > $this->phaseIndex('billing_mode'),
+            'learningComplete' => $this->learningComplete(),
+            'policy' => [
+                'cancellation_window_hours' => max(0, app(BookingSettings::class)->cancellation_window_hours),
+                'reschedule_limit' => max(0, app(BookingSettings::class)->reschedule_limit),
+            ],
         ]);
     }
 
@@ -962,6 +1044,9 @@ final class BookingWizard extends Component
         $this->levels = [];
         $this->academicSubjects = [];
         $this->curricula = [];
+        $this->pricePreview = [];
+        $this->prefilledLearning = false;
+        $this->educationSystemMemo = null;
     }
 
     /**
@@ -1007,6 +1092,83 @@ final class BookingWizard extends Component
         // its configured display order, so students do not need a redundant
         // education-system step merely to confirm their own country.
         $this->selectEducationSystem((string) $this->educationSystems[0]['id']);
+        $this->applyLearningPrefill($user);
+    }
+
+    /**
+     * Pre-selects what the student chose last time, as far as those
+     * choices are still offered. Each id goes through the same select*()
+     * method a click would, so validation and narrowing (a locked
+     * instructor, a level with no grade, an archived curriculum) apply
+     * unchanged, and the chain simply stops at the first id that is no
+     * longer available. A fully pre-filled selection lands the student on
+     * the schedule directly; anything partial leaves them on the learning
+     * details with the rest still to choose.
+     */
+    private function applyLearningPrefill(User $user): void
+    {
+        $prefill = $this->wizard->learningPrefill($user);
+        $levelId = $this->prefillLevelId($prefill);
+
+        if ($levelId === null) {
+            return;
+        }
+
+        $this->selectLevel($levelId);
+
+        if ($this->educationSystemLevelId !== $levelId) {
+            return;
+        }
+
+        $subjectId = $prefill['subject_id'];
+
+        if ($subjectId === null || ! collect($this->academicSubjects)->contains('id', $subjectId)) {
+            $this->prefilledLearning = true;
+
+            return;
+        }
+
+        $this->selectAcademicSubject($subjectId);
+
+        $curriculumId = $prefill['curriculum_id'];
+
+        if ($curriculumId === null || ! collect($this->curricula)->contains('id', $curriculumId)) {
+            $this->prefilledLearning = true;
+
+            return;
+        }
+
+        $this->selectCurriculum($curriculumId);
+        $this->prefilledLearning = true;
+        $this->continueStage();
+    }
+
+    /**
+     * The level to pre-select: the exact level of the student's last
+     * booking when it is still offered under the auto-selected system,
+     * otherwise the single offered level mapped to the academic level on
+     * their profile. Ambiguity (several levels under one academic level)
+     * means no pre-selection at all.
+     *
+     * @param  array{education_system_id:?string,education_system_level_id:?string,subject_id:?string,curriculum_id:?string,academic_level_id:?string}  $prefill
+     */
+    private function prefillLevelId(array $prefill): ?string
+    {
+        $levels = collect($this->levels)->where('normalized_grade', '!==', null);
+
+        if ($prefill['education_system_id'] === $this->educationSystemId
+            && $prefill['education_system_level_id'] !== null
+            && $levels->contains('id', $prefill['education_system_level_id'])) {
+            return $prefill['education_system_level_id'];
+        }
+
+        if ($prefill['academic_level_id'] === null) {
+            return null;
+        }
+
+        $matches = $levels->where('academic_level_id', $prefill['academic_level_id']);
+
+        return $matches->count() === 1 ? (string) $matches->first()['id'] : null;
     }
 
     private function currentCountry(): ?Country
@@ -1031,7 +1193,34 @@ final class BookingWizard extends Component
 
     private function currentEducationSystem(): ?EducationSystem
     {
-        return $this->educationSystemId !== null ? EducationSystem::find($this->educationSystemId) : null;
+        if ($this->educationSystemId === null) {
+            return null;
+        }
+
+        if ($this->educationSystemMemo?->id !== $this->educationSystemId) {
+            $this->educationSystemMemo = EducationSystem::find($this->educationSystemId);
+        }
+
+        return $this->educationSystemMemo;
+    }
+
+    private function refreshPricePreview(): void
+    {
+        $this->pricePreview = [];
+        $user = Auth::user();
+
+        if ($user === null || $this->type === null || ! $this->learningComplete()) {
+            return;
+        }
+
+        $this->pricePreview = $this->wizard->pricePreview(
+            $user,
+            $this->type,
+            $this->subject,
+            $this->grade,
+            $this->lockedInstructorId,
+            collect($this->levels)->firstWhere('id', $this->educationSystemLevelId)['academic_level_id'] ?? null,
+        ) ?? [];
     }
 
     private function loadDates(): void
@@ -1304,30 +1493,242 @@ final class BookingWizard extends Component
         return $days;
     }
 
-    /** @return list<array{number: int, label: string}> */
-    private function steps(): array
+    // ── Stage presentation ─────────────────────────────────────────────────
+
+    /** Moves the wizard forward from the current stage once it is complete. */
+    public function continueStage(): void
     {
-        return collect($this->phases())
-            ->values()
-            ->map(fn (string $phase, int $i): array => [
-                'number' => $i + 1,
-                'label' => match ($phase) {
-                    'confirmed' => $this->finalPhaseLabel(),
-                    'level' => $this->levelTermSingular(),
-                    default => self::PHASE_LABELS[$phase],
+        $this->banner = '';
+
+        match ($this->stageOf($this->currentPhase())) {
+            'learning' => $this->learningComplete() ? $this->goToPhase($this->resumeSchedulePhase()) : null,
+            'schedule' => $this->selectedSlotStartsAt !== null && ! ($this->recurring && $this->frequency === null)
+                ? $this->goToPhase($this->fundingOptions === [] ? 'review' : 'funding')
+                : null,
+            default => null,
+        };
+    }
+
+    /** Returns to an earlier stage with every selection intact. */
+    public function editStage(string $stage): void
+    {
+        $order = array_keys(self::STAGE_PHASES);
+        $current = array_search($this->stageOf($this->currentPhase()), $order, true);
+        $target = array_search($stage, $order, true);
+
+        if ($target === false || $current === false || $target > $current || $current === array_search('outcome', $order, true)) {
+            return;
+        }
+
+        $this->banner = '';
+
+        match ($stage) {
+            'learning' => $this->goToPhase($this->furthestLearningPhase()),
+            'schedule' => $this->goToPhase($this->resumeSchedulePhase()),
+            'review' => $this->goToPhase($this->fundingOptions === [] ? 'review' : 'funding'),
+            default => null,
+        };
+    }
+
+    /** Re-opens one already-answered question inside the current stage. */
+    public function editPhase(string $phase): void
+    {
+        if ($this->stageOf($phase) !== $this->stageOf($this->currentPhase()) || ! $this->phaseReached($phase)) {
+            return;
+        }
+
+        $this->banner = '';
+        $this->goToPhase($phase);
+    }
+
+    public function backStage(): void
+    {
+        $order = array_keys(self::STAGE_PHASES);
+        $index = array_search($this->stageOf($this->currentPhase()), $order, true);
+
+        if ($index === false || $index === 0) {
+            return;
+        }
+
+        $this->editStage($order[$index - 1]);
+    }
+
+    private function currentPhase(): string
+    {
+        return $this->phases()[$this->step - 1] ?? 'mode';
+    }
+
+    private function stageOf(string $phase): string
+    {
+        foreach (self::STAGE_PHASES as $stage => $phases) {
+            if (in_array($phase, $phases, true)) {
+                return $stage;
+            }
+        }
+
+        return 'learning';
+    }
+
+    private function phaseIndex(string $phase): int
+    {
+        $index = array_search($phase, $this->phases(), true);
+
+        return $index === false ? PHP_INT_MAX : $index;
+    }
+
+    /** True once the student has passed (or is on) this phase, so its section may be re-opened. */
+    private function phaseReached(string $phase): bool
+    {
+        return $this->phaseIndex($phase) < $this->step;
+    }
+
+    private function learningComplete(): bool
+    {
+        if ($this->type === null || $this->academicFlowBlocked) {
+            return false;
+        }
+
+        return $this->academicFlowActive
+            ? $this->curriculumId !== null
+            : $this->subject !== null && $this->grade !== null;
+    }
+
+    private function furthestLearningPhase(): string
+    {
+        if (! $this->academicFlowActive) {
+            return $this->subject === null ? ($this->type === null ? 'mode' : 'subject') : 'grade';
+        }
+
+        return match (true) {
+            $this->curriculumId !== null => 'curriculum',
+            $this->academicSubjectId !== null => 'curriculum',
+            $this->educationSystemLevelId !== null => 'academic_subject',
+            default => 'level',
+        };
+    }
+
+    /** The schedule phase to show on entry: as far as the existing selections already carry the student. */
+    private function resumeSchedulePhase(): string
+    {
+        if ($this->selectedSlotStartsAt !== null || ($this->date !== null && $this->availableSlots !== [])) {
+            return 'time';
+        }
+
+        if ($this->recurring && $this->frequency === null) {
+            return 'frequency';
+        }
+
+        if ($this->dates !== [] || ! $this->isPaidType()) {
+            return 'date';
+        }
+
+        return $this->recurring ? 'frequency' : 'billing_mode';
+    }
+
+    /** @return list<array{key:string,label:string,number:int,state:string,summary:?string}> */
+    private function stages(string $currentPhase): array
+    {
+        $order = array_keys(self::STAGE_PHASES);
+        $currentIndex = (int) array_search($this->stageOf($currentPhase), $order, true);
+
+        return collect($order)
+            ->map(fn (string $stage, int $index): array => [
+                'key' => $stage,
+                'number' => $index + 1,
+                'label' => $stage === 'outcome' ? $this->finalPhaseLabel() : self::STAGE_LABELS[$stage],
+                'state' => match (true) {
+                    $index < $currentIndex => 'complete',
+                    $index === $currentIndex => 'current',
+                    default => 'upcoming',
                 },
+                'summary' => $index < $currentIndex ? match ($stage) {
+                    'learning' => $this->learningSummary(),
+                    'schedule' => $this->scheduleSummary(),
+                    default => null,
+                } : null,
             ])
+            ->all();
+    }
+
+    private function learningSummary(): ?string
+    {
+        $parts = array_filter([
+            $this->subject !== null ? ucfirst(str_replace(['_', '-'], ' ', $this->subject)) : null,
+            $this->academicFlowActive
+                ? (collect($this->levels)->firstWhere('id', $this->educationSystemLevelId)['display_label'] ?? null)
+                : ($this->grade !== null ? 'Grade '.$this->grade : null),
+            $this->academicFlowActive ? $this->currentEducationSystem()?->name : null,
+        ]);
+
+        return $parts === [] ? null : implode(' • ', $parts);
+    }
+
+    private function scheduleSummary(): ?string
+    {
+        if ($this->selectedSlotStartsAt === null) {
+            return null;
+        }
+
+        $startsAt = CarbonImmutable::parse($this->selectedSlotStartsAt)->timezone($this->timezone);
+        $summary = $startsAt->format('D, j M').' • '.$startsAt->format('g:i A');
+
+        return $this->recurring && $this->frequency !== null
+            ? $summary.' • '.ucfirst((string) $this->frequency).' × '.$this->occurrences
+            : $summary;
+    }
+
+    private function recurrenceSummary(): ?string
+    {
+        if (! $this->recurring || $this->frequency === null || $this->selectedSlotStartsAt === null) {
+            return null;
+        }
+
+        $startsAt = CarbonImmutable::parse($this->selectedSlotStartsAt)->timezone($this->timezone);
+        $cadence = $this->frequency === 'weekly' ? 'Every '.$startsAt->format('l') : 'Every day';
+
+        return sprintf('%s at %s • Starting %s • %d sessions', $cadence, $startsAt->format('g:i A'), $startsAt->format('j F'), $this->occurrences);
+    }
+
+    private function timezoneLabel(): string
+    {
+        return sprintf('%s (GMT%s)', $this->timezone, CarbonImmutable::now($this->timezone)->format('P'));
+    }
+
+    /** @return list<array{label:string,slots:list<array<string, mixed>>}> */
+    private function slotGroups(): array
+    {
+        $groups = ['Morning' => [], 'Afternoon' => [], 'Evening' => []];
+
+        foreach ($this->availableSlots as $slot) {
+            $startsAt = CarbonImmutable::parse($slot['starts_at'])->timezone($this->timezone);
+            $group = match (true) {
+                $startsAt->hour < 12 => 'Morning',
+                $startsAt->hour < 17 => 'Afternoon',
+                default => 'Evening',
+            };
+
+            $groups[$group][] = [
+                ...$slot,
+                'label' => $startsAt->format('g:i A'),
+                'ends_label' => CarbonImmutable::parse($slot['ends_at'])->timezone($this->timezone)->format('g:i A'),
+            ];
+        }
+
+        return collect($groups)
+            ->filter()
+            ->map(fn (array $slots, string $label): array => ['label' => $label, 'slots' => $slots])
+            ->values()
             ->all();
     }
 
     private function finalPhaseLabel(): string
     {
         if (! $this->isPaidType()) {
-            return self::PHASE_LABELS['confirmed'];
+            return 'Confirmed';
         }
 
         if ($this->result !== null && ! ($this->result['requires_payment'] ?? false)) {
-            return self::PHASE_LABELS['confirmed'];
+            return 'Confirmed';
         }
 
         return 'Payment';

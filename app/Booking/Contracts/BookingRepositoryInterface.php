@@ -12,6 +12,7 @@ use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Models\Booking;
+use App\Models\BookingAcademicContext;
 use App\Models\User;
 use App\Support\Timezone\LocalDay;
 use Carbon\CarbonImmutable;
@@ -118,6 +119,9 @@ interface BookingRepositoryInterface
 
     /** @return object{has_bookings: bool, has_completed_demo: bool} */
     public function studentBookingJourney(int $studentId): object;
+
+    /** The academic snapshot of the student's most recently created non-cancelled booking, if any. */
+    public function latestAcademicContextForStudent(int $studentId): ?BookingAcademicContext;
 
     public function updatePaymentStatus(Booking $booking, BookingPaymentStatus $status, ?string $reference = null): Booking;
 

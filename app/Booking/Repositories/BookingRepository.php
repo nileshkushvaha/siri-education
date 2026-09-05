@@ -14,6 +14,7 @@ use App\Booking\Enums\MeetingStatus;
 use App\Booking\Exceptions\BookingException;
 use App\Booking\Types\FreeDemoType;
 use App\Models\Booking;
+use App\Models\BookingAcademicContext;
 use App\Models\BookingActivity;
 use App\Models\User;
 use App\Support\Timezone\LocalDay;
@@ -182,6 +183,16 @@ final class BookingRepository implements BookingRepositoryInterface
                 ->whereHas('type', fn (Builder $type) => $type->where('key', FreeDemoType::KEY))
                 ->exists(),
         ];
+    }
+
+    public function latestAcademicContextForStudent(int $studentId): ?BookingAcademicContext
+    {
+        return BookingAcademicContext::query()
+            ->whereHas('booking', fn (Builder $booking) => $booking
+                ->forStudent($studentId)
+                ->where('status', '!=', BookingStatus::Cancelled))
+            ->orderByDesc('created_at')
+            ->first();
     }
 
     /** withTrashed() — a student's own booking history remains visible even after an admin archives one of their terminal bookings; archived rows are never upcoming or actionable regardless. */

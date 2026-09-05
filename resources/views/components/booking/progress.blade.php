@@ -1,29 +1,81 @@
 {{--
-    Wizard progress indicator. Expects the Alpine scope to expose:
-    `step` (current 1-based step) and `steps` (array of labels).
-    Dots + connector on mobile, labels from md: up.
+    Conceptual booking progress: the four student-facing stages, not the
+    internal phase list. Completed stages show their summary and an Edit
+    action; the current stage carries aria-current="step".
+
+    Props:
+        stages:  list<array{key, number, label, state, summary}>
+        current: key of the current stage
 --}}
-<nav aria-label="Booking progress">
-    <ol class="flex items-center justify-between gap-1 sm:gap-2" role="list">
-        <template x-for="(label, i) in steps" :key="label">
-            <li class="flex items-center flex-1 last:flex-none"
-                :aria-current="step === i + 1 ? 'step' : null">
-                <div class="flex flex-col items-center gap-1.5 min-w-0">
-                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors duration-200"
-                          :class="step > i + 1
-                                    ? 'bg-emerald-500 text-white'
-                                    : (step === i + 1 ? 'bg-indigo-600 text-white ring-4 ring-indigo-100' : 'bg-slate-200 text-fg-muted')">
-                        <svg x-show="step > i + 1" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
-                        <span x-show="step <= i + 1" x-text="i + 1"></span>
+@props(['stages', 'current'])
+
+@php
+    $currentStage = collect($stages)->firstWhere('key', $current);
+    $total = count($stages);
+@endphp
+
+<nav aria-label="Booking progress" {{ $attributes }}>
+    {{-- Mobile: one line of context plus a segmented bar --}}
+    <div class="sm:hidden">
+        <p class="text-sm font-bold text-fg-strong">
+            <span class="text-fg-muted">{{ $currentStage['number'] ?? 1 }} of {{ $total }}</span>
+            <span aria-hidden="true"> • </span>
+            {{ $currentStage['label'] ?? '' }}
+        </p>
+        <ol class="mt-2 grid gap-1.5" style="grid-template-columns: repeat({{ $total }}, minmax(0, 1fr))" role="list">
+            @foreach($stages as $stage)
+                <li
+                    @if($stage['state'] === 'current') aria-current="step" @endif
+                    class="h-1.5 rounded-full {{ $stage['state'] === 'upcoming' ? 'bg-edge' : 'bg-indigo-500' }}"
+                >
+                    <span class="sr-only">{{ $stage['label'] }}{{ $stage['state'] === 'complete' ? ' (completed)' : '' }}</span>
+                </li>
+            @endforeach
+        </ol>
+    </div>
+
+    {{-- Tablet and up: numbered stages with connectors --}}
+    <ol class="hidden items-start sm:flex" role="list">
+        @foreach($stages as $stage)
+            @php($isLast = $loop->last)
+            <li
+                @if($stage['state'] === 'current') aria-current="step" @endif
+                class="flex min-w-0 {{ $isLast ? 'flex-none' : 'flex-1' }} items-start"
+            >
+                <div class="flex min-w-0 items-start gap-2.5">
+                    <span
+                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black
+                            {{ $stage['state'] === 'complete' ? 'bg-emerald-500 text-white' : '' }}
+                            {{ $stage['state'] === 'current' ? 'bg-indigo-600 text-white ring-4 ring-indigo-500/20' : '' }}
+                            {{ $stage['state'] === 'upcoming' ? 'border-2 border-edge-strong text-fg-muted' : '' }}"
+                    >
+                        @if($stage['state'] === 'complete')
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                            <span class="sr-only">Completed:</span>
+                        @else
+                            {{ $stage['number'] }}
+                        @endif
                     </span>
-                    <span class="hidden md:block text-[11px] font-medium truncate max-w-20 text-center"
-                          :class="step === i + 1 ? 'text-indigo-700' : 'text-fg-muted'"
-                          x-text="label"></span>
+                    <span class="min-w-0 pt-1">
+                        <span class="block text-sm font-bold leading-5 {{ $stage['state'] === 'upcoming' ? 'text-fg-muted' : 'text-fg-strong' }}">{{ $stage['label'] }}</span>
+                        @if($stage['state'] === 'complete' && ($stage['summary'] || in_array($stage['key'], ['learning', 'schedule'], true)))
+                            <span class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-fg-muted">
+                                @if($stage['summary'])
+                                    <span class="truncate">{{ $stage['summary'] }}</span>
+                                @endif
+                                @if($current !== 'outcome')
+                                    <button type="button" wire:click="editStage('{{ $stage['key'] }}')" class="min-h-6 rounded font-bold text-indigo-600 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 dark:text-indigo-300">
+                                        Edit<span class="sr-only"> {{ $stage['label'] }}</span>
+                                    </button>
+                                @endif
+                            </span>
+                        @endif
+                    </span>
                 </div>
-                <span class="mx-1 sm:mx-2 h-0.5 flex-1 rounded transition-colors duration-200 last:hidden"
-                      :class="step > i + 1 ? 'bg-emerald-400' : 'bg-slate-200'"
-                      x-show="i < steps.length - 1" aria-hidden="true"></span>
+                @unless($isLast)
+                    <span class="mx-3 mt-4 h-0.5 flex-1 rounded-full {{ $stage['state'] === 'complete' ? 'bg-emerald-400' : 'bg-edge' }}" aria-hidden="true"></span>
+                @endunless
             </li>
-        </template>
+        @endforeach
     </ol>
 </nav>

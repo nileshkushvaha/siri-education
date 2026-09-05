@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Services;
 
+use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\TeacherCandidateRepositoryInterface;
 use App\Booking\Contracts\WizardBookingServiceInterface;
@@ -49,6 +50,8 @@ final class BookingWizardService
     public function __construct(
         private readonly WizardBookingServiceInterface $bookings,
         private readonly BookingTypeRepositoryInterface $types,
+        private readonly BookingRepositoryInterface $bookingRecords,
+        private readonly BookingPriceCalculator $prices,
         private readonly TeacherCandidateRepositoryInterface $teachers,
         private readonly DemoAvailabilityResolver $demoAvailability,
         private readonly DemoAcademicContextResolver $demoAcademicContext,
@@ -130,7 +133,7 @@ final class BookingWizardService
      * (§7: no min/max-band synthesis, no 1..12 fallback — an empty
      * array means "not currently configured").
      *
-     * @return list<array{id:string,value:string,display_label:string,normalized_grade:?int}>
+     * @return list<array{id:string,value:string,display_label:string,normalized_grade:?int,academic_level_id:?string}>
      */
     public function levels(Country $country, string $educationSystemId): array
     {
@@ -148,12 +151,79 @@ final class BookingWizardService
                     'value' => $l->value,
                     'display_label' => $l->display_label,
                     'normalized_grade' => $l->normalized_grade,
+                    'academic_level_id' => $l->academic_level_id,
                 ])
                 ->values()
                 ->all();
         } catch (AcademicContextException) {
             return [];
         }
+    }
+
+    /**
+     * What the wizard may pre-select for a returning student: the exact
+     * ids from their most recent booking's academic snapshot, falling
+     * back to the broad academic level on their profile. Every id is a
+     * hint only — BookingWizard applies it through the same select*()
+     * chain a manual choice takes, so an id no longer offered (renamed,
+     * archived, outside a locked instructor's eligibility) is simply
+     * ignored rather than trusted.
+     *
+     * @return array{education_system_id:?string,education_system_level_id:?string,subject_id:?string,curriculum_id:?string,academic_level_id:?string}
+     */
+    public function learningPrefill(User $student): array
+    {
+        $context = $this->bookingRecords->latestAcademicContextForStudent($student->id);
+
+        return [
+            'education_system_id' => $context?->education_system_id,
+            'education_system_level_id' => $context?->education_system_level_id,
+            'subject_id' => $context?->subject_id,
+            'curriculum_id' => $context?->curriculum_id,
+            'academic_level_id' => $context?->academic_level_id ?? $student->profile?->student_academic_level_id,
+        ];
+    }
+
+    /**
+     * Display-only price for the current selection, resolved by the same
+     * calculator BookingService::request() charges with. Null when no
+     * price can be resolved yet (the submit path raises the actual
+     * error), so the UI shows nothing rather than a guess. A booking's
+     * price is always recalculated at creation; this never feeds it.
+     *
+     * Null as well for a type that never charges — a free session has no
+     * fee to show.
+     *
+     * @return array{requires_payment:bool,currency:string,base_formatted:string,discount_formatted:?string,tax_formatted:?string,total_formatted:string}|null
+     */
+    public function pricePreview(User $student, string $typeKey, ?string $subject, ?int $grade, ?int $instructorId, ?string $academicLevelId): ?array
+    {
+        try {
+            $type = $this->types->requireActiveByKey($typeKey);
+            $price = $this->prices->calculate($type, $student, $subject, $grade, $instructorId, $academicLevelId);
+        } catch (BookingException) {
+            return null;
+        }
+
+        if (! $price->requiresPayment) {
+            return null;
+        }
+
+        $minorUnits = MoneyFormatter::minorUnitsFor($price->currency);
+        $format = fn (float $amount): string => MoneyFormatter::format(
+            MoneyFormatter::toMinor(number_format($amount, $minorUnits, '.', ''), $minorUnits),
+            $price->currency,
+            $minorUnits,
+        );
+
+        return [
+            'requires_payment' => $price->requiresPayment,
+            'currency' => $price->currency,
+            'base_formatted' => $format($price->baseAmount),
+            'discount_formatted' => $price->discountAmount > 0 ? $format($price->discountAmount) : null,
+            'tax_formatted' => $price->taxAmount > 0 ? $format($price->taxAmount) : null,
+            'total_formatted' => $format($price->payableAmount),
+        ];
     }
 
     /** @return list<array{id:string,name:string}> */
@@ -389,7 +459,7 @@ final class BookingWizardService
     /** @return array<string, mixed> */
     public function result(Booking $booking): array
     {
-        $booking->loadMissing('type');
+        $booking->loadMissing(['type', 'academicContext']);
         $amountFormatted = null;
 
         if ($booking->price !== null && $booking->currency !== null) {
@@ -416,8 +486,11 @@ final class BookingWizardService
             'starts_at' => $booking->starts_at->timezone($booking->timezone)->toIso8601String(),
             'ends_at' => $booking->ends_at->timezone($booking->timezone)->toIso8601String(),
             'timezone' => $booking->timezone,
-            'subject' => $booking->meta['subject'] ?? null,
+            'reserved_until' => $booking->reserved_until?->timezone($booking->timezone)->toIso8601String(),
+            'subject' => $booking->academicContext?->subject_name ?? $booking->meta['subject'] ?? null,
             'grade' => $booking->meta['grade'] ?? null,
+            'level_display' => $booking->academicContext?->level_display,
+            'education_system_name' => $booking->academicContext?->education_system_name,
             'my_bookings_url' => route('dashboard.my-bookings'),
         ];
     }

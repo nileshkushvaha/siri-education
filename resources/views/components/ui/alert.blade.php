@@ -1,9 +1,9 @@
 {{--
     Generic inline alert/banner — <x-ui.alert type="success">Saved!</x-ui.alert>
     General-purpose version of the pattern already used ad hoc for
-    session flash messages (layouts/frontend.blade.php) and the guest
-    booking wizard (x-booking.alert). Use this for any new static or
-    Livewire-driven banner; it carries no state of its own.
+    session flash messages (layouts/frontend.blade.php) and the booking
+    wizard. Use this for any new static or Livewire-driven banner; it
+    carries no state of its own.
 
     Props:
         type: success | error | warning | info  (default: info)

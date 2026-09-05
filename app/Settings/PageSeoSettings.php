@@ -15,8 +15,9 @@ use Spatie\LaravelSettings\Settings;
 class PageSeoSettings extends Settings
 {
     /**
-     * Keyed by SeoRoute value; each entry holds meta_title and
-     * meta_description (either may be null).
+     * Keyed by SeoRoute value; each entry holds meta_title,
+     * meta_description, meta_keywords, canonical_url and og_image (any
+     * may be null).
      */
     public array $pages;
 

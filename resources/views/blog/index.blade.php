@@ -6,7 +6,6 @@
 @push('meta')
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ route('blog.index') }}">
-    <link rel="canonical" href="{{ route('blog.index') }}">
 @endpush
 
 @section('content')

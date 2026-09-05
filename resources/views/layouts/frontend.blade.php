@@ -38,13 +38,23 @@
             Route::currentRouteName(),
             trim($__env->yieldContent('title')),
             trim($__env->yieldContent('meta_description')),
+            url()->current(),
         );
     @endphp
     <title>{{ $routeSeo['title'] }}</title>
     <meta name="description" content="{{ $routeSeo['description'] }}">
+    @if(filled($routeSeo['keywords']))
+        <meta name="keywords" content="{{ $routeSeo['keywords'] }}">
+    @endif
+    @if(filled($routeSeo['canonical']))
+        <link rel="canonical" href="{{ $routeSeo['canonical'] }}">
+    @endif
     <meta property="og:title" content="{{ $routeSeo['title'] }}">
     @if($routeSeo['description'] !== '')
         <meta property="og:description" content="{{ $routeSeo['description'] }}">
+    @endif
+    @if($routeSeo['og_image'] !== '')
+        <meta property="og:image" content="{{ $routeSeo['og_image'] }}">
     @endif
 
     @if($favicon)

@@ -43,8 +43,11 @@ class PageSeoSettingsTest extends TestCase
         $this->actingAs($this->admin());
 
         Livewire::test(PageSeoSettingsPage::class)
+            ->set('data.selected_page', 'instructors')
             ->set('data.pages.instructors.meta_title', 'Online Tutors for CBSE, US and UK')
             ->set('data.pages.instructors.meta_description', 'Compare vetted instructors and book a lesson.')
+            ->set('data.pages.instructors.meta_keywords', 'online tutor, cbse tutor')
+            ->set('data.pages.instructors.canonical_url', 'https://example.test/tutors')
             ->call('save')
             ->assertNotified('Page SEO saved');
 
@@ -55,7 +58,10 @@ class PageSeoSettingsTest extends TestCase
         $html = $this->get('/instructors')->assertOk()->getContent();
         $this->assertStringContainsString('<title>Online Tutors for CBSE, US and UK</title>', $html);
         $this->assertStringContainsString('<meta name="description" content="Compare vetted instructors and book a lesson.">', $html);
+        $this->assertStringContainsString('<meta name="keywords" content="online tutor, cbse tutor">', $html);
+        $this->assertStringContainsString('<link rel="canonical" href="https://example.test/tutors">', $html);
         $this->assertSame(1, substr_count($html, 'name="description"'));
+        $this->assertSame(1, substr_count($html, 'rel="canonical"'));
 
         $activity = Activity::where('log_name', 'settings')
             ->where('event', 'settings_updated')
@@ -70,7 +76,28 @@ class PageSeoSettingsTest extends TestCase
 
         $this->assertStringContainsString('<title>Help Center', $html);
         $this->assertStringContainsString('Find clear answers about accounts', $html);
+        $this->assertStringContainsString('<link rel="canonical" href="'.url('/faqs').'">', $html);
         $this->assertSame(1, substr_count($html, 'name="description"'));
+        $this->assertSame(1, substr_count($html, 'rel="canonical"'));
+    }
+
+    public function test_saving_one_page_keeps_the_others(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(PageSeoSettingsPage::class)
+            ->set('data.selected_page', 'blog')
+            ->set('data.pages.blog.meta_title', 'SIRI Blog')
+            ->call('save');
+
+        Livewire::test(PageSeoSettingsPage::class)
+            ->set('data.selected_page', 'faqs')
+            ->set('data.pages.faqs.meta_title', 'SIRI Help Center')
+            ->call('save');
+
+        $pages = app()->make(PageSeoSettings::class)->refresh()->pages;
+        $this->assertSame('SIRI Blog', $pages['blog']['meta_title']);
+        $this->assertSame('SIRI Help Center', $pages['faqs']['meta_title']);
     }
 
     public function test_home_page_falls_back_to_the_global_seo_defaults(): void
@@ -86,6 +113,7 @@ class PageSeoSettingsTest extends TestCase
 
         $this->actingAs($this->admin());
         Livewire::test(PageSeoSettingsPage::class)
+            ->set('data.selected_page', 'home')
             ->set('data.pages.home.meta_title', 'SIRI Education — 1-on-1 Online Tutoring')
             ->call('save');
 
@@ -97,10 +125,16 @@ class PageSeoSettingsTest extends TestCase
     {
         $this->actingAs($this->admin());
         Livewire::test(PageSeoSettingsPage::class)
+            ->set('data.selected_page', 'login')
             ->set('data.pages.login.meta_title', 'Sign in to SIRI')
+            ->call('save');
+        Livewire::test(PageSeoSettingsPage::class)
+            ->set('data.selected_page', 'forgot_password')
             ->set('data.pages.forgot_password.meta_description', 'Reset your SIRI password.')
             ->call('save');
         auth()->logout();
+
+        $this->assertSame('Sign in to SIRI', app()->make(PageSeoSettings::class)->refresh()->pages['login']['meta_title']);
 
         $this->assertStringContainsString('<title>Sign in to SIRI</title>', $this->get('/login')->getContent());
         $this->assertStringContainsString('content="Reset your SIRI password."', $this->get('/forgot-password')->getContent());

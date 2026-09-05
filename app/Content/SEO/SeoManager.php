@@ -29,19 +29,22 @@ class SeoManager
     // ── Template-rendered routes ─────────────────────────────────────────
 
     /**
-     * Title/description for a Blade-rendered route. Priority: the Page SEO
-     * entry for the route → (home page only) the global SEO defaults →
-     * the template's own values → app name.
+     * Metadata for a Blade-rendered route. Priority: the Page SEO entry
+     * for the route → (home page only) the global SEO defaults → the
+     * template's own values → app name. Keywords and the Open Graph
+     * image fall back to the global SEO Settings; the canonical URL falls
+     * back to the current URL without its query string.
      *
-     * @return array{title: string, description: string}
+     * @return array{title: string, description: string, keywords: ?string, canonical: ?string, og_image: string, managed: bool}
      */
-    public function getRouteMetadata(?string $routeName, ?string $defaultTitle = null, ?string $defaultDescription = null): array
+    public function getRouteMetadata(?string $routeName, ?string $defaultTitle = null, ?string $defaultDescription = null, ?string $currentUrl = null): array
     {
         $route = SeoRoute::fromRouteName($routeName);
         $entry = $route !== null ? ($this->pageSeo->pages[$route->value] ?? []) : [];
+        $value = fn (string $key): ?string => filled($entry[$key] ?? null) ? trim((string) $entry[$key]) : null;
 
-        $title = filled($entry['meta_title'] ?? null) ? (string) $entry['meta_title'] : null;
-        $description = filled($entry['meta_description'] ?? null) ? (string) $entry['meta_description'] : null;
+        $title = $value('meta_title');
+        $description = $value('meta_description');
 
         if ($route === SeoRoute::Home) {
             $title ??= filled($this->seoSettings->meta_title) ? $this->seoSettings->meta_title : null;
@@ -51,6 +54,10 @@ class SeoManager
         return [
             'title' => $title ?? (filled($defaultTitle) ? $defaultTitle : $this->appName()),
             'description' => $description ?? ($defaultDescription ?? ''),
+            'keywords' => $value('meta_keywords') ?? (filled($this->seoSettings->meta_keywords) ? $this->seoSettings->meta_keywords : null),
+            'canonical' => $value('canonical_url') ?? ($route !== null && $currentUrl !== null ? strtok($currentUrl, '?') : null),
+            'og_image' => $this->resolveOgImage((string) ($value('og_image') ?? '')),
+            'managed' => $route !== null,
         ];
     }
 

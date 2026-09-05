@@ -144,6 +144,9 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         'privacy_accepted_user_agent',
         'login_alerts_enabled',
         'new_device_alerts_enabled',
+        'google_subject',
+        'google_email',
+        'google_linked_at',
     ];
 
     protected $hidden = [
@@ -151,6 +154,20 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
         'remember_token',
         'unlock_token',
     ];
+
+    /**
+     * Email is the login identity and the Google-match key, so it is stored
+     * normalised (trimmed, lowercase) no matter which door writes it —
+     * registration, Google sign-up, admin forms, seeders. The DB unique
+     * index (utf8mb4_unicode_ci) already rejects case-variant duplicates;
+     * this keeps the stored value canonical too.
+     */
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value): ?string => $value === null ? null : mb_strtolower(trim($value)),
+        );
+    }
 
     protected function casts(): array
     {
@@ -161,6 +178,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia, MustVerify
             'unlock_token_expires_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'google_linked_at' => 'datetime',
             'must_change_password' => 'boolean',
             'terms_accepted_at' => 'datetime',
             'privacy_accepted_at' => 'datetime',

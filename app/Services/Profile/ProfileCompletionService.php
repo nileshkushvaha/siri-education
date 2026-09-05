@@ -58,9 +58,11 @@ final class ProfileCompletionService
                 'weight' => 15,
                 'score' => fn (User $user): float => $user->profile->hasMedia('avatar') ? 1.0 : 0.0,
             ],
-            'phone_verified' => [
+            // Mobile OTP is not offered in the user portal (sender is a stub),
+            // so the checklist rewards having a number on file, not verifying it.
+            'phone' => [
                 'weight' => 15,
-                'score' => fn (User $user): float => $user->profile->phone_verified_at !== null ? 1.0 : 0.0,
+                'score' => fn (User $user): float => filled($user->profile->phone_e164) ? 1.0 : 0.0,
             ],
             'academic_profile' => [
                 'weight' => 30,

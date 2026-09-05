@@ -60,8 +60,25 @@ final class PasswordLifecycleService
         return $this->expiresIn($user);
     }
 
+    /**
+     * A user who verified their identity with Google but has never set a
+     * password of their own (Google account activation). Enforced
+     * regardless of the force_change_on_first_login toggle — creating the
+     * password IS the activation step, there is no other way out.
+     */
+    public function awaitingActivationPassword(User $user): bool
+    {
+        return $user->must_change_password
+            && $user->google_linked_at !== null
+            && $user->password_changed_at === null;
+    }
+
     public function mustChange(User $user): bool
     {
+        if ($this->awaitingActivationPassword($user)) {
+            return true;
+        }
+
         if ($this->settings->force_change_on_first_login && $user->must_change_password) {
             return true;
         }

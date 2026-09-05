@@ -39,4 +39,13 @@ return [
         'key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    // OAuth 2.0 "Web application" client used ONLY for Google account
+    // activation (sign-in identity check). Deliberately separate from the
+    // Meet/Drive service-account credentials held in MeetingSettings.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+    ],
+
 ];

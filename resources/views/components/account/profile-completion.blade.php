@@ -9,7 +9,7 @@
         'education' => 'Education',
         'social_links' => 'Social links',
         // student checklist
-        'phone_verified' => 'Verified mobile number',
+        'phone' => 'Mobile number',
         'academic_profile' => 'Academic level, language & subjects',
         'learning_goals' => 'Learning goals',
     ];

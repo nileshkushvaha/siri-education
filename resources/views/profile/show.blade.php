@@ -306,8 +306,8 @@
                                     </div>
                                 </div>
                                 @if($user->profile->phone_e164)
-                                <p class="mt-3 text-xs {{ $user->profile->phone_verified_at ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300' }}" role="status">
-                                    {{ app(\App\Services\Phone\PhoneNumberService::class)->masked($user->profile->phone_e164) }} — {{ $user->profile->phone_verified_at ? 'Verified' : 'Not verified' }}
+                                <p class="mt-3 text-xs text-fg-muted" role="status">
+                                    Saved as {{ app(\App\Services\Phone\PhoneNumberService::class)->masked($user->profile->phone_e164) }}
                                 </p>
                                 @endif
                             </div>
@@ -570,23 +570,6 @@
                         <span class="text-xs text-fg-muted">Changes are saved immediately</span>
                     </div>
                 </form>
-
-                @if($portalAudience === \App\Enums\PortalAudience::Student && $user->profile->phone_e164 && ! $user->profile->phone_verified_at)
-                <div class="rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.06] p-5 mb-5" aria-labelledby="phone-verification-title">
-                    <h2 id="phone-verification-title" class="text-base font-semibold text-fg-strong">Verify mobile number</h2>
-                    <p class="mt-2 text-sm text-fg-muted">Verify {{ app(\App\Services\Phone\PhoneNumberService::class)->masked($user->profile->phone_e164) }} before your first paid booking.</p>
-                    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <form method="POST" action="{{ route('profile.phone.verification.send') }}">@csrf
-                            <button class="min-h-11 rounded-xl border border-indigo-400/30 px-4 text-sm font-semibold text-indigo-700 dark:text-indigo-200">Send code</button>
-                        </form>
-                        <form method="POST" action="{{ route('profile.phone.verification.verify') }}" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end">@csrf
-                            <div class="flex-1"><label for="otp" class="block text-xs font-semibold text-fg-muted mb-2">Six-digit code</label><input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="w-full min-h-11 rounded-xl bg-surface-raised border border-edge px-4 text-fg-strong" required></div>
-                            <button class="min-h-11 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white">Verify number</button>
-                        </form>
-                    </div>
-                    @error('otp')<p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>@enderror
-                </div>
-                @endif
 
                 @if($portalAudience === \App\Enums\PortalAudience::Instructor)
                 {{-- Instructor public-profile visibility --}}

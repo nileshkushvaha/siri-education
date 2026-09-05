@@ -6,7 +6,7 @@
 
 Traits: `HasFactory`, `HasRoles` (Spatie), `LogsActivity` (Spatie), `Notifiable`.
 
-Key fields: `name`, `first_name`, `last_name`, `email`, `status`, `email_verified_at`, `locked_until`, `totp_secret`, `totp_recovery_codes`, `password_changed_at`, `force_password_change`.
+Key fields: `name`, `first_name`, `last_name`, `email`, `status`, `email_verified_at`, `locked_at`, `locked_until`, `password_changed_at`, `must_change_password`, `google_subject`, `google_email`, `google_linked_at`.
 
 Status values: `active`, `inactive`, `pending`, `blocked`. Constant: `User::STATUS_ACTIVE`.
 
@@ -203,9 +203,9 @@ When `RegistrationSettings::require_approval` is true, new registrations land in
 
 ## Force password change
 
-`User::$force_password_change = true` redirects the user to a change-password page on every login until they comply. Set by admins via `EditUser`.
+`User::$must_change_password = true` redirects the user to a set-password page on every login until they comply (when `PasswordPolicySettings::force_change_on_first_login` is on). Set by admins via `CreateUser`/`EditUser`, and by Google account activation for a user who has never set their own password — that case is enforced regardless of the toggle (`PasswordLifecycleService::awaitingActivationPassword()`, see `docs/security/authentication.md`).
 
-`EnsurePasswordChangeRequired` middleware enforces this at the Filament panel level.
+`EnsurePasswordChangeRequired` middleware enforces this on both the admin and frontend portals.
 
 ## Activity log events
 

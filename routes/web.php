@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Account\CompleteProfileController;
 use App\Http\Controllers\Admin\InstructorDocumentDownloadController;
 use App\Http\Controllers\Admin\PagePreviewController;
 use App\Http\Controllers\Admin\PostPreviewController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Admin\RecordingDownloadController;
 use App\Http\Controllers\Auth\AccountUnlockController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\GoogleActivationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -95,8 +97,19 @@ Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 // is redirected to login by the 'auth' middleware, which preserves
 // this URL as the post-login intended redirect. ─────────────────────
 Route::get('/book', [BookingWizardPageController::class, 'create'])
-    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required'])
+    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'student.profile.complete'])
     ->name('booking.create');
+
+// ── Complete your profile — the hard precondition for booking (country,
+// mobile number, terms). Students created from a verified Google identity
+// arrive here; form-registered students already satisfy it. Same guard
+// stack as the dashboard so the password step always comes first. ──────
+Route::middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'frontend.portal'])
+    ->name('account.')
+    ->group(function (): void {
+        Route::get('/account/complete-profile', [CompleteProfileController::class, 'show'])->name('complete-profile');
+        Route::post('/account/complete-profile', [CompleteProfileController::class, 'store'])->name('complete-profile.store');
+    });
 
 // ── FAQ / Help Center (public — published, public-audience only) ──────
 Route::get('/faqs', [PublicFaqController::class, 'index'])->name('faqs.index');
@@ -137,6 +150,13 @@ Route::name('auth.')->middleware('guest')->group(function (): void {
     // Login — EnsureLoginEnabled blocks POST when login is disabled
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->middleware('login.enabled', 'throttle:login')->name('login.store');
+
+    // Google account activation (students & instructors): identity check
+    // only, then the normal LoginService pipeline. GET routes, so the
+    // enabled/disabled decision is made in GoogleActivationService rather
+    // than by the POST-only EnsureLoginEnabled middleware.
+    Route::get('/auth/google', [GoogleActivationController::class, 'redirect'])->middleware('throttle:login')->name('google.redirect');
+    Route::get('/auth/google/callback', [GoogleActivationController::class, 'callback'])->middleware('throttle:login')->name('google.callback');
 
     // Forgot Password
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showForm'])->name('password.request');

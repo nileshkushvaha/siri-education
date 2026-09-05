@@ -160,11 +160,11 @@ class BookingWizardAcademicFlowTest extends TestCase
         $student = User::factory()->activeStudent()->create(['status' => User::STATUS_ACTIVE]);
         $student->assignRole('student');
 
-        if ($country !== null) {
-            UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => $country->id]);
-        }
+        // activeStudent() now seeds a supported country (booking precondition);
+        // this test's "no country" cases must clear it explicitly.
+        UserProfile::updateOrCreate(['user_id' => $student->id], ['country_id' => $country?->id]);
 
-        return $student;
+        return $student->fresh();
     }
 
     private function enableGlobally(): void

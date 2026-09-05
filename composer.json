@@ -21,6 +21,7 @@
         "kalnoy/nestedset": "^7.0",
         "laravel/framework": "^13.8",
         "laravel/pulse": "^1.7",
+        "laravel/socialite": "^5.31",
         "laravel/tinker": "^3.0",
         "lorisleiva/cron-translator": "^0.5.1",
         "pxlrbt/filament-environment-indicator": "^3.5",

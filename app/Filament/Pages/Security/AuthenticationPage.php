@@ -73,6 +73,7 @@ class AuthenticationPage extends Page
             'remember_me_enabled' => $s->remember_me_enabled,
             'email_verification_required' => $s->email_verification_required,
             'default_login_method' => $s->default_login_method,
+            'social_login_enabled' => $s->social_login_enabled,
         ]);
     }
 
@@ -137,6 +138,16 @@ class AuthenticationPage extends Page
                         ]),
                     ]),
 
+                Section::make('Google Account Activation')
+                    ->description('Students and instructors with a pre-created account can verify their identity with Google on first login, then create their own password. Google never grants access on its own: the account must already exist and be active. After activation, Google sign-in is refused and email + password is used. Admin-portal roles are excluded.')
+                    ->columnSpanFull()
+                    ->schema([
+                        Toggle::make('social_login_enabled')
+                            ->label('Enable "Continue with Google" on the login page')
+                            ->helperText('Requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI in the environment configuration.')
+                            ->onColor('success'),
+                    ]),
+
                 Section::make('Future Authentication Methods')
                     ->description('These options are not yet available. They are shown here as a roadmap.')
                     ->columnSpanFull()
@@ -149,11 +160,6 @@ class AuthenticationPage extends Page
 
                             Toggle::make('_future_passkeys')
                                 ->label('Passkeys')
-                                ->disabled()
-                                ->helperText('Coming soon'),
-
-                            Toggle::make('_future_social')
-                                ->label('Social Login')
                                 ->disabled()
                                 ->helperText('Coming soon'),
 

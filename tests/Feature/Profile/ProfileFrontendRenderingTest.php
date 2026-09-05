@@ -140,7 +140,7 @@ class ProfileFrontendRenderingTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Learning goals')
-            ->assertSee('Verified mobile number')
+            ->assertSee('Mobile number')
             ->assertDontSee('Work experience')
             ->assertDontSee('Social links');
 

@@ -35,6 +35,7 @@ class SecuritySettingsService
             $settings->remember_me_enabled = (bool) ($data['remember_me_enabled'] ?? true);
             $settings->email_verification_required = (bool) ($data['email_verification_required'] ?? true);
             $settings->default_login_method = $data['default_login_method'] ?? 'email';
+            $settings->social_login_enabled = (bool) ($data['social_login_enabled'] ?? false);
         });
     }
 

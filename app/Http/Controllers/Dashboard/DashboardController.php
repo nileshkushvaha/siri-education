@@ -7,12 +7,14 @@ namespace App\Http\Controllers\Dashboard;
 use App\Enums\PortalAudience;
 use App\Http\Controllers\Controller;
 use App\Services\FrontendPortalAudienceResolver;
+use App\Services\Student\StudentProfileCompletenessService;
 use Illuminate\View\View;
 
 final class DashboardController extends Controller
 {
     public function __construct(
         private readonly FrontendPortalAudienceResolver $audiences,
+        private readonly StudentProfileCompletenessService $profileCompleteness,
     ) {}
 
     /**
@@ -29,6 +31,11 @@ final class DashboardController extends Controller
 
         abort_if($audience === PortalAudience::AdminOrUnsupported, 403);
 
-        return view('dashboard.index', ['portalAudience' => $audience]);
+        return view('dashboard.index', [
+            'portalAudience' => $audience,
+            'profileMissing' => $audience === PortalAudience::Student
+                ? $this->profileCompleteness->missing(auth()->user())
+                : [],
+        ]);
     }
 }

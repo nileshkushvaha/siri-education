@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureFrontendPortal;
 use App\Http\Middleware\EnsureLoginEnabled;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\EnsureRegistrationEnabled;
+use App\Http\Middleware\EnsureStudentProfileComplete;
 use App\Http\Middleware\TrackUserSession;
 use App\Providers\EventServiceProvider;
 use Illuminate\Foundation\Application;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'registration.enabled' => EnsureRegistrationEnabled::class,
             'email.verify.if.required' => EnsureEmailVerifiedIfRequired::class,
             'password.change.required' => EnsurePasswordChangeRequired::class,
+            'student.profile.complete' => EnsureStudentProfileComplete::class,
             'session.track' => TrackUserSession::class,
             'frontend.portal' => EnsureFrontendPortal::class,
             'admin.portal' => EnsureAdminPortal::class,

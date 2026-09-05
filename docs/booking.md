@@ -4,6 +4,17 @@ The booking foundation supporting the two current appointment types (Free Demo, 
 
 Every booking participant is an authenticated, verified platform user. There is no unauthenticated guest-booking path anywhere in this domain — not a data shape, not an API surface, not a UI path. All booking creation goes through the authenticated `/book` wizard or the student dashboard's explicit-teacher-choice flow (both described below). `tests/Architecture/BookingGuestRemovalGuardTest.php` fails the build if any guest-booking class, table, column, or route reappears, or if `attendee`/`host`-style identifiers creep back into the domain's own source.
 
+## Precondition: complete student profile
+
+A student may not enter the wizard (`GET /book`, middleware
+`student.profile.complete`) or submit a booking
+(`WizardBookingService::book()` / `bookRecurring()` → `BookingException`)
+until `StudentProfileCompletenessService::isComplete()` holds: a name, an
+active country, a mobile number and accepted terms. Form-registered students
+always satisfy it; students created from a Google sign-in are sent to
+`/account/complete-profile` first. See `docs/security/authentication.md`
+("Google sign-up").
+
 ## Teacher Availability Engine
 
 Slots are never stored — `AvailabilityService::slots()` derives them

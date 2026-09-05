@@ -14,6 +14,7 @@ use App\Services\Student\StudentLifecycleService;
 use App\Settings\PasswordPolicySettings;
 use App\Settings\RegistrationSettings;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 final class RegistrationService
@@ -102,6 +103,67 @@ final class RegistrationService
             user: $user,
             requiresApproval: $requireApproval,
             autoVerified: $autoVerify && ! $requireApproval,
+        );
+    }
+
+    /**
+     * Register a STUDENT from an identity another party has already
+     * verified (today: Google account activation, see
+     * GoogleActivationService). Differences from register():
+     *
+     *  - always the `student` role, never RegistrationSettings::default_role;
+     *  - email is verified up front (Google proved it), so there is no OTP
+     *    step and the account is ACTIVE unless admin approval is required;
+     *  - a random unusable password is stored and must_change_password is
+     *    set, so the user creates their own on first entry;
+     *  - no country/phone/terms yet — the complete-profile step collects
+     *    them before booking;
+     *  - no captcha, no referral attribution.
+     *
+     * @param  array{first_name: string, last_name?: ?string, email: string}  $data
+     *
+     * @throws RegistrationException when self-registration is disabled or the student role is missing
+     */
+    public function registerVerifiedExternal(array $data, string $ipAddress, string $userAgent, string $source): RegistrationResult
+    {
+        if (! $this->regSettings->self_registration_enabled) {
+            throw new RegistrationException('Self-registration is currently disabled.');
+        }
+
+        $role = Role::where('name', 'student')->first();
+
+        if (! $role) {
+            Log::error('External registration blocked: student role does not exist.');
+
+            throw new RegistrationException('Registration is temporarily unavailable. Please contact support.');
+        }
+
+        $requireApproval = $this->regSettings->require_admin_approval;
+
+        $user = $this->registerAction->execute([
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'] ?? null,
+            'email' => $data['email'],
+            'password' => Str::password(40),
+            'accepted_ip' => $ipAddress,
+            'accepted_user_agent' => $userAgent,
+        ], $requireApproval ? User::STATUS_INACTIVE : User::STATUS_ACTIVE, mustChangePassword: true);
+
+        $user->forceFill(['email_verified_at' => now()])->saveQuietly();
+
+        $user->assignRole($role);
+        $user->profile?->update(['student_status' => StudentStatus::Registered]);
+
+        if (! $requireApproval) {
+            $this->studentLifecycle->activateFromVerification($user);
+        }
+
+        UserRegistered::dispatch($user, $ipAddress, $userAgent);
+
+        return new RegistrationResult(
+            user: $user->refresh(),
+            requiresApproval: $requireApproval,
+            autoVerified: true,
         );
     }
 

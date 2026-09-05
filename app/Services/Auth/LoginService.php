@@ -42,45 +42,10 @@ final class LoginService
 
         // Pre-flight checks before touching Auth guard
         if ($user) {
-            // Auto-unlock: new-style lock (locked_at set) whose duration has expired.
-            // This resets the failed-attempt counter so the user gets fresh attempts,
-            // and logs the auto-unlock event for the audit trail.
-            if ($user->locked_at !== null && ! $user->isLocked()) {
-                $this->accountProtection->processAutoUnlock($user, $ipAddress);
-                $user->refresh();
-            }
+            $rejected = $this->preflight($user, $email, $ipAddress, $userAgent, $sessionId);
 
-            if ($user->isLocked()) {
-                LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountLocked->value, $sessionId);
-
-                return LoginResult::AccountLocked;
-            }
-
-            if ($user->isBlocked()) {
-                LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountBlocked->value, $sessionId);
-
-                return LoginResult::AccountBlocked;
-            }
-
-            // A brand-new registration (status pending_verification, email
-            // not yet verified) is NOT rejected here. It falls through to
-            // the credential check so the unverified branch below runs
-            // *after* the password is proven — which is what lets that
-            // branch issue a verification code and hand the visitor the
-            // code screen. Every other inactive state is still a dead stop.
-            if (! $user->isActive() && ! $this->isAwaitingEmailVerification($user)) {
-                LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountInactive->value, $sessionId);
-
-                return LoginResult::AccountInactive;
-            }
-
-            // A suspended/archived student_status blocks login for the
-            // whole account, regardless of any other role — see
-            // StudentLifecycleService::blocksLogin() for the exact rule.
-            if ($this->studentLifecycle->blocksLogin($user)) {
-                LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::StudentAccountRestricted->value, $sessionId);
-
-                return LoginResult::StudentAccountRestricted;
+            if ($rejected !== null) {
+                return $rejected;
             }
         }
 
@@ -132,19 +97,104 @@ final class LoginService
             return LoginResult::EmailUnverified;
         }
 
-        // ── Successful login ──────────────────────────────────────────
-        $this->loginChallenge->clear($ipAddress);
-        $authenticated->recordSuccessfulLogin($ipAddress, $userAgent);
+        return $this->finishLogin($authenticated, $ipAddress, $userAgent, $remember, $sessionId, $loginMethod);
+    }
 
-        // Login alert emails (if enabled)
-        $this->dispatchLoginAlerts($authenticated, $ipAddress, $userAgent);
+    /**
+     * Sign in a user whose identity has ALREADY been proven by something
+     * other than a password (today: Google account activation, see
+     * GoogleActivationService). Runs exactly the same account-status gates
+     * and success side effects as attempt() — login history, alerts,
+     * lock reset, UserLoggedIn — so the two doors are indistinguishable
+     * downstream except for `login_method`.
+     *
+     * Deliberately never "remembers" the session and never touches email
+     * verification: the caller must have settled that before arriving.
+     */
+    public function completeVerifiedLogin(
+        User $user,
+        string $ipAddress,
+        string $userAgent,
+        ?string $sessionId,
+        string $loginMethod,
+    ): LoginResult {
+        $rejected = $this->preflight($user, $user->email, $ipAddress, $userAgent, $sessionId);
 
-        UserLoggedIn::dispatch($authenticated, $ipAddress, $userAgent, $remember, $sessionId, $loginMethod);
+        if ($rejected !== null) {
+            return $rejected;
+        }
 
-        return LoginResult::Success;
+        auth()->login($user);
+
+        return $this->finishLogin($user, $ipAddress, $userAgent, false, $sessionId, $loginMethod);
     }
 
     // ── Private ───────────────────────────────────────────────────────
+
+    /**
+     * Account-status gates shared by every login door. Returns the
+     * rejecting LoginResult (after dispatching LoginFailed) or null when
+     * the account may proceed to a credential/identity check.
+     */
+    private function preflight(User $user, string $email, string $ipAddress, string $userAgent, ?string $sessionId): ?LoginResult
+    {
+        // Auto-unlock: new-style lock (locked_at set) whose duration has expired.
+        // This resets the failed-attempt counter so the user gets fresh attempts,
+        // and logs the auto-unlock event for the audit trail.
+        if ($user->locked_at !== null && ! $user->isLocked()) {
+            $this->accountProtection->processAutoUnlock($user, $ipAddress);
+            $user->refresh();
+        }
+
+        if ($user->isLocked()) {
+            LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountLocked->value, $sessionId);
+
+            return LoginResult::AccountLocked;
+        }
+
+        if ($user->isBlocked()) {
+            LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountBlocked->value, $sessionId);
+
+            return LoginResult::AccountBlocked;
+        }
+
+        // A brand-new registration (status pending_verification, email
+        // not yet verified) is NOT rejected here. It falls through to
+        // the credential check so the unverified branch in attempt() runs
+        // *after* the password is proven — which is what lets that
+        // branch issue a verification code and hand the visitor the
+        // code screen. Every other inactive state is still a dead stop.
+        if (! $user->isActive() && ! $this->isAwaitingEmailVerification($user)) {
+            LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::AccountInactive->value, $sessionId);
+
+            return LoginResult::AccountInactive;
+        }
+
+        // A suspended/archived student_status blocks login for the
+        // whole account, regardless of any other role — see
+        // StudentLifecycleService::blocksLogin() for the exact rule.
+        if ($this->studentLifecycle->blocksLogin($user)) {
+            LoginFailed::dispatch($user, $email, $ipAddress, $userAgent, LoginResult::StudentAccountRestricted->value, $sessionId);
+
+            return LoginResult::StudentAccountRestricted;
+        }
+
+        return null;
+    }
+
+    /** Success side effects common to every login door. */
+    private function finishLogin(User $user, string $ipAddress, string $userAgent, bool $remember, ?string $sessionId, string $loginMethod): LoginResult
+    {
+        $this->loginChallenge->clear($ipAddress);
+        $user->recordSuccessfulLogin($ipAddress, $userAgent);
+
+        // Login alert emails (if enabled)
+        $this->dispatchLoginAlerts($user, $ipAddress, $userAgent);
+
+        UserLoggedIn::dispatch($user, $ipAddress, $userAgent, $remember, $sessionId, $loginMethod);
+
+        return LoginResult::Success;
+    }
 
     /**
      * The state registration leaves an account in until its email is

@@ -96,6 +96,18 @@ $regSettings = app(\App\Settings\RegistrationSettings::class);
                 </div>
                 @else
                 <livewire:frontend.auth.login-form />
+
+                @if($authSettings->social_login_enabled && filled(config('services.google.client_id')))
+                <div class="my-6 flex items-center gap-3" aria-hidden="true">
+                    <div class="h-px flex-1 bg-white/[0.07]"></div><span class="text-xs text-slate-400">OR</span>
+                    <div class="h-px flex-1 bg-white/[0.07]"></div>
+                </div>
+                <a href="{{ route('auth.google.redirect') }}" class="flex min-h-11 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] px-5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.7 3.9-5.5 3.9-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.9 1.5l2.6-2.5C16.9 3.2 14.7 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/><path fill="#4285F4" d="M23.4 12.2c0-.8-.1-1.4-.2-2H12v3.9h6.5c-.1.9-.8 2.3-2.3 3.3l3.6 2.8c2.2-2 3.6-4.9 3.6-8z"/><path fill="#FBBC05" d="M6 14.3c-.3-.8-.4-1.6-.4-2.3s.2-1.6.4-2.3L2.7 7c-.8 1.5-1.2 3.2-1.2 5s.4 3.5 1.2 5l3.3-2.7z"/><path fill="#34A853" d="M12 21.8c2.7 0 4.9-.9 6.6-2.4l-3.6-2.8c-.9.6-2 1.1-3.5 1.1-2.6 0-4.8-1.8-5.6-4.1L2.7 17c1.7 3.4 5.3 4.8 9.3 4.8z"/></svg>
+                    Continue with Google
+                </a>
+                <p class="mt-2 text-center text-xs leading-relaxed text-slate-500">First time here? Verify with Google, then create your password. After that, sign in with your email and password.</p>
+                @endif
                 @endif
 
                 @if($regSettings->self_registration_enabled)

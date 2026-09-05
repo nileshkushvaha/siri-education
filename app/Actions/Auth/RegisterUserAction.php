@@ -53,7 +53,11 @@ final class RegisterUserAction
                 'privacy_accepted_user_agent' => $acceptedAt ? ($data['accepted_user_agent'] ?? null) : null,
             ]);
 
-            $country = Country::query()->findOrFail($data['country_id']);
+            // Country is optional: the register form always sends one, but a
+            // student created from a verified Google identity has not chosen
+            // one yet and is forced through the complete-profile step before
+            // booking (StudentProfileCompletenessService).
+            $country = isset($data['country_id']) ? Country::query()->findOrFail($data['country_id']) : null;
 
             // TZ-1: registration snapshots the country's configured
             // default as the account's INITIAL explicit timezone
@@ -71,7 +75,7 @@ final class RegisterUserAction
             // default, which is the same tier UserTimezoneResolver
             // would have fallen through to anyway — so what is stored
             // at signup and what the resolver would compute agree.
-            $profileData = [
+            $profileData = $country === null ? [] : [
                 'country_id' => $country->id,
                 'timezone' => IanaTimezone::sanitize($country->default_timezone)
                     ?? UserTimezoneResolver::platformDefault(),
@@ -90,7 +94,9 @@ final class RegisterUserAction
                 ];
             }
 
-            $user->profile()->update($profileData);
+            if ($profileData !== []) {
+                $user->profile()->update($profileData);
+            }
 
             return $user;
         });

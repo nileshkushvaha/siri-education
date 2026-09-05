@@ -178,7 +178,7 @@ class ProfileCompletionServiceTest extends TestCase
         $this->assertArrayNotHasKey('education', $breakdown);
         $this->assertArrayNotHasKey('social_links', $breakdown);
         $this->assertArrayNotHasKey('bio', $breakdown);
-        $this->assertSame(['basic_profile', 'avatar', 'phone_verified', 'academic_profile', 'learning_goals'], array_keys($breakdown));
+        $this->assertSame(['basic_profile', 'avatar', 'phone', 'academic_profile', 'learning_goals'], array_keys($breakdown));
         $this->assertSame(100, (int) array_sum(array_column($breakdown, 'weight')));
     }
 
@@ -187,8 +187,8 @@ class ProfileCompletionServiceTest extends TestCase
         $student = $this->student();
         $student->update(['last_name' => 'Sharma']);
         $student->profile->update([
-            'phone' => '2025551023',
-            'phone_verified_at' => now(),
+            'phone' => '+12025551023',
+            'phone_e164' => '+12025551023',
             'country_id' => Country::factory()->create()->id,
             'timezone' => 'America/New_York',
             'date_of_birth' => '2010-05-01',

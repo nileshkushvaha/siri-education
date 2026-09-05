@@ -32,6 +32,7 @@ use App\Models\BookingType;
 use App\Models\StudentPackageEntitlement;
 use App\Models\User;
 use App\Package\Services\PackageBookingEntitlementResolver;
+use App\Services\Student\StudentProfileCompletenessService;
 use App\Support\Timezone\LocalWallClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -85,6 +86,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly BookingAcademicContextResolver $academicContextResolver,
         private readonly PackageBookingEntitlementResolver $packageEntitlements,
         private readonly AvailabilityRepositoryInterface $availabilityRules,
+        private readonly StudentProfileCompletenessService $profileCompleteness,
     ) {}
 
     public function availableDates(
@@ -142,6 +144,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
     public function book(WizardBookingData $data): Booking
     {
         $this->assertAuthenticated();
+        $this->assertProfileComplete();
         $type = $this->types->requireActiveByKey($data->typeKey);
         $this->financialVerification->assertEligible(auth()->user(), $type);
 
@@ -243,6 +246,7 @@ final class WizardBookingService implements WizardBookingServiceInterface
     public function bookRecurring(WizardBookingData $data, RecurrenceData $recurrence): RecurringBookingResult
     {
         $this->assertAuthenticated();
+        $this->assertProfileComplete();
         $type = $this->types->requireActiveByKey($data->typeKey);
 
         $this->financialVerification->assertEligible(auth()->user(), $type);
@@ -369,6 +373,20 @@ final class WizardBookingService implements WizardBookingServiceInterface
                 CarbonImmutable::parse(substr($reading, 0, 10))->format('j M Y'),
                 LocalWallClock::reason($classification, $timezone),
             ));
+        }
+    }
+
+    /**
+     * Server-side twin of the EnsureStudentProfileComplete middleware: the
+     * wizard is Livewire, so its submissions never pass route middleware.
+     */
+    private function assertProfileComplete(): void
+    {
+        /** @var User $student */
+        $student = auth()->user();
+
+        if (! $this->profileCompleteness->isComplete($student)) {
+            throw new BookingException('Please complete your profile (country, mobile number and terms) before booking. Open Complete your profile from your dashboard.');
         }
     }
 

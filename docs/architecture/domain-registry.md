@@ -20,6 +20,8 @@ When adding a feature, find the matching domain here first. If a domain already 
 | Tests | `tests/Feature/Auth/*`, `tests/Feature/Security/*`. |
 | Reuse notes | Use existing services/actions/settings for auth changes. Use `PortalResolver` for redirect decisions. |
 | Do not duplicate | Do not create new auth tables, custom role helpers, or inline portal routing logic. |
+| Google account activation | `GoogleActivationService`, `GoogleActivationController`, `GoogleActivationResult`, `LoginService::completeVerifiedLogin()`, `PasswordLifecycleService::awaitingActivationPassword()`; columns `users.google_subject` (unique), `google_email`, `google_linked_at` (`2026_09_05_100000_add_google_identity_to_users_table.php`); flag `AuthenticationSettings::social_login_enabled`; tests `tests/Feature/Auth/GoogleActivationTest.php`. By decision no separate identity table — a second provider would revisit this. Unknown Google emails register as students via `RegistrationService::registerVerifiedExternal()` (never instructors). See `docs/security/authentication.md`. |
+| Student profile completeness (booking precondition) | `app/Services/Student/StudentProfileCompletenessService.php` (binary gate: name, active country, mobile, terms), `app/Http/Middleware/EnsureStudentProfileComplete.php` (`student.profile.complete`), `app/Http/Controllers/Account/CompleteProfileController.php` + `app/Http/Requests/Account/CompleteProfileRequest.php`, view `resources/views/account/complete-profile.blade.php`, guard in `WizardBookingService::book()/bookRecurring()`. Not the same as `ProfileCompletionService` (percentage score). Tests `tests/Feature/Account/CompleteProfileTest.php`. |
 
 ## User, Profile, Student, and Instructor Identity
 

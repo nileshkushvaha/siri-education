@@ -59,8 +59,12 @@
                 <div class="inline-flex w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 items-center justify-center mb-4">
                     <svg class="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 </div>
-                <h2 class="text-2xl font-bold text-white mb-1">Set your password</h2>
+                <h2 class="text-2xl font-bold text-white mb-1">{{ ($googleActivation ?? false) ? 'Create your password' : 'Set your password' }}</h2>
+                @if($googleActivation ?? false)
+                <p class="text-slate-400 text-sm">Your identity was verified with Google. Create the password you'll use to sign in from now on.</p>
+                @else
                 <p class="text-slate-400 text-sm">Your administrator requires you to set a new password before continuing.</p>
+                @endif
             </div>
 
             @if(session('warning'))

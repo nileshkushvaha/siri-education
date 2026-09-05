@@ -96,6 +96,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Google Meet Space Access
+    |--------------------------------------------------------------------------
+    |
+    | Who may join a lesson's Meet space, and whether it can start without
+    | the platform account present. Instructors and students are outside
+    | the Workspace and never hold the platform login, so with Meet's
+    | default ("TRUSTED": outsiders knock and a member must admit them) a
+    | class could not start on its own. "OPEN" lets anyone with the link
+    | join without knocking and lets the meeting — and auto-recording —
+    | start with the first participant. SIRI shows the link only to the
+    | lesson's confirmed participants, which is the access control.
+    |
+    | Allowed: OPEN, TRUSTED, RESTRICTED (Google's own values).
+    |
+    */
+
+    'meet' => [
+        'space_access_type' => strtoupper((string) env('RECORDING_MEET_SPACE_ACCESS', 'OPEN')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Playback Delivery
     |--------------------------------------------------------------------------
     |

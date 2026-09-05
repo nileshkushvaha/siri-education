@@ -111,6 +111,24 @@ recording allowed in the Workspace admin console; without them the
 lesson falls back to a Calendar-created conference recorded manually.
 Detail: `docs/recordings.md` §3.
 
+### Teacher co-host — deferred (decision 2026-09-05)
+
+Giving the instructor host controls (admit, mute, remove, end) needs the
+Meet API's space **members** with role `COHOST`. That resource is not in
+Meet REST API v2 (verified live: `/v2/spaces/{space}/members` is a plain
+404); it exists only in `v2beta` under the Workspace Developer Preview
+Program, which is not for production. Decision: wait for general
+availability rather than run a preview API in production. Classes do not
+depend on it — spaces are OPEN and auto-record without a host.
+
+Design when it ships: a nullable "Google account for Meet" on the
+instructor profile (defaulting to the registered email), one
+`addCoHost(space, email)` call in `GoogleCalendarMeetProvider` right
+after `createSpace()`, non-fatal on failure (log + continue), and a note
+on the instructor's lesson page to join with that account. Until then a
+person signed in as the platform account can promote a co-host in the
+Meet UI for exceptional cases.
+
 ---
 
 ## 4. Zoom

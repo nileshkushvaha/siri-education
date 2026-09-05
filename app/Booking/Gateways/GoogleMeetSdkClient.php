@@ -98,16 +98,24 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
     {
         try {
             $space = new Space;
+            $config = new SpaceConfig;
+
+            // Lessons must start without the platform account present:
+            // participants are outside the Workspace and never hold its
+            // login. See config/recordings.php "meet.space_access_type".
+            $access = (string) config('recordings.meet.space_access_type', 'OPEN');
+            $config->setAccessType(in_array($access, ['OPEN', 'TRUSTED', 'RESTRICTED'], true) ? $access : 'OPEN');
+            $config->setEntryPointAccess('ALL');
 
             if ($autoRecording) {
                 $recording = new RecordingConfig;
                 $recording->setAutoRecordingGeneration('ON');
                 $artifacts = new ArtifactConfig;
                 $artifacts->setRecordingConfig($recording);
-                $config = new SpaceConfig;
                 $config->setArtifactConfig($artifacts);
-                $space->setConfig($config);
             }
+
+            $space->setConfig($config);
 
             $created = $this->service($credentialsJson, $delegatedSubject, self::SPACE_SCOPES)->spaces->create($space);
 

@@ -7,6 +7,7 @@ namespace App\Services\Auth;
 use App\Enums\GoogleActivationResult;
 use App\Enums\LoginResult;
 use App\Exceptions\Auth\RegistrationException;
+use App\Jobs\Auth\ImportGoogleAvatarJob;
 use App\Models\User;
 use App\Services\AuditTrailService;
 use App\Services\PortalResolver;
@@ -140,8 +141,28 @@ final class GoogleActivationService
         }
 
         $this->rememberLocaleHint($raw);
+        $this->importAvatarIfMissing($user, $google);
 
         return new GoogleActivationOutcome(GoogleActivationResult::Success, $email);
+    }
+
+    /**
+     * Google's `picture` fills an EMPTY avatar slot, off the request path.
+     * A photo the user chose themselves is never replaced.
+     */
+    private function importAvatarIfMissing(User $user, SocialiteUser $google): void
+    {
+        $picture = (string) ($google->getAvatar() ?? '');
+
+        if ($picture === '' || ! ImportGoogleAvatarJob::isAllowedUrl($picture)) {
+            return;
+        }
+
+        if ($user->profile?->hasMedia('avatar')) {
+            return;
+        }
+
+        ImportGoogleAvatarJob::dispatch($user->id, $picture);
     }
 
     /**

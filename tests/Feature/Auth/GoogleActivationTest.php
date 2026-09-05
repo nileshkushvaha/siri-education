@@ -5,18 +5,24 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Enums\LoginResult;
+use App\Jobs\Auth\ImportGoogleAvatarJob;
 use App\Models\User;
+use App\Services\AuditTrailService;
+use App\Services\Profile\ProfileCompletionService;
 use App\Settings\AuthenticationSettings;
 use App\Settings\PasswordPolicySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\MediaLibrary\Downloaders\Downloader;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -323,6 +329,52 @@ class GoogleActivationTest extends TestCase
         $this->assertGuest();
     }
 
+    // ── Avatar import ────────────────────────────────────────────────
+
+    public function test_google_picture_is_imported_in_the_background_when_the_user_has_no_avatar(): void
+    {
+        Queue::fake([ImportGoogleAvatarJob::class]);
+        $user = $this->preCreatedUser('student');
+        $this->fakeGoogle(email: $user->email, picture: 'https://lh3.googleusercontent.com/a/ACg8ocJ=s96-c');
+
+        $this->hitCallback()->assertRedirect(route('dashboard'));
+
+        Queue::assertPushed(ImportGoogleAvatarJob::class, fn (ImportGoogleAvatarJob $job) => $job->userId === $user->id
+            && $job->pictureUrl === 'https://lh3.googleusercontent.com/a/ACg8ocJ=s96-c');
+    }
+
+    public function test_no_picture_or_non_google_picture_host_queues_nothing(): void
+    {
+        Queue::fake([ImportGoogleAvatarJob::class]);
+        $user = $this->preCreatedUser('student');
+        $this->fakeGoogle(email: $user->email, picture: 'https://evil.example.com/steal.png');
+
+        $this->hitCallback()->assertRedirect(route('dashboard'));
+
+        Queue::assertNotPushed(ImportGoogleAvatarJob::class);
+    }
+
+    public function test_avatar_job_stores_the_picture_once_and_never_replaces_an_existing_avatar(): void
+    {
+        Storage::fake('public');
+        config()->set('media-library.media_downloader', FakeGoogleImageDownloader::class);
+        $user = $this->preCreatedUser('student');
+
+        (new ImportGoogleAvatarJob($user->id, 'https://lh3.googleusercontent.com/a/ACg8ocJ=s96-c'))
+            ->handle(app(AuditTrailService::class), app(ProfileCompletionService::class));
+
+        $profile = $user->profile->fresh();
+        $this->assertTrue($profile->hasMedia('avatar'));
+        $firstMediaId = $profile->getFirstMedia('avatar')->id;
+        $this->assertDatabaseHas('activity_log', ['event' => 'avatar_changed', 'subject_id' => $user->id]);
+
+        // Second run (e.g. a later Google visit) must not touch the existing photo.
+        (new ImportGoogleAvatarJob($user->id, 'https://lh3.googleusercontent.com/a/OTHER=s96-c'))
+            ->handle(app(AuditTrailService::class), app(ProfileCompletionService::class));
+
+        $this->assertSame($firstMediaId, $user->profile->fresh()->getFirstMedia('avatar')->id);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private function enableGoogle(bool $enabled): void
@@ -349,11 +401,11 @@ class GoogleActivationTest extends TestCase
         return $user;
     }
 
-    private function fakeGoogle(string $email, bool $verified = true, string $subject = self::SUBJECT): void
+    private function fakeGoogle(string $email, bool $verified = true, string $subject = self::SUBJECT, ?string $picture = null): void
     {
         $googleUser = (new SocialiteUser)
-            ->setRaw(['sub' => $subject, 'email' => $email, 'email_verified' => $verified, 'name' => 'Test Person'])
-            ->map(['id' => $subject, 'email' => $email, 'name' => 'Test Person', 'nickname' => null, 'avatar' => null]);
+            ->setRaw(['sub' => $subject, 'email' => $email, 'email_verified' => $verified, 'name' => 'Test Person', 'picture' => $picture])
+            ->map(['id' => $subject, 'email' => $email, 'name' => 'Test Person', 'nickname' => null, 'avatar' => $picture]);
 
         Socialite::shouldReceive('driver->user')->andReturn($googleUser);
     }
@@ -361,5 +413,17 @@ class GoogleActivationTest extends TestCase
     private function hitCallback(): TestResponse
     {
         return $this->get(route('auth.google.callback', ['code' => 'fake-code', 'state' => 'fake-state']));
+    }
+}
+
+/** Stands in for Spatie's HTTP downloader: hands back a real 1x1 PNG without touching the network. */
+final class FakeGoogleImageDownloader implements Downloader
+{
+    public function getTempFile(string $url): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'google-avatar');
+        file_put_contents($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+
+        return $path;
     }
 }

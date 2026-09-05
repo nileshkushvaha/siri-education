@@ -113,6 +113,11 @@ precondition:
   **preselects** the country. Audit: `profile_completed` (`users` log).
 - Dashboard shows an amber "Complete your profile to start booking" card
   while anything is missing.
+- Google's `picture` is copied into the `avatar` media collection by the queued
+  `App\Jobs\Auth\ImportGoogleAvatarJob` (queue `notifications`) — only when the
+  user has no avatar yet, only from `*.googleusercontent.com` / `*.ggpht.com`
+  over https, best-effort (a failure never affects the sign-in). A photo the user
+  chose is never replaced. Audit: `avatar_changed` with `source = google`.
 - Audit for the sign-up itself: `google_student_registered` (`auth` log), plus
   the normal `UserRegistered` event (welcome / pending-approval email, admin bell).
 

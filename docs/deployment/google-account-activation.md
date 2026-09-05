@@ -13,6 +13,7 @@ fails with "Sign-in with Google was interrupted".
 | Auth | Google verifies identity only. Existing user → Google subject linked → signed in through `LoginService` → forced "Create your password" if they never set one. Activation-only: once a password exists, Google is refused with a clear message |
 | Registration | Unknown Google email → **student** account (never instructor/admin), honouring Self-registration and Require-approval settings |
 | Booking | New precondition: students must have country, mobile number and accepted terms. `/account/complete-profile` collects them; `/book` and the wizard's server-side submit enforce it. Dashboard shows an amber "Complete your profile" card until done |
+| Avatar | Google profile picture imported into the `avatar` collection by a queued job when the user has no avatar (needs the `notifications` queue worker running) |
 | Email | Stored trimmed + lowercase on every write (`User::email()` mutator); one-off data migration normalises existing rows |
 | User portal | Mobile OTP verification UI removed (sender was a stub); profile checklist rewards "Mobile number" on file instead of "Verified mobile number" |
 | Admin | Security → Authentication → new "Google Account Activation" toggle (replaces the disabled "Social Login" roadmap toggle) |
@@ -86,7 +87,7 @@ php artisan route:cache
 php artisan view:cache
 php artisan up
 
-# 5. Workers (UserRegistered → welcome mail, login history, notifications)
+# 5. Workers (UserRegistered → welcome mail, login history, notifications, Google avatar import)
 php artisan queue:restart
 ```
 

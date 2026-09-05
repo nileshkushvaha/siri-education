@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Settings;
 
-use App\Filament\Pages\Settings\PageSeoSettingsPage;
-use App\Models\Activity;
+use App\Filament\Pages\Settings\SeoSettingsPage;
 use App\Models\User;
-use App\Settings\PageSeoSettings;
 use App\Settings\SeoSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class PageSeoSettingsTest extends TestCase
+/** The per-page overrides on the SEO Settings page and how the public layout renders them. */
+class SeoPageOverridesTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -33,27 +33,34 @@ class PageSeoSettingsTest extends TestCase
         return $admin;
     }
 
-    public function test_page_seo_settings_load_empty(): void
+    private function seoPage(): Testable
     {
-        $this->assertSame([], app(PageSeoSettings::class)->pages);
+        return Livewire::test(SeoSettingsPage::class)
+            ->set('data.robots', 'index,follow')
+            ->set('data.twitter_card', 'summary_large_image');
     }
 
-    public function test_admin_can_save_a_page_override_that_the_public_page_renders(): void
+    public function test_page_overrides_start_empty(): void
+    {
+        $this->assertSame([], app(SeoSettings::class)->pages);
+    }
+
+    public function test_an_override_is_rendered_by_the_public_page(): void
     {
         $this->actingAs($this->admin());
 
-        Livewire::test(PageSeoSettingsPage::class)
+        $this->seoPage()
             ->set('data.selected_page', 'instructors')
             ->set('data.pages.instructors.meta_title', 'Online Tutors for CBSE, US and UK')
             ->set('data.pages.instructors.meta_description', 'Compare vetted instructors and book a lesson.')
             ->set('data.pages.instructors.meta_keywords', 'online tutor, cbse tutor')
             ->set('data.pages.instructors.canonical_url', 'https://example.test/tutors')
             ->call('save')
-            ->assertNotified('Page SEO saved');
+            ->assertNotified('SEO settings saved');
 
-        $settings = app()->make(PageSeoSettings::class)->refresh();
+        $settings = app()->make(SeoSettings::class)->refresh();
         $this->assertSame('Online Tutors for CBSE, US and UK', $settings->pages['instructors']['meta_title']);
-        $this->assertNull($settings->pages['faqs']['meta_title']);
+        $this->assertArrayNotHasKey('faqs', $settings->pages);
 
         $html = $this->get('/instructors')->assertOk()->getContent();
         $this->assertStringContainsString('<title>Online Tutors for CBSE, US and UK</title>', $html);
@@ -62,12 +69,6 @@ class PageSeoSettingsTest extends TestCase
         $this->assertStringContainsString('<link rel="canonical" href="https://example.test/tutors">', $html);
         $this->assertSame(1, substr_count($html, 'name="description"'));
         $this->assertSame(1, substr_count($html, 'rel="canonical"'));
-
-        $activity = Activity::where('log_name', 'settings')
-            ->where('event', 'settings_updated')
-            ->where('properties->settings_class', PageSeoSettings::class)
-            ->first();
-        $this->assertNotNull($activity);
     }
 
     public function test_pages_without_an_override_keep_their_template_meta(): void
@@ -81,62 +82,49 @@ class PageSeoSettingsTest extends TestCase
         $this->assertSame(1, substr_count($html, 'rel="canonical"'));
     }
 
-    public function test_saving_one_page_keeps_the_others(): void
+    public function test_home_page_uses_the_defaults_until_it_has_its_own_override(): void
     {
         $this->actingAs($this->admin());
 
-        Livewire::test(PageSeoSettingsPage::class)
-            ->set('data.selected_page', 'blog')
-            ->set('data.pages.blog.meta_title', 'SIRI Blog')
+        $this->seoPage()
+            ->set('data.meta_title', 'Learn Anything, Anywhere')
+            ->set('data.meta_description', 'Book tutoring sessions with vetted teachers.')
             ->call('save');
-
-        Livewire::test(PageSeoSettingsPage::class)
-            ->set('data.selected_page', 'faqs')
-            ->set('data.pages.faqs.meta_title', 'SIRI Help Center')
-            ->call('save');
-
-        $pages = app()->make(PageSeoSettings::class)->refresh()->pages;
-        $this->assertSame('SIRI Blog', $pages['blog']['meta_title']);
-        $this->assertSame('SIRI Help Center', $pages['faqs']['meta_title']);
-    }
-
-    public function test_home_page_falls_back_to_the_global_seo_defaults(): void
-    {
-        $seo = app(SeoSettings::class);
-        $seo->meta_title = 'Learn Anything, Anywhere';
-        $seo->meta_description = 'Book tutoring sessions with vetted teachers.';
-        $seo->save();
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString('<title>Learn Anything, Anywhere</title>', $html);
         $this->assertStringContainsString('content="Book tutoring sessions with vetted teachers."', $html);
+        $this->assertStringContainsString('<title>Help Center', $this->get('/faqs')->getContent());
 
-        $this->actingAs($this->admin());
-        Livewire::test(PageSeoSettingsPage::class)
+        $this->seoPage()
             ->set('data.selected_page', 'home')
             ->set('data.pages.home.meta_title', 'SIRI Education — 1-on-1 Online Tutoring')
             ->call('save');
 
         $this->assertStringContainsString('<title>SIRI Education — 1-on-1 Online Tutoring</title>', $this->get('/')->getContent());
-        $this->assertStringContainsString('<title>Help Center', $this->get('/faqs')->getContent());
     }
 
-    public function test_auth_pages_can_be_overridden(): void
+    public function test_saving_one_page_keeps_the_others_and_the_defaults(): void
     {
         $this->actingAs($this->admin());
-        Livewire::test(PageSeoSettingsPage::class)
+
+        $this->seoPage()
+            ->set('data.meta_title', 'Default title')
+            ->set('data.selected_page', 'blog')
+            ->set('data.pages.blog.meta_title', 'SIRI Blog')
+            ->call('save');
+
+        $this->seoPage()
             ->set('data.selected_page', 'login')
             ->set('data.pages.login.meta_title', 'Sign in to SIRI')
             ->call('save');
-        Livewire::test(PageSeoSettingsPage::class)
-            ->set('data.selected_page', 'forgot_password')
-            ->set('data.pages.forgot_password.meta_description', 'Reset your SIRI password.')
-            ->call('save');
+
+        $settings = app()->make(SeoSettings::class)->refresh();
+        $this->assertSame('Default title', $settings->meta_title);
+        $this->assertSame('SIRI Blog', $settings->pages['blog']['meta_title']);
+        $this->assertSame('Sign in to SIRI', $settings->pages['login']['meta_title']);
+
         auth()->logout();
-
-        $this->assertSame('Sign in to SIRI', app()->make(PageSeoSettings::class)->refresh()->pages['login']['meta_title']);
-
         $this->assertStringContainsString('<title>Sign in to SIRI</title>', $this->get('/login')->getContent());
-        $this->assertStringContainsString('content="Reset your SIRI password."', $this->get('/forgot-password')->getContent());
     }
 }

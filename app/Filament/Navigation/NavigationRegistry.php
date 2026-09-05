@@ -35,7 +35,6 @@ use App\Filament\Pages\Settings\HomeworkReminderSettingsPage;
 use App\Filament\Pages\Settings\InstructorEarningSettingsPage;
 use App\Filament\Pages\Settings\MailSettingsPage;
 use App\Filament\Pages\Settings\MeetingSettingsPage;
-use App\Filament\Pages\Settings\PageSeoSettingsPage;
 use App\Filament\Pages\Settings\PaymentAdvancedPage;
 use App\Filament\Pages\Settings\PaymentConfigurationPage;
 use App\Filament\Pages\Settings\PaymentGatewayPage;
@@ -772,15 +771,6 @@ final class NavigationRegistry
                 sort: 10,
                 previousGroup: 'Platform',
                 previousLabel: 'SEO',
-            ),
-            PageSeoSettingsPage::class => new NavigationDestination(
-                id: 'content.page-seo',
-                label: 'Page SEO',
-                group: 'Content & Communication',
-                subgroup: 'Content',
-                sort: 11,
-                previousGroup: 'Platform',
-                previousLabel: 'Page SEO',
             ),
             MailSettingsPage::class => new NavigationDestination(
                 id: 'content.communication.mail',

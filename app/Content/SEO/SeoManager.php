@@ -7,7 +7,6 @@ namespace App\Content\SEO;
 use App\Models\Page;
 use App\Models\Post;
 use App\Settings\GeneralSettings;
-use App\Settings\PageSeoSettings;
 use App\Settings\SeoSettings;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,13 +22,12 @@ class SeoManager
     public function __construct(
         private readonly GeneralSettings $generalSettings,
         private readonly SeoSettings $seoSettings,
-        private readonly PageSeoSettings $pageSeo,
     ) {}
 
     // ── Template-rendered routes ─────────────────────────────────────────
 
     /**
-     * Metadata for a Blade-rendered route. Priority: the Page SEO entry
+     * Metadata for a Blade-rendered route. Priority: the page override
      * for the route → (home page only) the global SEO defaults → the
      * template's own values → app name. Keywords and the Open Graph
      * image fall back to the global SEO Settings; the canonical URL falls
@@ -40,7 +38,7 @@ class SeoManager
     public function getRouteMetadata(?string $routeName, ?string $defaultTitle = null, ?string $defaultDescription = null, ?string $currentUrl = null): array
     {
         $route = SeoRoute::fromRouteName($routeName);
-        $entry = $route !== null ? ($this->pageSeo->pages[$route->value] ?? []) : [];
+        $entry = $route !== null ? ($this->seoSettings->pages[$route->value] ?? []) : [];
         $value = fn (string $key): ?string => filled($entry[$key] ?? null) ? trim((string) $entry[$key]) : null;
 
         $title = $value('meta_title');

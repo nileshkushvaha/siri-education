@@ -6,6 +6,6 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        $this->migrator->add('page_seo.pages', []);
+        $this->migrator->add('seo.pages', []);
     }
 };

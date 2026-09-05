@@ -6,7 +6,7 @@ namespace App\Content\SEO;
 
 /**
  * The template-rendered public routes whose meta title/description are
- * editable from Admin → Page SEO. Keys (case values) are stable storage
+ * editable in the Page-specific SEO section of SEO Settings. Keys (case values) are stable storage
  * keys; routeName() is the Laravel route they apply to.
  */
 enum SeoRoute: string

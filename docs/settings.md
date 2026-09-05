@@ -27,8 +27,7 @@ ls app/Settings/*.php | xargs -n1 basename -s .php
 | Class | Group | Admin page |
 |---|---|---|
 | `GeneralSettings` | `general` | General Settings |
-| `SeoSettings` | `seo` | SEO Settings |
-| `PageSeoSettings` | `page_seo` | Page SEO (per-URL title/description for home, blog, instructors, FAQs, login, register, become-instructor, forgot-password) |
+| `SeoSettings` | `seo` | SEO Settings (defaults, analytics, Open Graph, plus per-page overrides for home, blog, instructors, FAQs, login, register, become-instructor, forgot-password) |
 | `MailSettings` | `mail` | Mail Settings |
 | `AuthenticationSettings` | `security_auth` | Authentication |
 | `PasswordPolicySettings` | `security_password` | Password Policy |

@@ -33,6 +33,13 @@ class SeoSettings extends Settings
 
     public string $twitter_card;
 
+    /**
+     * Per-page overrides for the template-rendered public routes, keyed by
+     * SeoRoute value; each entry holds meta_title, meta_description,
+     * meta_keywords, canonical_url and og_image (any may be null).
+     */
+    public array $pages;
+
     public static function group(): string
     {
         return 'seo';

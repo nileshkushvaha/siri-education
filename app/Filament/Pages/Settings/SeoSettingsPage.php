@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Settings;
 
+use App\Content\SEO\SeoRoute;
 use App\Filament\Navigation\Concerns\HasCentralizedNavigation;
 use App\Filament\Navigation\Concerns\HasSettingsSectionBreadcrumb;
 use App\Services\CmsCacheService;
@@ -21,6 +22,7 @@ use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form as FormComponent;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
@@ -28,6 +30,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class SeoSettingsPage extends Page
 {
+    private const array PAGE_FIELDS = ['meta_title', 'meta_description', 'meta_keywords', 'canonical_url', 'og_image'];
+
     use HasCentralizedNavigation;
     use HasSettingsAccess;
     use HasSettingsSectionBreadcrumb;
@@ -77,6 +81,10 @@ class SeoSettingsPage extends Page
             'facebook_pixel_id' => $settings->facebook_pixel_id,
             'og_image' => $settings->og_image,
             'twitter_card' => $settings->twitter_card,
+            'selected_page' => SeoRoute::Home->value,
+            'pages' => collect(SeoRoute::cases())
+                ->mapWithKeys(fn (SeoRoute $route): array => [$route->value => $this->pageEntry($settings->pages, $route)])
+                ->all(),
         ]);
     }
 
@@ -209,6 +217,56 @@ class SeoSettingsPage extends Page
                             ->required(),
                     ]),
 
+                // ── Page-specific SEO ─────────────────────────────── full width
+                Section::make('Page-specific SEO')
+                    ->description('Choose a public page and override its metadata. Empty fields keep the page\'s built-in text (the home page falls back to the defaults above).')
+                    ->columnSpanFull()
+                    ->schema([
+                        Select::make('selected_page')
+                            ->label('Page')
+                            ->options(collect(SeoRoute::cases())->mapWithKeys(fn (SeoRoute $route): array => [$route->value => $route->label().'  ·  '.$route->path()])->all())
+                            ->native(false)
+                            ->required()
+                            ->live()
+                            ->dehydrated(false),
+
+                        ...collect(SeoRoute::cases())
+                            ->map(fn (SeoRoute $route) => Grid::make(2)
+                                ->visible(fn (Get $get): bool => $get('selected_page') === $route->value)
+                                ->schema([
+                                    TextInput::make("pages.{$route->value}.meta_title")
+                                        ->label('Meta Title')
+                                        ->maxLength(70)
+                                        ->helperText('Max 70 characters. Browser tab and search result headline.'),
+                                    TextInput::make("pages.{$route->value}.meta_keywords")
+                                        ->label('Meta Keywords')
+                                        ->maxLength(255)
+                                        ->helperText('Comma-separated. Falls back to the default keywords above.'),
+                                    Textarea::make("pages.{$route->value}.meta_description")
+                                        ->label('Meta Description')
+                                        ->rows(3)
+                                        ->maxLength(160)
+                                        ->columnSpanFull()
+                                        ->helperText('Max 160 characters. Search result snippet and social sharing description.'),
+                                    TextInput::make("pages.{$route->value}.canonical_url")
+                                        ->label('Canonical URL')
+                                        ->url()
+                                        ->maxLength(255)
+                                        ->placeholder(url($route->path()))
+                                        ->helperText('Leave empty to use the page\'s own URL.'),
+                                    FileUpload::make("pages.{$route->value}.og_image")
+                                        ->label('Open Graph Image')
+                                        ->image()
+                                        ->disk('public')
+                                        ->acceptedFileTypes(['image/png', 'image/jpeg'])
+                                        ->maxSize(2048)
+                                        ->directory('settings/seo/pages')
+                                        ->imagePreviewHeight('120')
+                                        ->helperText('PNG or JPG, max 2MB, ideally 1200×630. Falls back to the default OG image.'),
+                                ]))
+                            ->all(),
+                    ]),
+
             ]),
         ]);
     }
@@ -233,6 +291,24 @@ class SeoSettingsPage extends Page
             $settings->facebook_pixel_id = $data['facebook_pixel_id'] ?? null;
             $settings->og_image = $data['og_image'] ?? $settings->og_image;
             $settings->twitter_card = $data['twitter_card'];
+
+            // Only the selected page's fields are in the submitted state
+            // (hidden grids are not dehydrated), so merge over what is
+            // stored rather than replacing the whole map.
+            $pages = $settings->pages;
+
+            foreach (SeoRoute::cases() as $route) {
+                $source = array_key_exists($route->value, $data['pages'] ?? []) ? $data['pages'] : $pages;
+                $entry = $this->pageEntry($source, $route);
+
+                if (array_filter($entry) === []) {
+                    unset($pages[$route->value]);
+                } else {
+                    $pages[$route->value] = $entry;
+                }
+            }
+
+            $settings->pages = $pages;
         });
 
         if (! $saved) {
@@ -250,5 +326,23 @@ class SeoSettingsPage extends Page
             ->title('SEO settings saved')
             ->success()
             ->send();
+    }
+
+    /**
+     * Normalises one page's override entry: every field present, blank → null.
+     *
+     * @param  array<string, mixed>  $pages
+     * @return array<string, string|null>
+     */
+    private function pageEntry(array $pages, SeoRoute $route): array
+    {
+        $entry = $pages[$route->value] ?? [];
+        $normalised = [];
+
+        foreach (self::PAGE_FIELDS as $field) {
+            $normalised[$field] = filled($entry[$field] ?? null) ? trim((string) $entry[$field]) : null;
+        }
+
+        return $normalised;
     }
 }

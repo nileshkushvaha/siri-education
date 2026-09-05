@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Settings;
 
+use App\Content\SEO\SeoRoute;
 use App\Filament\Pages\Settings\SeoSettingsPage;
 use App\Models\User;
+use App\Settings\RegistrationSettings;
 use App\Settings\SeoSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
@@ -141,5 +143,41 @@ class SeoPageOverridesTest extends TestCase
 
         auth()->logout();
         $this->assertStringContainsString('<title>Sign in to SIRI</title>', $this->get('/login')->getContent());
+    }
+
+    public function test_every_managed_page_renders_its_own_override(): void
+    {
+        $registration = app(RegistrationSettings::class);
+        $registration->self_registration_enabled = true;
+        $registration->save();
+
+        $this->actingAs($this->admin());
+
+        foreach (SeoRoute::cases() as $route) {
+            $this->seoPage()
+                ->set('data.selected_page', $route->value)
+                ->set('data.pages.'.$route->value.'.meta_title', 'Override for '.$route->label())
+                ->set('data.pages.'.$route->value.'.meta_description', 'Description for '.$route->label())
+                ->set('data.pages.'.$route->value.'.robots', 'noindex,follow')
+                ->call('save')
+                ->assertNotified('SEO settings saved');
+        }
+
+        auth()->logout();
+
+        foreach (SeoRoute::cases() as $route) {
+            $response = $this->get($route->path());
+            $this->assertSame(200, $response->status(), $route->path().' redirected to '.$response->headers->get('Location'));
+            $html = $response->getContent();
+
+            $this->assertStringContainsString('<title>Override for '.$route->label().'</title>', $html, $route->path());
+            $this->assertStringContainsString('<meta name="description" content="Description for '.$route->label().'">', $html, $route->path());
+            $this->assertStringContainsString('<meta name="robots" content="noindex, follow">', $html, $route->path());
+            $this->assertStringContainsString('<link rel="canonical" href="'.url($route->path()).'">', $html, $route->path());
+            $this->assertSame(1, substr_count($html, 'name="description"'), $route->path());
+            $this->assertSame(1, substr_count($html, 'rel="canonical"'), $route->path());
+            $this->assertSame(1, substr_count($html, 'name="robots"'), $route->path());
+            $this->assertSame(1, substr_count($html, 'property="og:title"'), $route->path());
+        }
     }
 }

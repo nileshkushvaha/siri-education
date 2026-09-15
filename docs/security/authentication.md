@@ -58,6 +58,31 @@ automatic sign-in after a correct code.
 | `app/Listeners/Auth/LogLoginActivity.php` | Writes LoginHistory on every auth event |
 | `app/Events/Auth/` | UserLoggedIn, UserLoggedOut, LoginFailed, UserRegistered, UserApproved |
 
+## Account type at registration (one starting role)
+
+The register form (`RegisterRequest` `account_type`, radio "I want to
+learn / teach") decides the ONE role an account starts with:
+
+- **learn** → `RegistrationSettings::default_role` (normally `student`)
+  and the student lifecycle (`student_status = Registered`, referral
+  attribution) — unchanged behaviour.
+- **teach** → the `instructor` role and a Draft application opened by
+  `InstructorOnboardingService::openDraftAtRegistration()`; no student
+  status, no referral attribution. After email verification the wizard
+  resumes that draft. `?intent=instructor` (from `/become-instructor`)
+  only pre-selects "teach"; the submitted choice wins and
+  `InstructorApplicationIntent::remember()` keeps the post-verification
+  redirect pointed at the wizard.
+
+The student role is granted **only** here (or when an admin creates a
+user). A student may later apply to teach and hold both roles; an
+account that never held `student` can never gain it —
+`StudentRoleAssignmentGuard` refuses it in the admin user form, and
+`EnsureStudentWorkspaceAccess` shows instructor-only accounts an
+explanation page on student routes (see `docs/users.md`). The
+Registration settings page no longer offers `instructor` as a default
+role, and `RegistrationService::resolveDefaultRole()` refuses it.
+
 ## Google account activation (students & instructors)
 
 **Not Google SSO.** Google is used once, to prove that a person controls the

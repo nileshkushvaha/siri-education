@@ -21,6 +21,12 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // The one place a person chooses what kind of account this is.
+            // 'student' is the only way to ever hold the student role;
+            // 'instructor' opens an application draft and never a student
+            // lifecycle (a student may later apply to teach, an instructor
+            // can never later become a student).
+            'account_type' => ['required', 'string', Rule::in(['student', 'instructor'])],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
             'email' => ['required', 'string', 'email:rfc,dns', 'max:255', 'unique:users,email'],
@@ -44,6 +50,8 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'account_type.required' => 'Please choose whether you want to learn or teach.',
+            'account_type.in' => 'Please choose whether you want to learn or teach.',
             'first_name.required' => 'Please enter your first name.',
             'email.required' => 'Please enter your email address.',
             'email.unique' => 'This email is already registered. Please sign in instead.',

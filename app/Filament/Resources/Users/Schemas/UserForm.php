@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\LearningGoalStatus;
+use App\Exceptions\StudentRoleNotAssignableException;
 use App\Models\Country;
 use App\Models\State;
 use App\Models\User;
 use App\Services\Admin\SuperAdminGuardService;
+use App\Services\Auth\StudentRoleAssignmentGuard;
 use App\Services\Security\PasswordRuleBuilder;
 use App\Support\Timezone\ViewerDateTime;
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -22,6 +25,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Spatie\Permission\Models\Role;
 
 class UserForm
 {
@@ -280,11 +284,32 @@ class UserForm
                                             ->preload()
                                             ->searchable()
                                             ->columnSpanFull()
+                                            // The student role is granted at
+                                            // registration only — an existing
+                                            // account that never held it cannot
+                                            // gain it. UI hint; the authoritative
+                                            // guard is EditUser::beforeSave().
+                                            ->disableOptionWhen(fn (string $value, ?User $record): bool => $record !== null
+                                                && ! app(StudentRoleAssignmentGuard::class)->mayHoldStudentRole($record)
+                                                && Role::query()->whereKey($value)->where('name', StudentRoleAssignmentGuard::STUDENT_ROLE)->exists())
+                                            ->rule(fn (?User $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                if ($record === null || ! is_array($value)) {
+                                                    return;
+                                                }
+
+                                                try {
+                                                    app(StudentRoleAssignmentGuard::class)->assertSubmittedRolesAllowed($record, $value);
+                                                } catch (StudentRoleNotAssignableException $e) {
+                                                    $fail($e->getMessage());
+                                                }
+                                            })
                                             // SRS-23-7: UI hint only; the
-                                            // authoritative guard is EditUser::afterSave().
-                                            ->helperText(fn (?User $record): ?string => $record && app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record)
-                                                ? 'This is the last active Super Admin — the Super Admin role cannot be removed here.'
-                                                : null),
+                                            // authoritative guard is EditUser::beforeSave().
+                                            ->helperText(fn (?User $record): ?string => match (true) {
+                                                $record !== null && app(SuperAdminGuardService::class)->isLastActiveSuperAdmin($record) => 'This is the last active Super Admin — the Super Admin role cannot be removed here.',
+                                                $record !== null && ! app(StudentRoleAssignmentGuard::class)->mayHoldStudentRole($record) => 'The student role is granted at registration only and cannot be added to an existing account.',
+                                                default => null,
+                                            }),
                                     ]),
                             ]),
 

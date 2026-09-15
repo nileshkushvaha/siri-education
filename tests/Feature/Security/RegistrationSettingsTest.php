@@ -117,6 +117,20 @@ class RegistrationSettingsTest extends TestCase
         $this->assertNull($settings->default_role);
     }
 
+    public function test_instructor_is_never_offered_or_saved_as_the_default_role(): void
+    {
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(RegistrationPage::class)
+            ->assertFormFieldExists('default_role', fn ($field): bool => ! array_key_exists('instructor', $field->getOptions()) && array_key_exists('student', $field->getOptions()))
+            ->set('data.default_role', 'instructor')
+            ->call('save');
+
+        $this->assertNull(app()->make(RegistrationSettings::class)->refresh()->default_role);
+    }
+
     // ── self_registration_enabled enforcement ───────────────────────────────
 
     public function test_register_post_blocked_when_registration_disabled(): void

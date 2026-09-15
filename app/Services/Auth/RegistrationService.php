@@ -10,6 +10,7 @@ use App\Events\Auth\UserRegistered;
 use App\Exceptions\Auth\RegistrationException;
 use App\Models\User;
 use App\Referral\Contracts\ReferralAttributionServiceInterface;
+use App\Services\Instructor\InstructorOnboardingService;
 use App\Services\Student\StudentLifecycleService;
 use App\Settings\PasswordPolicySettings;
 use App\Settings\RegistrationSettings;
@@ -26,10 +27,18 @@ final class RegistrationService
         private readonly ReferralAttributionServiceInterface $referralAttribution,
         private readonly RegistrationCaptchaService $captcha,
         private readonly StudentLifecycleService $studentLifecycle,
+        private readonly InstructorOnboardingService $instructorOnboarding,
     ) {}
 
     /**
      * Register a new user, applying every RegistrationSettings rule.
+     *
+     * `account_type` (validated by RegisterRequest) decides the ONE role
+     * the account starts with: 'student' → the configured default role
+     * and the student lifecycle; 'instructor' → the instructor role and
+     * an application draft, never a student status. This is the only
+     * point at which the student role is ever granted to a self-served
+     * account — see StudentRoleAssignmentGuard for the admin side.
      *
      * @throws RegistrationException when the configured default role does not exist
      */
@@ -38,8 +47,10 @@ final class RegistrationService
         $data['accepted_ip'] = $ipAddress;
         $data['accepted_user_agent'] = $userAgent;
 
+        $registersAsInstructor = ($data['account_type'] ?? 'student') === 'instructor';
+
         // 1. Validate default role exists — fail fast before creating the user
-        $role = $this->resolveDefaultRole();
+        $role = $registersAsInstructor ? null : $this->resolveDefaultRole();
 
         $requireApproval = $this->regSettings->require_admin_approval;
         $autoVerify = $this->regSettings->auto_verify_email;
@@ -66,7 +77,14 @@ final class RegistrationService
             ])->saveQuietly();
         }
 
-        // 6. Assign default role
+        // 6. Assign the one starting role
+        if ($registersAsInstructor) {
+            // Instructor role + Draft application, no student lifecycle,
+            // no referral attribution (students only). Email verification
+            // is enforced before the wizard is reachable.
+            $this->instructorOnboarding->openDraftAtRegistration($user);
+        }
+
         if ($role) {
             $user->assignRole($role);
 
@@ -181,17 +199,20 @@ final class RegistrationService
             return null;
         }
 
-        $role = Role::where('name', $roleName)->first();
+        // The instructor role is only ever granted through the
+        // "I want to teach" choice (with its application draft), never
+        // as a blanket default — treated like a misconfigured role.
+        $role = $roleName === 'instructor' ? null : Role::where('name', $roleName)->first();
 
         if (! $role) {
-            Log::error('Registration blocked: configured default role does not exist.', [
+            Log::error('Registration blocked: configured default role does not exist or is not allowed.', [
                 'role' => $roleName,
             ]);
 
             activity('auth')
                 ->event('registration_blocked')
                 ->withProperties(['reason' => 'invalid_default_role', 'role' => $roleName])
-                ->log("Registration blocked: default role '{$roleName}' not found");
+                ->log("Registration blocked: default role '{$roleName}' not found or not allowed");
 
             throw new RegistrationException(
                 'Registration is temporarily unavailable. Please contact support.',

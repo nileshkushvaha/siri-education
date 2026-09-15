@@ -11,7 +11,7 @@ fails with "Sign-in with Google was interrupted".
 |---|---|
 | Login page | "Continue with Google" button (students & instructors) below the password form, shown only when the toggle is on and `GOOGLE_CLIENT_ID` is set |
 | Auth | Google verifies identity only. Existing user → Google subject linked → signed in through `LoginService` → forced "Create your password" if they never set one. Activation-only: once a password exists, Google is refused with a clear message |
-| Registration | Unknown Google email → **student** account (never instructor/admin), honouring Self-registration and Require-approval settings |
+| Registration | Unknown Google email → **student** account (never instructor/admin), honouring Self-registration and Require-approval settings. Instructors register through the form's "I want to teach" choice; Google sign-up cannot create an instructor account |
 | Booking | New precondition: students must have country, mobile number and accepted terms. `/account/complete-profile` collects them; `/book` and the wizard's server-side submit enforce it. Dashboard shows an amber "Complete your profile" card until done |
 | Avatar | Google profile picture imported into the `avatar` collection by a queued job when the user has no avatar (needs the `notifications` queue worker running) |
 | Email | Stored trimmed + lowercase on every write (`User::email()` mutator); one-off data migration normalises existing rows |

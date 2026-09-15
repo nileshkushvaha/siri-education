@@ -32,6 +32,17 @@ final class InstructorApplicationIntent
         }
     }
 
+    /**
+     * Records the intent from the registration form itself — a person
+     * who picks "I want to teach" without arriving through the
+     * ?intent=instructor link must still land on the wizard after
+     * verifying, exactly like one who did.
+     */
+    public static function remember(): void
+    {
+        session([self::SESSION_KEY => self::INSTRUCTOR]);
+    }
+
     public static function pending(): bool
     {
         return session(self::SESSION_KEY) === self::INSTRUCTOR;

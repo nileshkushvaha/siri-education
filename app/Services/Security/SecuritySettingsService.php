@@ -84,7 +84,9 @@ class SecuritySettingsService
     {
         return $this->saveSettingsWithAudit(RegistrationSettings::class, 'security', function (RegistrationSettings $settings) use ($data): void {
             $settings->self_registration_enabled = (bool) ($data['self_registration_enabled'] ?? false);
-            $settings->default_role = $data['default_role'] ?? null;
+            // 'instructor' is never a blanket default: that role is only
+            // granted through the registration form's "teach" choice.
+            $settings->default_role = ($data['default_role'] ?? null) === 'instructor' ? null : ($data['default_role'] ?? null);
             $settings->require_admin_approval = (bool) ($data['require_admin_approval'] ?? false);
             $settings->send_welcome_email = (bool) ($data['send_welcome_email'] ?? true);
             $settings->auto_verify_email = (bool) ($data['auto_verify_email'] ?? false);

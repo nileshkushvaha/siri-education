@@ -72,8 +72,61 @@ class RegisterFormTest extends TestCase
             ->assertHasErrors('password');
     }
 
+    public function test_account_type_defaults_to_learn_and_to_teach_when_the_instructor_intent_is_pending(): void
+    {
+        Livewire::test(RegisterForm::class)->assertSet('account_type', 'student');
+
+        $this->get(route('auth.register', ['intent' => 'instructor']))->assertOk();
+
+        Livewire::test(RegisterForm::class)
+            ->assertSet('account_type', 'instructor')
+            ->assertSee('I want to')
+            ->assertSee('Teach');
+    }
+
+    public function test_an_unknown_account_type_is_rejected(): void
+    {
+        Livewire::test(RegisterForm::class)
+            ->set('account_type', 'manager')
+            ->call('register')
+            ->assertHasErrors(['account_type' => 'in']);
+    }
+
+    public function test_choosing_to_teach_registers_an_instructor_only_account_and_sends_them_to_verify(): void
+    {
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        app(RegistrationSettings::class)->default_role = 'student';
+        app(RegistrationSettings::class)->save();
+
+        $component = Livewire::test(RegisterForm::class);
+        [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
+
+        $component
+            ->set('account_type', 'instructor')
+            ->set('first_name', 'Tara')
+            ->set('email', 'tara-teaches@gmail.com')
+            ->set('country_id', $this->country->id)
+            ->set('password', 'StrongPass123!')
+            ->set('password_confirmation', 'StrongPass123!')
+            ->set('terms', true)
+            ->set('captcha_answer', (string) ($left + $right))
+            ->call('register')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('auth.verification.notice'));
+
+        $user = User::where('email', 'tara-teaches@gmail.com')->firstOrFail();
+
+        $this->assertTrue($user->hasRole('instructor'));
+        $this->assertFalse($user->hasRole('student'));
+        $this->assertNull($user->profile->student_status);
+        $this->assertSame('draft', $user->profile->instructor_status?->value);
+    }
+
     public function test_valid_submission_creates_a_user_via_registration_service(): void
     {
+        app(RegistrationSettings::class)->default_role = 'student';
+        app(RegistrationSettings::class)->save();
+
         $component = Livewire::test(RegisterForm::class);
         [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
 
@@ -97,6 +150,9 @@ class RegisterFormTest extends TestCase
         $this->assertSame($user->terms_accepted_at->toDateTimeString(), $user->privacy_accepted_at->toDateTimeString());
         $this->assertSame($this->country->id, $user->profile->country_id);
         $this->assertSame('Asia/Kolkata', $user->profile->timezone);
+        $this->assertTrue($user->hasRole('student'));
+        $this->assertFalse($user->hasRole('instructor'));
+        $this->assertSame('registered', $user->profile->student_status?->value);
     }
 
     public function test_duplicate_email_is_rejected(): void

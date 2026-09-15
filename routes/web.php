@@ -80,6 +80,7 @@ use App\Http\Controllers\TagController;
 use App\Http\Middleware\ConsumeMeetingJoinHandoff;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureInstructorWorkspaceAccess;
+use App\Http\Middleware\EnsureStudentWorkspaceAccess;
 use App\Http\Middleware\EnsureSupportedFrontendPortalAudience;
 use App\Models\User;
 use App\Services\Auth\VerificationResendService;
@@ -100,7 +101,7 @@ Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 // is redirected to login by the 'auth' middleware, which preserves
 // this URL as the post-login intended redirect. ─────────────────────
 Route::get('/book', [BookingWizardPageController::class, 'create'])
-    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', 'student.profile.complete'])
+    ->middleware(['auth', 'email.verify.if.required', EnsureAccountIsActive::class, 'password.change.required', EnsureStudentWorkspaceAccess::class, 'student.profile.complete'])
     ->name('booking.create');
 
 // ── Complete your profile — the hard precondition for booking (country,
@@ -138,10 +139,11 @@ Route::get('/dashboard', DashboardController::class)->name('dashboard')
 // ── Frontend Auth (guests only) ─────────────────────────────────────
 Route::name('auth.')->middleware('guest')->group(function (): void {
 
-    // Registration is the single, role-neutral entry point for every
-    // account type: a student registers directly, and an instructor
-    // applicant arrives via ?intent=instructor from /become-instructor
-    // (see InstructorApplicationIntent). Both routes are guarded at the
+    // Registration is the single entry point for every account type:
+    // the form's "I want to learn / teach" choice (RegisterRequest
+    // account_type) decides the ONE starting role; an instructor
+    // applicant arriving via ?intent=instructor from /become-instructor
+    // merely has "teach" pre-selected (see InstructorApplicationIntent). Both routes are guarded at the
     // middleware layer; the POST shares the 'login' throttle limiter the
     // Livewire form already applies via ThrottlesLivewireRequests, so
     // the threshold and settings toggle live in exactly one place
@@ -260,20 +262,22 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     'frontend.portal',
     EnsureSupportedFrontendPortalAudience::class,
 ])->group(function (): void {
-    Route::get('/progress', [StudentProgressController::class,     'index'])->name('progress');
-    Route::get('/certificates', [StudentCertificatesController::class, 'index'])->name('certificates');
-    Route::get('/orders', [StudentOrdersController::class,       'index'])->name('orders');
-    Route::get('/wishlist', [StudentWishlistController::class,     'index'])->name('wishlist');
-    Route::get('/learning-goals', [StudentLearningGoalController::class, 'index'])->name('learning-goals');
-    Route::get('/learning-plans', [StudentLearningPlanController::class, 'index'])->name('learning-plans');
-    // Personalized Instructor Package Proposal & Admin Approval — view/accept only, no payment flow yet.
-    Route::get('/packages', [StudentPackageProposalController::class, 'index'])->name('packages');
-    Route::post('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'store'])->name('favorite-instructors.store');
-    Route::delete('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'destroy'])->name('favorite-instructors.destroy');
-    Route::get('/waitlist', [StudentWaitlistController::class, 'index'])->name('waitlist');
-    Route::post('/waitlist/{instructor}', [StudentWaitlistController::class, 'store'])->name('waitlist.store');
-    Route::delete('/waitlist/{instructor}', [StudentWaitlistController::class, 'destroy'])->name('waitlist.destroy');
-    Route::get('/reviews', [StudentReviewsController::class,      'index'])->name('reviews');
+    Route::middleware([EnsureStudentWorkspaceAccess::class])->group(function (): void {
+        Route::get('/progress', [StudentProgressController::class,     'index'])->name('progress');
+        Route::get('/certificates', [StudentCertificatesController::class, 'index'])->name('certificates');
+        Route::get('/orders', [StudentOrdersController::class,       'index'])->name('orders');
+        Route::get('/wishlist', [StudentWishlistController::class,     'index'])->name('wishlist');
+        Route::get('/learning-goals', [StudentLearningGoalController::class, 'index'])->name('learning-goals');
+        Route::get('/learning-plans', [StudentLearningPlanController::class, 'index'])->name('learning-plans');
+        // Personalized Instructor Package Proposal & Admin Approval — view/accept only, no payment flow yet.
+        Route::get('/packages', [StudentPackageProposalController::class, 'index'])->name('packages');
+        Route::post('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'store'])->name('favorite-instructors.store');
+        Route::delete('/favorite-instructors/{instructor}', [StudentFavoriteInstructorController::class, 'destroy'])->name('favorite-instructors.destroy');
+        Route::get('/waitlist', [StudentWaitlistController::class, 'index'])->name('waitlist');
+        Route::post('/waitlist/{instructor}', [StudentWaitlistController::class, 'store'])->name('waitlist.store');
+        Route::delete('/waitlist/{instructor}', [StudentWaitlistController::class, 'destroy'])->name('waitlist.destroy');
+        Route::get('/reviews', [StudentReviewsController::class,      'index'])->name('reviews');
+    });
     Route::get('/notifications', [StudentNotificationsController::class, 'index'])->name('notifications');
     Route::post('/notifications/read-all', [StudentNotificationsController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/{id}/read', [StudentNotificationsController::class, 'markRead'])->name('notifications.read');
@@ -337,20 +341,22 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/instructor/submit', [InstructorOnboardingController::class, 'submit'])->name('instructor.submit');
 
     // ── Student Dashboard — Booking Engine sections (Livewire-backed) ──
-    Route::get('/upcoming-classes', [StudentUpcomingClassesController::class, 'index'])->name('upcoming-classes');
-    Route::get('/my-bookings', [StudentBookingHistoryController::class, 'index'])->name('my-bookings');
-    // Dedicated booking detail page (replaces the old list modal).
-    // Authorization is re-checked inside the controller on every request
-    // (BookingPolicy::view()) and again when the Livewire component mounts.
-    Route::get('/my-bookings/{booking}', [StudentBookingHistoryController::class, 'show'])->name('my-bookings.show');
-    Route::get('/payments', [StudentPaymentsController::class, 'index'])->name('payments');
-    Route::get('/wallet', [StudentWalletController::class, 'index'])->name('wallet');
-    Route::get('/invoices', [StudentInvoicesController::class, 'index'])->name('invoices');
-    // Authorization is re-checked inside the controller on every
-    // request (InvoicePolicy::view()) — owner or View:Invoice only.
-    Route::get('/invoices/{invoice}/download', StudentInvoiceDownloadController::class)->name('invoices.download');
-    Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
-    Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
+    Route::middleware([EnsureStudentWorkspaceAccess::class])->group(function (): void {
+        Route::get('/upcoming-classes', [StudentUpcomingClassesController::class, 'index'])->name('upcoming-classes');
+        Route::get('/my-bookings', [StudentBookingHistoryController::class, 'index'])->name('my-bookings');
+        // Dedicated booking detail page (replaces the old list modal).
+        // Authorization is re-checked inside the controller on every request
+        // (BookingPolicy::view()) and again when the Livewire component mounts.
+        Route::get('/my-bookings/{booking}', [StudentBookingHistoryController::class, 'show'])->name('my-bookings.show');
+        Route::get('/payments', [StudentPaymentsController::class, 'index'])->name('payments');
+        Route::get('/wallet', [StudentWalletController::class, 'index'])->name('wallet');
+        Route::get('/invoices', [StudentInvoicesController::class, 'index'])->name('invoices');
+        // Authorization is re-checked inside the controller on every
+        // request (InvoicePolicy::view()) — owner or View:Invoice only.
+        Route::get('/invoices/{invoice}/download', StudentInvoiceDownloadController::class)->name('invoices.download');
+        Route::get('/refer-a-friend', [StudentReferralController::class, 'index'])->name('refer-a-friend');
+        Route::get('/homework', [StudentHomeworkController::class, 'index'])->name('homework');
+    });
     // Authorization is re-checked inside the controller on
     // every request (HomeworkAssignmentPolicy::view()); shared by
     // student and instructor since either may be the authorized viewer.
@@ -364,15 +370,19 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     // application resolves the storage locator server-side, so no Google
     // Drive (or later S3) identifier is ever exposed in a URL. There is
     // deliberately no student download route.
-    Route::get('/recordings/{recording}', RecordingWatchController::class)->name('recordings.watch');
-    Route::get('/recordings/{recording}/stream', RecordingStreamController::class)->name('recordings.stream');
+    Route::middleware([EnsureStudentWorkspaceAccess::class])->group(function (): void {
+        Route::get('/recordings/{recording}', RecordingWatchController::class)->name('recordings.watch');
+        Route::get('/recordings/{recording}/stream', RecordingStreamController::class)->name('recordings.stream');
+    });
     // The one reusable download boundary for every other
     // private collection (Message, SupportCase, LessonTechnicalIssueReport,
     // UserExperience::supporting_documents, UserEducation). Authorization
     // is re-checked inside the controller via Gate::authorize('view', ...)
     // against whichever Policy is registered for the owning model.
     Route::get('/media/{media}/download', SecureMediaDownloadController::class)->name('media.download');
-    Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
+    Route::middleware([EnsureStudentWorkspaceAccess::class])->group(function (): void {
+        Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance');
+    });
 
     // ── Support Cases — shared by student and
     //    instructor audiences; SupportCaseType is derived from the
@@ -398,7 +408,7 @@ Route::prefix('dashboard')->name('dashboard.')->middleware([
     Route::post('/messages/{conversation}/report/{message}', [MessagingController::class, 'report'])->name('messages.report');
     Route::post('/messages/{conversation}/close', [MessagingController::class, 'close'])->name('messages.close');
 
-    Route::prefix('bookings')->name('bookings.')->group(function (): void {
+    Route::prefix('bookings')->name('bookings.')->middleware([EnsureStudentWorkspaceAccess::class])->group(function (): void {
         Route::get('/', [StudentBookingController::class, 'index'])->name('index');
         Route::get('/teachers', [StudentBookingController::class, 'teachers'])->name('teachers');
         Route::get('/previous-teachers', [StudentBookingController::class, 'previousTeachers'])->name('previous-teachers');

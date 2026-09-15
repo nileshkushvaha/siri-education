@@ -68,6 +68,7 @@ class RegistrationAttributionTest extends TestCase
         session()->put('registration.captcha', '7');
 
         $response = $this->post(route('auth.register.store'), array_merge([
+            'account_type' => 'student',
             'first_name' => 'Jane',
             'last_name' => 'Doe',
             'email' => 'jane-'.uniqid().'@gmail.com',
@@ -286,11 +287,11 @@ class RegistrationAttributionTest extends TestCase
     {
         $code = $this->referrerWithCode();
 
-        $registration = app(RegistrationSettings::class);
-        $registration->default_role = 'instructor';
-        $registration->save();
+        // The instructor path is the form's "I want to teach" choice, never
+        // a default role.
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
 
-        $this->classicRegister(['email' => 'new-instructor@gmail.com', 'referral_code' => $code->code]);
+        $this->classicRegister(['account_type' => 'instructor', 'email' => 'new-instructor@gmail.com', 'referral_code' => $code->code]);
 
         $this->assertNotNull(User::where('email', 'new-instructor@gmail.com')->first());
         $this->assertSame(0, ReferralAttribution::query()->count());

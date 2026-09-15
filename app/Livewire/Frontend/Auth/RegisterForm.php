@@ -29,6 +29,9 @@ final class RegisterForm extends Component
 {
     use ThrottlesLivewireRequests;
 
+    /** 'student' or 'instructor' — the one role the account starts with. */
+    public string $account_type = 'student';
+
     public string $first_name = '';
 
     public ?string $last_name = '';
@@ -71,6 +74,10 @@ final class RegisterForm extends Component
     public function mount(RegistrationCaptchaService $captcha): void
     {
         InstructorApplicationIntent::captureFromRequest();
+
+        // Arriving from /become-instructor pre-selects "teach"; the
+        // person can still change it before submitting.
+        $this->account_type = InstructorApplicationIntent::pending() ? 'instructor' : 'student';
 
         // `availableForRegistration()` is the shared definition of this
         // set — the admin dashboard's country filter reads the same scope,
@@ -163,9 +170,18 @@ final class RegisterForm extends Component
         // Origin-keyed as well — see the 'register' limiter in AppServiceProvider.
         $this->throttleLimiter('register', [], 'email');
 
+        // The chosen account type, not the link they arrived through,
+        // decides where they go after verifying.
+        if ($this->account_type === 'instructor') {
+            InstructorApplicationIntent::remember();
+        } else {
+            InstructorApplicationIntent::consume();
+        }
+
         try {
             $result = $registrationService->register(
                 data: [
+                    'account_type' => $this->account_type,
                     'first_name' => $this->first_name,
                     'last_name' => $this->last_name,
                     'email' => $this->email,

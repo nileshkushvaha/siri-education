@@ -4,6 +4,29 @@
     @endif
 
     <form wire:submit="register" class="space-y-4" novalidate>
+        {{-- The one choice that decides the account's role. A learner
+             may apply to teach later; a teaching account can never become
+             a learning account, so the choice is explicit, never implied. --}}
+        <fieldset class="space-y-2">
+            <legend class="mb-2 text-sm font-semibold text-white">I want to</legend>
+            <div class="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Account type">
+                @foreach([
+                    ['value' => 'student', 'title' => 'Learn', 'hint' => 'Book lessons with instructors.'],
+                    ['value' => 'instructor', 'title' => 'Teach', 'hint' => 'Apply to become an instructor after verifying your email.'],
+                ] as $option)
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition {{ $account_type === $option['value'] ? 'border-indigo-400 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20' }}">
+                        <input type="radio" name="account_type" value="{{ $option['value'] }}" wire:model.live="account_type"
+                               class="mt-1 h-4 w-4 border-white/20 bg-white/5 text-indigo-600 focus:ring-4 focus:ring-indigo-500/20 focus:outline-none">
+                        <span class="min-w-0">
+                            <span class="block text-sm font-semibold text-white">{{ $option['title'] }}</span>
+                            <span class="mt-0.5 block text-xs text-slate-400">{{ $option['hint'] }}</span>
+                        </span>
+                    </label>
+                @endforeach
+            </div>
+            @error('account_type')<p class="text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
+        </fieldset>
+
         <fieldset class="space-y-3">
             <legend class="mb-2 text-sm font-semibold text-white">Your account details</legend>
             <div class="grid gap-3 sm:grid-cols-2">

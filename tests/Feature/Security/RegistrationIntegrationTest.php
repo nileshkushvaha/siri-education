@@ -133,9 +133,11 @@ class RegistrationIntegrationTest extends TestCase
 
     public function test_student_status_stays_null_when_default_role_is_not_student(): void
     {
-        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        // 'instructor' is refused as a default role (it is only granted
+        // through the "I want to teach" choice), so any other role stands in.
+        Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
         $s = app(RegistrationSettings::class);
-        $s->default_role = 'instructor';
+        $s->default_role = 'editor';
         $s->save();
 
         $this->post(route('auth.register.store'), $this->validPayload());
@@ -694,6 +696,7 @@ class RegistrationIntegrationTest extends TestCase
         session()->put('registration.captcha', '7');
 
         return array_merge([
+            'account_type' => 'student',
             'first_name' => 'Test',
             'last_name' => 'User',
             'email' => 'newuser@gmail.com',

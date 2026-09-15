@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Events\Auth\UserApproved;
 use App\Exceptions\LastActiveSuperAdminException;
+use App\Exceptions\StudentRoleNotAssignableException;
 use App\Filament\Concerns\HasStudentLifecycleActions;
 use App\Filament\Navigation\Concerns\HasSectionBreadcrumb;
 use App\Filament\Resources\Users\UserResource;
@@ -13,6 +14,7 @@ use App\Services\Admin\SuperAdminGuardService;
 use App\Services\Admin\UserDeletionGuard;
 use App\Services\AuditTrailService;
 use App\Services\Auth\PasswordHistoryService;
+use App\Services\Auth\StudentRoleAssignmentGuard;
 use App\Services\Student\StudentLifecycleService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
@@ -150,6 +152,23 @@ class EditUser extends EditRecord
         $this->previousStatus = $this->record->status ?? '';
 
         $this->assertSuperAdminInvariantForSubmittedData();
+        $this->assertStudentRoleNotAddedToExistingAccount();
+    }
+
+    /**
+     * The student role is granted at registration only: an account that
+     * does not hold it (an instructor) can never gain it here. Same
+     * pre-write shape as the super-admin invariant above — the save is
+     * halted before Filament syncs the roles.
+     */
+    private function assertStudentRoleNotAddedToExistingAccount(): void
+    {
+        try {
+            app(StudentRoleAssignmentGuard::class)->assertSubmittedRolesAllowed($this->record, $this->data['roles'] ?? null);
+        } catch (StudentRoleNotAssignableException $e) {
+            Notification::make()->title('Action failed')->body($e->getMessage())->danger()->send();
+            $this->halt();
+        }
     }
 
     /**

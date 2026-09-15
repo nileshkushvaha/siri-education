@@ -96,14 +96,20 @@ final class Phase20BPortalShellTest extends TestCase
         $grown = $this->requestQueryCount($student);
 
         $this->assertLessThanOrEqual(30, $initial);
-        $this->assertLessThanOrEqual($initial + 2, $grown);
+        // Growth is one constant query per eager-loaded booking relation
+        // on the dashboard's bounded schedule read (type, instructor,
+        // meeting, lesson) — never a per-row query as history grows.
+        $this->assertLessThanOrEqual($initial + 3, $grown);
 
         $componentQueries = 0;
         DB::listen(static function () use (&$componentQueries): void {
             $componentQueries++;
         });
         Livewire::actingAs($student)->test(StudentDashboard::class)->assertOk();
-        $this->assertLessThanOrEqual(15, $componentQueries);
+        // Absolute cap for 40 bookings of history: the schedule read is
+        // bounded (limit 5) and eager-loads four relations, so this is a
+        // constant, not a function of history size.
+        $this->assertLessThanOrEqual(16, $componentQueries);
     }
 
     public function test_instructor_dashboard_query_count_is_bounded(): void

@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\Instructor;
 
 use App\Enums\InstructorStatus;
+use App\Livewire\Frontend\Auth\RegisterForm;
 use App\Livewire\Frontend\Auth\VerifyEmailNotice;
 use App\Models\AcademicLevel;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\User;
 use App\Notifications\Auth\EmailVerificationCodeNotification;
 use App\Services\Auth\EmailVerificationOtpService;
 use App\Settings\RegistrationSettings;
 use App\Support\InstructorApplicationIntent;
+use App\Support\InstructorApplicationStart;
 use App\Support\PendingEmailVerification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -75,6 +79,56 @@ final class InstructorApplicationEntryTest extends TestCase
 
         $this->assertFalse(InstructorApplicationIntent::pending());
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_a_person_who_registered_to_teach_resumes_their_draft_after_verifying(): void
+    {
+        $currency = Currency::factory()->create(['code' => 'INR', 'status' => 'active']);
+        $country = Country::factory()->create(['iso2' => 'US', 'phone_code' => '+1', 'default_currency_id' => $currency->id]);
+
+        $component = Livewire::test(RegisterForm::class);
+        [$left, $right] = array_map('intval', explode(' + ', $component->get('captchaQuestion')));
+
+        Notification::fake();
+
+        $component
+            ->set('account_type', 'instructor')
+            ->set('first_name', 'Tara')
+            ->set('email', 'tara-entry@gmail.com')
+            ->set('country_id', $country->id)
+            ->set('password', 'StrongPass123!')
+            ->set('password_confirmation', 'StrongPass123!')
+            ->set('terms', true)
+            ->set('captcha_answer', (string) ($left + $right))
+            ->call('register')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('auth.verification.notice'));
+
+        $user = User::query()->where('email', 'tara-entry@gmail.com')->firstOrFail();
+        $this->assertTrue(InstructorApplicationIntent::pending());
+
+        $code = null;
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class, function ($notification) use (&$code) {
+            $code = $notification->code;
+
+            return true;
+        });
+
+        Livewire::test(VerifyEmailNotice::class)
+            ->set('code', $code)
+            ->call('verify')
+            ->assertRedirect(route('dashboard.instructor.onboarding'));
+
+        $user = $user->fresh();
+        $this->assertTrue($user->hasVerifiedEmail());
+        $this->assertTrue($user->hasRole('instructor'));
+        $this->assertFalse($user->hasRole('student'));
+        $this->assertSame(InstructorStatus::Draft, $user->profile->instructor_status);
+        $this->assertTrue(InstructorApplicationStart::attempt($user, 'dashboard')->eligible, 'the wizard resumes the draft rather than re-gating it');
+
+        $this->actingAs($user)->get(route('dashboard.instructor.onboarding'))->assertOk();
+        // Still an instructor-only account after resuming: no student role appeared.
+        $this->assertFalse($user->fresh()->hasRole('student'));
     }
 
     public function test_existing_eligible_student_can_start_instructor_onboarding(): void

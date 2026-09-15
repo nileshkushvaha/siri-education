@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\InstructorStatus;
+use App\Enums\StudentStatus;
 use App\Livewire\Frontend\Auth\RegisterForm;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\User;
 use App\Settings\RegistrationSettings;
 use App\Support\InstructorApplicationIntent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -93,6 +97,7 @@ final class UnifiedRegistrationTest extends TestCase
         session()->put('registration.captcha', '7');
 
         $response = $this->post(route('auth.register.store'), [
+            'account_type' => 'student',
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'email' => 'ada.unified.registration.test@gmail.com',
@@ -105,6 +110,85 @@ final class UnifiedRegistrationTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseHas('users', ['email' => 'ada.unified.registration.test@gmail.com']);
+    }
+
+    /** @return array<string, mixed> */
+    private function payload(string $accountType, string $email): array
+    {
+        session()->put('registration.captcha', '7');
+
+        return [
+            'account_type' => $accountType,
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'email' => $email,
+            'country_id' => $this->country->id,
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+            'terms' => '1',
+            'captcha_answer' => '7',
+            'referral_code' => 'ABCD2345',
+        ];
+    }
+
+    public function test_account_type_is_required(): void
+    {
+        $payload = $this->payload('student', 'ada.no-type@gmail.com');
+        unset($payload['account_type']);
+
+        $this->from(route('auth.register'))
+            ->post(route('auth.register.store'), $payload)
+            ->assertRedirect(route('auth.register'))
+            ->assertSessionHasErrors('account_type');
+
+        $this->post(route('auth.register.store'), ['account_type' => 'manager'] + $payload)
+            ->assertSessionHasErrors('account_type');
+
+        $this->assertDatabaseMissing('users', ['email' => 'ada.no-type@gmail.com']);
+    }
+
+    public function test_choosing_to_teach_registers_an_instructor_only_account(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        app(RegistrationSettings::class)->default_role = 'student';
+        app(RegistrationSettings::class)->save();
+
+        $this->post(route('auth.register.store'), $this->payload('instructor', 'ada.teaches@gmail.com'))
+            ->assertRedirect(route('auth.verification.notice'));
+
+        $user = User::query()->where('email', 'ada.teaches@gmail.com')->firstOrFail();
+
+        $this->assertTrue($user->hasRole('instructor'));
+        $this->assertFalse($user->hasRole('student'));
+        $this->assertNull($user->profile->student_status);
+        $this->assertSame(InstructorStatus::Draft, $user->profile->instructor_status);
+        $this->assertNotNull($user->profile->instructor_application_started_at);
+        $this->assertTrue(InstructorApplicationIntent::pending(), 'the wizard is the next screen after verification');
+        $this->assertDatabaseHas('activity_log', ['event' => 'application_started', 'subject_id' => $user->id]);
+        $this->assertDatabaseMissing('referral_attributions', ['referred_student_id' => $user->id]);
+    }
+
+    public function test_choosing_to_learn_registers_a_student_exactly_as_before(): void
+    {
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        app(RegistrationSettings::class)->default_role = 'student';
+        app(RegistrationSettings::class)->save();
+
+        // Even arriving through the instructor link, the submitted choice wins.
+        $this->get(route('auth.register', ['intent' => 'instructor']))->assertOk();
+
+        $this->post(route('auth.register.store'), $this->payload('student', 'ada.learns@gmail.com'))
+            ->assertRedirect(route('auth.verification.notice'));
+
+        $user = User::query()->where('email', 'ada.learns@gmail.com')->firstOrFail();
+
+        $this->assertTrue($user->hasRole('student'));
+        $this->assertFalse($user->hasRole('instructor'));
+        $this->assertSame(StudentStatus::Registered, $user->profile->student_status);
+        $this->assertNull($user->profile->instructor_status);
+        $this->assertFalse(InstructorApplicationIntent::pending());
     }
 
     public function test_registration_page_no_longer_uses_student_only_wording(): void

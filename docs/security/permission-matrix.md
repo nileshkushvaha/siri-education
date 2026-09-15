@@ -20,8 +20,8 @@ Only Super Admin bypasses permission checks. Every other role — including `man
 |---|---|---|
 | `super_admin` | Unconditional access to everything via `Gate::before()` | Assigned by `SuperAdminSeeder` (to user ID 1, seed-time only — not a runtime authorization rule) |
 | `manager` | Read access across admin resources | Assigned via `DefaultRolesAndUsersSeeder`; access is entirely permission-driven, no automatic bypass |
-| `instructor` | Manage CMS content | Assigned via `DefaultRolesAndUsersSeeder`; permission-driven |
-| `student` | Default frontend role | Assigned on registration via `RegistrationSettings::default_role` |
+| `instructor` | Teaching workspace | Registration "I want to teach" (with a Draft application), the instructor wizard for an existing student, or an admin; permission-driven |
+| `student` | Learning workspace | Registration "I want to learn" via `RegistrationSettings::default_role`, or an admin creating the user — never added to an existing account (`StudentRoleAssignmentGuard`) |
 | Custom roles | Admin-configurable | Created in admin under Roles resource |
 
 Super admin bypass is implemented in `AppServiceProvider::registerSuperAdminGate()`, which calls `$user->isSuperAdmin()` — looked up by role name, never by ID. **New permissions are automatically assigned to super_admin** via the `Permission::created` observer in the same provider, which looks the role up by `name` (`Role::where('name', 'super_admin')->first()`), not by ID.

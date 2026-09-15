@@ -118,7 +118,11 @@ class RegistrationPage extends Page
                             Select::make('default_role')
                                 ->label('Default Role')
                                 ->placeholder('— Select a role —')
+                                // The instructor role is only granted through
+                                // the "I want to teach" registration choice,
+                                // never as a blanket default.
                                 ->options(fn () => Role::query()
+                                    ->where('name', '!=', 'instructor')
                                     ->orderBy('name')
                                     ->pluck('name', 'name')
                                     ->all()
@@ -126,7 +130,7 @@ class RegistrationPage extends Page
                                 ->searchable()
                                 ->native(false)
                                 ->nullable()
-                                ->helperText('Role automatically assigned to new registrations.'),
+                                ->helperText('Role automatically assigned to new registrations that choose to learn. Registrations that choose to teach always receive the instructor role.'),
                         ]),
 
                         Grid::make(2)->schema([

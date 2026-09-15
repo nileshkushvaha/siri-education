@@ -32,6 +32,14 @@ final class RegisterController extends Controller
 
     public function store(RegisterRequest $request): RedirectResponse
     {
+        // The chosen account type, not the link they arrived through,
+        // decides where they go after verifying.
+        if ($request->validated('account_type') === 'instructor') {
+            InstructorApplicationIntent::remember();
+        } else {
+            InstructorApplicationIntent::consume();
+        }
+
         try {
             $result = $this->registrationService->register(
                 data: $request->validated(),
@@ -40,7 +48,7 @@ final class RegisterController extends Controller
             );
         } catch (RegistrationException $e) {
             return back()
-                ->withInput($request->only('first_name', 'last_name', 'email', 'phone', 'phone_country_iso2', 'country_id', 'referral_code'))
+                ->withInput($request->only('account_type', 'first_name', 'last_name', 'email', 'phone', 'phone_country_iso2', 'country_id', 'referral_code'))
                 ->with('error', $e->getMessage());
         }
 

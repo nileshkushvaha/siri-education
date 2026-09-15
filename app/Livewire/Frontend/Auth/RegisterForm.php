@@ -105,6 +105,15 @@ final class RegisterForm extends Component
         }
     }
 
+    /** Referral codes apply to learners only: switching to "teach" hides the field and drops any typed code. */
+    public function updatedAccountType(): void
+    {
+        if ($this->account_type === 'instructor') {
+            $this->referral_code = '';
+            $this->prefilledReferralCode = null;
+        }
+    }
+
     public function updatedCountryId(): void
     {
         if (! $this->phone_country_was_manually_changed) {

@@ -84,6 +84,18 @@ class RegisterFormTest extends TestCase
             ->assertSee('Teach');
     }
 
+    public function test_referral_code_is_hidden_and_discarded_when_registering_to_teach(): void
+    {
+        Livewire::test(RegisterForm::class)
+            ->assertSee('Referral code (optional)')
+            ->set('referral_code', 'ABCD2345')
+            ->set('account_type', 'instructor')
+            ->assertDontSee('Referral code (optional)')
+            ->assertSet('referral_code', '')
+            ->set('account_type', 'student')
+            ->assertSee('Referral code (optional)');
+    }
+
     public function test_an_unknown_account_type_is_rejected(): void
     {
         Livewire::test(RegisterForm::class)

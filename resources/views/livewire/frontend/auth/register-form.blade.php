@@ -66,7 +66,12 @@
                 @endif
                 @error('phone')<p class="mt-1 text-xs text-red-400" role="alert">{{ $message }}</p>@enderror
             </div>
-            <x-ui.auth-input label="Referral code (optional)" name="referral_code" wire:model="referral_code" placeholder="e.g. ABCD2345" autocomplete="off" />
+            {{-- Referral rewards are for learners only (client rule); the
+                 field disappears for instructor registrations and any typed
+                 code is discarded (RegisterForm::updatedAccountType). --}}
+            @if($account_type === 'student')
+                <x-ui.auth-input label="Referral code (optional)" name="referral_code" wire:model="referral_code" placeholder="e.g. ABCD2345" autocomplete="off" />
+            @endif
         </fieldset>
 
         <fieldset class="border-t border-white/[0.08] pt-4">

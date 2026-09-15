@@ -13,6 +13,7 @@ use App\Booking\DTOs\WizardBookingData;
 use App\Booking\Exceptions\BookingException;
 use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\Booking;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -24,10 +25,24 @@ use Illuminate\Support\Collection;
  * (StudentBookingServiceInterface), the wizard never requires the
  * student to pick a teacher — availability is aggregated across
  * eligible teachers and the assignment engine chooses one on booking,
- * unless a specific instructor was locked via a profile deep-link.
+ * unless the student chose one (paid types offer the eligible
+ * instructors, see instructorOptions()) or a specific instructor was
+ * locked via a profile deep-link.
  */
 interface WizardBookingServiceInterface
 {
+    /**
+     * The instructors a student may choose for a paid lesson: the same
+     * eligible set auto-assignment draws from (subject, level, status,
+     * curriculum eligibility), grouped for continuity — the ones they
+     * have booked before for this subject first (most recent first),
+     * then bookable favourites, then the rest — as scalar cards, at
+     * most twelve in total.
+     *
+     * @return array{previous: list<array<string, mixed>>, favourites: list<array<string, mixed>>, others: list<array<string, mixed>>}
+     */
+    public function instructorOptions(string $typeKey, string $subject, int $grade, ?AcademicContextData $academicContext, User $student): array;
+
     /**
      * @param  AcademicContextData|null  $academicContext  Phase 3 (§7/§10) — when supplied (country-aware Free
      *                                                     Demo only), narrows the candidate teacher SET itself to academically-eligible instructors

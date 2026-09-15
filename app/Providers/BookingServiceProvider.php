@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Booking\Assignment\Scorers\ContinuityScorer;
 use App\Booking\Assignment\Scorers\PriorityScorer;
 use App\Booking\Assignment\Scorers\TimezoneScorer;
 use App\Booking\Assignment\Scorers\WorkloadScorer;
@@ -234,6 +235,7 @@ class BookingServiceProvider extends ServiceProvider
             WorkloadScorer::class,
             PriorityScorer::class,
             TimezoneScorer::class,
+            ContinuityScorer::class,
         ], 'booking.assignment_scorers');
 
         $this->app->bind(BestScoreStrategy::class, fn (Application $app): BestScoreStrategy => new BestScoreStrategy(

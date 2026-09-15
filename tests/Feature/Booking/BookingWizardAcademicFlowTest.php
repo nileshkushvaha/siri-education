@@ -234,7 +234,7 @@ class BookingWizardAcademicFlowTest extends TestCase
             ->assertSet('levels', fn (array $levels): bool => collect($levels)->contains('id', $fixture['level']->id));
 
         self::assertSame(
-            ['mode', 'level', 'academic_subject', 'curriculum', 'billing_mode', 'date', 'time', 'review', 'confirmed'],
+            ['mode', 'level', 'academic_subject', 'curriculum', 'instructor', 'billing_mode', 'date', 'time', 'review', 'confirmed'],
             $component->invade()->phases(),
         );
 

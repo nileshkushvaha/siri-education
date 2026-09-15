@@ -295,7 +295,7 @@ middleware stack as the student dashboard), backed by
 every occurrence still runs through `BookingService::request` (rules,
 locks, events, notifications identical to every other flow).
 
-The authenticated `/book` wizard (`BookingWizard` Livewire component, `WizardBookingService`/`WizardBookingData`) is the other entry point — it auto-assigns a teacher and drives payment; the route requires `auth` (redirects to login, preserving the intended URL — no slot/price state is preserved across that boundary, the student picks again once logged in). `WizardBookingService::book()` also independently refuses when unauthenticated, since `CreateBookingData::$studentId` is a non-nullable `int`.
+The authenticated `/book` wizard (`BookingWizard` Livewire component, `WizardBookingService`/`WizardBookingData`) is the other entry point — for paid lessons it offers the eligible instructors ("Book again" / favourites / others, see Teacher Assignment Engine) or "Any available instructor", auto-assigns when no choice is made or for free demos, and drives payment; the route requires `auth` (redirects to login, preserving the intended URL — no slot/price state is preserved across that boundary, the student picks again once logged in). `WizardBookingService::book()` also independently refuses when unauthenticated, since `CreateBookingData::$studentId` is a non-nullable `int`.
 
 `BookingActor::Student`/`::Instructor` are the domain's own participant terminology — distinct from `teacher` (marketplace/matching context: `TeacherAssignmentService`, `teacher_subjects`, `TeacherAvailability`) and meeting-provider `host` fields (`booking_meetings.host_url`, Zoom `host_user_id`/`host_email`), which are legitimate, unrelated uses of similar words.
 
@@ -926,9 +926,16 @@ cancel a PAID booking → automatic refund (SyncPaymentOnCancellation listener)
 
 ## Teacher Assignment Engine
 
-Students never directly select a teacher for auto-assigned flows. Callers build an
-`AssignmentCriteriaData` (type, subject, grade, slot, timezone;
-`language` reserved for the future) and
+Auto-assignment is what happens when no instructor was chosen: free
+demos always, and paid lessons where the student picked "Any available
+instructor" on the wizard's instructor step
+(`WizardBookingServiceInterface::instructorOptions()` — the same
+eligible set below, grouped as previous-for-this-subject, favourites,
+others, at most twelve scalar cards). A chosen or deep-linked instructor
+is validated with `TeacherCandidateRepository::isEligible()` at submit
+instead. Callers build an `AssignmentCriteriaData` (type, subject,
+grade, slot, timezone, optional `studentId`; `language` reserved for
+the future) and
 `TeacherAssignmentService::assign()` returns the teacher, whose id
 then feeds `CreateBookingData`. Three phases:
 
@@ -951,7 +958,13 @@ Scoring engine: `best_score` sums weighted `TeacherScorerInterface`
 implementations tagged `booking.assignment_scorers` — add a scorer
 class + tag entry to extend. Shipped scorers: workload
 (fewer upcoming bookings), priority (`user_profiles.assignment_priority`,
-0–100 admin boost), timezone proximity (neutral 0.5 when unknown).
+0–100 admin boost), timezone proximity (neutral 0.5 when unknown), and
+continuity (`ContinuityScorer`, weight 2.0: 1.0 for the student's most
+recent instructor on this subject via
+`BookingRepository::previousInstructorIdsForStudent()`, 0.5 for any
+other previous instructor; never for free demos, where one-demo-per-
+instructor would then fail). `BestScoreStrategy` resolves the tagged
+scorers once per assignment so a scorer may cache per criteria.
 Scores are clamped to [0, 1]; ties break on lowest user id.
 
 ## Concurrency & integrity

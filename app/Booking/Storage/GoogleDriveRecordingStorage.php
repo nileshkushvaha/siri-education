@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Storage;
 
+use App\Booking\Contracts\AcceptsExternalSources;
 use App\Booking\Contracts\GoogleDriveClient;
 use App\Booking\Contracts\RecordingStorage;
 use App\Booking\Contracts\SupportsNativeIngestion;
@@ -13,6 +14,7 @@ use App\Booking\DTOs\NativeRecordingSource;
 use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingStorageRequest;
+use App\Booking\DTOs\ResolvedExternalSource;
 use App\Booking\DTOs\StoredRecording;
 use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Exceptions\GatewayRequestException;
@@ -48,7 +50,7 @@ use Throwable;
  * instructor access is decided by RecordingPolicy and served by the
  * application, so Drive is storage, never the authorization layer.
  */
-final class GoogleDriveRecordingStorage implements RecordingStorage, SupportsNativeIngestion
+final class GoogleDriveRecordingStorage implements AcceptsExternalSources, RecordingStorage, SupportsNativeIngestion
 {
     public const string KEY = 'google_drive';
 
@@ -100,6 +102,102 @@ final class GoogleDriveRecordingStorage implements RecordingStorage, SupportsNat
         }
 
         return ['ok' => true, 'detail' => 'root folder readable by the delegated account'];
+    }
+
+    /**
+     * The operator recovery entry point: a pasted Drive link or file id
+     * becomes a native source once Drive confirms the platform account
+     * can read it and it looks like a recording. Read-only — nothing is
+     * copied here; ingestNatively() does that later, in the queue. The
+     * only place a Drive URL shape is known. Requires the drive.readonly
+     * scope in the delegation grant for files Meet did not create.
+     */
+    public function resolveExternalSource(string $operatorReference): ResolvedExternalSource
+    {
+        $fileId = self::fileIdFromReference($operatorReference);
+
+        if ($fileId === null) {
+            throw RecordingStorageException::externalSourceUnsupported('That does not look like a Drive file link or file id.');
+        }
+
+        $target = $this->target();
+
+        try {
+            $file = $this->client->getFile($target, $fileId);
+        } catch (GatewayRequestException $e) {
+            $translated = $this->translate($e);
+
+            throw $translated->failureCode === RecordingFailureCode::StorageAuthFailed
+                ? RecordingStorageException::externalSourceInaccessible(sprintf('The platform account (%s) is not allowed to read that file. Share it with that account, or check that the delegation grant includes read access.', $target->delegatedSubject), $e)
+                : $translated;
+        }
+
+        if ($file === null) {
+            throw RecordingStorageException::externalSourceInaccessible(sprintf('That file is not visible to the platform account (%s). Share it with that account (view access is enough) and try again.', $target->delegatedSubject));
+        }
+
+        if ($file['trashed'] === true) {
+            throw RecordingStorageException::externalSourceUnsupported('That file is in the Drive trash. Restore it, then attach it again.');
+        }
+
+        $mimeType = $file['mimeType'];
+
+        if ($mimeType === null || ! in_array($mimeType, (array) config('recordings.allowed_mime_types', []), true)) {
+            throw RecordingStorageException::externalSourceUnsupported(sprintf('That file is %s, not an accepted recording type.', $mimeType ?? 'of unknown type'));
+        }
+
+        $sizeBytes = $file['size'];
+        $ceiling = (int) config('recordings.max_source_bytes', 0);
+
+        if ($sizeBytes !== null && $ceiling > 0 && $sizeBytes > $ceiling) {
+            throw RecordingStorageException::externalSourceUnsupported(sprintf('That file is %.1f GB, above the %.1f GB ceiling for recordings.', $sizeBytes / 1073741824, $ceiling / 1073741824));
+        }
+
+        return new ResolvedExternalSource(
+            source: new NativeRecordingSource(self::KEY, $fileId),
+            sizeBytes: $sizeBytes,
+            mimeType: $mimeType,
+        );
+    }
+
+    /**
+     * A bare file id, or any of the link forms Drive hands out:
+     * `/file/d/{id}/view`, `open?id={id}`, `uc?id={id}`. Ids are
+     * URL-safe base64-ish tokens; anything else is refused rather than
+     * guessed at.
+     */
+    public static function fileIdFromReference(string $reference): ?string
+    {
+        $reference = trim($reference);
+
+        if ($reference === '') {
+            return null;
+        }
+
+        if (preg_match('#^[A-Za-z0-9_-]{10,}$#', $reference) === 1) {
+            return $reference;
+        }
+
+        if (preg_match('#^https?://(?:drive|docs)\.google\.com/#i', $reference) !== 1) {
+            return null;
+        }
+
+        if (preg_match('#/file/d/([A-Za-z0-9_-]{10,})#', $reference, $m) === 1) {
+            return $m[1];
+        }
+
+        $query = parse_url($reference, PHP_URL_QUERY);
+
+        if (is_string($query)) {
+            parse_str($query, $params);
+            $id = $params['id'] ?? null;
+
+            if (is_string($id) && preg_match('#^[A-Za-z0-9_-]{10,}$#', $id) === 1) {
+                return $id;
+            }
+        }
+
+        return null;
     }
 
     public function put(RecordingStorageRequest $request): StoredRecording

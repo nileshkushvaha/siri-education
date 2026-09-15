@@ -47,6 +47,7 @@ class Recording extends Model
         'teacher_id',
         'provider',
         'provider_reference',
+        'source',
         'storage_driver',
         'storage_path',
         'storage_checksum',
@@ -123,6 +124,16 @@ class Recording extends Model
     public function studentAccessRevokedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'student_access_revoked_by');
+    }
+
+    /** Provenance values for `source`: the automated pipeline, or an administrator attaching a file by hand. */
+    public const string SOURCE_PIPELINE = 'pipeline';
+
+    public const string SOURCE_MANUAL = 'manual';
+
+    public function isManuallyAttached(): bool
+    {
+        return $this->source === self::SOURCE_MANUAL;
     }
 
     /** Whether a viewer could be served this recording's content right now. */

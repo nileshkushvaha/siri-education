@@ -491,6 +491,36 @@ final class InstructorService
         ];
     }
 
+    /**
+     * The scalar cards the booking wizard offers when a student chooses
+     * an instructor: enough to recognise and compare (photo, headline,
+     * rating, experience, subjects), never the model, never the
+     * availability preview or a price quote — the calendar and the
+     * price preview answer those once an instructor is chosen. Relations
+     * are loaded once for the whole set.
+     *
+     * @param  Collection<int, User>  $instructors
+     * @return array<int, array<string, mixed>> keyed by instructor id
+     */
+    public function bookingChoiceCards(Collection $instructors): array
+    {
+        $instructors->loadMissing(['profile.media', 'teacherSubjects.subjectMaster', 'experiences']);
+
+        return $instructors
+            ->mapWithKeys(fn (User $instructor): array => [$instructor->id => [
+                'id' => $instructor->id,
+                'name' => $instructor->name,
+                'url' => route('instructors.show', $instructor),
+                'avatar_url' => $instructor->profile?->avatarThumbUrl,
+                'headline' => $this->profileText->headline($instructor),
+                'ratings' => $this->ratingsFor($instructor),
+                'years_experience' => $this->experienceService->yearsOfExperience($instructor),
+                'subjects' => $this->subjectsFor($instructor)->take(3)->pluck('name')->values()->all(),
+                'timezone' => $instructor->profile?->timezone,
+            ]])
+            ->all();
+    }
+
     /** Read-only preview using the instructor's own primary (first alphabetical) subject — the same concept publicProfile() already uses for its default booking links. Null when the instructor teaches nothing resolvable to a Subject master row. */
     public function primarySubjectQuote(User $instructor, ?Country $country): ?MarketplacePriceQuote
     {

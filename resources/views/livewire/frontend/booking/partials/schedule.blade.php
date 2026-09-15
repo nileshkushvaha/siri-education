@@ -10,7 +10,14 @@
     $durationMinutes = (int) ($selectedType['duration_minutes'] ?? 0);
     $tzCity = str_replace('_', ' ', \Illuminate\Support\Str::afterLast($timezone, '/'));
     $tzOffset = 'GMT'.\Carbon\CarbonImmutable::now($timezone)->format('P');
-    $calendarTargets = 'selectBillingMode,toggleWeekday,setEndCondition,setOccurrences,setEndDate,previousMonth,nextMonth,continueStage,editStage,editPhase';
+    $calendarTargets = 'selectInstructor,selectBillingMode,toggleWeekday,setEndCondition,setOccurrences,setEndDate,previousMonth,nextMonth,continueStage,editStage,editPhase';
+    $askInstructor = $isPaid && $lockedInstructorId === null;
+    $instructorGroups = [
+        ['key' => 'previous', 'title' => 'Book again', 'hint' => 'Instructors you have learned this subject with, most recent first.'],
+        ['key' => 'favourites', 'title' => 'Your favourites', 'hint' => null],
+        ['key' => 'others', 'title' => 'More instructors', 'hint' => null],
+    ];
+    $hasInstructorOptions = collect($instructorOptions)->flatten(1)->isNotEmpty();
 @endphp
 
 <div class="space-y-5">
@@ -22,7 +29,78 @@
         </p>
     </div>
 
-    @if($isPaid)
+    @if($askInstructor)
+        {{-- Who to learn with. Paid lessons only; a profile deep-link locks
+             the instructor and skips this. Continuity first: the instructors
+             this student already learned the subject with lead the list. --}}
+        @if($currentPhase === 'instructor')
+            <section aria-labelledby="booking-instructor" data-booking-phase="instructor">
+                <h3 id="booking-instructor" class="text-lg font-black text-fg-strong">Who would you like to learn with?</h3>
+                <p class="mt-1 text-sm text-fg-muted">Every instructor here teaches this subject at your level. Choose one, or let us match you with whoever is available.</p>
+
+                <div class="mt-4 space-y-5">
+                    @foreach($instructorGroups as $group)
+                        @php $cards = $instructorOptions[$group['key']] ?? []; @endphp
+                        @continue($cards === [])
+                        <div data-instructor-group="{{ $group['key'] }}">
+                            <div class="flex items-baseline gap-2">
+                                <h4 class="text-sm font-black uppercase tracking-wide text-fg-muted">{{ $group['title'] }}</h4>
+                                @if($group['hint'])<span class="text-xs text-fg-faint">{{ $group['hint'] }}</span>@endif
+                            </div>
+                            <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                @foreach($cards as $card)
+                                    <button type="button"
+                                            wire:click="selectInstructor({{ (int) $card['id'] }})"
+                                            aria-pressed="{{ $instructorChosen && $instructorId === (int) $card['id'] ? 'true' : 'false' }}"
+                                            data-instructor-option="{{ $card['id'] }}"
+                                            class="booking-option group relative flex w-full items-start gap-3 rounded-2xl border-2 p-3 text-left transition focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/50 {{ $instructorChosen && $instructorId === (int) $card['id'] ? 'border-indigo-500 bg-indigo-500/10 shadow-sm shadow-indigo-500/10' : 'border-edge/60 bg-surface-raised hover:border-indigo-300 hover:bg-indigo-500/5' }}">
+                                        <x-ui.avatar :src="$card['avatar_url'] ?? null" :name="$card['name']" size="md" class="shrink-0" />
+                                        <span class="min-w-0 flex-1">
+                                            <span class="flex flex-wrap items-center gap-2">
+                                                <span class="text-sm font-bold text-fg-strong">{{ $card['name'] }}</span>
+                                                @if(($card['badge'] ?? '') === 'previous')
+                                                    <x-ui.badge color="indigo">{{ $loop->parent->first && $loop->first ? 'Last time' : 'Booked before' }}</x-ui.badge>
+                                                @elseif(($card['badge'] ?? '') === 'favourite')
+                                                    <x-ui.badge color="success">Favourite</x-ui.badge>
+                                                @endif
+                                            </span>
+                                            @if(! empty($card['headline']))
+                                                <span class="mt-0.5 block truncate text-xs text-fg-muted">{{ $card['headline'] }}</span>
+                                            @endif
+                                            <span class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-faint">
+                                                @if(($card['ratings']['count'] ?? 0) > 0)
+                                                    <span><span class="font-semibold text-fg-strong">★ {{ number_format((float) $card['ratings']['average'], 1) }}</span> ({{ $card['ratings']['count'] }})</span>
+                                                @endif
+                                                @if(! empty($card['years_experience']))
+                                                    <span>{{ $card['years_experience'] }}+ yrs experience</span>
+                                                @endif
+                                                @if(! empty($card['subjects']))
+                                                    <span>{{ implode(' · ', $card['subjects']) }}</span>
+                                                @endif
+                                            </span>
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+
+                    <div data-instructor-group="any">
+                        <x-booking.option-card
+                            wire:click="selectInstructor(null)"
+                            :selected="$instructorChosen && $instructorId === null"
+                            title="Any available instructor"
+                            :description="$hasInstructorOptions ? 'We match you with an available instructor when you confirm — your previous instructor for this subject whenever they are free.' : 'No instructor is listed for this subject right now; we will match you with whoever is available when you confirm.'"
+                        />
+                    </div>
+                </div>
+            </section>
+        @elseif($instructorChosen)
+            <x-booking.chosen-row label="Instructor" :value="$instructorName ?? 'Any available instructor'" phase="instructor" />
+        @endif
+    @endif
+
+    @if($isPaid && (! $askInstructor || $instructorChosen))
         <section aria-labelledby="booking-how-often">
             <h3 id="booking-how-often" class="text-lg font-black text-fg-strong">How often would you like to study?</h3>
             <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -147,8 +225,13 @@
                     </p>
                 @elseif(! $recurring && empty($dates))
                     <div class="mt-4 rounded-2xl border border-dashed border-edge-strong px-4 py-5 text-center">
-                        <p class="text-sm font-semibold text-fg-strong">No times are available this month.</p>
-                        <p class="mt-1 text-sm text-fg-muted">{{ $canGoNextMonth ? 'Try the next month.' : 'Please check back soon.' }}</p>
+                        <p class="text-sm font-semibold text-fg-strong">{{ $instructorName ? $instructorName.' has no times available this month.' : 'No times are available this month.' }}</p>
+                        <p class="mt-1 text-sm text-fg-muted">
+                            {{ $canGoNextMonth ? 'Try the next month.' : 'Please check back soon.' }}
+                            @if($askInstructor && $instructorId !== null)
+                                Or <button type="button" wire:click="editPhase('instructor')" class="font-semibold text-indigo-600 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-700 dark:text-indigo-300">choose a different instructor</button>.
+                            @endif
+                        </p>
                     </div>
                 @endif
             </div>
@@ -174,8 +257,13 @@
             <div wire:loading.remove wire:target="selectDate,toggleWeekday" class="mt-4 space-y-5">
                 @if(empty($slotGroups))
                     <div class="rounded-2xl border border-dashed border-edge-strong px-4 py-5 text-center">
-                        <p class="text-sm font-semibold text-fg-strong">No times are available on this date.</p>
-                        <p class="mt-1 text-sm text-fg-muted">{{ $recurring ? 'Try a different start date, or change your class days.' : 'Try another date.' }}</p>
+                        <p class="text-sm font-semibold text-fg-strong">{{ $instructorName ? $instructorName.' has no times available on this date.' : 'No times are available on this date.' }}</p>
+                        <p class="mt-1 text-sm text-fg-muted">
+                            {{ $recurring ? 'Try a different start date, or change your class days.' : 'Try another date.' }}
+                            @if($askInstructor && $instructorId !== null)
+                                Or <button type="button" wire:click="editPhase('instructor')" class="font-semibold text-indigo-600 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-700 dark:text-indigo-300">choose a different instructor</button>.
+                            @endif
+                        </p>
                     </div>
                 @else
                     @foreach($slotGroups as $group)

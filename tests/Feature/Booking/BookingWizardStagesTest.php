@@ -153,6 +153,10 @@ class BookingWizardStagesTest extends TestCase
 
         $component->call('continueStage')
             ->assertSet('step', 5)
+            ->assertSee('Who would you like to learn with?')
+            ->assertDontSee('How often would you like to study?')
+            ->call('selectInstructor', null)
+            ->assertSet('step', 6)
             ->assertSee('How often would you like to study?')
             ->assertSee('Edit');
     }
@@ -234,11 +238,11 @@ class BookingWizardStagesTest extends TestCase
     public function test_choosing_a_time_stays_on_the_schedule_until_the_student_reviews(): void
     {
         $this->navigateAcademicWizardToSlot($this->wizardFor($this->student()), $this->academic, $this->slot())
-            ->assertSet('step', 7)
+            ->assertSet('step', 8)
             ->assertSee('Review booking')
             ->assertDontSee('Review your booking')
             ->call('continueStage')
-            ->assertSet('step', 8)
+            ->assertSet('step', 9)
             ->assertSee('Review your booking')
             ->assertSee('Proceed to payment');
     }
@@ -256,8 +260,11 @@ class BookingWizardStagesTest extends TestCase
             ->assertSet('academicSubjectId', $this->academic['subject']->id)
             ->assertSet('curriculumId', $this->academic['curriculum']->id)
             ->assertSet('prefilledLearning', true)
+            // Learning is pre-filled; the schedule stage opens on the
+            // instructor question, with last time's instructor offered first.
             ->assertSet('step', 5)
-            ->assertSee('How often would you like to study?')
+            ->assertSee('Who would you like to learn with?')
+            ->assertSee('Book again')
             ->assertSee($this->academic['subject']->name.' • Class 10 • '.$this->academic['system']->name);
     }
 
@@ -382,7 +389,7 @@ class BookingWizardStagesTest extends TestCase
 
         $component = $this->navigateAcademicWizardToSlot($this->wizardFor($student), $this->academic, $slot)
             ->call('continueStage')
-            ->assertSet('step', 8);
+            ->assertSet('step', 9);
 
         $rival = $this->student();
         $rival->profile()->update(['phone_e164' => '+9199999'.str_pad((string) $rival->id, 5, '0', STR_PAD_LEFT), 'phone_verified_at' => now()]);
@@ -402,7 +409,7 @@ class BookingWizardStagesTest extends TestCase
             ->assertSet('selectedSlotStartsAt', null)
             ->assertSet('curriculumId', $this->academic['curriculum']->id)
             ->assertSet('date', $slot->toDateString())
-            ->assertSet('step', 7)
+            ->assertSet('step', 8)
             ->assertSee('Available times');
 
         $this->assertDatabaseMissing('bookings', ['student_id' => $student->id]);
@@ -432,19 +439,19 @@ class BookingWizardStagesTest extends TestCase
 
         $this->navigateAcademicWizardToSlot($this->wizardFor($this->student()), $this->academic, $slot)
             ->call('continueStage')
-            ->assertSet('step', 8)
+            ->assertSet('step', 9)
             ->call('backStage')
-            ->assertSet('step', 7)
+            ->assertSet('step', 8)
             ->assertSet('selectedSlotStartsAt', $slot->toIso8601String())
             ->call('editStage', 'learning')
             ->assertSet('step', 4)
             ->assertSet('selectedSlotStartsAt', $slot->toIso8601String())
             ->call('continueStage')
-            ->assertSet('step', 7)
-            ->call('continueStage')
             ->assertSet('step', 8)
+            ->call('continueStage')
+            ->assertSet('step', 9)
             ->call('editStage', 'outcome')
-            ->assertSet('step', 8);
+            ->assertSet('step', 9);
     }
 
     public function test_continue_does_nothing_while_a_stage_is_incomplete(): void
@@ -474,6 +481,7 @@ class BookingWizardStagesTest extends TestCase
             ->call('selectAcademicSubject', $this->academic['subject']->id)
             ->call('selectCurriculum', $this->academic['curriculum']->id)
             ->call('continueStage')
+            ->call('selectInstructor', null)
             ->assertDontSee('Class days')
             ->call('selectBillingMode', 'recurring')
             ->assertSee('Class days')
@@ -657,6 +665,7 @@ class BookingWizardStagesTest extends TestCase
             ->call('selectAcademicSubject', $this->academic['subject']->id)
             ->call('selectCurriculum', $this->academic['curriculum']->id)
             ->call('continueStage')
+            ->call('selectInstructor', null)
             ->call('selectBillingMode', 'recurring');
 
         foreach (range(0, 6) as $day) {
@@ -694,6 +703,7 @@ class BookingWizardStagesTest extends TestCase
             ->call('selectAcademicSubject', $this->academic['subject']->id)
             ->call('selectCurriculum', $this->academic['curriculum']->id)
             ->call('continueStage')
+            ->call('selectInstructor', null)
             ->call('selectBillingMode', 'recurring');
 
         $step = $component->get('step');
@@ -849,12 +859,12 @@ class BookingWizardStagesTest extends TestCase
                 'expires_at' => null,
             ]])
             ->call('continueStage')
-            ->assertSet('step', 8)
+            ->assertSet('step', 9)
             ->assertSee('How would you like to pay?')
             ->assertSee('Choose how you would like to pay');
 
         $component->call('selectFunding', '')
-            ->assertSet('step', 9)
+            ->assertSet('step', 10)
             ->assertSet('packageEntitlementId', null)
             ->assertSee('Proceed to payment');
 
@@ -894,7 +904,7 @@ class BookingWizardStagesTest extends TestCase
         return $this->navigateAcademicWizardToSlot($this->wizardFor($student), $this->academic, $this->slot())
             ->call('continueStage')
             ->call('submit')
-            ->assertSet('step', 9);
+            ->assertSet('step', 10);
     }
 
     public function test_reserved_screen_leads_with_payment_and_keeps_the_reference_secondary(): void

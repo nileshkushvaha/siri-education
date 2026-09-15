@@ -66,7 +66,7 @@ final class BookingWizard extends Component
      */
     private const array STAGE_PHASES = [
         'learning' => ['mode', 'level', 'academic_subject', 'curriculum', 'subject', 'grade'],
-        'schedule' => ['billing_mode', 'date', 'time'],
+        'schedule' => ['instructor', 'billing_mode', 'date', 'time'],
         'review' => ['funding', 'review'],
         'outcome' => ['confirmed'],
     ];
@@ -266,6 +266,26 @@ final class BookingWizard extends Component
 
     #[Locked]
     public ?string $lockedInstructorName = null;
+
+    /**
+     * The instructor the student chose on a paid booking (null = "any
+     * available instructor"). Deliberately NOT #[Locked]: selectInstructor()
+     * only accepts an id from the options the server offered, and
+     * WizardBookingService re-checks eligibility at submit. A deep-linked
+     * (locked) instructor takes precedence and skips the step.
+     */
+    public ?int $instructorId = null;
+
+    /** Whether the instructor question has been answered ("any" is an answer). */
+    public bool $instructorChosen = false;
+
+    /**
+     * Scalar instructor cards for the choose-your-instructor step, grouped:
+     * previous (this subject, most recent first), favourites, others.
+     *
+     * @var array{previous: list<array<string, mixed>>, favourites: list<array<string, mixed>>, others: list<array<string, mixed>>}|array{}
+     */
+    public array $instructorOptions = [];
 
     // ── Country-aware academic lesson booking (§5-§13) ─────────────────────
     //
@@ -490,6 +510,7 @@ final class BookingWizard extends Component
         $this->grade = null;
         $this->subject = null;
         $this->resetAvailability();
+        $this->resetInstructorChoice();
         $this->resetAcademicSelection();
 
         $this->initializeAcademicFlow();
@@ -511,6 +532,7 @@ final class BookingWizard extends Component
         $this->grade = null;
         $this->pricePreview = [];
         $this->resetAvailability();
+        $this->resetInstructorChoice();
         $this->goToPhase('grade');
     }
 
@@ -531,6 +553,7 @@ final class BookingWizard extends Component
         $this->curricula = [];
         $this->pricePreview = [];
         $this->resetAvailability();
+        $this->resetInstructorChoice();
 
         $country = $this->currentCountry();
 
@@ -580,6 +603,7 @@ final class BookingWizard extends Component
         $this->curricula = [];
         $this->pricePreview = [];
         $this->resetAvailability();
+        $this->resetInstructorChoice();
 
         $country = $this->currentCountry();
 
@@ -609,6 +633,7 @@ final class BookingWizard extends Component
         $this->curricula = [];
         $this->pricePreview = [];
         $this->resetAvailability();
+        $this->resetInstructorChoice();
 
         // Legacy-compat: $subject (the free-text field TeacherSubject /
         // meta.subject / candidate matching already reads) is derived
@@ -643,10 +668,13 @@ final class BookingWizard extends Component
         $this->prefilledLearning = false;
         $this->curriculumId = $curriculumId;
         $this->resetAvailability();
+        $this->resetInstructorChoice();
         $this->validateSelection(['educationSystemId', 'educationSystemLevelId', 'academicSubjectId', 'curriculumId']);
         $this->refreshPricePreview();
 
-        if (! $this->isPaidType()) {
+        if ($this->isPaidType()) {
+            $this->loadInstructorOptions();
+        } else {
             $this->loadDates();
         }
 
@@ -658,14 +686,107 @@ final class BookingWizard extends Component
     {
         $this->grade = $grade;
         $this->resetAvailability();
+        $this->resetInstructorChoice();
         $this->validateSelection(['subject', 'grade']);
         $this->refreshPricePreview();
 
-        if (! $this->isPaidType()) {
+        if ($this->isPaidType()) {
+            $this->loadInstructorOptions();
+        } else {
             $this->loadDates();
         }
 
         $this->goToPhase('grade');
+    }
+
+    /**
+     * The student's answer to "who would you like to learn with?": an id
+     * from the offered options, or null for "any available instructor".
+     * Everything downstream of the instructor (dates, times, price,
+     * package funding, schedule preview) is recomputed.
+     */
+    public function selectInstructor(?int $instructorId): void
+    {
+        if ($instructorId !== null && ! in_array($instructorId, $this->offeredInstructorIds(), true)) {
+            return;
+        }
+
+        $this->banner = '';
+
+        if ($this->instructorChosen && $this->instructorId === $instructorId) {
+            $this->goToPhase($this->billingModeChosenPhase());
+
+            return;
+        }
+
+        $this->instructorId = $instructorId;
+        $this->instructorChosen = true;
+        $this->resetAvailability();
+        $this->fundingOptions = [];
+        $this->packageEntitlementId = null;
+        $this->schedulePreview = [];
+        $this->previewMeta = [];
+        $this->refreshPricePreview();
+
+        if ($this->billingModeAnswered()) {
+            $this->loadDates();
+        }
+
+        $this->goToPhase($this->billingModeChosenPhase());
+    }
+
+    /** @return list<int> */
+    private function offeredInstructorIds(): array
+    {
+        return collect($this->instructorOptions)
+            ->flatten(1)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    /** Where to go after the instructor question: straight to the calendar when "how often" was already answered. */
+    private function billingModeChosenPhase(): string
+    {
+        return $this->billingModeAnswered() ? 'date' : 'billing_mode';
+    }
+
+    private function billingModeAnswered(): bool
+    {
+        return $this->recurring || $this->dates !== [] || $this->phaseReached('billing_mode');
+    }
+
+    /** The instructor every schedule-stage read is scoped to: the deep-linked lock wins, else the student's choice, else any. */
+    private function effectiveInstructorId(): ?int
+    {
+        return $this->lockedInstructorId ?? $this->instructorId;
+    }
+
+    /** A learning-stage change invalidates the offered instructors and the answer. */
+    private function resetInstructorChoice(): void
+    {
+        $this->instructorId = null;
+        $this->instructorChosen = false;
+        $this->instructorOptions = [];
+    }
+
+    private function loadInstructorOptions(): void
+    {
+        $this->instructorOptions = [];
+
+        $user = Auth::user();
+
+        if ($user === null || ! $this->isPaidType() || $this->lockedInstructorId !== null || ! $this->learningComplete()) {
+            return;
+        }
+
+        $this->instructorOptions = $this->wizard->instructorOptions(
+            (string) $this->type,
+            (string) $this->subject,
+            (int) $this->grade,
+            $this->browsingAcademicContext(),
+            $user,
+        );
     }
 
     public function selectBillingMode(string $mode): void
@@ -1195,6 +1316,19 @@ final class BookingWizard extends Component
         } catch (SlotUnavailableException|NoEligibleTeacherException) {
             $this->returnToTimeSelection();
         } catch (BookingException $exception) {
+            if ($this->instructorId !== null && $this->lockedInstructorId === null
+                && str_contains($exception->getMessage(), 'not available for the selected subject')) {
+                // The instructor they chose changed status mid-session:
+                // offer the list again rather than a dead end.
+                $this->banner = 'The instructor you chose is no longer available for this lesson. Pick another instructor, or choose Any available instructor.';
+                $this->resetInstructorChoice();
+                $this->loadInstructorOptions();
+                $this->goToPhase('instructor');
+                $this->announcePanel();
+
+                return;
+            }
+
             $this->banner = $exception->getMessage();
             $this->announcePanel();
         }
@@ -1216,7 +1350,7 @@ final class BookingWizard extends Component
             'starts_at' => $this->selectedSlotStartsAt,
             'timezone' => $this->timezone,
             'notes' => filled($this->notes) ? $this->notes : null,
-            'teacher_id' => $this->lockedInstructorId,
+            'teacher_id' => $this->effectiveInstructorId(),
             // Phase 3/3.1 (§14) — these raw ids are re-resolved and
             // re-validated server-side (WizardBookingService ->
             // DemoAcademicContextResolver -> AcademicContextResolver)
@@ -1780,6 +1914,9 @@ final class BookingWizard extends Component
             'step',
             'dates',
             'availableSlots',
+            'instructorId',
+            'instructorChosen',
+            'instructorOptions',
             'type',
             'subject',
             'grade',
@@ -1843,6 +1980,11 @@ final class BookingWizard extends Component
             'selectedLevel' => collect($this->levels)->firstWhere('id', $this->educationSystemLevelId),
             'selectedCurriculum' => collect($this->curricula)->firstWhere('id', $this->curriculumId),
             'selectedFunding' => collect($this->fundingOptions)->firstWhere('id', $this->packageEntitlementId),
+            'selectedInstructor' => $this->instructorId !== null
+                ? collect($this->instructorOptions)->flatten(1)->firstWhere('id', $this->instructorId)
+                : null,
+            'instructorName' => $this->lockedInstructorName
+                ?? (collect($this->instructorOptions)->flatten(1)->firstWhere('id', $this->instructorId)['name'] ?? null),
             'calendar' => $this->calendar(),
             'slotGroups' => $this->slotGroups(),
             'canGoPreviousMonth' => $this->monthDate()->greaterThan(now($this->timezone)->startOfMonth()),
@@ -1923,6 +2065,7 @@ final class BookingWizard extends Component
         $this->pricePreview = [];
         $this->prefilledLearning = false;
         $this->educationSystemMemo = null;
+        $this->resetInstructorChoice();
     }
 
     /**
@@ -2117,7 +2260,7 @@ final class BookingWizard extends Component
             $this->type,
             $this->subject,
             $this->grade,
-            $this->lockedInstructorId,
+            $this->effectiveInstructorId(),
             collect($this->levels)->firstWhere('id', $this->educationSystemLevelId)['academic_level_id'] ?? null,
         ) ?? [];
     }
@@ -2150,7 +2293,7 @@ final class BookingWizard extends Component
 
         try {
             $this->dates = $this->wizard
-                ->availableDates($this->type, $this->subject, (int) $this->grade, $from, $to, $this->timezone, $this->lockedInstructorId, $this->browsingAcademicContext())
+                ->availableDates($this->type, $this->subject, (int) $this->grade, $from, $to, $this->timezone, $this->effectiveInstructorId(), $this->browsingAcademicContext())
                 ->all();
         } catch (BookingException $exception) {
             $this->dates = [];
@@ -2175,7 +2318,7 @@ final class BookingWizard extends Component
 
         try {
             $this->availableSlots = $this->wizard
-                ->availableSlots($this->type, $this->subject, (int) $this->grade, CarbonImmutable::parse($slotDate, $this->timezone), $this->timezone, $this->lockedInstructorId, $this->browsingAcademicContext())
+                ->availableSlots($this->type, $this->subject, (int) $this->grade, CarbonImmutable::parse($slotDate, $this->timezone), $this->timezone, $this->effectiveInstructorId(), $this->browsingAcademicContext())
                 ->all();
         } catch (BookingException $exception) {
             $this->availableSlots = [];
@@ -2186,12 +2329,13 @@ final class BookingWizard extends Component
     /**
      * Loads every package that could fund the currently-selected lesson.
      *
-     * Requires a locked instructor: a package entitlement belongs to one
-     * specific instructor, so "which of my packages apply" is
-     * unanswerable while the assignment engine may still pick anyone.
-     * An auto-assigned booking therefore simply offers no packages and
-     * proceeds as an ordinary paid booking — a deliberate, fail-closed
-     * limit rather than a guess at who will be assigned.
+     * Requires a known instructor (deep-linked or chosen on the
+     * instructor step): a package entitlement belongs to one specific
+     * instructor, so "which of my packages apply" is unanswerable while
+     * the assignment engine may still pick anyone. An "any available"
+     * booking therefore simply offers no packages and proceeds as an
+     * ordinary paid booking — a deliberate, fail-closed limit rather
+     * than a guess at who will be assigned.
      *
      * Never preselects: `$packageEntitlementId` stays null so "pay
      * normally" remains the default until the student chooses (§33).
@@ -2203,7 +2347,7 @@ final class BookingWizard extends Component
 
         $user = Auth::user();
 
-        if ($user === null || $this->lockedInstructorId === null || $this->selectedSlotStartsAt === null) {
+        if ($user === null || $this->effectiveInstructorId() === null || $this->selectedSlotStartsAt === null) {
             return;
         }
 
@@ -2222,7 +2366,7 @@ final class BookingWizard extends Component
 
         $this->fundingOptions = $this->wizard->fundingOptions(
             $user,
-            $this->lockedInstructorId,
+            (int) $this->effectiveInstructorId(),
             $this->educationSystemId,
             $this->educationSystemLevelId,
             $this->academicSubjectId,
@@ -2352,6 +2496,13 @@ final class BookingWizard extends Component
             : ['mode', 'subject', 'grade'];
 
         if ($this->isPaidType()) {
+            // Paid lessons ask who to learn with — unless a profile
+            // deep-link already locked the instructor. Demos stay
+            // auto-assigned.
+            if ($this->lockedInstructorId === null) {
+                $phases[] = 'instructor';
+            }
+
             $phases[] = 'billing_mode';
         }
 
@@ -2604,6 +2755,10 @@ final class BookingWizard extends Component
             return 'date';
         }
 
+        if (! $this->instructorChosen && $this->lockedInstructorId === null) {
+            return 'instructor';
+        }
+
         return 'billing_mode';
     }
 
@@ -2834,6 +2989,10 @@ final class BookingWizard extends Component
     /** Why the schedule step is not finished yet, in the student's words. */
     private function scheduleHint(): string
     {
+        if ($this->isPaidType() && $this->lockedInstructorId === null && ! $this->instructorChosen) {
+            return 'Choose an instructor, or let us match you';
+        }
+
         if ($this->recurring && $this->weekdays === []) {
             return 'Choose the days your classes repeat on';
         }

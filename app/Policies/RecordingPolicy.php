@@ -16,6 +16,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  *     Administrator holding View:Recording      view · watch · download
  *     Administrator holding Withhold:Recording  withhold / restore student access
  *     Administrator holding Retry:Recording     retry ingestion
+ *     Administrator holding Attach:Recording    attach an object by hand (manual recovery)
  *     The lesson's own STUDENT                  watch — and only while
  *                                               student playback is enabled,
  *                                               the recording is serveable,
@@ -108,5 +109,15 @@ class RecordingPolicy
     public function withhold(User $user, Recording $recording): bool
     {
         return $user->can('Withhold:Recording');
+    }
+
+    /**
+     * Attach an object by hand when the pipeline failed or never ran
+     * (manual recovery). Class-level when called for a booking that has
+     * no recording yet, so the ability takes no recording instance.
+     */
+    public function attach(User $user): bool
+    {
+        return $user->can('Attach:Recording');
     }
 }

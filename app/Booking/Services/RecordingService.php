@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Services;
 
+use App\Booking\Contracts\AcceptsExternalSources;
 use App\Booking\Contracts\MeetingProviderInterface;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingProviderReconciliation;
@@ -11,6 +12,8 @@ use App\Booking\Enums\BookingStatus;
 use App\Booking\Enums\MeetingStatus;
 use App\Booking\Enums\RecordingFailureCode;
 use App\Booking\Enums\RecordingStatus;
+use App\Booking\Exceptions\RecordingStorageException;
+use App\Booking\Jobs\AttachExternalRecordingJob;
 use App\Booking\Jobs\CaptureLessonRecordingJob;
 use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Storage\RecordingStorageResolver;
@@ -482,6 +485,166 @@ final class RecordingService
         }
 
         return null;
+    }
+
+    // ── Manual recovery: attach an object by hand ─────────────────────
+
+    /**
+     * Whether the configured storage can take an operator-supplied
+     * object at all. Decides whether the admin action exists; the
+     * service refuses regardless when it cannot.
+     */
+    public function supportsManualAttach(): bool
+    {
+        try {
+            return $this->storage->default() instanceof AcceptsExternalSources;
+        } catch (RecordingStorageException) {
+            return false;
+        }
+    }
+
+    /**
+     * Why an object may not be attached to this recording right now, or
+     * null when it may. Read-only; attachExternal() re-evaluates it
+     * under the row lock.
+     */
+    public function attachRefusalReason(Recording $recording): ?string
+    {
+        if (! in_array($recording->status, [RecordingStatus::Pending, RecordingStatus::Failed], true)) {
+            return sprintf('This recording is %s; only a pending or failed recording can have an object attached.', $recording->status->label());
+        }
+
+        if ($recording->storage_path !== null) {
+            return 'This recording already points at a stored object. Attaching would overwrite that pointer; operator recovery is required.';
+        }
+
+        if (! $this->supportsManualAttach()) {
+            return 'The configured recording storage cannot take an attached file.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Manual recovery: an administrator attaches an object the pipeline
+     * failed to deliver. The reference is resolved through the storage
+     * backend FIRST (proving the platform can read it and that it is a
+     * recording) so an unusable reference is refused at the click, with
+     * the backend's own explanation, before anything is queued. The row
+     * is then re-pointed at the operator's decision and the copy runs in
+     * the background through the same claim/store/verify pipeline as any
+     * other recording. Audited as an override with the mandatory reason.
+     *
+     * @throws AuthorizationException
+     * @throws InvalidArgumentException when the reason is missing or the row refuses
+     * @throws RecordingStorageException when the reference cannot be used
+     */
+    public function attachExternal(Recording $recording, User $admin, string $reference, string $reason, bool $registeredByOverride = false): void
+    {
+        Gate::forUser($admin)->authorize('attach', Recording::class);
+
+        $reason = trim($reason);
+
+        if ($reason === '' || mb_strlen($reason) > self::WITHHOLD_REASON_MAX_LENGTH) {
+            throw new InvalidArgumentException(sprintf('A reason of 1–%d characters is required to attach a recording by hand.', self::WITHHOLD_REASON_MAX_LENGTH));
+        }
+
+        $storage = $this->storage->default();
+
+        if (! $storage instanceof AcceptsExternalSources) {
+            throw new InvalidArgumentException('The configured recording storage cannot take an attached file.');
+        }
+
+        // Proves access and type now; the job resolves again when it runs.
+        $storage->resolveExternalSource($reference);
+
+        DB::transaction(function () use ($recording, $admin, $reason, $registeredByOverride): void {
+            /** @var Recording $fresh */
+            $fresh = Recording::query()->whereKey($recording->getKey())->lockForUpdate()->firstOrFail();
+
+            if (($refusal = $this->attachRefusalReason($fresh)) !== null) {
+                throw new InvalidArgumentException($refusal);
+            }
+
+            $this->lifecycle->manuallyAttached($fresh, $admin, $reason, $registeredByOverride);
+
+            $fresh->fill([
+                'status' => RecordingStatus::Pending,
+                'source' => Recording::SOURCE_MANUAL,
+                'failure_code' => null,
+                'failed_at' => null,
+                'capture_attempts' => 0,
+                'transfer_started_at' => null,
+            ])->save();
+        });
+
+        AttachExternalRecordingJob::dispatch($recording->getKey(), trim($reference));
+    }
+
+    /**
+     * Manual recovery for a lesson the pipeline never registered a
+     * recording for (recording off, provider unable, participants
+     * ineligible at the time): creates the row under an audited
+     * override so an object can be attached to it. Idempotent per
+     * meeting; refuses a lesson that never had a meeting or was never
+     * confirmed.
+     *
+     * @throws AuthorizationException
+     * @throws InvalidArgumentException
+     */
+    public function registerManual(Booking $booking, User $admin): Recording
+    {
+        Gate::forUser($admin)->authorize('attach', Recording::class);
+
+        $meeting = $booking->meeting;
+
+        if ($meeting === null) {
+            throw new InvalidArgumentException('This lesson has no meeting, so there is nothing to attach a recording to.');
+        }
+
+        if (! in_array($booking->status, [BookingStatus::Confirmed, BookingStatus::Completed], true)) {
+            throw new InvalidArgumentException(sprintf('Only a confirmed or completed lesson can have a recording attached; this one is %s.', $booking->status->label()));
+        }
+
+        $existing = $booking->recording;
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $idempotencyKey = 'recording:manual:'.$meeting->id;
+
+        try {
+            $recording = Recording::query()->create([
+                'booking_meeting_id' => $meeting->id,
+                'booking_id' => $booking->id,
+                'student_id' => $booking->student_id,
+                'teacher_id' => $booking->instructor_id,
+                'provider' => (string) $meeting->provider,
+                'source' => Recording::SOURCE_MANUAL,
+                'status' => RecordingStatus::Pending,
+                'idempotency_key' => $idempotencyKey,
+                'consent_snapshot' => [
+                    'student_consented' => (bool) $booking->student?->profile?->consents_to_recording,
+                    'instructor_consented' => (bool) $booking->instructor?->profile?->consents_to_recording,
+                    'registered_by_override' => true,
+                    'registered_by' => $admin->id,
+                    'snapshotted_at' => now()->toIso8601String(),
+                ],
+            ]);
+        } catch (QueryException) {
+            return Recording::query()->where('idempotency_key', $idempotencyKey)->firstOrFail();
+        }
+
+        $this->lifecycle->recordingRegistered($recording);
+
+        return $recording;
+    }
+
+    /** Entry point for AttachExternalRecordingJob — the copy/verify/publish pass for an operator-attached object. */
+    public function ingestExternal(Recording $recording, string $reference): void
+    {
+        $this->ingestion->ingestExternal($recording, $reference);
     }
 
     /**

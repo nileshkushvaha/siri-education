@@ -72,4 +72,16 @@ final class RecordingStorageException extends RuntimeException
     {
         return new self(RecordingFailureCode::StorageQuotaExceeded, $message, $previous);
     }
+
+    /** An operator-attached object the backend cannot read (AcceptsExternalSources). */
+    public static function externalSourceInaccessible(string $message, ?Throwable $previous = null): self
+    {
+        return new self(RecordingFailureCode::ExternalSourceInaccessible, $message, $previous);
+    }
+
+    /** An operator-attached object that is not a usable recording (AcceptsExternalSources). */
+    public static function externalSourceUnsupported(string $message): self
+    {
+        return new self(RecordingFailureCode::ExternalSourceUnsupported, $message);
+    }
 }

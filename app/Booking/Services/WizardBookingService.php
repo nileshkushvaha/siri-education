@@ -6,6 +6,7 @@ namespace App\Booking\Services;
 
 use App\Booking\Contracts\AvailabilityRepositoryInterface;
 use App\Booking\Contracts\AvailabilityServiceInterface;
+use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\Contracts\BookingTypeRepositoryInterface;
 use App\Booking\Contracts\TeacherAssignmentServiceInterface;
@@ -38,10 +39,13 @@ use App\Models\BookingType;
 use App\Models\StudentPackageEntitlement;
 use App\Models\User;
 use App\Package\Services\PackageBookingEntitlementResolver;
+use App\Services\Instructor\InstructorService;
+use App\Services\Student\StudentFavoriteInstructorService;
 use App\Services\Student\StudentProfileCompletenessService;
 use App\Support\Timezone\LocalWallClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Authenticated-student wizard booking flow — every caller is logged
@@ -78,6 +82,9 @@ use Illuminate\Support\Collection;
  */
 final class WizardBookingService implements WizardBookingServiceInterface
 {
+    /** Instructor cards offered on the choose-your-instructor step, all groups together. */
+    private const int INSTRUCTOR_OPTION_LIMIT = 12;
+
     public function __construct(
         private readonly BookingServiceInterface $bookings,
         private readonly BookingTypeRepositoryInterface $types,
@@ -93,6 +100,9 @@ final class WizardBookingService implements WizardBookingServiceInterface
         private readonly AvailabilityRepositoryInterface $availabilityRules,
         private readonly StudentProfileCompletenessService $profileCompleteness,
         private readonly BookingSeriesService $series,
+        private readonly BookingRepositoryInterface $bookingRecords,
+        private readonly StudentFavoriteInstructorService $favorites,
+        private readonly InstructorService $instructors,
     ) {}
 
     public function availableDates(
@@ -500,6 +510,9 @@ final class WizardBookingService implements WizardBookingServiceInterface
             durationMinutes: $type->duration_minutes,
             timezone: $data->timezone,
             academicContext: $academicContext,
+            // Continuity for "any available instructor": the engine
+            // prefers the instructor this student had last time.
+            studentId: Auth::id(),
         );
 
         if ($data->teacherId !== null) {
@@ -591,6 +604,48 @@ final class WizardBookingService implements WizardBookingServiceInterface
             ->flatMap(fn (User $teacher): Collection => $this->availability->slots(
                 new AvailabilityQueryData($teacher->id, $typeKey, $from, $to, $timezone),
             ));
+    }
+
+    public function instructorOptions(string $typeKey, string $subject, int $grade, ?AcademicContextData $academicContext, User $student): array
+    {
+        $criteria = new AssignmentCriteriaData($typeKey, $subject, $grade, CarbonImmutable::now()->addDay(), 60, academicContext: $academicContext);
+        $candidates = $this->candidates->eligible($criteria)->keyBy('id');
+
+        if ($candidates->isEmpty()) {
+            return ['previous' => [], 'favourites' => [], 'others' => []];
+        }
+
+        $previousIds = $this->bookingRecords->previousInstructorIdsForStudent($student->id, $subject)
+            ->filter(fn (int $id): bool => $candidates->has($id))
+            ->values();
+        $favouriteIds = $this->favorites->bookableFavorites($student)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $candidates->has($id) && ! $previousIds->contains($id))
+            ->values();
+
+        $remaining = max(0, self::INSTRUCTOR_OPTION_LIMIT - $previousIds->count() - $favouriteIds->count());
+        $otherIds = $candidates->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->reject(fn (int $id): bool => $previousIds->contains($id) || $favouriteIds->contains($id))
+            ->take($remaining)
+            ->values();
+
+        $cards = $this->instructors->bookingChoiceCards(
+            $candidates->only([...$previousIds->all(), ...$favouriteIds->all(), ...$otherIds->all()])->values(),
+        );
+
+        $pick = fn (Collection $ids, string $badge): array => $ids
+            ->map(fn (int $id): ?array => isset($cards[$id]) ? [...$cards[$id], 'badge' => $badge] : null)
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'previous' => $pick($previousIds, 'previous'),
+            'favourites' => $pick($favouriteIds, 'favourite'),
+            'others' => $pick($otherIds, ''),
+        ];
     }
 
     /**

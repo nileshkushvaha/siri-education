@@ -222,6 +222,12 @@ accounts (instructor, student) were present. Automatic recording
 therefore starts the moment the platform host joins, and Google
 generates the file when the conference ends.
 
+An instructor added as Meet co-host (`google_meet_cohost_enabled`,
+`docs/meetings.md` §3) can start the class without the platform host,
+but a co-host outside the platform's Workspace organisation does not
+start the automatic recording — confirm on staging before treating
+co-host lessons as recorded.
+
 **Current operating procedure (decision 2026-09-10, "option 3"):** a
 platform staff member signed in as the platform Workspace account joins
 every class that must be recorded, muted and camera-off, as SRS §12.17
@@ -276,6 +282,7 @@ Meet safety setting allowing anonymous participants must also be on.
 | `booking_meeting_id`, `booking_id` | the lesson this recording belongs to |
 | `student_id`, `teacher_id` | denormalized from the booking so authorization never joins |
 | `provider`, `provider_reference` | which meeting provider supplied it, and its id there |
+| `source` | `pipeline` (automated) or `manual` (attached by an administrator, §10) — provenance only |
 | **`storage_driver`** | which backend holds the bytes (`filesystem`, `google_drive`) |
 | **`storage_path`** | that backend's opaque handle — a Drive file id, a disk path, an S3 key |
 | **`storage_checksum`** | sha256 of the source bytes, computed while staged locally |
@@ -354,6 +361,7 @@ drives).
 | Meet REST v2 | `meetings.space.created` + `meetings.space.settings` | Create the lesson's space (created) with automatic recording ON (settings) — §3 |
 | Drive | `drive.meet.readonly` | **Read the Meet-created MP4** |
 | Drive | `drive.file` | Create/manage SIRI's own recording folders, copies and uploads |
+| Drive | `drive.readonly` | Read a file an administrator attaches by hand (manual recovery, §10) — a person-uploaded file is created by neither this app nor Meet, so the two scopes above cannot see it. Read-only; full `drive` stays forbidden |
 
 Two of these deserve their reasoning stated, because both are places
 where the obvious guess is wrong:
@@ -371,12 +379,16 @@ access to files **the app created or opened**. A Meet recording is
 created by *Meet*, not by SIRI, so `drive.file` cannot see it at all.
 Google added `drive.meet.readonly` in July 2024 for exactly this case:
 read-only access confined to Drive files created or edited by Google
-Meet. It is used instead of `drive.readonly` or `drive`, either of which
-would expose the entire Workspace account's Drive.
+Meet. `drive.readonly` was added later, and only for the administrator's
+manual recovery (§10): the file an operator attaches was uploaded by a
+person, so neither `drive.file` nor `drive.meet.readonly` can see it.
+It is read-only; the app still writes only inside the files it created.
+Full `drive` access stays forbidden.
 
 An exact-match test asserts the Drive scope list, specifically to stop
-someone widening it to `drive.readonly` to make a permission error go
-away.
+someone widening it to `drive` to make a permission error go away. The
+delegation grant must carry all three Drive scopes (plus Calendar and
+the Meet scopes) or token acquisition fails for every scope.
 
 > **All scopes must appear in the same domain-wide delegation grant.** A
 > scope a client requests but the grant omits fails token acquisition
@@ -423,7 +435,7 @@ SIRI is the authorization layer; the storage backend never is.
 |---|---|
 | Student | **watch** recordings of their own lessons, inside their account — only while `meeting.recording_student_playback_enabled` is on (and the platform recording feature is on for their country), the recording is `available`, and no administrator has withheld it. Never download. |
 | Instructor | nothing — the SRS grants no instructor right, so none is implemented |
-| Admin | with the explicit `View:Recording` permission: view metadata, watch, download the original (`ViewAny:Recording` for the list); with `Withhold:Recording`: withhold one recording from its student, or restore it |
+| Admin | with the explicit `View:Recording` permission: view metadata, watch, download the original (`ViewAny:Recording` for the list); with `Withhold:Recording`: withhold one recording from its student, or restore it; with `Retry:Recording` / `Attach:Recording`: re-run a failed ingestion / attach a file by hand (§10) |
 | Super admin | via `Gate::before`, as everywhere |
 
 Enforced by `RecordingPolicy`, re-checked **live on every single
@@ -726,6 +738,45 @@ is re-taken under the row lock when the action is submitted, so a
 stale page or a crafted request never queues anything; a protected row
 (preserved object, `meeting_replaced_during_capture`) is shown as
 **"Operator recovery required"** instead of a retry button.
+
+**Manual recovery: attaching a file by hand.** When the pipeline failed
+or never delivered the recording — or never registered one — an
+administrator holding `Attach:Recording` can attach the object
+themselves. On a pending or failed recording with no stored object,
+**Attach recording file** (Recordings overflow menu) takes a file link
+or id plus a mandatory reason; on a confirmed or completed booking
+with a meeting but no recording, **Attach recording** (Edit Booking
+header) first registers the row under an audited override
+(`RecordingService::registerManual()`, idempotency key
+`recording:manual:<meeting id>`, consent snapshot records the operator)
+and then attaches. The flow:
+
+1. The storage backend resolves the reference
+   (`AcceptsExternalSources::resolveExternalSource()` — implemented by
+   `GoogleDriveRecordingStorage`, the only place a Drive link shape is
+   known: bare id, `/file/d/{id}/`, `open?id=`, `uc?id=`). It proves
+   the platform account can read the file (`getFile()`), refuses the
+   trash, non-recording MIME types and files over `max_source_bytes`,
+   and answers with an operator-facing message that names the platform
+   account to share the file with — never the link.
+2. `RecordingService::attachExternal()` refuses a Stored/Available row
+   or one that still holds a locator (under the row lock, same rule as
+   Retry), marks `source = manual`, audits
+   `recording_manually_attached` as an override with the reason, and
+   queues `AttachExternalRecordingJob` (never inline; the reference is
+   resolved again in the worker, credentials never travel).
+3. `RecordingIngestionService::ingestExternal()` runs the ordinary
+   claim → native copy (`ingestNatively()` into the platform folder) →
+   verify → publish pass. The operator's original is never disposed of.
+   Failures land on the row as `external_source_inaccessible` /
+   `external_source_unsupported` (both permanent; attach again after
+   fixing the file) and show in the admin screen and `recordings:inspect`.
+
+`recordings.source` (`pipeline` | `manual`) is provenance only: status,
+storage, retention, withholding and student access are identical. The
+student sees a manually attached recording exactly as any other — once
+the lesson outcome is finalised as Completed — and, as for every
+recording, is not notified.
 
 **Admin Recordings screen** (`/admin/recordings`). One primary row
 action, **Details** (needs `View:Recording`), and one overflow menu:
@@ -1036,17 +1087,20 @@ Before enabling recording acquisition and Drive storage:
 2. In the **Workspace admin console → Security → Access and data
    control → API controls → Domain-wide delegation**, edit the existing
    entry for that service account's client ID and set the scope list to
-   **all four**, keeping the existing Calendar scope:
+   **all seven**, keeping the existing Calendar scope:
    - `https://www.googleapis.com/auth/calendar`
    - `https://www.googleapis.com/auth/meetings.space.readonly`
    - `https://www.googleapis.com/auth/meetings.space.created`
    - `https://www.googleapis.com/auth/meetings.space.settings`
    - `https://www.googleapis.com/auth/drive.meet.readonly`
    - `https://www.googleapis.com/auth/drive.file`
+   - `https://www.googleapis.com/auth/drive.readonly`
 
-   All six in one grant. Omitting the created/settings scopes only disables
-   automatic recording (manual Record still works); omitting any other
-   breaks the scopes requested together with it.
+   All seven in one grant, comma-separated in the single field. Omitting
+   the created/settings scopes only disables automatic recording (manual
+   Record still works); omitting `drive.readonly` only disables the
+   admin's manual attach (§10); omitting any other breaks the scopes
+   requested together with it.
 3. Confirm the Workspace edition includes **Meet recording** (Business
    Standard and above, Enterprise, Education Plus, Teaching & Learning
    Upgrade). Without it no recording is ever produced and there is
@@ -1115,6 +1169,7 @@ credential, token, locator, or provider URL. For one booking, run
 | Drive SDK seam | `app/Booking/Contracts/GoogleDriveClient.php`, `app/Booking/Gateways/GoogleDriveSdkClient.php` |
 | Meet acquisition | `app/Booking/Contracts/{GoogleMeetClient,DiscoversRecordingArtifacts}.php`, `app/Booking/Gateways/GoogleMeetSdkClient.php`, `app/Booking/Services/{GoogleMeetRecordingLocator,GoogleMeetRecordingStager}.php` |
 | Native ingestion | `app/Booking/Contracts/SupportsNativeIngestion.php`, `app/Booking/DTOs/{NativeRecordingSource,NativeIngestionRequest,DiscoveredRecording}.php` |
+| Manual recovery | `app/Booking/Contracts/AcceptsExternalSources.php`, `app/Booking/DTOs/ResolvedExternalSource.php`, `app/Booking/Jobs/AttachExternalRecordingJob.php`, `app/Filament/Resources/Recordings/Actions/AttachExternalRecordingAction.php`, `EditBooking::attachRecordingAction()` |
 | Domain | `app/Models/Recording.php`, `app/Booking/Services/Recording{Service,IngestionService,EligibilityResolver,AvailabilityResolver,StagingArea,FileNamer,LifecycleNotifier}.php` |
 | Lifecycle | `app/Booking/Enums/Recording{Status,FailureCode}.php` |
 | Jobs / commands | `app/Booking/Jobs/CaptureLessonRecordingJob.php`, `app/Console/Commands/{CaptureLessonRecordings,ExpireLessonRecordings}.php` |

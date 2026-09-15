@@ -20,6 +20,7 @@ final class RecordingActionGroup
         return ActionGroup::make([
             DownloadRecordingAction::make(),
             RetryRecordingIngestionAction::make(),
+            AttachExternalRecordingAction::make(),
             ActionGroup::make([
                 WithholdStudentAccessAction::make(),
                 RestoreStudentAccessAction::make(),
@@ -28,7 +29,7 @@ final class RecordingActionGroup
         ])
             ->label('Actions')
             ->icon(Heroicon::OutlinedEllipsisVertical)
-            ->tooltip('Download, retry and student access')
+            ->tooltip('Download, retry, attach and student access')
             ->dropdownPlacement('bottom-end');
     }
 }

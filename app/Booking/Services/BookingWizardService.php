@@ -100,6 +100,14 @@ final class BookingWizardService
         return $this->bookings->availableDates($typeKey, $subject, $grade, $from, $to, $timezone, $teacherId, $academicContext);
     }
 
+    /**
+     * @return array{previous: list<array<string, mixed>>, favourites: list<array<string, mixed>>, others: list<array<string, mixed>>}
+     */
+    public function instructorOptions(string $typeKey, string $subject, int $grade, ?AcademicContextData $academicContext, User $student): array
+    {
+        return $this->bookings->instructorOptions($typeKey, $subject, $grade, $academicContext, $student);
+    }
+
     /** @return Collection<int, array<string, mixed>> */
     public function availableSlots(string $typeKey, string $subject, int $grade, CarbonImmutable $date, string $timezone, ?int $teacherId = null, ?AcademicContextData $academicContext = null): Collection
     {

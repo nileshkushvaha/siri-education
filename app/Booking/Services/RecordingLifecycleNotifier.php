@@ -265,6 +265,27 @@ final class RecordingLifecycleNotifier
         );
     }
 
+    /**
+     * An administrator attaching an object outside the verified pipeline
+     * is an override of "recordings come from the provider", so it is
+     * recorded as one — with the mandatory reason — never as a plain
+     * action. The reference itself is never written anywhere.
+     */
+    public function manuallyAttached(Recording $recording, User $admin, string $reason, bool $registeredByOverride): void
+    {
+        $this->audit->logOverride(
+            $admin,
+            'recordings',
+            'recording_manually_attached',
+            $registeredByOverride
+                ? 'Lesson recording registered and attached by an administrator (the pipeline never registered one).'
+                : 'Lesson recording attached by an administrator after the pipeline failed to deliver it.',
+            $reason,
+            $recording,
+            ['previous_status' => $recording->status->value, 'previous_failure_code' => $recording->failure_code?->value, 'registered_by_override' => $registeredByOverride],
+        );
+    }
+
     public function studentAccessRestored(Recording $recording, User $admin): void
     {
         $this->audit->logUser(

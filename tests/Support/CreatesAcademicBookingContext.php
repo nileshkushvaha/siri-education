@@ -191,7 +191,9 @@ trait CreatesAcademicBookingContext
             ->call('selectCurriculum', $context['curriculum']->id);
 
         if ($billingMode !== null) {
-            $component->call('selectBillingMode', $billingMode);
+            // Paid lessons ask who to learn with first; "any" keeps the
+            // auto-assigned behaviour these walks were written for.
+            $component->call('selectInstructor', null)->call('selectBillingMode', $billingMode);
         }
 
         // The calendar opens on the current month; step forward until the

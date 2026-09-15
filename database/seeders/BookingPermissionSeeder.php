@@ -46,7 +46,8 @@ class BookingPermissionSeeder extends Seeder
         // sit with the manager set rather than being super-admin only:
         //   Retry     returns a failed recording to the ingestion pipeline
         //   Withhold  removes (or restores) one recording's student access
-        'ViewAny:Recording', 'View:Recording', 'Retry:Recording', 'Withhold:Recording',
+        //   Attach    attaches a recording by hand after the pipeline failed (audited override)
+        'ViewAny:Recording', 'View:Recording', 'Retry:Recording', 'Withhold:Recording', 'Attach:Recording',
     ];
 
     private const array SUPER_ONLY_PERMISSIONS = [

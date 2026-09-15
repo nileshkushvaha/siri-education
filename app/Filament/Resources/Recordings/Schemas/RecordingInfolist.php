@@ -96,6 +96,11 @@ class RecordingInfolist
                         TextEntry::make('storage_driver')
                             ->label('Storage backend')
                             ->placeholder('—'),
+                        TextEntry::make('source')
+                            ->label('Source')
+                            ->badge()
+                            ->formatStateUsing(fn (?string $state): string => $state === Recording::SOURCE_MANUAL ? 'Attached by operator' : 'Pipeline')
+                            ->color(fn (?string $state): string => $state === Recording::SOURCE_MANUAL ? 'warning' : 'gray'),
                         TextEntry::make('stored_object')
                             ->label('Stored object')
                             ->badge()

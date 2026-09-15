@@ -159,7 +159,7 @@ final class RecordingAccessArchitectureTest extends TestCase
 
         sort($abilities);
 
-        $this->assertSame(['download', 'retry', 'view', 'viewAny', 'watch', 'withhold'], $abilities);
+        $this->assertSame(['attach', 'download', 'retry', 'view', 'viewAny', 'watch', 'withhold'], $abilities);
     }
 
     // ── No participant notification (undecided, so absent) ────────────

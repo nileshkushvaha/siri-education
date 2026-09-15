@@ -75,6 +75,16 @@ enum RecordingFailureCode: string
     case RetriesExhausted = 'capture_retries_exhausted';
 
     /**
+     * An operator attached an object the platform account cannot read
+     * (not shared with it, deleted, or a mistyped reference). Permanent
+     * for this attempt: the operator fixes the sharing and attaches again.
+     */
+    case ExternalSourceInaccessible = 'external_source_inaccessible';
+
+    /** An operator attached something that is not a recording (wrong type, in the trash, or over the size ceiling). */
+    case ExternalSourceUnsupported = 'external_source_unsupported';
+
+    /**
      * The provider never produced a recording inside the retry window —
      * nobody pressed Record, the conference produced no artifact, or
      * Google never finished generating one. Permanent: the window IS
@@ -98,7 +108,9 @@ enum RecordingFailureCode: string
             self::SourceRejected,
             self::StorageNotConfigured,
             self::RetriesExhausted,
-            self::SourceNotFound => true,
+            self::SourceNotFound,
+            self::ExternalSourceInaccessible,
+            self::ExternalSourceUnsupported => true,
             default => false,
         };
     }
@@ -122,6 +134,8 @@ enum RecordingFailureCode: string
             self::StorageReadFailed => 'Stored recording could not be read',
             self::StorageNativeCopyUnavailable => 'Backend-side copy unavailable; streamed instead',
             self::RetriesExhausted => 'Retries exhausted',
+            self::ExternalSourceInaccessible => 'Attached file is not visible to the platform account',
+            self::ExternalSourceUnsupported => 'Attached file is not a usable recording',
         };
     }
 
@@ -145,6 +159,8 @@ enum RecordingFailureCode: string
             self::StorageReadFailed => 'Stored object unreadable',
             self::StorageNativeCopyUnavailable => 'Streamed copy used',
             self::RetriesExhausted => 'Retries exhausted',
+            self::ExternalSourceInaccessible => 'Attached file not visible',
+            self::ExternalSourceUnsupported => 'Attached file unusable',
         };
     }
 
@@ -172,6 +188,8 @@ enum RecordingFailureCode: string
             self::StorageReadFailed => 'The stored object could not be read back. Check the storage backend; retry re-verifies.',
             self::StorageNativeCopyUnavailable => 'Informational: the backend-side copy was unavailable and the file was streamed instead.',
             self::RetriesExhausted => 'The capture window closed without success. Find the earlier failure in the logs, fix its cause, then Retry ingestion once.',
+            self::ExternalSourceInaccessible => 'The platform account cannot read the attached file. Share it with the platform meeting account (view access is enough), check the link, then attach it again.',
+            self::ExternalSourceUnsupported => 'The attached file is not an accepted recording: it is in the trash, not a video/audio type, or above the size ceiling. Fix the file and attach it again.',
         };
     }
 }

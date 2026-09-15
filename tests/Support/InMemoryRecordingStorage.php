@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Booking\Contracts\AcceptsExternalSources;
 use App\Booking\Contracts\RecordingStorage;
+use App\Booking\Contracts\SupportsNativeIngestion;
+use App\Booking\DTOs\NativeIngestionRequest;
+use App\Booking\DTOs\NativeRecordingSource;
 use App\Booking\DTOs\RecordingByteRange;
 use App\Booking\DTOs\RecordingLocator;
 use App\Booking\DTOs\RecordingStorageRequest;
+use App\Booking\DTOs\ResolvedExternalSource;
 use App\Booking\DTOs\StoredRecording;
 use App\Booking\Exceptions\RecordingStorageException;
 use Illuminate\Support\Str;
@@ -21,7 +26,7 @@ use Illuminate\Support\Str;
  * it unchanged. If a future backend could not be substituted this
  * cleanly, the abstraction would not be real.
  */
-final class InMemoryRecordingStorage implements RecordingStorage
+final class InMemoryRecordingStorage implements AcceptsExternalSources, RecordingStorage, SupportsNativeIngestion
 {
     public const string KEY = 'in_memory';
 
@@ -43,9 +48,62 @@ final class InMemoryRecordingStorage implements RecordingStorage
     /** Simulates a backend that silently truncated the upload. */
     public bool $reportWrongSize = false;
 
+    /** @var array<string, array{bytes: string, mimeType: string, trashed?: bool}> operator-visible objects, keyed by reference */
+    public array $externalObjects = [];
+
+    /** @var list<string> references the operator asked to attach, in order */
+    public array $externalResolutions = [];
+
+    public ?RecordingStorageException $failNextCopy = null;
+
     public function key(): string
     {
         return self::KEY;
+    }
+
+    public function resolveExternalSource(string $operatorReference): ResolvedExternalSource
+    {
+        $this->externalResolutions[] = $operatorReference;
+        $object = $this->externalObjects[$operatorReference] ?? null;
+
+        if ($object === null) {
+            throw RecordingStorageException::externalSourceInaccessible('That object is not visible to the platform account.');
+        }
+
+        if ($object['trashed'] ?? false) {
+            throw RecordingStorageException::externalSourceUnsupported('That object is in the trash.');
+        }
+
+        return new ResolvedExternalSource(
+            source: new NativeRecordingSource(self::KEY, $operatorReference),
+            sizeBytes: strlen($object['bytes']),
+            mimeType: $object['mimeType'],
+        );
+    }
+
+    public function canIngestNatively(NativeRecordingSource $source): bool
+    {
+        return $source->driver === self::KEY;
+    }
+
+    public function ingestNatively(NativeIngestionRequest $request): StoredRecording
+    {
+        if ($this->failNextCopy !== null) {
+            $failure = $this->failNextCopy;
+            $this->failNextCopy = null;
+
+            throw $failure;
+        }
+
+        $object = $this->externalObjects[$request->source->reference] ?? throw RecordingStorageException::externalSourceInaccessible('Source vanished before the copy.');
+
+        $id = 'copy-'.Str::random(12);
+        $this->objects[$id] = ['bytes' => $object['bytes'], 'name' => $request->displayName];
+
+        return new StoredRecording(
+            locator: new RecordingLocator(self::KEY, $id),
+            remoteSizeBytes: strlen($object['bytes']),
+        );
     }
 
     public function isConfigured(): bool

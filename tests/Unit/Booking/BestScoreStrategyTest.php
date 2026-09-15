@@ -100,6 +100,24 @@ class BestScoreStrategyTest extends TestCase
         $this->assertSame(3, $winner->id);
     }
 
+    public function test_a_lazy_scorer_source_is_resolved_once_per_assignment(): void
+    {
+        $constructions = 0;
+        $scorers = (function () use (&$constructions): \Generator {
+            $constructions++;
+            yield $this->scorer(fn (User $t): float => $t->id === 2 ? 1.0 : 0.0);
+        })();
+
+        $strategy = new BestScoreStrategy($scorers);
+
+        $winner = $strategy->assign($this->criteria(), new Collection([
+            $this->teacher(1), $this->teacher(2), $this->teacher(3),
+        ]));
+
+        $this->assertSame(2, $winner->id);
+        $this->assertSame(1, $constructions, 'the container tag is a generator; it must be consumed once, not per candidate');
+    }
+
     public function test_returns_null_for_no_candidates(): void
     {
         $strategy = new BestScoreStrategy([]);

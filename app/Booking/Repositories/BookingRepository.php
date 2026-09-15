@@ -299,15 +299,25 @@ final class BookingRepository implements BookingRepositoryInterface
             ->get();
     }
 
-    public function previousInstructorsForStudent(int $studentId): Collection
+    public function previousInstructorIdsForStudent(int $studentId, ?string $subject = null): Collection
     {
-        $instructorIds = Booking::query()
+        return Booking::query()
             ->forStudent($studentId)
             ->where('status', '!=', BookingStatus::Cancelled)
+            // The same meta.subject snapshot subjectBreakdownForUser() reads;
+            // every wizard booking writes it.
+            ->when($subject !== null, fn (Builder $query) => $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.subject')) = ?", [$subject]))
             ->selectRaw('instructor_id, MAX(starts_at) as last_starts_at')
             ->groupBy('instructor_id')
             ->orderByDesc('last_starts_at')
-            ->pluck('instructor_id');
+            ->pluck('instructor_id')
+            ->map(fn ($id): int => (int) $id)
+            ->values();
+    }
+
+    public function previousInstructorsForStudent(int $studentId, ?string $subject = null): Collection
+    {
+        $instructorIds = $this->previousInstructorIdsForStudent($studentId, $subject);
 
         return User::query()
             ->whereIn('id', $instructorIds)

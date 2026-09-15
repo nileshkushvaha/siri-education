@@ -69,10 +69,10 @@
                         Choose what you need help with, then pick a time that suits you.
                     @endif
                 </p>
-                @if($lockedInstructorName)
+                @if($instructorName)
                     <p class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-indigo-300/40 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-200">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                        With {{ $lockedInstructorName }}
+                        With {{ $instructorName }}
                     </p>
                 @endif
             </div>

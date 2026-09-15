@@ -44,6 +44,12 @@ class RecordingsTable
                     ->label('Storage')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('source')
+                    ->label('Source')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state === Recording::SOURCE_MANUAL ? 'Attached by operator' : 'Pipeline')
+                    ->color(fn (?string $state): string => $state === Recording::SOURCE_MANUAL ? 'warning' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (RecordingStatus $state): string => $state->label())

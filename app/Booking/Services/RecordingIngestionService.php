@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Booking\Services;
 
+use App\Booking\Contracts\AcceptsExternalSources;
 use App\Booking\Contracts\DiscoversRecordingArtifacts;
 use App\Booking\Contracts\DisposesSourceRecordings;
 use App\Booking\Contracts\MeetingProviderInterface;
@@ -73,6 +74,93 @@ final class RecordingIngestionService
         private readonly RecordingLifecycleNotifier $lifecycle,
         private readonly MeetingSettings $settings,
     ) {}
+
+    /**
+     * Manual recovery: the same claim → store → verify → publish pass,
+     * fed by an operator-supplied object instead of provider discovery.
+     * The reference is resolved by the storage backend here, in the
+     * worker (credentials never travel with the job); a source that is
+     * no longer readable fails the row cleanly with the backend's
+     * reason. The operator's original is never disposed of. Never
+     * throws for an ordinary failure — every outcome lands on the row.
+     */
+    public function ingestExternal(Recording $recording, string $reference): void
+    {
+        $claimed = $this->claimExternal($recording);
+
+        if ($claimed === null) {
+            return;
+        }
+
+        [$fresh, $identity] = $claimed;
+
+        try {
+            $storage = $this->storage->default();
+
+            if (! $storage instanceof AcceptsExternalSources || ! $storage instanceof SupportsNativeIngestion) {
+                throw RecordingStorageException::notConfigured($storage->key());
+            }
+
+            $resolved = $storage->resolveExternalSource($reference);
+
+            if (! $storage->canIngestNatively($resolved->source)) {
+                throw RecordingStorageException::nativeIngestionUnavailable('The configured storage cannot copy the attached object.');
+            }
+
+            $discovered = new DiscoveredRecording(
+                providerReference: 'external:'.hash('sha256', $resolved->source->reference),
+                recordedAt: CarbonImmutable::parse($fresh->booking?->starts_at ?? now()),
+                nativeSource: $resolved->source,
+                sizeBytes: $resolved->sizeBytes,
+                mimeType: $resolved->mimeType,
+            );
+
+            $locator = $this->storeNatively($fresh, $storage, $discovered, $resolved->source);
+            $this->verifyAndPublish($fresh->refresh(), $locator, null, $identity);
+        } catch (RecordingStorageException $e) {
+            // Every failure of a manual attach is final for this attempt:
+            // there is no retry window, the operator attaches again. A
+            // verification failure after the copy keeps the locator, so
+            // the ordinary Retry re-verifies instead of copying twice.
+            $this->failLocked($fresh, $e->failureCode === RecordingFailureCode::StorageNativeCopyUnavailable
+                ? RecordingFailureCode::ExternalSourceInaccessible
+                : $e->failureCode);
+            $this->diagnostic('warning', 'Manual recording attach failed', ['recording_id' => $fresh->getKey(), 'failure_code' => $e->failureCode->value, 'reason' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            $this->failLocked($fresh, RecordingFailureCode::StorageUploadFailed);
+            $this->diagnostic('error', 'Manual recording attach failed', ['recording_id' => $fresh->getKey(), 'reason' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * The manual claim: Pending only, no locator, the meeting present —
+     * no provider capability check, since no provider is asked.
+     *
+     * @return array{0: Recording, 1: MeetingIdentitySnapshot}|null
+     */
+    private function claimExternal(Recording $recording): ?array
+    {
+        return DB::transaction(function () use ($recording): ?array {
+            $meeting = BookingMeeting::query()->whereKey($recording->booking_meeting_id)->lockForUpdate()->first();
+
+            /** @var Recording $fresh */
+            $fresh = Recording::query()->whereKey($recording->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($fresh->status !== RecordingStatus::Pending || $fresh->storage_path !== null || ! $fresh->isManuallyAttached() || $meeting === null) {
+                return null;
+            }
+
+            $fresh->fill([
+                'status' => RecordingStatus::Transferring,
+                'transfer_started_at' => now(),
+                'capture_attempts' => $fresh->capture_attempts + 1,
+            ])->save();
+
+            $fresh->setRelation('bookingMeeting', $meeting);
+
+            return [$fresh, MeetingIdentitySnapshot::of($meeting)];
+        });
+    }
 
     /**
      * One ingestion attempt. Never throws for an ordinary recording

@@ -82,9 +82,9 @@
 
         <section class="rounded-2xl border border-edge bg-surface p-4" aria-labelledby="review-instructor">
             <h3 id="review-instructor" class="text-[11px] font-black uppercase tracking-wide text-fg-muted">Instructor</h3>
-            <p class="mt-2 text-sm font-semibold text-fg-strong">{{ $lockedInstructorName ?? 'Matched to your selection' }}</p>
-            @unless($lockedInstructorName)
-                <p class="mt-1 text-xs leading-5 text-fg-muted">An eligible instructor for this subject, {{ \Illuminate\Support\Str::lower($academicFlowActive ? $levelTermSingular : 'grade') }} and time is assigned when you confirm.</p>
+            <p class="mt-2 text-sm font-semibold text-fg-strong">{{ $instructorName ?? 'Any available instructor' }}</p>
+            @unless($instructorName)
+                <p class="mt-1 text-xs leading-5 text-fg-muted">An eligible instructor for this subject, {{ \Illuminate\Support\Str::lower($academicFlowActive ? $levelTermSingular : 'grade') }} and time is assigned when you confirm — your previous instructor for this subject whenever they are free.</p>
             @endunless
         </section>
 

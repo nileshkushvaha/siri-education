@@ -150,7 +150,10 @@ interface BookingRepositoryInterface
     public function subjectBreakdownForUser(int $userId): Collection;
 
     /** @return Collection<int, User> instructors the student has booked (non-cancelled), most recent first */
-    public function previousInstructorsForStudent(int $studentId): Collection;
+    /** @return Collection<int, int> instructor ids the student has booked (non-cancelled), most recent lesson first; optionally only for one subject (meta.subject) */
+    public function previousInstructorIdsForStudent(int $studentId, ?string $subject = null): Collection;
+
+    public function previousInstructorsForStudent(int $studentId, ?string $subject = null): Collection;
 
     /** @return object{has_bookings: bool, has_completed_demo: bool} */
     public function studentBookingJourney(int $studentId): object;

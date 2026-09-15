@@ -30,17 +30,24 @@ final class BestScoreStrategy implements AssignmentStrategyInterface
 
     public function assign(AssignmentCriteriaData $criteria, Collection $candidates): ?User
     {
+        // The container hands tagged services over as a generator that
+        // re-instantiates every scorer on each iteration; resolve them
+        // once per assignment so a scorer may cache per criteria and so
+        // N candidates do not cost N container resolutions per scorer.
+        $scorers = is_array($this->scorers) ? $this->scorers : iterator_to_array($this->scorers, false);
+
         return $candidates
             ->sortBy->id
-            ->sortByDesc(fn (User $teacher): float => $this->totalScore($teacher, $criteria))
+            ->sortByDesc(fn (User $teacher): float => $this->totalScore($scorers, $teacher, $criteria))
             ->first();
     }
 
-    private function totalScore(User $teacher, AssignmentCriteriaData $criteria): float
+    /** @param  list<TeacherScorerInterface>  $scorers */
+    private function totalScore(array $scorers, User $teacher, AssignmentCriteriaData $criteria): float
     {
         $total = 0.0;
 
-        foreach ($this->scorers as $scorer) {
+        foreach ($scorers as $scorer) {
             $total += $scorer->weight() * max(0.0, min(1.0, $scorer->score($teacher, $criteria)));
         }
 

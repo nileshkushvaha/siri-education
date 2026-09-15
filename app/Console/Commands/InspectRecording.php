@@ -61,6 +61,7 @@ final class InspectRecording extends Command
         $this->components->twoColumnDetail('Capture attempts', (string) $recording->capture_attempts);
         $this->components->twoColumnDetail('Recording provider / meeting provider', sprintf('%s / %s%s', $recording->provider, $recording->bookingMeeting?->provider ?? '—', $recording->bookingMeeting !== null && $recording->bookingMeeting->provider !== $recording->provider ? '  <fg=red>MISMATCH</>' : ''));
         $this->components->twoColumnDetail('Recording meeting id / booking meeting id', sprintf('%s / %s%s', $recording->booking_meeting_id ?? '—', $meeting?->id ?? '—', $meeting !== null && $recording->booking_meeting_id !== $meeting->id ? '  <fg=red>DIFFERENT MEETING</>' : ''));
+        $this->components->twoColumnDetail('Source', $recording->isManuallyAttached() ? 'attached by operator' : 'pipeline');
         $this->components->twoColumnDetail('Provider reference', $recording->provider_reference !== null ? 'present' : 'none');
         $this->components->twoColumnDetail('Storage backend / locator', sprintf('%s / %s', $recording->storage_driver ?? '—', $recording->storage_path !== null ? 'present' : 'none'));
         $this->components->twoColumnDetail('Size / duration / format', sprintf('%s / %s / %s', $recording->size_bytes !== null ? number_format($recording->size_bytes / 1048576, 1).' MB' : '—', $recording->duration_seconds !== null ? gmdate('H:i:s', $recording->duration_seconds) : '—', $recording->mime_type ?? '—'));

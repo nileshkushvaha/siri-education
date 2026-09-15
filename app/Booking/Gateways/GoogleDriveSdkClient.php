@@ -65,14 +65,20 @@ final class GoogleDriveSdkClient implements GoogleDriveClient
      *                      artifacts, so it grants nothing over the
      *                      rest of the account's Drive.
      *
-     * Deliberately NOT drive.readonly or drive: either would expose
-     * every file the impersonated Workspace account can reach.
+     *  drive.readonly      READ any file the platform account can see —
+     *                      added for the administrator's manual recovery
+     *                      ("attach a recording"): the file to attach was
+     *                      created by a person, not by this app or by
+     *                      Meet, so neither narrower scope can see it.
+     *                      Read-only; this app still writes only inside
+     *                      the files it created (drive.file). Never
+     *                      `drive` (full access).
      *
      * Any change here must be mirrored exactly in the Workspace
      * domain-wide delegation grant, or token acquisition fails for
      * EVERY scope with `401 unauthorized_client`.
      */
-    private const array REQUESTED_SCOPES = [Drive::DRIVE_FILE, Drive::DRIVE_MEET_READONLY];
+    private const array REQUESTED_SCOPES = [Drive::DRIVE_FILE, Drive::DRIVE_MEET_READONLY, Drive::DRIVE_READONLY];
 
     private const string FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 

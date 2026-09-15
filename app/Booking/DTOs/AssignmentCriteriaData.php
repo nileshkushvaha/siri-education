@@ -31,6 +31,12 @@ final readonly class AssignmentCriteriaData
          * existing (legacy/paid) candidate-selection behavior unchanged.
          */
         public ?AcademicContextData $academicContext = null,
+        /**
+         * The student the lesson is for, when known. Read only by
+         * ContinuityScorer (prefer the instructor they had last time for
+         * this subject); still never "which teacher they want".
+         */
+        public ?int $studentId = null,
     ) {}
 
     public function endsAt(): CarbonImmutable

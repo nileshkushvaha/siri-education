@@ -316,16 +316,19 @@ final class GoogleDriveRecordingStorageTest extends TestCase
      * make a permission error go away, which would expose the entire
      * Workspace account's Drive.
      */
-    public function test_the_drive_integration_requests_only_the_two_minimum_scopes(): void
+    public function test_the_drive_integration_requests_only_the_three_documented_scopes(): void
     {
         $scopes = app(GoogleDriveSdkClient::class)->requestedScopes();
 
+        // drive.readonly exists for the administrator's manual recovery
+        // (attach a person-uploaded file); it is read-only, and full
+        // `drive` access stays forbidden.
         $this->assertSame([
             'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/drive.meet.readonly',
+            'https://www.googleapis.com/auth/drive.readonly',
         ], $scopes);
 
         $this->assertNotContains('https://www.googleapis.com/auth/drive', $scopes);
-        $this->assertNotContains('https://www.googleapis.com/auth/drive.readonly', $scopes);
     }
 }

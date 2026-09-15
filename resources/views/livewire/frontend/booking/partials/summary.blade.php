@@ -54,15 +54,15 @@
                 <dd class="text-right font-semibold text-fg-strong">{{ $timezone }}</dd>
             </div>
         @endif
-        @if($lockedInstructorName)
+        @if($instructorName)
             <div class="flex items-start justify-between gap-3">
                 <dt class="text-fg-muted">Instructor</dt>
-                <dd class="text-right font-semibold text-fg-strong">{{ $lockedInstructorName }}</dd>
+                <dd class="text-right font-semibold text-fg-strong">{{ $instructorName }}</dd>
             </div>
         @elseif($learningComplete)
             <div class="flex items-start justify-between gap-3">
                 <dt class="text-fg-muted">Instructor</dt>
-                <dd class="text-right font-semibold text-fg-strong">Matched to your selection</dd>
+                <dd class="text-right font-semibold text-fg-strong">{{ $instructorChosen ? 'Any available instructor' : 'Your choice, next step' }}</dd>
             </div>
         @endif
     </dl>

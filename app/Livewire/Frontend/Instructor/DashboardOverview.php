@@ -44,7 +44,7 @@ final class DashboardOverview extends Component
 
     public bool $payoutsAvailable = false;
 
-    /** @var array{status: mixed, missing: array<int, string>, percentage: int, next_action: string, show_prompt: bool, variant: string} */
+    /** @var array{status: mixed, missing: array<int, string>, percentage: int, next_action: string, items?: array<int, array{key: string, label: string, step: int, done: bool}>, first_incomplete_step?: ?int, show_prompt: bool, variant: string} */
     public array $onboarding = [
         'status' => null,
         'missing' => [],

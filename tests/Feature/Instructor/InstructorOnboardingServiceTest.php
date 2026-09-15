@@ -122,6 +122,55 @@ class InstructorOnboardingServiceTest extends TestCase
         ]);
     }
 
+    public function test_progress_exposes_a_structured_checklist_beside_the_missing_strings(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->profile()->update(['headline' => 'STEM mentor']);
+
+        $progress = $this->onboarding->progress($user->fresh());
+        $items = collect($progress['items']);
+
+        $this->assertSame($items->where('done', false)->pluck('key')->values()->all(), $progress['missing']);
+        $this->assertSame(['key' => 'professional headline', 'label' => 'Professional headline', 'step' => 2, 'done' => true], $items->firstWhere('key', 'professional headline'));
+        $this->assertSame(3, $items->firstWhere('key', 'subjects')['step']);
+        $this->assertSame(4, $items->firstWhere('key', 'education')['step']);
+        $this->assertSame(5, $items->firstWhere('key', 'experience')['step']);
+        $this->assertSame(6, $items->firstWhere('key', 'government id')['step']);
+        $this->assertSame('Government ID', $items->firstWhere('key', 'government id')['label']);
+        $this->assertSame(2, $progress['first_incomplete_step']);
+        $this->assertContains('biography', $progress['missing']);
+        $this->assertNotContains('professional headline', $progress['missing']);
+    }
+
+    public function test_first_incomplete_step_is_null_once_everything_is_done(): void
+    {
+        $user = $this->completeApplicant();
+
+        $progress = $this->onboarding->progress($user->fresh());
+
+        $this->assertSame([], $progress['missing']);
+        $this->assertNull($progress['first_incomplete_step']);
+        $this->assertTrue(collect($progress['items'])->every(fn (array $item): bool => $item['done']));
+    }
+
+    public function test_education_can_be_saved_without_opening_an_application(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+
+        $education = $this->onboarding->upsertEducation($user, null, [
+            'institution_name' => 'University of Delhi',
+            'degree' => 'B.Sc. Physics',
+            'education_level' => 'bachelor',
+            'start_date' => '2015-07-01',
+            'end_date' => '2018-06-30',
+            'is_current' => false,
+        ], openDraft: false);
+
+        $this->assertTrue($education->exists);
+        $this->assertNull($user->fresh()->profile->instructor_status);
+        $this->assertFalse($user->fresh()->hasRole('instructor'));
+    }
+
     public function test_duplicate_submission_is_prevented(): void
     {
         $user = $this->completeApplicant();

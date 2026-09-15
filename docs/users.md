@@ -178,6 +178,37 @@ canReviewApplications()` — the same permission (`instructor.
 applications.review`, with an `Update:User` fallback) that already
 governed the review actions before the split.
 
+### Instructor onboarding wizard (frontend)
+
+`App\Livewire\Frontend\Instructor\OnboardingWizard` (`/dashboard/instructor/onboarding`)
+has seven steps: Overview, Professional Profile, Teaching Preferences,
+Education, Experience, Verification Documents, Review & Submit.
+
+- **Structured checklist.** `InstructorOnboardingService::checklist()`
+  returns every required item with `key`, `label`, the `step` that
+  satisfies it and `done`; `progress()` exposes it as `items` plus
+  `first_incomplete_step`, alongside the unchanged `missing` strings
+  (still read by the instructor dashboard, the Filament review overview
+  and the seeder tests). The Overview groups items by step with
+  done/pending state and a "Go to step" action; the header marks steps
+  complete/current/upcoming (`data-state`, `aria-current`); Review's
+  "Still needed" list jumps to the item's step; "Continue application"
+  opens the first incomplete step (Review when nothing is left).
+- **Guided start.** While no application exists, `refreshState()` runs
+  the read-only `InstructorEligibilityService::evaluate()` (never the
+  intent-auditing `attempt()`) and the Next-action card adapts: eligible →
+  Start; missing education → "Add my education" (step 4); unverified
+  email → verification link; school-tier / suspended → the reason, no
+  button. Saving education before an application exists writes it
+  without opening the draft (`upsertEducation(..., openDraft: false)`),
+  then re-runs `InstructorApplicationStart::attempt()`; if now eligible
+  the application starts and the wizard continues to the profile step,
+  otherwise the account stays unstarted and the reason is shown.
+- **First-write gate.** Every other section save on an unstarted
+  account passes `InstructorApplicationStart::attempt()` first, so a
+  save can never open a draft (and grant the role) for an account the
+  eligibility gate refuses. Existing applications are unaffected.
+
 ### Instructor workspace access
 
 `App\Http\Middleware\EnsureInstructorWorkspaceAccess` gates the
@@ -196,6 +227,34 @@ Account. The instructor dashboard (`/dashboard` itself) is deliberately
 "Profile readiness" card for non-eligible instructors inline (Phase
 23I), and redirecting it away would contradict that existing, tested
 behavior.
+
+### Student workspace access (instructor-only accounts)
+
+The `student` role is granted at registration ("I want to learn") or
+when an admin creates the account — never later. A student may apply to
+teach and hold both roles (dual-role users keep both workspaces); an
+account registered to teach holds `instructor` alone and cannot become
+a student. `App\Http\Middleware\EnsureStudentWorkspaceAccess` wraps
+the student-only routes (`/book`, `dashboard.my-bookings*`,
+`upcoming-classes`, `bookings.*`, `payments`, `wallet`, `invoices*`,
+`homework`, `recordings.*`, `attendance`, `progress`, `certificates`,
+`orders`, `wishlist`, `learning-goals`, `learning-plans`, `packages`,
+`favorite-instructors.*`, `waitlist*`, `reviews`, `refer-a-friend`) and
+renders `dashboard.student-access-unavailable` (HTTP 403) for an
+instructor-only account: what the account is, and that learning needs a
+separate student account with a different email. Shared routes
+(dashboard, notifications, FAQs, meeting join/handoff, support cases,
+messaging, generic media/homework-resource downloads) are not gated.
+Enforcement itself stays in `StudentLifecycleService::
+assertEligibleForStudentAction()`; the page is the explanation layer.
+
+Admin side: `App\Services\Auth\StudentRoleAssignmentGuard` refuses
+adding `student` to an existing account that does not hold it
+(`EditUser::beforeSave()` halts with a notification; the roles select
+disables the option and explains why). `CreateUser` may still create
+students. `php artisan users:audit-portal-roles` (read-only) lists
+instructor-only accounts left with a `student_status` by the old
+registration flow, and dual-role accounts with their activity.
 
 ## Account approval workflow
 

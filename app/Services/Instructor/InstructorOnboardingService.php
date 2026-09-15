@@ -67,7 +67,27 @@ final class InstructorOnboardingService
     {
         $this->ensureEmailVerified($user);
 
-        return DB::transaction(function () use ($user): UserProfile {
+        return $this->openDraft($user, 'wizard');
+    }
+
+    /**
+     * Registration-time variant of start(): a person who registered
+     * with "I want to teach" gets the instructor role and a Draft
+     * application immediately, before their email is verified, so they
+     * never pass through the student lifecycle. The wizard later resumes
+     * this draft (InstructorApplicationStart::attempt() treats a non-null
+     * instructor_status as an application in progress). Verification is
+     * still enforced before the wizard itself is reachable, by the
+     * dashboard middleware.
+     */
+    public function openDraftAtRegistration(User $user): UserProfile
+    {
+        return $this->openDraft($user, 'registration');
+    }
+
+    private function openDraft(User $user, string $source): UserProfile
+    {
+        return DB::transaction(function () use ($user, $source): UserProfile {
             $profile = $user->profile()->firstOrCreate(['user_id' => $user->id]);
             $started = $profile->instructor_status === null;
 
@@ -90,7 +110,7 @@ final class InstructorOnboardingService
                     'application_started',
                     'Instructor application started',
                     $user,
-                    ['instructor_status' => InstructorStatus::Draft->value],
+                    ['instructor_status' => InstructorStatus::Draft->value, 'source' => $source],
                 );
             }
 
@@ -147,11 +167,21 @@ final class InstructorOnboardingService
         });
     }
 
-    public function upsertEducation(User $user, ?int $educationId, array $data): UserEducation
+    /**
+     * @param  bool  $openDraft  False lets a person who has not applied yet
+     *                           record their education first — the
+     *                           eligibility gate needs it before an
+     *                           application may be opened — without
+     *                           creating the draft or granting the role.
+     *                           Ignored once an application exists.
+     */
+    public function upsertEducation(User $user, ?int $educationId, array $data, bool $openDraft = true): UserEducation
     {
-        return DB::transaction(function () use ($user, $educationId, $data): UserEducation {
-            $profile = $this->start($user);
-            $this->ensureEditable($profile);
+        return DB::transaction(function () use ($user, $educationId, $data, $openDraft): UserEducation {
+            if ($openDraft || $user->profile?->instructor_status !== null) {
+                $profile = $this->start($user);
+                $this->ensureEditable($profile);
+            }
 
             $education = $educationId
                 ? $user->educations()->whereKey($educationId)->firstOrFail()
@@ -503,9 +533,14 @@ final class InstructorOnboardingService
         return $this->hasPermission($actor, self::INTERVIEW_PERMISSION);
     }
 
+    /**
+     * @return array{status: ?InstructorStatus, missing: list<string>, percentage: int, next_action: string, items: list<array{key: string, label: string, step: int, done: bool}>, first_incomplete_step: ?int}
+     */
     public function progress(User $user): array
     {
-        $missing = $this->missingRequiredItems($user);
+        $items = $this->checklist($user);
+        $missing = $this->missingFromChecklist($items);
+        $firstIncomplete = collect($items)->where('done', false)->min('step');
 
         // Derived, never a hardcoded 14: the document half of the
         // checklist is admin-configurable, so a requirement added or
@@ -522,57 +557,77 @@ final class InstructorOnboardingService
             'next_action' => $missing === [] && $this->isSubmittableStatus($status)
                 ? 'submit_application'
                 : 'complete_required_items',
+            // The same checklist with state and the wizard step that
+            // satisfies each item, so the UI can show what is done, what is
+            // left and where to go — `missing` stays the plain string list
+            // other surfaces already read.
+            'items' => $items,
+            'first_incomplete_step' => $firstIncomplete === null ? null : (int) $firstIncomplete,
         ];
     }
 
-    public function missingRequiredItems(User $user): array
+    /**
+     * Every required item of the application, done or not, with the
+     * wizard step that satisfies it: profile fields (2), teaching
+     * preferences (3), education (4), experience (5), each required
+     * document (6, labelled by its admin-editable requirement). `key` is
+     * the exact string missingRequiredItems() reports for that item.
+     *
+     * @return list<array{key: string, label: string, step: int, done: bool}>
+     */
+    public function checklist(User $user): array
     {
         $profile = $user->profile;
 
-        $missing = [];
-
         if (! $profile) {
-            return ['profile'];
+            return [['key' => 'profile', 'label' => 'Profile', 'step' => 2, 'done' => false]];
         }
+
+        $items = [];
 
         foreach ([
-            'professional headline' => $profile->headline,
-            'biography' => $profile->bio,
-            'teaching experience summary' => $profile->instructor_teaching_experience_summary,
-            'teaching philosophy' => $profile->instructor_teaching_philosophy,
-        ] as $label => $value) {
-            if (blank($value)) {
-                $missing[] = $label;
-            }
+            'professional headline' => ['Professional headline', $profile->headline],
+            'biography' => ['Biography', $profile->bio],
+            'teaching experience summary' => ['Teaching experience summary', $profile->instructor_teaching_experience_summary],
+            'teaching philosophy' => ['Teaching philosophy', $profile->instructor_teaching_philosophy],
+        ] as $key => [$label, $value]) {
+            $items[] = ['key' => $key, 'label' => $label, 'step' => 2, 'done' => ! blank($value)];
         }
 
-        if ($user->teacherSubjects()->whereNotNull('subject_id')->count() === 0) {
-            $missing[] = 'subjects';
+        $items[] = ['key' => 'subjects', 'label' => 'Subjects', 'step' => 3, 'done' => $user->teacherSubjects()->whereNotNull('subject_id')->count() > 0];
+        $items[] = ['key' => 'academic levels', 'label' => 'Academic levels', 'step' => 3, 'done' => ! empty($profile->instructor_academic_level_ids)];
+        $items[] = ['key' => 'teaching languages', 'label' => 'Teaching languages', 'step' => 3, 'done' => ! empty($profile->instructor_teaching_language_ids)];
+        $items[] = ['key' => 'education', 'label' => 'Education', 'step' => 4, 'done' => $user->educations()->active()->count() > 0];
+        $items[] = ['key' => 'experience', 'label' => 'Experience', 'step' => 5, 'done' => $user->experiences()->active()->count() > 0];
+
+        foreach ($this->documentRequirements->activeRequirements()->where('required', true) as $requirement) {
+            $items[] = [
+                'key' => str_replace('_', ' ', $requirement->collection_name),
+                'label' => $requirement->label,
+                'step' => 6,
+                'done' => $profile->hasMedia($requirement->collection_name),
+            ];
         }
 
-        if (empty($profile->instructor_academic_level_ids)) {
-            $missing[] = 'academic levels';
-        }
+        return $items;
+    }
 
-        if (empty($profile->instructor_teaching_language_ids)) {
-            $missing[] = 'teaching languages';
-        }
+    /** @return list<string> */
+    public function missingRequiredItems(User $user): array
+    {
+        return $this->missingFromChecklist($this->checklist($user));
+    }
 
-        if ($user->educations()->active()->count() === 0) {
-            $missing[] = 'education';
-        }
-
-        if ($user->experiences()->active()->count() === 0) {
-            $missing[] = 'experience';
-        }
-
-        foreach ($this->documentRequirements->requiredCollections() as $collection) {
-            if (! $profile->hasMedia($collection)) {
-                $missing[] = str_replace('_', ' ', $collection);
-            }
-        }
-
-        return $missing;
+    /**
+     * @param  list<array{key: string, label: string, step: int, done: bool}>  $items
+     * @return list<string>
+     */
+    private function missingFromChecklist(array $items): array
+    {
+        return array_values(array_map(
+            fn (array $item): string => $item['key'],
+            array_filter($items, fn (array $item): bool => ! $item['done']),
+        ));
     }
 
     private function syncSubjects(User $user, array $subjectIds): void

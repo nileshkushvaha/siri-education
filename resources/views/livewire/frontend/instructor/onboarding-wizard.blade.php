@@ -9,6 +9,23 @@
         7 => ['label' => 'Review & Submit', 'short' => 'Review'],
     ];
 
+    // Per-step state from the structured checklist: a middle step is
+    // complete once every item it satisfies is done; Overview and Review
+    // are never "complete" on their own.
+    $itemsByStep = collect($progress['items'] ?? [])->groupBy('step');
+    $stepState = function (int $number) use ($step, $itemsByStep): string {
+        if ($number === $step) {
+            return 'current';
+        }
+
+        $items = $itemsByStep->get($number);
+
+        return $number >= 2 && $number <= 6 && $items !== null && $items->isNotEmpty() && $items->every(fn (array $item): bool => $item['done'])
+            ? 'complete'
+            : 'upcoming';
+    };
+    $itemsLeft = count($progress['missing']);
+
     $inputClass = 'w-full rounded-lg border border-edge bg-surface-raised px-4 py-3 text-sm text-fg-strong outline-none transition placeholder:text-fg-faint focus:border-indigo-400 focus:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60';
     $selectClass = 'w-full cursor-pointer rounded-lg border border-edge bg-surface-solid px-4 py-3 text-sm text-fg-strong outline-none transition focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60';
     $buttonClass = 'inline-flex cursor-pointer items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50';
@@ -70,15 +87,22 @@
     <div class="rounded-2xl border border-edge bg-surface-solid/40 p-2">
         <div class="flex gap-2 overflow-x-auto pb-1">
             @foreach($steps as $number => $stepMeta)
+                @php $state = $stepState($number); @endphp
                 <button type="button"
                         wire:click="$set('step', {{ $number }})"
-                        class="group flex min-w-[8.75rem] cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition {{ $step === $number ? 'bg-indigo-500/15 text-fg-strong ring-1 ring-indigo-400/30' : 'text-fg-muted hover:bg-surface-hover hover:text-fg-strong' }}">
-                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold {{ $step === $number ? 'bg-indigo-500 text-white' : 'bg-surface-raised text-fg-muted group-hover:bg-surface-hover' }}">
-                        {{ $number }}
+                        data-state="{{ $state }}"
+                        @if($state === 'current') aria-current="step" @endif
+                        class="group flex min-w-[8.75rem] cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left transition {{ $state === 'current' ? 'bg-indigo-500/15 text-fg-strong ring-1 ring-indigo-400/30' : 'text-fg-muted hover:bg-surface-hover hover:text-fg-strong' }}">
+                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold {{ match ($state) { 'current' => 'bg-indigo-500 text-white', 'complete' => 'bg-emerald-500 text-white', default => 'bg-surface-raised text-fg-muted group-hover:bg-surface-hover' } }}">
+                        @if($state === 'complete')
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                        @else
+                            {{ $number }}
+                        @endif
                     </span>
                     <span class="min-w-0">
                         <span class="block truncate text-sm font-semibold">{{ $stepMeta['short'] }}</span>
-                        <span class="mt-0.5 block text-xs text-fg-faint">{{ $number === $step ? 'Current step' : 'Step '.$number }}</span>
+                        <span class="mt-0.5 block text-xs {{ $state === 'complete' ? 'text-emerald-600 dark:text-emerald-300' : 'text-fg-faint' }}">{{ match ($state) { 'current' => 'Current step', 'complete' => 'Done', default => 'Step '.$number } }}</span>
                     </span>
                 </button>
             @endforeach
@@ -137,47 +161,95 @@
 
             @if($step === 1)
                 <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
-                    <div class="rounded-xl border border-edge bg-surface-solid/35 p-5">
-                        <h3 class="text-lg font-semibold text-fg-strong">Application checklist</h3>
+                    <div class="rounded-xl border border-edge bg-surface-solid/35 p-5" data-application-checklist>
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h3 class="text-lg font-semibold text-fg-strong">Application checklist</h3>
+                            <p class="text-sm text-fg-muted">
+                                @if($itemsLeft === 0)
+                                    Everything required is complete.
+                                @else
+                                    Each section below has its own step. Select a section to go there.
+                                @endif
+                            </p>
+                        </div>
 
-                        @if($progress['missing'])
-                            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                @foreach($progress['missing'] as $missing)
-                                    <div class="rounded-lg border border-edge bg-surface-raised px-4 py-3 text-sm text-fg-muted">
-                                        {{ $missing }}
+                        <div class="mt-4 space-y-4">
+                            @foreach($steps as $number => $stepMeta)
+                                @php $group = $itemsByStep->get($number); @endphp
+                                @continue($group === null || $group->isEmpty())
+                                @php $groupDone = $group->every(fn (array $item): bool => $item['done']); @endphp
+                                <div class="rounded-xl border {{ $groupDone ? 'border-emerald-400/30 bg-emerald-500/5' : 'border-edge bg-surface-raised' }} p-4" data-checklist-step="{{ $number }}">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold {{ $groupDone ? 'bg-emerald-500 text-white' : 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200' }}">{{ $number }}</span>
+                                            <h4 class="text-sm font-semibold text-fg-strong">{{ $stepMeta['label'] }}</h4>
+                                            <span class="text-xs text-fg-faint">{{ $group->where('done', true)->count() }} of {{ $group->count() }} done</span>
+                                        </div>
+                                        <button type="button" wire:click="$set('step', {{ $number }})" class="inline-flex min-h-9 cursor-pointer items-center gap-1 rounded-lg px-3 text-xs font-semibold {{ $groupDone ? 'text-fg-muted hover:text-fg-strong' : 'text-indigo-600 hover:text-indigo-500 dark:text-indigo-300' }}">
+                                            {{ $groupDone ? 'Review' : 'Go to step' }} <span aria-hidden="true">→</span>
+                                        </button>
                                     </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="mt-4 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
-                                All required items are complete.
-                            </div>
-                        @endif
+                                    <ul class="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                                        @foreach($group as $item)
+                                            <li class="flex items-center gap-2 text-sm {{ $item['done'] ? 'text-fg-muted' : 'text-fg-strong' }}" data-checklist-item="{{ $item['key'] }}" data-done="{{ $item['done'] ? 'true' : 'false' }}">
+                                                @if($item['done'])
+                                                    <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                    <span class="sr-only">Done:</span>
+                                                @else
+                                                    <span class="h-4 w-4 shrink-0 rounded-full border-2 border-edge-strong" aria-hidden="true"></span>
+                                                    <span class="sr-only">To do:</span>
+                                                @endif
+                                                {{ $item['label'] }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
 
-                    <div class="rounded-xl border border-edge bg-surface-solid/35 p-5">
+                    <div class="rounded-xl border border-edge bg-surface-solid/35 p-5" data-next-action="{{ $progress['status'] ? 'continue' : ($eligibility['eligible'] ? 'start' : $eligibility['code']) }}">
                         <h3 class="text-lg font-semibold text-fg-strong">Next action</h3>
-                        <p class="mt-2 text-sm leading-6 text-fg-muted">
-                            Start your draft, continue the next section, or submit once every required item is complete.
-                        </p>
 
-                        <div class="mt-5 flex flex-col gap-3">
-                            @if(! $progress['status'])
-                                <button type="button" wire:click="start" class="{{ $buttonClass }}">
-                                    Start Onboarding
-                                </button>
+                        @if(! $progress['status'])
+                            @if($eligibility['eligible'])
+                                <p class="mt-2 text-sm leading-6 text-fg-muted">Start your application, then complete each section at your own pace. Your progress is saved as you go.</p>
+                                <div class="mt-5">
+                                    <button type="button" wire:click="start" class="{{ $buttonClass }} w-full">Start Onboarding</button>
+                                </div>
+                            @elseif($eligibility['code'] === 'missing_education_information')
+                                <p class="mt-2 text-sm leading-6 text-fg-muted">First, tell us about your education. We need at least one qualification on file before an application can be opened — saving it starts your application automatically.</p>
+                                <div class="mt-5">
+                                    <button type="button" wire:click="goToEducation" class="{{ $buttonClass }} w-full">Add my education</button>
+                                </div>
+                            @elseif($eligibility['code'] === 'email_not_verified')
+                                <p class="mt-2 text-sm leading-6 text-fg-muted">{{ $eligibility['reason'] }}</p>
+                                <div class="mt-5">
+                                    <a href="{{ route('auth.verification.notice') }}" class="{{ $buttonClass }} w-full">Verify my email</a>
+                                </div>
                             @else
-                                <button type="button" wire:click="$set('step', 2)" class="{{ $secondaryButtonClass }}">
-                                    Continue Application
-                                </button>
+                                <p class="mt-2 text-sm leading-6 text-rose-700 dark:text-rose-300" role="status">{{ $eligibility['reason'] }}</p>
+                                <p class="mt-3 text-sm leading-6 text-fg-muted">Applications cannot be opened for this account at the moment. If you think this is a mistake, contact support.</p>
                             @endif
-
-                            @if($progress['next_action'] === 'submit_application')
-                                <button type="button" wire:click="$set('step', 7)" class="inline-flex cursor-pointer items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
-                                    Review & Submit
-                                </button>
-                            @endif
-                        </div>
+                        @else
+                            @php $nextStep = $progress['first_incomplete_step'] ?? 7; @endphp
+                            <p class="mt-2 text-sm leading-6 text-fg-muted">
+                                @if($progress['next_action'] === 'submit_application')
+                                    Every required item is complete. Review your application and submit it.
+                                @else
+                                    Pick up where you left off. Next: <span class="font-semibold text-fg-strong">{{ $steps[$nextStep]['label'] }}</span>.
+                                @endif
+                            </p>
+                            <div class="mt-5 flex flex-col gap-3">
+                                @if($progress['next_action'] === 'submit_application')
+                                    <button type="button" wire:click="$set('step', 7)" class="inline-flex cursor-pointer items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+                                        Review & Submit
+                                    </button>
+                                @else
+                                    <button type="button" wire:click="continueApplication" class="{{ $buttonClass }}">Continue application</button>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -349,6 +421,15 @@
                         <p class="max-w-3xl text-sm leading-6 text-fg-muted">
                             Add your most relevant qualifications first. You can add multiple records one at a time.
                         </p>
+                        @if(! $progress['status'])
+                            @if($eligibility['eligible'] || $eligibility['code'] === 'missing_education_information')
+                                <p class="rounded-lg border border-indigo-400/25 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-700 dark:text-indigo-200" data-education-note>
+                                    Saving your education will start your application.
+                                </p>
+                            @else
+                                <p class="rounded-lg border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200" role="status">{{ $eligibility['reason'] }}</p>
+                            @endif
+                        @endif
 
                         <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
                             <div>
@@ -589,11 +670,13 @@
                     <div class="rounded-xl border border-edge bg-surface-solid/35 p-5">
                         @if($progress['missing'])
                             <h3 class="text-lg font-semibold text-fg-strong">Still needed</h3>
+                            <p class="mt-1 text-sm text-fg-muted">Select an item to go to its step.</p>
                             <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                @foreach($progress['missing'] as $missing)
-                                    <div class="rounded-lg border border-edge bg-surface-raised px-4 py-3 text-sm text-fg-muted">
-                                        {{ $missing }}
-                                    </div>
+                                @foreach(collect($progress['items'])->where('done', false) as $item)
+                                    <button type="button" wire:click="$set('step', {{ $item['step'] }})" class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-edge bg-surface-raised px-4 py-3 text-left text-sm text-fg-strong transition hover:border-indigo-400/40 hover:bg-surface-hover">
+                                        <span>{{ $item['label'] }}</span>
+                                        <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-300">{{ $steps[$item['step']]['short'] }} →</span>
+                                    </button>
                                 @endforeach
                             </div>
                         @else

@@ -44,6 +44,186 @@ class InstructorOnboardingWizardTest extends TestCase
         $this->seed(InstructorDocumentRequirementSeeder::class);
     }
 
+    /**
+     * An eligible, already-started applicant (verified, bachelor education,
+     * Draft): the section tests are about the sections, not the gate.
+     */
+    private function applicant(): User
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        // The gate needs an education signal to open the draft; the row is
+        // removed again so section tests count exactly what they add.
+        $seed = UserEducation::factory()->create(['user_id' => $user->id, 'education_level' => EducationLevel::Bachelor]);
+        app(InstructorOnboardingService::class)->start($user);
+        $seed->forceDelete();
+
+        return $user->fresh();
+    }
+
+    /** A verified, active account with the student role and no education signal at all. */
+    private function studentWithoutEducation(): User
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('student');
+
+        return $user->fresh();
+    }
+
+    /** @return array<string, mixed> */
+    private function bachelorEducationForm(): array
+    {
+        return [
+            'institution_name' => 'University of Delhi',
+            'degree' => 'B.Sc. Physics',
+            'field_of_study' => 'Physics',
+            'education_level' => EducationLevel::Bachelor->value,
+            'start_date' => '2015-07-01',
+            'end_date' => '2018-06-30',
+            'is_current' => false,
+        ];
+    }
+
+    // ── Guided start ────────────────────────────────────────────────────────
+
+    public function test_student_without_education_is_guided_to_add_it_and_the_application_starts_on_save(): void
+    {
+        $user = $this->studentWithoutEducation();
+
+        $component = Livewire::actingAs($user)->test(OnboardingWizard::class)
+            ->assertSet('eligibility.code', 'missing_education_information')
+            ->assertSee('Add my education')
+            ->assertDontSee('Start Onboarding')
+            ->assertDontSee('Add your education information before applying to teach.')
+            ->call('goToEducation')
+            ->assertSet('step', 4)
+            ->assertSee('Saving your education will start your application.');
+
+        foreach ($this->bachelorEducationForm() as $field => $value) {
+            $component->set("educationForm.{$field}", $value);
+        }
+
+        $component->call('saveEducation')
+            ->assertHasNoErrors()
+            ->assertSet('step', 2)
+            ->assertSet('progress.status', InstructorStatus::Draft)
+            ->assertSet('eligibility.eligible', true);
+
+        $fresh = $user->fresh();
+        $this->assertSame(InstructorStatus::Draft, $fresh->profile->instructor_status);
+        $this->assertTrue($fresh->hasRole('instructor'));
+        $this->assertSame(1, $fresh->educations()->count());
+    }
+
+    public function test_school_tier_student_saving_education_stays_unstarted_and_is_told_why(): void
+    {
+        $level = AcademicLevel::query()->create([
+            'name' => 'High School', 'slug' => 'high-school',
+            'min_grade' => 9, 'max_grade' => 12, 'status' => 'active', 'display_order' => 0,
+        ]);
+        $user = $this->studentWithoutEducation();
+        $user->profile()->update(['student_academic_level_id' => $level->id]);
+
+        $component = Livewire::actingAs($user->fresh())->test(OnboardingWizard::class)
+            ->assertSet('eligibility.code', 'school_student_restricted')
+            ->assertSee('Current school students cannot apply as instructors.')
+            ->assertDontSee('Start Onboarding')
+            ->assertDontSee('Add my education')
+            ->set('step', 4);
+
+        foreach ($this->bachelorEducationForm() as $field => $value) {
+            $component->set("educationForm.{$field}", $value);
+        }
+
+        $component->call('saveEducation')
+            ->assertHasNoErrors()
+            ->assertSet('step', 4)
+            ->assertSet('progress.status', null)
+            ->assertSee('Current school students cannot apply as instructors.');
+
+        $fresh = $user->fresh();
+        $this->assertNull($fresh->profile->instructor_status);
+        $this->assertFalse($fresh->hasRole('instructor'));
+        $this->assertSame(1, $fresh->educations()->count());
+    }
+
+    public function test_school_tier_student_cannot_open_a_draft_through_another_section(): void
+    {
+        $level = AcademicLevel::query()->create([
+            'name' => 'High School', 'slug' => 'high-school',
+            'min_grade' => 9, 'max_grade' => 12, 'status' => 'active', 'display_order' => 0,
+        ]);
+        $user = $this->studentWithoutEducation();
+        $user->profile()->update(['student_academic_level_id' => $level->id]);
+
+        Livewire::actingAs($user->fresh())->test(OnboardingWizard::class)
+            ->set('step', 2)
+            ->set('profile.headline', 'STEM mentor')
+            ->set('profile.bio', 'I teach STEM with care.')
+            ->set('profile.teaching_experience_summary', 'Ten years teaching robotics.')
+            ->set('profile.teaching_philosophy', 'Students learn by doing.')
+            ->call('saveProfile')
+            ->assertSet('step', 2)
+            ->assertSet('progress.status', null);
+
+        $fresh = $user->fresh();
+        $this->assertNull($fresh->profile->instructor_status);
+        $this->assertFalse($fresh->hasRole('instructor'));
+        $this->assertNull($fresh->profile->headline);
+    }
+
+    public function test_continue_application_opens_the_first_incomplete_step(): void
+    {
+        $user = $this->applicant();
+        app(InstructorOnboardingService::class)->updateProfile($user, [
+            'headline' => 'STEM mentor',
+            'bio' => 'I teach STEM with care.',
+            'teaching_experience_summary' => 'Ten years teaching robotics.',
+            'teaching_philosophy' => 'Students learn by doing.',
+        ]);
+
+        Livewire::actingAs($user->fresh())->test(OnboardingWizard::class)
+            ->assertSet('progress.first_incomplete_step', 3)
+            ->assertSee('Continue application')
+            ->assertSee('Next:')
+            ->assertSee('Teaching Preferences')
+            ->assertSeeHtml('data-state="complete"')
+            ->call('continueApplication')
+            ->assertSet('step', 3);
+    }
+
+    public function test_header_marks_exactly_one_current_step_and_completed_steps(): void
+    {
+        $user = $this->applicant();
+
+        $html = Livewire::actingAs($user)->test(OnboardingWizard::class)->html();
+
+        $this->assertSame(1, substr_count($html, 'aria-current="step"'));
+        // Profile filled → step 2 complete; nothing else yet → step 3 upcoming.
+        app(InstructorOnboardingService::class)->updateProfile($user, [
+            'headline' => 'STEM mentor',
+            'bio' => 'I teach STEM with care.',
+            'teaching_experience_summary' => 'Ten years teaching robotics.',
+            'teaching_philosophy' => 'Students learn by doing.',
+        ]);
+        $html = Livewire::actingAs($user->fresh())->test(OnboardingWizard::class)->html();
+
+        $this->assertMatchesRegularExpression('/\$set\(\'step\', 2\)"\s+data-state="complete"/', $html);
+        $this->assertMatchesRegularExpression('/\$set\(\'step\', 3\)"\s+data-state="upcoming"/', $html);
+        $this->assertStringContainsString('data-checklist-item="biography" data-done="true"', $html);
+        $this->assertStringContainsString('data-checklist-item="education" data-done="false"', $html);
+    }
+
+    public function test_step_is_clamped_to_the_wizard_range(): void
+    {
+        $user = $this->applicant();
+
+        Livewire::actingAs($user)->test(OnboardingWizard::class)
+            ->set('step', 0)
+            ->assertSet('step', 1)
+            ->set('step', 99)
+            ->assertSet('step', 7);
+    }
+
     public function test_guest_cannot_access_onboarding_wizard(): void
     {
         $this->get(route('dashboard.instructor.onboarding'))
@@ -52,7 +232,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_verified_user_can_access_onboarding_wizard(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         $user->assignRole('student');
 
         $this->actingAs($user)
@@ -63,7 +243,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_user_can_start_onboarding_once_from_wizard(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         $user->assignRole('student');
         // start() is gated by InstructorEligibilityService for a
         // first-time attempt, which requires some education signal on file —
@@ -94,7 +274,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_user_can_update_professional_profile_fields(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -112,7 +292,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_user_can_select_master_subjects_levels_and_languages_without_free_text_input(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         [$subject, $level, $language] = $this->masterData();
 
         Livewire::actingAs($user)
@@ -132,7 +312,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_saving_a_section_advances_the_wizard_to_the_next_step(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         [$subject, $level, $language] = $this->masterData();
 
         Livewire::actingAs($user)
@@ -155,7 +335,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_save_and_add_another_keeps_the_instructor_on_the_same_step(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -182,7 +362,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_documents_step_advances_only_once_every_required_document_is_uploaded(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         $component = Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -220,7 +400,7 @@ class InstructorOnboardingWizardTest extends TestCase
      */
     public function test_an_mp4_that_libmagic_cannot_identify_is_still_accepted_as_an_introduction_video(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         // Bytes with no recognisable signature: finfo answers application/octet-stream.
         $unidentifiable = UploadedFile::fake()->createWithContent('intro.mp4', random_bytes(2048));
 
@@ -236,7 +416,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_a_mov_file_is_accepted_as_an_introduction_video(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         $mov = UploadedFile::fake()->createWithContent('intro.mov', "\x00\x00\x00\x14ftypqt  \x00\x00\x00\x00qt  ".str_repeat("\x00", 200));
 
         Livewire::actingAs($user)
@@ -249,7 +429,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_user_can_add_and_update_education(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         $component = Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -280,7 +460,7 @@ class InstructorOnboardingWizardTest extends TestCase
      */
     public function test_education_with_an_empty_end_date_is_saved_with_null(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -302,7 +482,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_experience_with_an_empty_end_date_is_saved_with_null(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -326,7 +506,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_user_can_add_and_update_experience(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         $component = Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -351,7 +531,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     public function test_user_can_upload_required_private_kyc_documents(): void
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -384,7 +564,7 @@ class InstructorOnboardingWizardTest extends TestCase
         // humanized "government id".
         InstructorDocumentRequirement::query()->where('collection_name', 'government_id')->update(['label' => 'Pan Card']);
 
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
 
         $component = Livewire::actingAs($user)
             ->test(OnboardingWizard::class)
@@ -437,7 +617,7 @@ class InstructorOnboardingWizardTest extends TestCase
 
     private function completeApplicantThroughWizard(): User
     {
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->applicant();
         [$subject, $level, $language] = $this->masterData();
 
         Livewire::actingAs($user)

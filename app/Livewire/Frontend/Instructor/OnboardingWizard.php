@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Frontend\Instructor;
 
+use App\Contracts\InstructorEligibilityServiceInterface;
+use App\DTOs\Instructor\InstructorEligibilityResult;
 use App\Enums\EducationLevel;
 use App\Enums\EmploymentType;
 use App\Enums\InstructorStatus;
@@ -29,7 +31,17 @@ final class OnboardingWizard extends Component
 
     public int $step = 1;
 
-    public array $progress = ['status' => null, 'missing' => [], 'percentage' => 0, 'next_action' => 'complete_required_items'];
+    public array $progress = ['status' => null, 'missing' => [], 'percentage' => 0, 'next_action' => 'complete_required_items', 'items' => [], 'first_incomplete_step' => null];
+
+    /**
+     * Whether this account may open an application right now, and why not.
+     * Read-only evaluation while no application exists; drives the Overview's
+     * "Next action" card so the person is guided (e.g. to add education)
+     * instead of being refused after clicking Start.
+     *
+     * @var array{eligible: bool, code: ?string, reason: ?string}
+     */
+    public array $eligibility = ['eligible' => true, 'code' => null, 'reason' => null];
 
     public array $profile = [
         'headline' => '',
@@ -124,6 +136,7 @@ final class OnboardingWizard extends Component
         $eligibility = InstructorApplicationStart::attempt($user, 'onboarding_wizard');
 
         if (! $eligibility->eligible) {
+            $this->rememberEligibility($eligibility);
             session()->flash('error', $eligibility->reason);
 
             return;
@@ -137,8 +150,69 @@ final class OnboardingWizard extends Component
         session()->flash('success', 'Instructor onboarding started.');
     }
 
+    /** The step list is clickable, so an out-of-range value from the client is simply clamped. */
+    public function updatedStep(int $value): void
+    {
+        $this->step = max(1, min(7, $value));
+    }
+
+    /** "Continue application": the first section with something left to do, or Review when nothing is. */
+    public function continueApplication(): void
+    {
+        $this->goToStep($this->progress['first_incomplete_step'] ?? 7);
+    }
+
+    public function goToEducation(): void
+    {
+        $this->goToStep(4);
+    }
+
+    /**
+     * Every section save on an account with no application yet must pass
+     * the same eligibility gate Start does — otherwise a save would open
+     * the draft (and grant the role) for someone the gate refuses. The
+     * education step is the exception (see saveEducation): it writes
+     * without opening a draft, because it is where eligibility gets fixed.
+     */
+    private function guardFirstWrite(): bool
+    {
+        if ($this->progress['status'] !== null) {
+            return true;
+        }
+
+        $eligibility = InstructorApplicationStart::attempt(auth()->user(), 'onboarding_wizard');
+
+        if ($eligibility->eligible) {
+            return true;
+        }
+
+        $this->rememberEligibility($eligibility);
+        session()->flash('error', $eligibility->reason);
+
+        return false;
+    }
+
+    private function rememberEligibility(InstructorEligibilityResult $result): void
+    {
+        $this->eligibility = $this->eligibilityArray($result);
+    }
+
+    /** @return array{eligible: bool, code: ?string, reason: ?string} */
+    private function eligibilityArray(InstructorEligibilityResult $result): array
+    {
+        return [
+            'eligible' => $result->eligible,
+            'code' => $result->eligible ? null : $result->code->value,
+            'reason' => $result->eligible ? null : $result->reason,
+        ];
+    }
+
     public function saveProfile(): void
     {
+        if (! $this->guardFirstWrite()) {
+            return;
+        }
+
         $onboarding = app(InstructorOnboardingService::class);
 
         $data = $this->validate([
@@ -163,6 +237,10 @@ final class OnboardingWizard extends Component
 
     public function savePreferences(): void
     {
+        if (! $this->guardFirstWrite()) {
+            return;
+        }
+
         $onboarding = app(InstructorOnboardingService::class);
 
         $data = $this->validate([
@@ -196,6 +274,11 @@ final class OnboardingWizard extends Component
     public function saveEducation(bool $advance = true): void
     {
         $onboarding = app(InstructorOnboardingService::class);
+        // Before an application exists, education is saved on its own (it
+        // is the person's own record and never opens a draft); if that
+        // makes the account eligible, the application is opened right
+        // after — the guided path for "add your education first".
+        $wasNotStarted = $this->progress['status'] === null;
 
         $data = $this->validate([
             'educationForm.id' => ['nullable', 'integer'],
@@ -209,10 +292,32 @@ final class OnboardingWizard extends Component
             'educationForm.is_current' => ['boolean'],
         ]);
 
-        $onboarding->upsertEducation(auth()->user(), $data['educationForm']['id'], $data['educationForm']);
+        $onboarding->upsertEducation(auth()->user(), $data['educationForm']['id'], $data['educationForm'], openDraft: ! $wasNotStarted);
 
         $this->resetEducationForm();
         $this->refreshState();
+
+        if ($wasNotStarted) {
+            $user = auth()->user();
+            $eligibility = InstructorApplicationStart::attempt($user, 'onboarding_wizard');
+
+            if (! $eligibility->eligible) {
+                // Education is on file but the account still may not apply
+                // (e.g. a current school student): keep it unstarted and say why.
+                $this->rememberEligibility($eligibility);
+                session()->flash('success', 'Education saved.');
+
+                return;
+            }
+
+            $onboarding->start($user);
+            $this->refreshState();
+            session()->flash('success', 'Education saved. Your application has started — continue with your professional profile.');
+            $this->goToStep($advance ? 2 : 4);
+
+            return;
+        }
+
         session()->flash('success', 'Education saved.');
 
         if ($advance) {
@@ -251,6 +356,10 @@ final class OnboardingWizard extends Component
      */
     public function saveExperience(bool $advance = true): void
     {
+        if (! $this->guardFirstWrite()) {
+            return;
+        }
+
         $onboarding = app(InstructorOnboardingService::class);
 
         $data = $this->validate([
@@ -307,6 +416,10 @@ final class OnboardingWizard extends Component
 
     public function uploadDocument(string $collection): void
     {
+        if (! $this->guardFirstWrite()) {
+            return;
+        }
+
         $onboarding = app(InstructorOnboardingService::class);
 
         $property = $this->uploadPropertyFor($collection);
@@ -377,6 +490,11 @@ final class OnboardingWizard extends Component
         $profile = $user->profile;
 
         $this->progress = app(InstructorOnboardingService::class)->progress($user);
+        // Read-only (no intent audit): the Overview needs to know up front
+        // whether Start would succeed, and if not, what to guide towards.
+        $this->eligibility = $this->progress['status'] === null
+            ? $this->eligibilityArray(app(InstructorEligibilityServiceInterface::class)->evaluate($user))
+            : ['eligible' => true, 'code' => null, 'reason' => null];
         $this->profile = [
             'headline' => (string) $profile?->headline,
             'bio' => (string) $profile?->bio,

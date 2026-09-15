@@ -18,6 +18,7 @@ final readonly class StudentDashboardData
      * @param  array<int, array<string, mixed>>|null  $recommendedInstructors
      * @param  array<int, string>  $errors
      * @param  array<string, mixed>|null  $bookingJourney
+     * @param  array<int, array<string, mixed>>|null  $upcomingLessons  the lessons after $nextLesson, soonest first
      */
     public function __construct(
         public ?array $nextLesson,
@@ -31,5 +32,6 @@ final readonly class StudentDashboardData
         public ?array $recommendedInstructors = null,
         public array $errors = [],
         public ?array $bookingJourney = null,
+        public ?array $upcomingLessons = null,
     ) {}
 }

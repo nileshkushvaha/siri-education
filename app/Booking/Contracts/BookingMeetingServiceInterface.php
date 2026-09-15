@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Booking\Contracts;
 
 use App\Booking\DTOs\MeetingUpdateContext;
+use App\Booking\DTOs\StudentJoinState;
 use App\Booking\Enums\MeetingJoinAvailability;
 use App\Booking\Exceptions\BookingException;
 use App\Lessons\Enums\LessonStatus;
@@ -100,6 +101,24 @@ interface BookingMeetingServiceInterface
      * — never meeting->join_url directly.
      */
     public function studentJoinUrlFor(Booking $booking, ?User $viewer): ?string;
+
+    /**
+     * The list-safe form of studentJoinUrlFor(): the same predicates
+     * (ownership per booking, the strict Active-lifecycle guard read
+     * fresh — once per call rather than once per booking — the student
+     * visibility setting, and the one time-window calculation), returned
+     * as a render-ready StudentJoinState per booking so a schedule of
+     * many lessons costs one lifecycle read. The link carried is the SIRI
+     * gateway (joinLinkFor), never the provider URL. Callers must
+     * eager-load `meeting` on every booking.
+     *
+     * @param  iterable<Booking>  $bookings
+     * @return array<int|string, StudentJoinState> keyed by booking id
+     */
+    public function studentJoinStatesFor(iterable $bookings, ?User $viewer): array;
+
+    /** studentJoinStatesFor() for a single booking. */
+    public function studentJoinStateFor(Booking $booking, ?User $viewer): StudentJoinState;
 
     /**
      * The SIRI join link for a booking — the authenticated gateway

@@ -249,6 +249,17 @@ class Booking extends Model
         return $query->where('ends_at', '<', now());
     }
 
+    /**
+     * Complement of past(): not yet ended. A lesson in progress is still
+     * current for its participants — the join window stays open until
+     * after ends_at — so student "upcoming" views use this rather than
+     * upcoming(), which drops a lesson the instant it starts.
+     */
+    public function scopeNotEnded(Builder $query): Builder
+    {
+        return $query->where('ends_at', '>=', now());
+    }
+
     public function scopeForInstructor(Builder $query, int $instructorId): Builder
     {
         return $query->where('instructor_id', $instructorId);

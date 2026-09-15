@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Student;
 
-use App\Booking\Contracts\BookingMeetingServiceInterface;
-use App\Booking\Contracts\StudentBookingServiceInterface;
-use App\Booking\Enums\MeetingJoinAvailability;
+use App\Booking\DTOs\StudentJoinState;
 use App\DTOs\StudentDashboard\StudentDashboardData;
 use App\Enums\LearningPlanMilestoneStatus;
 use App\Homework\Contracts\HomeworkServiceInterface;
+use App\Models\Booking;
 use App\Models\LearningPlanMilestone;
 use App\Models\LearningPlanReview;
 use App\Models\ReferralCode;
@@ -21,7 +20,6 @@ use App\Referral\Enums\ReferralRewardStatus;
 use App\Services\Instructor\RecommendationService;
 use App\Services\Profile\ProfileService;
 use App\Settings\FeatureSettings;
-use App\Settings\MeetingSettings;
 use App\Support\UserTimezoneResolver;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Illuminate\Http\Request;
@@ -30,14 +28,15 @@ use Throwable;
 
 final class StudentDashboardService
 {
+    /** The hero plus the short list beneath it. */
+    private const int SCHEDULE_LIMIT = 5;
+
     public function __construct(
-        private readonly StudentBookingServiceInterface $bookings,
         private readonly HomeworkServiceInterface $homework,
         private readonly StudentFavoriteInstructorService $favorites,
         private readonly ProfileService $profiles,
         private readonly FeatureSettings $features,
-        private readonly MeetingSettings $meetings,
-        private readonly BookingMeetingServiceInterface $bookingMeetings,
+        private readonly StudentScheduleService $schedule,
         private readonly RecommendationService $recommendations,
         private readonly StudentBookingJourneyService $bookingJourneys,
         private readonly Request $request,
@@ -47,8 +46,13 @@ final class StudentDashboardService
     {
         $errors = [];
 
+        // One schedule read feeds both the hero (first lesson) and the
+        // short list beneath it.
+        $schedule = $this->widget('next lesson', fn () => $this->schedule->upcoming($student, self::SCHEDULE_LIMIT), $errors);
+
         return new StudentDashboardData(
-            nextLesson: $this->widget('next lesson', fn () => $this->nextLesson($student), $errors),
+            nextLesson: $schedule === null ? null : $this->nextLesson($student, $schedule->first()),
+            upcomingLessons: $schedule === null ? null : $schedule->slice(1)->map(fn (array $row): array => $this->lessonRow($student, $row))->values()->all(),
             homework: $this->features->homework_enabled
                 ? $this->widget('homework', fn () => $this->homework($student), $errors)
                 : null,
@@ -85,29 +89,42 @@ final class StudentDashboardService
         }
     }
 
-    /** @return array<string, mixed>|null */
-    private function nextLesson(User $student): ?array
+    /**
+     * The hero: the soonest lesson not yet ended (a lesson in progress
+     * stays here until it ends, since its join window is still open).
+     *
+     * @param  array{booking: Booking, join: StudentJoinState, today: bool}|null  $row
+     * @return array<string, mixed>|null
+     */
+    private function nextLesson(User $student, ?array $row): ?array
     {
-        $booking = $this->bookings->upcomingClasses($student, 1)->first();
-        if ($booking === null) {
+        if ($row === null) {
             return null;
         }
 
-        $timezone = UserTimezoneResolver::resolve($student);
-        $meeting = $booking->meeting;
+        $booking = $row['booking'];
 
-        // The URL comes exclusively from the
-        // authoritative service (ownership + strict Active lifecycle +
-        // visibility setting + statuses + the ONE configured time-window
-        // calculation, no longer duplicated here). join_window_open is
-        // pure display metadata — the "link available near lesson time"
-        // hint — derived from the SAME authoritative availability
-        // result, never an independent (weaker) authorization decision.
-        $availability = $this->bookingMeetings->joinAvailabilityFor($booking, $this->meetings->student_join_url_visible);
-        // The SIRI join link, released only when the provider URL would be.
-        $joinUrl = $this->bookingMeetings->studentJoinUrlFor($booking, $student) !== null
-            ? $this->bookingMeetings->joinLinkFor($booking)
-            : null;
+        return [
+            ...$this->lessonRow($student, $row),
+            'meeting_status' => $booking->meeting?->status?->label() ?? 'Not scheduled',
+            'can_cancel' => Gate::forUser($student)->allows('cancel', $booking),
+            'can_reschedule' => Gate::forUser($student)->allows('reschedule', $booking),
+        ];
+    }
+
+    /**
+     * One schedule row. `join` is the authoritative StudentJoinState
+     * (ownership + strict Active lifecycle + visibility setting + the ONE
+     * configured time-window calculation) — the blade renders only what
+     * it released, never meeting->join_url.
+     *
+     * @param  array{booking: Booking, join: StudentJoinState, today: bool}  $row
+     * @return array<string, mixed>
+     */
+    private function lessonRow(User $student, array $row): array
+    {
+        $booking = $row['booking'];
+        $timezone = UserTimezoneResolver::resolve($student);
 
         return [
             'id' => $booking->id,
@@ -116,11 +133,10 @@ final class StudentDashboardService
             'instructor' => $booking->instructor?->name ?? 'Instructor to be assigned',
             'type' => $booking->type?->name ?? 'Class',
             'starts_at' => $booking->starts_at->timezone($timezone),
-            'meeting_status' => $meeting?->status?->label() ?? 'Not scheduled',
-            'join_url' => $joinUrl,
-            'join_window_open' => $availability === MeetingJoinAvailability::Available,
-            'can_cancel' => Gate::forUser($student)->allows('cancel', $booking),
-            'can_reschedule' => Gate::forUser($student)->allows('reschedule', $booking),
+            'ends_at' => $booking->ends_at?->timezone($timezone),
+            'today' => $row['today'],
+            'booking' => $booking,
+            'join' => $row['join'],
         ];
     }
 

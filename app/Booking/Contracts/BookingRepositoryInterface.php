@@ -128,7 +128,7 @@ interface BookingRepositoryInterface
     /** @return Collection<int, Booking> active bookings intersecting [$from, $to) */
     public function activeBetween(int $instructorId, CarbonImmutable $from, CarbonImmutable $to): Collection;
 
-    /** @return Collection<int, Booking> */
+    /** @return Collection<int, Booking> active bookings not yet ended (in progress or upcoming), soonest first; `meeting` and `lesson` eager-loaded */
     public function upcomingForUser(int $userId, ?int $limit = null): Collection;
 
     /** @return LengthAwarePaginator<int, Booking> full history (any status), newest first */

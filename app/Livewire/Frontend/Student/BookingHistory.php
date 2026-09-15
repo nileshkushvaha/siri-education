@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Frontend\Student;
 
+use App\Booking\Contracts\BookingMeetingServiceInterface;
 use App\Booking\Contracts\StudentBookingServiceInterface;
 use App\Booking\Enums\BookingStatus;
+use App\Services\Student\StudentScheduleService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -38,9 +40,15 @@ final class BookingHistory extends Component
 
     private StudentBookingServiceInterface $bookings;
 
-    public function boot(StudentBookingServiceInterface $bookings): void
+    private BookingMeetingServiceInterface $meetings;
+
+    private StudentScheduleService $schedule;
+
+    public function boot(StudentBookingServiceInterface $bookings, BookingMeetingServiceInterface $meetings, StudentScheduleService $schedule): void
     {
         $this->bookings = $bookings;
+        $this->meetings = $meetings;
+        $this->schedule = $schedule;
     }
 
     public function updatingStatusFilter(): void
@@ -83,6 +91,12 @@ final class BookingHistory extends Component
 
         return view('livewire.frontend.student.booking-history', [
             'history' => $history,
+            // The soonest lesson not yet ended, pinned above the list
+            // whatever the filter or page — a student on a long recurring
+            // schedule must never dig for today's join link.
+            'nextUp' => $this->schedule->nextUp(auth()->user()),
+            // Join state per listed row, one lifecycle read for the page.
+            'joinStates' => $this->meetings->studentJoinStatesFor($history->getCollection(), auth()->user()),
             'statuses' => BookingStatus::cases(),
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             // Carried into every detail link so the page's back button

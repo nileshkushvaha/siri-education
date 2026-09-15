@@ -40,7 +40,7 @@ interface StudentBookingServiceInterface
      */
     public function bookRecurring(StudentBookingData $data, RecurrenceData $recurrence): RecurringBookingResult;
 
-    /** @return Collection<int, Booking> active, upcoming bookings — soonest first */
+    /** @return Collection<int, Booking> active bookings not yet ended (in progress or upcoming) — soonest first */
     public function upcomingClasses(User $student, ?int $limit = null): Collection;
 
     /** @return LengthAwarePaginator<int, Booking> full booking history, newest first */

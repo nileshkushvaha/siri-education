@@ -12,6 +12,7 @@ use App\Booking\Contracts\ReconcilesAmbiguousMeetings;
 use App\Booking\DTOs\MeetingCreationContext;
 use App\Booking\DTOs\MeetingCreationResult;
 use App\Booking\DTOs\MeetingUpdateContext;
+use App\Booking\DTOs\StudentJoinState;
 use App\Booking\Enums\BookingActivityAction;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingLocationType;
@@ -1084,9 +1085,7 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
         }
 
         if ($viewer->id === $booking->student_id) {
-            try {
-                $this->studentLifecycle->assertEligibleForStudentAction($viewer);
-            } catch (StudentActionNotAvailableException) {
+            if (! $this->studentMayAct($viewer)) {
                 return MeetingJoinAvailability::Unavailable;
             }
 
@@ -1109,17 +1108,77 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
 
     public function studentJoinUrlFor(Booking $booking, ?User $viewer): ?string
     {
-        if ($viewer === null || $booking->student_id !== $viewer->id) {
-            return null;
-        }
-
-        try {
-            $this->studentLifecycle->assertEligibleForStudentAction($viewer);
-        } catch (StudentActionNotAvailableException) {
+        if ($viewer === null || $booking->student_id !== $viewer->id || ! $this->studentMayAct($viewer)) {
             return null;
         }
 
         return $this->joinUrlFor($booking, $this->settings->student_join_url_visible);
+    }
+
+    public function studentJoinStatesFor(iterable $bookings, ?User $viewer): array
+    {
+        // The lifecycle guard is a fresh database read; for a schedule of
+        // many lessons it runs once here, not once per row. Failing it
+        // fails every row closed — the same plain "unavailable" a single
+        // studentJoinUrlFor() call would surface, no state disclosed.
+        $mayAct = $viewer !== null && $viewer->isActive() && $this->studentMayAct($viewer);
+
+        $states = [];
+
+        foreach ($bookings as $booking) {
+            $states[$booking->getKey()] = $mayAct && $booking->student_id === $viewer->id
+                ? $this->studentJoinStateOf($booking)
+                : StudentJoinState::unavailable($booking->hasEnded());
+        }
+
+        return $states;
+    }
+
+    public function studentJoinStateFor(Booking $booking, ?User $viewer): StudentJoinState
+    {
+        return $this->studentJoinStatesFor([$booking], $viewer)[$booking->getKey()];
+    }
+
+    /**
+     * The per-booking part of the student decision, once ownership and
+     * lifecycle have passed: the ONE window calculation, the window edges
+     * it was made from, and whether the answer can still change soon.
+     */
+    private function studentJoinStateOf(Booking $booking): StudentJoinState
+    {
+        $availability = $this->joinAvailabilityFor($booking, $this->settings->student_join_url_visible);
+        $meeting = $booking->meeting;
+        $opensAt = $meeting !== null ? $this->joinWindowStartsAt($meeting) : null;
+        $closesAt = $meeting !== null ? $this->joinWindowEndsAt($meeting) : null;
+        $available = $availability === MeetingJoinAvailability::Available;
+
+        return new StudentJoinState(
+            availability: $availability,
+            joinUrl: $available ? $this->joinLinkFor($booking) : null,
+            passcode: $available && filled($meeting?->password) ? (string) $meeting->password : null,
+            opensAt: $opensAt,
+            closesAt: $closesAt,
+            // Re-render on a timer only while the answer can still change
+            // on its own: from an hour before the window opens until it
+            // has closed. Server-side enforcement is untouched.
+            poll: $booking->status === BookingStatus::Confirmed
+                && $closesAt !== null
+                && now()->lt($closesAt->addMinute())
+                && ($opensAt === null || now()->gt($opensAt->subHour())),
+            ended: $booking->hasEnded(),
+        );
+    }
+
+    /** The strict student lifecycle guard as a boolean: role + Active status, read fresh. */
+    private function studentMayAct(User $student): bool
+    {
+        try {
+            $this->studentLifecycle->assertEligibleForStudentAction($student);
+        } catch (StudentActionNotAvailableException) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

@@ -347,9 +347,10 @@ class StudentMeetingLinkAccessTest extends TestCase
         $summary = app(StudentDashboardService::class)->summary($student->fresh());
 
         $this->assertNotNull($summary->nextLesson);
-        $this->assertNull($summary->nextLesson['join_url']);
-        $this->assertFalse($summary->nextLesson['join_window_open']);
-        $this->assertStringNotContainsString(self::JOIN_URL, (string) json_encode($summary->nextLesson));
+        $this->assertNull($summary->nextLesson['join']->joinUrl);
+        $this->assertFalse($summary->nextLesson['join']->isAvailable());
+        $this->assertStringNotContainsString(self::JOIN_URL, (string) json_encode($summary->nextLesson['join']));
+        $this->assertStringNotContainsString(self::JOIN_URL, (string) json_encode($summary->upcomingLessons));
     }
 
     /** 13 (24H.2B). Meeting-created student notification delivered too early carries no URL/password — a platform link instead; the instructor copy is unchanged. */

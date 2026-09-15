@@ -171,7 +171,11 @@ final class BookingWizardService
      * archived, outside a locked instructor's eligibility) is simply
      * ignored rather than trusted.
      *
-     * @return array{education_system_id:?string,education_system_level_id:?string,subject_id:?string,curriculum_id:?string,academic_level_id:?string}
+     * `preferred_subject_ids` are the active subjects the student chose on
+     * their profile — the student's own answer to "which subject", which
+     * outranks whatever they happened to book last time.
+     *
+     * @return array{education_system_id:?string,education_system_level_id:?string,subject_id:?string,curriculum_id:?string,academic_level_id:?string,preferred_subject_ids:list<string>}
      */
     public function learningPrefill(User $student): array
     {
@@ -183,6 +187,7 @@ final class BookingWizardService
             'subject_id' => $context?->subject_id,
             'curriculum_id' => $context?->curriculum_id,
             'academic_level_id' => $context?->academic_level_id ?? $student->profile?->student_academic_level_id,
+            'preferred_subject_ids' => $student->preferredSubjects()->active()->pluck('subjects.id')->map(fn ($id): string => (string) $id)->all(),
         ];
     }
 

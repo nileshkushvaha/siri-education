@@ -14,11 +14,11 @@ use App\Booking\DTOs\AvailabilityQueryData;
 use App\Booking\DTOs\BookingCheckoutOutcome;
 use App\Booking\DTOs\CancelBookingData;
 use App\Booking\DTOs\RescheduleBookingData;
+use App\Booking\DTOs\StudentJoinState;
 use App\Booking\Enums\BookingActor;
 use App\Booking\Enums\BookingCheckoutState;
 use App\Booking\Enums\BookingPaymentStatus;
 use App\Booking\Enums\BookingStatus;
-use App\Booking\Enums\MeetingJoinAvailability;
 use App\Booking\Enums\RecordingPlaybackState;
 use App\Booking\Enums\RecurrenceEndCondition;
 use App\Booking\Enums\SeriesChangeScope;
@@ -141,7 +141,7 @@ final class BookingDetail extends Component
 
         Gate::authorize('view', $booking);
 
-        $this->booking = $booking->loadMissing(['type', 'instructor']);
+        $this->booking = $booking->loadMissing(['type', 'instructor', 'meeting', 'lesson']);
 
         // Server-derived: a verified checkout that has not resolved shows
         // the confirming state on a reload, a new device or a fresh
@@ -794,13 +794,11 @@ final class BookingDetail extends Component
             // authenticated gateway), shown only when the authoritative
             // decision would release the provider URL to this viewer;
             // the provider URL itself is only ever a server-side redirect.
-            'joinUrl' => $this->booking !== null
-                && app(BookingMeetingServiceInterface::class)->studentJoinUrlFor($this->booking, auth()->user()) !== null
-                    ? app(BookingMeetingServiceInterface::class)->joinLinkFor($this->booking)
-                    : null,
             // The one join decision, plus the window edges it was made
             // from, so the page can say "opens at" / "closes at" without
-            // recomputing the rule. Polled while the window is live.
+            // recomputing the rule. Polled while the window is live, and
+            // again while completion is pending so the page flips to
+            // Completed without a reload.
             ...$this->joinState(),
             // Same discipline for the recording: the blade renders only
             // the state RecordingPlaybackAccessResolver releases for the
@@ -821,34 +819,22 @@ final class BookingDetail extends Component
     }
 
     /**
-     * @return array{joinAvailability: MeetingJoinAvailability, joinOpensAt: ?CarbonImmutable, joinClosesAt: ?CarbonImmutable, pollJoinState: bool, awaitingCompletion: bool}
+     * @return array{joinState: StudentJoinState, pollJoinState: bool, awaitingCompletion: bool}
      */
     private function joinState(): array
     {
-        $none = ['joinAvailability' => MeetingJoinAvailability::Unavailable, 'joinOpensAt' => null, 'joinClosesAt' => null, 'pollJoinState' => false, 'awaitingCompletion' => false];
-
-        if ($this->booking === null || auth()->user() === null) {
-            return $none;
+        if ($this->booking === null) {
+            return ['joinState' => StudentJoinState::unavailable(), 'pollJoinState' => false, 'awaitingCompletion' => false];
         }
 
-        $meetings = app(BookingMeetingServiceInterface::class);
-        $meeting = $this->booking->meeting;
-        $confirmed = $this->booking->status === BookingStatus::Confirmed;
-        $closesAt = $meeting !== null ? $meetings->joinWindowEndsAt($meeting) : null;
+        // The same authoritative decision every student surface renders
+        // (ownership + strict lifecycle + visibility + the one window).
+        $joinState = app(BookingMeetingServiceInterface::class)->studentJoinStateFor($this->booking, auth()->user());
         $awaitingCompletion = $this->booking->isAwaitingCompletion();
 
         return [
-            'joinAvailability' => $confirmed ? $meetings->participantJoinAvailabilityFor($this->booking, auth()->user()) : MeetingJoinAvailability::Unavailable,
-            'joinOpensAt' => $meeting !== null ? $meetings->joinWindowStartsAt($meeting) : null,
-            'joinClosesAt' => $closesAt,
-            // Re-render on a timer only while the answer can still change
-            // on its own: from an hour before the window opens until it
-            // has closed, and again while completion is pending so the
-            // page flips to Completed without a reload. Server-side
-            // enforcement is untouched.
-            'pollJoinState' => $awaitingCompletion
-                || ($confirmed && $closesAt !== null && now()->lt($closesAt->addMinute())
-                    && ($meeting?->starts_at === null || now()->gt($meetings->joinWindowStartsAt($meeting)?->subHour() ?? now()->addYear()))),
+            'joinState' => $joinState,
+            'pollJoinState' => $awaitingCompletion || $joinState->poll,
             // Ended, not yet marked complete: nothing about the recording
             // can be said until the lesson outcome is finalised.
             'awaitingCompletion' => $awaitingCompletion,

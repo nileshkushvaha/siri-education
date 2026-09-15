@@ -4,6 +4,11 @@
     $curriculumSectionOpen = $currentPhase === 'curriculum';
     $selectedSubject = collect($academicSubjects)->firstWhere('id', $academicSubjectId);
     $legacySubjectLabel = $subject ? ucfirst(str_replace(['_', '-'], ' ', $subject)) : null;
+    // The student's own preferred subjects come first and are badged, so
+    // a student with several never has to hunt for the one they mean.
+    $isPreferredSubject = fn (array $option): bool => in_array($option['id'], $preferredSubjectIds, true);
+    $orderedSubjects = collect($academicSubjects)->sortBy(fn (array $option): int => $isPreferredSubject($option) ? 0 : 1, SORT_NUMERIC, false)->values();
+    $preferredOfferedCount = $orderedSubjects->filter($isPreferredSubject)->count();
 @endphp
 
 <div class="space-y-6">
@@ -11,7 +16,7 @@
         <h2 data-booking-step-title tabindex="-1" class="text-2xl font-black tracking-tight text-fg-strong outline-none">Learning details</h2>
         <p class="mt-1.5 text-sm leading-6 text-fg-muted">
             @if($prefilledLearning)
-                We have used the details from your last booking. Change anything that is different this time.
+                We have used the details from your profile and last booking. Change anything that is different this time.
             @else
                 Tell us what you need help with. Only a few quick choices.
             @endif
@@ -77,16 +82,23 @@
         @if($subjectSectionOpen)
             <section aria-labelledby="booking-subject">
                 <h3 id="booking-subject" class="text-lg font-black text-fg-strong">Choose a subject</h3>
-                <p class="mt-1 text-sm text-fg-muted">What would you like help with?</p>
+                <p class="mt-1 text-sm text-fg-muted">
+                    @if($preferredOfferedCount > 1)
+                        You chose {{ $preferredOfferedCount }} subjects in your profile. Which one is this lesson for?
+                    @else
+                        What would you like help with?
+                    @endif
+                </p>
                 @if(empty($academicSubjects))
                     <x-ui.empty-state title="No subjects available" description="Please choose a different {{ \Illuminate\Support\Str::lower($levelTermSingular) }}, or check back soon." class="mt-4" />
                 @else
                     <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                        @foreach($academicSubjects as $subjectOption)
+                        @foreach($orderedSubjects as $subjectOption)
                             <x-booking.option-card
                                 wire:click="selectAcademicSubject({{ \Illuminate\Support\Js::from($subjectOption['id']) }})"
                                 :selected="$academicSubjectId === $subjectOption['id']"
                                 :title="$subjectOption['name']"
+                                :badge="$isPreferredSubject($subjectOption) ? 'Your subject' : null"
                                 size="sm"
                                 class="min-h-14"
                             />

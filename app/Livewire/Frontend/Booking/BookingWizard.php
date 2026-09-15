@@ -28,7 +28,6 @@ use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\BookingSeries;
 use App\Models\Country;
 use App\Models\EducationSystem;
-use App\Models\User;
 use App\Models\Wallet;
 use App\Payments\DTOs\PaymentCheckoutData;
 use App\Settings\BookingSettings;
@@ -350,6 +349,16 @@ final class BookingWizard extends Component
     public ?string $academicSubjectId = null;
 
     public ?string $curriculumId = null;
+
+    /**
+     * The active subjects the student chose on their profile. Display
+     * order and badges on the subject step; the pre-selection rule in
+     * applyLearningPrefill() (exactly one offered → chosen for them,
+     * several → they must choose).
+     *
+     * @var list<string>
+     */
+    public array $preferredSubjectIds = [];
 
     private BookingWizardService $wizard;
 
@@ -1812,6 +1821,7 @@ final class BookingWizard extends Component
         $this->academicFlowUnavailable = false;
         $this->studentCountryId = null;
         $this->studentCountryName = null;
+        $this->preferredSubjectIds = [];
 
         $this->step = 1;
         $this->occurrences = 4;
@@ -1929,6 +1939,7 @@ final class BookingWizard extends Component
         $this->academicFlowUnavailable = false;
         $this->studentCountryId = null;
         $this->studentCountryName = null;
+        $this->preferredSubjectIds = [];
 
         $user = Auth::user();
         $country = $user !== null ? $this->wizard->studentCountry($user) : null;
@@ -1958,22 +1969,32 @@ final class BookingWizard extends Component
         // its configured display order, so students do not need a redundant
         // education-system step merely to confirm their own country.
         $this->selectEducationSystem((string) $this->educationSystems[0]['id']);
-        $this->applyLearningPrefill($user);
+
+        $prefill = $this->wizard->learningPrefill($user);
+        $this->preferredSubjectIds = $prefill['preferred_subject_ids'];
+        $this->applyLearningPrefill($prefill);
     }
 
     /**
-     * Pre-selects what the student chose last time, as far as those
-     * choices are still offered. Each id goes through the same select*()
-     * method a click would, so validation and narrowing (a locked
-     * instructor, a level with no grade, an archived curriculum) apply
-     * unchanged, and the chain simply stops at the first id that is no
-     * longer available. A fully pre-filled selection lands the student on
-     * the schedule directly; anything partial leaves them on the learning
-     * details with the rest still to choose.
+     * Pre-selects what the student chose on their profile and last time,
+     * as far as those choices are still offered. Each id goes through the
+     * same select*() method a click would, so validation and narrowing (a
+     * locked instructor, a level with no grade, an archived curriculum)
+     * apply unchanged, and the chain simply stops at the first id that is
+     * no longer available.
+     *
+     * The subject follows the student's own preferred subjects first:
+     * exactly one of them offered → it is chosen for them; several →
+     * nothing is chosen and they pick on the subject step (never a
+     * silent guess from their last booking); none → the last booking's
+     * subject, as before. A fully pre-filled selection lands the student
+     * on the schedule directly; anything partial leaves them on the
+     * learning details with the rest still to choose.
+     *
+     * @param  array{education_system_id:?string,education_system_level_id:?string,subject_id:?string,curriculum_id:?string,academic_level_id:?string,preferred_subject_ids:list<string>}  $prefill
      */
-    private function applyLearningPrefill(User $user): void
+    private function applyLearningPrefill(array $prefill): void
     {
-        $prefill = $this->wizard->learningPrefill($user);
         $levelId = $this->prefillLevelId($prefill);
 
         if ($levelId === null) {
@@ -1986,7 +2007,19 @@ final class BookingWizard extends Component
             return;
         }
 
-        $subjectId = $prefill['subject_id'];
+        $offeredPreferred = array_values(array_intersect(
+            $prefill['preferred_subject_ids'],
+            array_column($this->academicSubjects, 'id'),
+        ));
+
+        if (count($offeredPreferred) > 1) {
+            // Their choice to make — stay on the subject step.
+            $this->prefilledLearning = true;
+
+            return;
+        }
+
+        $subjectId = $offeredPreferred[0] ?? $prefill['subject_id'];
 
         if ($subjectId === null || ! collect($this->academicSubjects)->contains('id', $subjectId)) {
             $this->prefilledLearning = true;

@@ -588,17 +588,33 @@ longer auto-advances: tests that walk the component call
 **Pre-filled learning details (returning students).**
 `BookingWizardService::learningPrefill()` returns the ids from the
 student's most recent non-cancelled booking's `BookingAcademicContext`
-(`BookingRepositoryInterface::latestAcademicContextForStudent()`), falling
-back to the profile's `student_academic_level_id`. `BookingWizard::
-applyLearningPrefill()` feeds them through the ordinary `select*()`
-chain, so validation, locked-instructor narrowing and the
+(`BookingRepositoryInterface::latestAcademicContextForStudent()` —
+`created_at` desc, then `id` desc so same-second bookings resolve the
+same way every load), falling back to the profile's
+`student_academic_level_id`, plus the student's active preferred subject
+ids (`User::preferredSubjects()`, chosen on the profile page).
+`BookingWizard::applyLearningPrefill()` feeds them through the ordinary
+`select*()` chain, so validation, locked-instructor narrowing and the
 no-normalized-grade refusal apply unchanged; the chain stops at the
 first id no longer offered. A profile academic level is used only when
-exactly one offered level maps to it. A fully pre-filled selection lands
-on the Schedule stage (the header and progress show "Subject • Level •
-System" with Edit); `$prefilledLearning` drives the explanatory copy and
-is cleared on the first manual change. Fresh students are never
-pre-filled.
+exactly one offered level maps to it.
+
+The subject follows the student's own preferred subjects before any
+booking history: exactly one of them offered under the chosen level →
+it is selected regardless of the last booking; more than one → no
+subject is pre-selected and the student stops on the subject step,
+where their preferred subjects are listed first with a "Your subject"
+badge and the copy asks which one the lesson is for; none → the last
+booking's subject as before. Auto-selection happens only in
+`applyLearningPrefill()`, never in `selectLevel()`, so editing the level
+always shows the subject step. A fully pre-filled selection lands on the
+Schedule stage (the header and progress show "Subject • Level • System"
+with Edit); `$prefilledLearning` drives the explanatory copy and is
+cleared on the first manual change. Students with no booking history
+and no profile academic level are never pre-filled. Known gap: recurring
+bookings (`WizardBookingService::bookSeries()`) write no
+`BookingAcademicContext`, so a recurring-only history contributes no
+last-booking prefill — the preferred-subject rule covers those students.
 
 **Terminology.** Every level label comes from the selected
 `EducationSystem` (`levelTermSingular()`: Class / Grade / Year, generic

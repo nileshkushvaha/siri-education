@@ -12,7 +12,7 @@
         @php
             $viewerTz = \App\Support\Timezone\ViewerDateTime::timezoneFor();
             $joinLive = $isActive && $booking->status->value === 'confirmed';
-            $joinOpen = $joinLive && $joinAvailability === \App\Booking\Enums\MeetingJoinAvailability::Available && $joinUrl;
+            $joinOpen = $joinLive && $joinState->isAvailable();
         @endphp
 
         {{-- Summary: which session, when (once, as a full range in the viewer's
@@ -49,34 +49,16 @@
                 @endif
             </div>
 
-            {{-- Join state. $joinAvailability and $joinUrl come exclusively from
-                 BookingMeetingService (participantJoinAvailabilityFor /
-                 studentJoinUrlFor); this blade never reads meeting->join_url.
-                 Polled while the window can still change on its own. --}}
+            {{-- Join state. $joinState comes exclusively from
+                 BookingMeetingService::studentJoinStateFor(); this blade never
+                 reads meeting->join_url. Polled while the window can still
+                 change on its own. The shared component emits data-join-state. --}}
             @if($joinLive)
-                <div class="mt-4 border-t border-edge pt-4" @if($pollJoinState) wire:poll.60s @endif data-join-state="{{ $joinAvailability->value }}">
+                <div class="mt-4 border-t border-edge pt-4" @if($pollJoinState) wire:poll.60s @endif>
                     @if($awaitingCompletion && ! $joinOpen)
                         <p class="mb-2 text-sm text-fg-muted">The lesson is being marked complete. This usually takes about 15–20 minutes after the scheduled end.</p>
                     @endif
-                    @if($joinOpen)
-                        <div class="flex flex-wrap items-center gap-3">
-                            <x-ui.button :href="$joinUrl" target="_blank" rel="noopener" size="sm">Join the lesson</x-ui.button>
-                            @if($booking->meeting?->password)
-                                <p class="text-xs text-fg-muted">Passcode <span class="font-semibold text-fg-strong">{{ $booking->meeting->password }}</span></p>
-                            @endif
-                        </div>
-                        @if($booking->hasEnded() && $joinClosesAt)
-                            <p class="mt-2 text-sm text-fg-muted">Scheduled time ended. Joining closes at {{ viewer_time($joinClosesAt) }}.</p>
-                        @elseif($booking->hasStarted())
-                            <p class="mt-2 text-sm text-fg-muted">This lesson is in progress.</p>
-                        @endif
-                    @elseif($joinAvailability === \App\Booking\Enums\MeetingJoinAvailability::TooEarly && $joinOpensAt)
-                        <p class="text-sm text-fg-muted">Joining opens at {{ viewer_datetime($joinOpensAt, 'D, j M · g:i A') }}.</p>
-                    @elseif($joinAvailability === \App\Booking\Enums\MeetingJoinAvailability::NotReady && ! $booking->hasEnded())
-                        <p class="text-sm text-fg-muted">The meeting link is being prepared.</p>
-                    @elseif($booking->hasEnded() && $joinClosesAt)
-                        <p class="text-sm text-fg-muted">Joining closed at {{ viewer_time($joinClosesAt) }}.</p>
-                    @endif
+                    <x-student.join-action :state="$joinState" :booking="$booking" :show-passcode="true" />
                 </div>
             @endif
         </x-account.card>

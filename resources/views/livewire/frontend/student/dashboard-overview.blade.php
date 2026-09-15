@@ -1,28 +1,57 @@
 <div class="space-y-6">
     @if($dashboard->nextLesson)
         @php($lesson = $dashboard->nextLesson)
-        <section class="relative overflow-hidden rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-indigo-500/15 via-surface to-violet-500/10 p-6 md:p-8">
+        {{-- Polled only while the join state can still change on its own
+             (from an hour before the window opens until it closes); the
+             whole dashboard re-renders on each poll, so never all day. --}}
+        <section class="relative overflow-hidden rounded-3xl border border-indigo-400/20 bg-gradient-to-br from-indigo-500/15 via-surface to-violet-500/10 p-6 md:p-8" @if($lesson['join']->poll) wire:poll.60s @endif>
             <div class="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl"></div>
             <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-600 dark:text-indigo-300">Your next lesson</p>
+                    <p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-600 dark:text-indigo-300">{{ $lesson['booking']->hasStarted() ? 'Your lesson now' : ($lesson['today'] ? 'Your lesson today' : 'Your next lesson') }}</p>
                     <h2 class="mt-3 text-2xl font-bold text-fg-strong md:text-3xl">{{ $lesson['subject'] }}</h2>
                     <p class="mt-2 text-sm text-fg-muted">with {{ $lesson['instructor'] }} · {{ $lesson['type'] }}</p>
-                    <p class="mt-4 text-base font-semibold text-fg-strong">{{ viewer_datetime($lesson['starts_at'], 'l, M j · g:i A') }}</p>
+                    <p class="mt-4 text-base font-semibold text-fg-strong">{{ viewer_datetime($lesson['starts_at'], 'l, M j · g:i A') }}@if($lesson['ends_at'])–{{ viewer_time($lesson['ends_at']) }}@endif</p>
                     <p class="mt-1 text-xs text-fg-muted" role="status">Meeting: {{ $lesson['meeting_status'] }}</p>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    @if($lesson['join_url'])
-                        <a href="{{ $lesson['join_url'] }}" target="_blank" rel="noopener noreferrer" class="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-400">Join Class</a>
-                    @elseif($lesson['meeting_status'] === 'Created' && !$lesson['join_window_open'])
-                        <span class="rounded-xl border border-edge bg-surface-raised px-4 py-3 text-sm text-fg-muted">Join link available near lesson time</span>
-                    @endif
-                    <a href="{{ route('dashboard.my-bookings.show', $lesson['id']) }}" class="rounded-xl border border-edge bg-surface-raised px-4 py-3 text-sm font-semibold text-fg-strong hover:bg-surface-hover">View Booking</a>
-                    @if($lesson['can_reschedule'])<a href="{{ route('dashboard.my-bookings.show', $lesson['id']) }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Reschedule</a>@endif
-                    @if($lesson['can_cancel'])<a href="{{ route('dashboard.my-bookings.show', $lesson['id']) }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-rose-600 dark:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300">Cancel</a>@endif
+                <div class="flex flex-col gap-3 lg:items-end">
+                    {{-- The one join action, from the authoritative join state:
+                         the button while the window is open, otherwise when it opens. --}}
+                    <x-student.join-action :state="$lesson['join']" :booking="$lesson['booking']" size="md" />
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('dashboard.my-bookings.show', $lesson['id']) }}" class="rounded-xl border border-edge bg-surface-raised px-4 py-3 text-sm font-semibold text-fg-strong hover:bg-surface-hover">View Booking</a>
+                        @if($lesson['can_reschedule'])<a href="{{ route('dashboard.my-bookings.show', $lesson['id']) }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">Reschedule</a>@endif
+                        @if($lesson['can_cancel'])<a href="{{ route('dashboard.my-bookings.show', $lesson['id']) }}" class="inline-flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-semibold text-rose-600 dark:text-rose-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300">Cancel</a>@endif
+                    </div>
                 </div>
             </div>
         </section>
+
+        @if(! empty($dashboard->upcomingLessons))
+            {{-- The classes after the hero, so a student on a recurring
+                 schedule sees the week at a glance and never has to dig
+                 through My Bookings for a join link. --}}
+            <section class="rounded-2xl border border-edge bg-surface-raised p-5 md:p-6">
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="text-lg font-bold text-fg-strong">Upcoming classes</h2>
+                    <a href="{{ route('dashboard.upcoming-classes') }}" class="inline-flex min-h-11 items-center text-sm font-semibold text-indigo-600 dark:text-indigo-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">View all →</a>
+                </div>
+                <div class="mt-2 divide-y divide-edge">
+                    @foreach($dashboard->upcomingLessons as $row)
+                        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <a href="{{ route('dashboard.my-bookings.show', $row['id']) }}" class="truncate text-sm font-semibold text-fg-strong hover:text-indigo-600 dark:hover:text-indigo-300">{{ $row['subject'] }}</a>
+                                    @if($row['today'])<x-ui.badge color="indigo">Today</x-ui.badge>@endif
+                                </div>
+                                <p class="mt-1 text-xs text-fg-muted">with {{ $row['instructor'] }} · {{ viewer_datetime($row['starts_at'], 'D, M j · g:i A') }}@if($row['ends_at'])–{{ viewer_time($row['ends_at']) }}@endif</p>
+                            </div>
+                            <x-student.join-action :state="$row['join']" :booking="$row['booking']" :compact="true" class="shrink-0" />
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
     @else
         @php($journey = $dashboard->bookingJourney ?? [])
         <section class="rounded-3xl border border-indigo-400/20 bg-gradient-to-r from-indigo-500/15 to-violet-500/10 p-7 md:flex md:items-center md:justify-between">

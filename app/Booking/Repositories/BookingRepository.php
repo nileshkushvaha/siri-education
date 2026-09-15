@@ -193,11 +193,14 @@ final class BookingRepository implements BookingRepositoryInterface
 
     public function upcomingForUser(int $userId, ?int $limit = null): Collection
     {
+        // notEnded(), not upcoming(): a lesson in progress must stay on the
+        // student's schedule (its join window is still open). `lesson` is
+        // eager-loaded because every row reads it for isAwaitingCompletion().
         return Booking::query()
             ->active()
-            ->upcoming()
+            ->notEnded()
             ->forStudent($userId)
-            ->with(['type', 'instructor', 'meeting'])
+            ->with(['type', 'instructor', 'meeting', 'lesson'])
             ->orderBy('starts_at')
             ->when($limit !== null, fn (Builder $query) => $query->limit($limit))
             ->get();
@@ -222,7 +225,11 @@ final class BookingRepository implements BookingRepositoryInterface
             ->whereHas('booking', fn (Builder $booking) => $booking
                 ->forStudent($studentId)
                 ->where('status', '!=', BookingStatus::Cancelled))
+            // created_at is second-resolution; two lessons booked in the
+            // same second must resolve the same way on every load. Ids are
+            // time-ordered uuid7, so the newer row wins deterministically.
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->first();
     }
 
@@ -231,7 +238,7 @@ final class BookingRepository implements BookingRepositoryInterface
     {
         return Booking::withTrashed()
             ->forStudent($userId)
-            ->with(['type', 'instructor', 'meeting', 'academicContext'])
+            ->with(['type', 'instructor', 'meeting', 'lesson', 'academicContext'])
             ->when($status, fn (Builder $q) => $q->withStatus($status))
             ->orderByDesc('starts_at')
             ->paginate($perPage);

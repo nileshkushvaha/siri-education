@@ -694,7 +694,8 @@ settings migration — see docs/lessons.md, Completion policy):
 
 **The link participants receive is SIRI's, not the provider's.** Every
 student- and instructor-facing surface (booking detail, both
-dashboards, `StudentBookingResource`, the meeting-created/updated
+dashboards, the student's My Bookings "Next up" card and rows, Upcoming
+Classes, `StudentBookingResource`, the meeting-created/updated
 notifications) carries `/dashboard/meetings/{booking}/join`
 (`BookingMeetingService::joinLinkFor()`, `MeetingJoinController`). It
 is an authenticated gateway on SIRI's own domain — not a custom Zoom

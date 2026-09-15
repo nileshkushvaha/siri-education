@@ -1,4 +1,30 @@
 <div>
+    @if($nextUp)
+        @php $next = $nextUp['booking']; @endphp
+        {{-- Pinned above the list, independent of filter and page: the
+             soonest lesson not yet ended and its join action. Polled only
+             while the join state can still change on its own. --}}
+        <div class="mb-4" data-next-up="{{ $next->id }}" @if($nextUp['join']->poll) wire:poll.60s @endif>
+        <x-account.card>
+            <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-semibold uppercase tracking-[.18em] text-indigo-600 dark:text-indigo-300">{{ $next->hasStarted() ? 'In progress' : ($nextUp['today'] ? 'Next up · Today' : 'Next up') }}</p>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <a href="{{ route('dashboard.my-bookings.show', ['booking' => $next, ...$listQuery]) }}" class="text-lg font-bold text-fg-strong hover:text-indigo-600 dark:hover:text-indigo-300">{{ $next->type?->name ?? 'Session' }}</a>
+                        <x-ui.badge :color="$next->status->color()">{{ $next->status->label() }}</x-ui.badge>
+                    </div>
+                    <p class="mt-1 text-sm text-fg-muted">
+                        with {{ $next->instructor?->name ?? 'Teacher' }}
+                        <span class="mx-1 text-fg-faint">&middot;</span>
+                        {{ viewer_datetime($next->starts_at, 'D, j M · g:i A') }}–{{ viewer_time($next->ends_at) }}
+                    </p>
+                </div>
+                <x-student.join-action :state="$nextUp['join']" :booking="$next" size="md" class="shrink-0" />
+            </div>
+        </x-account.card>
+        </div>
+    @endif
+
     {{-- Filters: status chips on wide screens, a select on narrow ones,
          plus the page-size control. Both reset pagination on change. --}}
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -81,6 +107,11 @@
                     </div>
 
                     <div class="flex shrink-0 items-center gap-3">
+                        @if(($joinStates[$booking->id] ?? null)?->isAvailable())
+                            {{-- relative + z-10 lifts the button above the row's
+                                 stretched link so it opens the meeting, not the page. --}}
+                            <x-student.join-action :state="$joinStates[$booking->id]" :booking="$booking" :compact="true" class="relative z-10" />
+                        @endif
                         <div class="text-right">
                             <p class="text-sm font-medium text-fg-strong">{{ viewer_date($booking->starts_at) }}</p>
                             <p class="mt-0.5 text-xs text-fg-muted">{{ viewer_time($booking->starts_at) }}</p>

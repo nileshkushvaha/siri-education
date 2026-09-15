@@ -341,9 +341,9 @@ comes from existing services — no new read paths were invented:
 
 | Section | Component | Data source |
 |---|---|---|
-| Dashboard | `DashboardOverview` | `StudentBookingServiceInterface` + `HomeworkServiceInterface` |
-| Upcoming Classes | `UpcomingClasses` | `StudentBookingServiceInterface::upcomingClasses()` |
-| Bookings | `BookingHistory` | `StudentBookingServiceInterface::bookingHistory()` (paginated, status filter) |
+| Dashboard | `DashboardOverview` | `StudentScheduleService::upcoming()` (hero + short "Upcoming classes" list) + `HomeworkServiceInterface` |
+| Upcoming Classes | `UpcomingClasses` | `StudentScheduleService::upcoming()` grouped Today / Later |
+| Bookings | `BookingHistory` | `StudentBookingServiceInterface::bookingHistory()` (paginated, status filter) + `StudentScheduleService::nextUp()` pinned card + `BookingMeetingServiceInterface::studentJoinStatesFor()` per row |
 | Booking detail | `BookingDetail` | `BookingRepositoryInterface::findWithTrashedOrFail()` + booking services (reschedule / cancel / pay) |
 | Payments | `PaymentHistory` | `StudentBookingServiceInterface::paymentHistory()` (paginated) |
 | Homework | `HomeworkList` | `HomeworkServiceInterface` (paginated + submit action) |
@@ -354,12 +354,43 @@ comes from existing services — no new read paths were invented:
 
 #### Bookings list → booking detail page
 
-`BookingHistory` (`/dashboard/my-bookings`) only lists. Opening a row
-navigates to `/dashboard/my-bookings/{booking}`
+`BookingHistory` (`/dashboard/my-bookings`) lists, and joins. Opening a
+row navigates to `/dashboard/my-bookings/{booking}`
 (`StudentBookingHistoryController::show`), a real page with a back
 button — the detail used to be a modal on the list. Everything that
-acts on one booking (join link, recording, reschedule, cancel, pay,
-wallet payment) lives in `BookingDetail` on that page.
+changes one booking (recording, reschedule, cancel, pay, wallet
+payment) lives in `BookingDetail` on that page; the join action is on
+every surface.
+
+#### The join action is one component, fed by one decision
+
+A student on a long recurring schedule must never dig for today's join
+link: the list is newest-first and paginated, so today's class could be
+on page 2 behind a detail page. Instead:
+
+- `Booking::scopeNotEnded()` — for students, "upcoming" means *not yet
+  ended*: a lesson in progress stays on the dashboard hero, at the top
+  of My Bookings and under "Today" until its join window closes
+  (`BookingRepository::upcomingForUser()`; the JSON
+  `StudentBookingController::index` inherits this).
+- `BookingMeetingService::studentJoinStatesFor()` returns a
+  `StudentJoinState` per booking (availability, the SIRI gateway link,
+  passcode, window edges, whether to poll) with the strict lifecycle
+  read done once per call — the list-safe form of `studentJoinUrlFor()`,
+  same predicates. No blade reads `meeting->join_url` or the legacy
+  `bookings.meeting_url` column.
+- `StudentScheduleService::upcoming()` pairs each lesson with its join
+  state and a `today` flag computed in the student's own timezone.
+- `<x-student.join-action :state :booking>` renders the button while
+  the window is open, otherwise "Joining opens at …", "The meeting link
+  is being prepared." or "Joining closed at …" (`compact` for list
+  rows, `showPasscode` on the detail page). It emits `data-join-state`.
+- Surfaces: dashboard hero (labelled "Your lesson now" / "Your lesson
+  today" / "Your next lesson") plus the next four lessons; the "Next up"
+  card pinned above My Bookings whatever the filter or page, plus an
+  inline button on rows inside the window; Upcoming Classes grouped
+  Today / Later; the booking detail page. Each polls (`wire:poll.60s`)
+  only while a listed join state can still change on its own.
 
 - List state (`status`, `per_page`, `page`) lives in the URL, is
   carried on every row link, and is rebuilt from a validated whitelist

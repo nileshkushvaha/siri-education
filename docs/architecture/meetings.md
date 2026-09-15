@@ -204,13 +204,14 @@ Authorization header.
 | Field | Purpose |
 |---|---|
 | `meetings_enabled` | Platform-wide kill switch — off blocks every provider, including Manual |
-| `default_provider` | `manual` \| `google_meet` \| `zoom` — used by the automatic (listener) trigger; an unconfigured selection fails safely (status `failed`), never a silent fallback |
+| `default_provider` | `manual` \| `google_meet` \| `zoom` — used by the automatic (listener) trigger; an unconfigured selection fails safely (status `failed`), never a silent fallback; the only provider switch is the audited Zoom-capacity fallback below |
 | `manual_provider_enabled` | Manual provider's own on/off switch |
 | `create_after_paid_booking_confirmation` / `create_after_demo_booking_confirmation` | Per-kind auto-create toggles |
 | `google_meet_enabled`, `google_calendar_id`, `google_auth_type`, `google_credentials_json` (encrypted), `google_credentials_configured`, `google_config_status`, `google_last_checked_at` | Google Calendar + Meet configuration and readiness |
 | `zoom_enabled`, `zoom_account_id`, `zoom_client_id`, `zoom_client_secret` (encrypted), `zoom_host_user_id`, `zoom_host_email`, `zoom_default_timezone`, `zoom_config_status`, `zoom_last_checked_at` | Zoom Server-to-Server OAuth configuration and readiness |
 | `student_join_url_visible`, `instructor_join_url_visible` | Visibility switches consumed by `StudentBookingResource` (instructor surface pending — see gaps) |
 | `zoom_host_capacity_enabled`, `zoom_host_capacity_buffer_minutes` | Zoom host capacity reservation (ships off) and its turnaround buffer — `docs/meetings.md` §4a |
+| `zoom_capacity_fallback_provider` | null (refuse, default) or `google_meet`: accept a booking on Google Meet when every Zoom host is taken; audited as `meeting_host_capacity_fallback`, admins notified, platform Meet host must join — `docs/meetings.md` §4a |
 
 `default_provider = 'manual'` is **not** an off switch — it is a real,
 working provider. The platform off switch is `meetings_enabled`.

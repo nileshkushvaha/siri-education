@@ -139,26 +139,44 @@ Alternatives, in order of preference if staffing does not scale:
 3. **Embedded classroom** (100ms / Daily / LiveKit): server-side
    recording, no host concept; the SRS's future provider strategy.
 
-### Teacher co-host — deferred (decision 2026-09-05)
+### Teacher co-host (Meet REST API v2 `spaces.members`)
 
-Giving the instructor host controls (admit, mute, remove, end) needs the
-Meet API's space **members** with role `COHOST`. That resource is not in
-Meet REST API v2 (verified live: `/v2/spaces/{space}/members` is a plain
-404); it exists only in `v2beta` under the Workspace Developer Preview
-Program, which is not for production. Decision: wait for general
-availability rather than run a preview API in production. Classes do not
-depend on it — the platform host starts each class and auto-recording
-begins when the host joins.
+Google promoted space **members** to Meet REST API v2 (`POST
+/v2/spaces/{space}/members`, role `COHOST`, scope
+`meetings.space.created` — already in the delegation grant). A co-host
+joins without waiting in the lobby and can admit, mute and remove
+participants; it cannot change the space's auto-recording or
+moderation settings.
 
-Design when it ships: a nullable "Google account for Meet" on the
-instructor profile (defaulting to the registered email), one
-`addCoHost(space, email)` call in `GoogleCalendarMeetProvider` right
-after `createSpace()`, non-fatal on failure (log + continue), and a note
-on the instructor's lesson page to join with that account. Until then a
-person signed in as the platform account can promote a co-host in the
-Meet UI for exceptional cases.
+Implementation, behind `MeetingSettings::google_meet_cohost_enabled`
+(ships off):
 
----
+- `GoogleMeetClient::addCoHost(credentials, subject, space, email)` —
+  `GoogleMeetSdkClient` issues the call directly against the REST
+  endpoint through the same authorised client (google/apiclient-services
+  does not model the resource yet); only the API's status and message
+  are surfaced, never the request or raw response.
+- `GoogleCalendarMeetProvider::lessonSpace()` creates a Meet-API space
+  when the lesson records automatically **or** the co-host feature is
+  on (members exist only on app-created spaces); `coHostOutcome()` adds
+  the instructor right after and stores `metadata.cohost = {status:
+  added|failed, reason?}` on the meeting. The address is never logged.
+  A failure is non-fatal: the lesson keeps its meeting, and
+  `BookingMeetingService` audits `bookings.meeting_cohost_failed`, which
+  the notification pipeline shows as "Instructor Not Added as Meet
+  Co-host" (the instructor will then wait in the lobby).
+- The account used is `user_profiles.google_meet_account` ("Google
+  account for Meet lessons", set on the onboarding Teaching step or the
+  profile page, instructor-only), falling back to the login email.
+
+What it does **not** change: Meet's recording rule. Recording starts
+only while the host, or a co-host from the host's own Workspace
+organisation, is present; an instructor on an outside Google account
+can start and run the class as co-host but may not trigger
+auto-recording. Verify on staging with a real external instructor
+account before relying on it for recorded lessons; until then the
+platform host still joins lessons that must be recorded, and the
+"Host Must Join" notification for Zoom-capacity fallbacks stays.
 
 ## 4. Zoom
 
@@ -365,11 +383,28 @@ was taken, so:
 
 - no capacity → `MeetingHostCapacityException` → the whole transaction
   rolls back: no booking, no hold, no package unit consumed, nothing
-  charged, and **no silent switch to another provider**. The message is
-  safe to show ("No Zoom host is available between … Please choose
-  another time"). A recurring occurrence that hits this is recorded as
-  a series conflict exactly like an instructor clash — never dropped
-  silently;
+  charged. The student-facing message never names the provider ("This
+  time is fully booked on our video platform. Please choose another
+  time."); the technical window lives in `detail()` for audit entries
+  and failure reasons. A recurring occurrence that hits this is
+  recorded as a series conflict exactly like an instructor clash —
+  never dropped silently;
+- **unless `zoom_capacity_fallback_provider` is set** (Meeting settings
+  → "When no Zoom host is free", ships off). With Google Meet chosen,
+  `MeetingHostCapacityService::reserveOrFallback()` pins the booking's
+  `meeting_provider_intent` to `google_meet` instead of refusing it, so
+  confirmation creates a Meet link and no Zoom reservation is held. The
+  same rule applies to a reschedule onto a full hour (only while no Zoom
+  meeting exists yet — a created Zoom meeting keeps refusing, since
+  participants hold its link), to a confirmation that finds no capacity,
+  and to automatic meeting creation. The operator kill switch
+  (`reservationDisabled`) never falls back. Every switch is audited as
+  `bookings.meeting_host_capacity_fallback` and surfaced as the admin
+  notification "Lesson Moved to Google Meet — Host Must Join": a Meet
+  lesson only starts (host admits) and records once the platform Meet
+  host has joined it (§3), so operations must put that host in the
+  call. The settings page refuses the option while Google Meet is not
+  fully configured;
 - a **pending-payment hold** carries `reserved_until` on the
   reservation for visibility, but is released only when the hold is
   actually cancelled (`booking:release-expired` → `cancel()`), exactly

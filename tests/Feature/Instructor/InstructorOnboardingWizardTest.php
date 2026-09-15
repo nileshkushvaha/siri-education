@@ -310,6 +310,30 @@ class InstructorOnboardingWizardTest extends TestCase
         ]);
     }
 
+    public function test_the_google_meet_account_is_saved_normalised_from_the_teaching_step(): void
+    {
+        $user = $this->applicant();
+        [$subject, $level, $language] = $this->masterData();
+
+        Livewire::actingAs($user)
+            ->test(OnboardingWizard::class)
+            ->set('subjectIds', [$subject->id])
+            ->set('academicLevelIds', [$level->id])
+            ->set('teachingLanguageIds', [(string) $language->id])
+            ->set('googleMeetAccount', ' Teach.Meet@Example.test ')
+            ->call('savePreferences')
+            ->assertHasNoErrors();
+
+        $this->assertSame('teach.meet@example.test', $user->fresh()->profile->google_meet_account);
+
+        Livewire::actingAs($user->fresh())
+            ->test(OnboardingWizard::class)
+            ->assertSet('googleMeetAccount', 'teach.meet@example.test')
+            ->set('googleMeetAccount', 'nonsense')
+            ->call('savePreferences')
+            ->assertHasErrors(['googleMeetAccount' => 'email']);
+    }
+
     public function test_saving_a_section_advances_the_wizard_to_the_next_step(): void
     {
         $user = $this->applicant();

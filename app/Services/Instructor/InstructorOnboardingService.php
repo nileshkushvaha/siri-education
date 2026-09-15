@@ -133,6 +133,7 @@ final class InstructorOnboardingService
                 'instructor_teaching_language_ids' => $this->validLanguageIds($data['teaching_language_ids'] ?? $profile->instructor_teaching_language_ids ?? []),
                 'country_id' => $data['country_id'] ?? $profile->country_id,
                 'timezone' => $data['timezone'] ?? $profile->timezone,
+                'google_meet_account' => array_key_exists('google_meet_account', $data) ? $data['google_meet_account'] : $profile->google_meet_account,
             ]);
 
             if (array_key_exists('subject_ids', $data)) {

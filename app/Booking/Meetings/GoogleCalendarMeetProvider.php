@@ -86,6 +86,11 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
      */
     private const string CLOSED_SPACE_ACCESS_TYPE = 'RESTRICTED';
 
+    /** metadata.cohost.status values stored on the meeting. */
+    public const string COHOST_ADDED = 'added';
+
+    public const string COHOST_FAILED = 'failed';
+
     public function __construct(
         private readonly GoogleCalendarClient $client,
         private readonly GoogleMeetClient $meet,
@@ -133,7 +138,12 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
         // down) the lesson still gets a Calendar-created conference,
         // recorded manually as before: a missing auto-record must never
         // cost a lesson its meeting.
-        $space = $this->autoRecordingSpace($booking, $credentials, $subject);
+        // Decided once per creation: both reads touch the database
+        // (student country, instructor profile) and both are needed twice.
+        $autoRecording = $this->shouldAutoRecord($booking);
+        $coHostEmail = $this->coHostEmail($booking);
+
+        $space = $this->lessonSpace($booking, $credentials, $subject, $autoRecording, $coHostEmail !== null);
         $payload = $this->eventPayload($booking, $context, $requestId, $space);
 
         try {
@@ -163,10 +173,63 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
         }
 
         if ($space !== null) {
-            return $this->resultFromSpace($booking, $space, $event);
+            $coHost = $coHostEmail !== null ? $this->coHostOutcome($booking, $space, $credentials, $subject, $coHostEmail) : null;
+
+            return $this->resultFromSpace($booking, $space, $event, $autoRecording, $coHost);
         }
 
         return $this->resultFromEvent($booking->starts_at, $booking->ends_at, $booking->timezone, $event);
+    }
+
+    /**
+     * The Google account the instructor joins with: the profile's "Google
+     * account for Meet" when set, otherwise the login email. Null when
+     * the co-host feature is off, the booking has no instructor, or the
+     * address is unusable — a co-host is then simply not attempted.
+     */
+    private function coHostEmail(Booking $booking): ?string
+    {
+        if (! $this->settings->google_meet_cohost_enabled) {
+            return null;
+        }
+
+        $instructor = $booking->instructor;
+
+        if ($instructor === null) {
+            return null;
+        }
+
+        // Both stored normalised (UserProfile::googleMeetAccount(), User::email()).
+        $email = (string) ($instructor->profile?->google_meet_account ?: $instructor->email);
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+    }
+
+    /**
+     * Adds the instructor as COHOST on the lesson's space. Never fatal:
+     * the meeting exists whatever happens here, and the outcome travels
+     * in the meeting's metadata so BookingMeetingService can record a
+     * failure for administrators. The address is never logged.
+     *
+     * @param  array{name: string, meetingCode: string, meetingUri: string}  $space
+     * @return array{status: string, reason?: string}
+     */
+    private function coHostOutcome(Booking $booking, array $space, string $credentials, string $subject, string $email): array
+    {
+        try {
+            $this->meet->addCoHost($credentials, $subject, $space['name'], $email);
+
+            return ['status' => self::COHOST_ADDED];
+        } catch (Throwable $e) {
+            $reason = $this->sanitize($e->getMessage());
+
+            Log::warning('Google Meet co-host could not be added; the lesson keeps its meeting without a co-host.', [
+                'booking_id' => $booking->id,
+                'reason' => $reason,
+            ]);
+
+            return ['status' => self::COHOST_FAILED, 'reason' => Str::limit($reason, 300)];
+        }
     }
 
     /**
@@ -186,10 +249,18 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
         return $student !== null && $this->availability->isAvailable($this->countries->forStudent($student));
     }
 
-    /** @return array{name: string, meetingCode: string, meetingUri: string}|null */
-    private function autoRecordingSpace(Booking $booking, string $credentials, string $subject): ?array
+    /**
+     * A Meet-API-created space, when the lesson needs one: to record
+     * automatically, and/or to carry the instructor as co-host (members
+     * can only be managed on spaces the app created itself). Neither
+     * need is worth a lesson: on failure the lesson gets a
+     * Calendar-created conference as before.
+     *
+     * @return array{name: string, meetingCode: string, meetingUri: string}|null
+     */
+    private function lessonSpace(Booking $booking, string $credentials, string $subject, bool $autoRecording, bool $withCoHost): ?array
     {
-        if (! $this->shouldAutoRecord($booking)) {
+        if (! $autoRecording && ! $withCoHost) {
             return null;
         }
 
@@ -197,11 +268,11 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
             return $this->meet->createSpace(
                 $credentials,
                 $subject,
-                autoRecording: true,
+                autoRecording: $autoRecording,
                 access: GoogleMeetSpaceAccess::fromSetting($this->settings->google_meet_space_access),
             );
         } catch (Throwable $e) {
-            Log::warning('Google Meet auto-recording space could not be created; falling back to a Calendar-created conference (manual Record).', [
+            Log::warning('Google Meet space could not be created; falling back to a Calendar-created conference (manual Record, no co-host).', [
                 'booking_id' => $booking->id,
                 'reason' => $this->sanitize($e->getMessage()),
             ]);
@@ -218,8 +289,9 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
      *
      * @param  array{name: string, meetingCode: string, meetingUri: string}  $space
      * @param  array{id: string, hangoutLink: ?string, conferenceData: array<string, mixed>}  $event
+     * @param  array{status: string, reason?: string}|null  $coHost
      */
-    private function resultFromSpace(Booking $booking, array $space, array $event): MeetingCreationResult
+    private function resultFromSpace(Booking $booking, array $space, array $event, bool $autoRecording, ?array $coHost): MeetingCreationResult
     {
         return new MeetingCreationResult(
             provider: self::KEY,
@@ -232,7 +304,12 @@ final class GoogleCalendarMeetProvider implements DiscoversRecordingArtifacts, E
             endsAt: $booking->ends_at,
             timezone: $booking->timezone,
             status: MeetingStatus::Created,
-            metadata: ['conference_status' => 'success', 'auto_recording' => true, 'space' => $space['name']],
+            metadata: [
+                'conference_status' => 'success',
+                'auto_recording' => $autoRecording,
+                'space' => $space['name'],
+                ...($coHost !== null ? ['cohost' => $coHost] : []),
+            ],
         );
     }
 

@@ -321,6 +321,28 @@ final class NotificationMapper
                 'priority' => 3,
             ],
 
+            // Every Zoom host was taken, so the booking was accepted on
+            // Google Meet instead. A Meet lesson only starts and records
+            // once the platform Meet host has joined — someone has to be
+            // in that call at lesson time.
+            // The instructor could not be made co-host of a Meet lesson:
+            // they will wait in the lobby until the platform host admits them.
+            $log === 'bookings' && $event === 'meeting_cohost_failed' => [
+                'title' => 'Instructor Not Added as Meet Co-host',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-video-camera',
+                'color' => 'warning',
+                'priority' => 3,
+            ],
+
+            $log === 'bookings' && $event === 'meeting_host_capacity_fallback' => [
+                'title' => 'Lesson Moved to Google Meet — Host Must Join',
+                'actor_label' => null,
+                'icon' => 'heroicon-o-video-camera',
+                'color' => 'warning',
+                'priority' => 3,
+            ],
+
             // ── Lessons — only the outcomes needing admin
             //     attention map here. lesson_completed stays silent: the
             //     booking sync already raises "Booking Completed" for the

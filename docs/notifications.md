@@ -81,6 +81,8 @@ This table is generated from `NotificationMapper::map()`'s match arms — if you
 | Booking lifecycle | `bookings.booking_completed` | Booking Completed | success |
 | Meetings | `bookings.meeting_creation_failed` | Meeting Creation Failed | danger |
 | Meetings | `bookings.meeting_cancellation_failed` | Meeting Cancellation Failed | danger |
+| Meetings | `bookings.meeting_host_capacity_fallback` | Lesson Moved to Google Meet — Host Must Join | warning |
+| Meetings | `bookings.meeting_cohost_failed` | Instructor Not Added as Meet Co-host | warning |
 | Lessons | `lessons.lesson_no_show` | Lesson No-Show | warning |
 | Lessons | `lessons.lesson_disputed` | Lesson Disputed | danger |
 | Payments | `payments.payment_late_terminal_manual_resolution` | Payment Needs Manual Resolution | danger |

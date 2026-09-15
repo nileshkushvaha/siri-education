@@ -179,6 +179,18 @@ class MeetingSettings extends Settings
     public string $google_meet_space_access;
 
     /**
+     * Add the instructor's Google account as COHOST on every lesson space
+     * created through the Meet API (Meet REST API v2 spaces.members).
+     * The instructor then joins without the lobby and can admit and
+     * manage participants. Ships OFF. Failure to add the co-host never
+     * costs a lesson its meeting — it is recorded on the meeting and
+     * surfaced to administrators. Recording still follows Meet's own
+     * rule (the host, or a co-host from the host's organisation, must be
+     * present) — see docs/meetings.md §3.
+     */
+    public bool $google_meet_cohost_enabled;
+
+    /**
      * The Zoom counterpart of google_meet_recording_enabled. Ships OFF:
      * needs a licensed Zoom account with cloud recording, a webhook
      * subscription, and the account privacy settings that keep hosts
@@ -211,6 +223,16 @@ class MeetingSettings extends Settings
 
     /** Operational buffer, in minutes, added on both sides of a host's occupied interval. */
     public int $zoom_host_capacity_buffer_minutes;
+
+    /**
+     * When no Zoom host has room for a booking's window: null refuses
+     * the booking (the default); 'google_meet' accepts it on Google Meet
+     * instead. Every such switch is audited as
+     * meeting_host_capacity_fallback and surfaced to administrators,
+     * because a Meet lesson only starts and records once the platform
+     * Meet host has joined it.
+     */
+    public ?string $zoom_capacity_fallback_provider;
 
     /**
      * Google Drive folder that owns the recording hierarchy

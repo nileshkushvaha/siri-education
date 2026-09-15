@@ -28,6 +28,7 @@ use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\MeetingHostCapacityException;
 use App\Booking\Exceptions\MeetingProviderSwitchNotSupportedException;
 use App\Booking\Jobs\CaptureLessonRecordingJob;
+use App\Booking\Meetings\GoogleCalendarMeetProvider;
 use App\Booking\Meetings\ManualMeetingProvider;
 use App\Enums\InstructorStatus;
 use App\Exceptions\Student\StudentActionNotAvailableException;
@@ -171,7 +172,7 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
         $previousStatus = $existing?->status;
         $previousJoinUrl = $existing?->join_url;
 
-        $meeting = DB::transaction(function () use ($booking, $existing, $provider): BookingMeeting {
+        $meeting = DB::transaction(function () use ($booking, $existing, $providerKey, &$provider): BookingMeeting {
             $context = new MeetingCreationContext(requestedBy: Auth::id());
             $hostId = null;
 
@@ -189,14 +190,29 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
                         requiredHostId: $existing?->provider === $provider->key() ? $existing->platform_meeting_host_id : null,
                     );
                 } catch (MeetingHostCapacityException $e) {
-                    return $this->persistFailure($booking, $provider->key(), $e->getMessage());
+                    // On the automatic path a configured fallback provider
+                    // takes the lesson instead of a failed row; an explicit
+                    // admin choice of Zoom still fails clearly.
+                    if ($providerKey !== null || ! $this->hostCapacity->fallBack($booking, $e, 'meeting_creation')) {
+                        return $this->persistFailure($booking, $provider->key(), $e->detail());
+                    }
+
+                    try {
+                        $provider = $this->providers->resolve((string) $booking->meeting_provider_intent);
+                    } catch (BookingException $resolveFailure) {
+                        return $this->persistFailure($booking, (string) $booking->meeting_provider_intent, $resolveFailure->getMessage());
+                    }
+
+                    $reservation = null;
                 }
 
-                $hostId = $reservation->platform_meeting_host_id;
-                $context = new MeetingCreationContext(
-                    requestedBy: $context->requestedBy,
-                    hostReference: $reservation->host->host_reference,
-                );
+                if ($reservation !== null) {
+                    $hostId = $reservation->platform_meeting_host_id;
+                    $context = new MeetingCreationContext(
+                        requestedBy: $context->requestedBy,
+                        hostReference: $reservation->host->host_reference,
+                    );
+                }
             }
 
             try {
@@ -242,9 +258,34 @@ final class BookingMeetingService implements BookingMeetingServiceInterface
 
         if ($meeting->status === MeetingStatus::Created) {
             $this->registerRecordingIfEligible($booking, $meeting, $provider);
+            $this->auditCoHostFailure($booking, $meeting);
         }
 
         return $meeting;
+    }
+
+    /**
+     * The provider adds the instructor as Meet co-host non-fatally and
+     * reports the outcome in the meeting's metadata; a failure is what
+     * administrators need to know about (the instructor will wait in the
+     * lobby until the platform host admits them), so it becomes an audit
+     * entry the notification pipeline picks up.
+     */
+    private function auditCoHostFailure(Booking $booking, BookingMeeting $meeting): void
+    {
+        $coHost = $meeting->metadata['cohost'] ?? null;
+
+        if (! is_array($coHost) || ($coHost['status'] ?? null) !== GoogleCalendarMeetProvider::COHOST_FAILED) {
+            return;
+        }
+
+        $this->audit->logSystem(
+            'bookings',
+            'meeting_cohost_failed',
+            sprintf('The instructor could not be added as Meet co-host for booking %s: %s', $booking->reference, (string) ($coHost['reason'] ?? 'unknown reason')),
+            $booking,
+            ['provider' => $meeting->provider, 'reason' => $coHost['reason'] ?? null],
+        );
     }
 
     /**

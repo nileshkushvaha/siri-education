@@ -68,6 +68,12 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
 
     private const REQUESTED_SCOPES = [Meet::MEETINGS_SPACE_READONLY, Meet::MEETINGS_SPACE_CREATED, Meet::MEETINGS_SPACE_SETTINGS];
 
+    /** Meet REST API origin, used only for the members call the SDK does not model yet. */
+    private const string MEET_API_BASE = 'https://meet.googleapis.com';
+
+    /** Member role that co-manages the conference (admit, mute, remove); cannot change artifact or moderation settings. */
+    private const string COHOST_ROLE = 'COHOST';
+
     /** The scope set of the token most recently minted — for credential-free diagnostics only. */
     private array $activeScopes = self::READ_SCOPES;
 
@@ -293,6 +299,12 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
     /** @param  list<string>|null  $scopes  defaults to the read-only scope */
     private function service(string $credentialsJson, string $delegatedSubject, ?array $scopes = null): Meet
     {
+        return new Meet($this->authorizedClient($credentialsJson, $delegatedSubject, $scopes));
+    }
+
+    /** @param  list<string>|null  $scopes  defaults to the read-only scope */
+    private function authorizedClient(string $credentialsJson, string $delegatedSubject, ?array $scopes = null): Client
+    {
         $scopes ??= self::READ_SCOPES;
         $this->activeScopes = $scopes;
         $decoded = json_decode($credentialsJson, true, flags: JSON_THROW_ON_ERROR);
@@ -305,7 +317,77 @@ final class GoogleMeetSdkClient implements GoogleMeetClient
 
         $this->assertTokenAcquired($client, $decoded, $delegatedSubject);
 
-        return new Meet($client);
+        return $client;
+    }
+
+    /**
+     * spaces.members.create is not yet modelled by google/apiclient-services
+     * (no Member resource ships in the package), so this is the one call
+     * made against the REST endpoint directly — through the same
+     * authorised client, same scopes, same delegated subject — rather
+     * than a second HTTP stack. Move it onto the generated resource once
+     * the package gains it.
+     */
+    public function addCoHost(string $credentialsJson, string $delegatedSubject, string $spaceName, string $email): string
+    {
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new GatewayRequestException('The co-host email address is not valid.');
+        }
+
+        if (! preg_match('#^spaces/[A-Za-z0-9_-]+$#', $spaceName)) {
+            throw new GatewayRequestException('The Meet space name is not valid.');
+        }
+
+        try {
+            $http = $this->authorizedClient($credentialsJson, $delegatedSubject, self::SPACE_SCOPES)->authorize();
+
+            $response = $http->request('POST', self::MEET_API_BASE.'/v2/'.$spaceName.'/members', [
+                'json' => ['user' => ['email' => $email], 'role' => self::COHOST_ROLE],
+                'headers' => ['Accept' => 'application/json'],
+            ]);
+
+            $body = json_decode((string) $response->getBody(), true);
+            $name = is_array($body) ? (string) ($body['name'] ?? '') : '';
+
+            if ($name === '') {
+                throw new GatewayRequestException('Google Meet returned an incomplete member (missing resource name).');
+            }
+
+            return $name;
+        } catch (GatewayRequestException $e) {
+            throw $e;
+        } catch (RequestException $e) {
+            throw $this->translateMemberFailure($e, $delegatedSubject);
+        } catch (Throwable $e) {
+            throw new GatewayRequestException($e->getMessage(), previous: $e);
+        }
+    }
+
+    /**
+     * Only the API's own error status and message are surfaced — never
+     * the request (bearer token) and never the raw response.
+     */
+    private function translateMemberFailure(RequestException $e, string $delegatedSubject): GatewayRequestException
+    {
+        $status = $e->hasResponse() ? $e->getResponse()->getStatusCode() : 0;
+        $message = 'Google Meet refused the co-host request';
+
+        if ($e->hasResponse()) {
+            $body = json_decode((string) $e->getResponse()->getBody(), true);
+            $apiMessage = is_array($body) ? ($body['error']['message'] ?? null) : null;
+
+            if (is_string($apiMessage) && $apiMessage !== '') {
+                $message .= ': '.$apiMessage;
+            }
+        }
+
+        if ($status === 403) {
+            $message .= sprintf(' (HTTP 403 — check that %s holds the meetings.space.created scope in the Workspace delegation grant and that the account may manage members).', $delegatedSubject);
+        } elseif ($status !== 0) {
+            $message .= sprintf(' (HTTP %d).', $status);
+        }
+
+        return new GatewayRequestException($message, previous: $e);
     }
 
     /** @param  array<string, mixed>  $decodedCredentials */

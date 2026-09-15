@@ -130,4 +130,19 @@ interface GoogleMeetClient
      * @throws GatewayRequestException
      */
     public function restrictSpaceAccess(string $credentialsJson, string $delegatedSubject, string $spaceName, string $accessType): void;
+
+    /**
+     * Adds a Google account as COHOST member of a space (Meet REST API
+     * v2 spaces.members.create), so that person joins without the lobby
+     * and can admit and manage participants. Requires the
+     * meetings.space.created scope. Only works on a space this app
+     * created through the Meet API. The caller must treat a failure as
+     * "the lesson still has its meeting, only without a co-host".
+     *
+     * @param  string  $spaceName  "spaces/{space}", as returned by createSpace()
+     * @return string the member resource name ("spaces/{space}/members/{member}")
+     *
+     * @throws GatewayRequestException
+     */
+    public function addCoHost(string $credentialsJson, string $delegatedSubject, string $spaceName, string $email): string;
 }

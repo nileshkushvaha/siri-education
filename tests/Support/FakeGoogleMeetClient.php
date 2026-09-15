@@ -54,6 +54,24 @@ final class FakeGoogleMeetClient implements GoogleMeetClient
 
     public ?GatewayRequestException $throwOnRestrictSpaceAccess = null;
 
+    /** @var list<array{space: string, email: string}> co-hosts added, in order */
+    public array $coHostsAdded = [];
+
+    public ?GatewayRequestException $throwOnAddCoHost = null;
+
+    public function addCoHost(string $credentialsJson, string $delegatedSubject, string $spaceName, string $email): string
+    {
+        $this->calls[] = 'addCoHost';
+
+        if ($this->throwOnAddCoHost !== null) {
+            throw $this->throwOnAddCoHost;
+        }
+
+        $this->coHostsAdded[] = ['space' => $spaceName, 'email' => $email];
+
+        return $spaceName.'/members/fake-'.count($this->coHostsAdded);
+    }
+
     public function requestedScopes(): array
     {
         return ['https://www.googleapis.com/auth/meetings.space.readonly', 'https://www.googleapis.com/auth/meetings.space.created', 'https://www.googleapis.com/auth/meetings.space.settings'];

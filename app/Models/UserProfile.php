@@ -71,6 +71,7 @@ class UserProfile extends Model implements HasMedia
         'instructor_status',
         'instructor_academic_level_ids',
         'instructor_teaching_language_ids',
+        'google_meet_account',
         'instructor_application_started_at',
         'instructor_application_submitted_at',
         'instructor_reviewed_at',
@@ -210,6 +211,18 @@ class UserProfile extends Model implements HasMedia
 
         $this->addThumbConversion('avatar');
         $this->addDisplayConversion('cover');
+    }
+
+    /**
+     * The Google account an instructor joins Meet lessons with (co-host).
+     * Normalised once here — trimmed, lower-cased, blank → null — so the
+     * wizard, the profile form and the Meet provider never each re-do it.
+     */
+    public function googleMeetAccount(): Attribute
+    {
+        return Attribute::make(
+            set: static fn (?string $value): ?string => blank($value) ? null : mb_strtolower(trim((string) $value)),
+        );
     }
 
     public function avatarUrl(): Attribute

@@ -65,6 +65,7 @@ final class UpdateProfileAction
                 'headline' => array_key_exists('headline', $data) ? ($data['headline'] ?? null) : $profile->headline,
                 'short_bio' => array_key_exists('short_bio', $data) ? ($data['short_bio'] ?? null) : $profile->short_bio,
                 'bio' => array_key_exists('bio', $data) ? ($data['bio'] ?? null) : $profile->bio,
+                'google_meet_account' => array_key_exists('google_meet_account', $data) ? ($data['google_meet_account'] ?? null) : $profile->google_meet_account,
                 'phone' => array_key_exists('phone', $data) ? ($data['phone'] ?? null) : $profile->phone,
                 'phone_country_iso2' => array_key_exists('phone_country_iso2', $data) ? $data['phone_country_iso2'] : $profile->phone_country_iso2,
                 'phone_dial_code' => array_key_exists('phone_dial_code', $data) ? $data['phone_dial_code'] : $profile->phone_dial_code,

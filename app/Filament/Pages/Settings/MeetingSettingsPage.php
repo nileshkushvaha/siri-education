@@ -6,6 +6,7 @@ namespace App\Filament\Pages\Settings;
 
 use App\Booking\Contracts\EndsActiveMeetings;
 use App\Booking\Enums\GoogleMeetSpaceAccess;
+use App\Booking\Meetings\GoogleCalendarMeetProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
 use App\Booking\Registry\MeetingProviderRegistry;
 use App\Booking\Services\GoogleCalendarConfigurationService;
@@ -114,6 +115,7 @@ class MeetingSettingsPage extends Page
             'google_meet_enabled' => $meeting->google_meet_enabled,
             'google_meet_recording_enabled' => $meeting->google_meet_recording_enabled,
             'google_meet_space_access' => GoogleMeetSpaceAccess::fromSetting($meeting->google_meet_space_access)->value,
+            'google_meet_cohost_enabled' => $meeting->google_meet_cohost_enabled,
             'google_auth_type' => $meeting->google_auth_type,
             'google_calendar_id' => $meeting->google_calendar_id,
             'recording_drive_root_folder_id' => $meeting->recording_drive_root_folder_id,
@@ -133,6 +135,7 @@ class MeetingSettingsPage extends Page
             'zoom_default_timezone' => $meeting->zoom_default_timezone,
             'zoom_host_capacity_enabled' => $meeting->zoom_host_capacity_enabled,
             'zoom_host_capacity_buffer_minutes' => $meeting->zoom_host_capacity_buffer_minutes,
+            'zoom_capacity_fallback_provider' => $meeting->zoom_capacity_fallback_provider,
             'zoom_recording_enabled' => $meeting->zoom_recording_enabled,
             'zoom_recording_webhooks_enabled' => $meeting->zoom_recording_webhooks_enabled,
             'zoom_webhook_secret' => null,
@@ -345,6 +348,9 @@ class MeetingSettingsPage extends Page
                         ->required()
                         ->native(false)
                         ->helperText('Google records only while the host is present. Applies to new lessons.'),
+                    Toggle::make('google_meet_cohost_enabled')
+                        ->label('Make the instructor a Meet co-host')
+                        ->helperText('Adds the instructor\'s Google account (profile setting, or their login email) as co-host of each new lesson space, so they join without the lobby and can admit students. Needs the "meetings.space.created" scope, which is already granted. Applies to new lessons.'),
                     Select::make('google_auth_type')
                         ->label('Authentication')
                         ->options(['service_account' => 'Service Account', 'oauth_user' => 'OAuth User (coming later)'])
@@ -419,6 +425,13 @@ class MeetingSettingsPage extends Page
                         ->helperText('Each Zoom booking reserves the host for its lesson window and is refused when the host is taken. Register the host and run the preflight first.'),
                     $this->integerInput('zoom_host_capacity_buffer_minutes', 'Host buffer (minutes)', 0, 120)
                         ->helperText('Extra time kept free on the host before and after each lesson.'),
+                    Select::make('zoom_capacity_fallback_provider')
+                        ->label('When no Zoom host is free')
+                        ->options([GoogleCalendarMeetProvider::KEY => 'Book the lesson on Google Meet'])
+                        ->placeholder('Refuse the booking')
+                        ->nullable()
+                        ->native(false)
+                        ->helperText('With Google Meet chosen, a booking that finds every Zoom host taken is accepted on Google Meet instead. Each such lesson is audited and administrators are notified, because a Google Meet lesson only starts and records once the platform Meet host has joined it.'),
                     Toggle::make('zoom_recording_enabled')
                         ->label('Fetch Zoom recordings')
                         ->helperText('Needs a licensed Zoom account with cloud recording. Copies are stored in Recording Storage above.'),
@@ -632,6 +645,27 @@ class MeetingSettingsPage extends Page
             return true;
         }
 
+        // Google Meet may only take over full Zoom hours when it can
+        // actually create meetings — judged on the SUBMITTED Google fields,
+        // since the same save may be the one that configures it.
+        if ($this->nullableString($data, 'zoom_capacity_fallback_provider') === GoogleCalendarMeetProvider::KEY) {
+            $meetReady = $this->bool($data, 'google_meet_enabled')
+                && ($data['google_auth_type'] ?? null) === 'service_account'
+                && filled($data['google_calendar_id'] ?? null)
+                && filled($data['platform_meeting_account'] ?? null)
+                && (filled($data['google_credentials_json'] ?? null) || filled(app(MeetingSettings::class)->google_credentials_json));
+
+            if (! $meetReady) {
+                Notification::make()
+                    ->title('Meeting settings not saved')
+                    ->body('Google Meet cannot take over full Zoom hours until it is fully configured: enable Google Meet, use a service account with its JSON key, and set the calendar ID and platform meeting account. Choose "Refuse the booking" or complete the Google Meet setup first.')
+                    ->danger()
+                    ->send();
+
+                return true;
+            }
+        }
+
         if ($capacityOn && ! app(MeetingSettings::class)->zoom_host_capacity_enabled) {
             $report = app(ZoomHostCapacityPreflightService::class)->report();
 
@@ -678,6 +712,7 @@ class MeetingSettingsPage extends Page
         $settings->google_meet_enabled = $this->bool($data, 'google_meet_enabled');
         $settings->google_meet_recording_enabled = $this->bool($data, 'google_meet_recording_enabled');
         $settings->google_meet_space_access = GoogleMeetSpaceAccess::fromSetting($data['google_meet_space_access'] ?? null)->value;
+        $settings->google_meet_cohost_enabled = $this->bool($data, 'google_meet_cohost_enabled');
         $settings->google_auth_type = $data['google_auth_type'];
         $settings->google_calendar_id = $this->nullableString($data, 'google_calendar_id');
         $settings->recording_drive_root_folder_id = $this->nullableString($data, 'recording_drive_root_folder_id');
@@ -703,6 +738,7 @@ class MeetingSettingsPage extends Page
         $settings->zoom_default_timezone = $this->nullableString($data, 'zoom_default_timezone');
         $settings->zoom_host_capacity_enabled = $this->bool($data, 'zoom_host_capacity_enabled');
         $settings->zoom_host_capacity_buffer_minutes = (int) ($data['zoom_host_capacity_buffer_minutes'] ?? 5);
+        $settings->zoom_capacity_fallback_provider = $this->nullableString($data, 'zoom_capacity_fallback_provider');
 
         // A provider that cannot create meetings cannot record them: the
         // recording switches are only ever stored on alongside Zoom itself.

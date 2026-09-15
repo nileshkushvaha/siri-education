@@ -7,7 +7,9 @@ namespace App\Booking\Services;
 use App\Booking\Enums\BookingLocationType;
 use App\Booking\Enums\MeetingHostReservationStatus;
 use App\Booking\Enums\MeetingStatus;
+use App\Booking\Exceptions\BookingException;
 use App\Booking\Exceptions\MeetingHostCapacityException;
+use App\Booking\Meetings\GoogleCalendarMeetProvider;
 use App\Booking\Meetings\ZoomMeetingProvider;
 use App\Booking\Repositories\MeetingHostReservationRepository;
 use App\Models\Booking;
@@ -88,6 +90,7 @@ final class MeetingHostCapacityService
         private readonly MeetingHostReservationRepository $reservations,
         private readonly MeetingSettings $settings,
         private readonly AuditTrailService $audit,
+        private readonly MeetingProviderResolver $providers,
     ) {}
 
     // ── Policy ────────────────────────────────────────────────────────
@@ -215,6 +218,106 @@ final class MeetingHostCapacityService
     }
 
     /**
+     * The provider that takes a Zoom-bound booking when no Zoom host has
+     * room — MeetingSettings::zoom_capacity_fallback_provider, but only
+     * while that provider can actually create meetings right now (enabled
+     * and configured). Null means "refuse, as before". Evaluated on the
+     * failure path only.
+     */
+    public function fallbackProvider(): ?string
+    {
+        $key = $this->settings->zoom_capacity_fallback_provider;
+
+        if (blank($key) || $key === ZoomMeetingProvider::KEY) {
+            return null;
+        }
+
+        try {
+            $this->providers->resolve($key);
+        } catch (BookingException) {
+            return null;
+        }
+
+        return $key;
+    }
+
+    /**
+     * reserve(), except that when no Zoom host has room and a fallback
+     * provider is configured, the booking is pinned to that provider
+     * instead of being refused. Returns the fallback key when that
+     * happened, null when a Zoom reservation was taken.
+     *
+     * @throws MeetingHostCapacityException when refused and no fallback applies
+     */
+    public function reserveOrFallback(Booking $booking, ?CarbonImmutable $expiresAt = null): ?string
+    {
+        try {
+            $this->reserve($booking, $expiresAt);
+
+            return null;
+        } catch (MeetingHostCapacityException $e) {
+            if (! $this->fallBack($booking, $e, 'acceptance')) {
+                throw $e;
+            }
+
+            return $booking->meeting_provider_intent;
+        }
+    }
+
+    /**
+     * Pins the booking to the fallback provider, when the failure allows
+     * it (never for the operator kill switch, never when a Zoom meeting
+     * already lives on a host) and one is configured. Audited as
+     * meeting_host_capacity_fallback — the entry administrators are
+     * notified from, because a Google Meet lesson only starts and
+     * records once the platform Meet host has joined it.
+     */
+    public function fallBack(Booking $booking, MeetingHostCapacityException $failure, string $stage): bool
+    {
+        if (! $failure->mayFallBack) {
+            return false;
+        }
+
+        $fallback = $this->fallbackProvider();
+
+        if ($fallback === null) {
+            return false;
+        }
+
+        $this->assertInTransaction();
+
+        [$from, $until] = $this->occupiedInterval($booking->starts_at, $booking->ends_at);
+        $label = $fallback === GoogleCalendarMeetProvider::KEY ? 'Google Meet' : $fallback;
+
+        $booking->forceFill(['meeting_provider_intent' => $fallback])->save();
+
+        $this->audit->logSystem(
+            'bookings',
+            'meeting_host_capacity_fallback',
+            sprintf(
+                'Zoom hosts were full for booking %s (%s to %s UTC); the lesson will run on %s instead. The platform Meet host must join this lesson for it to start and record.',
+                $booking->reference,
+                $from->format('Y-m-d H:i'),
+                $until->format('Y-m-d H:i'),
+                $label,
+            ),
+            $booking,
+            [
+                'from' => ZoomMeetingProvider::KEY,
+                'to' => $fallback,
+                'stage' => $stage,
+                'lesson_starts_at' => $booking->starts_at->utc()->toIso8601String(),
+                'lesson_ends_at' => $booking->ends_at->utc()->toIso8601String(),
+                'occupies_from' => $from->toIso8601String(),
+                'occupies_until' => $until->toIso8601String(),
+                'reason' => $failure->detail(),
+            ],
+        );
+
+        return true;
+    }
+
+    /**
      * The booking's active reservation, creating one if it has none —
      * the guard meeting creation runs before it talks to the provider.
      * A booking accepted before the feature was enabled (or before its
@@ -276,6 +379,13 @@ final class MeetingHostCapacityService
         try {
             return $this->reserve($booking);
         } catch (MeetingHostCapacityException $e) {
+            // Money has moved; if a fallback provider is configured the
+            // lesson simply runs there, and meeting creation follows the
+            // re-pinned intent.
+            if ($this->fallBack($booking, $e, 'confirmation')) {
+                return null;
+            }
+
             Log::warning('Booking confirmed without Zoom host capacity', [
                 'booking_id' => $booking->id,
                 'reason' => $e->getMessage(),
@@ -329,14 +439,30 @@ final class MeetingHostCapacityService
         // Acquire first: the overlap count ignores this booking's own
         // (still active) reservation, so the check is exactly "would
         // the new interval fit if the old one were gone".
-        $host = $this->chooseHost(
-            $provider,
-            $from,
-            $until,
-            $booking->id,
-            $requiredHostId,
-            $current?->platform_meeting_host_id,
-        );
+        try {
+            $host = $this->chooseHost(
+                $provider,
+                $from,
+                $until,
+                $booking->id,
+                $requiredHostId,
+                $current?->platform_meeting_host_id,
+            );
+        } catch (MeetingHostCapacityException $e) {
+            // No Zoom meeting exists yet, so nothing binds this lesson to
+            // Zoom: with a fallback configured it moves to that provider
+            // and gives its Zoom slot back. A created Zoom meeting keeps
+            // refusing — participants already hold its link.
+            if ($requiredHostId === null && $this->fallBack($booking, $e, 'reschedule')) {
+                if ($current !== null) {
+                    $this->reservations->release($current, self::RELEASE_RESCHEDULED);
+                }
+
+                return null;
+            }
+
+            throw $e;
+        }
 
         if ($current !== null) {
             $this->reservations->release($current, self::RELEASE_RESCHEDULED);

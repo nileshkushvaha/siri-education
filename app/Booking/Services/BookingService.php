@@ -211,18 +211,31 @@ final class BookingService implements BookingServiceInterface
                 // instructor's availability passed: a Zoom-bound booking
                 // — demo, paid hold, package-funded, recurring occurrence
                 // alike — claims its host now or does not exist at all.
-                // Exhausted capacity throws MeetingHostCapacityException,
-                // the whole transaction rolls back, nothing is charged and
-                // no other provider is substituted. A pending-payment hold
-                // carries the hold's expiry; it is released when the hold
-                // is cancelled, exactly like the instructor's slot.
+                // Exhausted capacity throws MeetingHostCapacityException
+                // and the whole transaction rolls back with nothing
+                // charged — unless the operator configured a fallback
+                // provider, in which case the booking is pinned to it
+                // (audited) and accepted without a Zoom reservation. A
+                // pending-payment hold carries the hold's expiry; it is
+                // released when the hold is cancelled, exactly like the
+                // instructor's slot.
+                $fallbackProvider = null;
+
                 if ($this->hostCapacity->appliesTo($providerIntent)) {
-                    $this->hostCapacity->reserve($booking, expiresAt: $booking->reserved_until);
+                    $fallbackProvider = $this->hostCapacity->reserveOrFallback($booking, expiresAt: $booking->reserved_until);
                 }
 
                 [$actorType, $actorId] = $this->actorFor($booking);
 
-                $this->bookings->logActivity($booking, BookingActivityAction::Requested, $actorType, $actorId, null, $status);
+                $this->bookings->logActivity(
+                    $booking,
+                    BookingActivityAction::Requested,
+                    $actorType,
+                    $actorId,
+                    null,
+                    $status,
+                    $fallbackProvider !== null ? ['meeting_provider_fallback' => $fallbackProvider] : [],
+                );
 
                 if ($autoConfirm) {
                     $this->bookings->logActivity($booking, BookingActivityAction::Confirmed, BookingActor::System, null, BookingStatus::Pending, BookingStatus::Confirmed, ['auto_confirmed' => true]);

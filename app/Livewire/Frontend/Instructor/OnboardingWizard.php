@@ -63,6 +63,9 @@ final class OnboardingWizard extends Component
 
     public ?string $timezone = null;
 
+    /** The Google account the instructor joins Meet lessons with (co-host); empty = login email. */
+    public ?string $googleMeetAccount = null;
+
     public array $educationForm = [
         'id' => null,
         'institution_name' => '',
@@ -242,6 +245,9 @@ final class OnboardingWizard extends Component
         }
 
         $onboarding = app(InstructorOnboardingService::class);
+        // Livewire hands the value over untrimmed; an address with stray
+        // spaces must not fail the email rule.
+        $this->googleMeetAccount = blank($this->googleMeetAccount) ? null : trim((string) $this->googleMeetAccount);
 
         $data = $this->validate([
             'subjectIds' => ['required', 'array', 'min:1'],
@@ -252,6 +258,7 @@ final class OnboardingWizard extends Component
             'teachingLanguageIds.*' => [Rule::in(array_map('strval', array_column($this->languages, 'id')))],
             'countryId' => ['nullable', 'integer', Rule::in(array_column($this->countries, 'id'))],
             'timezone' => ['nullable', 'string', 'timezone:all'],
+            'googleMeetAccount' => ['nullable', 'string', 'email:rfc', 'max:255'],
         ]);
 
         $onboarding->updateProfile(auth()->user(), [
@@ -260,6 +267,7 @@ final class OnboardingWizard extends Component
             'teaching_language_ids' => $data['teachingLanguageIds'],
             'country_id' => $data['countryId'],
             'timezone' => $data['timezone'],
+            'google_meet_account' => $data['googleMeetAccount'],
         ]);
 
         $this->refreshState();
@@ -506,6 +514,7 @@ final class OnboardingWizard extends Component
         $this->teachingLanguageIds = array_map('strval', array_values(array_filter($profile?->instructor_teaching_language_ids ?? [])));
         $this->countryId = $profile?->country_id;
         $this->timezone = $profile?->timezone;
+        $this->googleMeetAccount = $profile?->google_meet_account;
     }
 
     private function loadReferenceData(): void

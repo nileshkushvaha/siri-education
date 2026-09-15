@@ -82,7 +82,9 @@ final class MeetingHostCapacityTest extends TestCase
             $this->demo($this->teacherB, $this->slot(), $this->makeStudent());
             $this->fail('The second teacher must not be sold the same hour on the one licence.');
         } catch (MeetingHostCapacityException $e) {
-            $this->assertStringContainsString('No Zoom host is available', $e->getMessage());
+            $this->assertStringContainsString('This time is fully booked on our video platform', $e->getMessage());
+            $this->assertStringNotContainsString('Zoom', $e->getMessage(), 'students never see the provider');
+            $this->assertStringContainsString('No Zoom host is available', $e->detail());
         }
 
         $this->assertSame(1, Booking::query()->count(), 'the refused booking rolled back entirely');
@@ -236,7 +238,7 @@ final class MeetingHostCapacityTest extends TestCase
 
         $conflicts = BookingSeriesException::query()->where('booking_series_id', $series->id)->where('action', BookingSeriesException::ACTION_CONFLICT)->get();
         $this->assertCount(2, $conflicts);
-        $this->assertStringContainsString('No Zoom host is available', $conflicts->first()->reason);
+        $this->assertStringContainsString('This time is fully booked on our video platform', $conflicts->first()->reason);
     }
 
     private function nextWeekday(Weekday $weekday, int $hour = 10): CarbonImmutable

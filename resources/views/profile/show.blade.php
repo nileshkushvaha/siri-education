@@ -359,6 +359,15 @@
 
                             {{-- `designation` field removed — see InstructorProfileTextResolver. --}}
 
+                            {{-- Google account for Meet lessons (co-host) --}}
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-semibold text-fg-muted mb-2">Google account for Meet lessons</label>
+                                <input type="email" name="google_meet_account" value="{{ old('google_meet_account', $user->profile->google_meet_account) }}" autocomplete="email"
+                                    class="w-full px-4 py-3 rounded-xl bg-surface-raised border border-edge text-fg placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
+                                    placeholder="{{ $user->email }}">
+                                <p class="mt-2 text-xs text-fg-faint">The Google account you join Google Meet lessons with. It is made co-host of each class so you enter straight away and can admit students. Blank means your login email.</p>
+                            </div>
+
                             {{-- Short Bio --}}
                             <div class="sm:col-span-2">
                                 <label class="block text-xs font-semibold text-fg-muted mb-2">Short Bio</label>

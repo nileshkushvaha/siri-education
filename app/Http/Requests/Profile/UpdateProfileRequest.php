@@ -64,6 +64,7 @@ class UpdateProfileRequest extends FormRequest
             'student_preferred_language_id' => [$studentOnly, 'nullable', 'integer', 'exists:languages,id'],
             'preferred_subject_ids' => [$studentOnly, 'nullable', 'array'],
             'preferred_subject_ids.*' => [$studentOnly, 'uuid', 'exists:subjects,id'],
+            'google_meet_account' => [$instructorOnly, 'nullable', 'string', 'email:rfc', 'max:255'],
             'website' => [$instructorOnly, 'nullable', 'url', 'max:255'],
             'facebook' => [$instructorOnly, 'nullable', 'url', 'max:255'],
             'twitter' => [$instructorOnly, 'nullable', 'url', 'max:255'],

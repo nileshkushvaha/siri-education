@@ -407,6 +407,13 @@
                             <p class="{{ $helpClass }}">Optional. Use the timezone where you normally teach from.</p>
                             @error('timezone') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
                         </div>
+
+                        <div class="lg:col-span-2">
+                            <label class="mb-2 block text-sm font-medium text-fg">Google account for Meet lessons</label>
+                            <input type="email" wire:model="googleMeetAccount" @disabled(! $editable) placeholder="{{ auth()->user()->email }}" autocomplete="email" class="{{ $inputClass }}">
+                            <p class="{{ $helpClass }}">Optional. The Google account you will join Google Meet lessons with — we make it the class co-host so you enter straight away and can admit students. Leave blank to use your login email.</p>
+                            @error('googleMeetAccount') <p class="{{ $errorClass }}">{{ $message }}</p> @enderror
+                        </div>
                     </div>
 
                     <button type="submit" @disabled(! $editable) class="{{ $buttonClass }}">

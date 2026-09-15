@@ -284,9 +284,13 @@ Enable, in this order:
       §7). Leave **Host Turnaround Buffer** at 5 minutes unless staging
       shows the host needs longer between classes.
 - [ ] Confirm on staging: two test instructors booking the same hour →
-      the second is refused with "No Zoom host is available …"; a
-      reschedule onto a taken hour is refused and the booking keeps its
-      original time; cancelling frees the hour.
+      the second is refused with "This time is fully booked on our video
+      platform …" (or, with **When no Zoom host is free** set to Google
+      Meet, accepted on Google Meet with the admin notification "Lesson
+      Moved to Google Meet — Host Must Join"); a reschedule onto a taken
+      hour is refused and the booking keeps its original time (or moves
+      to Google Meet when the fallback is on and no Zoom meeting exists
+      yet); cancelling frees the hour.
 
 **Rollback — in this order:**
 
@@ -326,6 +330,7 @@ variables for credentials; do not add any.
 | `zoom_recording_enabled`, `zoom_recording_webhooks_enabled` | true (after §5 privacy settings) |
 | `zoom_host_capacity_enabled` | true — after `meetings:zoom-hosts:register` and a clean preflight (§6a) |
 | `zoom_host_capacity_buffer_minutes` | 5 |
+| `zoom_capacity_fallback_provider` | `google_meet` once Google Meet is configured and a platform-host rota exists; null (refuse) otherwise |
 | `recording_enabled`, `recording_retention_days` (30), `recording_student_playback_enabled` (true on staging only) | recording policy — `docs/recordings.md` |
 | `recording_drive_root_folder_id`, `recording_drive_shared_drive_id`, `platform_meeting_account`, `google_credentials_json` | the staging Google Workspace user's Drive — `docs/deployment/recording-cutover.md` |
 

@@ -167,7 +167,10 @@ Implementation, behind `MeetingSettings::google_meet_cohost_enabled`
   Co-host" (the instructor will then wait in the lobby).
 - The account used is `user_profiles.google_meet_account` ("Google
   account for Meet lessons", set on the onboarding Teaching step or the
-  profile page, instructor-only), falling back to the login email.
+  profile page, instructor-only), falling back to the login email. An
+  administrator can set or correct it on the user's edit page (Profile
+  tab → "Google Meet" section, shown for instructor accounts only), with
+  the same email rule and lower-casing as the instructor form.
 
 What it does **not** change: Meet's recording rule. Recording starts
 only while the host, or a co-host from the host's own Workspace

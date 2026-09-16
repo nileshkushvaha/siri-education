@@ -151,6 +151,29 @@ class UserForm
                                                 ->maxDate(now()->subYears(5)),
                                         ]),
                                     ]),
+
+                                // The address GoogleCalendarMeetProvider adds as
+                                // co-host of each new Meet lesson when
+                                // MeetingSettings::google_meet_cohost_enabled is on.
+                                // Instructors set it themselves in onboarding and
+                                // on their profile; this lets an administrator set
+                                // or correct it. Same rule and normalisation as the
+                                // instructor form (UpdateProfileRequest,
+                                // UserProfile::googleMeetAccount()).
+                                Section::make('Google Meet')
+                                    ->description('The Google account this instructor joins Meet lessons with. Blank means their login email.')
+                                    ->icon('heroicon-o-video-camera')
+                                    ->relationship('profile')
+                                    ->visible(fn (?User $record): bool => (bool) $record?->hasRole('instructor'))
+                                    ->schema([
+                                        TextInput::make('google_meet_account')
+                                            ->label('Google account for Meet lessons')
+                                            ->email()
+                                            ->maxLength(255)
+                                            ->placeholder('name@gmail.com')
+                                            ->helperText('Made co-host of every new lesson space when "Make the instructor a Meet co-host" is on in Meeting Settings, so they skip the lobby and can admit students. Applies to new lessons only.')
+                                            ->columnSpanFull(),
+                                    ]),
                             ]),
 
                         Tab::make('Address')

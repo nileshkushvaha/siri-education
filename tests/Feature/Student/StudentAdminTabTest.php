@@ -6,6 +6,7 @@ namespace Tests\Feature\Student;
 
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -75,5 +76,44 @@ class StudentAdminTabTest extends TestCase
 
         Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
             ->assertSee('Learning Overview');
+    }
+
+    // ── Google Meet co-host address, editable by an administrator ─────────
+
+    public function test_an_administrator_can_set_the_instructors_google_meet_account(): void
+    {
+        $instructor = User::factory()->create(['status' => 'active']);
+        $instructor->assignRole('instructor');
+        UserProfile::updateOrCreate(['user_id' => $instructor->id], ['instructor_status' => 'active']);
+
+        Livewire::test(EditUser::class, ['record' => $instructor->getRouteKey()])
+            ->assertSee('Google account for Meet lessons')
+            ->fillForm(['profile.google_meet_account' => 'Teacher.Meet@Gmail.com'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        // Stored normalised, exactly as the instructor-facing form stores it.
+        $this->assertSame('teacher.meet@gmail.com', $instructor->profile()->value('google_meet_account'));
+    }
+
+    public function test_the_google_meet_account_must_be_an_email_address(): void
+    {
+        $instructor = User::factory()->create(['status' => 'active']);
+        $instructor->assignRole('instructor');
+        UserProfile::updateOrCreate(['user_id' => $instructor->id], ['instructor_status' => 'active']);
+
+        Livewire::test(EditUser::class, ['record' => $instructor->getRouteKey()])
+            ->fillForm(['profile.google_meet_account' => 'not-an-email'])
+            ->call('save')
+            ->assertHasFormErrors(['profile.google_meet_account']);
+    }
+
+    public function test_the_google_meet_account_field_is_only_offered_for_instructors(): void
+    {
+        $student = User::factory()->create(['status' => 'active']);
+        $student->assignRole('student');
+
+        Livewire::test(EditUser::class, ['record' => $student->getRouteKey()])
+            ->assertDontSee('Google account for Meet lessons');
     }
 }

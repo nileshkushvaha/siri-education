@@ -631,3 +631,20 @@ proof that a payable need not be an Eloquent model at all, which
 matches `payments` having no FK to the payable. The real Eloquent
 round-trip (`Payment → payable → StudentPackagePurchase`) is covered
 separately in the purchase tests.
+
+## Student "Continue Payment" return path (Lesson Packages page)
+
+`PackageProposals::pay()` dispatches `package-checkout-ready` (Razorpay)
+or `package-stripe-checkout-ready` (Stripe); the page's own script
+partials (`livewire/frontend/student/partials/package-*-checkout-script`)
+open the checkout. On Razorpay's success callback
+`verifyPackagePayment()` proves the signature and order ownership
+(`PaymentCallbackVerifier`), then runs the same server-to-server
+confirmation the sweep uses (`PackagePurchaseReconciliationService::reconcileOne()`)
+so a paid order settles and unlocks the lessons in that request; while a
+capture is in flight the page polls `pollPackagePaymentStatus()`. Stripe
+confirms client-side and polls the same method. The fake provider gets
+local-only simulate buttons that go through
+`PackagePurchaseSettlementService::settle()`. The signed webhook and
+`package-purchases:reconcile` stay the safety nets. Before this, the
+events had no listener and the button opened nothing.

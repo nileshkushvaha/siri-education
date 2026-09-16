@@ -11,9 +11,36 @@
         </div>
     @enderror
 
-    @if ($pendingFakeCheckout)
-        <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-200">
-            Test checkout started ({{ $pendingFakeCheckout['reference'] }}). No real payment is taken by the test provider.
+    @if ($pendingPaymentId)
+        {{-- Money may already have moved: no second Pay button while the
+             gateway is being asked. The poll unlocks the lessons the moment
+             the capture is confirmed. --}}
+        <div class="flex items-start gap-3 rounded-2xl border border-indigo-300/30 bg-indigo-400/10 p-4 text-sm text-indigo-700 dark:text-indigo-200" role="status" aria-live="polite" wire:poll.3s="pollPackagePaymentStatus" data-package-payment-poller>
+            <x-ui.spinner size="sm" label="Confirming payment" class="mt-0.5 shrink-0" />
+            <span>We are confirming your payment with the gateway. Your lessons unlock as soon as it answers — there is no need to pay again.</span>
+        </div>
+    @endif
+
+    @if ($pendingStripePaymentId)
+        {{-- wire:ignore: polled while Stripe confirms — Livewire must never
+             re-morph the mounted Payment Element iframe. --}}
+        <div class="rounded-2xl border border-edge bg-surface-raised p-4" wire:ignore>
+            <div id="package-stripe-payment-element" class="rounded-lg bg-white p-3"></div>
+            <p id="package-stripe-payment-errors" class="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-300" role="alert"></p>
+            <x-ui.button type="button" id="package-stripe-confirm-button" class="mt-3 w-full justify-center" disabled>
+                Confirm card payment
+            </x-ui.button>
+        </div>
+    @endif
+
+    @if ($pendingFakeCheckout && app()->environment(['local', 'testing']))
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-200" data-package-fake-controls>
+            <p class="text-[11px] font-bold uppercase tracking-wide">Test mode — fake provider</p>
+            <p class="mt-1 text-xs">Test checkout started ({{ $pendingFakeCheckout['reference'] }}). No real payment is taken by the test provider.</p>
+            <div class="mt-2 flex gap-2">
+                <x-ui.button type="button" size="sm" wire:click="simulateFakePackagePayment(true)" wire:loading.attr="disabled">Simulate success</x-ui.button>
+                <x-ui.button type="button" size="sm" variant="ghost" wire:click="simulateFakePackagePayment(false)" wire:loading.attr="disabled">Simulate failure</x-ui.button>
+            </div>
         </div>
     @endif
 
@@ -96,7 +123,7 @@
                         </div>
                     @endif
 
-                    @if ($purchase && $purchase->status->isPayable() && ! $isActivating)
+                    @if ($purchase && $purchase->status->isPayable() && ! $isActivating && ! $pendingPaymentId && ! $pendingStripePaymentId)
                         <div class="mt-4 flex flex-wrap items-center gap-3">
                             <button type="button" wire:click="pay('{{ $purchase->id }}')" wire:loading.attr="disabled" wire:target="pay('{{ $purchase->id }}')"
                                 class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-400 transition disabled:opacity-50">
@@ -127,3 +154,12 @@
         @endif
     </x-account.card>
 </div>
+
+{{-- Livewire wraps each component's scripts in its own scope; see the
+     identical note on wallet-overview. These listen for the package
+     checkout events pay() dispatches — before this, nothing did, and
+     "Continue Payment" silently opened nothing for real gateways. --}}
+@script
+@include('livewire.frontend.student.partials.package-checkout-script')
+@include('livewire.frontend.student.partials.package-stripe-checkout-script')
+@endscript

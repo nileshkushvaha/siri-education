@@ -143,14 +143,15 @@ class ProfileCompletionServiceTest extends TestCase
         $this->assertArrayHasKey('bio', $breakdown);
         $this->assertArrayHasKey('experience', $breakdown);
         $this->assertArrayHasKey('education', $breakdown);
-        $this->assertArrayHasKey('social_links', $breakdown);
+        // Social links are no longer collected or scored.
+        $this->assertArrayNotHasKey('social_links', $breakdown);
 
         $this->assertSame(20, $breakdown['basic_profile']['weight']);
-        $this->assertSame(10, $breakdown['avatar']['weight']);
-        $this->assertSame(10, $breakdown['bio']['weight']);
+        $this->assertSame(15, $breakdown['avatar']['weight']);
+        $this->assertSame(15, $breakdown['bio']['weight']);
         $this->assertSame(30, $breakdown['experience']['weight']);
         $this->assertSame(20, $breakdown['education']['weight']);
-        $this->assertSame(10, $breakdown['social_links']['weight']);
+        $this->assertSame(100, (int) array_sum(array_column($breakdown, 'weight')));
 
         $this->assertSame(0.0, $breakdown['experience']['score']);
         $this->assertSame(0.0, $breakdown['avatar']['score']);

@@ -15,8 +15,8 @@ use App\Models\User;
  * section is a one-line array entry — never a hardcoded percentage in a
  * controller or view.
  *
- * The checklist is ROLE-AWARE. Work experience, education and social
- * links describe an instructor; a student was being told their profile
+ * The checklist is ROLE-AWARE. Work experience and education
+ * describe an instructor; a student was being told their profile
  * was 11% complete and "still missing: Work experience" for sections
  * they can never fill. Students are scored on what the platform actually
  * uses for them: identity, contact verification, academic profile and
@@ -25,11 +25,6 @@ use App\Models\User;
  */
 final class ProfileCompletionService
 {
-    /**
-     * @var array<int, string>
-     */
-    private const SOCIAL_FIELDS = ['website', 'facebook', 'twitter', 'linkedin', 'github', 'instagram', 'youtube'];
-
     /**
      * @return array<string, array{weight: int, score: callable(User): float}>
      */
@@ -112,12 +107,15 @@ final class ProfileCompletionService
                 'weight' => 20,
                 'score' => fn (User $user): float => $this->basicProfileScore($user),
             ],
+            // Social links are no longer part of the profile (never shown to
+            // students or the public), so their 10 points moved to the two
+            // things a student actually sees first: the photo and the bio.
             'avatar' => [
-                'weight' => 10,
+                'weight' => 15,
                 'score' => fn (User $user): float => $user->profile->hasMedia('avatar') ? 1.0 : 0.0,
             ],
             'bio' => [
-                'weight' => 10,
+                'weight' => 15,
                 'score' => fn (User $user): float => filled($user->profile->bio) ? 1.0 : 0.0,
             ],
             'experience' => [
@@ -127,10 +125,6 @@ final class ProfileCompletionService
             'education' => [
                 'weight' => 20,
                 'score' => fn (User $user): float => $user->educations()->active()->exists() ? 1.0 : 0.0,
-            ],
-            'social_links' => [
-                'weight' => 10,
-                'score' => fn (User $user): float => $this->socialLinksScore($user),
             ],
         ];
     }
@@ -148,15 +142,6 @@ final class ProfileCompletionService
         ];
 
         return count(array_filter($checks)) / count($checks);
-    }
-
-    private function socialLinksScore(User $user): float
-    {
-        $filled = collect(self::SOCIAL_FIELDS)
-            ->filter(fn (string $field): bool => filled($user->profile->{$field}))
-            ->count();
-
-        return $filled / count(self::SOCIAL_FIELDS);
     }
 
     /**

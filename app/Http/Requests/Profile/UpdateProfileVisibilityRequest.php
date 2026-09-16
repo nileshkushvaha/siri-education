@@ -23,7 +23,6 @@ class UpdateProfileVisibilityRequest extends FormRequest
             'profile_visibility' => ['required', Rule::in(['public', 'private', 'members_only'])],
             'show_email' => ['nullable', 'boolean'],
             'show_phone' => ['nullable', 'boolean'],
-            'show_social_links' => ['nullable', 'boolean'],
         ];
     }
 
@@ -32,7 +31,6 @@ class UpdateProfileVisibilityRequest extends FormRequest
         $this->merge([
             'show_email' => $this->boolean('show_email'),
             'show_phone' => $this->boolean('show_phone'),
-            'show_social_links' => $this->boolean('show_social_links'),
         ]);
     }
 }

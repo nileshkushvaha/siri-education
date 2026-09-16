@@ -658,9 +658,12 @@ final class InstructorPackageProposalService
                 ->get();
 
             if ($levels->count() !== 1) {
+                // Name the candidates with their ids so the operator can
+                // pass --level without a database lookup.
                 throw new PackageException(sprintf(
-                    '%d classes in that education system fall in the proposal\'s academic level; pass the level explicitly.',
+                    '%d classes in that education system fall in the proposal\'s academic level; pass the level explicitly with --level=<id>: %s.',
                     $levels->count(),
+                    $levels->sortBy('display_order')->map(fn (EducationSystemLevel $level): string => sprintf('%s (%s)', $level->display_label, $level->id))->implode(', ') ?: 'none',
                 ));
             }
 

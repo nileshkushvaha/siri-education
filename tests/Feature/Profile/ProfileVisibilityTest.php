@@ -23,6 +23,8 @@ class ProfileVisibilityTest extends TestCase
                 'profile_visibility' => 'private',
                 'show_email' => true,
                 'show_phone' => true,
+                // No longer a form field: social links are never shown, so
+                // posting the old toggle must change nothing.
                 'show_social_links' => false,
             ])
             ->assertRedirect();
@@ -31,7 +33,7 @@ class ProfileVisibilityTest extends TestCase
         $this->assertSame('private', $profile->profile_visibility);
         $this->assertTrue($profile->show_email);
         $this->assertTrue($profile->show_phone);
-        $this->assertFalse($profile->show_social_links);
+        $this->assertTrue($profile->show_social_links, 'The retired toggle is ignored; the column keeps its stored value.');
     }
 
     public function test_visibility_update_is_rejected_for_invalid_value(): void

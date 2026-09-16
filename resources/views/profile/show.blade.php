@@ -535,41 +535,9 @@
                         </div>
                     </div>
 
-                    @if($portalAudience === \App\Enums\PortalAudience::Instructor)
-                    {{-- Public professional links --}}
-                    <div class="rounded-2xl border border-edge bg-surface-raised backdrop-blur-xl p-7 mb-5">
-                        <div class="flex items-center gap-3 mb-6 pb-5 border-b border-edge">
-                            <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4.5 h-4.5 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 class="text-base font-semibold text-fg-strong">Professional Links</h2>
-                                <p class="text-xs text-fg-muted">Optional links shown on your public instructor profile when visibility allows</p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            @foreach([
-                            ['website', 'Website', 'https://sirieducation.com'],
-                            ['facebook', 'Facebook', 'https://facebook.com/username'],
-                            ['twitter', 'Twitter / X', 'https://x.com/username'],
-                            ['linkedin', 'LinkedIn', 'https://linkedin.com/in/username'],
-                            ['github', 'GitHub', 'https://github.com/username'],
-                            ['instagram', 'Instagram', 'https://instagram.com/username'],
-                            ['youtube', 'YouTube', 'https://youtube.com/@username'],
-                            ] as [$field, $label, $placeholder])
-                            <div>
-                                <label class="block text-xs font-semibold text-fg-muted mb-2">{{ $label }}</label>
-                                <input type="url" name="{{ $field }}" value="{{ old($field, $user->profile->$field) }}"
-                                    class="w-full px-4 py-3 rounded-xl bg-surface-raised border border-edge text-fg placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all"
-                                    placeholder="{{ $placeholder }}">
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
+                    {{-- Professional/social links are no longer collected here: the
+                         client does not share them with students or the public. The
+                         columns stay in the database untouched. --}}
 
                     <div class="flex items-center gap-3">
                         <button type="submit"
@@ -612,7 +580,6 @@
                             @foreach([
                             ['show_email', 'Show email on profile', $user->profile->show_email],
                             ['show_phone', 'Show phone on profile', $user->profile->show_phone],
-                            ['show_social_links', 'Show social links on profile', $user->profile->show_social_links],
                             ] as [$field, $label, $enabled])
                             <label class="flex items-center justify-between gap-4 p-4 rounded-xl border border-edge hover:border-edge-strong hover:bg-surface-hover cursor-pointer transition-all">
                                 <span class="text-sm font-medium text-fg">{{ $label }}</span>

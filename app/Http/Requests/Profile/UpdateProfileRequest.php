@@ -65,13 +65,10 @@ class UpdateProfileRequest extends FormRequest
             'preferred_subject_ids' => [$studentOnly, 'nullable', 'array'],
             'preferred_subject_ids.*' => [$studentOnly, 'uuid', 'exists:subjects,id'],
             'google_meet_account' => [$instructorOnly, 'nullable', 'string', 'email:rfc', 'max:255'],
-            'website' => [$instructorOnly, 'nullable', 'url', 'max:255'],
-            'facebook' => [$instructorOnly, 'nullable', 'url', 'max:255'],
-            'twitter' => [$instructorOnly, 'nullable', 'url', 'max:255'],
-            'linkedin' => [$instructorOnly, 'nullable', 'url', 'max:255'],
-            'github' => [$instructorOnly, 'nullable', 'url', 'max:255'],
-            'instagram' => [$instructorOnly, 'nullable', 'url', 'max:255'],
-            'youtube' => [$instructorOnly, 'nullable', 'url', 'max:255'],
+            // website/facebook/twitter/linkedin/github/instagram/youtube are
+            // no longer collected from instructors (not shared with students
+            // or the public). Columns kept; UpdateProfileAction leaves them as
+            // they are when the keys are absent.
             'email_notifications' => ['nullable', 'boolean'],
             'system_notifications' => ['nullable', 'boolean'],
             'marketing_emails' => ['nullable', 'boolean'],

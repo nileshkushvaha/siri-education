@@ -39,7 +39,8 @@ class ProfileFrontendRenderingTest extends TestCase
         $this->assertStringContainsString('name="short_bio"', $content);
     }
 
-    public function test_profile_page_renders_social_link_fields(): void
+    /** Social/professional links are not collected from instructors any more (never shared with students or the public). */
+    public function test_profile_page_no_longer_offers_social_link_fields_or_the_social_visibility_toggle(): void
     {
         $user = $this->activeUser();
         Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
@@ -47,9 +48,12 @@ class ProfileFrontendRenderingTest extends TestCase
 
         $content = $this->actingAs($user)->get(route('profile.show'))->getContent();
 
+        $this->assertStringNotContainsString('Professional Links', $content);
         foreach (['website', 'facebook', 'twitter', 'linkedin', 'github', 'instagram', 'youtube'] as $field) {
-            $this->assertStringContainsString("name=\"{$field}\"", $content);
+            $this->assertStringNotContainsString('name="'.$field.'"', $content);
         }
+        $this->assertStringNotContainsString('name="show_social_links"', $content);
+        $this->assertStringContainsString('name="show_email"', $content);
     }
 
     public function test_student_and_instructor_profile_fields_are_audience_isolated(): void

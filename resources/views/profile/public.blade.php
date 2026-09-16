@@ -56,17 +56,7 @@
                     </div>
                 </x-account.card>
 
-                @if($profile->show_social_links && ($profile->website || $profile->linkedin || $profile->github || $profile->twitter || $profile->facebook || $profile->instagram || $profile->youtube))
-                    <x-account.card title="Links">
-                        <div class="space-y-2">
-                            @foreach(['website' => 'Website', 'linkedin' => 'LinkedIn', 'github' => 'GitHub', 'twitter' => 'Twitter', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'youtube' => 'YouTube'] as $field => $label)
-                                @if($profile->{$field})
-                                    <a href="{{ $profile->{$field} }}" target="_blank" rel="noopener noreferrer" class="block text-sm text-indigo-400 hover:text-indigo-300 transition">{{ $label }}</a>
-                                @endif
-                            @endforeach
-                        </div>
-                    </x-account.card>
-                @endif
+                {{-- Social links are never shown publicly (client decision); the columns remain in the database. --}}
             </div>
         </div>
     </main>

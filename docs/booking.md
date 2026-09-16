@@ -230,9 +230,30 @@ Rules worth knowing:
 - A mixed-currency batch is refused rather than half-settled (wallet
   payment never converts).
 - Classes settle earliest-first, so a short balance secures the soonest.
-- Completion runs off the verified recharge
-  (`SettleSeriesPrepaymentOnWalletRechargeSucceeded`), not the browser's
-  return, so closing the tab at the gateway cannot leave classes unpaid.
+- The confirmation card itemises the arithmetic — total for the reserved
+  classes, "paid from your wallet balance", "to pay now" — so a reduced
+  gateway amount is never mistaken for a discount. The balance row shows
+  the amount APPLIED (`SeriesPrepaymentQuoteData::appliedBalanceMinor()`,
+  capped at the bill), never the raw wallet balance.
+- The top-up has its OWN checkout events (`series-prepayment-checkout-ready`,
+  `series-prepayment-stripe-checkout-ready`) and verifier
+  (`BookingWizard::verifySeriesPrepayment()`). It must never share the
+  single-booking checkout script: that verifier matches a booking order,
+  the recharge's order can never match, and the student would see an
+  error after the gateway had taken the money.
+- Three finishers, one method — `BookingSeriesPrepaymentService::settleForRecharge()`:
+  1. the verified browser return (Razorpay callback, Stripe poll, fake
+     simulator) confirms with the provider server-to-server and settles
+     the classes in the same request, so the student sees "confirmed" on
+     return;
+  2. the queued `SettleSeriesPrepaymentOnWalletRechargeSucceeded` listener
+     (queue `notifications`) covers a closed tab or a webhook that
+     arrives first;
+  3. `booking:settle-series-prepayments` (every five minutes, after the
+     recharge reconcile sweep) covers a stopped worker or a lost job —
+     a credited schedule top-up with unpaid classes is settled within
+     the reservation window instead of expiring with the money in the
+     wallet.
 
 ### Confirming future classes unattended
 

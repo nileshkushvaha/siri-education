@@ -25,6 +25,7 @@ use App\Console\Commands\ReconcileWalletRecharges;
 use App\Console\Commands\ReleaseExpiredBookingReservations;
 use App\Console\Commands\ReleaseInstructorEarnings;
 use App\Console\Commands\RetryBlockedLessons;
+use App\Console\Commands\SettleSeriesPrepayments;
 use App\Console\Commands\SyncMeetingAttendance;
 use App\Console\Commands\SyncPendingMeetings;
 use App\Models\LoginHistory;
@@ -183,6 +184,19 @@ app(Schedule::class)
     ->withoutOverlapping()
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/wallet-recharges-reconcile.log'));
+
+// Spend schedule top-ups on the classes they were raised for when the
+// queued WalletRechargeSucceeded listener did not — the recovery path
+// for a stopped worker or a lost job, run right after the recharge sweep
+// above so a recharge it just recovered is settled in the same window.
+// Idempotent through BookingPaymentService::payWithWallet()'s row lock
+// and payment_status precondition.
+app(Schedule::class)
+    ->command(SettleSeriesPrepayments::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/booking-series-prepayments.log'));
 
 // Reconcile due package payment attempts against the provider — the
 // package-domain counterpart of the two sweeps above. This is the

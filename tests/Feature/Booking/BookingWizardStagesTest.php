@@ -6,7 +6,10 @@ namespace Tests\Feature\Booking;
 
 use App\Booking\Contracts\BookingServiceInterface;
 use App\Booking\DTOs\CreateBookingData;
+use App\Booking\Enums\BookingPaymentStatus;
+use App\Booking\Enums\PaymentCollectionRolloutScope;
 use App\Booking\Enums\Weekday;
+use App\Booking\Services\BookingSeriesPrepaymentService;
 use App\Curriculum\Services\EducationSystemService;
 use App\Livewire\Frontend\Booking\BookingWizard;
 use App\Models\Booking;
@@ -19,9 +22,13 @@ use App\Models\TeacherAvailability;
 use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Models\Wallet;
+use App\Models\WalletRecharge;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
+use App\Settings\PaymentGatewaySettings;
 use App\Wallet\Enums\WalletLedgerEntryType;
+use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Services\WalletLedgerService;
 use App\Wallet\Services\WalletService;
 use Carbon\CarbonImmutable;
@@ -969,5 +976,244 @@ class BookingWizardStagesTest extends TestCase
             ->assertDontSee('Pay 499.00 INR securely');
 
         $this->assertSame('cancelled', $booking->refresh()->status->value);
+    }
+
+    // ── Paying for a whole schedule: the card must show its arithmetic ─────
+
+    /** Books a short weekly schedule and lands on the confirmed step. */
+    private function reserveRecurringSchedule(User $student, int $classes = 4): Testable
+    {
+        $this->allowFutureGeneration();
+        $slot = $this->slot();
+
+        $component = $this->wizardFor($student)
+            ->call('selectMode', 'paid_one_to_one')
+            ->call('selectLevel', $this->academic['level']->id)
+            ->call('selectAcademicSubject', $this->academic['subject']->id)
+            ->call('selectCurriculum', $this->academic['curriculum']->id)
+            ->call('continueStage')
+            ->call('selectBillingMode', 'recurring')
+            ->call('toggleWeekday', (int) $slot->dayOfWeek)
+            ->call('setEndCondition', 'after_count')
+            ->call('setOccurrences', $classes);
+
+        for ($month = CarbonImmutable::now('UTC')->startOfMonth(); $month->lt($slot->startOfMonth()); $month = $month->addMonthNoOverflow()) {
+            $component->call('nextMonth');
+        }
+
+        return $component
+            ->call('selectDate', $slot->toDateString())
+            ->call('selectSlot', $slot->toIso8601String())
+            ->call('continueStage')
+            ->call('submit')
+            ->assertSet('result.recurring', true)
+            ->assertSet('result.requires_payment', true);
+    }
+
+    private function fundWallet(User $student, int $amountMinor): void
+    {
+        $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+        app(WalletLedgerService::class)->credit($wallet, $amountMinor, WalletLedgerEntryType::PromotionalCredit, $student);
+    }
+
+    public function test_pay_all_card_itemises_total_balance_and_amount_due_when_balance_is_short(): void
+    {
+        app(FeatureSettings::class)->wallet_enabled = true;
+        $student = $this->student();
+        $this->fundWallet($student, 50000); // 500.00 INR against 499.00 per class
+
+        $component = $this->reserveRecurringSchedule($student);
+        $card = $component->get('seriesPrepayment');
+        $count = (int) $card['count'];
+        $this->assertGreaterThan(1, $count);
+
+        $total = $count * 49900;
+        $expectedTotal = number_format($total / 100, 2).' INR';
+        $expectedDue = number_format(($total - 50000) / 100, 2).' INR';
+
+        $component
+            ->assertSee('Pay for all '.$count.' classes')
+            ->assertSee('Total for '.$count.' classes')
+            ->assertSee($expectedTotal)
+            ->assertSee('Paid from your wallet balance')
+            ->assertSee('500.00 INR')
+            ->assertSee('To pay now')
+            ->assertSee($expectedDue)
+            ->assertSee('Pay '.$expectedDue.' now')
+            ->assertSee('500.00 INR from your balance and '.$expectedDue.' paid now')
+            // The pay-all button is the only primary "pay" action.
+            ->assertDontSee('Pay from My Bookings')
+            ->assertDontSee('Pay one at a time instead')
+            ->assertSee('View my bookings');
+    }
+
+    public function test_pay_all_card_hides_the_balance_row_when_there_is_no_balance(): void
+    {
+        app(FeatureSettings::class)->wallet_enabled = true;
+        $student = $this->student();
+        app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+
+        $component = $this->reserveRecurringSchedule($student);
+        $count = (int) $component->get('seriesPrepayment')['count'];
+        $expectedTotal = number_format($count * 499, 2).' INR';
+
+        $component
+            ->assertSee('To pay now')
+            ->assertSee('Pay '.$expectedTotal.' now')
+            ->assertSee('This one payment confirms every class below.')
+            ->assertDontSee('Paid from your wallet balance')
+            ->assertDontSee('from your balance');
+    }
+
+    public function test_pay_all_card_shows_the_applied_balance_not_the_raw_balance_when_it_exceeds_the_bill(): void
+    {
+        app(FeatureSettings::class)->wallet_enabled = true;
+        $student = $this->student();
+        $this->fundWallet($student, 100000000); // 1,000,000.00 INR
+
+        $component = $this->reserveRecurringSchedule($student);
+        $card = $component->get('seriesPrepayment');
+        $count = (int) $card['count'];
+        $expectedTotal = number_format($count * 499, 2).' INR';
+
+        $this->assertTrue($card['covered_by_wallet']);
+        $this->assertSame($card['total_formatted'], $card['balance_applied_formatted']);
+
+        $component
+            ->assertSee('Paid from your wallet balance')
+            ->assertSee('Your wallet balance covers all '.$count.' classes. Nothing to pay now.')
+            ->assertSee('Confirm all '.$count.' classes from balance')
+            ->assertDontSee($card['balance_formatted'])
+            ->assertSee($expectedTotal);
+    }
+
+    // ── Moving one class of a schedule to another time ─────────────────────
+
+    /**
+     * Regression: "Change time" on the schedule preview crashed with a
+     * TypeError because the handler expected TimeSlotData objects while
+     * the wizard service returns plain slot arrays. The student saw the
+     * request fail on every attempt.
+     */
+    public function test_a_class_in_the_schedule_preview_can_be_moved_to_another_time_that_day(): void
+    {
+        $this->allowFutureGeneration();
+        $slot = $this->slot();
+
+        $component = $this->wizardFor($this->student())
+            ->call('selectMode', 'paid_one_to_one')
+            ->call('selectLevel', $this->academic['level']->id)
+            ->call('selectAcademicSubject', $this->academic['subject']->id)
+            ->call('selectCurriculum', $this->academic['curriculum']->id)
+            ->call('continueStage')
+            ->call('selectBillingMode', 'recurring')
+            ->call('toggleWeekday', (int) $slot->dayOfWeek)
+            ->call('setEndCondition', 'after_count')
+            ->call('setOccurrences', 3);
+
+        for ($month = CarbonImmutable::now('UTC')->startOfMonth(); $month->lt($slot->startOfMonth()); $month = $month->addMonthNoOverflow()) {
+            $component->call('nextMonth');
+        }
+
+        $component
+            ->call('selectDate', $slot->toDateString())
+            ->call('selectSlot', $slot->toIso8601String())
+            ->call('continueStage')
+            ->assertSee('Change time')
+            ->call('startMovingOccurrence', $slot->toDateString())
+            ->assertHasNoErrors()
+            ->assertSet('movingDate', $slot->toDateString());
+
+        $moveSlots = $component->get('moveSlots');
+        $this->assertNotEmpty($moveSlots, 'The instructor\'s other times that day should be offered.');
+        $this->assertArrayHasKey('local_time', $moveSlots[0]);
+        $this->assertArrayHasKey('label', $moveSlots[0]);
+
+        $target = collect($moveSlots)->firstWhere('local_time', '!=', $slot->format('H:i:s')) ?? $moveSlots[0];
+
+        $component
+            ->call('moveOccurrenceTo', $target['local_time'])
+            ->assertSet('movingDate', null)
+            ->assertSet('moveSlots', []);
+
+        $this->assertSame($target['local_time'], $component->get('movedOccurrences')[$slot->toDateString()]);
+    }
+
+    // ── Paying for a whole schedule through the gateway ────────────────────
+
+    /** An active market that collects through the fake provider, as the wallet tests do. */
+    private function enableGatewayCollection(): void
+    {
+        $this->country->update(['status' => 'active', 'payment_routing' => ['provider' => 'fake', 'enabled' => true]]);
+
+        $gateways = app(PaymentGatewaySettings::class);
+        $gateways->payments_enabled = true;
+        $gateways->payment_collection_rollout_scope = PaymentCollectionRolloutScope::ActiveCountryRouting->value;
+        $gateways->save();
+
+        app(FeatureSettings::class)->wallet_enabled = true;
+    }
+
+    /**
+     * Regression: the pay-all checkout used to fire the single-booking
+     * checkout events, so the gateway's success callback verified a
+     * BOOKING payment against the RECHARGE's order — it could never
+     * match, the classes waited for a webhook that might never come, and
+     * their reservations lapsed. The top-up now has its own checkout and
+     * the verified return settles every class in the same request.
+     */
+    public function test_paying_for_all_classes_through_the_gateway_confirms_every_class_on_return(): void
+    {
+        $this->enableGatewayCollection();
+        $student = $this->student();
+        $this->fundWallet($student, 50000);
+
+        $component = $this->reserveRecurringSchedule($student)
+            ->call('payForAllClasses')
+            ->assertHasNoErrors()
+            ->assertSet('seriesCheckout.provider', 'fake')
+            ->assertSee('Simulate success')
+            ->assertDontSee('Pay from My Bookings');
+
+        $series = BookingSeries::query()->firstOrFail();
+        $recharge = WalletRecharge::query()->where('user_id', $student->id)->latest()->firstOrFail();
+        $count = $series->bookings()->count();
+
+        $this->assertSame(WalletRechargeStatus::Requested, $recharge->status);
+        $this->assertSame(BookingSeriesPrepaymentService::PURPOSE, $recharge->metadata['purpose']);
+        $this->assertSame($count * 49900 - 50000, (int) $recharge->amount_minor, 'The top-up is exactly the shortfall.');
+
+        $component->call('simulateFakeSeriesPayment', true)
+            ->assertSet('paymentBanner', '')
+            ->assertSet('seriesCheckout', [])
+            ->assertSet('pendingSeriesPaymentId', null)
+            ->assertSet('result.requires_payment', false)
+            ->assertSee($count.' classes confirmed')
+            ->assertDontSee('Pay for all');
+
+        $this->assertSame($count, $series->bookings()->where('payment_status', BookingPaymentStatus::Paid)->count());
+        $this->assertSame(WalletRechargeStatus::Succeeded, $recharge->refresh()->status);
+        $this->assertSame(0, (int) Wallet::query()->where('user_id', $student->id)->value('available_balance_minor'));
+    }
+
+    public function test_a_failed_gateway_payment_for_the_schedule_leaves_the_classes_reserved_and_says_so(): void
+    {
+        $this->enableGatewayCollection();
+        $student = $this->student();
+        app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+
+        $component = $this->reserveRecurringSchedule($student)
+            ->call('payForAllClasses')
+            ->assertSet('seriesCheckout.provider', 'fake')
+            ->call('simulateFakeSeriesPayment', false)
+            ->assertSee('Your payment could not be completed')
+            ->assertSee('still reserved')
+            ->assertSet('result.requires_payment', true)
+            // The student can try again from the same card.
+            ->assertSee('Pay for all');
+
+        $series = BookingSeries::query()->firstOrFail();
+        $this->assertSame(0, $series->bookings()->where('payment_status', BookingPaymentStatus::Paid)->count());
+        $this->assertSame(0, (int) Wallet::query()->where('user_id', $student->id)->value('available_balance_minor'));
     }
 }

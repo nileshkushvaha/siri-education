@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners\Booking;
 
 use App\Booking\Services\BookingSeriesPrepaymentService;
-use App\Models\BookingSeries;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Finishes the payment the student started.
@@ -38,35 +36,9 @@ final class SettleSeriesPrepaymentOnWalletRechargeSucceeded implements ShouldQue
 
     public function handle(object $event): void
     {
-        $metadata = $event->recharge->metadata ?? [];
-
-        if (($metadata['purpose'] ?? null) !== BookingSeriesPrepaymentService::PURPOSE) {
-            return;
-        }
-
-        $series = BookingSeries::query()->find($metadata['booking_series_id'] ?? null);
-        $student = $event->recharge->user;
-
-        if ($series === null || $student === null) {
-            return;
-        }
-
-        // Re-quoted from the live rows, never from the recharge: between
-        // the top-up and now, a class may have been cancelled or its
-        // reservation may have lapsed. Paying for what is actually
-        // outstanding is the only safe reading.
-        $result = $this->prepayments->settleFromWallet($series, $student);
-
-        if ($result->allPaid()) {
-            return;
-        }
-
-        // Ids and counts only — never the student's identity, the
-        // amounts, or anything about the payment instrument.
-        Log::warning('Some classes could not be settled from a schedule prepayment.', [
-            'booking_series_id' => $series->id,
-            'paid' => $result->paidCount(),
-            'failed' => count($result->failures),
-        ]);
+        // Purpose check, ownership, re-quote and partial-failure logging
+        // all live in the service — the browser return and the scheduled
+        // sweep run the very same method, so the three can never disagree.
+        $this->prepayments->settleForRecharge($event->recharge);
     }
 }

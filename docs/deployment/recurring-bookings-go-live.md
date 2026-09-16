@@ -147,6 +147,13 @@ The queue name matters. A worker consuming only `default` — which is
 what `php artisan queue:listen` gives you with no arguments — will never
 touch these jobs.
 
+The same `notifications` queue carries
+`SettleSeriesPrepaymentOnWalletRechargeSucceeded`, which spends a "pay for
+all classes" top-up on the classes it was raised for. Without a worker
+those classes are still confirmed by the browser's verified return and,
+failing that, by `booking:settle-series-prepayments` every five minutes —
+but a stopped worker is still a fault to fix, not a mode to run in.
+
 ```bash
 sudo supervisorctl status                 # find the worker program
 sudo grep -rn "queue:work" /etc/supervisor/conf.d/   # confirm --queue includes notifications

@@ -455,6 +455,100 @@ class SeriesPrepaymentTest extends TestCase
         $this->assertSame(3, $series->bookings()->where('payment_status', BookingPaymentStatus::Paid)->count());
     }
 
+    // ── Safety net: paid top-ups whose classes were never settled ──────────
+
+    /** A credited schedule top-up the listener never got to. */
+    private function strandedPrepaymentRecharge(User $student, BookingSeries $series, int $amountMinor, string $reference): WalletRecharge
+    {
+        $wallet = $this->fundWallet($student, $amountMinor);
+
+        return WalletRecharge::query()->create([
+            'wallet_id' => $wallet->id,
+            'user_id' => $student->id,
+            'amount_minor' => $amountMinor,
+            'currency_code' => 'INR',
+            'status' => WalletRechargeStatus::Succeeded,
+            'succeeded_at' => CarbonImmutable::now('UTC')->subMinutes(20),
+            'reference' => $reference,
+            'metadata' => [
+                'purpose' => BookingSeriesPrepaymentService::PURPOSE,
+                'booking_series_id' => (string) $series->id,
+                'booking_ids' => $series->bookings()->pluck('id')->all(),
+            ],
+        ]);
+    }
+
+    public function test_the_sweep_settles_classes_from_a_paid_top_up_the_listener_missed(): void
+    {
+        // Queue down, job lost, tries exhausted: the money is in the
+        // wallet and the classes are still unpaid. The sweep finishes it.
+        $student = $this->student();
+        $series = $this->series($student, 3);
+        $this->strandedPrepaymentRecharge($student, $series, 149700, 'WRCH-SWEEP0000001');
+
+        $this->artisan('booking:settle-series-prepayments')
+            ->expectsOutputToContain('Settled 3 schedule class(es)')
+            ->assertSuccessful();
+
+        $this->assertSame(3, $series->bookings()->where('payment_status', BookingPaymentStatus::Paid)->count());
+        $this->assertSame(0, (int) Wallet::query()->where('user_id', $student->id)->value('available_balance_minor'));
+    }
+
+    public function test_the_sweep_leaves_ordinary_top_ups_and_unpaid_recharges_alone(): void
+    {
+        $student = $this->student();
+        $series = $this->series($student, 3);
+        $wallet = $this->fundWallet($student, 300000);
+
+        // Money added for no stated purpose is never spent on classes.
+        WalletRecharge::query()->create([
+            'wallet_id' => $wallet->id, 'user_id' => $student->id, 'amount_minor' => 300000, 'currency_code' => 'INR',
+            'status' => WalletRechargeStatus::Succeeded, 'succeeded_at' => now(), 'reference' => 'WRCH-SWEEP0000002', 'metadata' => null,
+        ]);
+        // A schedule top-up that has not been paid yet is not ours either.
+        WalletRecharge::query()->create([
+            'wallet_id' => $wallet->id, 'user_id' => $student->id, 'amount_minor' => 149700, 'currency_code' => 'INR',
+            'status' => WalletRechargeStatus::Requested, 'reference' => 'WRCH-SWEEP0000003',
+            'metadata' => ['purpose' => BookingSeriesPrepaymentService::PURPOSE, 'booking_series_id' => (string) $series->id, 'booking_ids' => []],
+        ]);
+
+        $this->assertSame(0, $this->prepayments()->settleOutstandingRecharges());
+        $this->assertSame(3, $series->bookings()->where('payment_status', BookingPaymentStatus::Pending)->count());
+        $this->assertSame(300000, (int) Wallet::query()->where('user_id', $student->id)->value('available_balance_minor'));
+    }
+
+    public function test_a_second_sweep_pass_finds_nothing_left_to_pay(): void
+    {
+        $student = $this->student();
+        $series = $this->series($student, 2);
+        $this->strandedPrepaymentRecharge($student, $series, 99800, 'WRCH-SWEEP0000004');
+
+        $this->assertSame(2, $this->prepayments()->settleOutstandingRecharges());
+        $this->assertSame(0, $this->prepayments()->settleOutstandingRecharges());
+        $this->assertSame(2, $series->bookings()->where('payment_status', BookingPaymentStatus::Paid)->count());
+    }
+
+    public function test_the_open_recharge_for_a_schedule_is_the_students_own_unpaid_one(): void
+    {
+        $student = $this->student();
+        $other = $this->student();
+        $series = $this->series($student, 2);
+        $wallet = app(WalletService::class)->getOrCreateWallet($student, 'INR', $student);
+
+        $this->assertNull($this->prepayments()->openRechargeFor($series, $student));
+
+        $recharge = WalletRecharge::query()->create([
+            'wallet_id' => $wallet->id, 'user_id' => $student->id, 'amount_minor' => 99800, 'currency_code' => 'INR',
+            'status' => WalletRechargeStatus::Requested, 'reference' => 'WRCH-OPEN00000001',
+            'metadata' => ['purpose' => BookingSeriesPrepaymentService::PURPOSE, 'booking_series_id' => (string) $series->id, 'booking_ids' => []],
+        ]);
+
+        $this->assertTrue($recharge->is($this->prepayments()->openRechargeFor($series, $student)));
+
+        $this->expectException(BookingException::class);
+        $this->prepayments()->openRechargeFor($series, $other);
+    }
+
     // ── Phase 2: confirming future classes unattended ──────────────────────
 
     private function allowAutoSettle(bool $enabled = true): void

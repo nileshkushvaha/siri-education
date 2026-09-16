@@ -14,13 +14,17 @@ use App\Models\Booking;
 use App\Models\BookingSeries;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletRecharge;
 use App\Payments\DTOs\PaymentCheckoutData;
 use App\Settings\BookingSettings;
 use App\Support\MoneyFormatter;
+use App\Wallet\Enums\WalletRechargeStatus;
 use App\Wallet\Exceptions\WalletException;
 use App\Wallet\Services\WalletRechargeService;
 use App\Wallet\Services\WalletService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Paying for a whole repeating schedule in ONE checkout.
@@ -203,6 +207,120 @@ final class BookingSeriesPrepaymentService
 
     /** Marks a recharge as raised to pay for a schedule's classes. */
     public const string PURPOSE = 'booking_series_prepayment';
+
+    /** How far back the safety-net sweep looks for paid-but-unsettled top-ups. */
+    public const int SWEEP_WINDOW_DAYS = 7;
+
+    /**
+     * The top-up this student raised for this schedule that is still
+     * waiting for its payment — the one a browser return has to verify.
+     */
+    public function openRechargeFor(BookingSeries $series, User $student): ?WalletRecharge
+    {
+        $this->assertOwnership($series, $student);
+
+        return $this->prepaymentRecharges($series)
+            ->where('user_id', $student->id)
+            ->where('status', WalletRechargeStatus::Requested)
+            ->latest('created_at')
+            ->first();
+    }
+
+    /**
+     * Second half of "pay for all my classes": once the top-up raised for
+     * a schedule has been credited, settle that schedule's classes from
+     * the balance.
+     *
+     * ONE implementation, three callers — the browser's verified return,
+     * the queued WalletRechargeSucceeded listener and the scheduled
+     * sweep — so whichever arrives first finishes the job and the others
+     * find nothing left to pay. Null means "not ours to act on": an
+     * ordinary top-up, a recharge that has not succeeded, or a schedule
+     * that no longer exists. That line is what keeps this from being
+     * automatic charging — only money the student raised FOR these
+     * classes is ever spent on them.
+     */
+    public function settleForRecharge(WalletRecharge $recharge): ?SeriesPrepaymentResult
+    {
+        $metadata = $recharge->metadata ?? [];
+
+        if (($metadata['purpose'] ?? null) !== self::PURPOSE
+            || $recharge->status !== WalletRechargeStatus::Succeeded) {
+            return null;
+        }
+
+        $series = BookingSeries::query()->find($metadata['booking_series_id'] ?? null);
+        $student = $recharge->user;
+
+        if ($series === null || $student === null || (int) $series->student_id !== (int) $student->id) {
+            return null;
+        }
+
+        // Re-quoted from the live rows, never from the recharge: between
+        // the top-up and now, a class may have been cancelled or its
+        // reservation may have lapsed. Paying for what is actually
+        // outstanding is the only safe reading.
+        $result = $this->settleFromWallet($series, $student);
+
+        if (! $result->allPaid()) {
+            // Ids and counts only — never the student's identity, the
+            // amounts, or anything about the payment instrument.
+            Log::warning('Some classes could not be settled from a schedule prepayment.', [
+                'booking_series_id' => $series->id,
+                'wallet_recharge_id' => $recharge->id,
+                'paid' => $result->paidCount(),
+                'failed' => count($result->failures),
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Safety net behind the event: finds top-ups that were raised for a
+     * schedule, have been credited, and whose classes are still unpaid,
+     * and settles them.
+     *
+     * The queued listener is the normal path, but a queue that is down,
+     * a lost job, or three failed tries would otherwise strand a student
+     * who has paid — with the money in their wallet and their classes
+     * expiring. Idempotent: a recharge whose classes are all paid (or
+     * all gone) settles nothing and costs one query.
+     *
+     * @return int classes paid by this pass
+     */
+    public function settleOutstandingRecharges(int $limit = 200): int
+    {
+        $paid = 0;
+
+        $recharges = WalletRecharge::query()
+            ->where('status', WalletRechargeStatus::Succeeded)
+            ->where('metadata->purpose', self::PURPOSE)
+            ->where('succeeded_at', '>=', now()->subDays(self::SWEEP_WINDOW_DAYS))
+            ->with('user')
+            ->latest('succeeded_at')
+            ->limit(max(1, $limit))
+            ->get();
+
+        foreach ($recharges as $recharge) {
+            $series = BookingSeries::query()->find($recharge->metadata['booking_series_id'] ?? null);
+
+            if ($series === null || $this->payableBookings($series)->isEmpty()) {
+                continue;
+            }
+
+            $paid += $this->settleForRecharge($recharge)?->paidCount() ?? 0;
+        }
+
+        return $paid;
+    }
+
+    private function prepaymentRecharges(BookingSeries $series): Builder
+    {
+        return WalletRecharge::query()
+            ->where('metadata->purpose', self::PURPOSE)
+            ->where('metadata->booking_series_id', (string) $series->id);
+    }
 
     /**
      * Records — or withdraws — the student's consent to have this

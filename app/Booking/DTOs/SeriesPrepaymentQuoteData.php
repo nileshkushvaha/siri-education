@@ -46,4 +46,15 @@ final readonly class SeriesPrepaymentQuoteData
     {
         return $this->isPayable() && $this->shortfallMinor === 0;
     }
+
+    /**
+     * How much of the wallet balance this bill actually consumes — never
+     * more than the bill itself. What a student is SHOWN as "paid from
+     * balance" has to be this, not the raw balance: a 100 balance against
+     * a 40 bill uses 40.
+     */
+    public function appliedBalanceMinor(): int
+    {
+        return max(0, min($this->walletBalanceMinor, $this->totalMinor));
+    }
 }

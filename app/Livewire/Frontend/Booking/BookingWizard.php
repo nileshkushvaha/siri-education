@@ -10,7 +10,6 @@ use App\Booking\Contracts\BookingRepositoryInterface;
 use App\Booking\DTOs\BookingCheckoutOutcome;
 use App\Booking\DTOs\RecurrencePatternData;
 use App\Booking\DTOs\RecurrenceRuleData;
-use App\Booking\DTOs\TimeSlotData;
 use App\Booking\Enums\BookingCheckoutState;
 use App\Booking\Enums\RecurrenceEndCondition;
 use App\Booking\Enums\RecurrenceFrequency;
@@ -28,13 +27,23 @@ use App\Curriculum\DTOs\AcademicContextData;
 use App\Models\BookingSeries;
 use App\Models\Country;
 use App\Models\EducationSystem;
+use App\Models\Payment;
 use App\Models\Wallet;
+use App\Models\WalletRecharge;
 use App\Payments\DTOs\PaymentCheckoutData;
+use App\Payments\DTOs\VerifiedPaymentEvent;
+use App\Payments\Enums\PaymentEventType;
+use App\Payments\Enums\PaymentStatus;
+use App\Payments\Exceptions\PaymentException;
+use App\Payments\Services\PaymentCallbackVerifier;
 use App\Settings\BookingSettings;
 use App\Settings\FeatureSettings;
 use App\Support\MoneyFormatter;
 use App\Support\Timezone\IanaTimezone;
 use App\Support\UserTimezoneResolver;
+use App\Wallet\Enums\WalletRechargeStatus;
+use App\Wallet\Services\WalletRechargeReconciliationService;
+use App\Wallet\Services\WalletRechargeSettlementService;
 use App\Wallet\Support\WalletMoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -1222,15 +1231,22 @@ final class BookingWizard extends Component
             $this->browsingAcademicContext(),
         );
 
+        // BookingWizardService::availableSlots() hands back plain
+        // ['starts_at' => iso, 'ends_at' => iso] rows, not TimeSlotData —
+        // the same shape the single-booking slot picker consumes.
         $this->moveSlots = $slots
+            ->map(static fn (array $slot): array => [
+                'starts_at' => CarbonImmutable::parse($slot['starts_at']),
+                'ends_at' => CarbonImmutable::parse($slot['ends_at']),
+            ])
             // The override is keyed by the schedule's own date, so a slot
             // that lands on the following day in that calendar is not a
             // move of THIS class and is not offered as one.
-            ->filter(fn (TimeSlotData $slot): bool => $slot->startsAt->setTimezone($this->seriesTimezone)->toDateString() === $localDate)
-            ->map(fn (TimeSlotData $slot): array => [
-                'local_time' => $slot->startsAt->setTimezone($this->seriesTimezone)->format('H:i:s'),
-                'label' => $slot->startsAt->setTimezone($this->timezone)->format('g:i A'),
-                'ends_label' => $slot->endsAt->setTimezone($this->timezone)->format('g:i A'),
+            ->filter(fn (array $slot): bool => $slot['starts_at']->setTimezone($this->seriesTimezone)->toDateString() === $localDate)
+            ->map(fn (array $slot): array => [
+                'local_time' => $slot['starts_at']->setTimezone($this->seriesTimezone)->format('H:i:s'),
+                'label' => $slot['starts_at']->setTimezone($this->timezone)->format('g:i A'),
+                'ends_label' => $slot['ends_at']->setTimezone($this->timezone)->format('g:i A'),
             ])
             ->values()
             ->all();
@@ -1450,6 +1466,25 @@ final class BookingWizard extends Component
      */
     public array $seriesPrepayment = [];
 
+    /**
+     * The "pay for all classes" checkout in flight: provider, and for the
+     * fake provider the recharge reference the simulator settles. Kept
+     * apart from $paymentOrder so the two checkouts on this screen can
+     * never be confused for one another.
+     *
+     * @var array<string, mixed>
+     */
+    public array $seriesCheckout = [];
+
+    /** The recharge payment attempt being confirmed after a gateway return. */
+    public ?string $pendingSeriesPaymentId = null;
+
+    public int $seriesPaymentPollCount = 0;
+
+    public const int MAX_SERIES_PAYMENT_POLLS = 40;
+
+    public const int SERIES_PROVIDER_RECHECK_SECONDS = 5;
+
     /** The student's standing permission for THIS schedule; never inferred. */
     public bool $autoSettleEnabled = false;
 
@@ -1469,7 +1504,8 @@ final class BookingWizard extends Component
     public function payForAllClasses(): void
     {
         $this->paymentBanner = '';
-        $this->paymentOrder = [];
+        $this->seriesCheckout = [];
+        $this->clearPendingSeriesPayment();
 
         $series = $this->currentSeries();
 
@@ -1503,10 +1539,283 @@ final class BookingWizard extends Component
                 return;
             }
 
-            $this->openCheckout($prepayments->initiateTopUp($series, auth()->user()));
+            $this->openSeriesCheckout($prepayments->initiateTopUp($series, auth()->user()));
         } catch (BookingException $exception) {
             $this->paymentBanner = $exception->getMessage();
         }
+    }
+
+    /**
+     * Hands the schedule top-up to the browser under its OWN events.
+     *
+     * The single-booking checkout verifies a booking payment; this one
+     * has to verify a wallet recharge. Reusing the booking events here
+     * once sent the recharge's order id to the booking verifier, which
+     * could never match — the gateway took the money and the wizard
+     * showed an error while the classes waited for a webhook.
+     */
+    private function openSeriesCheckout(PaymentCheckoutData $checkout): void
+    {
+        $payload = $checkout->checkoutPayload;
+
+        if ($checkout->provider === 'razorpay') {
+            $this->seriesCheckout = ['provider' => 'razorpay'];
+            $this->dispatch(
+                'series-prepayment-checkout-ready',
+                orderId: $payload['order_id'],
+                keyId: $payload['key_id'],
+                amountMinor: $checkout->amountMinor,
+                currency: $checkout->currencyCode,
+                name: auth()->user()->name,
+                email: auth()->user()->email,
+            );
+
+            return;
+        }
+
+        if ($checkout->provider === 'stripe') {
+            // Secrets travel only in the transient dispatch payload,
+            // never on a public Livewire property — same rule as
+            // initiatePayment().
+            $this->seriesCheckout = ['provider' => 'stripe'];
+            $this->pendingSeriesPaymentId = $checkout->paymentId;
+            $this->dispatch(
+                'series-prepayment-stripe-checkout-ready',
+                clientSecret: $payload['client_secret'],
+                publishableKey: $payload['publishable_key'],
+            );
+
+            return;
+        }
+
+        // Fake provider — local/testing only, no real checkout UI. Keyed
+        // by the payment attempt, which is what the simulator settles.
+        $this->seriesCheckout = ['provider' => 'fake', 'payment_id' => $checkout->paymentId];
+    }
+
+    /**
+     * Razorpay Checkout.js success callback for the schedule top-up.
+     *
+     * The browser is never the authority: PaymentCallbackVerifier proves
+     * the signature and that the order belongs to THIS student's recharge
+     * for THIS schedule. The money is then confirmed with Razorpay server
+     * to server through the same reconciliation path the sweep uses, and
+     * if it is paid the wallet is credited and the classes settled in
+     * this very request — the student sees "confirmed" on return from the
+     * gateway, not "pending" until a webhook arrives. If the capture is
+     * still in flight, the view polls (pollSeriesPaymentStatus) and the
+     * webhook, listener and sweep remain the safety nets.
+     */
+    public function verifySeriesPrepayment(string $orderId, string $paymentId, string $signature): void
+    {
+        $this->paymentBanner = '';
+
+        $series = $this->currentSeries();
+
+        if ($series === null) {
+            return;
+        }
+
+        $recharge = app(BookingSeriesPrepaymentService::class)->openRechargeFor($series, auth()->user());
+
+        if ($recharge === null) {
+            return;
+        }
+
+        try {
+            $payment = app(PaymentCallbackVerifier::class)->verifyRazorpayCheckout($recharge, $orderId, $paymentId, $signature);
+        } catch (PaymentException $exception) {
+            $this->paymentBanner = $exception->getMessage();
+
+            return;
+        }
+
+        $this->confirmSeriesRechargeWithProvider($payment);
+        $this->trackSeriesPayment($payment, $recharge->refresh());
+    }
+
+    /** Razorpay Checkout.js closed without paying — nothing was taken. */
+    public function seriesCheckoutDismissed(): void
+    {
+        $series = $this->currentSeries();
+
+        if ($series === null || $this->pendingSeriesPaymentId !== null) {
+            return;
+        }
+
+        $recharge = app(BookingSeriesPrepaymentService::class)->openRechargeFor($series, auth()->user());
+
+        if ($recharge !== null && ! $recharge->payments()->whereNotNull('provider_payment_id')->exists()) {
+            $this->paymentBanner = 'The payment window was closed before completing. No money was taken — your classes are still reserved, so you can try again.';
+        }
+    }
+
+    /**
+     * Polled while a schedule top-up the student just paid is not yet
+     * confirmed (Razorpay: wire:poll; Stripe: the checkout script).
+     * Re-reads the server's own record, re-asks the provider at most
+     * every few seconds, and settles the classes the moment the credit
+     * lands. Scoped to the student's own attempt.
+     */
+    public function pollSeriesPaymentStatus(): void
+    {
+        if ($this->pendingSeriesPaymentId === null) {
+            return;
+        }
+
+        $payment = Payment::query()
+            ->whereKey($this->pendingSeriesPaymentId)
+            ->where('user_id', auth()->id())
+            ->where('payable_type', WalletRecharge::PAYABLE_TYPE)
+            ->first();
+
+        $recharge = $payment === null ? null : WalletRecharge::query()
+            ->whereKey($payment->payable_id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if ($payment === null || $recharge === null) {
+            $this->clearPendingSeriesPayment();
+
+            return;
+        }
+
+        if (! $recharge->status->isTerminal() && ! $recharge->status->needsCreditRetry()) {
+            $this->seriesPaymentPollCount++;
+
+            if ($this->seriesPaymentPollCount > self::MAX_SERIES_PAYMENT_POLLS) {
+                $this->paymentBanner = 'Your payment is taking longer than usual to confirm. If it went through, your classes will be confirmed automatically and we will email you — there is no need to pay again.';
+                $this->clearPendingSeriesPayment();
+
+                return;
+            }
+
+            $this->confirmSeriesRechargeWithProvider($payment);
+            $recharge->refresh();
+        }
+
+        $this->trackSeriesPayment($payment, $recharge);
+    }
+
+    /**
+     * Local/testing-only: the fake provider has no checkout UI to
+     * complete. Goes through the SAME WalletRechargeSettlementService a
+     * signed webhook reaches — see WalletOverview::simulateFakeRecharge().
+     */
+    public function simulateFakeSeriesPayment(bool $success): void
+    {
+        if (! app(FakePaymentSimulator::class)->isAvailable() || ($this->seriesCheckout['provider'] ?? null) !== 'fake') {
+            return;
+        }
+
+        $this->paymentBanner = '';
+
+        $payment = Payment::query()
+            ->whereKey((string) ($this->seriesCheckout['payment_id'] ?? ''))
+            ->where('user_id', auth()->id())
+            ->where('payable_type', WalletRecharge::PAYABLE_TYPE)
+            ->first();
+        $recharge = $payment === null ? null : WalletRecharge::query()
+            ->whereKey($payment->payable_id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if ($payment === null || $recharge === null) {
+            return;
+        }
+
+        $result = app(WalletRechargeSettlementService::class)->settle($payment, new VerifiedPaymentEvent(
+            provider: (string) $payment->provider,
+            type: $success ? PaymentEventType::Succeeded : PaymentEventType::Failed,
+            reference: $payment->idempotency_key,
+            providerOrderId: $payment->provider_order_id,
+            providerPaymentId: 'fake_payment_'.$payment->id,
+            amountMinor: (int) $payment->amount_minor,
+            currencyCode: (string) $payment->currency_code,
+            reason: $success ? null : 'Simulated failure (fake provider).',
+        ));
+
+        $this->seriesCheckout = [];
+        $this->trackSeriesPayment($payment, $result->recharge?->refresh() ?? $recharge->refresh());
+    }
+
+    /**
+     * Asks the provider, server to server, whether this attempt is paid
+     * and settles it through the ONE settlement path if so. Idempotent:
+     * an attempt the webhook already settled is a replay and credits
+     * nothing twice. Throttled so a polling page never hammers the gateway.
+     */
+    private function confirmSeriesRechargeWithProvider(Payment $payment): void
+    {
+        $lastChecked = $payment->last_synced_at;
+
+        if ($lastChecked !== null && $lastChecked->gt(now()->subSeconds(self::SERIES_PROVIDER_RECHECK_SECONDS))) {
+            return;
+        }
+
+        app(WalletRechargeReconciliationService::class)->reconcileOne($payment);
+    }
+
+    /**
+     * Applies the recharge's current state to the screen: a credited
+     * top-up is spent on the classes right now; anything still open arms
+     * polling; a failure is said plainly with the classes still reserved.
+     */
+    private function trackSeriesPayment(Payment $payment, WalletRecharge $recharge): void
+    {
+        if ($recharge->status === WalletRechargeStatus::Succeeded) {
+            $this->clearPendingSeriesPayment();
+            $this->seriesCheckout = [];
+
+            $result = app(BookingSeriesPrepaymentService::class)->settleForRecharge($recharge);
+
+            $this->paymentBanner = $result === null || $result->allPaid()
+                ? ''
+                : sprintf(
+                    'Payment received. %d of %d classes were confirmed; the rest could not be and the money for them is still in your balance — open My Bookings to sort them out.',
+                    $result->paidCount(),
+                    $result->paidCount() + count($result->failures),
+                );
+
+            $this->refreshAfterSeriesPayment();
+
+            return;
+        }
+
+        // A failed attempt marks only the ATTEMPT failed; the recharge
+        // stays open so the student can try again. Read the attempt, not
+        // just the recharge, or a declined card would poll forever.
+        $payment->refresh();
+
+        if ($recharge->status->isTerminal()
+            || ($payment->status->isTerminal() && $payment->status !== PaymentStatus::Paid)) {
+            $this->clearPendingSeriesPayment();
+            $this->seriesCheckout = [];
+            $this->paymentBanner = 'Your payment could not be completed. Nothing was taken and your classes are still reserved — please try again.';
+
+            return;
+        }
+
+        if ($recharge->status->needsCreditRetry()) {
+            // Captured by the provider; the wallet credit is being
+            // completed by the recharge sweep, after which the listener
+            // and the prepayment sweep confirm the classes.
+            $this->clearPendingSeriesPayment();
+            $this->paymentBanner = 'Your payment was received. We are completing it now — your classes will be confirmed automatically within a few minutes.';
+
+            return;
+        }
+
+        if ($this->pendingSeriesPaymentId !== $payment->id) {
+            $this->pendingSeriesPaymentId = $payment->id;
+            $this->seriesPaymentPollCount = 0;
+        }
+    }
+
+    private function clearPendingSeriesPayment(): void
+    {
+        $this->pendingSeriesPaymentId = null;
+        $this->seriesPaymentPollCount = 0;
     }
 
     /**
@@ -1613,6 +1922,11 @@ final class BookingWizard extends Component
             'covered_by_wallet' => $quote->coveredByWallet(),
             'shortfall_formatted' => MoneyFormatter::format($quote->shortfallMinor, (string) $quote->currencyCode, $minorUnits),
             'balance_formatted' => MoneyFormatter::format($quote->walletBalanceMinor, (string) $quote->currencyCode, $minorUnits),
+            // What the bill actually takes from the balance, capped at the
+            // bill — the screen itemises this so the arithmetic between
+            // "total" and "to pay now" is visible, never implied.
+            'balance_applied_formatted' => MoneyFormatter::format($quote->appliedBalanceMinor(), (string) $quote->currencyCode, $minorUnits),
+            'uses_balance' => $quote->appliedBalanceMinor() > 0,
             'planned_count' => $quote->plannedCount,
         ];
     }

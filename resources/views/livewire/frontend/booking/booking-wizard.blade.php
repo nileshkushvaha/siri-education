@@ -171,4 +171,5 @@
 @script
 @include('livewire.frontend.booking.partials.razorpay-checkout-script')
 @include('livewire.frontend.booking.partials.stripe-checkout-script')
+@include('livewire.frontend.booking.partials.series-prepayment-checkout-script')
 @endscript

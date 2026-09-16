@@ -283,4 +283,27 @@ class PlatformSettingsFeatureFlagsTest extends TestCase
             'event' => 'settings_updated',
         ]);
     }
+
+    public function test_the_lesson_packages_switch_is_exposed_and_saved_from_the_platform_page(): void
+    {
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+        $this->actingAs($admin);
+
+        $this->assertFalse(app(FeatureSettings::class)->country_academic_packages_enabled, 'Ships off.');
+
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->assertSee('Lesson packages fund bookings')
+            ->set('data.country_academic_packages_enabled', true)
+            ->call('save')
+            ->assertNotified('Platform foundation settings saved');
+
+        $this->assertTrue(app()->make(FeatureSettings::class)->refresh()->country_academic_packages_enabled);
+
+        Livewire::test(PlatformFoundationSettingsPage::class)
+            ->set('data.country_academic_packages_enabled', false)
+            ->call('save');
+
+        $this->assertFalse(app()->make(FeatureSettings::class)->refresh()->country_academic_packages_enabled);
+    }
 }

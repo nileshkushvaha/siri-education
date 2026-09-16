@@ -239,8 +239,20 @@ already-settled entitlement must remain spendable while new collection is
 paused, and coupling them would recreate exactly the trap being avoided.
 Purchase-time collection is gated by the payment domain's own checks.
 
-Both flags default to **off**. Neither is exposed in the Filament settings page
-(following the Phase 3 precedent for its sibling).
+Both flags default to **off**. `CountryAcademicPackages` is exposed on the
+Platform Foundation settings page as "Lesson packages fund bookings"; the
+demo-flow sibling is not (Phase 3 precedent). While it is off the booking
+wizard never offers a package as funding, so a paid package cannot be spent.
+
+Proposals created while it was off carry no `PackageAcademicContext` and stay
+ineligible after it is switched on (fail closed, below). `php artisan
+packages:backfill-academic-context` freezes one onto each live legacy
+proposal — dry-run by default, `--apply` to write — inferring the education
+system and class only when unambiguous (one system the instructor can teach
+for the student's country, one active class in the proposal's academic level)
+and otherwise naming the reason; `--proposal=… --system=… --level=…` backfills
+one proposal from explicit ids. `InstructorPackageProposalService::planAcademicContextBackfill()`
+/ `backfillAcademicContext()` are the only code paths; both are audited.
 
 Semantics when on: structured academic context is **mandatory** for new proposals
 and for package-funded booking — never a fuzzy fallback. When off: the legacy

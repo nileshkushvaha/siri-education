@@ -17,6 +17,7 @@ use App\Curriculum\Exceptions\InstructorAcademicEligibilityException;
 use App\Curriculum\Services\InstructorAcademicEligibilityResolver;
 use App\Models\AcademicLevel;
 use App\Models\Booking;
+use App\Models\EducationSystemLevel;
 use App\Models\InstructorPackageProposal;
 use App\Models\PackageAcademicContext;
 use App\Models\PackageBenefitRule;
@@ -490,6 +491,172 @@ final class InstructorPackageProposalService
      *
      * @throws PackageException on an incomplete/stale/ineligible selection
      */
+    /**
+     * Statuses a backfill may touch: proposals with commercial weight
+     * that were created while the packages feature was off and so carry
+     * no frozen academic context. Drafts have nothing to protect;
+     * rejected, expired and cancelled proposals can never fund a lesson.
+     */
+    public const array BACKFILLABLE_STATUSES = [
+        InstructorPackageProposalStatus::Submitted,
+        InstructorPackageProposalStatus::Approved,
+        InstructorPackageProposalStatus::Accepted,
+    ];
+
+    /**
+     * Works out, without writing anything, the structured context a
+     * legacy proposal WOULD freeze — or says exactly why it cannot.
+     *
+     * A proposal created while the feature was off carries only a
+     * Subject and (maybe) an AcademicLevel band. The structured identity
+     * needs one education system and one level in it. Both are inferred
+     * only when unambiguous: the student's country maps to exactly one
+     * system the instructor is eligible for, and that system has exactly
+     * one active level in the proposal's band. Anything else is refused
+     * with the reason, so an operator supplies the ids explicitly rather
+     * than the tool guessing which class a paid package was for.
+     *
+     * @throws PackageException
+     */
+    public function planAcademicContextBackfill(
+        InstructorPackageProposal $proposal,
+        ?string $educationSystemId = null,
+        ?string $educationSystemLevelId = null,
+    ): BookingAcademicContextData {
+        if ($proposal->academicContext !== null) {
+            throw new PackageException('This proposal already has an academic context.');
+        }
+
+        if (! in_array($proposal->status, self::BACKFILLABLE_STATUSES, true)) {
+            throw new PackageException(sprintf('A %s proposal is not backfilled.', $proposal->status->label()));
+        }
+
+        $student = $proposal->student;
+        $instructor = $proposal->instructor;
+
+        if ($student === null || $instructor === null) {
+            throw new PackageException('The proposal no longer has both a student and an instructor.');
+        }
+
+        if (! $this->structuredContextRequiredFor($student)) {
+            throw new PackageException('Lesson packages are not enabled for this student\'s country, so no academic context can be resolved.');
+        }
+
+        $subject = Subject::query()->find($proposal->subject_id);
+
+        if ($subject === null) {
+            throw new PackageException('The proposal\'s subject no longer exists.');
+        }
+
+        [$systemId, $levelId] = $this->inferStructuredSelection(
+            $proposal,
+            $student,
+            $instructor,
+            $educationSystemId ?? $proposal->education_system_id,
+            $educationSystemLevelId ?? $proposal->education_system_level_id,
+        );
+
+        $context = $this->resolveStructuredContext($student, $instructor, $systemId, $levelId, $subject);
+
+        if ($context === null) {
+            throw new PackageException('Lesson packages are not enabled for this student\'s country, so no academic context can be resolved.');
+        }
+
+        return $context;
+    }
+
+    /**
+     * Freezes the planned context onto a legacy proposal so its paid
+     * entitlement can fund bookings. Same snapshot writer as submit(),
+     * so a backfilled package is indistinguishable from one created with
+     * the feature on. Audited under the proposal, with who ran it.
+     *
+     * @throws PackageException
+     */
+    public function backfillAcademicContext(
+        InstructorPackageProposal $proposal,
+        User $actor,
+        ?string $educationSystemId = null,
+        ?string $educationSystemLevelId = null,
+    ): PackageAcademicContext {
+        $context = $this->planAcademicContextBackfill($proposal, $educationSystemId, $educationSystemLevelId);
+
+        return DB::transaction(function () use ($proposal, $actor, $context): PackageAcademicContext {
+            $frozen = $this->freezeAcademicContext($proposal, $context);
+
+            $this->audit->logUser(
+                $actor,
+                self::LOG_NAME,
+                'package_academic_context_backfilled',
+                'Academic context backfilled onto a package proposal created before the feature was enabled.',
+                $proposal,
+                [
+                    ...$this->metadata($proposal),
+                    'education_system_id' => $context->educationSystemId,
+                    'education_system_level_id' => $context->educationSystemLevelId,
+                    'curriculum_version_id' => $context->curriculumVersionId,
+                ],
+            );
+
+            return $frozen;
+        });
+    }
+
+    /**
+     * @return array{0: string, 1: string} [education_system_id, education_system_level_id]
+     *
+     * @throws PackageException
+     */
+    private function inferStructuredSelection(
+        InstructorPackageProposal $proposal,
+        User $student,
+        User $instructor,
+        ?string $educationSystemId,
+        ?string $educationSystemLevelId,
+    ): array {
+        if ($educationSystemId === null) {
+            $country = $this->academicContext->studentCountry($student);
+
+            if ($country === null) {
+                throw new PackageException('The student has no country, so no education system can be inferred.');
+            }
+
+            $systems = $this->academicContext->educationSystemsFor($country, $instructor);
+
+            if ($systems->count() !== 1) {
+                throw new PackageException(sprintf(
+                    'The student\'s country maps to %d education systems this instructor can teach; pass the education system explicitly.',
+                    $systems->count(),
+                ));
+            }
+
+            $educationSystemId = (string) $systems->first()->id;
+        }
+
+        if ($educationSystemLevelId === null) {
+            if ($proposal->academic_level_id === null) {
+                throw new PackageException('The proposal names no academic level, so no class can be inferred; pass the level explicitly.');
+            }
+
+            $levels = EducationSystemLevel::query()
+                ->active()
+                ->where('education_system_id', $educationSystemId)
+                ->where('academic_level_id', $proposal->academic_level_id)
+                ->get();
+
+            if ($levels->count() !== 1) {
+                throw new PackageException(sprintf(
+                    '%d classes in that education system fall in the proposal\'s academic level; pass the level explicitly.',
+                    $levels->count(),
+                ));
+            }
+
+            $educationSystemLevelId = (string) $levels->first()->id;
+        }
+
+        return [$educationSystemId, $educationSystemLevelId];
+    }
+
     private function resolveStructuredContext(
         User $student,
         User $instructor,

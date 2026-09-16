@@ -18,6 +18,7 @@ use App\Models\BookingType;
 use App\Models\Country;
 use App\Models\Curriculum;
 use App\Models\InstructorCurriculumEligibility;
+use App\Models\InstructorPackageProposal;
 use App\Models\PackageAcademicContext;
 use App\Models\PackageBenefitRule;
 use App\Models\StudentLessonPrice;
@@ -555,5 +556,107 @@ class PackageAcademicContextTest extends TestCase
         $topic = SubjectTopic::factory()->create(['subject_id' => $f['subject']->id]);
         $curricula->assignTopic($this->admin, $module, $topic);
         $curricula->publish($this->admin, $version);
+    }
+
+    // ── Backfilling proposals created before the feature was on ───────────
+
+    /** A legacy (feature-off) proposal that later needs a context to fund bookings. */
+    private function legacyProposal(array $f, User $instructor, User $student): InstructorPackageProposal
+    {
+        return $this->proposals()->proposeAndSubmit(new CreatePackageProposalData(
+            instructorId: (int) $instructor->id,
+            studentId: (int) $student->id,
+            packageBenefitRuleId: $this->rule()->id,
+            subjectId: $f['subject']->id,
+            academicLevelId: $f['academicLevel']->id,
+        ));
+    }
+
+    public function test_a_legacy_proposal_is_backfilled_with_the_unambiguous_context_once_the_feature_is_on(): void
+    {
+        $f = $this->fixture('Backfill');
+        $instructor = $this->instructorFor($f);
+        $student = $this->studentFor($f, $instructor);
+        $proposal = $this->legacyProposal($f, $instructor, $student);
+        $this->assertNull($proposal->academicContext);
+
+        $this->enablePackages();
+
+        $frozen = $this->proposals()->backfillAcademicContext($proposal, $this->admin);
+
+        $this->assertSame($f['system']->id, $frozen->education_system_id);
+        $this->assertSame($f['level']->id, $frozen->education_system_level_id);
+        $this->assertSame($f['subject']->id, $frozen->subject_id);
+        $this->assertSame($f['curriculum']->id, $frozen->curriculum_id);
+        $this->assertNotNull($frozen->curriculum_version_id);
+        $this->assertSame(1, PackageAcademicContext::query()->where('proposal_id', $proposal->id)->count());
+    }
+
+    public function test_backfill_refuses_to_guess_and_refuses_while_the_feature_is_off(): void
+    {
+        $f = $this->fixture('Guess');
+        $instructor = $this->instructorFor($f);
+        $student = $this->studentFor($f, $instructor);
+        $proposal = $this->legacyProposal($f, $instructor, $student);
+
+        try {
+            $this->proposals()->planAcademicContextBackfill($proposal);
+            $this->fail('Expected the plan to be refused while the feature is off.');
+        } catch (PackageException $e) {
+            $this->assertStringContainsString('not enabled', $e->getMessage());
+        }
+
+        $this->enablePackages();
+
+        // A second class in the same band makes the level ambiguous.
+        app(EducationSystemService::class)->addLevel($this->admin, $f['system'], [
+            'academic_level_id' => $f['academicLevel']->id,
+            'value' => '11',
+            'display_label' => 'Class 11',
+            'normalized_grade' => 11,
+        ]);
+
+        try {
+            $this->proposals()->planAcademicContextBackfill($proposal);
+            $this->fail('Expected an ambiguous level to be refused.');
+        } catch (PackageException $e) {
+            $this->assertStringContainsString('pass the level explicitly', $e->getMessage());
+        }
+
+        // Explicit ids resolve it.
+        $frozen = $this->proposals()->backfillAcademicContext($proposal, $this->admin, $f['system']->id, $f['level']->id);
+        $this->assertSame($f['level']->id, $frozen->education_system_level_id);
+        $this->assertSame(0, PackageAcademicContext::query()->where('proposal_id', '!=', $proposal->id)->count());
+    }
+
+    public function test_the_backfill_command_is_a_dry_run_unless_applied_and_skips_proposals_that_already_have_a_context(): void
+    {
+        $f = $this->fixture('Cmd');
+        $instructor = $this->instructorFor($f);
+        $student = $this->studentFor($f, $instructor);
+        $legacy = $this->legacyProposal($f, $instructor, $student);
+
+        $this->enablePackages();
+        $structured = $this->proposals()->proposeAndSubmit($this->proposalData($f, $instructor, $student));
+        $this->assertNotNull($structured->academicContext);
+
+        $superAdmin = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $superAdmin->assignRole(Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']));
+
+        $this->artisan('packages:backfill-academic-context')
+            ->expectsOutputToContain('would write')
+            ->expectsOutputToContain('Dry run')
+            ->assertSuccessful();
+        $this->assertNull($legacy->refresh()->academicContext);
+
+        $this->artisan('packages:backfill-academic-context', ['--apply' => true])
+            ->expectsOutputToContain('1 written')
+            ->assertSuccessful();
+        $this->assertNotNull($legacy->refresh()->academicContext);
+        $this->assertSame(2, PackageAcademicContext::query()->count());
+
+        $this->artisan('packages:backfill-academic-context', ['--apply' => true])
+            ->expectsOutputToContain('No live package proposals are missing an academic context')
+            ->assertSuccessful();
     }
 }

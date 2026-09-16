@@ -95,6 +95,7 @@ class PlatformFoundationSettingsPage extends Page
             'waitlist_enabled' => $features->waitlist_enabled,
             'homework_enabled' => $features->homework_enabled,
             'recording_enabled' => $features->recording_enabled,
+            'country_academic_packages_enabled' => $features->country_academic_packages_enabled,
         ]);
     }
 
@@ -144,6 +145,9 @@ class PlatformFoundationSettingsPage extends Page
                         Toggle::make('recording_enabled')
                             ->label('Recording')
                             ->helperText('Whether lesson recording exists at all. Whether new lessons are recorded, and how, is under Meetings.'),
+                        Toggle::make('country_academic_packages_enabled')
+                            ->label('Lesson packages fund bookings')
+                            ->helperText('Instructor package offers carry the student\'s education system, class, subject and curriculum, and a paid package can then fund a single lesson with that instructor in the booking flow. Needs education systems, levels, published curricula and instructor eligibilities set up for the countries concerned. Offers created while this is off carry no academic context and cannot fund bookings until backfilled (packages:backfill-academic-context).'),
                     ]),
                 ]),
 
@@ -302,6 +306,7 @@ class PlatformFoundationSettingsPage extends Page
             $settings->waitlist_enabled = (bool) ($data['waitlist_enabled'] ?? false);
             $settings->homework_enabled = (bool) ($data['homework_enabled'] ?? false);
             $settings->recording_enabled = (bool) ($data['recording_enabled'] ?? false);
+            $settings->country_academic_packages_enabled = (bool) ($data['country_academic_packages_enabled'] ?? false);
         });
     }
 }

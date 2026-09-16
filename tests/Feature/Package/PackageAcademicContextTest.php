@@ -603,7 +603,7 @@ class PackageAcademicContextTest extends TestCase
             $this->proposals()->planAcademicContextBackfill($proposal);
             $this->fail('Expected the plan to be refused while the feature is off.');
         } catch (PackageException $e) {
-            $this->assertStringContainsString('not enabled', $e->getMessage());
+            $this->assertStringContainsString('switch is off', $e->getMessage());
         }
 
         $this->enablePackages();

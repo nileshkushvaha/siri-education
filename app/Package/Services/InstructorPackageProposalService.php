@@ -538,8 +538,21 @@ final class InstructorPackageProposalService
             throw new PackageException('The proposal no longer has both a student and an instructor.');
         }
 
-        if (! $this->structuredContextRequiredFor($student)) {
-            throw new PackageException('Lesson packages are not enabled for this student\'s country, so no academic context can be resolved.');
+        // Say precisely which gate is shut: the operator running the
+        // backfill has to know whether to flip the admin switch, fix the
+        // student's profile, or lift a country override.
+        if (! $this->academicContext->isEnabledGlobally(CountryFeature::CountryAcademicPackages)) {
+            throw new PackageException('The "Lesson packages fund bookings" switch is off (Settings → Platform Foundation → Features); turn it on and run again.');
+        }
+
+        $country = $this->academicContext->studentCountry($student);
+
+        if ($country === null) {
+            throw new PackageException('The student has no country on their profile, so no academic context can be resolved.');
+        }
+
+        if (! $this->academicContext->isEnabledForCountry(CountryFeature::CountryAcademicPackages, $country)) {
+            throw new PackageException(sprintf('Lesson packages are switched off for %s by a country override; lift it and run again.', $country->name));
         }
 
         $subject = Subject::query()->find($proposal->subject_id);

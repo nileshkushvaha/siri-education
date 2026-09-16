@@ -560,7 +560,7 @@
                         </div>
                         <div>
                             <h2 class="text-base font-semibold text-fg-strong">Profile Visibility</h2>
-                            <p class="text-xs text-fg-muted">Control who can see your profile and which details are shown</p>
+                            <p class="text-xs text-fg-muted">Control who can see your profile</p>
                         </div>
                     </div>
 
@@ -576,20 +576,9 @@
                             </select>
                         </div>
 
-                        <div class="space-y-3">
-                            @foreach([
-                            ['show_email', 'Show email on profile', $user->profile->show_email],
-                            ['show_phone', 'Show phone on profile', $user->profile->show_phone],
-                            ] as [$field, $label, $enabled])
-                            <label class="flex items-center justify-between gap-4 p-4 rounded-xl border border-edge hover:border-edge-strong hover:bg-surface-hover cursor-pointer transition-all">
-                                <span class="text-sm font-medium text-fg">{{ $label }}</span>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" name="{{ $field }}" value="1" {{ $enabled ? 'checked' : '' }}>
-                                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                                </label>
-                            </label>
-                            @endforeach
-                        </div>
+                        {{-- Email, phone and social-link toggles were retired: the client never
+                             shares instructor contact details with students or the public, and the
+                             public profile does not render them. Columns remain in the database. --}}
 
                         <button type="submit"
                             class="px-7 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition-all active:scale-[.98]">

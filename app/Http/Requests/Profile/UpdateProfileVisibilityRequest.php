@@ -21,16 +21,6 @@ class UpdateProfileVisibilityRequest extends FormRequest
     {
         return [
             'profile_visibility' => ['required', Rule::in(['public', 'private', 'members_only'])],
-            'show_email' => ['nullable', 'boolean'],
-            'show_phone' => ['nullable', 'boolean'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        $this->merge([
-            'show_email' => $this->boolean('show_email'),
-            'show_phone' => $this->boolean('show_phone'),
-        ]);
     }
 }

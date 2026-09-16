@@ -21,19 +21,19 @@ class ProfileVisibilityTest extends TestCase
         $this->actingAs($user)
             ->post(route('profile.visibility.update'), [
                 'profile_visibility' => 'private',
+                // Retired toggles: contact details and social links are never
+                // shown to students or the public, so posting them changes nothing.
                 'show_email' => true,
                 'show_phone' => true,
-                // No longer a form field: social links are never shown, so
-                // posting the old toggle must change nothing.
                 'show_social_links' => false,
             ])
             ->assertRedirect();
 
         $profile = $user->profile->fresh();
         $this->assertSame('private', $profile->profile_visibility);
-        $this->assertTrue($profile->show_email);
-        $this->assertTrue($profile->show_phone);
-        $this->assertTrue($profile->show_social_links, 'The retired toggle is ignored; the column keeps its stored value.');
+        $this->assertFalse($profile->show_email, 'The retired toggle is ignored; the column keeps its stored default.');
+        $this->assertFalse($profile->show_phone, 'The retired toggle is ignored; the column keeps its stored default.');
+        $this->assertTrue($profile->show_social_links, 'The retired toggle is ignored; the column keeps its stored default.');
     }
 
     public function test_visibility_update_is_rejected_for_invalid_value(): void

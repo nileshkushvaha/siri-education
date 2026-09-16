@@ -52,8 +52,10 @@ class ProfileFrontendRenderingTest extends TestCase
         foreach (['website', 'facebook', 'twitter', 'linkedin', 'github', 'instagram', 'youtube'] as $field) {
             $this->assertStringNotContainsString('name="'.$field.'"', $content);
         }
-        $this->assertStringNotContainsString('name="show_social_links"', $content);
-        $this->assertStringContainsString('name="show_email"', $content);
+        foreach (['show_social_links', 'show_email', 'show_phone'] as $toggle) {
+            $this->assertStringNotContainsString('name="'.$toggle.'"', $content);
+        }
+        $this->assertStringContainsString('name="profile_visibility"', $content);
     }
 
     public function test_student_and_instructor_profile_fields_are_audience_isolated(): void
